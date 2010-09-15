@@ -1,0 +1,3 @@
+This repository houses code for analysing 21 cm intensity mapping data.  Right
+now there are three main bases of code: Tzu-Ching's idl code, Kevin Bandura's
+python code and Kiyoshi Masui's python code.

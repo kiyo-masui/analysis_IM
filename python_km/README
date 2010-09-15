@@ -1,0 +1,5 @@
+This Kiyo's code for processing GBT data.  This code depends on the Kiyo's
+personal utilities package: kiyopy (available from github, user: kiyo-masui).
+
+Ideally, any code pushed back to the github repository should be tested and
+pass the test suit (python test_*) but this might not be true early on.
