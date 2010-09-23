@@ -28,6 +28,11 @@ class Processor() :
             certain way corresponding to the GBT spectrometer data.
     """
 
+    # Note to programmer: assignments of a subset of one array to another
+    # are often by reference, not by value.  To be safe, any array you are
+    # going to modify should be forced to assign by value with the
+    # sp.array(an_array) function.
+
     # These are flags for performing variouse checks.  They will eventually
     # become inputs of some sort.
     verify_ordering = 1;
@@ -41,6 +46,9 @@ class Processor() :
     npol = 4 # number of polarizations
     ncal = 2 # number of noise cal states (on, off)
 
+    # Flags for internal use:
+
+
     # All objects that are of length # have names ending in #:
     # number of records in the fits file --- _all.
     # number of records in one IF and one scan --- _sif.
@@ -51,6 +59,7 @@ class Processor() :
         """
         See class docstring (for now).
         """
+
         self.fname = fname
         if self.feedback > 0 :
             print "Opened GBT fits file: \n ", fname
@@ -60,18 +69,21 @@ class Processor() :
         # Separate in to the useful sub objects.  These assignments are all
         # done by reference, so this is efficient.
         self.fitsdata = self.hdulist[1].data
-        self.fitsheaders = self.hdulist[1].header
         # The records in fitsdata are not guaranteed to be in proper order.
         # Mostly the IFs are all out of whack.  However, once you isolate an 
         # IF everything should be well ordered.
 
-        # Get the scans and IF of all records and the unique elements
-        self._scans_all = self.fitsdata.field('SCAN') # Again by reference
+        # Get the scans and IF of all records.  This is later used to isolate a
+        # single IF and scan.  Also get the set of unique IFs and scans, so we
+        # know what is in the file.
+        self._scans_all = self.fitsdata.field('SCAN')
         self.scan_set = sp.unique(self._scans_all)
         self._IFs_all = self.fitsdata.field('CRVAL1')/1E6 # MHz
-        self._IFs_all = self._IFs_all.round(0)
+        # Round the frequencies as we only need to tell the difference between
+        # one IF and the other.
+        # TODO: Figure out what the difference frequencies acctually are.
+        self._IFs_all = self._IFs_all.round(0) 
         self.IF_set = sp.unique(self._IFs_all)
-        # The following gets a list of indicies that point to one of each IFs.
         # TODO: This is inefficient.  sp.unique has this for numpy > 1.3.
         IF_unique_inds = []
         for tempIF in self.IF_set :
@@ -85,12 +97,65 @@ class Processor() :
         if self.verify_bands :
             for tband in IF_bandwidths :
                 if tband != self.IF_bandwidth :
-                    raise Exception("IF bandwidths not all the same. "
+                    raise ce.DataError("IF bandwidths not all the same. "
                                     "This needs to be implemented.")
         self.nfreq_IF = len(self.fitsdata[0]['DATA']) # number of frequencies
         # in an IF.  There are overlapping frequencies between IFs, but for
         # now process all.
         # TODO get frequencies.
+
+    def get_scan_IF_inds(self, scan_ind, IF_ind) :
+        """Gets the record indices of the fits file that correspond to the
+        given scan and IF.
+
+        Note that the scans are numbered with 0 corresponding to the first scan
+        in the file i.e., it is not the session scan number."""
+
+        # Should check valid scan IF, and raise value errors as apropriate
+        thescan = self.scan_set[scan_ind]
+        theIF = self.IF_set[IF_ind]
+        
+        # Find all the records that correspond to this IF and this scan.
+        # These indicies *should now be ordered in time, cal (on off)
+        # and in polarization, once the IF is isolated.
+        (inds_sif,) = sp.where(sp.logical_and(self._IFs_all==theIF, 
+                                        self._scans_all==thescan))
+        
+        # Reform to organize by pol, cal, etc.
+        ntimes = len(inds_sif)//self.npol//self.ncal
+        inds_sif = sp.reshape(inds_sif, (ntimes, self.npol, self.ncal))
+
+        if self.verify_ordering > 0:
+            # We expect noise cal to be on for every second record.
+            for thecal in range(self.ncal) :
+                tmp = sp.unique(self.fitsdata.field('CAL')[inds_sif[:,:,thecal]])
+                if len(tmp) > 1 :
+                    raise ce.DataError("Calibration (ON/OFF) not in "
+                                    "perfect order in file: "+self.fname)
+            # Polarization should cycle through 4 modes (-5,-7,-8,-6)
+            for thepol in range(self.npol) :
+                tmp = sp.unique(self.fitsdata.field('CRVAL4')
+                            [inds_sif[:,thepol,:]])
+                if len(tmp) > 1 :
+                    raise ce.DataError("Polarizations not in perfect order in "
+                                    "file: "+self.fname)
+            # We expect the entries to be sorted in time
+            tmp = (self.fitsdata.field('LST')
+                       [inds_sif[:,0,0]])
+            lastLST = 0
+            for thisLST in tmp :
+                if lastLST > thisLST :
+                    # Rollover at 86400 is normal.
+                    if lastLST > 86395 and thisLST < 5 :
+                        raise ce.DataError("LST roll over. Normal but not"
+                                        " supported yet.") 
+                    else :
+                        raise ce.DataError("Times not in perfect order.")
+                lastLST=thisLST
+            del tmp
+
+        return inds_sif
+
 
     
     def read_process(self, scans=None, IFs=None) :
@@ -141,46 +206,7 @@ class Processor() :
         for thescan in self.scan_set[scans]:
             first_iteration_IF = True
             for theIF in self.IF_set[IFs] :
-                # Find all the records that correspond to this IF and this scan.
-                # These indicies *should now be ordered in time, cal (on off)
-                # and in polarization, once the IF is isolated.
-                (inds_sif,) = sp.where(sp.logical_and(self._IFs_all==theIF, 
-                                                self._scans_all==thescan))
-                # Do some ordering checks
-                if self.verify_lengths > 0 and not first_iteration_IF :
-                    if ntimes_scan != len(inds_sif)//self.npol//self.ncal :
-                        raise RunTimeError("Different IFs have different "
-                                        "number of times for the same scan.")
-                ntimes_scan = len(inds_sif)//self.npol//self.ncal
-                if self.feedback > 2 :
-                    print "Processing scan ", thescan, " and IF ", theIF,
-                    print ", which has ", ntimes_scan," time bins."
-                if self.verify_ordering > 0:
-                    # We expect noise cal to be on for every second record.
-                    tmp = sp.unique(self.fitsdata.field('CAL')[inds_sif[0::2]])
-                    if len(tmp) > 1 or tmp[0] != 'T' :
-                        raise RunTimeError("Calibration (ON/OFF) not in "
-                                        "perfect order.")
-                    # Polarization should cycle through 4 modes (-5,-7,8,-6)
-                    tmp = sp.unique(self.fitsdata.field('CRVAL4')
-                                    [inds_sif[0::records_per_time]])
-                    if len(tmp) > 1 or tmp[0] != -5 :
-                        raise RunTimeError("Polarizations not in perfect order.")
-                    # We expect the entries to be sorted in time
-                    tmp = (self.fitsdata.field('LST')
-                               [inds_sif[0::records_per_time]])
-                    lastLST = 0
-                    for thisLST in tmp :
-                        if lastLST > thisLST :
-                            # Rollover at 86400 is normal.
-                            if lastLST > 86395 and thisLST < 5 :
-                                raise Exception("LST roll over. Normal but not"
-                                                " supported yet.") 
-                            else :
-                                raise Exception("Times not in perfect order.")
-                        lastLST=thisLST
-                    del tmp
-
+               
                 # Now we are ready to get a IF/scan set of data and work on it.
                 # Masked array (ma) combines flags and data.
                 P_IF = ma.empty((ntimes_scan, self.npol, self.ncal, 

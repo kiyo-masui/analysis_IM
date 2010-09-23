@@ -4,7 +4,7 @@ case."""
 import scipy as sp
 import pyfits
 
-data_file_name  = '/mnt/raid-cita/tchang/wiggleZ/GBT10B_036/' + \
+data_file_name  = '/cita/d/raid-cita/tchang/wiggleZ/GBT10B_036/' + \
                   '04_wigglez1hr_azel_113-120.raw.acs.fits'
 test_file_name = './test_file_GBTfits.fits'
 # Some parameters of GBT spectrometer data.  These are assumed to be
