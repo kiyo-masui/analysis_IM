@@ -147,8 +147,8 @@ class Processor() :
                 if lastLST > thisLST :
                     # Rollover at 86400 is normal.
                     if lastLST > 86395 and thisLST < 5 :
-                        raise ce.DataError("LST roll over. Normal but not"
-                                        " supported yet.") 
+                        raise ce.NotImplementedError("LST roll over. Normal "
+                                        "but not supported yet.") 
                     else :
                         raise ce.DataError("Times not in perfect order.")
                 lastLST=thisLST
