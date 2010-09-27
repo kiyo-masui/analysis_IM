@@ -79,7 +79,7 @@ class TestFields(unittest.TestCase) :
         self.assertRaises(ce.DataError, self.TestDB.verify)
         
     def test_verify_keys_match2(self) :
-        """Oppotsite case of the last test."""
+        """Oppossite case of the last test."""
         self.TestDB.field_axes['stuff'] = ('time',)
         self.assertRaises(ce.DataError, self.TestDB.verify)
 
@@ -101,12 +101,78 @@ class TestFields(unittest.TestCase) :
         self.TestDB.set_field('CRVAL4', [-5,-6,-7,-8,-9], 'pol')
         self.assertRaises(ce.DataError, self.TestDB.verify)
         
-        
-
     def tearDown(self) :
         del self.TestDB
         del self.testdata
         del self.LST_test
+
+class TestHistory(unittest.TestCase) :
+    
+    def setUp(self) :
+        self.TestDB = db.DataBlock()
+        self.hist_str = 'For example, saved to file.'
+        self.hist_detail = ('the file name', 'the date perhaps')
+
+    def test_add_history(self) :
+        # The basics:
+        self.TestDB.add_history(self.hist_str, self.hist_detail)
+        self.assertTrue(self.TestDB.history.has_key('000: '+self.hist_str))
+        self.assertTrue(self.TestDB.history['000: '+self.hist_str][0] == 
+                        self.hist_detail[0])
+        # Limit the length
+        self.assertRaises(ValueError, self.TestDB.add_history, str(10**70), 
+                          self.hist_detail)
+        self.assertRaises(ValueError, self.TestDB.add_history, self.hist_str, 
+                          (str(10**70),))
+        self.assertRaises(TypeError, self.TestDB.add_history, 5, 
+                          self.hist_detail)
+        self.assertRaises(TypeError, self.TestDB.add_history, self.hist_str, 
+                          (1,2))
+
+    def test_add_string_detail(self) :
+        self.TestDB.add_history(self.hist_str, self.hist_detail[0])
+        self.assertTrue(self.TestDB.history['000: '+self.hist_str][0] == 
+                        self.hist_detail[0])
+    
+    # No unit tests for print history.  It is a function for user reading and
+    # is thus not prone to propagable errors.
+
+    def test_merge_histories(self) :
+        # Basic tests
+        self.TestDB.add_history(self.hist_str, self.hist_detail)
+        SecondDB = db.DataBlock()
+        second_details = ('second file name', )
+        SecondDB.add_history(self.hist_str, second_details)
+        merged = db.merge_histories(self.TestDB, SecondDB)
+        self.assertEqual(len(merged.keys()), 1)
+        self.assertTrue(second_details[0] in merged['000: '+self.hist_str])
+        self.assertTrue(self.hist_detail[0] in merged['000: '+self.hist_str])
+        self.assertEqual(len(merged['000: '+self.hist_str]), 3)
+        # Enforce matching.
+        ThirdDB = db.DataBlock()
+        ThirdDB.add_history(self.hist_str, self.hist_detail)
+        ThirdDB.add_history('Read from file.', self.hist_detail)
+        self.assertRaises(ce.DataError, db.merge_histories, SecondDB, ThirdDB)
+
+    def test_merge_multiple_histories(self) :
+        entry1 = 'Read from file.'
+        entry2 = 'Saved to file.'
+        DBs = ()
+        n = 10
+        for ii in range(n) :
+            tempDB = db.DataBlock()
+            tempDB.add_history(entry1, 'filename: ' + str(ii))
+            tempDB.add_history(entry2, 'saved filename not iterated')
+            DBs = DBs + (tempDB, )
+        merged = db.merge_histories(*DBs)
+        self.assertEqual(len(merged['000: '+entry1]), n)
+        self.assertEqual(len(merged['001: '+entry2]), 1)
+    
+    def tearDown(self) :
+        del self.TestDB
+
+    
+
         
         
 

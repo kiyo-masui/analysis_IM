@@ -21,6 +21,13 @@ class DataBlock() :
         # 'time' axis.  axes['LST'] should thus be ('time') and
         # shape(field['LST']) should be (ntimes, ).
         self.field_axes = {}
+        # Dictionary that holds the history of this data.  It's keys are
+        # history entries for hte data.  They must be strings starting with a
+        # three digit integer ennumerating the histories.  The corresponding
+        # values give additional details, held in a tuple of strings.  The
+        # intension is that when merging data, histories must be identical, but
+        # details can be merged.
+        self.history = {}
 
         if data is None :
             self.data = ma.zeros((0,0,0,0), float)
@@ -106,6 +113,61 @@ class DataBlock() :
             raise ce.DataError("Dictionaries 'field' and 'field_axes'"
                                " must have the same keys.")
 
+    def add_history(self, history_entry, details) :
+        """Adds a history entry."""
+        
+        local_details = details
+        # Input checks.
+        if len(history_entry) > 60 :
+            raise ValueError('History entries limited to 60 characters.')
+        if type(details) is str :
+            if len(details) > 60 :
+                raise ValueError('History details limited to 60 characters.')
+            local_details = (details, )
+        for detail in details :
+            if not type(detail) is str :
+                raise TypeError('History details must be a squence of strings'
+                                ' or a single string.')
+            if len(detail) > 60 :
+                raise ValueError('History details limited to 60 characters.')
 
+        n_entries = len(self.history)
+        # '+' operator performs input type check.
+        hist_str = ('%03d: ' % n_entries) + history_entry
+        self.history[hist_str] = tuple(local_details)
+
+    def print_history(self) :
+        """print_history function called on self.history."""
+
+        print_history(self.history)
+
+
+def merge_histories(*args) :
+    """Merges DataBlock histories.
+
+    This function accepts a arbitray number of DataBlocks and returns a history
+    dictionary that is a merger of the two.  History keys must match; details
+    are added."""
+    
+    try :
+        history = args[0].history
+        for ii in range(1, len(args)) :
+            for entry, details in args[ii].history.iteritems() :
+                for detail in details :
+                    if not detail in history[entry] :
+                        history[entry] = history[entry] + (detail, )
+    except KeyError :
+        raise ce.DataError("Histories to be merged must have identical keys.")
+    
+    return history
+
+
+def print_history(hist) :
+    """Prints the data history in human readable format."""
+
+    for history, details in hist.iteritems() :
+        print history
+        for detail in details :
+            print '    ' + detail
         
 

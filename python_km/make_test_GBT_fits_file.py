@@ -1,5 +1,12 @@
 """Simple script to read in a GBT fits file and trim it down to make a test
-case."""
+case.
+
+A note on versioning of the test file: I have set up the git repository to
+intensionally ignore the output fits file of this script.  That is why it
+doesn't show up on git status.  However the testfile is only 2MB, so if could
+be versioned.  Alternately, we could version MD5sums of all data files used for
+testing, or regression testing.
+"""
 
 import scipy as sp
 import pyfits
