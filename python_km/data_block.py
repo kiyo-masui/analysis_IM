@@ -57,7 +57,7 @@ class DataBlock() :
             a_names = axis_names
         
         self._verify_single_axis_names(a_names)
-        self.field[field_name] = field_data
+        self.field[field_name] = sp.array(field_data)
         self.field_axes[field_name] = tuple(a_names)
 
     def _verify_single_axis_names(self, axis_names) :
@@ -86,6 +86,8 @@ class DataBlock() :
         
         if self.data_set :
             self.dims = sp.shape(self.data)
+        else :
+            raise RunTimeError('Data needs to be set before running verify()')
 
         # Will delete these keys if they are found in 'field', then see if any
         # are left over.

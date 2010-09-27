@@ -10,8 +10,38 @@ import numpy.ma as ma
 import pyfits
 
 import kiyopy.custom_exceptions as ce
+import data_block as db
 
-class Processor() :
+
+# Here we list the field that we want to track.  The fields listed below will
+# be read and stored every time a fits files is read and will then be written
+# when data is written back to fits.
+# If I didn't initially think that the field you need should be copied, you can
+# still get that data from the initial data file, which should be listed in the
+# file history.
+# The only field that is allowed to vay over the 'freq' axis right now is
+# 'DATA' (not listed below since it is always read).
+fields_and_axes = { 
+                   'SCAN' : (),
+                   'CRVAL1' : (),
+                   'BANDWID' : (),
+                   'DATE-OBS' : (),
+                   'OBJECT' : (),
+                   'TIMESTAMP' : (),
+                   'OBSERVER' : (),
+                   'RESTFREQ' : (),
+                   'DURATION' : (),
+                   'EXPOSURE' : (),
+                   'LST' : ('time', ),
+                   'ELEVATIO' : ('time', ),
+                   'AZIMUTH' : ('time', ),
+                   'OBSFREQ' : ('time', ),
+                   'CRVAL4' : ('pol', ),
+                   'CAL' : ('cal', )
+                   }
+
+
+class Reader() :
     """Class that opens a GBT Spectrometer Fits file, reads data from it and
     does time stream processing.
 
@@ -81,28 +111,8 @@ class Processor() :
         self._IFs_all = self.fitsdata.field('CRVAL1')/1E6 # MHz
         # Round the frequencies as we only need to tell the difference between
         # one IF and the other.
-        # TODO: Figure out what the difference frequencies acctually are.
         self._IFs_all = self._IFs_all.round(0) 
         self.IF_set = sp.unique(self._IFs_all)
-        # TODO: This is inefficient.  sp.unique has this for numpy > 1.3.
-        IF_unique_inds = []
-        for tempIF in self.IF_set :
-            inds, = sp.where(self._IFs_all == tempIF)
-            IF_unique_inds.append(inds[0])
-
-        # Get IF bandwidths.  Require them to be the same for each IF for now.
-        IF_bandwidths = self.fitsdata[(IF_unique_inds,)]['BANDWID']/1E6
-        IF_bandwidths = IF_bandwidths.round(0)
-        self.IF_bandwidth = IF_bandwidths[0]
-        if self.verify_bands :
-            for tband in IF_bandwidths :
-                if tband != self.IF_bandwidth :
-                    raise ce.DataError("IF bandwidths not all the same. "
-                                    "This needs to be implemented.")
-        self.nfreq_IF = len(self.fitsdata[0]['DATA']) # number of frequencies
-        # in an IF.  There are overlapping frequencies between IFs, but for
-        # now process all.
-        # TODO get frequencies.
 
     def get_scan_IF_inds(self, scan_ind, IF_ind) :
         """Gets the record indices of the fits file that correspond to the
@@ -158,16 +168,16 @@ class Processor() :
 
 
     
-    def read_process(self, scans=None, IFs=None) :
-        """ Read and process data from the fits file.
+    def read(self, scans=None, IFs=None) :
+        """ Read and data from the fits file.
 
-        This method reads data from the fits file and does basic time stream
-        processing.
+        This method reads data from the fits file including the files history
+        and basically every peice of data that could be needed.  It is done,
+        one scan and one IF at a time.  Each scan and IF is returned in an
+        instance of the DataBlock class (defined in another module of this
+        package).
 
         Arguments:
-            fname: FITS file name to be read.  The file is assumed to have a
-                certain entries and be arranged a certain way corresponding 
-                to the GBT spectrometer data.
             scans: Which scans in the file to be processed.  A list of 
                 integers, with 0 corresponding to the lowest numbered scan.
                 Default is all of them.
@@ -176,9 +186,36 @@ class Processor() :
                 lowest frequency present. Default is all of them.
                 TODO : Overlapping frequency windows stiched together somehow.
 
-        Returns: A dictionary filled with data.
-            TODO: Fill this in with detailed keys names and such.
+        Returns: Instance of the DataBlock class, or a tuple of these instances
+        (if asked for multiple scans and IFs).
         """
+        
+        scan_ind = scans
+        IF_ind = IFs
+        inds_sif = self.get_scan_IF_inds(scan_ind, IF_ind)
+        Data_sif = db.DataBlock(self.fitsdata.field('DATA')[inds_sif])
+        # Now iterate over the list of fields and add them
+        # to the data block.
+        for field, axis in fields_and_axes.iteritems() :
+            if axis :
+                axis_index = list(Data_sif.axes).index(axis[0])
+                which_data = [0, 0, 0]
+                which_data[axis_index] = sp.arange(Data_sif.dims[axis_index])
+                Data_sif.set_field(field, self.fitsdata.field(field)
+                                   [inds_sif[tuple(which_data)]], axis)
+            else :
+                Data_sif.set_field(field, self.fitsdata.field(field)
+                                   [inds_sif[0,0,0]], axis)
+        #print Data_sif.field
+        
+        Data_sif.verify()
+        return Data_sif
+
+
+
+
+
+    def not_a_function(self) :
         # The default is to read all scans and all IFs.
         if not scans :
             scans = range(len(self.scan_set))
