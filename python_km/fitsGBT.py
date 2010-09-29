@@ -11,7 +11,6 @@ import pyfits
 import kiyopy.custom_exceptions as ce
 import data_block as db
 
-
 # Here we list the fields that we want to track.  The fields listed below will
 # be read and stored every time a fits files is read and will then be written
 # when data is written back to fits.
@@ -44,6 +43,10 @@ fields_and_axes = {
                    'CAL' : ('cal', )
                    }
 
+# These globals are the cards for (our custom) history entries in a fits header
+card_hist = 'DB-HIST'
+card_detail = 'DB-DET'
+
 
 class Reader() :
     """Class that opens a GBT Spectrometer Fits file and reads data.
@@ -71,14 +74,6 @@ class Reader() :
     verify_lengths = 1;
     verify_bands = 1;
     feedback = 2;
-
-    # Some parameters of GBT spectrometer data.  These are assumed to be
-    # correct with only minimal checking.
-    npol = 4 # number of polarizations
-    ncal = 2 # number of noise cal states (on, off)
-
-    # Flags for internal use:
-
 
     # All objects that are of length # have names ending in #:
     # number of records in the fits file --- _all.
@@ -129,20 +124,22 @@ class Reader() :
         # and in polarization, once the IF is isolated.
         (inds_sif,) = sp.where(sp.logical_and(self._IFs_all==theIF, 
                                         self._scans_all==thescan))
+        ncal = len(sp.unique(self.fitsdata.field('CAL')[inds_sif]))
+        npol = len(sp.unique(self.fitsdata.field('CRVAL4')[inds_sif]))
         
         # Reform to organize by pol, cal, etc.
-        ntimes = len(inds_sif)//self.npol//self.ncal
-        inds_sif = sp.reshape(inds_sif, (ntimes, self.npol, self.ncal))
+        ntimes = len(inds_sif)//npol//ncal
+        inds_sif = sp.reshape(inds_sif, (ntimes, npol, ncal))
 
         if self.verify_ordering > 0:
             # We expect noise cal to be on for every second record.
-            for thecal in range(self.ncal) :
+            for thecal in range(ncal) :
                 tmp = sp.unique(self.fitsdata.field('CAL')[inds_sif[:,:,thecal]])
                 if len(tmp) > 1 :
                     raise ce.DataError("Calibration (ON/OFF) not in "
                                     "perfect order in file: "+self.fname)
             # Polarization should cycle through 4 modes (-5,-7,-8,-6)
-            for thepol in range(self.npol) :
+            for thepol in range(npol) :
                 tmp = sp.unique(self.fitsdata.field('CRVAL4')
                             [inds_sif[:,thepol,:]])
                 if len(tmp) > 1 :
@@ -170,10 +167,29 @@ class Reader() :
 
         return inds_sif
 
+    def set_history(self, Block) :
+        """Reads the file history and sets the corresponding Block history."""
+
+        prihdr = self.hdulist[0].header
+        # If there is no history, return.
+        try :
+            ii = prihdr.ascardlist().index_of(card_hist)
+        except KeyError :
+            return
+        n_cards = len(prihdr.ascardlist().keys())
+        while ii < n_cards :
+            if prihdr.ascardlist().keys()[ii] == card_hist :
+                hist_entry = prihdr[ii]
+                details = []
+            elif prihdr.ascardlist().keys()[ii] == card_detail :
+                details.append(prihdr[ii])
+            ii = ii + 1
+            if ii == n_cards or prihdr.ascardlist().keys()[ii] == card_hist :
+                Block.add_history(hist_entry, details)
 
     
     def read(self, scans=None, IFs=None) :
-        """ Read and data from the fits file.
+        """Read and data from the fits file.
 
         This method reads data from the fits file including the files history
         and basically every peice of data that could be needed.  It is done,
@@ -236,6 +252,13 @@ class Reader() :
                     else :
                         Data_sif.set_field(field, self.fitsdata.field(field)
                             [inds_sif[0,0,0]], axis, field_format)
+                if hasattr(self, 'history') :
+                    Data_sif.history = self.history
+                else :
+                    self.set_history(Data_sif)
+                    Data_sif.add_history('Read from file.', ('File name: ' + 
+                                         self.fname, ))
+                    self.history = Data_sif.history
                 Data_sif.verify()
                 output = output + (Data_sif, )
         if len(output) == 1 :

@@ -164,14 +164,21 @@ class DataBlock() :
 def merge_histories(*args) :
     """Merges DataBlock histories.
 
-    This function accepts a arbitray number of DataBlocks and returns a history
-    dictionary that is a merger of the two.  History keys must match; details
-    are added."""
+    This function accepts an arbitray number of DataBlocks and returns a 
+    history dictionary that is a merger of the two.  History keys must match; 
+    details are added."""
     
-    try :
+    if type(args[0]) is dict :
+        history = args[0]
+    else :
         history = args[0].history
+    try :
         for ii in range(1, len(args)) :
-            for entry, details in args[ii].history.iteritems() :
+            if type(args[ii]) is dict :
+                thishistory = args[ii]
+            else :
+                thishistory = args[ii].history
+            for entry, details in thishistory.iteritems() :
                 for detail in details :
                     if not detail in history[entry] :
                         history[entry] = history[entry] + (detail, )

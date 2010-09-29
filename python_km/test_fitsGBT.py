@@ -253,6 +253,32 @@ class TestCircle(unittest.TestCase) :
     def tearDown(self) :
         del self.Reader
         os.remove('temp.fits')
+
+class TestHistory(unittest.TestCase) :
+    """Tests that histories are read, added and written."""
+
+    def setUp(self) :
+        # fits_test_file_name has no history.
+        self.Reader = fitsGBT.Reader(fits_test_file_name)
+
+    def test_reads_history(self) :
+        self.Reader.hdulist[0].header.update('DB-HIST', 'First History')
+        self.Reader.hdulist[0].header.update('DB-DET', 'A Detail')
+        Block1 = self.Reader.read(0, 0)
+        Block = self.Reader.read(0, 1)
+        self.assertTrue(Block.history.has_key('000: First History'))
+        self.assertEqual(Block.history['000: First History'][0], 'A Detail')
+        self.assertTrue(Block.history.has_key('001: Read from file.'))
+        self.assertEqual(Block.history['001: Read from file.'][0], 
+                        'File name: ' + fits_test_file_name)
+
+    def test_writes_history(self) :
+        pass
+
+    def tearDown(self) :
+        del self.Reader
+
+        
                 
 
 if __name__ == '__main__' :
