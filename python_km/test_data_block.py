@@ -56,17 +56,18 @@ class TestFields(unittest.TestCase) :
                                    dtype=float), (ntimes,npol,ncal,nfreq))
         self.TestDB = db.DataBlock(self.testdata)
         self.LST_test = sp.arange(ntimes)
-        self.TestDB.set_field('LST', self.LST_test, ('time',))
+        self.TestDB.set_field('LST', self.LST_test, ('time',), '1E')
         # Make sure that 'verify' passes on good data:
         self.TestDB.verify()
 
     def test_set_get_field(self) :
-        stored_LST = self.TestDB.field['LST']
+        stored_LST = sp.array(self.TestDB.field['LST'])
         # The obviouse tests.
         for ii in range(ntimes) :
             self.assertAlmostEqual(self.TestDB.field['LST'][ii], 
                                    stored_LST[ii])
         self.assertEqual(self.TestDB.field_axes['LST'][0], 'time')
+        self.assertEqual(self.TestDB.field_formats['LST'], '1E')
         # Test that it's checking for a valid axis.
         self.assertRaises(ValueError, self.TestDB.set_field, 'abc', 5, 
                           ('not_a_axis',))
@@ -170,19 +171,6 @@ class TestHistory(unittest.TestCase) :
     
     def tearDown(self) :
         del self.TestDB
-
-    
-
-        
-        
-
-
-
-
-        
-        
-
-
 
 if __name__ == '__main__' :
     unittest.main()

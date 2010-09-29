@@ -3,3 +3,52 @@ personal utilities package: kiyopy (available from github, user: kiyo-masui).
 
 Ideally, any code pushed back to the github repository should be tested and
 pass the test suit (python test_*) but this might not be true early on.
+
+
+Overview and Notes on Code Design :
+
+The philosophy is to have a modular pipeline where different components on this
+pipeline can be dropped in and out in any order without crashing the whole
+thing.  To that effect, the data is stored to disk after every step of the
+pipeline and it is always stored in the same format: COMPATIBLE WITH THE
+ORIGINAL GBT FITS FILES.  This should be true right up to the map making step,
+where obviously the data format changes.
+
+For example: lets say we have a steps on the pipeline, one that applies some 
+filter to the time stream data and another that flags bad data.  The pipeline 
+looks as follows.
+
+raw gbt fits data -> flags bad data -> fits data -> filter -> fits data -> map making
+
+Then, without changing any code, we also want to be able to do the following:
+raw gbt fits data -> filter -> fits data -> map making
+or:
+raw gbt fits data -> flags bad data -> fits data -> map making
+or even:
+raw gbt fits data -> map making
+
+The advantages are as follows:
+  - Can add and remove modules at will to see what effect they have.
+  - Can replace modules, make better ones and compare results trivially.
+  - Can write modules without understanding or breaking the other ones.
+  - Can independently test modules.
+  - Don't have to wait for a monolithic code to be written before we start
+    testing and evaluating algorithms.
+
+Note that with this modular set up there is no reason that a module would have
+to be written in a particular language.  However, if you do decide to use
+python for your module, I have written some infrastructure that will
+facilitate things.
+
+The DataBlock class in data_block.py:  This is the vessel for holding time
+stream data.  It holds a single IF and a single scans worth of data.  It
+contains ALL the information needed to make a valid fits file.
+
+Reader Class in fitsGBT.py:  This reads a fits file and returns DataBlocks.
+
+Writer Class in fitsGBT.py:  This takes a bunch of DataBlocks and writes them
+to a fits file.
+
+The system probably isn't air tight, but as long as you do all your IO with
+these, you should be forced to conform to the proper standards.  For examples
+of how to use these classes, take a look at the unit tests (test_*.py).

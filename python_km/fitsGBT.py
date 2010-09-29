@@ -1,5 +1,4 @@
-"""Read a GBT spectrometer FITS file (SDfits) and do some preliminary
-processing of the time stream.
+"""Classes that read and write GBT spectrometer FITS files (SDfits).
 
 The FITS file is assumed to be in a certain format ocrresponding to regular
 GBT spectrometer data.
@@ -13,14 +12,19 @@ import kiyopy.custom_exceptions as ce
 import data_block as db
 
 
-# Here we list the field that we want to track.  The fields listed below will
+# Here we list the fields that we want to track.  The fields listed below will
 # be read and stored every time a fits files is read and will then be written
 # when data is written back to fits.
+
 # If I didn't initially think that the field you need should be copied, you can
 # still get that data from the initial data file, which should be listed in the
 # file history.
-# The only field that is allowed to vay over the 'freq' axis right now is
+
+# The only field that is allowed to vary over the 'freq' axis right now is
 # 'DATA' (not listed below since it is always read).
+
+# Right now there is no support for adding your own fields and not crashing
+# initial data reads.  However this wouldn't be hard to add.  Talk to Kiyo.
 fields_and_axes = { 
                    'SCAN' : (),
                    'CRVAL1' : (),
@@ -42,15 +46,12 @@ fields_and_axes = {
 
 
 class Reader() :
-    """Class that opens a GBT Spectrometer Fits file, reads data from it and
-    does time stream processing.
+    """Class that opens a GBT Spectrometer Fits file and reads data.
 
     This class opens the a GBT Fits File upon initialization and closes it upon
     deletion.  It contains routines for reading individual scans and IFs from
-    the file.  This class reads data but does not store data.
-
-    Processing:  When data is read, this class does any processing that can be
-    done at a local time.  Hanning smoothing, cal isolation, RFI flagging.
+    the file.  This class reads data but does not store data.  Data is stored
+    in DataBlock objects, which are returned by the 'read(scans, IFs)' method.
 
     Arguments:
         fname: Required intialization argument.  FITS file name to be read.  
@@ -86,9 +87,7 @@ class Reader() :
     #   (also number of times in a scan)
 
     def __init__(self, fname) :
-        """
-        See class docstring (for now).
-        """
+        """See class docstring (for now)."""
 
         self.fname = fname
         if self.feedback > 0 :
@@ -149,18 +148,23 @@ class Reader() :
                 if len(tmp) > 1 :
                     raise ce.DataError("Polarizations not in perfect order in "
                                     "file: "+self.fname)
-            # We expect the entries to be sorted in time
-            tmp = (self.fitsdata.field('LST')
-                       [inds_sif[:,0,0]])
+            # We expect the entries to be sorted in time and for time to not
+            # change across pol and cal.
             lastLST = 0
-            for thisLST in tmp :
+            for ii in range(ntimes) :
+                thisLST = self.fitsdata.field('LST')[inds_sif[ii,0,0]]
+                if not (sp.allclose(self.fitsdata.field('LST')
+                        [inds_sif[ii,:,:]] - thisLST, 0)) :
+                    raise ce.DataError("LST change across cal or pol in file: "
+                                       + self.fname)
                 if lastLST > thisLST :
                     # Rollover at 86400 is normal.
                     if lastLST > 86395 and thisLST < 5 :
                         raise ce.NotImplementedError("LST roll over. Normal "
                                         "but not supported yet.") 
                     else :
-                        raise ce.DataError("Times not in perfect order.")
+                        raise ce.DataError("Times not in perfect order in "
+                                           "file: " + self.fname)
                 lastLST=thisLST
             del tmp
 
@@ -190,31 +194,167 @@ class Reader() :
         (if asked for multiple scans and IFs).
         """
         
-        scan_ind = scans
-        IF_ind = IFs
-        inds_sif = self.get_scan_IF_inds(scan_ind, IF_ind)
-        Data_sif = db.DataBlock(self.fitsdata.field('DATA')[inds_sif])
-        # Now iterate over the list of fields and add them
-        # to the data block.
-        for field, axis in fields_and_axes.iteritems() :
-            if axis :
-                axis_index = list(Data_sif.axes).index(axis[0])
-                which_data = [0, 0, 0]
-                which_data[axis_index] = sp.arange(Data_sif.dims[axis_index])
-                Data_sif.set_field(field, self.fitsdata.field(field)
-                                   [inds_sif[tuple(which_data)]], axis)
-            else :
-                Data_sif.set_field(field, self.fitsdata.field(field)
-                                   [inds_sif[0,0,0]], axis)
-        #print Data_sif.field
+        # We want scans and IFs to be a sequence of indicies.
+        if scans is None :
+            scans = range(len(self.scan_set))
+        elif not hasattr(scans, '__iter__') :
+            scans = (scans, )
+        elif len(scans) == 0 :
+            scans = range(len(self.scan_set))
+        if IFs is None :
+            IFs = range(len(self.IF_set))
+        elif not hasattr(IFs, '__iter__') :
+            IFs = (IFs, )
+        elif len(IFs) == 0 :
+            IFs = range(len(self.IF_set))
         
-        Data_sif.verify()
-        return Data_sif
+        # Sequence of output DataBlock objects.
+        output = ()
+        for scan_ind in scans :
+            for IF_ind in IFs :
+                # Choose the appropriate records from the file, get that data.
+                inds_sif = self.get_scan_IF_inds(scan_ind, IF_ind)
+                Data_sif = db.DataBlock(self.fitsdata.field('DATA')[inds_sif])
+                # Masked data is stored in FITS files as float('nan')
+                Data_sif.data[sp.logical_not(sp.isfinite(
+                                   Data_sif.data))] = ma.masked
+                # Now iterate over the fields and add them
+                # to the data block.
+                for field, axis in fields_and_axes.iteritems() :
+                    # First get the 'FITS' format string.
+                    field_format = self.hdulist[1].columns.formats[
+                                self.hdulist[1].columns.names.index(field)]
+                    if axis :
+                        # From the indices in inds_sif, we only need a 1D
+                        # subset: which_data will subscript inds_sif.
+                        axis_index = list(Data_sif.axes).index(axis[0])
+                        which_data = [0, 0, 0]
+                        which_data[axis_index] = sp.arange(
+                                                    Data_sif.dims[axis_index])
+                        Data_sif.set_field(field, self.fitsdata.field(field)
+                            [inds_sif[tuple(which_data)]], axis, field_format)
+                    else :
+                        Data_sif.set_field(field, self.fitsdata.field(field)
+                            [inds_sif[0,0,0]], axis, field_format)
+                Data_sif.verify()
+                output = output + (Data_sif, )
+        if len(output) == 1 :
+            return output[0]
+        else :
+            return output
+
+    def __del__(self) :
+        self.hdulist.close()
+        if self.feedback > 3 :
+            print "Closed ", self.fname
 
 
+class Writer() :
+    """Class that writes data back to fits files.
+
+    This class acculumates data stored in DataBlock objects using the
+    'add_data(DataBlock)' method.  Once the user has added all the data, 
+    she can then call the 'write(file_name)' method to write it to file.
+    """
+    
+    def __init__(self, Blocks=None) :
+        self.first_block_added = True
+        self.field = {}
+        self.formats = {}
+        if not Blocks is None:
+            self.add_data(Blocks)
+
+    def add_data(self, Blocks) :
+        """Interface for adding DataBlock objects to the Writter.
+        
+        This method can be passed either a single DataBlock object or any
+        sequence of DataBlock objects.  They will all be added to the Writer's
+        data which can eventually be written as a fits file.
+        """
+
+        if not hasattr(Blocks, '__iter__') :
+            self._add_single_block(Blocks)
+        else :
+            for Block in Blocks :
+                self._add_single_block(Block)
+
+    def _add_single_block(self, Block) :
+        """Adds all the data in a DataBlock Object to the Writer such that it
+        can be written to a fits file eventually."""
+        
+        Block.verify()
+        # Some dimensioning and such
+        dims = tuple(Block.dims)
+        n_records = dims[0]*dims[1]*dims[2]
+        block_shape = dims[0:-1]
+        # For now automatically determine the format for the data field.
+        data_format = str(dims[-1]) + 'E'
+        if self.first_block_added :
+            self.data_format = data_format
+        elif self.data_format != data_format :
+            raise ce.DataError('Data shape miss match: freq axis must be same'
+                               ' length for all DataBlocks add to Wirter.')
+
+        # Copy the reshaped data from the DataBlock
+        data = sp.array(ma.filled(Block.data, float('nan')))
+        if self.first_block_added :
+            self.data = data.reshape((n_records, dims[3]))
+        else :
+            self.data = sp.concatenate((self.data, data.reshape((
+                                        n_records, dims[3]))), axis=0)
+
+        # Now get all the tracked fields
+        for field, axes in fields_and_axes.iteritems() :
+            # Need to expand the field data to the full ntimes x npol x ncal
+            # length (with lots of repitition).  We will use np broadcasting.
+            broadcast_shape = [1,1,1]
+            for axis in axes :
+                axis_ind = list(Block.axes).index(axis)
+                broadcast_shape[axis_ind] = dims[axis_ind]
+            # Allowcate memory for the new full field.
+            data_type = Block.field[field].dtype
+            field_data = sp.empty(block_shape, dtype=data_type)
+            # Copy data with the entries, expanding dummy axes.
+            field_data[:,:,:] = sp.reshape(Block.field[field],
+                                                 broadcast_shape)
+            if self.first_block_added :
+                self.field[field] = field_data.reshape(n_records)
+                self.formats[field] = Block.field_formats[field]
+            else :
+                self.field[field] = sp.concatenate((self.field[field],
+                                        field_data.reshape(n_records)), axis=0)
+                if self.formats[field] != Block.field_formats[field] :
+                    raise ce.DataError('Format miss match in added data blocks'
+                                       ' and field: ' + field)
+        self.first_block_added = False
+
+    def write(self, file_name) :
+        """Write stored data to file.
+        
+        Take all the data stored in the Writer (from added DataBlocks) and
+        write it to a fits file with the passed file name.
+        """
+
+        # Add the data
+        Col = pyfits.Column(name='DATA', format=self.data_format, 
+                            array=self.data)
+        columns = [Col,]
+        
+        # Add all the other stored fields.
+        for field_name in self.field.iterkeys() :
+            Col = pyfits.Column(name=field_name,
+                                format=self.formats[field_name],
+                                array=self.field[field_name])
+            columns.append(Col)
+        coldefs = pyfits.ColDefs(columns)
+        tbhdu = pyfits.new_table(coldefs)
+        tbhdu.writeto(file_name)
 
 
+class NotAClass() :
 
+    # This code needs to be moved elsewhere.  Leave it here for a bit untill I
+    # find it a new home.
     def not_a_function(self) :
         # The default is to read all scans and all IFs.
         if not scans :
@@ -307,11 +447,5 @@ class Reader() :
             print float(n_masked)/float(sp.size(P_total)), "%." 
 
         return {"P":P_total, "LST":LST_total}
-
-
-    def __del__(self) :
-        self.hdulist.close()
-        if self.feedback > 3 :
-            print "Closed ", self.fname
 
 

@@ -6,8 +6,22 @@ import numpy.ma as ma
 import kiyopy.custom_exceptions as ce
 
 class DataBlock() :
+    """Class that holds an single IF and scan of GBT data.
+
+    This is the main vessel for storing an transporting GBT data.  This class
+    can be used with the fitsGBT.py module to be read and written as a properly
+    formatted fits file.  The rax data is accessed and updated through the
+    'data' and 'field' attributes of this class and associated hleper
+    functions.
+
+    Please remember that when working with the 'data' attribute, that it is a
+    numpy MaskedArray class, not a normal numpy array.  Take care to use the
+    masked versions of any numpy functions to preserve the mask.  This is
+    especially usefull for flagging bad data and RFI.
+    """
     
-    # These are the valid axes that a data field can vary over.
+    # These are the valid axes that a data field can vary over.  Any other
+    # field can vary over only the first three of these.
     axes = ('time', 'pol', 'cal', 'freq')
 
     def __init__(self, data=None) :
@@ -28,6 +42,8 @@ class DataBlock() :
         # intension is that when merging data, histories must be identical, but
         # details can be merged.
         self.history = {}
+        # To write data to fits you need a fits format for each field.
+        self.field_formats = {}
 
         if data is None :
             self.data = ma.zeros((0,0,0,0), float)
@@ -41,7 +57,7 @@ class DataBlock() :
         self.data_set = True
         self.dims = sp.shape(data)
 
-    def set_field(self, field_name, field_data, axis_names=()) :
+    def set_field(self, field_name, field_data, axis_names=(), format=None) :
         """
         Set field data to be stored.
 
@@ -59,6 +75,7 @@ class DataBlock() :
         self._verify_single_axis_names(a_names)
         self.field[field_name] = sp.array(field_data)
         self.field_axes[field_name] = tuple(a_names)
+        self.field_formats[field_name] = format
 
     def _verify_single_axis_names(self, axis_names) :
         for name in axis_names :
