@@ -1,8 +1,19 @@
 This Kiyo's code for processing GBT data.  This code depends on the Kiyo's
 personal utilities package: kiyopy (available from github, user: kiyo-masui).
 
+Note that for the paths to the different packages in the subdirectories to work
+out, the python interpreter should be invoked from this directory. i.e.:
+python core/test_data_block.py
+not :
+cd core
+python test_data_block.py
+
+This will make a difference for code that depends on code in a different
+directory.
+
 Ideally, any code pushed back to the github repository should be tested and
-pass the test suit (python test_*) but this might not be true early on.
+pass the test suit (python test_*).  Also please be conscious of backward
+compatibility.
 
 
 Overview and Notes on Code Design :
@@ -18,7 +29,8 @@ For example: lets say we have a steps on the pipeline, one that applies some
 filter to the time stream data and another that flags bad data.  The pipeline 
 looks as follows.
 
-raw gbt fits data -> flags bad data -> fits data -> filter -> fits data -> map making
+raw gbt fits data -> flags bad data -> fits data -> filter -> fits data 
+         -> map making
 
 Then, without changing any code, we also want to be able to do the following:
 raw gbt fits data -> filter -> fits data -> map making
@@ -40,6 +52,11 @@ to be written in a particular language.  However, if you do decide to use
 python for your module, I have written some infrastructure that will
 facilitate things.
 
+
+Directories :
+
+1. core - These are core utilities for reading, writing and storeing data.
+
 The DataBlock class in data_block.py:  This is the vessel for holding time
 stream data.  It holds a single IF and a single scans worth of data.  It
 contains ALL the information needed to make a valid fits file.
@@ -52,3 +69,9 @@ to a fits file.
 The system probably isn't air tight, but as long as you do all your IO with
 these, you should be forced to conform to the proper standards.  For examples
 of how to use these classes, take a look at the unit tests (test_*.py).
+
+2. time_stream - Any module of the analysis where both the inputs and outputs
+are time stream fits files compatible with the the raw data taken at GBT.
+
+3. inifile_km - Input files for created by Kiyo Masui for variouse modules.
+Feel free to make you own inifile_initials director or to use my input files.

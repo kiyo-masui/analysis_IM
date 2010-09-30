@@ -1,4 +1,9 @@
-"""Unit tests for the fitsGBT module and it's main class fitsGBT.Processor."""
+"""Unit tests for the fitsGBT module and it's main classes.
+
+This test suit depends on there being the appropriate test fits data.  Please
+run make_test_GBT_fits_file.py from this directory to generate this.  You will
+need to point your system variables to some raw data.
+"""
 
 import unittest
 import copy
