@@ -30,7 +30,7 @@ nfreq = 2048
 class TestReaderInit(unittest.TestCase) :
     
     def setUp(self) :
-        self.FileProcessor = fitsGBT.Reader(fits_test_file_name)
+        self.FileProcessor = fitsGBT.Reader(fits_test_file_name, 0)
 
     def test_gets_IFs(self) :
         for ii in range(len(IF_set)) :
@@ -46,7 +46,7 @@ class TestReaderInit(unittest.TestCase) :
 class TestReaderGetIFScanInds(unittest.TestCase) :
     
     def setUp(self) : 
-        self.FileProcessor = fitsGBT.Reader(fits_test_file_name)
+        self.FileProcessor = fitsGBT.Reader(fits_test_file_name, 0)
         self.IFs_all = sp.array(self.FileProcessor.fitsdata.field('CRVAL1')/1E6)
         self.IFs_all  = self.IFs_all.round(0)
         self.IFs_all  = sp.array(self.IFs_all, int)
@@ -125,7 +125,7 @@ class TestReads(unittest.TestCase) :
     file."""
     
     def setUp(self) :
-        self.Reader = fitsGBT.Reader(fits_test_file_name)
+        self.Reader = fitsGBT.Reader(fits_test_file_name, 0, 1)
         self.datashape = (ntimes_scan, npol, ncal, nfreq)
         self.DBlock = self.Reader.read(0, 0)
         self.DBlock.verify()
@@ -149,12 +149,12 @@ class TestReads(unittest.TestCase) :
         del self.DBlock
 
 class TestMultiRead(unittest.TestCase) :
-    """Test each scan and IF is read exactly 1 time be default."""
+    """Test that each scan and IF is read exactly 1 time by default."""
     
     def setUp(self) :
         self.nscans = len(scan_set)
         self.nIFs = len(IF_set)
-        self.Reader = fitsGBT.Reader(fits_test_file_name)
+        self.Reader = fitsGBT.Reader(fits_test_file_name, 0)
         
     def test_multiple_reads(self) :
         Blocks = self.Reader.read()
@@ -176,8 +176,8 @@ class TestWriter(unittest.TestCase) :
     """
 
     def setUp(self) :
-        self.Writer = fitsGBT.Writer()
-        self.Reader = fitsGBT.Reader(fits_test_file_name)
+        self.Writer = fitsGBT.Writer(feedback = 0)
+        self.Reader = fitsGBT.Reader(fits_test_file_name, 0)
         Block = self.Reader.read(0, 0)
         self.Writer.add_data(Block)
 
@@ -209,14 +209,14 @@ class TestCircle(unittest.TestCase) :
     """
 
     def setUp(self) :
-        self.Reader = fitsGBT.Reader(fits_test_file_name)
+        self.Reader = fitsGBT.Reader(fits_test_file_name, 0)
         self.Blocks = list(self.Reader.read([], []))
 
     def circle(self) :
         self.BlocksToWrite = copy.deepcopy(self.Blocks)
-        self.Writer = fitsGBT.Writer(self.BlocksToWrite)
+        self.Writer = fitsGBT.Writer(self.BlocksToWrite, 0)
         self.Writer.write('temp.fits')
-        self.newReader = fitsGBT.Reader('temp.fits')
+        self.newReader = fitsGBT.Reader('temp.fits', 0)
         self.newBlocks = self.newReader.read()
 
         self.assertEqual(len(self.Blocks), len(self.newBlocks))
@@ -261,7 +261,7 @@ class TestHistory(unittest.TestCase) :
 
     def setUp(self) :
         # fits_test_file_name has no history.
-        self.Reader = fitsGBT.Reader(fits_test_file_name)
+        self.Reader = fitsGBT.Reader(fits_test_file_name, 0)
 
     def test_reads_history(self) :
         self.Reader.hdulist[0].header.update('DB-HIST', 'First History')
@@ -280,9 +280,9 @@ class TestHistory(unittest.TestCase) :
         Block2 = self.Reader.read(0, 1)
         Block1.add_history('Processed.', ('Processing detail 1',))
         Block2.add_history('Processed.', ('Processing detail 2',))
-        Writer = fitsGBT.Writer((Block1, Block2))
+        Writer = fitsGBT.Writer((Block1, Block2), 0)
         Writer.write('temp2.fits')
-        newReader = fitsGBT.Reader('temp2.fits')
+        newReader = fitsGBT.Reader('temp2.fits', 0)
         newBlock = newReader.read(0,0)
         # These two line need to come before anything likly to fail.
         del newReader

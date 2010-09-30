@@ -67,22 +67,21 @@ class Reader() :
     # going to modify should be forced to assign by value with the
     # sp.array(an_array) function.
 
-    # These are flags for performing variouse checks.  They will eventually
-    # become inputs of some sort.
-    verify_ordering = 1;
-    verify_keynames = 1;
-    verify_lengths = 1;
-    verify_bands = 1;
-    feedback = 2;
+    def __init__(self, fname, feedback = 2, checking = 1) :
+        """Init script for the fitsGBT Reader class.
 
-    # All objects that are of length # have names ending in #:
-    # number of records in the fits file --- _all.
-    # number of records in one IF and one scan --- _sif.
-    # number of records in sif with one polarization/cal --- _tsc
-    #   (also number of times in a scan)
+        The reader is initialised with the fits file name to be read.
+        Optionally, one can supply up to two integers: feedback (default 2)
+        indicating how much junk to print, and checking (default 1) specifying
+        to what level the input file is checked for sensible data.
+        """
 
-    def __init__(self, fname) :
-        """See class docstring (for now)."""
+        self.feedback = feedback
+        self.checking = checking
+        if checking > 0 :
+            self.verify_ordering = 1
+        else :
+            self.verify_ordering = 0
 
         self.fname = fname
         if self.feedback > 0 :
@@ -280,7 +279,17 @@ class Writer() :
     she can then call the 'write(file_name)' method to write it to file.
     """
     
-    def __init__(self, Blocks=None) :
+    def __init__(self, Blocks=None, feedback = 2) :
+        """Init script for the fitsGBT Writer.
+
+        The writer can optionally be initialized with a sequence of DataBlock
+        objects to be written to file, but these can also be added later with
+        the add data method.  It also can take an optional feedback parameter
+        (integer default 2) which specifies the amount of junk to print.
+        """
+        
+        self.feedback = feedback
+
         self.first_block_added = True
         self.field = {}
         self.formats = {}
@@ -398,6 +407,8 @@ class Writer() :
         # Combine the HDUs and write to file.
         hdulist = pyfits.HDUList([prihdu, tbhdu])
         hdulist.writeto(file_name)
+        if self.feedback > 0 :
+            print 'Wrote data to file: ' + file_name
 
 
 class NotAClass() :
