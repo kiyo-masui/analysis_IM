@@ -253,12 +253,12 @@ class Reader() :
                         Data_sif.set_field(field, self.fitsdata.field(field)
                             [inds_sif[0,0,0]], axis, field_format)
                 if hasattr(self, 'history') :
-                    Data_sif.history = self.history
+                    Data_sif.history = dict(self.history)
                 else :
                     self.set_history(Data_sif)
                     Data_sif.add_history('Read from file.', ('File name: ' + 
                                          self.fname, ))
-                    self.history = Data_sif.history
+                    self.history = dict(Data_sif.history)
                 Data_sif.verify()
                 output = output + (Data_sif, )
         if len(output) == 1 :
@@ -306,6 +306,11 @@ class Writer() :
         can be written to a fits file eventually."""
         
         Block.verify()
+        # Merge the histories
+        if self.first_block_added :
+            self.history = Block.history
+        else :
+            self.history = db.merge_histories(self.history, Block) 
         # Some dimensioning and such
         dims = tuple(Block.dims)
         n_records = dims[0]*dims[1]*dims[2]
@@ -370,8 +375,29 @@ class Writer() :
                                 array=self.field[field_name])
             columns.append(Col)
         coldefs = pyfits.ColDefs(columns)
+        # Creat fits header data units, one for the table and the mandatory
+        # primary.
         tbhdu = pyfits.new_table(coldefs)
-        tbhdu.writeto(file_name)
+        prihdu = pyfits.PrimaryHDU()
+        # Add history to the primary.
+        history_keys  = self.history.keys()
+        history_keys.sort()
+        for hist in history_keys :
+            details = self.history[hist]
+            # Chop off the number, since the are already sorted.
+            hcard = pyfits.Card(card_hist, hist[5:])
+            prihdu.header.ascardlist().append(hcard)
+            for detail in details :
+                dcard = pyfits.Card(card_detail, detail)
+                prihdu.header.ascardlist().append(dcard)
+        hcard = pyfits.Card(card_hist, 'Written to file.')
+        prihdu.header.ascardlist().append(hcard)
+        dcard = pyfits.Card(card_detail, 'File name: ' + file_name)
+        prihdu.header.ascardlist().append(dcard)
+
+        # Combine the HDUs and write to file.
+        hdulist = pyfits.HDUList([prihdu, tbhdu])
+        hdulist.writeto(file_name)
 
 
 class NotAClass() :

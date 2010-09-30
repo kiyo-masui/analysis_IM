@@ -252,6 +252,8 @@ class TestCircle(unittest.TestCase) :
 
     def tearDown(self) :
         del self.Reader
+        del self.Writer
+        del self.newReader
         os.remove('temp.fits')
 
 class TestHistory(unittest.TestCase) :
@@ -273,7 +275,32 @@ class TestHistory(unittest.TestCase) :
                         'File name: ' + fits_test_file_name)
 
     def test_writes_history(self) :
-        pass
+        # Mock up a work flow history
+        Block1 = self.Reader.read(0, 0)
+        Block2 = self.Reader.read(0, 1)
+        Block1.add_history('Processed.', ('Processing detail 1',))
+        Block2.add_history('Processed.', ('Processing detail 2',))
+        Writer = fitsGBT.Writer((Block1, Block2))
+        Writer.write('temp2.fits')
+        newReader = fitsGBT.Reader('temp2.fits')
+        newBlock = newReader.read(0,0)
+        # These two line need to come before anything likly to fail.
+        del newReader
+        os.remove('temp2.fits')
+        # See that we have all the history we expect.
+        hist = newBlock.history
+        self.assertTrue(hist.has_key('000: Read from file.'))
+        self.assertEqual(len(hist['000: Read from file.']), 1)
+        self.assertTrue(hist.has_key('001: Processed.'))
+        self.assertEqual(len(hist['001: Processed.']), 2)
+        self.assertEqual(hist['001: Processed.'][0], 'Processing detail 1')
+        self.assertEqual(hist['001: Processed.'][1], 'Processing detail 2')
+        self.assertTrue(hist.has_key('002: Written to file.'))
+        self.assertEqual(len(hist['002: Written to file.']), 1)
+        self.assertEqual(hist['002: Written to file.'][0], 'File name: ' + 
+                         'temp2.fits')
+        self.assertTrue(hist.has_key('003: Read from file.'))
+
 
     def tearDown(self) :
         del self.Reader

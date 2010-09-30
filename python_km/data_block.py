@@ -190,8 +190,11 @@ def merge_histories(*args) :
 
 def print_history(hist) :
     """Prints the data history in human readable format."""
-
-    for history, details in hist.iteritems() :
+    
+    history_keys = hist.keys()
+    history_keys.sort()
+    for history in history_keys :
+        details = hist[history]
         print history
         for detail in details :
             print '    ' + detail
