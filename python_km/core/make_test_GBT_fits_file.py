@@ -8,11 +8,13 @@ be versioned.  Alternately, we could version MD5sums of all data files used for
 testing, or regression testing.
 """
 
+import os
+
 import scipy as sp
 import pyfits
 
-data_file_name  = '/cita/d/raid-cita/tchang/wiggleZ/GBT10B_036/' + \
-                  '04_wigglez1hr_azel_113-120.raw.acs.fits'
+data_file_name  = (os.getenv('GBT10B_DATA')  + 
+                  '04_wigglez1hr_azel_113-120.raw.acs.fits')
 test_file_name = './testfile_GBTfits.fits'
 # Some parameters of GBT spectrometer data.  These are assumed to be
 # correct with only minimal checking.

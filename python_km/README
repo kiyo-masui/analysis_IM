@@ -75,3 +75,19 @@ are time stream fits files compatible with the the raw data taken at GBT.
 
 3. inifile_km - Input files for created by Kiyo Masui for variouse modules.
 Feel free to make you own inifile_initials director or to use my input files.
+
+4. map - where I will be putting map makers.
+
+
+Environment Variables:
+
+Environment variable are used in the input files so that the same input file
+can be used on different systems (and by different users) without changing the
+input file (pain in the ass if this input file is versioned!).  Currently I am
+using two environment variables which any user should set in thier .bashrc or
+.tcshrc.
+
+$GBT10B_DATA - Points to raw GBT data. Must be readable but doesn't have to be
+writable.
+$GBT10B_OUT - Points to the directory where outputs and intermediate files are
+stored.  The programs will build subdirectories in this one.  Must be writable.
