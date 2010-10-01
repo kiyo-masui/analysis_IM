@@ -1,4 +1,4 @@
-pro cal_Tcal,dname=dname,field=field,ffdir=ffdir
+pro cal_Tcal,dname=dname,field=field,calfield=calfield,ffdir=ffdir
 
 ; read in Tcal/Tsys data files
 
@@ -38,7 +38,7 @@ tsystcal=dblarr(nfile,nwin,npol/2,nfreq,nscan/2)
 for ifile=0,nfile-1 do begin
    
 
-   fdir = outdirroot+dname+'/'+field+'_'+ffdir(ifile)+'/'
+   fdir = outdirroot+dname+'/'+calfield+'_'+ffdir(ifile)+'/'
    ;fdir='/cita/d/raid-project/gmrt/tchang/GBT/zCOSMOS/Calibration/'+dname+'/3c218_'+ffdir(ifile)+'/'
    print, 'Running cal_Tcal on directory: ' + fdir
 
@@ -83,6 +83,9 @@ for ifile=0,nfile-1 do begin
    endfor
 
 endfor
+
+fdir = outdirroot+dname+'/'+field+'/'
+spawn 'mkdir -p '+fdir
 
 t3ctcal=t3ctcal<100.>(-100.)
 
