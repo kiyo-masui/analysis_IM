@@ -1,5 +1,6 @@
 """
-Proceedure to estimate a GBT noise model from data
+Proceedure to estimate a GBT noise model from data.  This module is now
+deprecated and will not work with new support code.
 """
 import os
 
@@ -14,6 +15,7 @@ import fitsGBT
 def noise_model(ini_fname=None) :
     """
     Main function for solving for a noise model from GBT Spectrometer data.
+    Depricated and won't work right now.
 
     Should be passed an input parameter file name.
     """

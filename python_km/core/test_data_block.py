@@ -130,6 +130,11 @@ class TestHistory(unittest.TestCase) :
         self.assertRaises(TypeError, self.TestDB.add_history, self.hist_str, 
                           (1,2))
 
+    def test_add_hist_no_detail(self) :
+        self.TestDB.add_history(self.hist_str)
+        self.assertTrue(self.TestDB.history.has_key('000: '+self.hist_str))
+        self.assertEqual(len(self.TestDB.history['000: '+self.hist_str]), 0)
+
     def test_add_string_detail(self) :
         self.TestDB.add_history(self.hist_str, self.hist_detail[0])
         self.assertTrue(self.TestDB.history['000: '+self.hist_str][0] == 

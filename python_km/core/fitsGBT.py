@@ -39,6 +39,8 @@ fields_and_axes = {
                    'ELEVATIO' : ('time', ),
                    'AZIMUTH' : ('time', ),
                    'OBSFREQ' : ('time', ),
+                   'CRVAL2' : ('time', ),
+                   'CRVAL3' : ('time', ),
                    'CRVAL4' : ('pol', ),
                    'CAL' : ('cal', )
                    }
@@ -67,7 +69,7 @@ class Reader() :
     # going to modify should be forced to assign by value with the
     # sp.array(an_array) function.
 
-    def __init__(self, fname, feedback = 2, checking = 1) :
+    def __init__(self, fname, feedback=2, checking=1) :
         """Init script for the fitsGBT Reader class.
 
         The reader is initialised with the fits file name to be read.
@@ -279,7 +281,7 @@ class Writer() :
     she can then call the 'write(file_name)' method to write it to file.
     """
     
-    def __init__(self, Blocks=None, feedback = 2) :
+    def __init__(self, Blocks=None, feedback=2) :
         """Init script for the fitsGBT Writer.
 
         The writer can optionally be initialized with a sequence of DataBlock

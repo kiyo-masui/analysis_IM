@@ -240,7 +240,8 @@ class TestCircle(unittest.TestCase) :
             for field in ['CRVAL1', 'BANDWID', 'RESTFREQ', 'DURATION',
                           'EXPOSURE'] :
                 self.assertAlmostEqual(OldDB.field[field], NewDB.field[field])
-            for field in ['LST', 'ELEVATIO', 'AZIMUTH', 'OBSFREQ'] :
+            for field in ['LST', 'ELEVATIO', 'AZIMUTH', 'OBSFREQ', 'CRVAL2', 
+                          'CRVAL3'] :
                 self.assertTrue(sp.allclose(OldDB.field[field], 
                                             NewDB.field[field]))
             for field in ['CRVAL4', 'CAL'] :

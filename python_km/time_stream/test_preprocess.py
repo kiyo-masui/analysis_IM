@@ -12,26 +12,33 @@ import core.fitsGBT
 
 test_file = 'testfile_GBTfits.fits'
 
-class TestHanning(unittest.TestCase) :
-    """Since Hanning acctually changes the data, these are only sanity
-    tests, far from thurough."""
+class TestSteps(unittest.TestCase) :
+    """Since these operations actually changes the data, these are only sanity
+    tests, far from thorough."""
     
     def setUp(self) :
         Reader = core.fitsGBT.Reader(test_file)
         self.Data = Reader.read(1,1)
-    
+        self.Data.verify()
+        self.Data_copy = copy.deepcopy(self.Data)
+
+    def sanity_test(self) :
+        # For lack of anything better to test:
+        self.Data.verify()
+        # Make sure we actually did something.
+        self.assertTrue(not ma.allclose(self.Data.data, self.Data_copy.data))
+        # Make sure we didn't change other fields, like LST.
+        self.assertTrue(sp.allclose(self.Data.field['LST'],
+                        self.Data_copy.field['LST']))
+
     def test_hanning_data_changed(self) :
         """Copy the data, see that we did something."""
-        self.Data.verify()
-        Data_copy = copy.deepcopy(self.Data)
         preprocess.hanning(self.Data)
-        self.Data.verify()
-        self.assertTrue(not ma.allclose(self.Data.data, Data_copy.data))
-        self.assertTrue(sp.allclose(self.Data.field['LST'],
-                        Data_copy.field['LST']))
-
+        self.sanity_test()
+        
     def tearDown(self) :
         del self.Data
+        del self.Data_copy
 
 
 if __name__ == '__main__' :

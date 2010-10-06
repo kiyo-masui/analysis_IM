@@ -132,7 +132,7 @@ class DataBlock() :
             raise ce.DataError("Dictionaries 'field' and 'field_axes'"
                                " must have the same keys.")
 
-    def add_history(self, history_entry, details) :
+    def add_history(self, history_entry, details = ()) :
         """Adds a history entry."""
         
         local_details = details
