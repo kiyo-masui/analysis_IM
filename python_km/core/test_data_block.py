@@ -15,6 +15,8 @@ ncal = 2
 nfreq = 10
 dims = (ntimes, npol, ncal, nfreq)
 
+test_fits_file_name = 'testfile_GBTfits.fits'
+
 def standard_data_test(utest_case) :
     """Encapsulates a few tests on TestDB.data.
 
@@ -70,7 +72,7 @@ class TestFields(unittest.TestCase) :
         self.assertEqual(self.TestDB.field_formats['LST'], '1E')
         # Test that it's checking for a valid axis.
         self.assertRaises(ValueError, self.TestDB.set_field, 'abc', 5, 
-                          ('not_a_axis',))
+                          ('not_a_axis',), '1E')
         # Test that we've copied dereferenced data into the DataBlock
         self.LST_test[0] = -100.
         self.assertEqual(self.TestDB.field['LST'][0], stored_LST[0])
@@ -90,16 +92,23 @@ class TestFields(unittest.TestCase) :
 
     def test_multiD_field(self) :
         self.assertRaises(NotImplementedError, self.TestDB.set_field, 'afield', 
-                          sp.ones((npol,ncal)), ('pol', 'cal'))
+                          sp.ones((npol,ncal)), ('pol', 'cal'), '1I')
 
     def test_zeroD_fields(self) :
-        self.TestDB.set_field('SCAN', 113)
+        self.TestDB.set_field('SCAN', 113, format='1I')
         self.TestDB.verify()
         self.assertEqual(self.TestDB.field['SCAN'], 113)
         self.assertEqual(len(self.TestDB.field_axes['SCAN']), 0)
 
     def test_verify_field_shape(self) :
-        self.TestDB.set_field('CRVAL4', [-5,-6,-7,-8,-9], 'pol')
+        self.TestDB.set_field('CRVAL4', [-5,-6,-7,-8,-9], 'pol', format='1I')
+        self.assertRaises(ce.DataError, self.TestDB.verify)
+        
+    def test_verify_field_format(self) :
+        """The class should really do something more sophisticated and
+        acctually check that the fits format string is a valid one for the
+        data.  Someone should code this."""
+        self.TestDB.set_field('CRVAL4', [-5,-6,-7,-8], 'pol', format=10)
         self.assertRaises(ce.DataError, self.TestDB.verify)
         
     def tearDown(self) :
@@ -176,6 +185,38 @@ class TestHistory(unittest.TestCase) :
     
     def tearDown(self) :
         del self.TestDB
+
+
+class TestGBTmethods(unittest.TestCase) :
+    """Unit tests for methods that should only work if the Data Block is from a
+    GBT fits file.  Assumes specific fields have been set."""
+    
+    # Parameters of the test file data. Accessed by self.ntime (don't use the
+    # globals)
+    ntime = 10
+    nfreq = 2048
+
+    def setUp(self) :
+        self.Reader = fitsGBT.Reader(test_fits_file_name, 0)
+        self.Data = self.Reader.read(0, 0)
+
+    def test_calculates_pointing(self) :
+        self.Data.calc_pointing()
+        self.assertTrue(hasattr(self.Data, 'ra'))
+        self.assertTrue(hasattr(self.Data, 'dec'))
+        self.assertEqual(len(self.Data.ra), self.ntime)
+        self.assertEqual(len(self.Data.dec), self.ntime)
+
+    def test_calculates_frequencies(self) :
+        self.Data.calc_freq()
+        self.assertTrue(hasattr(self.Data, 'freq'))
+        self.assertEqual(len(self.Data.freq), self.nfreq)
+        self.assertAlmostEqual(self.Data.field['BANDWID'], 
+                               sp.amax(self.Data.freq) -
+                               sp.amin(self.Data.freq), -5)
+
+
+
 
 if __name__ == '__main__' :
     unittest.main()

@@ -34,8 +34,8 @@ input_parameters = {
           'output_end' : ".fits",
           'scans' : [],
           'IFs' : [],
-          'a_parameter': 'nothing',
-          'another_parameter': 'something'
+          'a_parameter' : 'nothing',
+          'another_parameter' : 'something'
           }
 
 class TestBasicUsage(unittest.TestCase) :

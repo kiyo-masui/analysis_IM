@@ -14,7 +14,8 @@ import scipy as sp
 import pyfits
 
 data_file_name  = (os.getenv('GBT10B_DATA')  + 
-                  '04_wigglez1hr_azel_113-120.raw.acs.fits')
+                  '01_wigglez22hr_azel_17-24.raw.acs.fits')
+#                  '04_wigglez1hr_azel_113-120.raw.acs.fits')
 test_file_name = './testfile_GBTfits.fits'
 # Some parameters of GBT spectrometer data.  These are assumed to be
 # correct with only minimal checking.

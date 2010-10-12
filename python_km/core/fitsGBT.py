@@ -24,23 +24,33 @@ import data_block as db
 
 # Right now there is no support for adding your own fields and not crashing
 # initial data reads.  However this wouldn't be hard to add.  Talk to Kiyo.
+
+# For a description of the fields:
+#    https://safe.nrao.edu/wiki/bin/view/Main/SdfitsDetails
 fields_and_axes = { 
                    'SCAN' : (),
-                   'CRVAL1' : (),
+                   'CRVAL1' : (), # Band centre frequency
                    'BANDWID' : (),
-                   'DATE-OBS' : (),
+                   'CRPIX1' : (), # Center frequency channel
+                   'CDELT1' : (), # Frequency Channel width
                    'OBJECT' : (),
                    'TIMESTAMP' : (),
                    'OBSERVER' : (),
                    'RESTFREQ' : (),
                    'DURATION' : (),
                    'EXPOSURE' : (),
+                   'DATE-OBS' : ('time', ),
                    'LST' : ('time', ),
+                   # These pointings refer to the structureal telescope, not
+                   # the beam (slightly different.
                    'ELEVATIO' : ('time', ),
                    'AZIMUTH' : ('time', ),
                    'OBSFREQ' : ('time', ),
-                   'CRVAL2' : ('time', ),
-                   'CRVAL3' : ('time', ),
+                   # These pointings are corrected for pointing calibration
+                   # and I think refraction.
+                   'CRVAL2' : ('time', ), # Azimuth
+                   'CRVAL3' : ('time', ), # Elevation
+                   # Polarization indicies
                    'CRVAL4' : ('pol', ),
                    'CAL' : ('cal', )
                    }
@@ -332,7 +342,7 @@ class Writer() :
             self.data_format = data_format
         elif self.data_format != data_format :
             raise ce.DataError('Data shape miss match: freq axis must be same'
-                               ' length for all DataBlocks add to Wirter.')
+                               ' length for all DataBlocks added to Wirter.')
 
         # Copy the reshaped data from the DataBlock
         data = sp.array(ma.filled(Block.data, float('nan')))

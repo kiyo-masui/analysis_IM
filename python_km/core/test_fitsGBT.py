@@ -20,7 +20,7 @@ import kiyopy.custom_exceptions as ce
 fits_test_file_name = 'testfile_GBTfits.fits'
 # This file has known properties:
 IF_set = (695, 725)
-scan_set = (113, 114)
+scan_set = (17, 18)
 pol_set = (-5, -7, -8, -6)
 cal_set = ('T', 'F')
 nIFs = len(IF_set)
@@ -140,7 +140,7 @@ class TestReads(unittest.TestCase) :
             self.assertEqual(self.datashape[ii], self.DBlock.dims[ii])
         
     def test_feilds(self) :
-        self.assertEqual(self.DBlock.field['SCAN'], 113)
+        self.assertEqual(self.DBlock.field['SCAN'], scan_set[0])
         self.assertEqual(round(self.DBlock.field['CRVAL1']/1e6), 695)
         for ii in range(npol) :
             self.assertEqual(pol_set[ii], self.DBlock.field['CRVAL4'][ii])
@@ -234,16 +234,19 @@ class TestCircle(unittest.TestCase) :
             for field, axis in fitsGBT.fields_and_axes.iteritems() :
                 self.assertEqual(axis, OldDB.field_axes[field])
                 self.assertEqual(axis, NewDB.field_axes[field])
-            for field in ['SCAN', 'DATE-OBS', 'OBJECT', 'TIMESTAMP',
-                          'OBSERVER'] :
+            for field in ['SCAN', 'OBJECT', 'TIMESTAMP',
+                          'OBSERVER', 'CRPIX1', 'CDELT1'] :
                 self.assertEqual(OldDB.field[field], NewDB.field[field])
             for field in ['CRVAL1', 'BANDWID', 'RESTFREQ', 'DURATION',
                           'EXPOSURE'] :
                 self.assertAlmostEqual(OldDB.field[field], NewDB.field[field])
-            for field in ['LST', 'ELEVATIO', 'AZIMUTH', 'OBSFREQ', 'CRVAL2', 
-                          'CRVAL3'] :
+            for field in ['LST', 'ELEVATIO', 'AZIMUTH', 
+                          'OBSFREQ', 'CRVAL2', 'CRVAL3'] :
                 self.assertTrue(sp.allclose(OldDB.field[field], 
                                             NewDB.field[field]))
+            for field in ['DATE-OBS'] :
+                self.assertTrue(sp.alltrue(sp.equal(OldDB.field[field], 
+                                            NewDB.field[field])))
             for field in ['CRVAL4', 'CAL'] :
                 self.assertTrue(all(OldDB.field[field] == NewDB.field[field]))
 

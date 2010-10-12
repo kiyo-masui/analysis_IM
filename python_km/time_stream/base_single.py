@@ -55,7 +55,7 @@ class BaseSingle(object) :
         self.params = parse_ini.parse(parameter_file_or_dict, params_init,
                                       checking=10*self.feedback + 2)
         params = self.params
-        #mkdir_p(params['output_dir'])
+        #mkdir_p(params['output_dir*'])
         parse_ini.write_params(params, params['output_root'] + 'params.ini')
 
         # Loop over the files to process.

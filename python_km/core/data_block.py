@@ -4,6 +4,7 @@ import scipy as sp
 import numpy.ma as ma
 
 import kiyopy.custom_exceptions as ce
+import utils
 
 class DataBlock() :
     """Class that holds an single IF and scan of GBT data.
@@ -65,6 +66,12 @@ class DataBlock() :
         'field_axes' dictionaries directly, but using this function combines a
         few operations that go together.  It also does some sanity checks.
         Using this function is safer.
+
+        Arguments are the field name (like 'CRVAL2', or 'SCAN'), field data
+        (numpy array or appropriate length according to axis_names), axis_names
+        (tuple of names like ('time', ) or ('pol',) or simply () for 0D data),
+        and finally a fits format string (like '1E' or '10A', see fits
+        documentation).
         """
 
         if type(axis_names) is str :
@@ -127,6 +134,12 @@ class DataBlock() :
                     raise ce.DataError("The shape of the data in one of the "
                                        "fields is incompatible with the shape "
                                        "of the main data. field: "+field_name)
+            # Check the format string.
+            # TODO: This should do something better than just check that there
+            # is a string.
+            if not type(self.field_formats[field_name]) is str :
+                raise ce.DataError("The field_format must be type str. field: "
+                                   + field_name)
         # The opposite of the first check in the loop.
         if len(axes_keys) :
             raise ce.DataError("Dictionaries 'field' and 'field_axes'"
@@ -159,6 +172,36 @@ class DataBlock() :
         """print_history function called on self.history."""
 
         print_history(self.history)
+
+    # The following methods calculate useful quantities, but assume certain
+    # fields exist.  They should be valid if the DataBlock was read from a GBT
+    # fits file.
+    
+    def calc_pointing(self) :
+        """Calculates the telescope pointing.
+
+        At every time the Ra and Dec of the telescope time is calculated.
+        These are stored as attributes (not fields) named ra and dec.  This
+        requires the fields 'CRVAL3', 'CRVAL2' and 'DATE-OBS' to be set.
+        """
+        self.ra = sp.zeros(self.dims[0])
+        self.dec = sp.zeros(self.dims[0])
+        for ii in range(self.dims[0]) :
+            self.ra[ii], self.dec[ii] = utils.elaz2radecGBT(
+                                            self.field['CRVAL3'][ii],
+                                            self.field['CRVAL2'][ii],
+                                            self.field['DATE-OBS'][ii])
+
+    def calc_freq(self) :
+        """Calculates the frequency axis.
+        
+        The frequency axis is stored as a attribute (not a field) named freq.
+        This requires the fileds 'CRVAL1', 'CPIX1' and 'CDELT1' to be set.
+        """
+        self.freq = ((sp.arange(self.dims[-1], dtype=float) + 1.0 - 
+                     self.field['CRPIX1'])*self.field['CDELT1'] + 
+                     self.field['CRVAL1'])
+
 
 
 def merge_histories(*args) :
