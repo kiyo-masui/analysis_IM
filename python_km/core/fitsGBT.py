@@ -418,7 +418,7 @@ class Writer() :
 
         # Combine the HDUs and write to file.
         hdulist = pyfits.HDUList([prihdu, tbhdu])
-        hdulist.writeto(file_name)
+        hdulist.writeto(file_name, clobber=True)
         if self.feedback > 0 :
             print 'Wrote data to file: ' + file_name
 

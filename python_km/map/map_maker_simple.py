@@ -142,7 +142,7 @@ def mk_map_simple(parameter_file_or_dict=None) :
     uncovered_inds = sp.where(counts==0)
     Map.data[uncovered_inds] = ma.masked
     Map.data /= counts
-    Map.add_history('Gridded data with map_maker_simeple.')
+    Map.add_history('Gridded data with map_maker_simple.')
 
     Map.verify()
     fits_map.write(Map, params['output_root'] + params['file_middles'][-1] +

@@ -41,7 +41,7 @@ def write(Map, file_name, feedback=0) :
 
     # Creat the HDU list and write to file.
     hdulist = pyfits.HDUList([prihdu, imhdu])
-    hdulist.writeto(file_name)
+    hdulist.writeto(file_name, clobber=True)
     if feedback > 0 :
         print 'Wrote data to file: ' + file_name
 
