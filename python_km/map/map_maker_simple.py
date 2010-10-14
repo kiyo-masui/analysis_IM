@@ -9,7 +9,7 @@ import numpy.ma as ma
 
 from kiyopy import parse_ini
 import kiyopy.custom_exceptions as ce
-from core import utils, data_block, fitsGBT
+from core import utils, data_block, fitsGBT, data_map, fits_map
 
 # Parameters prefixed with 'mm_' when read from file.
 params_init = {
@@ -36,6 +36,15 @@ params_init = {
                'pol_weights' : (1.0, 0.0, 0.0, 1.0)
                }
 
+# Fields that should be copied from times stream data.
+fields_to_copy = (
+                  'CRVAL1',
+                  'CRPIX1',
+                  'CDELT1',
+                  'BANDWID'
+                  )
+
+
 
 def mk_map_simple(parameter_file_or_dict=None) :
     """Main function for this simple map maker."""
@@ -44,7 +53,7 @@ def mk_map_simple(parameter_file_or_dict=None) :
     params = parse_ini.parse(parameter_file_or_dict, params_init, prefix='mm_')
     shape = params['shape']
 
-    if len(params['IF']) != 1 :
+    if len(params['IFs']) != 1 :
         raise ce.FileParameterTypeError('Can only process a single IF.')
 
     # Flag for the first block processed (will allowcate memory on the first
@@ -52,11 +61,11 @@ def mk_map_simple(parameter_file_or_dict=None) :
     first_block = True
 
     # Generate bins for ra, dec
-    ra_bins = calc_bins(params['centre'][0], 
+    ra_bins = calc_bins(params['centre'][0], shape[0], 
                         params['spacing']/sp.cos(params['centre'][1]),
-                        shape[0], 'middle')
-    dec_bins = calc_bins(params['centre'][1], params['spacing'],
-                        shape[1], 'middle')
+                        'middle')
+    dec_bins = calc_bins(params['centre'][1], shape[1], params['spacing'],
+                        'middle')
 
     # Loop over the files to process.
     for file_middle in params['file_middles'] :
@@ -68,7 +77,7 @@ def mk_map_simple(parameter_file_or_dict=None) :
         
         # Read in the data, and loop over data blocks.
         Reader = fitsGBT.Reader(input_fname)
-        Blocks = Reader.read(params['scans'], params['IF'])
+        Blocks = Reader.read(params['scans'], params['IFs'])
         for Data in Blocks :
             dims = Data.dims
             Data.calc_freq()
@@ -82,8 +91,16 @@ def mk_map_simple(parameter_file_or_dict=None) :
                                  params['freq_spacing'], shape[2], 'lower')
 
                 # Allowcate memory for the map and pointing counts.
-                map = ma.zeros(shape, dtype=float)
                 counts = sp.zeros(shape, dtype=int)
+                Map = data_map.DataMap(ma.zeros(shape, dtype=float))
+                Map.set_field('RA', ra_bins, ('long',), '1E') 
+                Map.set_field('DEC', dec_bins, ('lat',), '1E')
+                Map.history = Data.history
+                for key in fields_to_copy :
+                    Map.set_field(key, Data.field[key], Data.field_axes[key], 
+                                  Data.field_formats[key])
+            else :
+                Map.history = data_map.merge_histories(Map, Data)
 
             # Figure out the pointing pixel index and the frequency indicies.
             Data.calc_pointing()
@@ -120,11 +137,17 @@ def mk_map_simple(parameter_file_or_dict=None) :
             #                        ma.median(Data.data[
             #                        ii,jj,kk,freq_inds[inds]]))
             
-            add_data_2_map(data, ra_inds, dec_inds, map, counts)
+            add_data_2_map(data, ra_inds, dec_inds, Map.data, counts)
             first_block = False
     uncovered_inds = sp.where(counts==0)
-    map[uncovered_inds] = ma.masked
-    map /= counts
+    Map.data[uncovered_inds] = ma.masked
+    Map.data /= counts
+    Map.add_history('Gridded data with map_maker_simeple.')
+
+    Map.verify()
+    fits_map.write(Map, params['output_root'] + params['file_middles'][-1] +
+                   params['output_end'])
+
 
 
 

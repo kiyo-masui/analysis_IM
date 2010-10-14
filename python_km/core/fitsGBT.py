@@ -126,7 +126,7 @@ class Reader() :
         Note that the scans are numbered with 0 corresponding to the first scan
         in the file i.e., it is not the session scan number."""
 
-        # Should check valid scan IF, and raise value errors as apropriate
+        # TODO: Should check valid scan IF, and raise value errors as apropriate
         thescan = self.scan_set[scan_ind]
         theIF = self.IF_set[IF_ind]
         
@@ -200,7 +200,7 @@ class Reader() :
 
     
     def read(self, scans=None, IFs=None) :
-        """Read and data from the fits file.
+        """Read in data from the fits file.
 
         This method reads data from the fits file including the files history
         and basically every peice of data that could be needed.  It is done,
