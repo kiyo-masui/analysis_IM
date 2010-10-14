@@ -6,7 +6,7 @@ import numpy.ma as ma
 import kiyopy.custom_exceptions as ce
 import utils
 
-class DataBlock() :
+class DataBlock(object) :
     """Class that holds an single IF and scan of GBT data.
 
     This is the main vessel for storing an transporting GBT data.  This class

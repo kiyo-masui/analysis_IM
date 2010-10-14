@@ -6,11 +6,12 @@ wirtten by inheriting from this class.  This class knows how to loop over files
 and DataBlocks, read and write fits files, etc.
 
 To create a valid time stream step, simply create a class that inherits from
-this one and over-write the 'actions' attribute with a tuple of references to
-functions.  These functions must accept DataBlock objects as arguments.  These
+this one and over-write the 'actions' method a the function that acctually acts
+on your data.  The function must accept and retrun a DataBlock object.  These
 functions will be applied to every DataBlock processed.  Optionally, overwrite
 the params_init attribute with any additional options required by your
-functions.
+functions.  You should also overwrite the prefix attribute to something unique
+so that parameters don't get confused in parameter files.
 
 Check out the unit tests for examples.
 """
@@ -26,13 +27,13 @@ from core import fitsGBT
 base_params = {
                # IO:
                'input_root' : './',
-               'file_middles' : ["GBTdata"], # The unique part of every fname
+               'file_middles' : ("GBTdata"), # The unique part of every fname
                'input_end' : ".raw.acs.fits",
                'output_root' : "./",
                'output_end' : ".fits",
                # What data to process within each file.
-               'scans' : [],
-               'IFs' : []
+               'scans' : (),
+               'IFs' : ()
                }
 
 class BaseSingle(object) :
@@ -41,22 +42,31 @@ class BaseSingle(object) :
     See module doc-string for detailed information.
     """
     
-    actions = ()
     params_init = {}
     feedback = 2
+    prefix = 'bs_'
+    def action(self, Data) :
+        Data.add_history('Did Nothing.')
+        return Data
 
     def __init__(self, parameter_file_or_dict) :
         
-        # Add any parameters added by any class that inherited from this one.
+        # Add any parameters added by any class that inherits from this one.
         params_init = dict(base_params)
         params_init.update(self.params_init)
         
         # Read in the parameters.
         self.params = parse_ini.parse(parameter_file_or_dict, params_init,
+                                      prefix=self.prefix,
                                       checking=10*self.feedback + 2)
+    
+    def execute(self) :
+        """Process all data."""
+
         params = self.params
         #mkdir_p(params['output_dir*'])
-        parse_ini.write_params(params, params['output_root'] + 'params.ini')
+        parse_ini.write_params(params, params['output_root'] + 'params.ini',
+        prefix=self.prefix)
 
         # Loop over the files to process.
         for file_middle in params['file_middles'] :
@@ -71,35 +81,16 @@ class BaseSingle(object) :
             Blocks = Reader.read(params['scans'], params['IFs'])
             for Data in Blocks :
                 # Now process the data.
-                for function in self.actions :
-                    function(self, Data)
+                NewData = self.action(Data)
+                # Chances are NewData is just a reference to Data.  To avoid
+                # confusion, delete the old reference.
+                del Data
 
                 # Check that the data is valid and add it to the writer.
-                Data.verify()
-                Writer.add_data(Data)
+                NewData.verify()
+                Writer.add_data(NewData)
 
             # Finally write the data back to file.
             Writer.write(output_fname)
-
-def merge_singles(*args) :
-    """Merge several time stream steps that inherit from BaseSingle.
-
-    This takes a list of classes as an argument.  All classes must inherit from
-    BaseSingle.  A new class is returned that combines all the steps in the
-    passed classes.
-    """
-
-    new_actions = ()
-    new_params_init = {}
-    new_feedback = 0
-
-    for SingleStep in args :
-        new_actions = new_actions + Steps.actions
-        new_params_ini.update(Steps.params_init)
-        if Steps.feedback > new_feedback :
-            new_feedback = Steps.feedback
-
-    class NewSingle(BaseSingle) :
-        pass
 
         

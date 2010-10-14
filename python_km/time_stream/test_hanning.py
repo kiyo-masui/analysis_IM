@@ -12,7 +12,7 @@ import core.fitsGBT
 
 test_file = 'testfile_GBTfits.fits'
 
-class TestSteps(unittest.TestCase) :
+class TestFunction(unittest.TestCase) :
     """Since these operations actually changes the data, these are only sanity
     tests, far from thorough."""
     
@@ -35,6 +35,9 @@ class TestSteps(unittest.TestCase) :
         """Copy the data, see that we did something."""
         preprocess.hanning(self.Data)
         self.sanity_test()
+
+    # Could test that end pointes end up masked.  Could test that points
+    # adjacent to masked data end up masked.
         
     def tearDown(self) :
         del self.Data
