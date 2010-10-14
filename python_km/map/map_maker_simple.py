@@ -16,9 +16,9 @@ params_init = {
                # IO:
                'input_root' : './',
                # The unique part of every fname
-               'file_middles' : ["testfile_GBTfits"],
+               'file_middles' : ("testfile_GBTfits",),
                'input_end' : ".fits",
-               'output_root' : "./",
+               'output_root' : "./testoutput",
                'output_end' : ".map.fits",
                # What data to process within each file.
                'scans' : (),
@@ -44,109 +44,113 @@ fields_to_copy = (
                   'BANDWID'
                   )
 
+class MapMaker(object) :
+    """Simple data gridder."""
+   
+    def __init__(self, parameter_file_or_dict=None) :
+        # Read in the parameters.
+        self.params = parse_ini.parse(parameter_file_or_dict, params_init, 
+                                 prefix='mm_')
 
+    def execute(self) :
+        params = self.params
+        shape = params['shape']
 
-def mk_map_simple(parameter_file_or_dict=None) :
-    """Main function for this simple map maker."""
-    
-    # Read in the parameters.
-    params = parse_ini.parse(parameter_file_or_dict, params_init, prefix='mm_')
-    shape = params['shape']
+        if len(params['IFs']) != 1 :
+            raise ce.FileParameterTypeError('Can only process a single IF.')
 
-    if len(params['IFs']) != 1 :
-        raise ce.FileParameterTypeError('Can only process a single IF.')
+        # Flag for the first block processed (will allowcate memory on the 
+        # first iteration).
+        first_block = True
 
-    # Flag for the first block processed (will allowcate memory on the first
-    # iteration).
-    first_block = True
+        # Generate bins for ra, dec
+        ra_bins = calc_bins(params['centre'][0], shape[0], 
+                            params['spacing']/sp.cos(params['centre'][1]),
+                            'middle')
+        dec_bins = calc_bins(params['centre'][1], shape[1], params['spacing'],
+                            'middle')
 
-    # Generate bins for ra, dec
-    ra_bins = calc_bins(params['centre'][0], shape[0], 
-                        params['spacing']/sp.cos(params['centre'][1]),
-                        'middle')
-    dec_bins = calc_bins(params['centre'][1], shape[1], params['spacing'],
-                        'middle')
-
-    # Loop over the files to process.
-    for file_middle in params['file_middles'] :
-        input_fname = (params['input_root'] + file_middle +
-                       params['input_end'])
-        output_fname = (params['output_root']
-                        + file_middle + params['output_end'])
-        Writer = fitsGBT.Writer()
-        
-        # Read in the data, and loop over data blocks.
-        Reader = fitsGBT.Reader(input_fname)
-        Blocks = Reader.read(params['scans'], params['IFs'])
-        for Data in Blocks :
-            dims = Data.dims
-            Data.calc_freq()
-            if first_block :
-                if not params['resample_freqs'] :
-                    shape = shape[0:-1] + (dims[-1],)
-                    freq_bins = Data.freq/1.0e6
-                else :
-                    raise NotImplementedError('Frequency resampling.')
-                    freq_bins = calc_bins(params['centre'][2],
-                                 params['freq_spacing'], shape[2], 'lower')
-
-                # Allowcate memory for the map and pointing counts.
-                counts = sp.zeros(shape, dtype=int)
-                Map = data_map.DataMap(ma.zeros(shape, dtype=float))
-                Map.set_field('RA', ra_bins, ('long',), '1E') 
-                Map.set_field('DEC', dec_bins, ('lat',), '1E')
-                Map.history = Data.history
-                for key in fields_to_copy :
-                    Map.set_field(key, Data.field[key], Data.field_axes[key], 
-                                  Data.field_formats[key])
-            else :
-                Map.history = data_map.merge_histories(Map, Data)
-
-            # Figure out the pointing pixel index and the frequency indicies.
-            Data.calc_pointing()
-            ra_inds = calc_inds(Data.ra, params['centre'][0], shape[0],
-                                params['spacing']/sp.cos(params['centre'][1]))
-            dec_inds = calc_inds(Data.dec, params['centre'][1], shape[1],
-                                params['spacing'])
-            # Create a linear combination of the cals and pols that we want to
-            # map.
-            data = ma.zeros((dims[0],dims[3]))
-            for ii_pol in range(dims[1]) :
-                for jj_cal in range(dims[2]) :
-                    data += (Data.data[:,ii_pol,jj_cal,:]
-                             * params['pol_weights'][ii_pol]
-                             * params['cal_weights'][jj_cal])
-
-            ## This code resamples the data along the frequency axis.
-            #freq_inds = calc_inds(Data.freq/1.0e6, params['centre'][2], shape[2],
-            #                      params['freq_spacing'])
-            #data_resampled = ma.empty((dims[0], dims[1], dims[2], shape[2]))
-            #for new_f_ind in range(shape[2]) :
-            #    inds, = sp.where(sp.equal(freq_inds, new_f_ind))
-            #    if len(inds) == 0 :
-            #        data_resampled[:,:,:,new_f_ind] = ma.masked
-            #    else :
-            #        # Looks like ma.medain has a bug and the following line
-            #        # fails.  Will have to loop instead.
-            #        #data_resampled[:,:,:,new_f_ind] = ma.median(Data.data[
-            #        #                              :,:,:,freq_inds[inds]], 3)
-            #        for ii in range(dims[0]) :
-            #            for jj in range(dims[1]) :
-            #                for kk in range(dims[2]) :
-            #                    data_resampled[ii,jj,kk,new_f_ind] = (
-            #                        ma.median(Data.data[
-            #                        ii,jj,kk,freq_inds[inds]]))
+        # Loop over the files to process.
+        for file_middle in params['file_middles'] :
+            input_fname = (params['input_root'] + file_middle +
+                           params['input_end'])
+            output_fname = (params['output_root']
+                            + file_middle + params['output_end'])
             
-            add_data_2_map(data, ra_inds, dec_inds, Map.data, counts)
-            first_block = False
-    uncovered_inds = sp.where(counts==0)
-    Map.data[uncovered_inds] = ma.masked
-    Map.data /= counts
-    Map.add_history('Gridded data with map_maker_simple.')
+            # Read in the data, and loop over data blocks.
+            Reader = fitsGBT.Reader(input_fname)
+            Blocks = Reader.read(params['scans'], params['IFs'])
+            for Data in Blocks :
+                dims = Data.dims
+                Data.calc_freq()
+                if first_block :
+                    if not params['resample_freqs'] :
+                        shape = shape[0:-1] + (dims[-1],)
+                        freq_bins = Data.freq/1.0e6
+                    else :
+                        raise NotImplementedError('Frequency resampling.')
+                        freq_bins = calc_bins(params['centre'][2],
+                                     params['freq_spacing'], shape[2], 'lower')
 
-    Map.verify()
-    fits_map.write(Map, params['output_root'] + params['file_middles'][-1] +
-                   params['output_end'])
+                    # Allowcate memory for the map and pointing counts.
+                    counts = sp.zeros(shape, dtype=int)
+                    Map = data_map.DataMap(ma.zeros(shape, dtype=float))
+                    Map.set_field('RA', ra_bins, ('long',), '1E') 
+                    Map.set_field('DEC', dec_bins, ('lat',), '1E')
+                    Map.history = Data.history
+                    for key in fields_to_copy :
+                        Map.set_field(key, Data.field[key], 
+                           Data.field_axes[key], Data.field_formats[key])
+                else :
+                    Map.history = data_map.merge_histories(Map, Data)
+
+                # Figure out the pointing pixel index and the frequency 
+                # indicies.
+                Data.calc_pointing()
+                ra_inds = calc_inds(Data.ra, params['centre'][0], shape[0],
+                                params['spacing']/sp.cos(params['centre'][1]))
+                dec_inds = calc_inds(Data.dec, params['centre'][1], shape[1],
+                                    params['spacing'])
+                # Create a linear combination of the cals and pols that we 
+                # want to map.
+                data = ma.zeros((dims[0],dims[3]))
+                for ii_pol in range(dims[1]) :
+                    for jj_cal in range(dims[2]) :
+                        data += (Data.data[:,ii_pol,jj_cal,:]
+                                 * params['pol_weights'][ii_pol]
+                                 * params['cal_weights'][jj_cal])
+
+                ## This code resamples the data along the frequency axis.
+                #freq_inds = calc_inds(Data.freq/1.0e6, params['centre'][2], 
+                #                      shape[2],
+                #                      params['freq_spacing'])
+                #data_resampled = ma.empty((dims[0], dims[1], dims[2], shape[2]))
+                #for new_f_ind in range(shape[2]) :
+                #    inds, = sp.where(sp.equal(freq_inds, new_f_ind))
+                #    if len(inds) == 0 :
+                #        data_resampled[:,:,:,new_f_ind] = ma.masked
+                #    else :
+                #        # Looks like ma.medain has a bug and the following 
+                #        # line fails.  Will have to loop instead.
+                #        #data_resampled[:,:,:,new_f_ind] = ma.median(
+                #       #                 Data.data[:,:,:,freq_inds[inds]], 3)
+                #        for ii in range(dims[0]) :
+                #            for jj in range(dims[1]) :
+                #                for kk in range(dims[2]) :
+                #                    data_resampled[ii,jj,kk,new_f_ind] = (
+                #                        ma.median(Data.data[
+                #                        ii,jj,kk,freq_inds[inds]]))
+                
+                add_data_2_map(data, ra_inds, dec_inds, Map.data, counts)
+                first_block = False
+        uncovered_inds = sp.where(counts==0)
+        Map.data[uncovered_inds] = ma.masked
+        Map.data /= counts
+        Map.add_history('Gridded data with map_maker_simple.')
+
+        Map.verify()
+        fits_map.write(Map, params['output_root'] + params['output_end'])
+        parse_ini.write_params(params, params['output_root'] + 'params.ini')
 
 
 
@@ -219,11 +223,11 @@ def calc_bins(centre, shape, spacing=1., edge='lower') :
 if __name__ == '__main__' :
     import sys
     if len(sys.argv) == 2 :
-        mk_map_simple(str(sys.argv[1]))
+        MapMaker(str(sys.argv[1])).execute()
     elif len(sys.argv) > 2:
         print 'Maximum one argument, a parameter file name.'
     else :
-        mk_map_simple()
+        MapMaker().execute()
                 
 
 

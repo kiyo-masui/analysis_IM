@@ -1,0 +1,50 @@
+# Test input file for pipeline manager.
+
+# Note that this input file for the pipeline (.pipe file) will also work as a
+# valid input file for any of the called submodules (.ini file).  Thus the
+# following are all valid calls:
+# python pipeline/manager.py test.pipe
+# python time_stream/hanning test.pipe
+# python map/map_maker_simple  test.pipe
+#
+# Each of these calls of course only uses the relevant parts of the .pipe file.
+
+pipe_modules = []
+
+file_middles = ("testfile_GBTfits",)
+base_dir = './'
+out_root = base_dir + 'testoutput_'
+
+from time_stream import hanning #, coarse_grain
+pipe_modules.append(hanning.Hanning)
+ha_input_root = base_dir
+ha_file_middles = file_middles
+ha_input_end = ".fits"
+ha_output_root = out_root
+ha_output_end = ".testhanning.fits"
+ha_scans = ()
+ha_IFs = ()
+
+#from time_stream import coarse_grain
+#pipe_modules.append(coarse_grain.CoarseGrain)
+#cg_input_root = out_root
+#cg_file_middles = file_middles
+#cg_input_end = ha_output_end
+#cg_output_root = out_root
+#cg_output_end = '.testcoarse.fits'
+#cg_scans = ()
+#cg_IFs = ()
+#cg_channel_widths = 2.0
+
+from map import map_maker_simple
+pipe_modules.append(map_maker_simple.MapMaker)
+mm_input_root = out_root
+mm_file_middles = file_middles
+mm_input_end = ha_output_end
+mm_output_root = out_root
+mm_output_end = '.testmap.fits'
+mm_scans = ()
+mm_IFs = (1,)
+
+del file_middles
+del base_dir

@@ -5,7 +5,7 @@
 import numpy.ma as ma
 
 import base_single
-import custom_exceptions as ce
+import kiyopy.custom_exceptions as ce
 
 
 class Hanning(base_single.BaseSingle) :
@@ -14,10 +14,10 @@ class Hanning(base_single.BaseSingle) :
     prefix = 'ha_'
 
     def action(self, Data):
-        hanning(Data)
+        do_hanning(Data)
         return Data
 
-def hanning(Data) :
+def do_hanning(Data) :
     """Perform Hanning smoothing.
 
     This function accepts a DataBlock class and returns nothing.  It changes
@@ -42,5 +42,5 @@ def hanning(Data) :
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":
     import sys
-    Hanning(string(sys.argv[1])).execute()
+    Hanning(str(sys.argv[1])).execute()
 

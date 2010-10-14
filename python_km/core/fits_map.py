@@ -11,7 +11,7 @@ import pyfits
 card_hist = 'DB-HIST'
 card_detail = 'DB-DET'
 
-def write(Map, file_name, feedback=0) :
+def write(Map, file_name, feedback=2) :
     """Write a map to fits file.
 
     Map should be a map_data.MapData object.

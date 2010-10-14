@@ -27,8 +27,9 @@ from core import fitsGBT
 base_params = {
                # IO:
                'input_root' : './',
-               'file_middles' : ("GBTdata"), # The unique part of every fname
-               'input_end' : ".raw.acs.fits",
+               # The unique part of every fname
+               'file_middles' : ("testfile_GBTfits",),
+               'input_end' : ".fits",
                'output_root' : "./",
                'output_end' : ".fits",
                # What data to process within each file.
