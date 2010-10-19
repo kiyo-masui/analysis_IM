@@ -25,22 +25,22 @@ ha_output_end = ".testhanning.fits"
 ha_scans = ()
 ha_IFs = ()
 
-#from time_stream import coarse_grain
-#pipe_modules.append(coarse_grain.CoarseGrain)
-#cg_input_root = out_root
-#cg_file_middles = file_middles
-#cg_input_end = ha_output_end
-#cg_output_root = out_root
-#cg_output_end = '.testcoarse.fits'
-#cg_scans = ()
-#cg_IFs = ()
-#cg_channel_widths = 2.0
+from time_stream import rebin_freq
+pipe_modules.append(rebin_freq.RebinFreq)
+rf_input_root = out_root
+rf_file_middles = file_middles
+rf_input_end = ha_output_end
+rf_output_root = out_root
+rf_output_end = '.testrebin.fits'
+rf_scans = ()
+rf_IFs = ()
+rf_channel_widths = 2.0
 
 from map import map_maker_simple
 pipe_modules.append(map_maker_simple.MapMaker)
 mm_input_root = out_root
 mm_file_middles = file_middles
-mm_input_end = ha_output_end
+mm_input_end = rf_output_end
 mm_output_root = out_root
 mm_output_end = '.testmap.fits'
 mm_scans = ()

@@ -1,5 +1,7 @@
 #!/usr/bin/python
 """This module down samples the frequency axis of the data.
+
+This fails for if your numpy version is < 1.3.
 """
 
 import math
@@ -13,7 +15,7 @@ import kiyopy.custom_exceptions as ce
 class RebinFreq(base_single.BaseSingle) :
     """Pipeline module that down samples the frequnecy axis of the data."""
 
-    prefix = 'cg_'
+    prefix = 'rf_'
     params_init = {
                    'channel_width' : 1.0, # MHz
                    'mean_instead_median' : False
@@ -53,7 +55,7 @@ def rebin(Data, width, mean=False) :
         inds, = sp.where(sp.logical_and(
                     abs(freq - new_freq[ii]) <= abs(freq - new_freq[ii+1]),
                     abs(freq - new_freq[ii]) < abs(freq - new_freq[ii-1]) ))
-        subdata = old_data[:,:,:,inds]
+        subdata = (old_data[:,:,:,inds])
         Data.data[:,:,:,ii] = method(subdata, 3)
     # Above loop breaks for end points... deal with them.
     inds, = sp.where(abs(freq - new_freq[0]) <= abs(freq - new_freq[1]))

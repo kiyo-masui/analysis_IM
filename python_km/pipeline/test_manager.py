@@ -20,6 +20,7 @@ class TestManager(unittest.TestCase) :
     def tearDown(self) :
         os.remove('testoutput_params.ini')
         os.remove('testoutput_testfile_GBTfits.testhanning.fits')
+        os.remove('testoutput_testfile_GBTfits.testrebin.fits')
         os.remove('testoutput_.testmap.fits')
 
 if __name__ == '__main__' :
