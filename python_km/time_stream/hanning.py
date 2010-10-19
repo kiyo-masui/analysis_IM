@@ -15,6 +15,7 @@ class Hanning(base_single.BaseSingle) :
 
     def action(self, Data):
         do_hanning(Data)
+        Data.add_history('Hanning smoothed.')
         return Data
 
 def do_hanning(Data) :
