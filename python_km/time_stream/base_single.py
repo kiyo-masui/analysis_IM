@@ -16,8 +16,7 @@ so that parameters don't get confused in parameter files.
 Check out the unit tests for examples.
 """
 
-from kiyopy import parse_ini
-from kiyopy.utils import mkdir_p
+from kiyopy import parse_ini, utils
 #from kiyopy import custom_exceptions as ce
 
 from core import data_block
@@ -65,9 +64,13 @@ class BaseSingle(object) :
         """Process all data."""
 
         params = self.params
-        #mkdir_p(params['output_dir*'])
+        # Figure out the directory we are writing to and make it if need be.
+        last_slash = params['output_root'].rfind('/')
+        if last_slash > 0 : # Protect against last_slash == -1 or 0.
+            outdir = params['output_root'][:last_slash]
+            utils.mkdir_p(outdir)
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
-        prefix=self.prefix)
+                               prefix=self.prefix)
 
         # Loop over the files to process.
         for file_middle in params['file_middles'] :

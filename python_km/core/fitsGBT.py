@@ -267,8 +267,13 @@ class Reader() :
                     Data_sif.history = dict(self.history)
                 else :
                     self.set_history(Data_sif)
+                    split_fname = self.fname.split('/')
+                    if len(split_fname) > 1 :
+                        fname_abbr = split_fname[-2] + '/' + split_fname[-1]
+                    else :
+                        fname_abbr = self.fname
                     Data_sif.add_history('Read from file.', ('File name: ' + 
-                                         self.fname, ))
+                                         fname_abbr, ))
                     self.history = dict(Data_sif.history)
                 Data_sif.verify()
                 output = output + (Data_sif, )
@@ -411,9 +416,15 @@ class Writer() :
             for detail in details :
                 dcard = pyfits.Card(card_detail, detail)
                 prihdu.header.ascardlist().append(dcard)
+        # Add the write history.
         hcard = pyfits.Card(card_hist, 'Written to file.')
         prihdu.header.ascardlist().append(hcard)
-        dcard = pyfits.Card(card_detail, 'File name: ' + file_name)
+        split_fname = file_name.split('/')
+        if len(split_fname) > 1 :
+            fname_abbr = split_fname[-2] + '/' + split_fname[-1]
+        else :
+            fname_abbr = file_name
+        dcard = pyfits.Card(card_detail, 'File name: ' + fname_abbr)
         prihdu.header.ascardlist().append(dcard)
 
         # Combine the HDUs and write to file.

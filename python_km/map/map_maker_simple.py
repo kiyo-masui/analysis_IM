@@ -8,6 +8,7 @@ import scipy as sp
 import numpy.ma as ma
 
 from kiyopy import parse_ini
+import kiyopy.utils
 import kiyopy.custom_exceptions as ce
 from core import utils, data_block, fitsGBT, data_map, fits_map
 
@@ -23,14 +24,10 @@ params_init = {
                # What data to process within each file.
                'scans' : (),
                'IFs' : (0,),
-               # Map parameters (Ra (deg), Dec (deg), f (MHz)).
-               'resample_freqs' : False,
-               # centre[2], shape[2] and freq_spacing are ignored unless
-               # resample_freqs is True.
-               'centre' : (325.0, 0.0, 800.0),
-               'shape' : (40, 40, 200),
-               'spacing' : 0.125, # degrees
-               'freq_spacing' : 1.0, # MHz
+               # Map parameters (Ra (deg), Dec (deg)).
+               'field_centre' : (325.0, 0.0),
+               'map_shape' : (40, 40),
+               'pixel_spacing' : 0.125, # degrees
                # What times streams to include in map.
                'cal_weights' : (1.0, 1.0),
                'pol_weights' : (1.0, 0.0, 0.0, 1.0)
@@ -54,7 +51,13 @@ class MapMaker(object) :
 
     def execute(self) :
         params = self.params
-        shape = params['shape']
+        last_slash = params['output_root'].rfind('/')
+        if last_slash > 0 : # Protect against last_slash == -1 or 0.
+            outdir = params['output_root'][:last_slash]
+            kiyopy.utils.mkdir_p(outdir)
+        parse_ini.write_params(params, params['output_root'] + 'params.ini',
+                               prefix='mm_')        
+        shape = params['map_shape']
 
         if len(params['IFs']) != 1 :
             raise ce.FileParameterTypeError('Can only process a single IF.')
@@ -64,11 +67,11 @@ class MapMaker(object) :
         first_block = True
 
         # Generate bins for ra, dec
-        ra_bins = calc_bins(params['centre'][0], shape[0], 
-                            params['spacing']/sp.cos(params['centre'][1]),
-                            'middle')
-        dec_bins = calc_bins(params['centre'][1], shape[1], params['spacing'],
-                            'middle')
+        ra_bins = calc_bins(params['field_centre'][0], shape[0], 
+                            (params['pixel_spacing'] / 
+                             sp.cos(params['field_centre'][1])), 'middle')
+        dec_bins = calc_bins(params['field_centre'][1], shape[1], 
+                             params['pixel_spacing'], 'middle')
 
         # Loop over the files to process.
         for file_middle in params['file_middles'] :
@@ -84,13 +87,8 @@ class MapMaker(object) :
                 dims = Data.dims
                 Data.calc_freq()
                 if first_block :
-                    if not params['resample_freqs'] :
-                        shape = shape[0:-1] + (dims[-1],)
-                        freq_bins = Data.freq/1.0e6
-                    else :
-                        raise NotImplementedError('Frequency resampling.')
-                        freq_bins = calc_bins(params['centre'][2],
-                                     params['freq_spacing'], shape[2], 'lower')
+                    shape = shape + (dims[-1],)
+                    freq_bins = Data.freq/1.0e6
 
                     # Allowcate memory for the map and pointing counts.
                     counts = sp.zeros(shape, dtype=int)
@@ -107,10 +105,11 @@ class MapMaker(object) :
                 # Figure out the pointing pixel index and the frequency 
                 # indicies.
                 Data.calc_pointing()
-                ra_inds = calc_inds(Data.ra, params['centre'][0], shape[0],
-                                params['spacing']/sp.cos(params['centre'][1]))
-                dec_inds = calc_inds(Data.dec, params['centre'][1], shape[1],
-                                    params['spacing'])
+                ra_inds = calc_inds(Data.ra, params['field_centre'][0], 
+                                    shape[0], (params['pixel_spacing'] 
+                                    /sp.cos(params['field_centre'][1])))
+                dec_inds = calc_inds(Data.dec, params['field_centre'][1], 
+                                     shape[1], params['pixel_spacing'])
                 # Create a linear combination of the cals and pols that we 
                 # want to map.
                 data = ma.zeros((dims[0],dims[3]))
@@ -120,27 +119,6 @@ class MapMaker(object) :
                                  * params['pol_weights'][ii_pol]
                                  * params['cal_weights'][jj_cal])
 
-                ## This code resamples the data along the frequency axis.
-                #freq_inds = calc_inds(Data.freq/1.0e6, params['centre'][2], 
-                #                      shape[2],
-                #                      params['freq_spacing'])
-                #data_resampled = ma.empty((dims[0], dims[1], dims[2], shape[2]))
-                #for new_f_ind in range(shape[2]) :
-                #    inds, = sp.where(sp.equal(freq_inds, new_f_ind))
-                #    if len(inds) == 0 :
-                #        data_resampled[:,:,:,new_f_ind] = ma.masked
-                #    else :
-                #        # Looks like ma.medain has a bug and the following 
-                #        # line fails.  Will have to loop instead.
-                #        #data_resampled[:,:,:,new_f_ind] = ma.median(
-                #       #                 Data.data[:,:,:,freq_inds[inds]], 3)
-                #        for ii in range(dims[0]) :
-                #            for jj in range(dims[1]) :
-                #                for kk in range(dims[2]) :
-                #                    data_resampled[ii,jj,kk,new_f_ind] = (
-                #                        ma.median(Data.data[
-                #                        ii,jj,kk,freq_inds[inds]]))
-                
                 add_data_2_map(data, ra_inds, dec_inds, Map.data, counts)
                 first_block = False
         uncovered_inds = sp.where(counts==0)

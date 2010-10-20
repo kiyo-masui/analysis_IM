@@ -20,7 +20,7 @@ class RebinFreq(base_single.BaseSingle) :
                    'channel_width' : 1.0, # MHz
                    'mean_instead_median' : False
                    }
-    def actions(self, Data, ) :
+    def action(self, Data, ) :
         rebin(Data, self.params['channel_width'], 
               mean=self.params['mean_instead_median'])
         Data.add_history('Rebinned Frequency axis.', ('Channel width: '
@@ -66,8 +66,8 @@ def rebin(Data, width, mean=False) :
     Data.data[:,:,:,nbins-1] = method(subdata, 3)
     
     Data.freq = new_freq
-    Data.field['CDELT1'] = new_cdelt
-    Data.field['CRPIX1'] = new_centre + 1
+    Data.field['CDELT1'] = sp.array(new_cdelt, dtype=float)
+    Data.field['CRPIX1'] = sp.array(new_centre + 1, dtype=int)
 
 
 

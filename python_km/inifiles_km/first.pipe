@@ -1,0 +1,84 @@
+# Test input file for pipeline manager.
+
+# Note that this input file for the pipeline (.pipe file) will also work as a
+# valid input file for any of the called submodules (.ini file).  Thus the
+# following are all valid calls:
+# python pipeline/manager.py test.pipe
+# python time_stream/hanning test.pipe
+# python map/map_maker_simple  test.pipe
+#
+# Each of these calls of course only uses the relevant parts of the .pipe file.
+
+import os
+
+pipe_modules = []
+
+file_middles = ("116-123","124-131","132-139","226-233","234-241","242-249",
+                "242-249","250-257","258-265") #,"266-273")
+#file_middles = ("266-273",)
+
+base_dir = os.getenv('GBT10B_OUT')
+raw_data_dir = os.getenv('GBT10B_DATA')
+froot = '06_wigglez22hr_azel_'
+prefix = 'first_'
+IFs = (5,)
+
+from time_stream import hanning 
+#pipe_modules.append(hanning.Hanning)
+ha_input_root = raw_data_dir + froot
+ha_file_middles = file_middles
+ha_input_end = ".raw.acs.fits"
+ha_output_root = base_dir + 'hanning/' + prefix + froot
+ha_output_end = ".fits"
+ha_scans = ()
+# All following steps will inherit this choice by default (because these are
+# the only IF's saved to the following fits files).
+ha_IFs = IFs
+
+from time_stream import rebin_freq
+#pipe_modules.append(rebin_freq.RebinFreq)
+rf_input_root = ha_output_root
+rf_file_middles = file_middles
+rf_input_end = '.fits'
+rf_output_root = base_dir + 'rebinned/' + prefix + froot
+rf_output_end = '.fits'
+rf_scans = ()
+rf_IFs = ()
+
+rf_channel_width = 1.0
+rf_mean_instead_median = False
+
+from time_stream import cal_scale
+#pipe_modules.append(cal_scale.CalScale)
+cs_input_root = rf_output_root
+cs_file_middles = file_middles
+cs_input_end = '.fits'
+cs_output_root = base_dir + 'cal_scaled/' + prefix + froot
+cs_output_end = '.fits'
+cs_scans = ()
+cs_IFs = ()
+
+cs_subtract_time_median = True
+
+from map import map_maker_simple
+pipe_modules.append(map_maker_simple.MapMaker)
+mm_input_root = cs_output_root
+mm_file_middles = file_middles
+mm_input_end = '.fits'
+mm_output_root = base_dir + 'maps/' + prefix + froot + 'not_last'
+mm_output_end = '.map.fits'
+mm_scans = ()
+mm_IFs = (0,)
+
+mm_cal_weights = (1.0, 1.0)
+mm_pol_weights = (1.0, 0.0, 0.0, 1.0)
+mm_field_centre = (325.0, 0.0)
+mm_map_shape = (40, 40)
+mm_pixel_spacing = 0.125
+
+del file_middles
+del base_dir
+del froot
+del prefix
+del IFs
+del raw_data_dir

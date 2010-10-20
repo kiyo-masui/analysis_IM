@@ -141,18 +141,18 @@ class BaseData(object) :
         
         local_details = details
         # Input checks.
-        if len(history_entry) > 60 :
-            raise ValueError('History entries limited to 60 characters.')
+        if len(history_entry) > 70 :
+            raise ValueError('History entries limited to 70 characters.')
         if type(details) is str :
-            if len(details) > 60 :
-                raise ValueError('History details limited to 60 characters.')
+            if len(details) > 70 :
+                raise ValueError('History details limited to 70 characters.')
             local_details = (details, )
         for detail in details :
             if not type(detail) is str :
                 raise TypeError('History details must be a squence of strings'
                                 ' or a single string.')
-            if len(detail) > 60 :
-                raise ValueError('History details limited to 60 characters.')
+            if len(detail) > 70 :
+                raise ValueError('History details limited to 70 characters.')
 
         n_entries = len(self.history)
         # '+' operator performs input type check.
