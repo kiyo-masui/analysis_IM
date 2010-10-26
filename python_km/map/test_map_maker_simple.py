@@ -30,7 +30,7 @@ class TestCalcFunctions(unittest.TestCase) :
         centre = 5
         shape = 5
         spacing = 2
-        bins = mm.calc_bins(centre, shape, spacing, edge='lower')
+        bins = mm.calc_bins(centre, shape, spacing, edge='left')
         self.assertEqual(bins[0], 0)
         self.assertEqual(bins[-1], 8)
         self.assertEqual(bins[2], 4)
@@ -40,10 +40,35 @@ class TestCalcFunctions(unittest.TestCase) :
         self.assertEqual(bins[2], 5)
         shape = 10
         spacing = 1
-        bins = mm.calc_bins(centre, shape, spacing, edge='upper')
+        bins = mm.calc_bins(centre, shape, spacing, edge='right')
         self.assertEqual(bins[0], 1)
         self.assertEqual(bins[-1], 10)
         self.assertEqual(bins[4], 5)
+
+    def test_circle(self) :
+        centre = 4.6
+        shape = 19
+        spacing = 1.3
+        bins = mm.calc_bins(centre, shape, spacing, edge='left') + 0.1*spacing
+        inds = mm.calc_inds(bins, centre, shape, spacing)
+        self.assertTrue(sp.allclose(inds, sp.arange(int(shape))))
+        spacing = -0.35
+        bins = mm.calc_bins(centre, shape, spacing, edge='left') + 0.1*spacing
+        inds = mm.calc_inds(bins, centre, shape, spacing)
+        self.assertTrue(sp.allclose(inds, sp.arange(int(shape))))
+
+    def test_calc_inds_neg(self) :
+        """Needs to work for negitive spacing."""
+        pointing = [2.001, 1.999, 0.001, 3.5]
+        centre = 2.
+        shape = 4
+        spacing = -1
+        inds = mm.calc_inds(pointing, centre, shape, spacing)
+        self.assertEqual(inds[0], 1)
+        self.assertEqual(inds[1], 2)
+        self.assertEqual(inds[2], 3)
+        self.assertEqual(inds[3], 0)
+
 
 class TestAddingData(unittest.TestCase) :
     

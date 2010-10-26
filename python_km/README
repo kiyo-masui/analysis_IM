@@ -1,5 +1,6 @@
 This Kiyo's code for processing GBT data.  This code depends on the Kiyo's
-personal utilities package: kiyopy (available from github, user: kiyo-masui).
+personal utilities package: kiyopy (available from github, user: kiyo-masui) as
+well as several external packages: scipy, numpy, ephem, pyfits.
 
 Note that for the paths to the different packages in the subdirectories to work
 out, the python interpreter should be invoked from this directory. i.e.:
@@ -14,6 +15,25 @@ directory.
 Ideally, any code pushed back to the github repository should be tested and
 pass the test suit (python test_*).  Also please be conscious of backward
 compatibility.
+
+
+Environment Variables:
+
+Environment variable are used in the input files so that the same input file
+can be used on different systems (and by different users) without changing the
+input file (pain in the ass if this input file is versioned!).  Currently I am
+using two environment variables which any user should set in thier .bashrc or
+.tcshrc.
+
+$GBT10B_DATA - Points to raw GBT data. Must be readable but doesn't have to be
+writable.
+$GBT10B_OUT - Points to the directory where outputs and intermediate files are
+stored.  The programs will build subdirectories in this one.  Must be writable.
+
+In addition your $PYTHONPATH variable MUST
+begin with a ':'.  The ':' is like adding a blank string
+to your python path and tells the interpreter that the current working
+directory is to be added to the path.
 
 
 Overview and Notes on Code Design :
@@ -74,20 +94,9 @@ of how to use these classes, take a look at the unit tests (test_*.py).
 are time stream fits files compatible with the the raw data taken at GBT.
 
 3. inifile_km - Input files for created by Kiyo Masui for variouse modules.
-Feel free to make you own inifile_initials director or to use my input files.
+Feel free to make you own inifile_your_initials directory or to use my input
+files.
 
 4. map - where I will be putting map makers.
 
 
-Environment Variables:
-
-Environment variable are used in the input files so that the same input file
-can be used on different systems (and by different users) without changing the
-input file (pain in the ass if this input file is versioned!).  Currently I am
-using two environment variables which any user should set in thier .bashrc or
-.tcshrc.
-
-$GBT10B_DATA - Points to raw GBT data. Must be readable but doesn't have to be
-writable.
-$GBT10B_OUT - Points to the directory where outputs and intermediate files are
-stored.  The programs will build subdirectories in this one.  Must be writable.

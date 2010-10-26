@@ -41,8 +41,8 @@ fields_and_axes = {
                    'EXPOSURE' : (),
                    'DATE-OBS' : ('time', ),
                    'LST' : ('time', ),
-                   # These pointings refer to the structureal telescope, not
-                   # the beam (slightly different.
+                   # These pointings refer to the structural telescope, not
+                   # the beam (slightly different).
                    'ELEVATIO' : ('time', ),
                    'AZIMUTH' : ('time', ),
                    'OBSFREQ' : ('time', ),

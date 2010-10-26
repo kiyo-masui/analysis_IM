@@ -37,6 +37,16 @@ def scale_by_cal(Data, sub_med=False) :
     if (Data.field['CAL'][on_ind] != 'T' or
         Data.field['CAL'][off_ind] != 'F') :
             raise ce.DataError('Cal states not in expected order.')
+    
+    # A bunch of calculations used to test phase closure.
+    #a = (Data.data[5, xy_inds, on_ind, 15:20]
+    #     - Data.data[5, xy_inds, off_ind, 15:20])
+    #a /= sp.sqrt( Data.data[5, xx_ind, on_ind, 15:20] 
+    #              - Data.data[5, xx_ind, off_ind, 15:20])
+    #a /= sp.sqrt( Data.data[5, yy_ind, on_ind, 15:20] 
+    #              - Data.data[5, yy_ind, off_ind, 15:20])
+    #print a[0,:]**2 + a[1,:]**2
+    
     # Find the cal medians and scale by them.
     cal_med_xx = ma.median(Data.data[:,xx_ind,on_ind,:]
                            - Data.data[:,xx_ind,off_ind,:], 0)

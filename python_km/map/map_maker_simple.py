@@ -35,10 +35,8 @@ params_init = {
 
 # Fields that should be copied from times stream data.
 fields_to_copy = (
-                  'CRVAL1',
-                  'CRPIX1',
-                  'CDELT1',
-                  'BANDWID'
+                  'BANDWID',
+                  'OBJECT'
                   )
 
 class MapMaker(object) :
@@ -56,8 +54,11 @@ class MapMaker(object) :
             outdir = params['output_root'][:last_slash]
             kiyopy.utils.mkdir_p(outdir)
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
-                               prefix='mm_')        
+                               prefix='mm_')
+        # Rename some commonly used parameters.
         shape = params['map_shape']
+        spacing = params['pixel_spacing']
+        ra_spacing = -spacing/sp.cos(params['field_centre'][1]*2.0*sp.pi/180.)
 
         if len(params['IFs']) != 1 :
             raise ce.FileParameterTypeError('Can only process a single IF.')
@@ -68,8 +69,7 @@ class MapMaker(object) :
 
         # Generate bins for ra, dec
         ra_bins = calc_bins(params['field_centre'][0], shape[0], 
-                            (params['pixel_spacing'] / 
-                             sp.cos(params['field_centre'][1])), 'middle')
+                            ra_spacing, 'middle')
         dec_bins = calc_bins(params['field_centre'][1], shape[1], 
                              params['pixel_spacing'], 'middle')
 
@@ -93,12 +93,29 @@ class MapMaker(object) :
                     # Allowcate memory for the map and pointing counts.
                     counts = sp.zeros(shape, dtype=int)
                     Map = data_map.DataMap(ma.zeros(shape, dtype=float))
+                    # Copy some data over that all the data_blocks should have
+                    # in common.
                     Map.set_field('RA', ra_bins, ('long',), '1E') 
                     Map.set_field('DEC', dec_bins, ('lat',), '1E')
                     Map.history = Data.history
                     for key in fields_to_copy :
                         Map.set_field(key, Data.field[key], 
                            Data.field_axes[key], Data.field_formats[key])
+                    Map.set_field('CTYPE3', 'FREQ--HZ', (), '32A')
+                    Map.set_field('CTYPE1', 'RA---DEG', (), '32A')
+                    Map.set_field('CTYPE2', 'DEC--DEG', (), '32A')
+                    # Copy frequency axis (now the third axis not the first).
+                    Map.set_field('CRVAL3', Data.field['CRVAL1'], (), 'D')
+                    Map.set_field('CRPIX3', Data.field['CRPIX1'], (), 'D')
+                    Map.set_field('CDELT3', Data.field['CDELT1'], (), 'D')
+                    # Set the other two axes.
+                    Map.set_field('CRPIX1', shape[0]//2, (), 'D')
+                    Map.set_field('CRVAL1', ra_bins[shape[0]//2], (), 'D')
+                    Map.set_field('CDELT1', ra_spacing, (), 'D')
+                    Map.set_field('CRPIX2', shape[1]//2, (), 'D')
+                    Map.set_field('CRVAL2', dec_bins[shape[1]//2], (), 'D')
+                    Map.set_field('CDELT2', spacing, (), 'D')
+
                 else :
                     Map.history = data_map.merge_histories(Map, Data)
 
@@ -106,8 +123,7 @@ class MapMaker(object) :
                 # indicies.
                 Data.calc_pointing()
                 ra_inds = calc_inds(Data.ra, params['field_centre'][0], 
-                                    shape[0], (params['pixel_spacing'] 
-                                    /sp.cos(params['field_centre'][1])))
+                                    shape[0], ra_spacing)
                 dec_inds = calc_inds(Data.dec, params['field_centre'][1], 
                                      shape[1], params['pixel_spacing'])
                 # Create a linear combination of the cals and pols that we 
@@ -125,10 +141,11 @@ class MapMaker(object) :
         Map.data[uncovered_inds] = ma.masked
         Map.data /= counts
         Map.add_history('Gridded data with map_maker_simple.')
-
+        
         Map.verify()
         fits_map.write(Map, params['output_root'] + params['output_end'])
         parse_ini.write_params(params, params['output_root'] + 'params.ini')
+
 
 
 
@@ -169,6 +186,7 @@ def calc_inds(pointing, centre, shape, spacing=1.) :
     
     if type(pointing) is list or type(pointing) is tuple :
         pointing = sp.array(pointing, dtype=float)
+    shape = int(shape)
 
     inds = sp.array((pointing - centre) / spacing + shape/2.0, dtype=int)
     
@@ -181,15 +199,16 @@ def calc_bins(centre, shape, spacing=1., edge='lower') :
     lower, middle, or upper side bins are to be calculated.
     """
     
-    if edge == 'lower' :
+    if edge == 'left' :
         offset = 0.
     elif edge == 'middle' :
         offset = spacing/2.0
-    elif edge == 'upper' :
+    elif edge == 'right' :
         offset = float(spacing)
     else :
-        raise ValueError("Argument edge must be either 'lower', 'middle' or "
-                         "'upper'")
+        raise ValueError("Argument edge must be either 'left', 'middle' or "
+                         "'right'")
+    shape = int(shape)
     
     bins = (spacing * sp.arange(-shape/2.0, shape/2.0, dtype=float)
             + centre + offset)
