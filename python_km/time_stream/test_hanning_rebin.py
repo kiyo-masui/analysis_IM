@@ -27,7 +27,7 @@ class TestFunctions(unittest.TestCase) :
 
     def test_hanning_data_changed(self) :
         """Copy the data, see that we did something."""
-        hanning.do_hanning(self.Data)
+        hanning.hanning_smooth(self.Data)
         # For lack of anything better to test:
         self.Data.verify()
         # Make sure we actually did something.

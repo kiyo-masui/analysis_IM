@@ -14,13 +14,12 @@ class ExampleProcessor(base_single.BaseSingle) :
 
     action = nothing_to_do
     params_init = {'a_parameter': 'not much'}
-    feedback = 0 # suppresses feedback for testing
     prefix = 'nt_'
 
 
 input_parameters = {
           'nt_input_root' : './testfile_GBTfits',
-          'nt_file_middles' : (""),
+          'nt_file_middles' : ("",),
           'nt_input_end' : ".fits",
           'nt_output_root' : "./temp_test_",
           'nt_output_end' : ".fits",
@@ -33,9 +32,9 @@ input_parameters = {
 class TestBasicUsage(unittest.TestCase) :
     
     def test_runs(self) :
-        ExampleProcessor(input_parameters).execute()
+        ExampleProcessor(input_parameters, feedback=0).execute()
         Reader = fitsGBT.Reader('temp_test_.fits', feedback=0)
-        Data = Reader.read(0, 0)
+        Data = Reader.read(1, 1)
         self.assertTrue(Data.history.has_key('001: Did Nothing.'))
         self.assertEqual(Data.history['001: Did Nothing.'][0], 'nothing')
 

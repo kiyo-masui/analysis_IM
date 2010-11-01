@@ -42,14 +42,29 @@ class BaseSingle(object) :
     See module doc-string for detailed information.
     """
     
+    # Here are the things that should be overwritten by a class inheriting
+    # from this one.
+    
+    # Parameters additional to the above base_params
     params_init = {}
-    feedback = 2
+    # Prefixes to parameter names in input files.  Should be unique amoung
+    # analysis modules.
     prefix = 'bs_'
+    # Message to print after reading a file. Nothing printed if attribute is
+    # missing.
+    # feedback_title = 'What was done this Data Block: '
+    # What will acctually be done.
     def action(self, Data) :
         Data.add_history('Did Nothing.')
+        # Messages to print this iteration.
+        self.block_feedback = 'Did nothing.'
         return Data
+    # Don't worry too much about the feedback stuff; it's safe to ignore it.
+    # If you want to see feedback in action loof at time_stream/flag_data.py.
 
-    def __init__(self, parameter_file_or_dict) :
+    # Don't overwrite these in derivative classes.
+    def __init__(self, parameter_file_or_dict, feedback=2) :
+        self.feedback = feedback
         
         # Add any parameters added by any class that inherits from this one.
         params_init = dict(base_params)
@@ -64,11 +79,8 @@ class BaseSingle(object) :
         """Process all data."""
 
         params = self.params
-        # Figure out the directory we are writing to and make it if need be.
-        last_slash = params['output_root'].rfind('/')
-        if last_slash > 0 : # Protect against last_slash == -1 or 0.
-            outdir = params['output_root'][:last_slash]
-            utils.mkdir_p(outdir)
+        # Make parent directories if need be.
+        utils.mkparents(params['output_root'])
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
                                prefix=self.prefix)
 
@@ -82,19 +94,59 @@ class BaseSingle(object) :
             
             # Read in the data, and loop over data blocks.
             Reader = fitsGBT.Reader(input_fname, feedback=self.feedback)
-            Blocks = Reader.read(params['scans'], params['IFs'])
-            for Data in Blocks :
-                # Now process the data.
-                NewData = self.action(Data)
-                # Chances are NewData is just a reference to Data.  To avoid
-                # confusion, delete the old reference.
-                del Data
-
-                # Check that the data is valid and add it to the writer.
-                NewData.verify()
-                Writer.add_data(NewData)
-
+            if hasattr(self, 'feedback_title') and self.feedback > 1:
+                print self.feedback_title,
+            # Get the number of scans if asked for all of them.
+            scan_inds = params['scans']
+            if len(scan_inds) == 0 or scan_inds is None :
+                scan_inds = range(len(Reader.scan_set))
+            # Loop over scans.
+            for thisscan in scan_inds :
+                Blocks = Reader.read(thisscan, params['IFs'])
+                
+                # Function that loops over DataBlocks within a scan.
+                NewBlocks = self.scan_action(Blocks)
+                del Blocks
+                Writer.add_data(NewBlocks)
+            
+            # Go to a new line if we are printing statistics.
+            if hasattr(self, 'feedback_title') and self.feedback > 1:
+                    print ''
             # Finally write the data back to file.
             Writer.write(output_fname)
+    
+    # This part of the loop has been split off to make window stitching easier
+    # since IF stitching operates on all the IFs in a scan at the same time.
+    # IF stitching will overwrite this function instead of action.
+    def scan_action(self, scan_blocks) :
+        """scan_blocks is a tuple of DataBlocks all from the same scan."""
+        
+        out_data = ()
+        for Data in scan_blocks :
+            # Now process the data.
+            NewData = self.action(Data)
+            # Chances are NewData is just a reference to Data.  To avoid
+            # confusion, delete the old reference.  This is just paranoia.
+            del Data
+
+            # If this module sets some feedback statistics, print the statistic
+            # but don't go to a new line.
+            if hasattr(self, 'block_feedback') and self.feedback > 1:
+                print self.block_feedback,
+
+            # Check that the data is valid and add it to the writer.
+            NewData.verify()
+
+            out_data = out_data + (NewData,)
+
+        return out_data
+
+
+
+
+
+
+
+       
 
         

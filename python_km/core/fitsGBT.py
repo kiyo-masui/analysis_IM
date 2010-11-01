@@ -9,6 +9,7 @@ import numpy.ma as ma
 import pyfits
 
 import kiyopy.custom_exceptions as ce
+import kiyopy.utils as ku
 import data_block as db
 
 # Here we list the fields that we want to track.  The fields listed below will
@@ -97,7 +98,7 @@ class Reader() :
 
         self.fname = fname
         if self.feedback > 0 :
-            print "Opened GBT fits file: \n ", fname
+            print "Opened GBT fits file: \n ", ku.abbreviate_file_path(fname)
 
         # The passed file name is assumed to be a GBT spectrometer fits file.
         self.hdulist = pyfits.open(self.fname, 'readonly')
@@ -267,11 +268,7 @@ class Reader() :
                     Data_sif.history = dict(self.history)
                 else :
                     self.set_history(Data_sif)
-                    split_fname = self.fname.split('/')
-                    if len(split_fname) > 1 :
-                        fname_abbr = split_fname[-2] + '/' + split_fname[-1]
-                    else :
-                        fname_abbr = self.fname
+                    fname_abbr = ku.abbreviate_file_path(self.fname)
                     Data_sif.add_history('Read from file.', ('File name: ' + 
                                          fname_abbr, ))
                     self.history = dict(Data_sif.history)
@@ -419,11 +416,7 @@ class Writer() :
         # Add the write history.
         hcard = pyfits.Card(card_hist, 'Written to file.')
         prihdu.header.ascardlist().append(hcard)
-        split_fname = file_name.split('/')
-        if len(split_fname) > 1 :
-            fname_abbr = split_fname[-2] + '/' + split_fname[-1]
-        else :
-            fname_abbr = file_name
+        fname_abbr = ku.abbreviate_file_path(file_name)
         dcard = pyfits.Card(card_detail, 'File name: ' + fname_abbr)
         prihdu.header.ascardlist().append(dcard)
 
@@ -431,5 +424,5 @@ class Writer() :
         hdulist = pyfits.HDUList([prihdu, tbhdu])
         hdulist.writeto(file_name, clobber=True)
         if self.feedback > 0 :
-            print 'Wrote data to file: ' + file_name
+            print 'Wrote data to file: ' + fname_abbr
 

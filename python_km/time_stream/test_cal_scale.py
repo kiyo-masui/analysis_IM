@@ -18,7 +18,7 @@ class TestCalScale(unittest.TestCase) :
         self.Data = self.Reader.read(1,0)
 
     def test_scale(self) :
-        hanning.do_hanning(self.Data)
+        hanning.hanning_smooth(self.Data)
         rebin_freq.rebin(self.Data, 2.)
         cal_scale.scale_by_cal(self.Data)
         data = self.Data.data
@@ -42,13 +42,39 @@ class TestCalScale(unittest.TestCase) :
 
     def test_subtracts_baseline(self) :
         rebin_freq.rebin(self.Data, 1.0)
-        cal_scale.scale_by_cal(self.Data, True)
+        cal_scale.scale_by_cal(self.Data, sub_med=True)
         data = self.Data.data
         self.assertTrue(ma.allclose(ma.median(data, 0), 0.))
         # The following fails if you get rid of the rebin line, but in the 7th
         # digit.  Numpy must have only single precision somewhere.
         #self.assertAlmostEqual(ma.median(data[:,0,0,753]), 0.)
-        self.assertAlmostEqual(ma.median(data), 0.) 
+        self.assertAlmostEqual(ma.median(data), 0.)
+
+    def test_fave_scale(self) :
+        hanning.hanning_smooth(self.Data)
+        rebin_freq.rebin(self.Data, 2.)
+        cal_scale.scale_by_cal(self.Data, False, True, False)
+        data = self.Data.data
+
+        self.assertTrue(ma.allclose(ma.mean(data[:,0,0,:] -
+                                              data[:,0,1,:], -1), 1.0))
+        self.assertTrue(ma.allclose(ma.mean(data[:,3,0,:] -
+                                              data[:,3,1,:], -1), 1.0))
+
+    def test_both_scale(self) :
+        data = self.Data.data
+        # linear so median = mean
+        gt = 0.5*sp.arange(10) + 3.
+        gf = sp.cos(0.01*sp.arange(2048)) + 4
+        data[:,:,1,:] = 0
+        # explicit phase closure: 2 = sqrt(4*1)
+        data[:,0,0,:] = gt[:,sp.newaxis]*gf
+        data[:,3,0,:] = gt[:,sp.newaxis]*gf*4
+        data[:,1,0,:] = gt[:,sp.newaxis]*gf*2
+        data[:,2,0,:] = gt[:,sp.newaxis]*gf*2
+        cal_scale.scale_by_cal(self.Data, True, True, False)
+        self.assertTrue(ma.allclose(data[:,:,0,:], 1.))
+        self.assertTrue(ma.allclose(data[:,:,1,:], 0.))
 
     def tearDown(self) :
         del self.Reader

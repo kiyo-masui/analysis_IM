@@ -13,12 +13,12 @@ class Hanning(base_single.BaseSingle) :
 
     prefix = 'ha_'
 
-    def action(self, Data):
-        do_hanning(Data)
+    def action(self, Data) :
+        hanning_smooth(Data)
         Data.add_history('Hanning smoothed.')
         return Data
 
-def do_hanning(Data) :
+def hanning_smooth(Data) :
     """Perform Hanning smoothing.
 
     This function accepts a DataBlock class and returns nothing.  It changes

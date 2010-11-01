@@ -15,7 +15,7 @@ file_middles = ("testfile_GBTfits",)
 base_dir = './'
 out_root = base_dir + 'testoutput_'
 
-from time_stream import hanning #, coarse_grain
+from time_stream import hanning
 pipe_modules.append(hanning.Hanning)
 ha_input_root = base_dir
 ha_file_middles = file_middles
@@ -25,11 +25,23 @@ ha_output_end = ".testhanning.fits"
 ha_scans = ()
 ha_IFs = ()
 
+from time_stream import flag_data
+pipe_modules.append(flag_data.FlagData)
+fd_input_root = out_root
+fd_file_middles = file_middles
+fd_input_end = ha_output_end
+fd_output_root = out_root
+fd_output_end = ".testflag.fits"
+fd_scans = ()
+fd_IFs = ()
+fd_sigma_thres = 5
+fd_pol_thres = 15
+
 from time_stream import rebin_freq
 pipe_modules.append(rebin_freq.RebinFreq)
 rf_input_root = out_root
 rf_file_middles = file_middles
-rf_input_end = ha_output_end
+rf_input_end = fd_output_end
 rf_output_root = out_root
 rf_output_end = '.testrebin.fits'
 rf_scans = ()

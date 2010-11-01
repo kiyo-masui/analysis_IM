@@ -9,6 +9,7 @@ import numpy.ma as ma
 import pyfits
 
 import kiyopy.custom_exceptions as ce
+import kiyopy.utils as ku
 
 card_hist = 'DB-HIST'
 card_detail = 'DB-DET'
@@ -54,7 +55,8 @@ def write(Map, file_name, feedback=2) :
             prihdu.header.ascardlist().append(dcard)
     hcard = pyfits.Card(card_hist, 'Written to file.')
     prihdu.header.ascardlist().append(hcard)
-    dcard = pyfits.Card(card_detail, 'File name: ' + file_name)
+    dcard = pyfits.Card(card_detail, 'File name: ' + 
+                        ku.abbreviate_file_path(file_name))
     prihdu.header.ascardlist().append(dcard)
     
     # Creat an image HDU.
@@ -73,6 +75,6 @@ def write(Map, file_name, feedback=2) :
     hdulist = pyfits.HDUList([prihdu, imhdu])
     hdulist.writeto(file_name, clobber=True)
     if feedback > 0 :
-        print 'Wrote data to file: ' + file_name
+        print 'Wrote data to file: ' + ku.abbreviate_file_path(file_name)
 
 
