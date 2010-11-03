@@ -30,7 +30,7 @@ base_params = {
                'file_middles' : ("testfile_GBTfits",),
                'input_end' : ".fits",
                'output_root' : "./",
-               'output_end' : ".fits",
+               'output_end' : ".testout.fits",
                # What data to process within each file.
                'scans' : (),
                'IFs' : ()
@@ -53,7 +53,8 @@ class BaseSingle(object) :
     # Message to print after reading a file. Nothing printed if attribute is
     # missing.
     # feedback_title = 'What was done this Data Block: '
-    # What will acctually be done.
+    # What will acctually be done. A function names action whose argument and
+    # return value are each DataBlock objects.
     def action(self, Data) :
         Data.add_history('Did Nothing.')
         # Messages to print this iteration.
@@ -63,7 +64,7 @@ class BaseSingle(object) :
     # If you want to see feedback in action loof at time_stream/flag_data.py.
 
     # Don't overwrite these in derivative classes.
-    def __init__(self, parameter_file_or_dict, feedback=2) :
+    def __init__(self, parameter_file_or_dict=None, feedback=2) :
         self.feedback = feedback
         
         # Add any parameters added by any class that inherits from this one.
@@ -141,12 +142,3 @@ class BaseSingle(object) :
 
         return out_data
 
-
-
-
-
-
-
-       
-
-        

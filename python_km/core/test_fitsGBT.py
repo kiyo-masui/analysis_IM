@@ -108,12 +108,6 @@ class TestReaderGetIFScanInds(unittest.TestCase) :
         self.FileProcessor.fitsdata.field('CRVAL4')[inds[1,2,1]] = '-8'
         self.assertRaises(ce.DataError, self.FileProcessor.get_scan_IF_inds,
                           0, 0)
-        # Mess up time ordering in yet another scan, IF.
-        inds = self.FileProcessor.get_scan_IF_inds(1, 0)
-        self.FileProcessor.fitsdata.field('LST')[inds[4,:,:]] = '100'
-        self.FileProcessor.fitsdata.field('LST')[inds[6,:,:]] = '100'
-        self.assertRaises(ce.DataError, self.FileProcessor.get_scan_IF_inds,
-                          1, 0)
         # Keep times in order but make one them slightly off.
         inds = self.FileProcessor.get_scan_IF_inds(0, 1)
         self.FileProcessor.fitsdata.field('LST')[inds[4,0,0]] = \

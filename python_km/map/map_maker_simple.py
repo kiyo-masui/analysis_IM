@@ -95,8 +95,10 @@ class MapMaker(object) :
                     Map = data_map.DataMap(ma.zeros(shape, dtype=float))
                     # Copy some data over that all the data_blocks should have
                     # in common.
-                    Map.set_field('RA', ra_bins, ('long',), '1E') 
-                    Map.set_field('DEC', dec_bins, ('lat',), '1E')
+                    # Do not copy RA and DEC to the map, since they cannot be
+                    # stored in the fits file.
+                    #Map.set_field('RA', ra_bins, ('long',), '1E') 
+                    #Map.set_field('DEC', dec_bins, ('lat',), '1E')
                     Map.history = Data.history
                     for key in fields_to_copy :
                         Map.set_field(key, Data.field[key], 

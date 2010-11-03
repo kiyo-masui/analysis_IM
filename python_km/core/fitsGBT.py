@@ -10,6 +10,7 @@ import pyfits
 
 import kiyopy.custom_exceptions as ce
 import kiyopy.utils as ku
+import base_fits as bf
 import data_block as db
 
 # Here we list the fields that we want to track.  The fields listed below will
@@ -23,8 +24,9 @@ import data_block as db
 # The only field that is allowed to vary over the 'freq' axis right now is
 # 'DATA' (not listed below since it is always read).
 
-# Right now there is no support for adding your own fields and not crashing
-# initial data reads.  However this wouldn't be hard to add.  Talk to Kiyo.
+# If you find that there are other fields you need that are not on this list,
+# feel free to add them.  This should not create an problems with other
+# people's code.
 
 # For a description of the fields:
 #    https://safe.nrao.edu/wiki/bin/view/Main/SdfitsDetails
@@ -61,7 +63,7 @@ card_hist = 'DB-HIST'
 card_detail = 'DB-DET'
 
 
-class Reader() :
+class Reader(object) :
     """Class that opens a GBT Spectrometer Fits file and reads data.
 
     This class opens the a GBT Fits File upon initialization and closes it upon
@@ -166,16 +168,6 @@ class Reader() :
                         [inds_sif[ii,:,:]] - thisLST, 0)) :
                     raise ce.DataError("LST change across cal or pol in file: "
                                        + self.fname)
-                if lastLST > thisLST :
-                    # Rollover at 86400 is normal.
-                    if lastLST > 86395 and thisLST < 5 :
-                        raise ce.NotImplementedError("LST roll over. Normal "
-                                        "but not supported yet.") 
-                    else :
-                        raise ce.DataError("Times not in perfect order in "
-                                           "file: " + self.fname)
-                lastLST=thisLST
-            del tmp
 
         return inds_sif
 
@@ -249,6 +241,9 @@ class Reader() :
                 # Now iterate over the fields and add them
                 # to the data block.
                 for field, axis in fields_and_axes.iteritems() :
+                    # See if this fits file has the key we are looking for.
+                    if not field in self.fitsdata._names :
+                        continue
                     # First get the 'FITS' format string.
                     field_format = self.hdulist[1].columns.formats[
                                 self.hdulist[1].columns.names.index(field)]
@@ -265,13 +260,14 @@ class Reader() :
                         Data_sif.set_field(field, self.fitsdata.field(field)
                             [inds_sif[0,0,0]], axis, field_format)
                 if hasattr(self, 'history') :
-                    Data_sif.history = dict(self.history)
+                    Data_sif.history = db.History(self.history)
                 else :
-                    self.set_history(Data_sif)
+                    self.history =bf.get_history_header(self.hdulist[0].header)
+                    #self.set_history(Data_sif)
                     fname_abbr = ku.abbreviate_file_path(self.fname)
-                    Data_sif.add_history('Read from file.', ('File name: ' + 
+                    self.history.add('Read from file.', ('File name: ' + 
                                          fname_abbr, ))
-                    self.history = dict(Data_sif.history)
+                    Data_sif.history = db.History(self.history)
                 Data_sif.verify()
                 output = output + (Data_sif, )
         if len(output) == 1 :
@@ -331,9 +327,9 @@ class Writer() :
         Block.verify()
         # Merge the histories
         if self.first_block_added :
-            self.history = Block.history
+            self.history = db.History(Block.history)
         else :
-            self.history = db.merge_histories(self.history, Block) 
+            self.history = db.merge_histories(self.history, Block)
         # Some dimensioning and such
         dims = tuple(Block.dims)
         n_records = dims[0]*dims[1]*dims[2]
@@ -354,8 +350,8 @@ class Writer() :
             self.data = sp.concatenate((self.data, data.reshape((
                                         n_records, dims[3]))), axis=0)
 
-        # Now get all the tracked fields
-        for field, axes in fields_and_axes.iteritems() :
+        # Now get all stored fields for writing out.
+        for field, axes in Block.field_axes.iteritems() :
             # Need to expand the field data to the full ntimes x npol x ncal
             # length (with lots of repitition).  We will use np broadcasting.
             broadcast_shape = [1,1,1]
@@ -402,23 +398,11 @@ class Writer() :
         # primary.
         tbhdu = pyfits.new_table(coldefs)
         prihdu = pyfits.PrimaryHDU()
-        # Add history to the primary.
-        history_keys  = self.history.keys()
-        history_keys.sort()
-        for hist in history_keys :
-            details = self.history[hist]
-            # Chop off the number, since the are already sorted.
-            hcard = pyfits.Card(card_hist, hist[5:])
-            prihdu.header.ascardlist().append(hcard)
-            for detail in details :
-                dcard = pyfits.Card(card_detail, detail)
-                prihdu.header.ascardlist().append(dcard)
         # Add the write history.
-        hcard = pyfits.Card(card_hist, 'Written to file.')
-        prihdu.header.ascardlist().append(hcard)
         fname_abbr = ku.abbreviate_file_path(file_name)
-        dcard = pyfits.Card(card_detail, 'File name: ' + fname_abbr)
-        prihdu.header.ascardlist().append(dcard)
+        self.history.add('Written to file.', ('File name: ' + fname_abbr,))
+        # Add the history to the header.
+        bf.write_history_header(prihdu.header, self.history)
 
         # Combine the HDUs and write to file.
         hdulist = pyfits.HDUList([prihdu, tbhdu])

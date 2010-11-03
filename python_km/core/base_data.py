@@ -25,15 +25,15 @@ class BaseData(object) :
         # 'time' axis.  axes['LST'] should thus be ('time') and
         # shape(field['LST']) should be (ntimes, ).
         self.field_axes = {}
+        # To write data to fits you need a fits format for each field.
+        self.field_formats = {}
         # Dictionary that holds the history of this data.  It's keys are
         # history entries for hte data.  They must be strings starting with a
         # three digit integer ennumerating the histories.  The corresponding
         # values give additional details, held in a tuple of strings.  The
         # intension is that when merging data, histories must be identical, but
         # details can be merged.
-        self.history = {}
-        # To write data to fits you need a fits format for each field.
-        self.field_formats = {}
+        self.history = History()
 
         if data is None :
             self.data = ma.zeros(tuple(sp.zeros(len(self.axes))), float)
@@ -137,9 +137,21 @@ class BaseData(object) :
             raise ce.DataError("Dictionaries 'field', 'field_axes' and "
                                "field_formats must have the same keys.")
 
-    def add_history(self, history_entry, details = ()) :
+    def add_history(self, history_entry, details=()) :
         """Adds a history entry."""
         
+        self.history.add(history_entry, details=details)
+
+    def print_history(self) :
+        """print_history function called on self.history."""
+
+        self.history.display()
+
+class History(dict) :
+    """Class that contains the history of a piece of data."""
+
+    def add(self, history_entry, details=()) :
+
         local_details = details
         # Input checks.
         if len(history_entry) > 70 :
@@ -155,16 +167,21 @@ class BaseData(object) :
             if len(detail) > 70 :
                 raise ValueError('History details limited to 70 characters.')
 
-        n_entries = len(self.history)
+        n_entries = len(self)
         # '+' operator performs input type check.
         hist_str = ('%03d: ' % n_entries) + history_entry
-        self.history[hist_str] = tuple(local_details)
+        self[hist_str] = tuple(local_details)
 
-    def print_history(self) :
-        """print_history function called on self.history."""
-
-        print_history(self.history)
-
+    def display(self) :
+        """Prints the data history in human readable format."""
+    
+        history_keys = self.keys()
+        history_keys.sort()
+        for history in history_keys :
+            details = self[history]
+            print history
+            for detail in details :
+                print '    ' + detail
 
 def merge_histories(*args) :
     """Merges DataBlock histories.
@@ -173,37 +190,24 @@ def merge_histories(*args) :
     history dictionary that is a merger of the two.  History keys must match; 
     details are added."""
     
-    if type(args[0]) is dict :
-        history = args[0]
+    if hasattr(args[0], 'history') :
+        history = History(args[0].history)
     else :
-        history = args[0].history
-    try :
-        for ii in range(1, len(args)) :
-            if type(args[ii]) is dict :
-                thishistory = args[ii]
-            else :
-                thishistory = args[ii].history
-            for entry, details in thishistory.iteritems() :
-                for detail in details :
+        history = History(args[0])
+    for ii in range(1, len(args)) :
+        if hasattr(args[ii], 'history') :
+            thishistory = args[ii].history
+        else :
+            thishistory = args[ii]
+        for entry, details in thishistory.iteritems() :
+            for detail in details :
+                try :
                     if not detail in history[entry] :
                         history[entry] = history[entry] + (detail, )
-    except KeyError :
-        raise ce.DataError("Histories to be merged must have identical keys.")
+                except KeyError :
+                    raise ce.DataError("Histories to be merged must have"
+                                           " identical keys.")
     
     return history
-
-
-def print_history(hist) :
-    """Prints the data history in human readable format."""
-    
-    history_keys = hist.keys()
-    history_keys.sort()
-    for history in history_keys :
-        details = hist[history]
-        print history
-        for detail in details :
-            print '    ' + detail
-        
-
 
 

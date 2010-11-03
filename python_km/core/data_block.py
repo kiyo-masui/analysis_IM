@@ -61,6 +61,4 @@ class DataBlock(base_data.BaseData) :
 
 merge_histories = base_data.merge_histories
 
-
-print_history = base_data.print_history
-
+History = base_data.History

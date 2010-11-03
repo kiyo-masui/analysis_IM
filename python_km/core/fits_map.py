@@ -8,6 +8,9 @@ import scipy as sp
 import numpy.ma as ma
 import pyfits
 
+import data_map
+import base_fits as bf
+import base_data
 import kiyopy.custom_exceptions as ce
 import kiyopy.utils as ku
 
@@ -15,7 +18,7 @@ card_hist = 'DB-HIST'
 card_detail = 'DB-DET'
 
 # List of fields that should be read an written to fits files.  Since this is
-# an image, they are always scalars, never arrays.  The are stored int he
+# an image, they are always scalars, never arrays.  They are stored in the
 # header, not with the image.
 fields = (
           'BANDWID',
@@ -43,21 +46,12 @@ def write(Map, file_name, feedback=2) :
     # First create a primary with the history and such:
     prihdu = pyfits.PrimaryHDU()
     # Add history to the primary.
-    history_keys  = Map.history.keys()
-    history_keys.sort()
-    for hist in history_keys :
-        details = Map.history[hist]
-        # Chop off the number, since they are already sorted.
-        hcard = pyfits.Card(card_hist, hist[5:])
-        prihdu.header.ascardlist().append(hcard)
-        for detail in details :
-            dcard = pyfits.Card(card_detail, detail)
-            prihdu.header.ascardlist().append(dcard)
-    hcard = pyfits.Card(card_hist, 'Written to file.')
-    prihdu.header.ascardlist().append(hcard)
-    dcard = pyfits.Card(card_detail, 'File name: ' + 
-                        ku.abbreviate_file_path(file_name))
-    prihdu.header.ascardlist().append(dcard)
+    fname_abbr = ku.abbreviate_file_path(file_name)
+    
+    # Add final history entry and store in the primary header.
+    history = base_data.History(Map.history)
+    history.add('Written to file.', 'File name: ' + fname_abbr)
+    bf.write_history_header(prihdu.header, history)
     
     # Creat an image HDU.
     map = sp.array(ma.filled(Map.data, float('nan')))
@@ -75,6 +69,33 @@ def write(Map, file_name, feedback=2) :
     hdulist = pyfits.HDUList([prihdu, imhdu])
     hdulist.writeto(file_name, clobber=True)
     if feedback > 0 :
-        print 'Wrote data to file: ' + ku.abbreviate_file_path(file_name)
+        print 'Wrote data to file: ' + fname_abbr
+
+
+def read(file_name, feedback=2) :
+    """Read a map from an image fits file.
+    """
+    
+    fname_abbr = ku.abbreviate_file_path(file_name)
+    if feedback > 0 :
+        print 'Opening file: ' + fname_abbr
+    # Open the fits file.
+    hdulist = pyfits.open(file_name)
+    data = hdulist[1].data
+
+    history = bf.get_history_header(hdulist[0].header)
+    history.add('Read from file.', 'File name: ' + fname_abbr)
+
+    # Set the data attriute
+    Map = data_map.DataMap()
+    Map.set_data(sp.swapaxes(data,0,2))
+    Map.history = history
+
+    # Set the other fields.
+    for field_name in fields :
+        value = hdulist[1].header[field_name]
+        Map.set_field(field_name, value)
+
+    return Map
 
 
