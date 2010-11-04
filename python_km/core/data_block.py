@@ -1,9 +1,11 @@
 """This module contains the class that holds an IF and scan of GBT data"""
 
 import scipy as sp
+import matplotlib as plt
 
 import utils
 import base_data
+
 
 class DataBlock(base_data.BaseData) :
     """Class that holds an single IF and scan of GBT data.
@@ -55,6 +57,11 @@ class DataBlock(base_data.BaseData) :
         self.freq = ((sp.arange(self.dims[-1], dtype=float) + 1.0 - 
                      self.field['CRPIX1'])*self.field['CDELT1'] + 
                      self.field['CRVAL1'])
+
+    def plot_spectra(self, times=(), pols=(), cals=(), time_average=False) :
+        """Make a plot along frequency axis."""
+
+        # 
 
 
 # Clone some extra functions:
