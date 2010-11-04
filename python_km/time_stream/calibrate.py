@@ -13,8 +13,9 @@ class Calibrate(base_single.BaseSingle) :
     up in units of acctual temperature (K).
     """
     
-    prefix = 'cl'
+    prefix = 'cl_'
     params_init = {
+                   #TODO: Have a real default (like a test file).
                    'cal_temperture_files' : ('some_file_name.fits',)
                    }
 

@@ -60,7 +60,6 @@ class DataBlock(base_data.BaseData) :
 
     def plot_spectra(self, times=(), pols=(), cals=(), time_average=False) :
         """Make a plot along frequency axis."""
-
         # 
 
 

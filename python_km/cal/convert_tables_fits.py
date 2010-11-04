@@ -16,8 +16,8 @@ data_file_name = (os.getenv('GBT10B_DATA') +
 
 # Where I saved Kevin's Tables.
 kevin_table_dir = os.getenv('GBT10B_OUT') + '/kevin_cal/'
-out_file = kevin_table_dir + 'kevin_cal.fits'
-input_root = kevin_table_dir + 'noisecal_'
+out_file = kevin_table_dir + 'cal_21.fits'
+input_root = kevin_table_dir + '21_3c48_113-116_noisecal_'
 Writer = fitsGBT.Writer()
 
 Reader = fitsGBT.Reader(data_file_name)

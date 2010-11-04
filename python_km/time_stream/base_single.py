@@ -18,7 +18,6 @@ Check out the unit tests for examples.
 
 from kiyopy import parse_ini, utils
 #from kiyopy import custom_exceptions as ce
-
 from core import data_block
 from core import fitsGBT
 
