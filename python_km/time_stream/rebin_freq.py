@@ -39,10 +39,10 @@ def rebin(Data, width, mean=False) :
     # Extra bit on the bandwidth is because frequency labels are channel centre.
     bandwidth = abs(freq[-1] - freq[0]) + abs(Data.field['CDELT1'])
     nbins = int(bandwidth//width)
-    new_centre = nbins//2
+    new_centre = int((Data.field['CRPIX1']-1)*abs(Data.field['CDELT1'])/width)
     new_dims = Data.dims[0:-1] + (nbins, )
     # Get old data and allowcate memory for new data.
-    old_data = ma.array(Data.data)
+    old_data = ma.array(Data.data, copy=True)
     Data.set_data(ma.zeros(new_dims))
     # Input tells us mean or median.
     if mean :

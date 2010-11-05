@@ -44,7 +44,7 @@ class BaseData(object) :
     def set_data(self, data) :
         """Set the data to passed array."""
         # Feel free to play around with the precision.
-        self.data = ma.array(data, dtype=sp.float64)
+        self.data = ma.array(data, dtype=sp.float64, copy=True)
         self.data_set = True
         self.dims = sp.shape(data)
 

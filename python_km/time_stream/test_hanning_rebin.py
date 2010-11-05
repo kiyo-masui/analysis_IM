@@ -1,4 +1,4 @@
-"""Unit tests for preprocess module."""
+"""Unit tests for hanning a rebin_freq modules."""
 
 import unittest
 import copy
