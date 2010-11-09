@@ -52,7 +52,7 @@ def rebin(Data, width, mean=False) :
 
     new_freq = Data.field['CRVAL1'] + new_cdelt*(sp.arange(nbins) - new_centre)
     for ii in range(1,nbins-1) :
-        inds, = sp.where(sp.logical_and(
+        inds = (sp.logical_and(
                     abs(freq - new_freq[ii]) <= abs(freq - new_freq[ii+1]),
                     abs(freq - new_freq[ii]) < abs(freq - new_freq[ii-1]) ))
         subdata = (old_data[:,:,:,inds])

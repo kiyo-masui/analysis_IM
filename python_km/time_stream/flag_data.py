@@ -28,6 +28,9 @@ class FlagData(base_single.BaseSingle) :
         new_flags = ma.count_masked(Data.data) - already_flagged
         self.block_feedback = str(new_flags) + ', '
 
+        Data.add_history('Flagged Bad Data.', ('Sigma threshold: ' +
+                    str(self.params['sigma_thres']), 'Polarization threshold: '
+                    + str(self.params['pol_thres'])))
         return Data
 
 

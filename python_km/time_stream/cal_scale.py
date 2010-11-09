@@ -78,8 +78,11 @@ def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False) :
     if scale_t_ave :
         # Find the cal medians (in time) and scale by them.
         cal_tmed_xx = ma.median(diff_xx, 0)
-        Data.data[:,xx_ind,:,:] /= cal_tmed_xx
         cal_tmed_yy = ma.median(diff_yy, 0)
+        cal_tmed_xx[sp.logical_or(cal_tmed_xx<=0, cal_tmed_yy<=0)] = ma.masked
+        cal_tmed_yy[cal_tmed_xx.mask] = ma.masked
+        
+        Data.data[:,xx_ind,:,:] /= cal_tmed_xx
         Data.data[:,yy_ind,:,:] /= cal_tmed_yy
         Data.data[:,xy_inds,:,:] /= ma.sqrt(cal_tmed_yy*cal_tmed_xx)
     
@@ -87,27 +90,33 @@ def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False) :
         # The frequency gains have have systematic structure to them, they are
         # not by any approximation gaussian distributed.  Use means, not
         # medians across frequency.
-        # Unless we have already scaled by the time average, which would take
-        # out all the frequency structure.
-        if scale_t_ave :
-            operation = ma.median
-        else :
-            operation = ma.mean
+        operation = ma.mean
         cal_fmea_xx = operation(diff_xx, -1)
+        cal_fmea_yy = operation(diff_yy, -1)
+        
+        # Flag data with wierd cal power.  Still Experimental.
+        cal_fmea_xx[sp.logical_or(cal_fmea_xx<=0,cal_fmea_yy<=0)] = ma.masked
+        cal_fmea_yy[cal_fmea_xx.mask] = ma.masked
+        cal_xx = ma.mean(cal_fmea_xx)
+        cal_yy = ma.mean(cal_fmea_yy)
+        cal_fmea_xx[sp.logical_or(abs(cal_fmea_xx.anom()) >= 0.1*cal_xx,
+                            abs(cal_fmea_yy.anom()) >= 0.1*cal_yy)] = ma.masked
+        cal_fmea_yy[cal_fmea_xx.mask] = ma.masked
+        
         ntime = len(cal_fmea_xx)
         cal_fmea_xx.shape = (ntime, 1, 1)
-        Data.data[:,xx_ind,:,:] /= cal_fmea_xx
-        cal_fmea_yy = operation(diff_yy, -1)
         cal_fmea_yy.shape = (ntime, 1, 1)
+        Data.data[:,xx_ind,:,:] /= cal_fmea_xx
         Data.data[:,yy_ind,:,:] /= cal_fmea_yy
         cal_fmea_xx.shape = (ntime, 1, 1, 1)
         cal_fmea_yy.shape = (ntime, 1, 1, 1)
         Data.data[:,xy_inds,:,:] /= ma.sqrt(cal_fmea_yy*cal_fmea_xx)
+        
 
     if scale_f_ave and scale_t_ave :
         # We have devided out t_cal twice so we need to put one factor back in.
-        cal_xx = ma.median(cal_tmed_xx)
-        cal_yy = ma.median(cal_tmed_yy)
+        cal_xx = operation(cal_tmed_xx)
+        cal_yy = operation(cal_tmed_yy)
         Data.data[:,xx_ind,:,:] *= cal_xx
         Data.data[:,yy_ind,:,:] *= cal_yy
         Data.data[:,xy_inds,:,:] *= ma.sqrt(cal_yy*cal_xx)

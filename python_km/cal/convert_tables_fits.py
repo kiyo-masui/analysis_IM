@@ -23,7 +23,7 @@ Writer = fitsGBT.Writer()
 Reader = fitsGBT.Reader(data_file_name)
 Blocks = Reader.read(0, ())
 
-required_fields = ('CRVAL1', 'CDELT1', 'CRPIX1')
+required_fields = ('CRVAL1', 'CDELT1', 'CRPIX1', 'SCAN')
 CalBlocks = ()
 
 # Loop over IFs and read in the appropriate cal data.
@@ -36,6 +36,7 @@ for Data in Blocks :
 
     CalT.set_field('CAL', ['R'], ('cal',), '1A')
     CalT.set_field('CRVAL4', [-5, -6], ('pol',), '1I')
+    CalT.set_field('LST', [3546.2], ('time',), '1D')
 
     freq_centre = int(round(Data.field['CRVAL1']/1.0e6)) # MHz
 

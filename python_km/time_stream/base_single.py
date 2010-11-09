@@ -102,7 +102,7 @@ class BaseSingle(object) :
                 scan_inds = range(len(Reader.scan_set))
             # Loop over scans.
             for thisscan in scan_inds :
-                Blocks = Reader.read(thisscan, params['IFs'])
+                Blocks = Reader.read(thisscan, params['IFs'], force_tuple=True)
                 
                 # Function that loops over DataBlocks within a scan.
                 NewBlocks = self.scan_action(Blocks)

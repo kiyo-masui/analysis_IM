@@ -192,7 +192,7 @@ class Reader(object) :
                 Block.add_history(hist_entry, details)
 
     
-    def read(self, scans=None, IFs=None) :
+    def read(self, scans=None, IFs=None, force_tuple=False) :
         """Read in data from the fits file.
 
         This method reads data from the fits file including the files history
@@ -209,6 +209,10 @@ class Reader(object) :
                 to process.  A list of integers with 0 coorsponding to the 
                 lowest frequency present. Default is all of them.
                 TODO : Overlapping frequency windows stiched together somehow.
+            force_tuple: By default, if there is only a single output Data
+                Block, it is returned not wraped in a tuple, but if we want to
+                loop over the output we can force the output to be a tuple,
+                even if it only has one element.
 
         Returns: Instance of the DataBlock class, or a tuple of these instances
         (if asked for multiple scans and IFs).
@@ -270,7 +274,7 @@ class Reader(object) :
                     Data_sif.history = db.History(self.history)
                 Data_sif.verify()
                 output = output + (Data_sif, )
-        if len(output) == 1 :
+        if len(output) == 1 and not force_tuple :
             return output[0]
         else :
             return output

@@ -35,6 +35,20 @@ class TestFunctions(unittest.TestCase) :
         # Make sure we didn't change other fields, like LST.
         self.assertTrue(sp.allclose(self.Data.field['LST'],
                         self.Data_copy.field['LST']))
+
+    def test_hanning_cases(self) :
+        data = self.Data.data
+        data[:,:,:,:] = 1.
+        data[5,2,1,631] = 4.
+        data[7,3,1,853] = ma.masked
+        hanning.hanning_smooth(self.Data)
+        self.assertTrue(data[7,3,1,853] is ma.masked)
+        self.assertTrue(data[7,3,1,852] is ma.masked)
+        self.assertTrue(data[7,3,1,854] is ma.masked)
+        self.assertAlmostEqual(data[5,2,1,631], 2.5)
+        self.assertAlmostEqual(data[5,2,1,630], 1.75)
+        self.assertAlmostEqual(data[5,2,1,632], 1.75)
+
     
     # TODO For Hanning:
     # Could test that end pointes end up masked.  Could test that points

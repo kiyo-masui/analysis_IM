@@ -18,13 +18,21 @@ pipe_modules = []
 #mm_field_centre = (325.0, 0.0)
 
 # Session 6, 1hr
-froot = '06_wigglez1hr_azel_'
-file_middles = ('140-147', '148-155', '156-163', '164-171', '172-179', 
-                '180-187', '188-195', '196-203', '204-211', '274-281', 
-                '282-289', '290-297', '298-305', '306-313', '314-321',
-                '322-329', '330-337', '338-345', '346-353', '354-361',
-                '362-369', '370-377', '378-385', '386-393')
-mm_field_centre = (12.0, 0.0)
+#froot = '06_wigglez1hr_azel_'
+#file_middles = ('140-147', '148-155', '156-163', '164-171', '172-179', 
+#                '180-187', '188-195', '196-203', '204-211', 
+#                '274-281', 
+#                '282-289', '290-297', '298-305', '306-313', '314-321',
+#                '322-329', '330-337', '338-345', '346-353', '354-361',
+#                '362-369', '370-377', '378-385' , '386-393'
+#                )
+# Session 12, 1hr
+froot = '12_wigglez1hr_azel_'
+file_middles = ( '9-16', '17-24', '25-32', '33-40', '41-48', '49-56', 
+                '57-64', '65-72', '73-80', '81-88', '89-96', '137-144', 
+                '145-152', '153-160', '161-168', '169-176', '177-184', 
+                '185-192')
+mm_field_centre = (13.0, 0.0)
 
 # Session 5, 15hr
 #froot = '05_wigglez15hr_azel_'
@@ -37,8 +45,8 @@ mm_field_centre = (12.0, 0.0)
 
 base_dir = os.getenv('GBT10B_OUT')
 raw_data_dir = os.getenv('GBT10B_DATA')
-prefix = 'first_'
-IFs = (7,)
+prefix = ''
+IFs = ()
 
 from time_stream import hanning 
 #pipe_modules.append(hanning.Hanning)
@@ -50,11 +58,24 @@ ha_output_end = ".fits"
 ha_scans = ()
 # All following steps will inherit this choice by default (because these are
 # the only IF's saved to the following fits files).
-ha_IFs = ()
+ha_IFs = IFs
+
+from time_stream import flag_data
+#pipe_modules.append(flag_data.FlagData)
+fd_input_root = ha_output_root
+fd_file_middles = file_middles
+fd_input_end = '.fits'
+fd_output_root = base_dir + 'flagged/' + prefix + froot
+fd_output_end = '.fits'
+fd_scans = ()
+fd_IFs = ()
+
+fd_sigma_thres = 5
+fd_pol_thres = 18
 
 from time_stream import rebin_freq
 #pipe_modules.append(rebin_freq.RebinFreq)
-rf_input_root = ha_output_root
+rf_input_root = fd_output_root
 rf_file_middles = file_middles
 rf_input_end = '.fits'
 rf_output_root = base_dir + 'rebinned/' + prefix + froot
@@ -65,9 +86,19 @@ rf_IFs = ()
 rf_channel_width = 2.0
 rf_mean_instead_median = False
 
+from time_stream import stitch_windows_crude
+pipe_modules.append(stitch_windows_crude.Stitch)
+sw_input_root = rf_output_root
+sw_file_middles = file_middles
+sw_input_end = '.fits'
+sw_output_root = base_dir + 'stitched/' + prefix + froot
+sw_output_end = '.fits'
+sw_scans = ()
+sw_IFs = ()
+
 from time_stream import cal_scale
-#pipe_modules.append(cal_scale.CalScale)
-cs_input_root = rf_output_root
+pipe_modules.append(cal_scale.CalScale)
+cs_input_root = sw_output_root
 cs_file_middles = file_middles
 cs_input_end = '.fits'
 cs_output_root = base_dir + 'cal_scaled/' + prefix + froot
@@ -76,25 +107,38 @@ cs_scans = ()
 cs_IFs = ()
 
 cs_scale_time_average = True
-cs_scale_freq_average = True
+cs_scale_freq_average = False
 cs_subtract_time_median = True
+
+from time_stream import calibrate
+pipe_modules.append(calibrate.Calibrate)
+cl_input_root = cs_output_root
+cl_file_middles = file_middles
+cl_input_end = '.fits'
+cl_output_root = base_dir + 'calibrated/' + prefix + froot
+cl_output_end = '.fits'
+cl_scans = ()
+cl_IFs = ()
+
+cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
 
 from map import map_maker_simple
 pipe_modules.append(map_maker_simple.MapMaker)
-mm_input_root = cs_output_root
+mm_input_root = cl_output_root
 mm_file_middles = file_middles
 mm_input_end = '.fits'
-mm_output_root = base_dir + 'maps/' + prefix + froot + 'IF7_'
+mm_output_root = base_dir + 'maps/' + prefix + froot 
 mm_output_end = 'map.fits'
 mm_scans = ()
-mm_IFs = IFs
+mm_IFs = (0,)
 
 mm_cal_weights = (1.0, 1.0)
 mm_pol_weights = (1.0, 0.0, 0.0, 1.0)
 #mm_field_centre = (325.0, 0.0) defined above where we choose the field.
-mm_map_shape = (40, 40)
+mm_map_shape = (50, 40)
 mm_pixel_spacing = 0.125
 
+# Not acctually nessisary, but good do do anyway.
 del file_middles
 del base_dir
 del froot

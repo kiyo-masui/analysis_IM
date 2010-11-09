@@ -19,7 +19,9 @@ class Stitch(base_single.BaseSingle) :
                    }
     
     def scan_action(self, scan_blocks) :
-        return stitch(scan_blocks)
+        Stiched = stitch(scan_blocks)
+        Stiched.add_history('Stiched Frequency windows together.')
+        return Stiched
 
 def stitch(blocks) :
     """Stitches to gether data blocks from different frequency windows.

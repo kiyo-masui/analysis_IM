@@ -8,6 +8,7 @@ from scipy import interpolate
 
 import kiyopy.custom_exceptions as ce
 import base_single
+from core import fitsGBT
 
 class Calibrate(base_single.BaseSingle) :
     """Pipeline module converts data from units of cal temperture to Kelvins.
@@ -21,15 +22,36 @@ class Calibrate(base_single.BaseSingle) :
     prefix = 'cl_'
     params_init = {
                    #TODO: Have a real default (like a test file).
-                   'cal_temperture_files' : ('some_file_name.fits',)
+                   'cal_temperature_files' : ('some_file_name.fits',)
                    }
+
+    def action(self, Data) :
+        """Calls multiply_by_cal.
+        
+        Reads in cal data file on first iteration and then applys the noise cal
+        temperature to the data.
+        """
+        
+        # On first iteration read in noise cal data and store it.
+        if not hasattr(self, 'CalData') :
+            file_names = self.params['cal_temperature_files']
+            if len(file_names) > 1 :
+                raise NotImplementedError('Can use a single calibration file'
+                                          ' at a time.')
+            Reader = fitsGBT.Reader(file_names[0], feedback=self.feedback)
+            self.CalData = Reader.read([],[])
+            if type(self.CalData) is tuple :
+                raise ce.DataError('Expected calibration file to have only a'
+                                   ' single scan and IF.')
+        # Scale data by noise cal termperature.
+        multiply_by_cal(Data, self.CalData)
+        return Data
+
 
 def multiply_by_cal(Data, CalData) :
     """Function scales data by the noise cal temperature.
     """
 
-    # TODO: Check Cal cal state.
-    
     # For now we just assume that the cal and polarizations are arranged in a
     # certain way and then check to make sure we are right.
     xx_ind = 0
