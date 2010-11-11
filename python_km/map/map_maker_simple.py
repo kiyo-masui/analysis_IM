@@ -28,9 +28,9 @@ params_init = {
                'field_centre' : (325.0, 0.0),
                'map_shape' : (40, 40),
                'pixel_spacing' : 0.125, # degrees
-               # What times streams to include in map.
-               'cal_weights' : (1.0, 1.0),
-               'pol_weights' : (1.0, 0.0, 0.0, 1.0)
+               # What times streams to include in map. Should sum to 1.
+               'cal_weights' : (0.5, 0.5),
+               'pol_weights' : (0.5, 0.0, 0.0, 0.5)
                }
 
 # Fields that should be copied from times stream data.
