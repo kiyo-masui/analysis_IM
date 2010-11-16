@@ -84,6 +84,9 @@ def stitch(blocks) :
         Data.data *= factor[:,:,:,sp.newaxis]
         OutData.set_data(ma.concatenate((OutData.data[:,:,:,:-n_over//2], 
                                          Data.data[:,:,:,n_over//2:]), axis=3))
+    OutData.calc_freq()
+    OutData.set_field('BANDWIDTH', abs(OutData.freq[0] - OutData.freq[-1]),
+                      (), format='D')
 
     return OutData
 

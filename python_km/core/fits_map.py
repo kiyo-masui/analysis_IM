@@ -89,6 +89,9 @@ def read(file_name, feedback=2) :
     # Set the data attriute
     Map = data_map.DataMap()
     Map.set_data(sp.swapaxes(data,0,2))
+    # Masked data is stored in FITS files as float('nan')
+    Map.data[sp.logical_not(sp.isfinite(Map.data))] = ma.masked
+
     Map.history = history
 
     # Set the other fields.

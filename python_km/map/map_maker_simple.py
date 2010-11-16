@@ -28,7 +28,7 @@ params_init = {
                'field_centre' : (325.0, 0.0),
                'map_shape' : (40, 40),
                'pixel_spacing' : 0.125, # degrees
-               # What times streams to include in map. Should sum to 1.
+               # What time streams to include in map. Should sum to 1.
                'cal_weights' : (0.5, 0.5),
                'pol_weights' : (0.5, 0.0, 0.0, 0.5)
                }
@@ -49,16 +49,13 @@ class MapMaker(object) :
 
     def execute(self) :
         params = self.params
-        last_slash = params['output_root'].rfind('/')
-        if last_slash > 0 : # Protect against last_slash == -1 or 0.
-            outdir = params['output_root'][:last_slash]
-            kiyopy.utils.mkdir_p(outdir)
+        kiyopy.utils.mkparents(params['output_root'])
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
                                prefix='mm_')
         # Rename some commonly used parameters.
         shape = params['map_shape']
         spacing = params['pixel_spacing']
-        ra_spacing = -spacing/sp.cos(params['field_centre'][1]*2.0*sp.pi/180.)
+        ra_spacing = -spacing/sp.cos(params['field_centre'][1]*sp.pi/180.)
 
         if len(params['IFs']) != 1 :
             raise ce.FileParameterTypeError('Can only process a single IF.')

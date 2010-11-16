@@ -42,6 +42,8 @@ fields_and_axes = {
                    'RESTFREQ' : (),
                    'DURATION' : (),
                    'EXPOSURE' : (),
+                   'CTYPE2' : (), # Type of longetudinal axis (probably AZ)
+                   'CTYPE3' : (),
                    'DATE-OBS' : ('time', ),
                    'LST' : ('time', ),
                    # These pointings refer to the structural telescope, not

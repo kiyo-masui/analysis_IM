@@ -39,8 +39,8 @@ class FlagData(base_single.BaseSingle) :
         return Data
 
 
-def apply_cuts(Data, sig_thres=5, pol_thres=3.0, width=0, flatten=True,
-               der_flags=10, der_width=0) :
+def apply_cuts(Data, sig_thres=5, pol_thres=5.0, width=0, flatten=True,
+               der_flags=0, der_width=0) :
     """Flags bad data from RFI and far outliers..
     
     Masks any data that is further than 'sig_thres' sigmas from the mean of the
@@ -113,6 +113,10 @@ def apply_cuts(Data, sig_thres=5, pol_thres=3.0, width=0, flatten=True,
         #line 106 "flag_data_aravind.py"
         clean(pol_thres, width, flatten, derivative_cut, der_flags, 
               der_width, cross, thisdata, freq, thismask);
+        //mask_array(2048,cross,0.1,thismask,0);
+        //double rms, mean;
+        //get_rms(cross,2048,&rms,&mean);
+        //printf("%f", rms);
         """
         # Variables that should be carried from python to C.
         variables = ['pol_thres', 'width', 'flatten', 'derivative_cut', 
@@ -127,7 +131,7 @@ def apply_cuts(Data, sig_thres=5, pol_thres=3.0, width=0, flatten=True,
                 cross = ma.sum(data[tii,xy_inds,cjj,:]**2, 0)
                 cross /= data[tii,xx_ind,cjj,:]*data[tii,yy_ind,cjj,:]
                 cross = ma.filled(cross, 100.)
-                print sp.where(cross),
+                #print sp.where(cross),
                 
                 # XX then YY
                 # This may be confusing: Data is a DataBlock object which has
@@ -136,11 +140,11 @@ def apply_cuts(Data, sig_thres=5, pol_thres=3.0, width=0, flatten=True,
                 # thisdata and thismask are just normal arrays.
                 thisdata = data.data[tii,xx_ind,cjj,:]
                 thismask = sp.array(data.mask[tii,xx_ind,cjj,:], dtype=sp.int32)
-                print sp.where(thismask),
+                #print sp.where(thismask),
                 # Compile (if required) and execute C code.
                 weave.inline(code, variables, support_code=flag_code)
                 data[tii,:,cjj,thismask] = ma.masked
-                print sp.where(thismask)
+                #print sp.where(thismask)
 
                 thisdata = data.data[tii,yy_ind,cjj,:]
                 thismask = sp.array(data.mask[tii,yy_ind,cjj,:], dtype=sp.int32)

@@ -4,6 +4,7 @@ import unittest
 
 import scipy as sp
 import numpy.ma as ma
+import numpy.random as rand
 import matplotlib.pyplot as plt
 
 import kiyopy.custom_exceptions as ce
@@ -25,9 +26,10 @@ class TestFlagData(unittest.TestCase) :
         self.assertTrue(self.Data.data[ind] is ma.masked)
     
     def test_pol_cal_off_controled(self) :
-        self.Data.data[0::2,[0,3],:,:] = 1
-        self.Data.data[1::2,[0,3],:,:] = 2
-        self.Data.data[:,[1,2],:,:] = 0
+        self.Data.data[0::2,[0,3],:,:] = rand.normal(0,1,2048)
+        self.Data.data[1::2,[0,3],:,:] = rand.normal(0,1.1,2048)
+        self.Data.data[:,[1,2],:,:] = rand.normal(0,0.01,2048)
+        self.Data.data[1::2,[1,2],:,:] = rand.normal(0,0.1,2048)
         ind = (5,1,1,1345)
         ind2 = (2,2,0,425)
         self.Data.data[ind] = 25.

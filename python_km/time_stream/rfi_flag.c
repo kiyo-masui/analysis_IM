@@ -54,82 +54,70 @@ void get_rms(double *array, int len, double *rms, double *mean)    {
 }
 	
 void xi_square_fit(double *freq, double *array, double *fit, int len)    {
+
+#define PARTS 4    
 	
 	/*    This constructs a fit by making 'p' points by avearing over 'q' values. 
-	 I have set 'p' = 4 (see assignment 'parts=4'). 'q' is then = len/4. 'len' is 128. 
-	 So,  we characterize the 128 points by means of 4 representative points. A straight line is fit through these 4 points by the least-squares
-          method, and stored in the array 'fit'.    
-
-         A power law may be better, and I will try that later. For now, it's linear.
-	 
 	 freq is the frequency array.
 	 array is the data array.
 	 fit is the output array containing the fit.
-	 len is the length (128).
 	 */     
 	
-	double *T,*nu,count,rms,d_parts,d_pieces,mean,
-	avg,x,y,x_bar,y_bar,sum_x_x,sum_x_y,a,b;
-	
+	double *T,*nu,count,d_parts,d_pieces,min,offset,rms,mean,
+		   x_bar,y_bar,sum_x_x,sum_x_y,a,b;	
 	int i,j,pieces,parts;
 	
 	for(i=0; i<len; fit[i]=0,++i);
 	
-	parts = 4;	
-	d_parts = (double)(parts);
-	pieces = len/parts;                  // len = 128
-	d_pieces = (double)(pieces);
+	parts = (int)(PARTS); d_parts = (double)(PARTS);
+	pieces = len/parts; d_pieces = (double)(pieces);
 
 	T = (double *)(malloc(sizeof(double)*parts));
 	nu = (double *)(malloc(sizeof(double)*parts));
 	
 	get_rms(array,len,&rms,&mean);
-
 	for(i=0; i<parts; i++)   {
 		
-		nu[i] = 0.;
-		T[i] = 0.;
-		count = 0.;
+		nu[i] = 0.; T[i] = 0.; count = 0.;
 		for(j=0; j<pieces; j++)  {
 			
-			if(absl(array[j + (i*pieces)]-mean) > 5.*rms) continue;			
+			if(absl(array[j + (i*pieces)]-mean) > 5.*rms) continue;	 /* your noise threshold here. */
 			nu[i] +=  (freq[j + (i*pieces)]);
 			T[i]  += (array[j + (i*pieces)]);
 			count += 1.;
 		}
-		nu[i] /= count;
-		T[i] /= count;
+		nu[i] /= count; T[i] /= count;
 	}
 	
+	min = T[0];
+	for(i=1; i<parts; i++)
+		if(T[i] < min) min = T[i];
+	offset = ( min < 0. ? 1.-min : 0. ); 
+	for(i=0; i<parts; T[i]+=offset,i++); /* Don't take log of a negative number! */
+	
 	x_bar = 0.;  y_bar = 0.;  sum_x_x = 0.; sum_x_y = 0.;
-	for(i=0; i<parts; i++)    {
+	for(i=0; i<parts; i++)    {     /* Fit a straight line to a log-log plot */		
 		
-		x = nu[i];
-		y = T[i];
-		
-		x_bar += (x/d_parts);
-		y_bar += (y/d_parts);
-		
-		sum_x_x += (x*x);
-		sum_x_y += (x*y);		
+		x_bar += (log(nu[i])/d_parts); y_bar += (log(T[i])/d_parts);		
+		sum_x_x += (log(nu[i])*log(nu[i])); sum_x_y += (log(nu[i])*log(T[i]));		
 	}
 	
 	b = (sum_x_y - (d_parts*x_bar*y_bar)) / (sum_x_x - (d_parts*sq(x_bar)));
 	a = y_bar - (b*x_bar);
-	
-	
-	for(i=0; i<len; i++)    		
-		fit[i] = a + b*freq[i];	
- 
+		
+	for(i=0; i<len; (fit[i] = exp(a + b*log(freq[i]))), i++);
 }
 
-void flatten(double *array, double *f)    {
-
-	/*         This flattens the waveform stored in variable array[], by means of the fit. 
-		   The fit is obtained and then removed from the data. */
+void get_fit(double *array, double *f, double *fit_array)    {
 	
-	int num_pieces = 16,block = 128,i,j;
-	double pieces[16][128], f_pieces[16][128], fit[128],rms,mean;
+	/*         This flattens the waveform stored in variable array[], by means of the fit. 
+		  The fit is obtained and then removed from the data. */
+	
+	#define  NUM_PIECES 32
+	#define  BLOCK 64
+	
+	int num_pieces = (int)(NUM_PIECES), block = (int)(BLOCK),i,j;
+	double pieces[NUM_PIECES][BLOCK], f_pieces[NUM_PIECES][BLOCK], fit[BLOCK],rms,mean;
 	
 	for(i=0; i<num_pieces; i++)
 		for(j=0; j<block; j++)    {
@@ -138,19 +126,25 @@ void flatten(double *array, double *f)    {
 			f_pieces[i][j] = f[j + (i*block)];
 		}	
 	
-	for(i=0; i<16; i++)   {
+	for(i=0; i<num_pieces; i++)   {
 		
-		xi_square_fit(f_pieces[i], pieces[i], fit, 128);
-		for(j=0; j<128; j++)
-			array[j+(128*i)] = pieces[i][j]-fit[j];		
+		xi_square_fit(f_pieces[i], pieces[i], fit, block);
+		for(j=0; j<block; fit_array[j+(block*i)] = fit[j],j++);			
 	}
-
-	get_rms(array,POINTS,&rms,&mean);
-	for(i=0; i<POINTS; (array[i] -= mean), i++);	
-	
-	return;
 }
+
+
+void flatten(double *array, double *fit_array)    {
+
+	int i;
+	double rms,mean;
 	
+	for(i=0; i<POINTS; array[i] -= fit_array[i],i++);
+	get_rms(array,POINTS,&rms,&mean);
+	for(i=0; i<POINTS; (array[i] -= mean), i++);		
+}
+
+
 
 void mask_array(int size, double *array, double sig, int *mask, int tol)    {
 
@@ -208,32 +202,28 @@ void hi_f_spikes(double *array, double *f, int lim, int count, int tol)      {
 		for(j=temp_mask[i]-tol; j <= temp_mask[i]+tol; array[j++] = 0.);
 }
 
-void rfi_flag(int flat, int spike, int tol, double sig, double *array, double *f, int *mask)  {
+void rfi_flag(int flat, int spike, int tol, double sig, double *fit, double *array, double *f, int *mask)  {
 
-	int i,k,lim;
-	double rms,mean,temp_f[POINTS],temp_arr[POINTS];
-	
-	if(flat)  flatten(array,f);
-	
+	int i;
+	double rms,mean;
+
+	if(flat)   flatten(array,fit);  /* Compensate for structure in the cross correlation  */				
 	for(i=0; i<POINTS; mask[i++]=0);				
 	get_rms(array,POINTS,&rms,&mean);		
 	mask_array(POINTS,array,sig*rms,mask,tol);	
 }	
 	
 
-void clean(double sig, int tol, int flat, int spike, int dTdf_limit, int dTdf_tol, double *cross1, double *array1, double *f1, int *m)  { 
+void clean(double sig, int tol, int flat, int spike, int dTdf_limit, int dTdf_tol, double *fit, double *cross1, double *array1, double *f1, int *m)  { 
 
 	int i,ind[POINTS],lim,ct,mask[POINTS],num_entries,temp_ind[POINTS];
 	double temp_f[POINTS], temp_arr[POINTS],
 	       cross[POINTS], array[POINTS], f[POINTS];
 		
-
 	for(i=0; i<POINTS; ind[i]=i, i++);
-	/* Make a copy. */
-	for(i=0; i<POINTS; (cross[i]=cross1[i],array[i]=array1[i],f[i]=f1[i]),i++);
+	for(i=0; i<POINTS; (cross[i]=cross1[i],array[i]=array1[i],f[i]=f1[i]),i++); /* Make a copy. */
 	
-	rfi_flag(flat,spike,tol,sig,cross,f,mask);
-		
+	rfi_flag(flat,spike,tol,sig,fit,cross,f,mask);		
 	ct=0;
 	for(i=0; i<POINTS; i++)
 		if(mask[i] == 0)            /* Collect unflagged data only. */

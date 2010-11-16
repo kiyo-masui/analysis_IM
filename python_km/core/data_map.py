@@ -1,5 +1,7 @@
 """Data container for maps."""
 
+import scipy as sp
+
 import base_data
 import kiyopy.custom_exceptions as ce
 
@@ -20,6 +22,23 @@ class DataMap(base_data.BaseData) :
                 raise ce.DataError("Maps can only have scalar fields.")
         # Now call verify from the base class.
         base_data.BaseData.verify(self)
+
+    def calc_axes(self) :
+        """Calculates that frequency, lat and long axes.
+
+        These are not stored as fields as all fields have to be writable to the
+        fits file.
+        """
+        self.freq = ((sp.arange(self.dims[2], dtype=float) + 1.0 - 
+                     self.field['CRPIX3'])*self.field['CDELT3'] + 
+                     self.field['CRVAL3'])
+        self.lat = ((sp.arange(self.dims[1], dtype=float) + 1.0 - 
+                     self.field['CRPIX2'])*self.field['CDELT2'] + 
+                     self.field['CRVAL2'])
+        self.long = ((sp.arange(self.dims[0], dtype=float) + 1.0 - 
+                     self.field['CRPIX1'])*self.field['CDELT1'] + 
+                     self.field['CRVAL1'])
+
 
 
 # Clone some extra functions:
