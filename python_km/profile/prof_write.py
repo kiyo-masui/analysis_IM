@@ -6,15 +6,19 @@ import cProfile
 import numpy.ma as ma
 
 from core import fitsGBT
-from time_stream import rebin_freq
 
 data_file_name = (os.getenv('GBT10B_DATA') +
                   '06_wigglez1hr_azel_180-187.raw.acs.fits')
-out_file_name = 'rebin_freq.prof'
+out_file_name = 'write.prof'
 
 Reader = fitsGBT.Reader(data_file_name)
-Data = Reader.read(5, 3)
-#Data.data = ma.copy(Data.data, 'F')
+Blocks = Reader.read()
 
-cProfile.run('rebin_freq.rebin(Data, 2.0, mean=True)', out_file_name)
+Writer = fitsGBT.Writer()
+#Writer.add_data(Blocks)
+
+cProfile.run("Writer.add_data(Blocks)", out_file_name)
+
+#Writer.write('write_prof_temp.fits')
+#os.remove('write_prof_temp.fits')
 

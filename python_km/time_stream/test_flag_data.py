@@ -66,7 +66,7 @@ class TestFlagData(unittest.TestCase) :
         ind2 = (2,2,0,425)
         self.Data.data[ind] = 0.5
         self.Data.data[ind2] = 0.5
-        flag_data.apply_cuts(self.Data, -1, 10)
+        flag_data.apply_cuts(self.Data, -1, 20)
         self.assertTrue(self.Data.data[ind] is ma.masked)
         self.assertTrue(self.Data.data[ind2] is ma.masked)
         # 8 = 2 bad data * 4 polarizations

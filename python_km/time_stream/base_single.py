@@ -16,7 +16,11 @@ so that parameters don't get confused in parameter files.
 Check out the unit tests for examples.
 """
 
+import math
+import multiprocessing as mp
+
 from kiyopy import parse_ini, utils
+import kiyopy.pickle_method
 #from kiyopy import custom_exceptions as ce
 from core import data_block
 from core import fitsGBT
@@ -75,46 +79,78 @@ class BaseSingle(object) :
                                       prefix=self.prefix,
                                       checking=10*self.feedback + 2)
     
-    def execute(self) :
-        """Process all data."""
+    def execute(self, n_processes=1) :
+        """Process all data.
+        
+        If n_processes > 1 then this function spawns a bunch of subprocesses
+        in parralelle, each of which deals with a single data file.  This both
+        speeds things up and avoids any memory leaks (like the bad one in
+        pyfits).
+        """
 
         params = self.params
         # Make parent directories if need be.
         utils.mkparents(params['output_root'])
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
                                prefix=self.prefix)
-
+        n_new = n_processes - 1
+        n_files = len(params['file_middles'])
         # Loop over the files to process.
-        for file_middle in params['file_middles'] :
-            input_fname = (params['input_root'] + file_middle +
-                           params['input_end'])
-            output_fname = (params['output_root']
-                            + file_middle + params['output_end'])
-            Writer = fitsGBT.Writer(feedback=self.feedback)
+        if n_new <= 0 :
+            # Single process mode.
+            for file_ind in range(n_files) :
+                self.process_file(file_ind)
+        elif n_new > 32 :
+            raise ValueError("Asked for a rediculouse number of processes: " +
+                             str(n_new) + ".  Limit is 32.")
+        else :
+            # Spawn a bunch of new processes each with a single file to
+            # analyse.
+            n_pools = int(math.ceil(float(n_files)/float(n_new)))
+            for ii in range(n_pools) :
+                p = mp.Pool(processes=n_new)
+                for jj in range(ii*n_new, min((ii+1)*n_new, n_files)) :
+                    p.apply_async(self.process_file, (jj,))
+                p.close()
+                p.join()
+
             
-            # Read in the data, and loop over data blocks.
-            Reader = fitsGBT.Reader(input_fname, feedback=self.feedback)
-            if hasattr(self, 'feedback_title') and self.feedback > 1:
-                print self.feedback_title,
-            # Get the number of scans if asked for all of them.
-            scan_inds = params['scans']
-            if len(scan_inds) == 0 or scan_inds is None :
-                scan_inds = range(len(Reader.scan_set))
-            # Loop over scans.
-            for thisscan in scan_inds :
-                Blocks = Reader.read(thisscan, params['IFs'], force_tuple=True)
-                
-                # Function that loops over DataBlocks within a scan.
-                NewBlocks = self.scan_action(Blocks)
-                del Blocks
-                Writer.add_data(NewBlocks)
+    def process_file(self, file_ind) :
+        """Process on file from the list to be processed based on the passed
+        index.
+        """
+        params = self.params
+        file_middle = params['file_middles'][file_ind]
+        input_fname = (params['input_root'] + file_middle +
+                       params['input_end'])
+        output_fname = (params['output_root']
+                        + file_middle + params['output_end'])
+        Writer = fitsGBT.Writer(feedback=self.feedback)
+        
+        # Read in the data, and loop over data blocks.
+        Reader = fitsGBT.Reader(input_fname, feedback=self.feedback)
+        if hasattr(self, 'feedback_title') and self.feedback > 1:
+            print self.feedback_title,
+        # Get the number of scans if asked for all of them.
+        scan_inds = params['scans']
+        if len(scan_inds) == 0 or scan_inds is None :
+            scan_inds = range(len(Reader.scan_set))
+        # Loop over scans.
+        for thisscan in scan_inds :
+            Blocks = Reader.read(thisscan, params['IFs'], force_tuple=True)
             
-            # Go to a new line if we are printing statistics.
-            if hasattr(self, 'feedback_title') and self.feedback > 1:
-                    print ''
-            # Finally write the data back to file.
-            Writer.write(output_fname)
-    
+            # Function that loops over DataBlocks within a scan.
+            NewBlocks = self.scan_action(Blocks)
+            del Blocks
+            Writer.add_data(NewBlocks)
+        
+        # Go to a new line if we are printing statistics.
+        if hasattr(self, 'feedback_title') and self.feedback > 1:
+                print ''
+        # Finally write the data back to file.
+        Writer.write(output_fname)
+
+
     # This part of the loop has been split off to make window stitching easier
     # since IF stitching operates on all the IFs in a scan at the same time.
     # IF stitching will overwrite this function instead of action.

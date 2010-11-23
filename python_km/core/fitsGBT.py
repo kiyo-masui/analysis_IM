@@ -102,7 +102,7 @@ class Reader(object) :
 
         self.fname = fname
         if self.feedback > 0 :
-            print "Opened GBT fits file: \n ", ku.abbreviate_file_path(fname)
+            print "Opened GBT fits file: ", ku.abbreviate_file_path(fname)
 
         # The passed file name is assumed to be a GBT spectrometer fits file.
         self.hdulist = pyfits.open(self.fname, 'readonly')
@@ -276,6 +276,8 @@ class Reader(object) :
                     Data_sif.history = db.History(self.history)
                 Data_sif.verify()
                 output = output + (Data_sif, )
+        if self.feedback > 2 :
+            print 'Read finished.'
         if len(output) == 1 and not force_tuple :
             return output[0]
         else :

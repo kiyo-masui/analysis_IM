@@ -3,27 +3,27 @@
 import os
 import re
 
-data_dir = os.getenv('GBT10B_DATA')
+_data_dir = os.getenv('GBT10B_DATA')
 
-def get_data_files(session, field) :
+def get_data_files(session_list, field) :
     """Gets a list of the data file names for each session and field.
+
+    Can pass a list of sessions (as integers) but only a single field.
     """
-    
-    session = int(session) # In case passed as a string.
-    all_files = os.listdir(data_dir)
+
+    all_files = os.listdir(_data_dir)
     out_files = []
-    match_str = ('(%02d'%session + '_wigglez' + field + 
-                   "_azel_.*\.raw.acs.fits)")
-    for file_name in all_files :
-        # See if the file matches.
-        if re.match(match_str, file_name) :
-            # Chop off extension and append to list to be returned.
-            root = file_name.split('.')[0]
-            out_files.append(root)
+    for session in session_list :
+        match_str = ('(%02d'%session + '_wigglez' + field + 
+                       "_azel_.*\.raw.acs.fits)")
+        for file_name in all_files :
+            # See if the file matches.
+            if re.match(match_str, file_name) :
+                # Chop off extension and append to list to be returned.
+                root = file_name.split('.')[0]
+                out_files.append(root)
 
     return out_files
-
-
 
 
 def get_cal_files(data_file_names) :
