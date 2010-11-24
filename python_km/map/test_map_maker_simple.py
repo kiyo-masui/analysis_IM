@@ -5,70 +5,7 @@ import scipy as sp
 import numpy.ma as ma
 
 import map_maker_simple as mm
-
-class TestCalcFunctions(unittest.TestCase) :
-    
-    def test_calc_inds(self) :
-        pointing = [4.001, 3.999, -0.999, 8.999]
-        centre = 4.
-        shape = 10
-        inds = mm.calc_inds(pointing, centre, shape)
-        self.assertEqual(inds[0], 5)
-        self.assertEqual(inds[1], 4)
-        self.assertEqual(inds[2], 0)
-        self.assertEqual(inds[3], 9)
-
-        shape = 5
-        spacing = 2.0
-        inds = mm.calc_inds(pointing, centre, shape, spacing)
-        self.assertEqual(inds[0], 2)
-        self.assertEqual(inds[1], 2)
-        self.assertEqual(inds[2], 0)
-        self.assertEqual(inds[3], 4)
-
-    def test_cal_bins(self) :
-        centre = 5
-        shape = 5
-        spacing = 2
-        bins = mm.calc_bins(centre, shape, spacing, edge='left')
-        self.assertEqual(bins[0], 0)
-        self.assertEqual(bins[-1], 8)
-        self.assertEqual(bins[2], 4)
-        bins = mm.calc_bins(centre, shape, spacing, edge='middle')
-        self.assertEqual(bins[0], 1)
-        self.assertEqual(bins[-1], 9)
-        self.assertEqual(bins[2], 5)
-        shape = 10
-        spacing = 1
-        bins = mm.calc_bins(centre, shape, spacing, edge='right')
-        self.assertEqual(bins[0], 1)
-        self.assertEqual(bins[-1], 10)
-        self.assertEqual(bins[4], 5)
-
-    def test_circle(self) :
-        centre = 4.6
-        shape = 19
-        spacing = 1.3
-        bins = mm.calc_bins(centre, shape, spacing, edge='left') + 0.1*spacing
-        inds = mm.calc_inds(bins, centre, shape, spacing)
-        self.assertTrue(sp.allclose(inds, sp.arange(int(shape))))
-        spacing = -0.35
-        bins = mm.calc_bins(centre, shape, spacing, edge='left') + 0.1*spacing
-        inds = mm.calc_inds(bins, centre, shape, spacing)
-        self.assertTrue(sp.allclose(inds, sp.arange(int(shape))))
-
-    def test_calc_inds_neg(self) :
-        """Needs to work for negitive spacing."""
-        pointing = [2.001, 1.999, 0.001, 3.5]
-        centre = 2.
-        shape = 4
-        spacing = -1
-        inds = mm.calc_inds(pointing, centre, shape, spacing)
-        self.assertEqual(inds[0], 1)
-        self.assertEqual(inds[1], 2)
-        self.assertEqual(inds[2], 3)
-        self.assertEqual(inds[3], 0)
-
+import tools
 
 class TestAddingData(unittest.TestCase) :
     
@@ -82,9 +19,9 @@ class TestAddingData(unittest.TestCase) :
         self.spacing = 1.0
         self.ra = 0.2*(sp.arange(self.ntime)-self.ntime/2.0) + self.centre[0]
         self.dec = 0.2*(sp.arange(self.ntime)-self.ntime/2.0) + self.centre[1]
-        self.ra_inds = mm.calc_inds(self.ra, self.centre[0], self.shape[0],
+        self.ra_inds = tools.calc_inds(self.ra, self.centre[0], self.shape[0],
                                     self.spacing)
-        self.dec_inds = mm.calc_inds(self.dec, self.centre[1], self.shape[1],
+        self.dec_inds = tools.calc_inds(self.dec, self.centre[1], self.shape[1],
                                     self.spacing)
         
     def test_adds_data(self) :

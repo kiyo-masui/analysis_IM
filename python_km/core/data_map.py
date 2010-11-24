@@ -29,15 +29,21 @@ class DataMap(base_data.BaseData) :
         These are not stored as fields as all fields have to be writable to the
         fits file.
         """
-        self.freq = ((sp.arange(self.dims[2], dtype=float) + 1.0 - 
-                     self.field['CRPIX3'])*self.field['CDELT3'] + 
-                     self.field['CRVAL3'])
-        self.lat = ((sp.arange(self.dims[1], dtype=float) + 1.0 - 
-                     self.field['CRPIX2'])*self.field['CDELT2'] + 
-                     self.field['CRVAL2'])
-        self.long = ((sp.arange(self.dims[0], dtype=float) + 1.0 - 
-                     self.field['CRPIX1'])*self.field['CDELT1'] + 
-                     self.field['CRVAL1'])
+        if (self.field.has_key('CRPIX3') and self.field.has_key('CDELT3') and 
+            self.field.has_key('CRVAL3')) :
+            self.freq = ((sp.arange(self.dims[2], dtype=float) + 1.0 - 
+                         self.field['CRPIX3'])*self.field['CDELT3'] + 
+                         self.field['CRVAL3'])
+        if (self.field.has_key('CRPIX2') and self.field.has_key('CDELT2') and 
+            self.field.has_key('CRVAL2')) :
+            self.lat = ((sp.arange(self.dims[1], dtype=float) + 1.0 - 
+                         self.field['CRPIX2'])*self.field['CDELT2'] + 
+                         self.field['CRVAL2'])
+        if (self.field.has_key('CRPIX1') and self.field.has_key('CDELT1') and 
+            self.field.has_key('CRVAL1')) :
+            self.long = ((sp.arange(self.dims[0], dtype=float) + 1.0 - 
+                         self.field['CRPIX1'])*self.field['CDELT1'] + 
+                         self.field['CRVAL1'])
 
 
 
