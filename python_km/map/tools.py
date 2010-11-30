@@ -111,4 +111,27 @@ def set_up_map(Data, centre, shape, spacing) :
     Map.verify()
 
     return Map
+
+def calc_time_var_file(Blocks, pol_ind=0, cal_ind=0) :
+    """Calculates this time variance over several data blocks.
+
+    Given a tuple of DataBlock objects (all with compatible dimensions), the
+    time varience is calculated at each frequency.  pol_ind and cal_ind specify
+    the polarization and cal.
+    """
+
+    # These all become arrays on first iteration.
+    var = 0.0
+    mean = 0.0
+    counts = 0
+    for Data in Blocks :
+        var += ma.sum(Data.data[:,pol_ind,cal_ind,:]**2,0)
+        mean += ma.sum(Data.data[:,pol_ind,cal_ind,:],0)
+        counts += (Data.dims[0] 
+                   - ma.count_masked(Data.data[:,pol_ind,cal_ind,:], 0))
+    var = var/counts - (mean/counts)**2
+    var[counts <= 1] = ma.masked
+    var[var <= 0.0] = ma.masked
+
+    return var
     

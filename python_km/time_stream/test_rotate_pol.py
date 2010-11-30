@@ -26,7 +26,12 @@ class TestRotate(unittest.TestCase) :
         rotate_pol.rotate(self.Data, (1,))
         dims = dims[:1] + (1,) + dims[2:]
         self.assertEqual(self.Data.dims, dims)
-        
+
+    def test_dims_cal_ave(self) :
+        dims = self.Data.dims
+        rotate_pol.rotate(self.Data, (1,), True)
+        dims = dims[:1] + (1,1) + dims[3:]
+        self.assertEqual(self.Data.dims, dims)
 
     def tearDown(self) :
         del self.Data

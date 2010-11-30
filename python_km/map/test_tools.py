@@ -107,6 +107,59 @@ class TestMapSetUp(unittest.TestCase) :
     def tearDown(self) :
         del self.Data
 
+class TestFileVar(unittest.TestCase) :
+    
+    def setUp(self) :
+        Reader = fitsGBT.Reader(test_file, feedback=0)
+        self.Blocks = Reader.read((),1)
+
+    def test_known(self) :
+        dims = self.Blocks[0].dims
+        data = ma.ones(dims)*sp.arange(1, dims[-1]+1)
+        data[0:-1:2,0,0,:] = 2*sp.arange(1, dims[-1]+1)
+        for Data in self.Blocks :
+            Data.data = data
+        var = tools.calc_time_var_file(self.Blocks, 0, 0)
+        self.assertTrue(sp.allclose(var.filled(), 
+                        sp.arange(1, dims[-1]+1)**2/4.0))
+
+    def test_known2(self) :
+        dims = self.Blocks[0].dims
+        data = ma.ones(dims)*sp.arange(1, dims[-1]+1)
+        ii = 0.0
+        for Data in self.Blocks :
+            ii += 1.0
+            Data.data = data*ii
+        var = tools.calc_time_var_file(self.Blocks, 0, 0)
+        self.assertTrue(sp.allclose(var.filled(), 
+                        sp.arange(1, dims[-1]+1)**2/4.0))
+
+
+    def test_known_with_masked(self) :
+        dims = self.Blocks[0].dims
+        data = ma.ones(dims)*sp.arange(1, dims[-1]+1)
+        data[0:-1:2,0,0,:] = 2*sp.arange(1, dims[-1]+1)
+        for Data in self.Blocks :
+            Data.data = data
+        self.Blocks[0].data[2,0,0,43] = ma.masked
+        self.Blocks[0].data[7,0,0,43] = ma.masked
+        self.Blocks[1].data[4,0,0,43] = ma.masked
+        self.Blocks[1].data[3,0,0,43] = ma.masked
+        self.Blocks[0].data[:,0,0,103] = ma.masked
+        self.Blocks[1].data[:,0,0,103] = ma.masked
+        self.Blocks[0].data[:,0,0,554] = ma.masked
+        self.Blocks[1].data[1:,0,0,554] = ma.masked
+        var = tools.calc_time_var_file(self.Blocks, 0, 0)
+        expected = ma.arange(1, dims[-1]+1)**2/4.0
+        expected[103] = ma.masked
+        expected[554] = ma.masked
+        self.assertTrue(sp.allclose(var.filled(-1), expected.filled(-1)))
+
+
+    def tearDown(self) :
+        del self.Blocks
+
+
 # TODO: Test that the bins calculated here agree with the ones from
 # data_map.calc_axes().
 

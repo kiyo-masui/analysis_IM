@@ -1,5 +1,5 @@
 #!/usr/bin/python
-"""Module that """
+"""Module that converts between representations of polarization."""
 
 import scipy as sp
 import numpy.ma as ma
@@ -20,7 +20,8 @@ class RotatePol(base_single.BaseSingle) :
                    # The polarizations that should be included in the output
                    # data. 1, 2, 3, 4 are I, Q, U ,V respectively (SD fits
                    # convension).
-                   'new_pols' : (1,)
+                   'new_pols' : (1,),
+                   'average_cals' : False
                    }
 
     def action(self, Data):
@@ -30,7 +31,7 @@ class RotatePol(base_single.BaseSingle) :
         return Data
 
 
-def rotate(Data, new_pols=(1,)) :
+def rotate(Data, new_pols=(1,), average_cals=False) :
     """Changes the basis of the polarization axis.
 
     Passed a data_block.DataBlock object and the new polarization axis.
@@ -39,6 +40,8 @@ def rotate(Data, new_pols=(1,)) :
 
     Right now this can only convert XX, etc to I, but eventually it should be
     expanded to go from any complete basis to any other set of polarizations.
+
+    It also optionally takes the average of cal_on and cal_off.
     """
     
     # Here we check the polarizations indicies
@@ -50,10 +53,17 @@ def rotate(Data, new_pols=(1,)) :
         Data.field['CRVAL4'][xy_inds[0]] != -7 or
         Data.field['CRVAL4'][xy_inds[1]] != -8) :
             raise ce.DataError('Polarization types not as expected.')
+    on_ind = 0
+    off_ind = 1
+    if (Data.field['CAL'][on_ind] != 'T' or
+        Data.field['CAL'][off_ind] != 'F') :
+            raise ce.DataError('Cal states not in expected order.')
     if len(new_pols) != 1 or new_pols[0] != 1 :
         raise NotImplementedError('Right now we can only calculate I.')
 
-    I = Data.data[:,[xx_ind],:,:] + Data.data[:,[yy_ind],:,:]
+    I = (Data.data[:,[xx_ind],:,:] + Data.data[:,[yy_ind],:,:])/2.0
+    if average_cals :
+        I = (I[:,:,[0],:] + I[:,:,[1],:])/2.0
     Data.set_data(I)
     Data.field['CRVAL4'] = sp.array([1])
     

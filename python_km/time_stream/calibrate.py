@@ -26,10 +26,11 @@ class Calibrate(base_single.BaseSingle) :
                    }
 
     # Add extra stuff to the constructor.
-    def __init__(self):
+    def __init__(self, parameter_file_or_dict=None, feedback=2):
         
         # Call the base_single init.
-        base_single.BaseSingle.__init__(self)
+        base_single.BaseSingle.__init__(self, parameter_file_or_dict, 
+                                        feedback)
         # Read in the calibration file.
         file_names = self.params['cal_temperature_files']
         if len(file_names) > 1 :
