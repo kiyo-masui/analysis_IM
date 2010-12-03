@@ -5,7 +5,6 @@ else, change it in the time stream).
 """
 
 import copy
-import cPickle
 
 import scipy as sp
 import numpy.ma as ma
@@ -82,7 +81,7 @@ class MapMaker(object) :
         spacing = params['pixel_spacing']
         algorithm = params['noise_model']
         ra_spacing = -spacing/sp.cos(params['field_centre'][1]*sp.pi/180.)
-        if not algorithm in ('grid', 'diag_file', 'disjoint_scans', 'ds_grad') :
+        if not algorithm in ('grid', 'diag_file', 'disjoint_scans') :
             raise ValueError('Invalid noise model: ' + algorithm)
         if len(params['IFs']) != 1 :
             raise ce.FileParameterTypeError('Can only process a single IF.')
@@ -90,7 +89,7 @@ class MapMaker(object) :
         # Set up to interate over pols.
         first_pol = True
         map_list = []
-        if algorithm in ('grid', 'diag_file') :
+        if algorithm in ('grid', 'diag_file', 'disjoint_scans') :
             noise_list = []
         npol = 2 # This will be reset when we read the first data block.
         pol_ind = 0
@@ -167,7 +166,7 @@ class MapMaker(object) :
                                        noise_inv, counts, weight)
                     elif algorithm in ('disjoint_scans', ) :
                         add_data_2_map(data - ma.mean(data, 0), ra_inds, 
-                                       dec_inds, map_data, None, counts)
+                                       dec_inds, map_data, None, counts, weight)
                         pixel_hits[:] = 0
                         pixel_list = pixel_counts(data, ra_inds, dec_inds, 
                                         pixel_hits, map_shape=shape[0:2])
@@ -176,17 +175,8 @@ class MapMaker(object) :
             if algorithm in ('grid', 'diag_file') :
                 uncovered_inds = counts==0
                 noise_inv[uncovered_inds] = 1.0
-                Map.set_data(map_data/noise_inv)
-                Map.data[uncovered_inds] = ma.masked
+                map_data = (map_data/noise_inv)
                 noise = 1/noise_inv
-                Map.add_history('Gridded data with map_maker_simple.', 
-                                ('Algorithm: ' + algorithm,))
-                Noise = copy.deepcopy(Map)
-                Noise.data = noise
-                Noise.data[uncovered_inds] = ma.masked
-                
-                Noise.verify()
-                noise_list.append(Noise)
             elif algorithm in ('disjoint_scans',) :
                 nf = shape[-1]
                 if (not sp.all(sp.isfinite(noise_inv)) or 
@@ -194,13 +184,15 @@ class MapMaker(object) :
                     raise RuntimeError("Didn't do a good enough job of "
                                        "avioding devide by 0.")
                 if self.feedback > 1 :
-                    print 'Solving for optimal map. Fraction of near zero',
-                    print 'eigenvalues at each frequency:'
+                    print 'Solving for optimal map.'
+                    print 'Discarding near zero eigenvalues at each frequency:'
                 for f_ind in xrange(nf) :
                     inds_i, inds_j = sp.where(counts[:,:,f_ind]!=0)
                     map_vect = map_data[inds_i, inds_j, f_ind]
                     noise_inv_mat = noise_inv[inds_i, inds_j, :, :, f_ind]
                     noise_inv_mat = noise_inv_mat[:, inds_i, inds_j]
+                    if noise_inv_mat.size == 0 :
+                        continue
                     # This is where the magic happens.  Solve for the optimal
                     # map from the noise inverse and the dirty map.
                     L, S = linalg.eigh(noise_inv_mat)
@@ -208,22 +200,31 @@ class MapMaker(object) :
                     singular = (L < cutoff*max(L))
                     discarded = float(len(sp.nonzero(singular)))/len(singular)
                     if self.feedback > 1 :
-                        print "%d: %6.4f, "%(f_ind, discarded),
+                        print "%d: %6.2f"%(f_ind, discarded*100)+"% discarded"
                     L[singular] = 1.
                     L_inv = 1/L
                     L_inv[singular] = 0.
                     map_rot = sp.dot(S.T, map_vect)
                     map_rot[singular] = 0.
                     map_vect = sp.dot(S, L_inv*map_rot)
+                    map_vect -= sp.mean(map_vect)
                     map_data[inds_i, inds_j, f_ind] = map_vect
                 uncovered_inds = counts==0
-                Map.set_data(map_data)
-                Map.data[uncovered_inds] = ma.masked
-                Map.add_history('Gridded data with map_maker_simple.',
-                                ('Algorithm: ' + algorithm,))
-                noise_file = open(params['output_root'] + 'noise'
-                                  + str(pol_ind) + params['output_end'], 'w')
-                cPickle.dump(noise_inv, noise_file)
+                diag_noise_inv = noise_inv.diagonal(0,1,3).diagonal(0,0,1)
+                diag_noise_inv = diag_noise_inv.swapaxes(0,2)
+                diag_noise_inv[uncovered_inds] = 1.0
+                noise = 1/diag_noise_inv
+
+            Map.set_data(map_data)
+            Map.data[uncovered_inds] = ma.masked
+            Map.add_history('Gridded data with map_maker_simple.', 
+                            ('Algorithm: ' + algorithm,))
+            Noise = copy.deepcopy(Map)
+            Noise.set_data(noise)
+            Noise.data[uncovered_inds] = ma.masked
+            
+            Noise.verify()
+            noise_list.append(Noise)
                 
             Map.verify()
             map_list.append(Map)
@@ -232,7 +233,7 @@ class MapMaker(object) :
 
         fits_map.write(map_list, 
                        params['output_root'] + 'map' + params['output_end'])
-        if algorithm in ('grid', 'diag_file') :
+        if algorithm in ('grid', 'diag_file', 'disjoint_scans') :
             fits_map.write(noise_list, params['output_root'] + 'noise' 
                            + params['output_end'])
 
