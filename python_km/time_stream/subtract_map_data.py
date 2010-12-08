@@ -9,7 +9,7 @@ import base_single
 import map.tools
 from core import fits_map
 
-class Subtract(object) :
+class Subtract(base_single.BaseSingle) :
     """Pipeline module subtracts a map from time stream data.
 
     This module reads in a map and times stream data.  It then subtracts the
@@ -34,10 +34,13 @@ class Subtract(object) :
         # Read in the calibration file.
         map_file_name = self.params['map_file']
         self.Map = fits_map.read(map_file_name, 1, feedback=self.feedback)
-        self.Map.calc_axes()
 
     def action(self, Data) :
-        Data.add_history('blah')
+        sub_map(Data, self.Map)
+        Data.add_history('Subtracted map from data.', 
+                         ('Map file: ' + self.params['map_file'],))
+
+        return Data
 
 def sub_map(Data, Map) :
     """Subtracts a Map out of Data."""

@@ -1,6 +1,7 @@
 """Unit tests for subtract_map_data.py"""
 
 import unittest
+import os
 
 import scipy as sp
 import numpy.ma as ma
@@ -81,6 +82,32 @@ class TestSubMap(unittest.TestCase) :
     def tearDown(self) :
         del self.blocks
         del self.Map
+
+class TestModule(unittest.TestCase) :
+    
+    def setUp(self) :
+        Reader = fitsGBT.Reader(test_file, feedback=0)
+        blocks = Reader.read((),())
+        for Data in blocks :
+            rotate_pol.rotate(Data, (1,))
+        Writer = fitsGBT.Writer(blocks, feedback=0)
+        Writer.write('test_rot.testout.fits')
+
+        self.params = {'sm_file_middles' : ("test",),
+                       'sm_input_end' : "_rot.testout.fits",
+                       'sm_output_end' : "_sub.testout.fits"
+                       }
+
+    def test_history(self) :
+        smd.Subtract(self.params, feedback=0).execute()
+        Data = fitsGBT.Reader('test_sub.testout.fits', feedback=0).read(0,0)
+        self.assertTrue(Data.history.has_key('003: Subtracted map from data.'))
+
+    def tearDown(self) :
+        os.remove('test_rot.testout.fits')
+        os.remove('test_sub.testout.fits')
+        os.remove('params.ini')
+        
 
 
 
