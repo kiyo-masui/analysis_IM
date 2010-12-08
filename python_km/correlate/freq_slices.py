@@ -72,15 +72,27 @@ class FreqSlices(object) :
         # If any eigenmodes have been marked for subtraction, subtract them
         # out.
         freq = sp.array(params['freq'], dtype=int)
-        if hasattr(self, 'freq_eig_modes') :
+        subflag = False
+        if (hasattr(self, 'freq_Lsvd_modes') and 
+            hasattr(self, 'freq_Rsvd_modes')) :
+            print 'Subtracting ' + str(len(self.freq_Lsvd_modes)),
+            print 'frequency svd-modes.'
+            Lmodes = self.freq_Lsvd_modes
+            Rmodes = self.freq_Rsvd_modes
+            subflag = True
+        elif hasattr(self, 'freq_eig_modes') :
             print 'Subtracting ' + str(len(self.freq_eig_modes)),
             print 'frequency eigen-modes.'
+            Lmodes = self.freq_eig_modes
+            Rmodes = self.freq_eig_modes
+            subflag = True
+        if subflag :
             for ira in range(Map1.dims[0]) :
                 for jdec in range(Map1.dims[1]) :
                     if sp.any(Map1.data.mask[ira,jdec,freq]) :
                         continue
                     else :
-                        for v in self.freq_eig_modes :
+                        for v in Lmodes :
                             v.shape = freq.shape
                             amp = sp.sum(v*Map1.data[ira,jdec,freq])
                             Map1.data[ira,jdec,freq] -= amp*v
@@ -92,7 +104,7 @@ class FreqSlices(object) :
                     if sp.any(Map2.data.mask[ira,jdec,freq]) :
                         continue
                     else :
-                        for v in self.freq_eig_modes :
+                        for v in Rmodes :
                             v.shape = freq.shape
                             amp = sp.sum(v*Map2.data[ira,jdec,freq])
                             Map2.data[ira,jdec,freq] -= amp*v
@@ -169,7 +181,6 @@ class FreqSlices(object) :
         norms = corr[:,:,0].diagonal()
         norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
         corr /= norms[:,:,sp.newaxis]
-        corr = (corr + sp.swapaxes(corr, 0, 1))/2.0
         
         self.lags = lags
         self.corr = corr
@@ -183,8 +194,9 @@ class FreqSlices(object) :
     def get_freq_eigenmodes(self, n) :
         """After generating the covarience, find the n dominante frequency
         modes.  Mark them to be removed if execute is called again."""
-        
-        [h, V] = linalg.eig(self.corr[:,:,0]*self.norms)
+
+        corr = (self.corr + sp.swapaxes(self.corr, 0, 1))/2.0
+        [h, V] = linalg.eig(corr[:,:,0]*self.norms)
         hs = list(abs(h))
         hs.sort()
         vectors = []
@@ -196,6 +208,7 @@ class FreqSlices(object) :
         
         self.freq_eig_values = h
         self.freq_eig_modes = vectors
+
 
     def plot(self, finds1, finds2) :
         """After performing analysis, make plots."""
@@ -228,8 +241,6 @@ class FreqSlices(object) :
                        str(int(round(self.freq[find1]/1.e6))) + 
                        ' MHz bin (K^2)')
 
-        
-
     def plot_eig(self) :
         """Plots the eigen values and prints out some statistics."""
         
@@ -240,43 +251,75 @@ class FreqSlices(object) :
         print 'Largest eigenvalues/n : ', 
         print sp.sort(self.freq_eig_values/n)[-10:]
 
-def plot_freq(self, norms=False) :
-    
-    nf = len(self.freq_inds)
-    #freq_diffs = sp.sort(self.allfreq - min(self.allfreq))
-    n_bins = 12
-    factor = 1.5
-    start = 2.1e6
-    freq_diffs = sp.empty(n_bins)
-    freq_diffs[0] = start
-    for ii in range(1,n_bins) :
-       freq_diffs[ii] = factor*freq_diffs[ii-1] 
-    n_diffs = len(freq_diffs)
-    corrf = sp.zeros(n_diffs)
-    countsf = sp.zeros(n_diffs, dtype=int)
-    for ii in range(nf) :
-        for jj in range(nf) :
-            if norms :
-                thiscorr = self.corr[ii,jj,0]*self.norms[ii,jj]
-            else :
-                thiscorr = self.corr[ii,jj,0]
-            df = abs(self.freq1[ii] - self.freq2[jj])
-            for kk in range(1, n_diffs-1) :
-                if (abs(freq_diffs[kk]-df) <= abs(freq_diffs[kk-1]-df)
-                    and abs(freq_diffs[kk]-df) < abs(freq_diffs[kk+1]-df)) :
-                    d_ind = kk
-            if abs(freq_diffs[0]-df) < abs(freq_diffs[1]-df) :
-                d_ind = 0
-            if abs(freq_diffs[-1]-df) <= abs(freq_diffs[-2]-df) :
-                d_ind = n_diffs - 1
-            corrf[d_ind] += thiscorr
-            countsf[d_ind] +=1
-    corrf /= countsf
-    plt.semilogx(freq_diffs/1e6, corrf*1e6, linestyle='None',
-             marker='o', markerfacecolor='b')
-    plt.xlabel('Frequency Lag (MHz)')
-    plt.ylabel('Correlation (mK$^2$)')
+    def plot_freq(self, norms=False) :
         
+        nf = len(self.freq_inds)
+        #freq_diffs = sp.sort(self.allfreq - min(self.allfreq))
+        n_bins = 12
+        factor = 1.5
+        start = 2.1e6
+        freq_diffs = sp.empty(n_bins)
+        freq_diffs[0] = start
+        for ii in range(1,n_bins) :
+           freq_diffs[ii] = factor*freq_diffs[ii-1] 
+        n_diffs = len(freq_diffs)
+        corrf = sp.zeros(n_diffs)
+        countsf = sp.zeros(n_diffs, dtype=int)
+        for ii in range(nf) :
+            for jj in range(nf) :
+                if norms :
+                    thiscorr = self.corr[ii,jj,0]*self.norms[ii,jj]
+                else :
+                    thiscorr = self.corr[ii,jj,0]
+                df = abs(self.freq1[ii] - self.freq2[jj])
+                for kk in range(1, n_diffs-1) :
+                    if (abs(freq_diffs[kk]-df) <= abs(freq_diffs[kk-1]-df)
+                        and abs(freq_diffs[kk]-df) < abs(freq_diffs[kk+1]-df)) :
+                        d_ind = kk
+                if abs(freq_diffs[0]-df) < abs(freq_diffs[1]-df) :
+                    d_ind = 0
+                if abs(freq_diffs[-1]-df) <= abs(freq_diffs[-2]-df) :
+                    d_ind = n_diffs - 1
+                corrf[d_ind] += thiscorr
+                countsf[d_ind] +=1
+        corrf /= countsf
+        plt.semilogx(freq_diffs/1e6, corrf*1e6, linestyle='None',
+                 marker='o', markerfacecolor='b')
+        plt.xlabel('Frequency Lag (MHz)')
+        plt.ylabel('Correlation (mK$^2$)')
+
+    def get_freq_svd_modes(self, n) :
+        """Same as get freq eigenmodes, but treats left and right maps
+        separatly with an SVD.
+        """
+        U, s, V = linalg.svd(self.corr[:,:,0]*self.norms)
+        V = V.T
+        hs = list(s)
+        hs.sort()
+        Lvectors = []
+        Rvectors = []
+        for ii in range(n) :
+            ind, = sp.where(abs(s) == hs[-ii-1])
+            if len(ind) > 1 :
+                raise NotImplementedError('2 eigenvalues bitwise equal.')
+            Lvectors.append(U[:,ind])
+            Rvectors.append(V[:,ind])
+        
+        self.freq_svd_values = s
+        self.freq_Lsvd_modes = Lvectors
+        self.freq_Rsvd_modes = Rvectors
+
+    def plot_svd(self) :
+        """Plots the eigen values and prints out some statistics."""
+        
+        n = len(self.freq_inds)
+        plt.semilogy(abs(sp.sort(self.freq_svd_values/n)), marker='o', 
+                     linestyle='None')
+        print 'Mean noise: ', sp.sum(self.freq_svd_values)/n
+        print 'Largest eigenvalues/n : ', 
+        print sp.sort(self.freq_svd_values/n)[-10:]
+
+
 
 # For running this module from the command line
 if __name__ == '__main__' :

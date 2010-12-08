@@ -4,10 +4,16 @@ import unittest
 import scipy as sp
 import numpy.ma as ma
 
-from core import fitsGBT
+from core import fitsGBT, fits_map
 import tools
 
 test_file = "testfile_GBTfits.fits"
+test_map = 'testfile_map.fits'
+# Known test map parameters.
+tm_centre = (325.7, 0.0)
+tm_shape = (22, 10)
+tm_spacing = (-0.2, 0.2)
+
 
 class TestCalcFunctions(unittest.TestCase) :
     
@@ -107,6 +113,7 @@ class TestMapSetUp(unittest.TestCase) :
     def tearDown(self) :
         del self.Data
 
+
 class TestFileVar(unittest.TestCase) :
     
     def setUp(self) :
@@ -158,6 +165,24 @@ class TestFileVar(unittest.TestCase) :
 
     def tearDown(self) :
         del self.Blocks
+
+
+class TestMapPars(unittest.TestCase) :
+    
+    def setUp(self) :
+        self.Map = fits_map.read(test_map, feedback=0)
+
+    def test_test_map(self) :
+        centre, shape, spacing = tools.get_map_params(self.Map)
+        self.assertAlmostEqual(shape[0], tm_shape[0])
+        self.assertAlmostEqual(shape[1], tm_shape[1])
+        self.assertAlmostEqual(centre[0], tm_centre[0])
+        self.assertAlmostEqual(centre[1], tm_centre[1])
+        self.assertAlmostEqual(spacing[0], tm_spacing[0])
+        self.assertAlmostEqual(spacing[1], tm_spacing[1])
+    
+    def tearDown(self) :
+        del self.Map
 
 
 # TODO: Test that the bins calculated here agree with the ones from

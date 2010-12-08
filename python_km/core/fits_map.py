@@ -21,6 +21,7 @@ card_detail = 'DB-DET'
 # an image, they are always scalars, never arrays.  They are stored in the
 # header, not with the image.
 fields = (
+          'POL',
           'BANDWID',
           'OBJECT',
           'CTYPE1', # Axis type (Ra)  
@@ -62,7 +63,7 @@ def write(Maps, file_name, feedback=2) :
         imhdu = pyfits.ImageHDU(sp.swapaxes(map, 0, 2), name='MAP%d'%ii)
 
         # Add extra data to the HDU
-        for key in fields :
+        for key in Map.field.iterkeys() :
             if Map.field_axes[key] != () :
                 raise ce.DataError('Only 0D data can be written to a Fits Map '
                                    'Header.')
@@ -109,6 +110,8 @@ def read(file_name, map_inds=None, feedback=2) :
 
         # Set the other fields.
         for field_name in fields :
+            if not field_name in hdulist[1].header.keys() :
+                continue
             value = hdulist[1].header[field_name]
             Map.set_field(field_name, value)
         map_list.append(Map)

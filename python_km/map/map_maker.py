@@ -125,7 +125,7 @@ class MapMaker(object) :
                         Map = tools.set_up_map(Data, params['field_centre'], 
                                             shape[0:2], (ra_spacing, spacing))
                         # Also store the polarization.
-                        Map.set_field('POLARIZATION',
+                        Map.set_field('POL',
                                       Data.field['CRVAL4'][pol_ind], (), 'I')
                         # Will store the map data outside of Map for now.
                         map_data = sp.zeros(shape, dtype=float)

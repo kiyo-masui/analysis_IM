@@ -56,6 +56,21 @@ def calc_bins(centre, shape, spacing=1., edge='lower') :
     
     return bins
 
+
+def get_map_params(Map) :
+    """Calculates the centre, shape, and pixel spacing of a map."""
+    
+    Map.calc_axes()
+    shape = (len(Map.long), len(Map.lat), len(Map.freq))
+    centre = ((Map.long[-1] + Map.long[0])/2.0, (Map.lat[-1] + Map.lat[0])/2.0,
+              (Map.freq[-1] + Map.freq[0])/2.0)
+    spacing = (Map.field['CDELT1'].item(), Map.field['CDELT2'].item(), 
+               Map.field['CDELT3'].item())
+
+    return centre, shape, spacing
+
+
+
 def set_up_map(Data, centre, shape, spacing) :
     """Sets up a data_map.DataMap object.
 
