@@ -4,6 +4,8 @@ This map maker assumes uncorrelated data, i.e. it is the same as griding the
 data, averageing over pointings that land in the same grid.
 """
 
+import copy
+
 import scipy as sp
 import numpy.ma as ma
 
@@ -30,7 +32,9 @@ params_init = {
                'pixel_spacing' : 0.125, # degrees
                # What time streams to include in map. Should sum to 1.
                'cal_weights' : (0.5, 0.5),
-               'pol_weights' : (0.5, 0.0, 0.0, 0.5)
+               'pol_weights' : (0.5, 0.0, 0.0, 0.5),
+               # Weight each file by its varience.
+               'variance_weight' : False
                }
 
 # Fields that should be copied from times stream data.
@@ -47,7 +51,12 @@ class MapMaker(object) :
         self.params = parse_ini.parse(parameter_file_or_dict, params_init, 
                                  prefix='mm_')
 
-    def execute(self) :
+    def execute(self, nprocesses=1) :
+        """Function that acctually does the work.
+
+        The nprocesses parameter does not do anything yet.  It is just there
+        for compatibility with the pipeline manager.
+        """
         params = self.params
         kiyopy.utils.mkparents(params['output_root'])
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
@@ -80,6 +89,23 @@ class MapMaker(object) :
             # Read in the data, and loop over data blocks.
             Reader = fitsGBT.Reader(input_fname)
             Blocks = Reader.read(params['scans'], params['IFs'])
+            if params['variance_weight'] :
+                weight = 0.0
+                file_counts = 0.0
+                for Data in Blocks :
+                    for ii_pol in range(len(params['pol_weights'])) :
+                        for jj_cal in range(len(params['cal_weights'])) :
+                            weight += (ma.sum(Data.data[:,ii_pol,jj_cal,:]**2,
+                                              0) * params['pol_weights'][ii_pol]
+                                       * params['cal_weights'][jj_cal])
+                            file_counts += (Data.dims[0] - ma.count_masked(
+                                            Data.data[:,ii_pol,jj_cal,:], 0)
+                                            * params['pol_weights'][ii_pol]
+                                            * params['cal_weights'][jj_cal])
+                weight = file_counts/weight.filled(99999.)
+            else :
+                weight = 1.0
+
             for Data in Blocks :
                 dims = Data.dims
                 Data.calc_freq()
@@ -88,7 +114,7 @@ class MapMaker(object) :
                     freq_bins = Data.freq/1.0e6
 
                     # Allowcate memory for the map and pointing counts.
-                    counts = sp.zeros(shape, dtype=int)
+                    counts = ma.zeros(shape, dtype=float)
                     Map = data_map.DataMap(ma.zeros(shape, dtype=float))
                     # Copy some data over that all the data_blocks should have
                     # in common.
@@ -108,10 +134,10 @@ class MapMaker(object) :
                     Map.set_field('CRPIX3', Data.field['CRPIX1'], (), 'D')
                     Map.set_field('CDELT3', Data.field['CDELT1'], (), 'D')
                     # Set the other two axes.
-                    Map.set_field('CRPIX1', shape[0]//2, (), 'D')
+                    Map.set_field('CRPIX1', shape[0]//2 + 1, (), 'D')
                     Map.set_field('CRVAL1', ra_bins[shape[0]//2], (), 'D')
                     Map.set_field('CDELT1', ra_spacing, (), 'D')
-                    Map.set_field('CRPIX2', shape[1]//2, (), 'D')
+                    Map.set_field('CRPIX2', shape[1]//2 + 1, (), 'D')
                     Map.set_field('CRVAL2', dec_bins[shape[1]//2], (), 'D')
                     Map.set_field('CDELT2', spacing, (), 'D')
 
@@ -134,22 +160,29 @@ class MapMaker(object) :
                                  * params['pol_weights'][ii_pol]
                                  * params['cal_weights'][jj_cal])
 
-                add_data_2_map(data, ra_inds, dec_inds, Map.data, counts)
+                add_data_2_map(data, ra_inds, dec_inds, Map.data,
+                               counts, weight)
                 first_block = False
         uncovered_inds = sp.where(counts==0)
         Map.data[uncovered_inds] = ma.masked
+        counts[uncovered_inds] = ma.masked
         Map.data /= counts
+        noise = 1/counts
+        Noise = copy.deepcopy(Map)
         Map.add_history('Gridded data with map_maker_simple.')
+        Noise.data = noise
         
         Map.verify()
-        fits_map.write(Map, params['output_root'] + params['output_end'])
+        Noise.verify()
+        fits_map.write((Map, Noise), 
+                       params['output_root'] + params['output_end'])
         parse_ini.write_params(params, params['output_root'] + 'params.ini')
 
 
 
 
 
-def add_data_2_map(data, ra_inds, dec_inds, map, counts) :
+def add_data_2_map(data, ra_inds, dec_inds, map, counts, weight=1) :
     """Add a data masked array to a map."""
 
     ntime = len(ra_inds)
@@ -166,8 +199,13 @@ def add_data_2_map(data, ra_inds, dec_inds, map, counts) :
             # Get unmasked
             unmasked_inds = sp.logical_not(ma.getmaskarray(data[time_ind,:]))
             map[ra_inds[time_ind], dec_inds[time_ind], unmasked_inds] += \
-                      data[time_ind, unmasked_inds]
-            counts[ra_inds[time_ind], dec_inds[time_ind], unmasked_inds] += 1
+                      (weight*data)[time_ind, unmasked_inds]
+            if not hasattr(weight, '__iter__') :
+                counts[ra_inds[time_ind], dec_inds[time_ind], unmasked_inds] +=\
+                          weight
+            else :
+                counts[ra_inds[time_ind], dec_inds[time_ind], unmasked_inds] +=\
+                          weight[unmasked_inds]
 
 
 def calc_inds(pointing, centre, shape, spacing=1.) :

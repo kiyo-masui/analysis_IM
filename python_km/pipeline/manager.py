@@ -13,6 +13,7 @@ params_init = {
               # list should contain an executable accepting only parameter file
               # or dict.
               'modules' : [],
+              'processes' : 1
               }
 
 
@@ -24,7 +25,7 @@ def execute(pipe_file_or_dict) :
     
     for module in params['modules'] :
         print 'Excuting analysis module: ' + str(module)
-        module(module_params).execute()
+        module(module_params).execute(params['processes'])
 
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":
