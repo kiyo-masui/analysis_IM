@@ -99,10 +99,10 @@ def apply_cuts(Data, sig_thres=5, pol_thres=15) :
         # very computationally costly.
         for jj in range(3) :
             # First check for any outliers that could throw the initial mean off
-            # more than 1/sqrt(nt/2) sigma.  This is the 'weak' cut.
+            # more than sqrt(3*nt/4) sigma.  This is the 'weak' cut.
             bad_mask = ma.where(ma.logical_or(
-                                norm_data[:,0,:,:] > nt*var[0,:,:]/2, 
-                                norm_data[:,1,:,:] > nt*var[1,:,:]/2))
+                                norm_data[:,0,:,:] > 3.*nt*var[0,:,:]/4., 
+                                norm_data[:,1,:,:] > 3.*nt*var[1,:,:]/4.))
             if len(bad_mask[0]) == 0:
                 break
             for ii in range(4) :

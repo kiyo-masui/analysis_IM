@@ -58,14 +58,27 @@ def rotate(Data, new_pols=(1,), average_cals=False) :
     if (Data.field['CAL'][on_ind] != 'T' or
         Data.field['CAL'][off_ind] != 'F') :
             raise ce.DataError('Cal states not in expected order.')
-    if len(new_pols) != 1 or new_pols[0] != 1 :
-        raise NotImplementedError('Right now we can only calculate I.')
-
-    I = (Data.data[:,[xx_ind],:,:] + Data.data[:,[yy_ind],:,:])/2.0
-    if average_cals :
-        I = (I[:,:,[0],:] + I[:,:,[1],:])/2.0
-    Data.set_data(I)
-    Data.field['CRVAL4'] = sp.array([1])
+    if len(new_pols) == 1 and new_pols[0] == 1 :
+        I = (Data.data[:,[xx_ind],:,:] + Data.data[:,[yy_ind],:,:])/2.0
+        if average_cals :
+            I = (I[:,:,[0],:] + I[:,:,[1],:])/2.0
+        Data.set_data(I)
+        Data.field['CRVAL4'] = sp.array([1])
+    elif tuple(new_pols) == (1,2,3,4) :
+        new_data = ma.empty(Data.dims)
+        new_data[:,[0],:,:] = (Data.data[:,[xx_ind],:,:] + 
+                             Data.data[:,[yy_ind],:,:])/2.0
+        new_data[:,[1],:,:] = (Data.data[:,[xx_ind],:,:] - 
+                             Data.data[:,[yy_ind],:,:])/2.0
+        new_data[:,[2],:,:] = Data.data[:,[xy_inds[0]],:,:] 
+        new_data[:,[3],:,:] = Data.data[:,[xy_inds[1]],:,:] 
+        if average_cals :
+            new_data = (new_data[:,:,[0],:] + new_data[:,:,[1],:])/2.0
+        Data.set_data(new_data)
+        Data.field['CRVAL4'] = sp.array([1,2,3,4])
+    else :
+        raise NotImplementedError('Right now we can only calculate I'
+                                  ' or (I, Q, U V)')
     
 
 # If this file is run from the command line, execute the main function.

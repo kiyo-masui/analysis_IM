@@ -17,8 +17,12 @@ class TestRotate(unittest.TestCase) :
         Reader = fitsGBT.Reader(test_file, feedback=0)
         self.Data = Reader.read(1,0)
 
-    def test_runs(self) :
+    def test_runs_I(self) :
         rotate_pol.rotate(self.Data, (1,))
+        self.Data.verify()
+    
+    def test_runs_all(self) :
+        rotate_pol.rotate(self.Data, (1,2,3,4))
         self.Data.verify()
 
     def test_dims(self) :

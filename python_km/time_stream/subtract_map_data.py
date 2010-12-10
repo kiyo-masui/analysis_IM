@@ -47,7 +47,7 @@ def sub_map(Data, Map) :
 
     # Some dimension checks.  Eventually may want to have a tuple of maps, one
     # for each polaization.  For now, only use I.
-    if ((len(Data.field['CRVAL4']) > 1) or 
+    if ((Data.dims[1] > 1) or 
         (hasattr(Map, '__iter__') and len(Map) > 1)):
         raise NotImplementedError('Multiple polarizations not supported.')
     pol_ind = 0
