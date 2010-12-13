@@ -20,7 +20,7 @@ mm_field_centre = (12.75, 0.0)
 #file_middles = tuple(dir_data.get_data_files([1,3,5,6,7,8,9,10,11,12,13,14,15],
 #                                             field))
 #file_middles = tuple(dir_data.get_data_files([21], field))
-file_middles = tuple(dir_data.get_data_files(range(10, 22), field))
+file_middles = tuple(dir_data.get_data_files(range(23, 36), field))
 
 pipe_modules = []
 pipe_processes = 6
@@ -52,7 +52,7 @@ fd_output_end = '.fits'
 fd_scans = ()
 fd_IFs = ()
 
-fd_sigma_thres = 3
+fd_sigma_thres = 8
 fd_pol_thres = 18
 
 from time_stream import rebin_freq
@@ -122,7 +122,7 @@ pipe_modules.append(map_maker.MapMaker)
 mm_input_root = rp_output_root
 mm_file_middles = file_middles
 mm_input_end = '.fits'
-mm_output_root = base_dir + 'maps/' + prefix + field + '_10-21_'
+mm_output_root = base_dir + 'maps/' + prefix + field + '_23-35'
 mm_output_end = '.fits'
 mm_scans = ()
 mm_IFs = (0,)

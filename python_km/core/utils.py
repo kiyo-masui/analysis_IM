@@ -3,6 +3,7 @@
 import time
 
 import scipy as sp
+from scipy.interpolate import interp1d
 import ephem
 
 def elaz2radec_lst(el, az, lst, lat = 38.43312) :
@@ -80,4 +81,22 @@ def mk_map_grid(centre, shape, spacing) :
     return grid_ra, grid_dec
 
 
+def get_beam(freq) :
+    """Get the GBT beam width at a frequency (or an array of frequencies).
+
+    This is currently pretty rough and only uses on scans worth of data.
+    """
+
+    # This data is pretty rough.  Just cut and pasted from one scan, not
+    # averaged.
+    beam_data = [0.316148488246, 0.306805630985, 0.293729620792, 
+                 0.281176247549, 0.270856788455, 0.26745856078, 
+                 0.258910010848, 0.249188429031]
+    freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905], dtype=float)
+    freq_data *= 1.0e6
+    f = interp1d(freq_data, beam_data, bounds_error=False, fill_value = -1)
+    b = f(freq)
+    b[b<0] = 0.316148488246
+    return b
+    
 

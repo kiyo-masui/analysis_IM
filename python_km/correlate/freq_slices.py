@@ -12,7 +12,8 @@ import matplotlib.pyplot as plt
 from kiyopy import parse_ini
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
-from core import fits_map
+from core import fits_map, utils
+import map.tools
 
 params_init = {
                # IO:
@@ -23,7 +24,7 @@ params_init = {
                'input_end_noise' : "_noise.fits",
                'output_root' : "./testoutput",
                # What frequencies to correlate:
-               'freq' : (15, 40, 65, 90, 115),
+               'freq' : (),
                # Angular lags at which to calculate the correlation.  Upper
                # edge bins in degrees.
                'lags' : (0.1, 0.2)
@@ -133,6 +134,13 @@ class FreqSlices(object) :
         Map2.calc_axes()
         # Set up correlation function.
         lags = sp.array(params['lags'])
+        if len(lags)==0 :
+            centre, shape, spacing = map.tools.get_map_params(Map1)
+            # Assume the pixel width in real degrees is the dec spacing.
+            wid = spacing[1]
+            # Choose lags at fixed grid distance.
+            lags = sp.array([0.0, 1.0, sp.sqrt(2.0), 2.0, sp.sqrt(5.0)])
+            lags = (lags + 0.01)*wid
         freq1 = freq
         freq2 = freq
         map1 = Map1.data[:,:,freq1]
@@ -318,6 +326,57 @@ class FreqSlices(object) :
         print 'Mean noise: ', sp.sum(self.freq_svd_values)/n
         print 'Largest eigenvalues/n : ', 
         print sp.sort(self.freq_svd_values/n)[-10:]
+
+    def degrade_corr_res(self, beam=0.4) :
+        """Brings all freqencies to the same resolution."""
+
+        if self.params['lags'] != () :
+            raise ValueError("Expeceted automatically genreated lags.")
+        wid = self.lags[0]/1.01
+        real_lags = (self.lags/wid -0.01)*wid
+        lag_weights = sp.array([1.0, 4.0, 4.0, 4.0, 8.0])
+        sig = beam**2
+        sig1 = sig - utils.get_beam(self.freq1)**2
+        sig2 = sig - utils.get_beam(self.freq2)**2
+        if min(sig1) < 0 or min(sig2) < 0 :
+            raise ValueError("Final beam must be bigger than lowest resolution.")
+        n1 = len(self.freq1)
+        n2 = len(self.freq2)
+        new_corr = sp.zeros((n1,n2,1))
+        corr = self.corr*self.norms[:,:,sp.newaxis]
+        for ii in range(n1) :
+            for jj in range(n2) :
+                this_norm = 0
+                for kk in range(len(real_lags)) :
+                    b1 = (sp.exp(-real_lags[kk]**2/2/sig1[ii])
+                          / sp.sqrt(2*sp.pi*sig1[ii]))
+                    b2 = (sp.exp(-real_lags[kk]**2/2/sig2[jj])
+                          / sp.sqrt(2*sp.pi*sig2[jj]))
+                    new_corr[ii,jj,0] += b1*b2*lag_weights[kk]*corr[ii,jj,kk]
+                    this_norm += b1*b2*lag_weights[kk]
+                new_corr[ii,jj,0] /=  this_norm
+        corr = new_corr
+        norms = corr[:,:,0].diagonal()
+        norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
+        corr /= norms[:,:,sp.newaxis]
+        self.norms = norms
+        self.corr = corr
+
+
+    def subtract_svd_modes_corr(self) :
+        """Removes svd modes from corr (as opposed to the map)."""
+
+        corr = self.corr*self.norms[:,:,sp.newaxis]
+        for ii in range(len(self.freq_Lsvd_modes)):
+            corr = corr - (self.freq_svd_values[ii] 
+                           * self.freq_Lsvd_modes[ii][:,sp.newaxis]
+                           * self.freq_Rsvd_modes[ii][sp.newaxis,:])
+        norms = corr[:,:,0].diagonal()
+        norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
+        corr /= norms[:,:,sp.newaxis]
+        self.norms = norms
+        self.corr = corr
+
 
 
 
