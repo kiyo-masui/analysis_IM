@@ -139,7 +139,8 @@ class FreqSlices(object) :
             # Assume the pixel width in real degrees is the dec spacing.
             wid = spacing[1]
             # Choose lags at fixed grid distance.
-            lags = sp.array([0.0, 1.0, sp.sqrt(2.0), 2.0, sp.sqrt(5.0)])
+            lags = sp.array([0.0, 1.0, sp.sqrt(2.0), 2.0, sp.sqrt(5.0),
+                             sp.sqrt(8.0), 3.0, sp.sqrt(10.0)])
             lags = (lags + 0.01)*wid
         freq1 = freq
         freq2 = freq
@@ -327,57 +328,55 @@ class FreqSlices(object) :
         print 'Largest eigenvalues/n : ', 
         print sp.sort(self.freq_svd_values/n)[-10:]
 
-    def degrade_corr_res(self, beam=0.4) :
-        """Brings all freqencies to the same resolution."""
+def degrade_corr_res(self, beam=0.4) :
+    """Brings all freqencies to the same resolution."""
 
-        if self.params['lags'] != () :
-            raise ValueError("Expeceted automatically genreated lags.")
-        wid = self.lags[0]/1.01
-        real_lags = (self.lags/wid -0.01)*wid
-        lag_weights = sp.array([1.0, 4.0, 4.0, 4.0, 8.0])
-        sig = beam**2
-        sig1 = sig - utils.get_beam(self.freq1)**2
-        sig2 = sig - utils.get_beam(self.freq2)**2
-        if min(sig1) < 0 or min(sig2) < 0 :
-            raise ValueError("Final beam must be bigger than lowest resolution.")
-        n1 = len(self.freq1)
-        n2 = len(self.freq2)
-        new_corr = sp.zeros((n1,n2,1))
-        corr = self.corr*self.norms[:,:,sp.newaxis]
-        for ii in range(n1) :
-            for jj in range(n2) :
-                this_norm = 0
-                for kk in range(len(real_lags)) :
-                    b1 = (sp.exp(-real_lags[kk]**2/2/sig1[ii])
-                          / sp.sqrt(2*sp.pi*sig1[ii]))
-                    b2 = (sp.exp(-real_lags[kk]**2/2/sig2[jj])
-                          / sp.sqrt(2*sp.pi*sig2[jj]))
-                    new_corr[ii,jj,0] += b1*b2*lag_weights[kk]*corr[ii,jj,kk]
-                    this_norm += b1*b2*lag_weights[kk]
-                new_corr[ii,jj,0] /=  this_norm
-        corr = new_corr
-        norms = corr[:,:,0].diagonal()
-        norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
-        corr /= norms[:,:,sp.newaxis]
-        self.norms = norms
-        self.corr = corr
-
-
-    def subtract_svd_modes_corr(self) :
-        """Removes svd modes from corr (as opposed to the map)."""
-
-        corr = self.corr*self.norms[:,:,sp.newaxis]
-        for ii in range(len(self.freq_Lsvd_modes)):
-            corr = corr - (self.freq_svd_values[ii] 
-                           * self.freq_Lsvd_modes[ii][:,sp.newaxis]
-                           * self.freq_Rsvd_modes[ii][sp.newaxis,:])
-        norms = corr[:,:,0].diagonal()
-        norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
-        corr /= norms[:,:,sp.newaxis]
-        self.norms = norms
-        self.corr = corr
+    if self.params['lags'] != () :
+        raise ValueError("Expeceted automatically genreated lags.")
+    wid = self.lags[0]/1.01
+    real_lags = (self.lags/wid -0.01)*wid
+    lag_weights = sp.array([1.0, 4.0, 4.0, 4.0, 8.0, 4.0, 4.0, 8.0])
+    sig = (beam/2.2355)**2
+    sig1 = sig - (utils.get_beam(self.freq1)/2.355)**2
+    sig2 = sig - (utils.get_beam(self.freq2)/2.355)**2
+    if min(sig1) < 0 or min(sig2) < 0 :
+        raise ValueError("Final beam must be bigger than lowest resolution.")
+    n1 = len(self.freq1)
+    n2 = len(self.freq2)
+    new_corr = sp.zeros((n1,n2,1))
+    corr = self.corr*self.norms[:,:,sp.newaxis]
+    for ii in range(n1) :
+        for jj in range(n2) :
+            this_norm = 0
+            s1 = sig1[ii]
+            s2 = sig2[jj]
+            for kk in range(len(real_lags)) :
+                b1 = (sp.exp(-real_lags[kk]**2/2/s1))
+                b2 = (sp.exp(-real_lags[kk]**2/2/s2))
+                new_corr[ii,jj,0] += b1*b2*lag_weights[kk]*corr[ii,jj,kk]
+                this_norm += b1*b2*lag_weights[kk]
+            new_corr[ii,jj,0] /=  this_norm * (sp.sqrt(s1/s2) + sp.sqrt(s1/s2))
+    corr = new_corr
+    norms = corr[:,:,0].diagonal()
+    norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
+    corr /= norms[:,:,sp.newaxis]
+    self.norms = norms
+    self.corr = corr
 
 
+def subtract_svd_modes_corr(self) :
+    """Removes svd modes from corr (as opposed to the map)."""
+
+    corr = self.corr*self.norms[:,:,sp.newaxis]
+    for ii in range(len(self.freq_Lsvd_modes)):
+        corr = corr - (self.freq_svd_values[ii] 
+                       * self.freq_Lsvd_modes[ii][:,sp.newaxis]
+                       * self.freq_Rsvd_modes[ii][sp.newaxis,:])
+    norms = corr[:,:,0].diagonal()
+    norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
+    corr /= norms[:,:,sp.newaxis]
+    self.norms = norms
+    self.corr = corr
 
 
 # For running this module from the command line

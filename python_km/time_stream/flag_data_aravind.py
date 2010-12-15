@@ -10,6 +10,7 @@ from scipy import weave
 
 import kiyopy.custom_exceptions as ce
 import base_single
+import an.rfi as rfi
 
 class FlagData(base_single.BaseSingle) :
     """Pipeline module that flags rfi and other forms of bad data.
@@ -77,93 +78,73 @@ def apply_cuts(Data, sig_thres=5, pol_thres=5.0, width=0, flatten=True,
         Data.field['CRVAL4'][xy_inds[1]] != -8) :
             raise ce.DataError('Polarization types not as expected,'
                                ' function needs to be generalized.')
-    on_ind = 0
-    off_ind = 1
-    if (Data.field['CAL'][on_ind] != 'T' or
-        Data.field['CAL'][off_ind] != 'F') :
-            raise ce.DataError('Cal states not in expected order.')
-    
     if pol_thres > 0 :
         Data.calc_freq()
         freq = Data.freq
         dims = Data.dims
         data = Data.data
-
         if dims[3] != 2048 :
             raise ce.DataError('C code expects 2048 frequency channels.')
-        
         derivative_cut = 0
         if der_flags > 0:
             derivative_cut = 1
 
-        # Cast variables to a definate type for C code.
-        pol_thres = float(pol_thres)
-        width = int(width)
-        flatten = int(flatten)
-        der_flags = int(der_flags)
-        der_width = int(der_width)
-        
-        # Get Aravind's rfi C code.
-        this_dir = os.path.dirname(__file__)
-        flag_code = open(this_dir + '/rfi_flag.c', 'r').read()
-        # Driver code for Aravind's code.  Note that the C code is only
-        # recompiled if the md5sum of the below string changes.  If you change
-        # flag_code, you have to force a recompile.
-        code = """
-        #line 106 "flag_data_aravind.py"
-        clean(pol_thres, width, flatten, derivative_cut, der_flags, 
-              der_width, cross, thisdata, freq, thismask);
-        //mask_array(2048,cross,0.1,thismask,0);
-        //double rms, mean;
-        //get_rms(cross,2048,&rms,&mean);
-        //printf("%f", rms);
-        """
-        # Variables that should be carried from python to C.
-        variables = ['pol_thres', 'width', 'flatten', 'derivative_cut', 
-                     'der_flags', 'der_width', 'freq', 'thisdata', 'thismask', 
-                     'cross']
+        # Allocate memory in SWIG array types.
+        freq_array = rfi.new_doublearray(dims[3])
+        data_array = rfi.new_doublearray(dims[3])
+        cross_array = rfi.new_doublearray(dims[3])
+        fit_array = rfi.new_doublearray(dims[3])
+        mask_array = rfi.new_intarray(dims[3])
+        for fii in xrange(dims[3]) :
+            rfi.doublearray_setitem(freq_array,fii,freq[fii])
         
         # Outer loops performed in python.
         for tii in range(dims[0]) :
             for cjj in range(dims[2]) :
-                
                 # Polarization cross correlation coefficient.
                 cross = ma.sum(data[tii,xy_inds,cjj,:]**2, 0)
                 cross /= data[tii,xx_ind,cjj,:]*data[tii,yy_ind,cjj,:]
-                cross = ma.filled(cross, 100.)
-                #print sp.where(cross),
-                
-                # XX then YY
+                cross = ma.filled(cross, 1000.)
+
+                # Copy data to the SWIG arrays.
                 # This may be confusing: Data is a DataBlock object which has
                 # an attribute data which is a masked array.  Masked arrays
                 # have attributes data (an array) and mask (a bool array).  So
                 # thisdata and thismask are just normal arrays.
-                thisdata = data.data[tii,xx_ind,cjj,:]
-                thismask = sp.array(data.mask[tii,xx_ind,cjj,:], dtype=sp.int32)
-                #print sp.where(thismask),
-                # Compile (if required) and execute C code.
-                weave.inline(code, variables, support_code=flag_code)
-                data[tii,:,cjj,thismask] = ma.masked
-                #print sp.where(thismask)
+                for fkk in xrange(dims[3]) :
+                    rfi.doublearray_setitem(data_array,fkk, 
+                                            data.data[tii,xx_ind,cjj,fkk]);
+                    rfi.doublearray_setitem(cross_array,fkk,cross[fkk]);
+                rfi.get_fit(cross_array,freq_array,fit_array)
 
-                thisdata = data.data[tii,yy_ind,cjj,:]
-                thismask = sp.array(data.mask[tii,yy_ind,cjj,:], dtype=sp.int32)
-                weave.inline(code, variables, support_code=flag_code)
-                data[tii,:,cjj,thismask] = ma.masked
+                #print (pol_thres, width, int(flatten), derivative_cut, 
+                #       der_flags, der_width)
+                rfi.clean(pol_thres, width, int(flatten), derivative_cut, 
+                          der_flags, der_width, fit_array, cross_array,
+                          data_array, freq_array, mask_array)
+                # Copy mask the flagged points and set up for YY.
+                for fkk in xrange(dims[3]) :
+                    if rfi.intarray_getitem(mask_array, fkk) :
+                        data[tii,:,cjj,fkk] = ma.masked
+                    rfi.doublearray_setitem(data_array,fkk, 
+                                            data.data[tii,yy_ind,cjj,fkk]);
+                # Clean The YY pol.
+                rfi.clean(pol_thres, width, int(flatten), derivative_cut, 
+                          der_flags, der_width, fit_array, cross_array,
+                          data_array, freq_array, mask_array)
+                # Mask flagged YY data.
+                for fkk in xrange(dims[3]) :
+                    if rfi.intarray_getitem(mask_array, fkk) :
+                        data[tii,:,cjj,fkk] = ma.masked
+        
+        # Not sure if the desctors already do this, but free up memory.
+        rfi.delete_intarray(mask_array)
+        rfi.delete_doublearray(freq_array)
+        rfi.delete_doublearray(data_array)
+        rfi.delete_doublearray(cross_array)
+        rfi.delete_doublearray(fit_array)
 
-    if sig_thres > 0 :
-        # Will work with squared data so no square roots needed.
-        data = Data.data[:,[xx_ind, yy_ind], :, :]
-        # Median is crucial, don't want to mess up a whole channel normalization
-        # with one bad data point.
-        norm_data = (data/ma.median(data, 0) - 1)**2
-        var = ma.mean(norm_data)
 
-        bad_mask = ma.where(ma.logical_or(norm_data[:,0,:,:] > var*sig_thres**2, 
-                                          norm_data[:,1,:,:] > var*sig_thres**2))
-        for ii in range(4) :
-            data_this_pol = Data.data[:,ii,:,:]
-            data_this_pol[bad_mask] = ma.masked
 
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":

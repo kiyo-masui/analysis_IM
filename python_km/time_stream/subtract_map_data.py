@@ -23,6 +23,7 @@ class Subtract(base_single.BaseSingle) :
                    'map_file' : 'testfile_map.fits'
                    # XXX: how to deal with time mean? (often this doesn't
                    # matter.)
+                   # XXX: What about if I start subtracing off a linear piece.
                    }
 
     # Add extra stuff to the constructor.
