@@ -25,7 +25,7 @@ class FlagData(base_single.BaseSingle) :
                    # once normalized to the time median.
                    'sigma_thres' : 5,
                    # In multiples of the measured standard deviation.
-                   'pol_thres' : 3
+                   'pol_thres' : 5
                    }
     feedback_title = 'New flags each data Block: '
     def action(self, Data) :
@@ -40,8 +40,8 @@ class FlagData(base_single.BaseSingle) :
         return Data
 
 
-def apply_cuts(Data, sig_thres=5, pol_thres=5.0, width=0, flatten=True,
-               der_flags=0, der_width=0) :
+def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
+               der_flags=10, der_width=2) :
     """Flags bad data from RFI and far outliers..
     
     Masks any data that is further than 'sig_thres' sigmas from the mean of the
@@ -143,6 +143,39 @@ def apply_cuts(Data, sig_thres=5, pol_thres=5.0, width=0, flatten=True,
         rfi.delete_doublearray(data_array)
         rfi.delete_doublearray(cross_array)
         rfi.delete_doublearray(fit_array)
+    
+    if sig_thres > 0 :
+        # Will work with squared data so no square roots needed.
+        nt = Data.dims[0]
+        data = Data.data[:,[xx_ind, yy_ind], :, :]
+        norm_data = (data/ma.mean(data, 0) - 1)**2
+        var = ma.mean(norm_data, 0)
+        # Use an iteratively flagged mean instead of a median as medians are
+        # very computationally costly.
+        for jj in range(3) :
+            # First check for any outliers that could throw the initial mean off
+            # more than sqrt(3*nt/4) sigma.  This is the 'weak' cut.
+            bad_mask = ma.where(ma.logical_or(
+                                norm_data[:,0,:,:] > 3.*nt*var[0,:,:]/4., 
+                                norm_data[:,1,:,:] > 3.*nt*var[1,:,:]/4.))
+            if len(bad_mask[0]) == 0:
+                break
+            for ii in range(4) :
+                data_this_pol = Data.data[:,ii,:,:]
+                data_this_pol[bad_mask] = ma.masked
+            # Recalculate the mean and varience for the next iteration or step.
+            norm_data = (data/ma.mean(data, 0) - 1)**2
+            var = ma.mean(norm_data, 0)
+
+        # Strong cut, flag data deviating from the t and f var.
+        # Want the varience over t,f. mean_f(var_t(data)) = var_t,f(data)
+        var = ma.mean(var, -1)
+        bad_mask = ma.where(ma.logical_or(
+                        norm_data[:,0,:,:] > var[0,:,sp.newaxis]*sig_thres**2, 
+                        norm_data[:,1,:,:] > var[0,:,sp.newaxis]*sig_thres**2))
+        for ii in range(4) :
+            data_this_pol = Data.data[:,ii,:,:]
+            data_this_pol[bad_mask] = ma.masked
 
 
 

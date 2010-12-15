@@ -29,6 +29,28 @@ class TestFlagData(unittest.TestCase) :
         self.assertTrue(self.Data.data[ind2] is ma.masked)
         self.assertTrue(float(ma.count_masked(self.Data.data)) / 
                         float(self.Data.data.size) < 0.1)
+
+    def test_flags_crazy_data(self) :
+        ind = (5,0,0,1345)
+        ind2 = (2,3,1,425)
+        self.Data.data[ind] = 50
+        self.Data.data[ind2] = 67
+        flag_data.apply_cuts(self.Data, 5, -1)
+        self.assertTrue(self.Data.data[ind] is ma.masked)
+        self.assertTrue(self.Data.data[ind2] is ma.masked)
+
+    def test_flags_controled_data(self) :
+        self.Data.data[0::2,:,:,:] = 1
+        self.Data.data[1::2,:,:,:] = 2
+        ind = (5,0,0,1345)
+        ind2 = (2,3,1,425)
+        self.Data.data[ind] = 5
+        self.Data.data[ind2] = 6
+        flag_data.apply_cuts(self.Data, 5, -1)
+        self.assertTrue(self.Data.data[ind] is ma.masked)
+        self.assertTrue(self.Data.data[ind2] is ma.masked)
+        # 8 = 2 bad data * 4 polarizations
+        self.assertTrue(ma.count_masked(self.Data.data) == 8)
     
     def test_pol_cal_off_controled(self) :
         self.Data.data[:,[0,3],1,:] = rand.normal(5, 0.1, (10, 2, 2048))
@@ -66,6 +88,18 @@ class TestFlagData(unittest.TestCase) :
         self.assertTrue(self.Data.data[ind2] is ma.masked)
         # 8 = 2 bad data * 4 polarizations
         self.assertTrue(ma.count_masked(self.Data.data) == 8*(2*width+1))
+
+    def test_does_nothing_negitive(self) :
+        self.Data.data[0::2,:,:,:] = 1
+        self.Data.data[1::2,:,:,:] = 2
+        ind = (5,0,0,1345)
+        ind2 = (2,3,1,425)
+        ind3 = (3,1,1,634)
+        self.Data.data[ind] = 20
+        self.Data.data[ind2] = 60
+        self.Data.data[ind3] = 43
+        flag_data.apply_cuts(self.Data, -1, -1)
+        self.assertTrue(ma.count_masked(self.Data.data) == 0)
 
     def tearDown(self) :
         del self.Data
