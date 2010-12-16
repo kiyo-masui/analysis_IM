@@ -336,6 +336,8 @@ def degrade_corr_res(self, beam=0.4) :
     wid = self.lags[0]/1.01
     real_lags = (self.lags/wid -0.01)*wid
     lag_weights = sp.array([1.0, 4.0, 4.0, 4.0, 8.0, 4.0, 4.0, 8.0])
+    # Array of the square gid distances of each of the lags.
+    sq_ind_lag = sp.array([0, 1, 2, 4, 5, 8, 9, 10])
     sig = (beam/2.2355)**2
     sig1 = sig - (utils.get_beam(self.freq1)/2.355)**2
     sig2 = sig - (utils.get_beam(self.freq2)/2.355)**2
@@ -345,14 +347,35 @@ def degrade_corr_res(self, beam=0.4) :
     n2 = len(self.freq2)
     new_corr = sp.zeros((n1,n2,1))
     corr = self.corr*self.norms[:,:,sp.newaxis]
+
+    # Make an array of all lag indicies squared.
+    one_d_inds = sp.arange(-3, 3+1, dtype=int)
+    n = len(oned)
+    inds_sq_1 = sp.resize(sp.reshape(one_d_inds, (n,1,1,1))**2 
+                          + sp.reshape(one_d_inds, (1,n,1,1))**2,
+                          (n,n,n,n)).flatten()
+    inds_sq_2 = sp.resize(sp.reshape(one_d_inds, (1,1,n,1))**2 
+                          + sp.reshape(one_d_inds, (1,1,1,n))**2,
+                          (n,n,n,n)).flatten()
+    inds_dif_sq = ((sp.reshape(one_d_inds,(n,1,1,1)) 
+                    - sp.reshape(one_d_inds,(1,n,1,1)))**2
+                   +  (sp.reshape(one_d_inds,(1,1,n,1)) 
+                       - sp.reshape(one_d_inds,(1,1,1,n)))**2).flatten()
+    max_lag_sq = max(sq_ind_lag)
+    in_bounds = sp.logical_and(sp.logical_and(inds_sq_1 <= max_lag_sq,
+                    inds_sq_1 <= max_lag_sq), inds_dif_sq <= max_lag_sq)
+    inds_sq_1 = inds_sq_1[in_bounds]
+    inds_sq_2 = inds_sq_2[in_bounds]
+    inds_dif_sq = inds_dif_sq[in_bounds]
     for ii in range(n1) :
         for jj in range(n2) :
+            
             this_norm = 0
             s1 = sig1[ii]
             s2 = sig2[jj]
+            b1 = sp.exp(-real_lags**2/2/s1)/(2*sp.pi*s1)
+            b2 = sp.exp(-real_lags**2/2/s2)/(2*sp.pi*s2)
             for kk in range(len(real_lags)) :
-                b1 = (sp.exp(-real_lags[kk]**2/2/s1))
-                b2 = (sp.exp(-real_lags[kk]**2/2/s2))
                 new_corr[ii,jj,0] += b1*b2*lag_weights[kk]*corr[ii,jj,kk]
                 this_norm += b1*b2*lag_weights[kk]
             new_corr[ii,jj,0] /=  this_norm * (sp.sqrt(s1/s2) + sp.sqrt(s1/s2))

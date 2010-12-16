@@ -36,7 +36,7 @@ class FlagData(base_single.BaseSingle) :
         already_flagged = ma.count_masked(Data.data)
         params = self.params
         apply_cuts(Data, sig_thres=params['sigma_thres'], 
-                   pol_thres=params['pol_thres']
+                   pol_thres=params['pol_thres'],
                    width=params['pol_width'], flatten=params['flatten_pol'],
                    der_flags=params['derivative_cuts'], 
                    der_width=params['derivative_width'])

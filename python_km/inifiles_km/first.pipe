@@ -56,11 +56,11 @@ fd_scans = ()
 fd_IFs = ()
 
 fd_sigma_thres = 8
-fd_pol_thres = 5
+fd_pol_thres = 8
 fd_pol_width = 2
 fd_flatten_pol = True
-fd_derivative_cuts = 10
-fd_derivative_width = 2
+fd_derivative_cuts = 5
+fd_derivative_width = 1
 
 from time_stream import rebin_freq
 pipe_modules.append(rebin_freq.RebinFreq)
