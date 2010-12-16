@@ -25,12 +25,21 @@ class FlagData(base_single.BaseSingle) :
                    # once normalized to the time median.
                    'sigma_thres' : 5,
                    # In multiples of the measured standard deviation.
-                   'pol_thres' : 5
+                   'pol_thres' : 5,
+                   'pol_width' : 2,
+                   'flatten_pol' : True,
+                   'derivative_cuts' : 10,
+                   'derivative_width' : 2
                    }
     feedback_title = 'New flags each data Block: '
     def action(self, Data) :
         already_flagged = ma.count_masked(Data.data)
-        apply_cuts(Data, self.params['sigma_thres'], self.params['pol_thres'])
+        params = self.params
+        apply_cuts(Data, sig_thres=params['sigma_thres'], 
+                   pol_thres=params['pol_thres']
+                   width=params['pol_width'], flatten=params['flatten_pol'],
+                   der_flags=params['derivative_cuts'], 
+                   der_width=params['derivative_width'])
         new_flags = ma.count_masked(Data.data) - already_flagged
         self.block_feedback = str(new_flags) + ', '
 
