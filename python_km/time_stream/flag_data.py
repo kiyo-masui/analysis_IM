@@ -2,16 +2,21 @@
 """This module flags rfi and other forms of bad data.
 """
 
-import scipy as sp
+import os
+
 import numpy.ma as ma
+import scipy as sp
+from scipy import weave
 
 import kiyopy.custom_exceptions as ce
 import base_single
+import an.rfi as rfi
 
 class FlagData(base_single.BaseSingle) :
     """Pipeline module that flags rfi and other forms of bad data.
 
-    For lots of information look at the doc-string for flag_data.apply_cuts.
+    For lots of information look at the doc-string for 
+    flag_data_aravind.apply_cuts.
     """
 
     prefix = 'fd_'
@@ -19,8 +24,8 @@ class FlagData(base_single.BaseSingle) :
                    # In multiples of the standard deviation of the whole block
                    # once normalized to the time median.
                    'sigma_thres' : 5,
-                   # In multiples of the *theoredical* standard deviation
-                   'pol_thres' : 15
+                   # In multiples of the measured standard deviation.
+                   'pol_thres' : 5
                    }
     feedback_title = 'New flags each data Block: '
     def action(self, Data) :
@@ -35,7 +40,8 @@ class FlagData(base_single.BaseSingle) :
         return Data
 
 
-def apply_cuts(Data, sig_thres=5, pol_thres=15) :
+def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
+               der_flags=10, der_width=2) :
     """Flags bad data from RFI and far outliers..
     
     Masks any data that is further than 'sig_thres' sigmas from the mean of the
@@ -44,13 +50,22 @@ def apply_cuts(Data, sig_thres=5, pol_thres=15) :
     and YY polarizations but all polarizations are masked.  This cut is
     deactivated by setting 'sig_thres' < 0.
 
-    Also masks data that is more polarized than expected assuming it's RFI.
-    the theoredical expectations value of the cross correlation coefficient
-    (q^2) (in the absence of a polarized signal) is 1/dnudt the standard
-    deviation is ~3/dnudt. In practice the expectation value can be up to 20
-    times too high do to leakages.  This cut cuts any data with q^2 >
-    'pol_thres'*3/dnudt.  It is reccomended that 'pol_thres' be set in the 10-20
-    range.  This cut is deactivated by setting 'pol_thres' < 0.
+    Aravind rfi cut is also performed, cutting data with polarization lines, as
+    well as lines in XX and YY.
+
+    Arguments:
+        Data -      A DataBlock object containing data to be cleaned.
+        sig_thres - (float) Any XX or YY data that deviates by this more than 
+                    this many sigmas is flagged.  Data first normalized to 
+                    time median.
+        pol_thres - (float) Any data cross polarized by more than this 
+                    many sigmas is flagged.
+        width -     (int) In the polarization cut, flag data within this many
+                    frequency bins of offending data.
+        flatten -   (Bool) Preflatten the polarization spectrum.
+        der_flags - (int) Find RFI in XX and YY by looking for spikes in the
+                    derivative.  Flag this many spikes.
+        der_width - (int) Same as width but for the derivative cut.
     """
     
     # Here we check the polarizations and cal indicies
@@ -63,32 +78,49 @@ def apply_cuts(Data, sig_thres=5, pol_thres=15) :
         Data.field['CRVAL4'][xy_inds[1]] != -8) :
             raise ce.DataError('Polarization types not as expected,'
                                ' function needs to be generalized.')
-    on_ind = 0
-    off_ind = 1
-    if (Data.field['CAL'][on_ind] != 'T' or
-        Data.field['CAL'][off_ind] != 'F') :
-            raise ce.DataError('Cal states not in expected order.')
-    
     if pol_thres > 0 :
-        # Stdev of cross correlation known from theory.
-        cutoff = pol_thres*3/abs(Data.field['CDELT1']*Data.field['EXPOSURE'])
-        # Deal with cal off data first.
+        Data.calc_freq()
+        freq = Data.freq
+        dims = Data.dims
         data = Data.data
-        cross = ma.sum(data[:,xy_inds,off_ind,:]**2, 1)
-        cross /= data[:,xx_ind,off_ind,:]*data[:,yy_ind,off_ind,:]
-        tinds, finds = ma.where(cross > cutoff)
-        data[tinds,:,off_ind,finds] = ma.masked
-        
-        # In the cal on data, the cal is polarized, so need to subtract the
-        # time mean of cal_on - cal_off out of the cross polarizations first.
+        if dims[3] != 2048 :
+            raise ce.DataError('C code expects 2048 frequency channels.')
+        derivative_cut = 0
+        if der_flags > 0:
+            derivative_cut = 1
 
-        cal = ma.mean(data[:,xy_inds,on_ind,:] - data[:,xy_inds,off_ind,:],
-                        0) 
-        cross = ma.sum((data[:,xy_inds,on_ind,:] - cal)**2, 1)
-        cross /= data[:,xx_ind,on_ind,:]*data[:,yy_ind,on_ind,:]
-        tinds, finds = ma.where(cross > cutoff)
-        data[tinds,:,on_ind,finds] = ma.masked
+        # Allocate memory in SWIG array types.
+        fit = sp.empty(dims[3])
+        mask = sp.empty(dims[3], dtype=sp.int32)
 
+        # Outer loops performed in python.
+        for tii in range(dims[0]) :
+            for cjj in range(dims[2]) :
+                # Polarization cross correlation coefficient.
+                cross = ma.sum(data[tii,xy_inds,cjj,:]**2, 0)
+                cross /= data[tii,xx_ind,cjj,:]*data[tii,yy_ind,cjj,:]
+                cross = ma.filled(cross, 1000.)
+                # Copy data to the SWIG arrays.
+                # This may be confusing: Data is a DataBlock object which has
+                # an attribute data which is a masked array.  Masked arrays
+                # have attributes data (an array) and mask (a bool array).  So
+                # thisdata and thismask are just normal arrays.
+                rfi.get_fit(cross,freq,fit)
+                # XX polarization.
+                data_array = data.data[tii,xx_ind,cjj,:]
+                rfi.clean(pol_thres, width, int(flatten), derivative_cut, 
+                          der_flags, der_width, fit, cross,
+                          data_array, freq, mask)
+                # Copy mask the flagged points and set up for YY.
+                data[tii,:,cjj,mask==1] = ma.masked
+                data_array = data.data[tii,yy_ind,cjj,:]
+                # Clean The YY pol.
+                rfi.clean(pol_thres, width, int(flatten), derivative_cut, 
+                          der_flags, der_width, fit, cross,
+                          data_array, freq, mask)
+                # Mask flagged YY data.
+                data[tii,:,cjj,mask==1] = ma.masked
+    
     if sig_thres > 0 :
         # Will work with squared data so no square roots needed.
         nt = Data.dims[0]
@@ -121,6 +153,8 @@ def apply_cuts(Data, sig_thres=5, pol_thres=15) :
         for ii in range(4) :
             data_this_pol = Data.data[:,ii,:,:]
             data_this_pol[bad_mask] = ma.masked
+
+
 
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":
