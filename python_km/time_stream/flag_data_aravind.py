@@ -90,14 +90,9 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
             derivative_cut = 1
 
         # Allocate memory in SWIG array types.
-        freq_array = rfi.new_doublearray(dims[3])
-        data_array = rfi.new_doublearray(dims[3])
-        cross_array = rfi.new_doublearray(dims[3])
-        fit_array = rfi.new_doublearray(dims[3])
-        mask_array = rfi.new_intarray(dims[3])
-        for fii in xrange(dims[3]) :
-            rfi.doublearray_setitem(freq_array,fii,freq[fii])
-        
+        fit = sp.empty(dims[3])
+        mask = sp.empty(dims[3], dtype=sp.int32)
+
         # Outer loops performed in python.
         for tii in range(dims[0]) :
             for cjj in range(dims[2]) :
@@ -105,44 +100,26 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
                 cross = ma.sum(data[tii,xy_inds,cjj,:]**2, 0)
                 cross /= data[tii,xx_ind,cjj,:]*data[tii,yy_ind,cjj,:]
                 cross = ma.filled(cross, 1000.)
-
                 # Copy data to the SWIG arrays.
                 # This may be confusing: Data is a DataBlock object which has
                 # an attribute data which is a masked array.  Masked arrays
                 # have attributes data (an array) and mask (a bool array).  So
                 # thisdata and thismask are just normal arrays.
-                for fkk in xrange(dims[3]) :
-                    rfi.doublearray_setitem(data_array,fkk, 
-                                            data.data[tii,xx_ind,cjj,fkk]);
-                    rfi.doublearray_setitem(cross_array,fkk,cross[fkk]);
-                rfi.get_fit(cross_array,freq_array,fit_array)
-
-                #print (pol_thres, width, int(flatten), derivative_cut, 
-                #       der_flags, der_width)
+                rfi.get_fit(cross,freq,fit)
+                # XX polarization.
+                data_array = data.data[tii,xx_ind,cjj,:]
                 rfi.clean(pol_thres, width, int(flatten), derivative_cut, 
-                          der_flags, der_width, fit_array, cross_array,
-                          data_array, freq_array, mask_array)
+                          der_flags, der_width, fit, cross,
+                          data_array, freq, mask)
                 # Copy mask the flagged points and set up for YY.
-                for fkk in xrange(dims[3]) :
-                    if rfi.intarray_getitem(mask_array, fkk) :
-                        data[tii,:,cjj,fkk] = ma.masked
-                    rfi.doublearray_setitem(data_array,fkk, 
-                                            data.data[tii,yy_ind,cjj,fkk]);
+                data[tii,:,cjj,mask] = ma.masked
+                data_array = data.data[tii,yy_ind,cjj,:]
                 # Clean The YY pol.
                 rfi.clean(pol_thres, width, int(flatten), derivative_cut, 
                           der_flags, der_width, fit_array, cross_array,
                           data_array, freq_array, mask_array)
                 # Mask flagged YY data.
-                for fkk in xrange(dims[3]) :
-                    if rfi.intarray_getitem(mask_array, fkk) :
-                        data[tii,:,cjj,fkk] = ma.masked
-        
-        # Not sure if the desctors already do this, but free up memory.
-        rfi.delete_intarray(mask_array)
-        rfi.delete_doublearray(freq_array)
-        rfi.delete_doublearray(data_array)
-        rfi.delete_doublearray(cross_array)
-        rfi.delete_doublearray(fit_array)
+                data[tii,:,cjj,mask] = ma.masked
     
     if sig_thres > 0 :
         # Will work with squared data so no square roots needed.
