@@ -137,7 +137,7 @@ class FreqSlices(object) :
         if len(lags)==0 :
             centre, shape, spacing = map.tools.get_map_params(Map1)
             # Assume the pixel width in real degrees is the dec spacing.
-            wid = spacing[1]
+            wid = abs(spacing[1])
             # Choose lags at fixed grid distance.
             lags = sp.array([0.0, 1.0, sp.sqrt(2.0), 2.0, sp.sqrt(5.0),
                              sp.sqrt(8.0), 3.0, sp.sqrt(10.0)])
@@ -188,6 +188,8 @@ class FreqSlices(object) :
                     counts[:,:,lag_ind] += this_weight
         corr /= counts
         norms = corr[:,:,0].diagonal()
+        if sp.any(norms<0) and not subflag :
+            raise RunTimeError("Something went horribly wrong")
         norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
         corr /= norms[:,:,sp.newaxis]
         
@@ -213,7 +215,7 @@ class FreqSlices(object) :
             ind, = sp.where(abs(h) == hs[-ii-1])
             if len(ind) > 1 :
                 raise NotImplementedError('2 eigenvalues bitwise equal.')
-            vectors.append(V[:,ind])
+            vectors.append(V[:,ind[0]])
         
         self.freq_eig_values = h
         self.freq_eig_modes = vectors
@@ -237,11 +239,11 @@ class FreqSlices(object) :
                          markerfacecolor=colours[ii%ncolours])
             plt.xlabel('lag (degrees)')
             plt.ylabel('normalized correlation with ' + 
-                       str(int(round(self.freq[find1]/1.e6))) + ' MHz bin')
+                       str(int(round(self.freq1[find1]/1.e6))) + ' MHz bin')
             #Plot the normalizations to give an absolute scale.
             plt.figure()
             for ii, find2 in enumerate(finds2) :
-                plt.plot(self.freq[find2]/1.e6, self.norms[find1,find2], 
+                plt.plot(self.freq2[find2]/1.e6, self.norms[find1,find2], 
                          linestyle='None',
                          marker=markers[ii%nmarkers],
                          markerfacecolor=colours[ii%ncolours])
@@ -293,7 +295,7 @@ class FreqSlices(object) :
                 countsf[d_ind] +=1
         corrf /= countsf
         plt.semilogx(freq_diffs/1e6, corrf*1e6, linestyle='None',
-                 marker='o', markerfacecolor='b')
+                 marker='o')
         plt.xlabel('Frequency Lag (MHz)')
         plt.ylabel('Correlation (mK$^2$)')
 
@@ -311,8 +313,8 @@ class FreqSlices(object) :
             ind, = sp.where(abs(s) == hs[-ii-1])
             if len(ind) > 1 :
                 raise NotImplementedError('2 eigenvalues bitwise equal.')
-            Lvectors.append(U[:,ind])
-            Rvectors.append(V[:,ind])
+            Lvectors.append(U[:,ind[0]])
+            Rvectors.append(V[:,ind[0]])
         
         self.freq_svd_values = s
         self.freq_Lsvd_modes = Lvectors
@@ -329,18 +331,23 @@ class FreqSlices(object) :
         print sp.sort(self.freq_svd_values/n)[-10:]
 
 def degrade_corr_res(self, beam=0.4) :
-    """Brings all freqencies to the same resolution."""
+    """Brings all freqencies to the same resolution in correlation."""
+    
 
-    if self.params['lags'] != () :
-        raise ValueError("Expeceted automatically genreated lags.")
-    wid = self.lags[0]/1.01
-    real_lags = (self.lags/wid -0.01)*wid
-    lag_weights = sp.array([1.0, 4.0, 4.0, 4.0, 8.0, 4.0, 4.0, 8.0])
+    # XXX: Try this instead of inteegrating, us the analytic factors for if the
+    # intrinsic cerrelation funciton is a delta.
+    if self.params['lags'] != () or self.corr.shape[-1] != len(self.lags):
+        raise ValueError("Expeceted automatically generated lags.")
+    wid = self.lags[1]/1.01
+    real_lags = (self.lags/wid - 0.01)*wid
+    lag_weights = sp.array([1.0, 4.0, 4.0, 4.0, 8.0, 4.0, 4.0, 8.0])*wid**2
     # Array of the square gid distances of each of the lags.
-    sq_ind_lag = sp.array([0, 1, 2, 4, 5, 8, 9, 10])
-    sig = (beam/2.2355)**2
+    #sq_ind_lag = sp.array([0, 1, 2, 4, 5, 8, 9, 10])
+    sig = (beam/2.355)**2
     sig1 = sig - (utils.get_beam(self.freq1)/2.355)**2
     sig2 = sig - (utils.get_beam(self.freq2)/2.355)**2
+    print sig1
+    print sig2
     if min(sig1) < 0 or min(sig2) < 0 :
         raise ValueError("Final beam must be bigger than lowest resolution.")
     n1 = len(self.freq1)
@@ -348,37 +355,15 @@ def degrade_corr_res(self, beam=0.4) :
     new_corr = sp.zeros((n1,n2,1))
     corr = self.corr*self.norms[:,:,sp.newaxis]
 
-    # Make an array of all lag indicies squared.
-    one_d_inds = sp.arange(-3, 3+1, dtype=int)
-    n = len(oned)
-    inds_sq_1 = sp.resize(sp.reshape(one_d_inds, (n,1,1,1))**2 
-                          + sp.reshape(one_d_inds, (1,n,1,1))**2,
-                          (n,n,n,n)).flatten()
-    inds_sq_2 = sp.resize(sp.reshape(one_d_inds, (1,1,n,1))**2 
-                          + sp.reshape(one_d_inds, (1,1,1,n))**2,
-                          (n,n,n,n)).flatten()
-    inds_dif_sq = ((sp.reshape(one_d_inds,(n,1,1,1)) 
-                    - sp.reshape(one_d_inds,(1,n,1,1)))**2
-                   +  (sp.reshape(one_d_inds,(1,1,n,1)) 
-                       - sp.reshape(one_d_inds,(1,1,1,n)))**2).flatten()
-    max_lag_sq = max(sq_ind_lag)
-    in_bounds = sp.logical_and(sp.logical_and(inds_sq_1 <= max_lag_sq,
-                    inds_sq_1 <= max_lag_sq), inds_dif_sq <= max_lag_sq)
-    inds_sq_1 = inds_sq_1[in_bounds]
-    inds_sq_2 = inds_sq_2[in_bounds]
-    inds_dif_sq = inds_dif_sq[in_bounds]
     for ii in range(n1) :
         for jj in range(n2) :
-            
-            this_norm = 0
             s1 = sig1[ii]
             s2 = sig2[jj]
-            b1 = sp.exp(-real_lags**2/2/s1)/(2*sp.pi*s1)
-            b2 = sp.exp(-real_lags**2/2/s2)/(2*sp.pi*s2)
-            for kk in range(len(real_lags)) :
-                new_corr[ii,jj,0] += b1*b2*lag_weights[kk]*corr[ii,jj,kk]
-                this_norm += b1*b2*lag_weights[kk]
-            new_corr[ii,jj,0] /=  this_norm * (sp.sqrt(s1/s2) + sp.sqrt(s1/s2))
+            window = sp.exp(-real_lags**2/(2*(s1+s2)))/(2*sp.pi*(s1+s2))
+            new_corr[ii,jj,0] = sp.sum(window*lag_weights*corr[ii,jj,:])
+            norm = sp.sum(window*lag_weights)
+            new_corr[ii,jj,0] /= norm
+            print norm,
     corr = new_corr
     norms = corr[:,:,0].diagonal()
     norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
@@ -391,15 +376,45 @@ def subtract_svd_modes_corr(self) :
     """Removes svd modes from corr (as opposed to the map)."""
 
     corr = self.corr*self.norms[:,:,sp.newaxis]
-    for ii in range(len(self.freq_Lsvd_modes)):
+    for ii in range(len(self.freq_Lsvd_modes)) :
         corr = corr - (self.freq_svd_values[ii] 
-                       * self.freq_Lsvd_modes[ii][:,sp.newaxis]
-                       * self.freq_Rsvd_modes[ii][sp.newaxis,:])
+                       * self.freq_Lsvd_modes[ii][:,sp.newaxis,sp.newaxis]
+                       * self.freq_Rsvd_modes[ii][sp.newaxis,:,sp.newaxis])
     norms = corr[:,:,0].diagonal()
     norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
     corr /= norms[:,:,sp.newaxis]
     self.norms = norms
     self.corr = corr
+
+def generate_fake_corr(self) :
+    """generate a fake correlation matrix."""
+
+    if self.params['lags'] != () :
+        raise ValueError("Expeceted automatically genreated lags.")
+    wid = self.lags[1]/1.01
+    real_lags = (self.lags/wid - 0.01)*wid
+    sig1 = (utils.get_beam(self.freq1)/2.355)**2
+    sig2 = (utils.get_beam(self.freq2)/2.355)**2
+    if min(sig1) < 0 or min(sig2) < 0 :
+        raise ValueError("Final beam must be bigger than lowest resolution.")
+    n1 = len(self.freq1)
+    n2 = len(self.freq2)
+    n_lags = len(real_lags)
+    new_corr = sp.zeros((n1,n2,n_lags))
+
+    for ii in range(n1) :
+        for jj in range(n2) :
+            s1 = sig1[ii]
+            s2 = sig2[jj]
+            window = sp.exp(-real_lags**2/(2*(s1+s2)))/(2*sp.pi*(s1+s2))
+            new_corr[ii,jj,:] = window
+    norms = new_corr[:,:,0].diagonal()
+    norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
+    new_corr /= norms[:,:,sp.newaxis]
+    self.norms *= norms
+    self.corr = new_corr
+
+
 
 
 # For running this module from the command line
