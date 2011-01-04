@@ -25,7 +25,8 @@ class RotatePol(base_single.BaseSingle) :
                    }
 
     def action(self, Data):
-        rotate(Data, self.params['new_pols'])
+        rotate(Data, self.params['new_pols'],
+               average_cals=self.params['average_cals'])
         Data.add_history('Rotated polarizations parameters.', ('Rotated to:' +
                                                 str(self.params['new_pols']),))
         return Data
@@ -62,6 +63,7 @@ def rotate(Data, new_pols=(1,), average_cals=False) :
         I = (Data.data[:,[xx_ind],:,:] + Data.data[:,[yy_ind],:,:])/2.0
         if average_cals :
             I = (I[:,:,[0],:] + I[:,:,[1],:])/2.0
+            Data.field['CAL'] = sp.array(['A'])
         Data.set_data(I)
         Data.field['CRVAL4'] = sp.array([1])
     elif tuple(new_pols) == (1,2,3,4) :
@@ -74,6 +76,7 @@ def rotate(Data, new_pols=(1,), average_cals=False) :
         new_data[:,[3],:,:] = Data.data[:,[xy_inds[1]],:,:] 
         if average_cals :
             new_data = (new_data[:,:,[0],:] + new_data[:,:,[1],:])/2.0
+            Data.field['CAL'] = sp.array(['A'])
         Data.set_data(new_data)
         Data.field['CRVAL4'] = sp.array([1,2,3,4])
     else :
