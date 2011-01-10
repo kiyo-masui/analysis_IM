@@ -50,11 +50,80 @@ class Calibrate(base_single.BaseSingle) :
 
         return Data
 
+# m_total is the final Mueller matrix that needs to be multiplied by the stokes parameters to adjust them.
 
-# This fuction will need to be written.
-def read_mueler(file_name) :
-    """Reads a Mueler matrix from file."""
-    return None
+#Note: I have it set up so that the third index represents the frequency bin where 0 is the lowest frequency bin and 7 is the highest, and the first and second indices represent the mueller matrix for each frquency bin. 
+
+def mueller(m_total) :
+# Mueller Matrix parameters from polcal calculations
+    deltaG = [-0.185,-0.113,-0.213,-0.295,-0.394,-0.012,0.546,0.680]
+    psi = [-21.9,179.9,-175.9,178.9,171.2,152.5,159.9,122.5]
+    alpha = [-1.2,3.5,2.9,-1.3,10.0,-6.2,-2.2,-7.5]
+    epsilon = [0.008,0.013,0.015,0.019,0.024,0.016,0.016,0.017]
+    phi = [-164.9,-4.0,-7.9,0.5,6.1,23.2,17.6,55.4]
+    CFR = [694,724,754,784,814,844,874,904]
+    delf = sp.array([(CFR[i]-1485.8) for i in range(0,8)])
+    psi = sp.array([(psi[i]-0.0086*delf[i]) for i in range(0,8)])
+
+    mp = sp.array([deltaG,psi,alpha,epsilon,phi,CFR])
+
+#Amplifier Mueller Matrix
+    m_a = sp.zeros((4,4,8), float)
+    for i in range(0,8):
+        m_a[0,0,i] = 1
+        m_a[1,0,i] = 0.5*mp[0,i]
+        m_a[0,1,i] = 0.5*mp[0,i]
+        m_a[1,1,i] = 1
+        m_a[2,2,i] = ma.cos(mp[1,i]*sp.pi/180)
+        m_a[3,2,i] = -ma.sin(mp[1,i]*sp.pi/180)
+        m_a[2,3,i] = -m_a[3,2,i]
+        m_a[3,3,i] = m_a[2,2,i]
+
+# Feed Mueller Matrix
+    m_f = sp.zeros((4,4,8), float)
+    for i in range(0,8):
+        m_f[0,0,i] = 1
+        m_f[1,1,i] = ma.cos(mp[2,i]*sp.pi/180)*ma.cos(mp[2,i]*sp.pi/180)-ma.sin(mp[2,i]*sp.pi/180)*ma.sin(mp[2,i]*sp.pi/180)
+        m_f[3,1,i] = 2*ma.cos(mp[2,i]*sp.pi/180)*ma.sin(mp[2,i]*sp.pi/180)
+        m_f[2,2,i] = ma.cos(mp[2,i]*sp.pi/180)*ma.cos(mp[2,i]*sp.pi/180)+ma.sin(mp[2,i]*sp.pi/180)*ma.sin(mp[2,i]*sp.pi/180)
+        m_f[1,3,i] = -2*ma.cos(mp[2,i]*sp.pi/180)*ma.sin(mp[2,i]*sp.pi/180)
+        m_f[3,3,i] = ma.cos(mp[2,i]*sp.pi/180)*ma.cos(mp[2,i]*sp.pi/180)-ma.sin(mp[2,i]*sp.pi/180)
+
+# Feed Imperfections Mueller Matrix
+    m_ilfr = sp.zeros((4,4,8), float)
+    for i in range(0,8):
+        m_ilfr[0,0,i] = 1
+        m_ilfr[2,0,i] = 2*mp[3,i]*ma.cos(mp[4,i]*sp.pi/180)
+        m_ilfr[3,0,i] = 2*mp[3,i]*ma.sin(mp[4,i]*sp.pi/180)
+        m_ilfr[1,1,i] = 1
+        m_ilfr[0,2,i] = m_ilfr[2,0,i]
+        m_ilfr[2,2,i] = 1
+        m_ilfr[0,3,i] = m_ilfr[3,0,i]
+        m_ilfr[3,3,i] = 1
+
+#Rotates Matrix into Astronomical frame
+    m_astron = sp.zeros((4,4,8), float)
+    for i in range(0,8):
+        m_astron[0,0,i] = 1
+        m_astron[3,3,i] = 1
+        m_astron[1,1,i] = -1
+        m_astron[2,2,i] = -1
+
+# Generates Inverse Mueller Matrix for use
+    m_total = sp.zeros((4,4,8), float)
+    for i in range(0,8):
+        M_a = sp.matrix(m_a[:,:,i])
+        M_f = sp.matrix(m_f[:,:,i])
+        M_ilfr = sp.matrix(m_ilfr[:,:,i])
+        M_tot = M_a*M_f*M_ilfr
+        M_total = sp.linalg.inv(M_tot)
+        M_astron = sp.matrix(m_astron[:,:,i])
+        M_total = M_astron*M_total
+        for j in range(0,4):
+            for k in range(0,4):
+                m_total[j,k,i] = M_total[j,k]
+ 
+    return m_total
 
 
 def calibrate_pol(Data, mueler) :
