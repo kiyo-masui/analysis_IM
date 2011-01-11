@@ -27,6 +27,7 @@ class Subtract(base_single.BaseSingle) :
                    # Empty string to not write an output.
                    'gain_output_end' : ''
                    # XXX: What about if I start subtracing off a linear piece.
+                   # TODO: Option to rescaleoutput data to map gain.
                    }
 
     # Add extra stuff to the constructor.
@@ -138,3 +139,8 @@ def sub_map(Data, Map, correlate=False) :
         data -= gain*subdata
     if correlate :
         return out_gains
+
+# If this file is run from the command line, execute the main function.
+if __name__ == "__main__":
+    import sys
+    Subtract(str(sys.argv[1])).execute()

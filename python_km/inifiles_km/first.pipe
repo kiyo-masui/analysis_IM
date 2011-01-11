@@ -10,10 +10,10 @@
 import os
 
 from core import dir_data
-#field = '22hr'
-#mm_field_centre = (325.75, 0.0)
-field = '1hr'
-mm_field_centre = (12.75, 0.0)
+field = '22hr'
+mm_field_centre = (325.75, 0.0)
+#field = '1hr'
+#mm_field_centre = (12.75, 0.0)
 #field = '15hr'
 #mm_field_centre = (218.25, 2.0)
 # Sessions 2 and 4 seem to be bad.
@@ -21,7 +21,7 @@ mm_field_centre = (12.75, 0.0)
 #                                             field))
 #file_middles = tuple(dir_data.get_data_files([21], field))
 #file_middles = tuple(dir_data.get_data_files(range(0, 22), field))
-file_middles = tuple(dir_data.get_data_files(range(0, 35), field))
+file_middles = tuple(dir_data.get_data_files(range(22, 35), field))
 #                     + dir_data.get_data_files(range(0, 36), '15hr')
 #                     + dir_data.get_data_files(range(0, 36), '22hr'))
 					 
@@ -87,7 +87,7 @@ sw_scans = ()
 sw_IFs = ()
 
 from time_stream import cal_scale
-pipe_modules.append(cal_scale.CalScale)
+#pipe_modules.append(cal_scale.CalScale)
 cs_input_root = sw_output_root
 cs_file_middles = file_middles
 cs_input_end = '.fits'
@@ -101,7 +101,7 @@ cs_scale_freq_average = False
 cs_subtract_time_median = False
 
 from time_stream import calibrate
-pipe_modules.append(calibrate.Calibrate)
+#pipe_modules.append(calibrate.Calibrate)
 cl_input_root = cs_output_root
 cl_file_middles = file_middles
 cl_input_end = '.fits'
@@ -113,7 +113,7 @@ cl_IFs = ()
 cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
 
 from time_stream import rotate_pol
-pipe_modules.append(rotate_pol.RotatePol)
+#pipe_modules.append(rotate_pol.RotatePol)
 rp_input_root = cl_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
@@ -126,7 +126,7 @@ rp_new_pols = (1,)
 rp_average_cals = False
 
 from time_stream import combine_cal
-pipe_modules.append(combine_cal.CombineCal)
+#pipe_modules.append(combine_cal.CombineCal)
 cc_input_root = rp_output_root
 cc_file_middles = file_middles
 cc_input_end = '.fits'
@@ -139,11 +139,11 @@ cc_subtract_time_mean = True
 cc_average_cal_states = True
 
 from map import map_maker
-#pipe_modules.append(map_maker.MapMaker)
+pipe_modules.append(map_maker.MapMaker)
 mm_input_root = cc_output_root
 mm_file_middles = file_middles
 mm_input_end = '.fits'
-mm_output_root = base_dir + 'maps/' + prefix + field + '_00-35_'
+mm_output_root = base_dir + 'maps/' + prefix + field + '_22-35_'
 mm_output_end = '.fits'
 mm_scans = ()
 mm_IFs = (0,)
