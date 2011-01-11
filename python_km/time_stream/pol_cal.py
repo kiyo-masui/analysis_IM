@@ -37,7 +37,7 @@ class Calibrate(base_single.BaseSingle) :
                                         feedback)
         # Read in the mueler matrix file.
         mueler_file_name = self.params['mueler_file']
-        self.mueler = read_mueler(mueler_file_name)
+        self.mueler = mueller()
     
     # This function tells BaseSingle what science to do.  Data is a
     # core.data_block.DataBlock object.  It holds all the data for a single
@@ -54,7 +54,7 @@ class Calibrate(base_single.BaseSingle) :
 
 #Note: I have it set up so that the third index represents the frequency bin where 0 is the lowest frequency bin and 7 is the highest, and the first and second indices represent the mueller matrix for each frquency bin. 
 
-def mueller :
+def mueller() :
 # Mueller Matrix parameters from polcal calculations
     deltaG = [-0.185,-0.113,-0.213,-0.295,-0.394,-0.012,0.546,0.680]
     psi = [-21.9,179.9,-175.9,178.9,171.2,152.5,159.9,122.5]
@@ -67,7 +67,7 @@ def mueller :
 
     mp = sp.array([deltaG,psi,alpha,epsilon,phi,CFR])
 
-#Amplifier Mueller Matrix
+# Amplifier Mueller Matrix
     m_a = sp.zeros((4,4,8), float)
     for i in range(0,8):
         m_a[0,0,i] = 1
@@ -101,7 +101,7 @@ def mueller :
         m_ilfr[0,3,i] = m_ilfr[3,0,i]
         m_ilfr[3,3,i] = 1
 
-#Rotates Matrix into Astronomical frame
+# Rotates Matrix into Astronomical frame
     m_astron = sp.zeros((4,4,8), float)
     for i in range(0,8):
         m_astron[0,0,i] = 1
@@ -112,12 +112,12 @@ def mueller :
 # Generates Inverse Mueller Matrix for use
     m_total = sp.zeros((4,4,8), float)
     for i in range(0,8):
-        M_a = sp.matrix(m_a[:,:,i])
-        M_f = sp.matrix(m_f[:,:,i])
-        M_ilfr = sp.matrix(m_ilfr[:,:,i])
+        M_a = sp.mat(m_a[:,:,i])
+        M_f = sp.mat(m_f[:,:,i])
+        M_ilfr = sp.mat(m_ilfr[:,:,i])
         M_tot = M_a*M_f*M_ilfr
-        M_total = sp.linalg.inv(M_tot)
-        M_astron = sp.matrix(m_astron[:,:,i])
+ 	M_total = M_tot.I
+        M_astron = sp.mat(m_astron[:,:,i])
         M_total = M_astron*M_total
         for j in range(0,4):
             for k in range(0,4):
@@ -126,7 +126,7 @@ def mueller :
     return m_total
 
 
-def calibrate_pol(Data, mueler, m_total) :
+def calibrate_pol(Data, m_total) :
     """Subtracts a Map out of Data."""
         
     # Data is a DataBlock object.  It holds everything you need to know about
@@ -159,18 +159,42 @@ def calibrate_pol(Data, mueler, m_total) :
     Data.calc_freq()
     # Now data has an atribute Data.freq which is an array that gives the
     # frequency along the last axis.
-    
-    # Want to create a temporary array for each frequency bin containing the stokes values. Can sort by frequency, but problems arise in the frequency overlaps
-    # These arrays should be of the form stokes[i,4,j] where i is the number of data points in the particular frequency bin and j is the bin number.
-    # The next step is to take each array and make it a matrix.
-    for j in range(0,8):
-        STOKES = sp.matrix(stokes[:,:,j])
-        MUELLER = sp.matrix(m_total[:,:,j])
-        #Next there is a matrix multiplication that will generate a new set of stokes values.
-        STOKES = MUELLER*STOKES
-        for k in range(0,4):
-            for l in range(0,i):
-                stokes[l,k,j]=STOKES[l,k]
+    # These arrays should be of the form stokes[i,4] where i is the number 
+    # of data points in the particular frequency bin. Data.field['CRVAL1'] 
+    # is center frequency in Hz. 
+    # Data.data 4 dim array 2nd column polarization, 4th column frequency. 
+   
+    CenterFrequency = Data.field['CRVAL1']/1000000
+    if CenterFrequency == 694:
+	bin = 0
+    else if CenterFrequency == 724:
+	bin = 1
+    else if CenterFrequency == 754:
+	bin = 2
+    else if CenterFrequency == 784:
+	bin = 3
+    else if CenterFrequency == 814:
+	bin = 4
+    else if CenterFrequency == 844:
+	bin = 5
+    else if CenterFrequency == 874:
+	bin = 6
+    else if CenterFrequency == 904:
+	bin = 7
+    else
+	raise ce.DataError('The center frequency does not match expected')
+   # Need to figure out how to list the polarization values into the needed
+   # matrix so that I can perform the conversion 
+ 			
+   STOKES = sp.mat(Data.data)
+   MUELLER = sp.mat(m_total[:,:,bin])
+   # Next there is a matrix multiplication that will generate 
+   # a new set of stokes values.
+   stokesmod = MUELLER*STOKES
+   # Need to check that the matrix multiplication worked, should 
+   # now have a matrix with dimensions [nfreq,4] where nfreq is the 
+   # number of frequencies in that bin (aka same dim as original stokes)
+   Data.data[1] = stokesmod[1]	
 
-    #Then look at the updated arrays to determine the effectiveness of the mueller process.
-    # Note: we would want to plot the different stokes values as functions of frequencyc.
+# At this point the polarization values should be adjusted. 
+# Now want to plot the polarizations I, Q, U, V as a function of Frequency.

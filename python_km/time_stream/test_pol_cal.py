@@ -16,11 +16,11 @@ test_mueler_file = 'fname'
 n_pointings = 10 # Known property of test_file.  Per scan.
 
 
-# Tests for read_mueler.
-class TestReadMueler(unittest.TestCase) :
+# Tests for mueller.
+class TestMueller(unittest.TestCase) :
     
     def test_runs(self) :
-        mueler = pol_cal.read_mueler(test_mueler_file)
+        mueler = pol_cal.mueller()
 
 
 # Tests for the calibrate_pol function
@@ -29,8 +29,9 @@ class TestCalPol(unittest.TestCase) :
     def setUp(self) :
         Reader = fitsGBT.Reader(test_file, feedback=0)
         self.blocks = Reader.read((),())
-        self.mueler = pol_cal.read_mueler(test_mueler_file)
-    
+        self.mueler = pol_cal.mueller()
+ 	print self.mueler   
+
     def test_runs(self) :
         for Data in self.blocks :
             rotate_pol.rotate(Data, (1,2,3,4))
@@ -39,8 +40,7 @@ class TestCalPol(unittest.TestCase) :
     def test_raises(self) :
         Data = self.blocks[0]
         rotate_pol.rotate(Data, (1,))
-        self.assertRaises(ce.DataError, pol_cal.calibrate_pol, Data,
-                          self.mueler)
+        self.assertRaises(ce.DataError, pol_cal.calibrate_pol, Data,self.mueler)
         Data = self.blocks[1]
         rotate_pol.rotate(Data, (1,2,3,4))
         Data.field['CRVAL4'][0] = 3
