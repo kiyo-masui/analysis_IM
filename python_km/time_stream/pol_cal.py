@@ -168,28 +168,28 @@ def calibrate_pol(Data, m_total) :
 	for cal_index in range(0,Data.dims[2]):
 
 		CenterFrequency = Data.field['CRVAL1']/1000000
-            	if CenterFrequency == 694:
+        if CenterFrequency == 694:
 			bin = 0
-    		else if CenterFrequency == 724:
+        elif CenterFrequency == 724:
 			bin = 1
-    		else if CenterFrequency == 754:
+        elif CenterFrequency == 754:
 			bin = 2
-    		else if CenterFrequency == 784:
+        elif CenterFrequency == 784:
 			bin = 3
-    		else if CenterFrequency == 814:
+        elif CenterFrequency == 814:
 			bin = 4
-    		else if CenterFrequency == 844:
+        elif CenterFrequency == 844:
 			bin = 5
-    		else if CenterFrequency == 874:
+        elif CenterFrequency == 874:
 			bin = 6
-    		else if CenterFrequency == 904:
+        elif CenterFrequency == 904:
 			bin = 7
-    		else
+        else :
 			raise ce.DataError('The center frequency does not match expected')
    # Need to figure out how to list the polarization values into the needed
    # matrix so that I can perform the conversion 
  			
-   		temp_array = sp.mat(Data.data[time_index,:,cal_index,:])
+   	    temp_array = sp.mat(Data.data[time_index,:,cal_index,:])
    		STOKES = sp.mat(sp.swapaxes(temp_array, 0,1))
    		MUELLER = sp.mat(m_total[:,:,bin])
    # Next there is a matrix multiplication that will generate 
@@ -204,3 +204,11 @@ def calibrate_pol(Data, m_total) :
 
 # At this point the polarization values should be adjusted. 
 # Now want to plot the polarizations I, Q, U, V as a function of Frequency.
+
+
+
+# If this file is run from the command line, execute the main function.
+if __name__ == "__main__":
+    import sys
+    Calibrate(str(sys.argv[1])).execute()
+
