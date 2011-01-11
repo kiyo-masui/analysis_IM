@@ -60,6 +60,17 @@ def elaz2radecGBT(el, az, UT) :
 
     return ra*180.0/sp.pi, dec*180.0/sp.pi
 
+def time2float(UT) :
+    """Calculates float seconds from a time string.
+
+    Convert a time string in format %Y-%m-%dT%H:%M:%S.partial to a float number
+    of seconds ignaroing all posible corrections."""
+    
+    UT_wholesec, partial_sec = UT.split('.', 1)
+    to = time.strptime(UT_wholesec, "%Y-%m-%dT%H:%M:%S")
+    return (float('0.' + partial_sec) + to.tm_sec + 60*(to.tm_min + 
+            60*(to.tm_hour + 24*(to.tm_yday + 365*(to.tm_year-2000)))))
+
 
 def mk_map_grid(centre, shape, spacing) :
     """Make a grid of coordinates in Ra and Dec.

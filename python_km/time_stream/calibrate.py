@@ -52,6 +52,7 @@ class Calibrate(base_single.BaseSingle) :
         
         # Scale data by noise cal termperature.
         multiply_by_cal(Data, self.CalData)
+        Data.add_history("Put into units of Kelvin.")
         return Data
 
 

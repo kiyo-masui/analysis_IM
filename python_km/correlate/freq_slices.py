@@ -263,7 +263,8 @@ class FreqSlices(object) :
         print sp.sort(self.freq_eig_values/n)[-10:]
 
     def plot_freq(self, norms=False) :
-        
+
+        # Set up binning.    
         nf = len(self.freq_inds)
         #freq_diffs = sp.sort(self.allfreq - min(self.allfreq))
         n_bins = 12
@@ -274,6 +275,7 @@ class FreqSlices(object) :
         for ii in range(1,n_bins) :
            freq_diffs[ii] = factor*freq_diffs[ii-1] 
         n_diffs = len(freq_diffs)
+        # Allowcate memory.
         corrf = sp.zeros(n_diffs)
         countsf = sp.zeros(n_diffs, dtype=int)
         for ii in range(nf) :
@@ -332,7 +334,6 @@ class FreqSlices(object) :
 
 def degrade_corr_res(self, beam=0.4) :
     """Brings all freqencies to the same resolution in correlation."""
-    
 
     # XXX: Try this instead of inteegrating, us the analytic factors for if the
     # intrinsic cerrelation funciton is a delta.
@@ -346,8 +347,6 @@ def degrade_corr_res(self, beam=0.4) :
     sig = (beam/2.355)**2
     sig1 = sig - (utils.get_beam(self.freq1)/2.355)**2
     sig2 = sig - (utils.get_beam(self.freq2)/2.355)**2
-    print sig1
-    print sig2
     if min(sig1) < 0 or min(sig2) < 0 :
         raise ValueError("Final beam must be bigger than lowest resolution.")
     n1 = len(self.freq1)
@@ -363,13 +362,40 @@ def degrade_corr_res(self, beam=0.4) :
             new_corr[ii,jj,0] = sp.sum(window*lag_weights*corr[ii,jj,:])
             norm = sp.sum(window*lag_weights)
             new_corr[ii,jj,0] /= norm
-            print norm,
     corr = new_corr
     norms = corr[:,:,0].diagonal()
     norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
     corr /= norms[:,:,sp.newaxis]
     self.norms = norms
     self.corr = corr
+
+def fake_degrade_corr_res(self, beam=0.4) :
+    """Brings all frequencies to the same resolution by scaling the 0 lag
+    correation as if it was a delta function."""
+
+    sig = (beam/2.355)**2
+    sig1 = (utils.get_beam(self.freq1)/2.355)**2
+    sig2 = (utils.get_beam(self.freq2)/2.355)**2
+    if min(sig1) < 0 or min(sig2) < 0 :
+        raise ValueError("Final beam must be bigger than lowest resolution.")
+    n1 = len(self.freq1)
+    n2 = len(self.freq2)
+    new_corr = sp.zeros((n1,n2,1))
+    corr = self.corr*self.norms[:,:,sp.newaxis]
+
+    for ii in range(n1) :
+        for jj in range(n2) :
+            s1 = sig1[ii]
+            s2 = sig2[jj]
+            new_corr[ii,jj,0] = corr[ii,jj,0]*(s1+s2)/(2*sig)
+
+    corr = new_corr
+    norms = corr[:,:,0].diagonal()
+    norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
+    corr /= norms[:,:,sp.newaxis]
+    self.norms = norms
+    self.corr = corr
+
 
 
 def subtract_svd_modes_corr(self) :

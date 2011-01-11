@@ -215,7 +215,12 @@ class TestGBTmethods(unittest.TestCase) :
                                sp.amax(self.Data.freq) -
                                sp.amin(self.Data.freq), -5)
 
-
+    def test_calculates_time(self) :
+        self.Data.calc_time()
+        self.assertTrue(hasattr(self.Data, 'time'))
+        t_copy = sp.copy(self.Data.time)
+        t_copy.sort()
+        self.assertTrue(sp.allclose(t_copy, self.Data.time))
 
 
 if __name__ == '__main__' :
