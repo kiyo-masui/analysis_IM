@@ -204,3 +204,8 @@ def calibrate_pol(Data, m_total) :
 
 # At this point the polarization values should be adjusted. 
 # Now want to plot the polarizations I, Q, U, V as a function of Frequency.
+
+# If this file is run from the command line, execute the main function.
+if __name__=="__main__":
+	import sys
+	Calibrate(str(sys.argv[1])).execute()
