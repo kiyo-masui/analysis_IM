@@ -54,7 +54,7 @@ class Calibrate(base_single.BaseSingle) :
 
 #Note: I have it set up so that the third index represents the frequency bin where 0 is the lowest frequency bin and 7 is the highest, and the first and second indices represent the mueller matrix for each frquency bin. 
 
-def mueller(m_total) :
+def mueller :
 # Mueller Matrix parameters from polcal calculations
     deltaG = [-0.185,-0.113,-0.213,-0.295,-0.394,-0.012,0.546,0.680]
     psi = [-21.9,179.9,-175.9,178.9,171.2,152.5,159.9,122.5]
@@ -126,7 +126,7 @@ def mueller(m_total) :
     return m_total
 
 
-def calibrate_pol(Data, mueler) :
+def calibrate_pol(Data, mueler, m_total) :
     """Subtracts a Map out of Data."""
         
     # Data is a DataBlock object.  It holds everything you need to know about
@@ -159,5 +159,18 @@ def calibrate_pol(Data, mueler) :
     Data.calc_freq()
     # Now data has an atribute Data.freq which is an array that gives the
     # frequency along the last axis.
+    
+    # Want to create a temporary array for each frequency bin containing the stokes values. Can sort by frequency, but problems arise in the frequency overlaps
+    # These arrays should be of the form stokes[i,4,j] where i is the number of data points in the particular frequency bin and j is the bin number.
+    # The next step is to take each array and make it a matrix.
+    for j in range(0,8):
+        STOKES = sp.matrix(stokes[:,:,j])
+        MUELLER = sp.matrix(m_total[:,:,j])
+        #Next there is a matrix multiplication that will generate a new set of stokes values.
+        STOKES = MUELLER*STOKES
+        for k in range(0,4):
+            for l in range(0,i):
+                stokes[l,k,j]=STOKES[l,k]
 
-
+    #Then look at the updated arrays to determine the effectiveness of the mueller process.
+    # Note: we would want to plot the different stokes values as functions of frequencyc.
