@@ -199,6 +199,9 @@ def calibrate_pol(Data, m_total) :
 
 # At this point the polarization values should be adjusted. 
 # Now want to plot the polarizations I, Q, U, V as a function of Frequency.
+# So I will want 4 plots for each cal_index, time_index. Not sure how to read
+# the Data.data file so that I can generate those plots. Will need to also 
+# generate plots for the pre-mueller data. 
 
 # If this file is run from the command line, execute the main function.
 if __name__=="__main__":

@@ -30,7 +30,7 @@ class TestCalPol(unittest.TestCase) :
         Reader = fitsGBT.Reader(test_file, feedback=0)
         self.blocks = Reader.read((),())
         self.mueler = pol_cal.mueller()
- 	print self.mueler   
+    
 
     def test_runs(self) :
         for Data in self.blocks :
