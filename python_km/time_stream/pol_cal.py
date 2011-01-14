@@ -112,7 +112,7 @@ def mueller() :
         M_f = sp.mat(m_f[:,:,i])
         M_ilfr = sp.mat(m_ilfr[:,:,i])
         M_tot = M_a*M_f*M_ilfr
- 	M_total = M_tot.I
+        M_total = M_tot.I
         M_astron = sp.mat(m_astron[:,:,i])
         M_total = M_astron*M_total
         for j in range(0,4):
@@ -163,30 +163,30 @@ def calibrate_pol(Data, m_total) :
     for time_index in range(0,Data.dims[0]):
         for cal_index in range(0,Data.dims[2]):
 
-	    CenterFrequency = Data.field['CRVAL1']/1000000
+            CenterFrequency = Data.field['CRVAL1']/1000000
             if CenterFrequency == 694:
-	        bin = 0
+                bin = 0
             elif CenterFrequency == 724:
-		bin = 1
+                bin = 1
             elif CenterFrequency == 754:
                 bin = 2
             elif CenterFrequency == 784:
-		bin = 3
+                bin = 3
             elif CenterFrequency == 814:
                 bin = 4
             elif CenterFrequency == 844:
-		bin = 5
+                bin = 5
             elif CenterFrequency == 874:
-		bin = 6
+                bin = 6
             elif CenterFrequency == 904:
-	        bin = 7
+                bin = 7
             else :
-		raise ce.DataError('The center frequency does not match expected')
+                raise ce.DataError('The center frequency does not match expected')
     # Need to figure out how to list the polarization values into the needed
     # matrix so that I can perform the conversion 
             temp_array = sp.mat(Data.data[time_index,:,cal_index,:])
    	    STOKES = sp.mat(sp.swapaxes(temp_array, 0,1))
-   	    MUELLER = sp.mat(m_total[:,:,bin])
+            MUELLER = sp.mat(m_total[:,:,bin])
     # Next there is a matrix multiplication that will generate 
     # a new set of stokes values.
        	    stokesmod = MUELLER*STOKES
@@ -194,8 +194,8 @@ def calibrate_pol(Data, m_total) :
     # now have a matrix with dimensions [nfreq,4] where nfreq is the 
     # number of frequencies in that bin (aka same dim as original stokes)
             for i in range(0,Data.dims[1]):
-	        for j in range(0,Data.dims[3]):
-		    Data.data[time_index,i,cal_index,j] = stokesmod[j,i]	
+                for j in range(0,Data.dims[3]):
+                    Data.data[time_index,i,cal_index,j] = stokesmod[j,i]	
 
 # At this point the polarization values should be adjusted. 
 # Now want to plot the polarizations I, Q, U, V as a function of Frequency.
