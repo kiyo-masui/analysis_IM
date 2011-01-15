@@ -13,11 +13,13 @@ field = '22hr'
 #                                             field))
 #file_middles = tuple(dir_data.get_data_files([21], field))
 #file_middles = tuple(dir_data.get_data_files(range(0, 22), field))
-file_middles = tuple(dir_data.get_data_files(range(0, 35), field))
+#file_middles = tuple(dir_data.get_data_files(range(0, 35), field))
+file_middles = tuple(dir_data.get_data_files(range(0, 01), field))
 #                     + dir_data.get_data_files(range(0, 36), '15hr')
 #                     + dir_data.get_data_files(range(0, 36), '22hr'))
 					 
-
+pipe_modules = []
+pipe_processes = 3
 
 base_dir = os.getenv('GBT10B_OUT')
 raw_data_dir = os.getenv('GBT10B_DATA')
@@ -25,7 +27,24 @@ kiyo_dir = os.getenv('GBT10B_KM')
 prefix = ''
 IFs = ()
 
-pc_input_root = kiyo_dir + 'rebinned/'
+from time_stream import rotate_pol
+# Comment this line to skip this step in pipline.
+pipe_modules.append(rotate_pol.RotatePol)
+rp_input_root = kiyo_dir + 'rebinned/'
+rp_file_middles = file_middles
+rp_input_end = '.fits'
+rp_output_root = base_dir + 'rotated_for_pol_cal/' + prefix
+rp_output_end = '.fits'
+rp_scans = ()
+rp_IFs = ()
+
+rp_new_pols = (1,2,3,4)
+rp_average_cals = False
+
+from time_stream import pol_cal
+# Comment this line to skip this step in pipline.
+pipe_modules.append(pol_cal.Calibrate)
+pc_input_root = rp_output_root
 pc_file_middles = file_middles
 pc_input_end = '.fits'
 pc_output_root = base_dir + 'pol_cal/' + prefix
