@@ -155,14 +155,13 @@ def calibrate_pol(Data, m_total) :
     Data.calc_freq()
     # Now data has an atribute Data.freq which is an array that gives the
     # frequency along the last axis.
-    # These arrays should be of the form stokes[i,4] where i is the number 
-    # of data points in the particular frequency bin. Data.field['CRVAL1'] 
-    # is center frequency in Hz. 
+     
+    # Data.field['CRVAL1'] is center frequency in Hz. 
     # Data.data 4 dim array 2nd column polarization, 4th column frequency. 
    
     for time_index in range(0,Data.dims[0]):
         for cal_index in range(0,Data.dims[2]):
-
+        # Determines the frequency bin to use   
             CenterFrequency = int(Data.field['CRVAL1']/1000000)
             
             if CenterFrequency in range(690,700):
@@ -183,13 +182,14 @@ def calibrate_pol(Data, m_total) :
                 bin = 7
             else :
                 raise ce.DataError('The center frequency does not match expected')
-    # Need to figure out how to list the polarization values into the needed
-    # matrix so that I can perform the conversion 
+    # Converts files into matrix format 
             STOKES = sp.mat(Data.data[time_index,:,cal_index,:])
+            
             MUELLER = sp.mat(m_total[:,:,bin])
     # Next there is a matrix multiplication that will generate 
     # a new set of stokes values.
        	    stokesmod = MUELLER*STOKES
+
     # Need to check that the matrix multiplication worked, should 
     # now have a matrix with dimensions [nfreq,4] where nfreq is the 
     # number of frequencies in that bin (aka same dim as original stokes)
