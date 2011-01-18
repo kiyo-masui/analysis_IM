@@ -2,6 +2,7 @@
 
 import scipy as sp
 import numpy.ma as ma
+import pylab as pl
 
 import kiyopy.custom_exceptions as ce
 import base_single
@@ -157,8 +158,11 @@ def calibrate_pol(Data, m_total) :
     # frequency along the last axis.
      
     # Data.field['CRVAL1'] is center frequency in Hz. 
-    # Data.data 4 dim array 2nd column polarization, 4th column frequency. 
-   
+    # Data.data 4 dim array 2nd index polarization, 4th index frequency. 
+    
+    testing_data = Data.data[0,0,0,:]
+    pl.plot(testing_data,Data.freq)
+        
     for time_index in range(0,Data.dims[0]):
         for cal_index in range(0,Data.dims[2]):
         # Determines the frequency bin to use   
@@ -181,10 +185,10 @@ def calibrate_pol(Data, m_total) :
             elif CenterFrequency in range(900,910):
                 bin = 7
             else :
-                raise ce.DataError('The center frequency does not match expected')
+                raise ce.DataError('The center frequency does not match expected') 
+    
     # Converts files into matrix format 
-            STOKES = sp.mat(Data.data[time_index,:,cal_index,:])
-            
+            STOKES = sp.mat(Data.data[time_index,:,cal_index,:])        
             MUELLER = sp.mat(m_total[:,:,bin])
     # Next there is a matrix multiplication that will generate 
     # a new set of stokes values.
