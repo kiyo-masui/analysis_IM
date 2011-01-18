@@ -161,8 +161,9 @@ def calibrate_pol(Data, m_total) :
     # Data.data 4 dim array 2nd index polarization, 4th index frequency. 
     
     testing_data = Data.data[0,0,0,:]
-    pl.plot(testing_data,Data.freq)
-    pl.savefig('test.png')
+    frequency = Data.freq/1000000
+    pl.plot(frequency,testing_data)
+    pl.savefig('//mnt/raid-project/gmrt/tcv/pol_cal/test.png')
    
     for time_index in range(0,Data.dims[0]):
         for cal_index in range(0,Data.dims[2]):
