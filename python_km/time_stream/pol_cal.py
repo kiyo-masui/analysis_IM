@@ -159,12 +159,19 @@ def calibrate_pol(Data, m_total) :
      
     # Data.field['CRVAL1'] is center frequency in Hz. 
     # Data.data 4 dim array 2nd index polarization, 4th index frequency. 
-    
-    testing_data = Data.data[0,0,0,:]
-    frequency = Data.freq/1000000
-    pl.plot(frequency,testing_data)
-    pl.savefig('//mnt/raid-project/gmrt/tcv/pol_cal/test.png')
-   
+
+    # Generates pre-mod plots
+    frequency = Data.freq/1000000            
+    pl.plot(frequency,Data.data[0,0,0,:])
+    pl.plot(frequency,Data.data[0,1,0,:])
+    pl.plot(frequency,Data.data[0,2,0,:])
+    pl.plot(frequency,Data.data[0,3,0,:])
+    pl.legend(("I","Q","U","V"))
+    pl.xlabel("Freqency (MHz)")
+    pl.ylabel("Polarization")
+    pl.savefig("//mnt/raid-project/gmrt/tcv/rotated_for_pol_cal/original_polarizations.ps") 
+    pl.clf()
+
     for time_index in range(0,Data.dims[0]):
         for cal_index in range(0,Data.dims[2]):
         # Determines the frequency bin to use   
@@ -188,7 +195,7 @@ def calibrate_pol(Data, m_total) :
                 bin = 7
             else :
                 raise ce.DataError('The center frequency does not match expected') 
-    
+
     # Converts files into matrix format 
             STOKES = sp.mat(Data.data[time_index,:,cal_index,:])        
             MUELLER = sp.mat(m_total[:,:,bin])
@@ -203,11 +210,18 @@ def calibrate_pol(Data, m_total) :
                 for j in range(0,Data.dims[3]):
                     Data.data[time_index,i,cal_index,j] = stokesmod[i,j]	
 
-# At this point the polarization values should be adjusted. 
-# Now want to plot the polarizations I, Q, U, V as a function of Frequency.
-# So I will want 4 plots for each cal_index, time_index. Not sure how to read
-# the Data.data file so that I can generate those plots. Will need to also 
-# generate plots for the pre-mueller data. 
+    # At this point the polarization values should be adjusted. 
+    # Next code generates post-mod plots
+    frequency = Data.freq/1000000
+    pl.plot(frequency,Data.data[0,0,0,:])
+    pl.plot(frequency,Data.data[0,1,0,:])
+    pl.plot(frequency,Data.data[0,2,0,:])
+    pl.plot(frequency,Data.data[0,3,0,:])
+    pl.legend(("I","Q","U","V"))
+    pl.xlabel("Freqency (MHz)")
+    pl.ylabel("Polarization")
+    pl.savefig("//mnt/raid-project/gmrt/tcv/pol_cal/modified_polarizations.ps")
+    pl.clf()
 
 # If this file is run from the command line, execute the main function.
 if __name__=="__main__":
