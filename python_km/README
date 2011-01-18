@@ -99,4 +99,11 @@ files.
 
 4. map - where I will be putting map makers.
 
+5. pipeline - Code that strings a bunch of modules together for covieniece.
+
+
+Module Layout :
+
+To be compatible with the pipeline, a module has to have a specific layout.  More on this to come.
+
 
