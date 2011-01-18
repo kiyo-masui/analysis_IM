@@ -162,7 +162,8 @@ def calibrate_pol(Data, m_total) :
     
     testing_data = Data.data[0,0,0,:]
     pl.plot(testing_data,Data.freq)
-        
+    pl.savefig('test.png')
+   
     for time_index in range(0,Data.dims[0]):
         for cal_index in range(0,Data.dims[2]):
         # Determines the frequency bin to use   
