@@ -36,7 +36,7 @@ def get_cal_files(session_list) :
     cal_files = []
 
     for session in session_list:
-        match_str = ('(%02d'%session+'3c'+'.*\_onoff'+".*\.raw.acs.fits)")
+        match_str = ('(%02d'%session+'_3c'+'.*_onoff_'+".*\.raw.acs.fits)")
         for file_name in all_files:
             if re.match(match_str, file_name) :
                 root = file_name.split('.')[0]
