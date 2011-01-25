@@ -41,15 +41,51 @@ class Calibrate(base_single.BaseSingle) :
     # scan and a single IF.  BaseSingle knows how to loop over all of these.
     # More on DataBlock objects in the calibrate function below.
     def action(self, Data) :
+        #setting parameters
+        Data.calc_freq()
+        frequency = Data.freq/1000000
+        Center_freq = int(Data.field['CRVAL1']/1000000)
+
+        # Generating pre-mod plots
+        pl.plot(frequency,Data.data[0,0,0,:])
+        pl.plot(frequency,Data.data[0,1,0,:])
+        pl.plot(frequency,Data.data[0,2,0,:])
+        pl.plot(frequency,Data.data[0,3,0,:])
+        pl.legend(("I","Q","U","V"))
+        pl.xlabel("Freqency (MHz)")
+        pl.ylabel("Polarization")
+        title0 = str(self.params['file_middles'])+'_'+str(Center_freq)+"_init_pol"
+        print title0
+        pl.suptitle(title0)
+        pl.savefig("//mnt/raid-project/gmrt/tcv/rotated_for_pol_cal/"+title0+".ps")
+        pl.clf()
+
+        # Main Action
        	calibrate_pol(Data, self.mueler)
        	Data.add_history('Corrected for polarization leakage.', 
                	         ('Mueler matrix file: ' + self.params['mueler_file'],))
 
+        # Generaing post-mod plots
+        pl.plot(frequency,Data.data[0,0,0,:]) 
+        pl.plot(frequency,Data.data[0,1,0,:]) 
+        pl.plot(frequency,Data.data[0,2,0,:]) 
+        pl.plot(frequency,Data.data[0,3,0,:]) 
+        pl.legend(("I","Q","U","V")) 
+        pl.xlabel("Freqency (MHz)") 
+        pl.ylabel("Polarization")
+        title0 = str(self.params['file_middles'])+'_'+str(Center_freq)+"_mod_pol"
+        pl.suptitle(title0) 
+        pl.savefig("//mnt/raid-project/gmrt/tcv/pol_cal/"+title0+".ps")
+        pl.clf() 
+
+
        	return Data
 
-# m_total is the final Mueller matrix that needs to be multiplied by the stokes parameters to adjust them.
+# m_total is the final Mueller matrix that needs to multiply by the stokes parameters.
 
-#Note: I have it set up so that the third index represents the frequency bin where 0 is the lowest frequency bin and 7 is the highest, and the first and second indices represent the mueller matrix for each frquency bin. 
+# Note: I have it set up so that the third index represents the frequency 
+# bin where 0 is the lowest frequency bin and 7 is the highest, and the 
+# first and second indices represent the mueller matrix for each frquency bin. 
 
 def mueller() :
 # Mueller Matrix parameters from polcal calculations
@@ -61,7 +97,6 @@ def mueller() :
     CFR = [694,724,754,784,814,844,874,904]
     delf = sp.array([(CFR[i]-1485.8) for i in range(0,8)])
     psi = sp.array([(psi[i]-0.0086*delf[i]) for i in range(0,8)])
-
     mp = sp.array([deltaG,psi,alpha,epsilon,phi,CFR])
 
 # Amplifier Mueller Matrix
@@ -160,21 +195,9 @@ def calibrate_pol(Data, m_total) :
     # Data.field['CRVAL1'] is center frequency in Hz. 
     # Data.data 4 dim array 2nd index polarization, 4th index frequency. 
 
-    # Generates pre-mod plots
-    frequency = Data.freq/1000000            
-    pl.plot(frequency,Data.data[0,0,0,:])
-    pl.plot(frequency,Data.data[0,1,0,:])
-    pl.plot(frequency,Data.data[0,2,0,:])
-    pl.plot(frequency,Data.data[0,3,0,:])
-    pl.legend(("I","Q","U","V"))
-    pl.xlabel("Freqency (MHz)")
-    pl.ylabel("Polarization")
-    pl.savefig("//mnt/raid-project/gmrt/tcv/rotated_for_pol_cal/original_polarizations.ps") 
-    pl.clf()
-
     for time_index in range(0,Data.dims[0]):
         for cal_index in range(0,Data.dims[2]):
-        # Determines the frequency bin to use   
+        # Determines the frequency bin (and Inverse Mueller Matrix)  to use   
             CenterFrequency = int(Data.field['CRVAL1']/1000000)
             
             if CenterFrequency in range(690,700):
@@ -203,25 +226,14 @@ def calibrate_pol(Data, m_total) :
     # a new set of stokes values.
        	    stokesmod = MUELLER*STOKES
 
-    # Need to check that the matrix multiplication worked, should 
-    # now have a matrix with dimensions [nfreq,4] where nfreq is the 
+    # Should now have a matrix with dimensions [4,nfreq] where nfreq is the 
     # number of frequencies in that bin (aka same dim as original stokes)
             for i in range(0,Data.dims[1]):
                 for j in range(0,Data.dims[3]):
                     Data.data[time_index,i,cal_index,j] = stokesmod[i,j]	
 
     # At this point the polarization values should be adjusted. 
-    # Next code generates post-mod plots
-    frequency = Data.freq/1000000
-    pl.plot(frequency,Data.data[0,0,0,:])
-    pl.plot(frequency,Data.data[0,1,0,:])
-    pl.plot(frequency,Data.data[0,2,0,:])
-    pl.plot(frequency,Data.data[0,3,0,:])
-    pl.legend(("I","Q","U","V"))
-    pl.xlabel("Freqency (MHz)")
-    pl.ylabel("Polarization")
-    pl.savefig("//mnt/raid-project/gmrt/tcv/pol_cal/modified_polarizations.ps")
-    pl.clf()
+
 
 # If this file is run from the command line, execute the main function.
 if __name__=="__main__":
