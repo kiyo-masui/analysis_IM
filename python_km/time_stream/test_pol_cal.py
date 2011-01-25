@@ -15,7 +15,6 @@ test_file = 'testfile_GBTfits.fits'
 test_mueler_file = 'fname'
 n_pointings = 10 # Known property of test_file.  Per scan.
 
-
 # Tests for mueller.
 class TestMueller(unittest.TestCase) :
     

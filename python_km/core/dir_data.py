@@ -29,8 +29,6 @@ def get_data_files(session_list, field) :
 def get_cal_files(session_list) :
     """Given a list of data files, returns a list of lists of cal files for
     each data file.
-
-    Not written yet.
     """
     all_files = os.listdir(_data_dir)
     cal_files = []

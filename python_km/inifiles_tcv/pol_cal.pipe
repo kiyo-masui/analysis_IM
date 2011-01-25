@@ -18,7 +18,7 @@ field = '22hr'
 #                     + dir_data.get_data_files(range(0, 36), '15hr')
 #                     + dir_data.get_data_files(range(0, 36), '22hr'))
 #Here I'm grabbing the cal data.
-file_middles = tuple(dir_data.get_cal_files(range(23, 26)))
+file_middles = tuple(dir_data.get_cal_files(range(24, 26)))
 					 
 pipe_modules = []
 # Chime has 8 cores, but you should save a few for other people.  Use 6 max.
