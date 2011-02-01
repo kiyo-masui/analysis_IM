@@ -7,6 +7,7 @@ import copy
 import scipy as sp
 import numpy.ma as ma
 from numpy import linalg
+from numpy import random
 import matplotlib.pyplot as plt
 
 from kiyopy import parse_ini
@@ -249,7 +250,7 @@ class FreqSlices(object) :
                          markerfacecolor=colours[ii%ncolours])
             plt.xlabel('Frequency (MHz)')
             plt.ylabel('Normalization of correlation with ' +
-                       str(int(round(self.freq[find1]/1.e6))) + 
+                       str(int(round(self.freq1[find1]/1.e6))) + 
                        ' MHz bin (K^2)')
 
     def plot_eig(self) :
@@ -262,7 +263,7 @@ class FreqSlices(object) :
         print 'Largest eigenvalues/n : ', 
         print sp.sort(self.freq_eig_values/n)[-10:]
 
-    def plot_freq(self, norms=False) :
+    def plot_freq(self, norms=False, lag_ind=0) :
 
         # Set up binning.    
         nf = len(self.freq_inds)
@@ -281,9 +282,9 @@ class FreqSlices(object) :
         for ii in range(nf) :
             for jj in range(nf) :
                 if norms :
-                    thiscorr = self.corr[ii,jj,0]*self.norms[ii,jj]
+                    thiscorr = self.corr[ii,jj,lag_ind]*self.norms[ii,jj]
                 else :
-                    thiscorr = self.corr[ii,jj,0]
+                    thiscorr = self.corr[ii,jj,lag_ind]
                 df = abs(self.freq1[ii] - self.freq2[jj])
                 for kk in range(1, n_diffs-1) :
                     if (abs(freq_diffs[kk]-df) <= abs(freq_diffs[kk-1]-df)
@@ -301,6 +302,7 @@ class FreqSlices(object) :
         plt.xlabel('Frequency Lag (MHz)')
         plt.ylabel('Correlation (mK$^2$)')
 
+        
     def get_freq_svd_modes(self, n) :
         """Same as get freq eigenmodes, but treats left and right maps
         separatly with an SVD.
@@ -331,6 +333,172 @@ class FreqSlices(object) :
         print 'Mean noise: ', sp.sum(self.freq_svd_values)/n
         print 'Largest eigenvalues/n : ', 
         print sp.sort(self.freq_svd_values/n)[-10:]
+
+def plot_contour(self, norms=False, lag_inds=(0)) :
+    
+    lag_inds = list(lag_inds)
+    # Set up binning.    
+    nf = len(self.freq_inds)
+    #freq_diffs = sp.sort(self.allfreq - min(self.allfreq))
+    n_bins = 12
+    factor = 1.5
+    start = 2.1e6
+    freq_diffs = sp.empty(n_bins)
+    freq_diffs[0] = 0.1
+    freq_diffs[1] = start
+    for ii in range(2,n_bins) :
+       freq_diffs[ii] = factor*freq_diffs[ii-1]
+    n_diffs = len(freq_diffs)
+    # Allowcate memory.
+    corrf = sp.zeros((n_diffs, len(lag_inds)))
+    countsf = sp.zeros(n_diffs, dtype=int)
+    for ii in range(nf) :
+        for jj in range(nf) :
+            if norms :
+                thiscorr = (self.corr[ii,jj,lag_inds] * 
+                            self.norms[ii,jj,sp.newaxis])
+            else :
+                thiscorr = self.corr[ii,jj,lag_inds]
+            df = abs(self.freq1[ii] - self.freq2[jj])
+            for kk in range(1, n_diffs-1) :
+                if (abs(freq_diffs[kk]-df) <= abs(freq_diffs[kk-1]-df)
+                    and abs(freq_diffs[kk]-df) < abs(freq_diffs[kk+1]-df)) :
+                    d_ind = kk
+            if abs(freq_diffs[0]-df) < abs(freq_diffs[1]-df) :
+                d_ind = 0
+            if abs(freq_diffs[-1]-df) <= abs(freq_diffs[-2]-df) :
+                d_ind = n_diffs - 1
+            corrf[d_ind, :] += thiscorr
+            countsf[d_ind] +=1
+    corrf /= countsf[:, sp.newaxis]
+    pdat = sp.sign(corrf)*sp.sqrt(abs(corrf))*1e3
+    a = plt.figure()
+    #a.set_figwidth(a.get_figwidth()/3.0)
+    f = plt.contourf(self.lags[lag_inds], (freq_diffs)/1e6, pdat)
+    f.ax.set_xscale('log')
+    f.ax.set_yscale('log')
+    plt.axis('scaled')
+    plt.xlim((0.05, 0.9))
+    plt.ylim((0.8, 100))
+    plt.xlabel("angular lag, $\sigma$ (degrees, 34$\cdotp$Mpc/h)")
+    plt.ylabel("frequency lag, $\pi$ (MHz, 4.5$\cdotp$Mpc/h)")
+    c = plt.colorbar(f)
+    c.ax.set_ylabel("correlation (mK)")
+
+def plot_collapsed(self, norms=False, lag_inds=(0)) :
+    
+    lag_inds = list(lag_inds)
+    # Set up binning.    
+    nf = len(self.freq_inds)
+    freq_diffs = sp.arange(0.1e6, 100e6, 2e6)
+    n_diffs = len(freq_diffs)
+    # Allowcate memory.
+    corrf = sp.zeros((n_diffs, len(lag_inds)))
+    countsf = sp.zeros(n_diffs, dtype=int)
+    for ii in range(nf) :
+        for jj in range(nf) :
+            if norms :
+                thiscorr = (self.corr[ii,jj,lag_inds] * 
+                            self.norms[ii,jj,sp.newaxis])
+            else :
+                thiscorr = self.corr[ii,jj,lag_inds]
+            df = abs(self.freq1[ii] - self.freq2[jj])
+            for kk in range(1, n_diffs-1) :
+                if (abs(freq_diffs[kk]-df) <= abs(freq_diffs[kk-1]-df)
+                    and abs(freq_diffs[kk]-df) < abs(freq_diffs[kk+1]-df)) :
+                    d_ind = kk
+            if abs(freq_diffs[0]-df) < abs(freq_diffs[1]-df) :
+                d_ind = 0
+            if abs(freq_diffs[-1]-df) <= abs(freq_diffs[-2]-df) :
+                d_ind = n_diffs - 1
+            corrf[d_ind, :] += thiscorr
+            countsf[d_ind] +=1
+    corrf /= countsf[:, sp.newaxis]
+    # Now collapse to 1 axis:
+    a_fact = 34.0
+    f_fact = 4.5
+    nbins = 8
+    lags = sp.empty(nbins)
+    lags[0] = 6.0
+    lags[1] = 10.0
+    for ii in range(2, nbins) :
+        lags[ii] = 1.5*lags[ii-1]
+    R = self.lags[lag_inds]
+    R = (a_fact*R[:, sp.newaxis])**2
+    R = R + (f_fact*freq_diffs[sp.newaxis, :]/1.0e6)**2
+    R = sp.sqrt(R)
+    corr = sp.zeros(nbins)
+    counts = sp.zeros(nbins, dtype=int)
+    lag_weights = sp.arange(1, len(lag_inds) + 1)**2
+    for ii in range(len(lag_inds)) :
+        for jj in range(n_diffs) :
+            dR = R[ii, jj]
+            for kk in range(1, nbins - 1) :
+                if (abs(lags[kk]-dR) <= abs(lags[kk-1]-dR)
+                    and abs(lags[kk]-dR) < abs(lags[kk+1]-dR)) :
+                    ind = kk
+            if abs(lags[0]-dR) < abs(lags[1]-dR) :
+                ind = 0
+            if abs(lags[-1]-dR) <= abs(lags[-2]-dR) :
+                ind = nbins - 1
+            counts[ind] += lag_weights[ii]
+            corr[ind] += lag_weights[ii]*corrf[jj, ii]
+    n_boot = 1000
+    corrb = ma.zeros((nbins, n_boot))
+    countsb = ma.zeros((nbins, n_boot), dtype=int)
+    for qq in range(n_boot) :
+        for mm in range(n_diffs*len(lag_inds)) :
+            ii = random.random_integers(0, len(lag_inds)-1)
+            jj = random.random_integers(0, n_diffs-1)
+            dR = R[ii, jj]
+            for kk in range(1, nbins - 1) :
+                if (abs(lags[kk]-dR) <= abs(lags[kk-1]-dR)
+                    and abs(lags[kk]-dR) < abs(lags[kk+1]-dR)) :
+                    ind = kk
+            if abs(lags[0]-dR) < abs(lags[1]-dR) :
+                ind = 0
+            if abs(lags[-1]-dR) <= abs(lags[-2]-dR) :
+                ind = nbins - 1
+            countsb[ind, qq] += lag_weights[ii]
+            corrb[ind, qq] += lag_weights[ii]*corrf[jj, ii]
+    corr = corr/counts
+    corrb = corrb/countsb
+    pdat = sp.sign(corr)*sp.sqrt(abs(corr))*1e3
+    pdatb = sp.sign(corrb)*sp.sqrt(abs(corrb))*1e3
+    pdatb_mean = sp.mean(pdatb, -1)
+    pdatb_sig = sp.std(pdatb, -1)
+    a = plt.figure()
+    ax = plt.gca()
+    ax.set_yscale("log")
+    ax.set_xscale("log")
+    errors = sp.empty((2, nbins))
+    errors[:,:] = pdatb_sig
+    #errors[0,errors[0,:]>abs(pdat)] = abs(pdat[errors[0,:]>abs(pdat)]) - 0.0001
+    f = plt.errorbar(lags[pdat>0][0:3], pdat[pdat>0][0:3],
+                     errors[:,pdat>0][:,0:3], linestyle='None', marker='o', 
+                     color='b')
+    vals = pdat[pdat>0][3:] + 2*errors[1,pdat>0][3:]
+    es = sp.zeros((2, len(vals)))
+    es[0,:] = 0.25*vals
+    f = plt.errorbar(lags[pdat>0][3:], vals, es, linestyle='None', 
+                     marker='None', 
+                     color='b', lolims=True)
+    vals = 0.0*pdat[pdat<0] + 2*errors[1,pdat<0]
+    es = sp.zeros((2, len(vals)))
+    es[0,:] = 0.25*vals
+    f = plt.errorbar(lags[pdat<0], vals, es,
+                 linestyle='None', marker='None', color='b', lolims=True)
+    t_lags = sp.arange(0.1,100,0.1)
+    r0 = 5.5
+    rb = 7.0
+    t = (sp.sqrt(((rb + t_lags)/r0)**(-1.8)))
+    t = t*0.15/t[0]
+    f = plt.plot(t_lags, t, marker='None', color='k', linestyle='-')
+    plt.axis([4, 100, 0.01, 2.0])
+    plt.xlabel('lag (Mpc/h)')
+    plt.ylabel('correlation (mK)')
+
+            
 
 def degrade_corr_res(self, beam=0.4) :
     """Brings all freqencies to the same resolution in correlation."""

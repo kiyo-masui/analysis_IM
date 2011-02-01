@@ -10,7 +10,13 @@ from scipy import weave
 
 import kiyopy.custom_exceptions as ce
 import base_single
-import an.rfi as rfi
+try :
+    import an.rfi as rfi
+except ImportError as e:
+    print e
+    raise RuntimeError("You probably haven't compiled Aravind's RFI flagging "
+                       "module written in C.  See the README in "
+                       "analysis_IM/an/")
 
 class FlagData(base_single.BaseSingle) :
     """Pipeline module that flags rfi and other forms of bad data.
