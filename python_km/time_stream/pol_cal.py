@@ -41,15 +41,15 @@ class Calibrate(base_single.BaseSingle) :
     # More on DataBlock objects in the calibrate function below.
     def action(self, Data) :
         #setting parameters
-        Data.calc_freq()
-        frequency = Data.freq/1000000
-        Center_freq = int(Data.field['CRVAL1']/1000000)
+        # Data.calc_freq()
+        # frequency = Data.freq/1000000
+        # Center_freq = int(Data.field['CRVAL1']/1000000)
 
         # Generating pre-mod plots
-        pl.plot(frequency,Data.data[0,0,1,:])
-        pl.plot(frequency,Data.data[0,1,1,:])
-        pl.plot(frequency,Data.data[0,2,1,:])
-        pl.plot(frequency,Data.data[0,3,1,:])
+        # pl.plot(frequency,Data.data[0,0,1,:])
+        # pl.plot(frequency,Data.data[0,1,1,:])
+        # pl.plot(frequency,Data.data[0,2,1,:])
+        # pl.plot(frequency,Data.data[0,3,1,:])
         # Swapped self.params['file_middles'] for  str(Data.field['SCAN'])
 
         # Main Action
@@ -58,17 +58,17 @@ class Calibrate(base_single.BaseSingle) :
                	         ('Mueler matrix file: ' + self.params['mueler_file'],))
 
         # Generaing post-mod plots
-        pl.plot(frequency,Data.data[0,0,1,:]) 
-        pl.plot(frequency,Data.data[0,1,1,:]) 
-        pl.plot(frequency,Data.data[0,2,1,:]) 
-        pl.plot(frequency,Data.data[0,3,1,:]) 
-        pl.legend(("I-init","Q-init","U-init","V-init",'I-mod','Q-mod','U-mod','V-mod')) 
-        pl.xlabel("Freqency (MHz)") 
-        pl.ylabel("Polarization")
-        title0 = str(Data.field['SCAN'])+'_'+str(Center_freq)+"_caloff_pol"
-        pl.suptitle(title0) 
-        pl.savefig("//mnt/raid-project/gmrt/tcv/pol_cal/"+title0+".ps")
-        pl.clf() 
+        # pl.plot(frequency,Data.data[0,0,1,:]) 
+        # pl.plot(frequency,Data.data[0,1,1,:]) 
+        # pl.plot(frequency,Data.data[0,2,1,:]) 
+        # pl.plot(frequency,Data.data[0,3,1,:]) 
+        # pl.legend(("I-init","Q-init","U-init","V-init",'I-mod','Q-mod','U-mod','V-mod')) 
+        # pl.xlabel("Freqency (MHz)") 
+        # pl.ylabel("Polarization")
+        # title0 = str(Data.field['SCAN'])+'_'+str(Center_freq)+"_caloff_pol"
+        # pl.suptitle(title0) 
+        # pl.savefig("//mnt/raid-project/gmrt/tcv/pol_cal/"+title0+".ps")
+        # pl.clf() 
 
        	return Data
 
