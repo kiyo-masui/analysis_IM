@@ -79,8 +79,9 @@ rf_channel_width = 2.0
 rf_mean_instead_median = True
 
 from time_stream import cal_scale
+# Comment the following line to skip this step when running pipeline/manager
 pipe_modules.append(cal_scale.CalScale)
-cs_input_root = sw_output_root
+cs_input_root = rf_output_root
 cs_file_middles = file_middles
 cs_input_end = '.fits'
 cs_output_root = base_dir + 'cal_scaled/' + prefix
@@ -93,6 +94,7 @@ cs_scale_freq_average = False
 cs_subtract_time_median = False
 
 from time_stream import calibrate
+# Comment line below to skip this step when running pipeline/manager
 pipe_modules.append(calibrate.Calibrate)
 cl_input_root = cs_output_root
 cl_file_middles = file_middles
@@ -107,7 +109,7 @@ cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
 from time_stream import rotate_pol
 # Comment this line to skip this step in pipline.
 pipe_modules.append(rotate_pol.RotatePol)
-rp_input_root = rf_output_root
+rp_input_root = cl_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
 rp_output_root = base_dir + 'rotated_for_pol_cal/' + prefix
@@ -129,9 +131,21 @@ pc_output_end = '.fits'
 pc_scans = ()
 pc_IFs = ()
 
+from time_stream import stitch_windows_crude
+# Comment this line to skip this step in pipeline.
+pipe_modules.append(stitch_windows_crude.Stitch)
+sw_input_root = pc_output_root
+sw_file_middles = file_middles
+sw_input_end = '.fits'
+sw_output_root = base_dir + 'stitched/' + prefix
+sw_output_end = '.fits'
+sw_scans = ()
+sw_IFs = ()
+
 from time_stream import combine_cal
-#pipe_modules.append(combine_cal.CombineCal)
-cc_input_root = rp_output_root
+# Comment this line to skip this step in pipeline
+pipe_modules.append(combine_cal.CombineCal)
+cc_input_root = sw_output_root
 cc_file_middles = file_middles
 cc_input_end = '.fits'
 cc_output_root = base_dir + 'combined/' + prefix
@@ -143,6 +157,7 @@ cc_subtract_time_mean = True
 cc_average_cal_states = True
 
 from map import map_maker
+# Comment this line to skip this step in pipeline
 pipe_modules.append(map_maker.MapMaker)
 mm_input_root = cc_output_root
 mm_file_middles = file_middles
@@ -161,7 +176,7 @@ mm_pixel_spacing = .075
 #mm_pixel_spacing = .0325
 mm_noise_model = 'disjoint_scans'
 
-# Not acctually nessisary, but good do do anyway.
+# Not acctually nessesary, but good do do anyway.
 del file_middles
 del base_dir
 del prefix
