@@ -138,48 +138,96 @@ class TestMakeAlgebra(unittest.TestCase) :
         self.array = algebra.info_array(data)
 
     def test_make_vector(self) :
-        algebra.make_vect(self.array)
+        self.array = algebra.vect_array(self.array)
         self.assertEqual(self.array.info['type'], 'vect')
         self.assertEqual(self.array.info['axes'], (None, None, None))
+        self.assertTrue(isinstance(self.array, algebra.vect))
+        self.assertTrue(isinstance(self.array, algebra.info_array))
 
     def test_make_vector_named(self) :
-        algebra.make_vect(self.array, ('freq', None, 'ra'))
+        self.array = algebra.vect_array(self.array, ('freq', None, 'ra'))
         self.assertEqual(self.array.info['axes'], ('freq', None, 'ra'))
+        self.assertEqual(self.array.axes, ('freq', None, 'ra'))
 
     def test_make_vector_raises(self) :
-        self.assertRaises(TypeError, algebra.make_vect, self.array, (1,2,3))
-        self.assertRaises(ValueError, algebra.make_vect, self.array, ('a','b'))
+        self.assertRaises(TypeError, algebra.vect_array, self.array, (1,2,3))
+        self.assertRaises(ValueError, algebra.vect_array, self.array, 
+                          ('a','b'))
 
     def test_make_mat(self) :
-        algebra.make_mat(self.array, row_axes=(0,1), col_axes=(0,2))
+        self.array = algebra.mat_array(self.array, row_axes=(0,1), 
+                                       col_axes=(0,2))
         self.assertEqual(self.array.info['type'], 'mat')
         self.assertEqual(self.array.info['axes'], (None, None, None))
         self.assertEqual(self.array.info['rows'], (0,1))
         self.assertEqual(self.array.info['cols'], (0,2))
+        self.assertEqual(self.array.cols, (0,2))
 
     def test_make_mat_raises(self) :
-        self.assertRaises(ValueError, algebra.make_mat, self.array, (1,), (2,))
-        self.assertRaises(ValueError, algebra.make_mat, self.array, (0,1,'a'), 
+        self.assertRaises(ValueError, algebra.mat_array, self.array, (1,), (2,))
+        self.assertRaises(ValueError, algebra.mat_array, self.array, (0,1,'a'), 
                           (2,))
-        self.assertRaises(ValueError, algebra.make_mat, self.array, (0,1), 
+        self.assertRaises(ValueError, algebra.mat_array, self.array, (0,1), 
                           (3,))
 
 
 class TestMatUtils(unittest.TestCase) :
     
+    def setUp(self) :
+        data = sp.arange(30)
+        data.shape = (5, 2, 3)
+        self.vect = algebra.info_array(data)
+        self.vect = algebra.vect_array(self.vect, 
+                                       axis_names=('freq', 'a', 'b'))
+        data = sp.arange(120)
+        self.mat = algebra.info_array(data)
+        self.mat.shape = (5, 4, 6)
+        self.mat = algebra.mat_array(self.mat, row_axes=(0,1), col_axes=(0,2), 
+                                     axis_names=('freq', 'mode', 'mode'))
+
     def test_mat_shape(self) :
-        mat = sp.empty((3, 8, 6))
-        self.assertEqual(algebra.mat_shape(mat), (24, 18))
-        memmat = sp.memmap('temp.npy', shape=(3, 8, 6), dtype=sp.float32,
-                           mode='w+')
-        self.assertEqual(algebra.mat_shape(memmat), (24, 18))
-        del memmat
-        os.remove('temp.npy')
-        mat2 = list(mat)
-        self.assertRaises(TypeError, algebra.mat_shape, mat2)
-        mat3 = sp.empty((7,8))
-        self.assertRaises(TypeError, algebra.mat_shape, mat3)
-       
+        # Check basic functionality.
+        self.assertEqual(self.vect.mat_shape, (30,))
+        self.assertEqual(self.mat.mat_shape, (20, 30))
+        # Check that it fails if I mess with stuff.
+        self.vect.info['axes'] = (None, 5, 'a')
+        self.assertRaises(TypeError, self.vect.__getattr__, 'mat_shape')
+        self.vect.info['axes'] = (None, 'a')
+        self.assertRaises(ValueError, self.vect.__getattr__, 'mat_shape')
+        self.mat.info['rows'] = (0,)
+        self.assertRaises(ValueError, self.mat.__getattr__, 'mat_shape')
+        self.mat.info['rows'] = (0,1,4)
+        self.assertRaises(ValueError, self.mat.__getattr__, 'mat_shape')
+
+    def test_assert_axes_ordered(self) :
+        algebra.assert_axes_ordered(self.mat)
+        self.mat.info['cols'] = (2,)
+        algebra.assert_axes_ordered(self.mat)
+        self.mat.info['cols'] = (0,2)
+        self.mat.info['rows'] = (1,0)
+        self.assertRaises(NotImplementedError, algebra.assert_axes_ordered, 
+                          self.mat)
+        self.mat.info['rows'] = (0,2)
+        self.mat.info['cols'] = (0,1)
+        self.assertRaises(NotImplementedError, algebra.assert_axes_ordered, 
+                          self.mat)
+
+    def test_expand_mat(self) :
+        expanded = algebra.expand_mat(self.mat)
+        self.assertEqual(expanded.shape, algebra.get_shape(self.mat))
+        self.assertTrue(sp.allclose(self.mat[0,:,:], expanded[0:4, 0:6]))
+
+    def test_dot_mat_vect(self) :
+        self.mat.shape = (5, 4, 2, 3)
+        self.mat.info['cols'] = (0, 2, 3)
+        self.mat.info['axes'] = ('freq', 'mode', 'a', 'b')
+        prod = algebra.dot(self.mat, self.vect)
+        self.assertEqual(algebra.get_shape(prod), (20,))
+        self.assertEqual(prod.shape, (5, 4))
+        self.assertTrue(sp.allclose(prod.flatten(),
+                        sp.dot(algebra.expand_mat(self.mat),
+                        self.vect.flatten())))
+        #self.assertEqual(prod.info['axes'], ('freq', 'mode'))
 
 if __name__ == '__main__' :
     unittest.main()
