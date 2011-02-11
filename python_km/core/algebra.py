@@ -1,29 +1,60 @@
 """This module provides vector and matrix interfaces tailored to the needs of
 intensity mapping analysis.
 
-The considerations for intensity mapping analysis can be summarized as follows:
-    - Elements in data vectors often have a significant amount of associated
-      meta data.  For instance in map space, a data point is a pixel and it has
-      pointing and frequency information that needs to be stored with it.
-    - Matricies can generally refer to data vectors for meta data.
-    - Data vectors can normally be held in the memory of a single machine, but
-      matrices cannot.
-    - Matricies are occationally Block diagonal and we would like to take
-      advantage of this.
-    - We will evenetually need to do operations massively in parallel with
-      SCALLAPACK.
+At the heart of this module is the need to organize multidimensional data (such
+as a map which has 3 axis: ra, dec, frequency) as a 1D vector for linear
+algegra operations.  However we do not want to lose the multidimensional
+organization of the data.  In addition that are efficiencies to be gained by
+orgainizing data in a multidimensional way.  For example, some matricies will
+be block diagonal in that they will not couple different frequency bins.  We
+would like to exploit this.  To address this, classes are provided that store
+data in numpy ndarray format but know how to reorgainze the data into an matrix
+or vector format.  Some basic matrix operations are also provided.
 
-To satisfy these needs, this module provides:
-    - A data structure for vectors and infrastructure to read and write them to
-      disk.  This is implemented using numpy record arrays, with an added
-      header. Memory mapping is fully supported.
-    - Infrastructure for using numpy array objects as matrices, with memory
-      mapping a being a consideration throughout.
-    - Infrastructure for manipulating these formats and performing standard
-      operations.
+Also fully supported is writting the data to and from disk in a standard,
+portable format that can easily be read in another language.  This is based on
+numpy's npy format.  Also fully supported is memory mapping; the ability to
+manipulate an array stored on disk as if it was in memory.  This will be very
+important as data sets become to large to store in memory and when operations
+need to be performed in parrallel using SCALAPACK.
+
+---- Matrix and Vector classes ----
+The highest level objects defined in this module are the 'mat' and the 'vect'.
+Each comes in two flavours depending on whether the data is stored in memory (a
+numpy array) or on disk (a numpy memmap).  These are named mat_array,
+mat_memmap, vect_array and vect_memmap.  To first order, these objects are just
+their numpy counterparts with an added info attribute (mat.info).  info is a
+python dictionary that hold some extra meta data.  It is stored in a dictionary
+to facilitate writing to disk.  For the most part, you never need to (nor ever
+should you) access the info dictionary yourself.  Everything you need from it
+should be available from aliased attributes.  For instance mat.info['axes'] can
+be retrived and set through mat.axes.
+
+mats and vects are multidimensional arrays, with each dimension given a name
+which can be found in the .axes attribute (tuple of strings or None).
+The meta data tells us how to
+sore our multidimentional data into 1 dimensional vectors and 2 dimensional
+matricies.  For vects this is simple, the data is simply numpy flattened to 1D.
+For mats, this is quite a bit more complicated.  mats have attributes 'rows'
+and 'cols' which are tuples of integers and tell us whether a certain dimension
+should be identifed in the 2D matrix as varying over column or varying over
+row.  Every dimension must appear in at least one of rows or cols.  A dimension
+may appear in both, which means the matrix is block diagonal over that
+dimension.  For the time being, column dimensions must be the right most
+dimensions, followed by the row dimensions, with diagonal dimensions the left
+most.  There is no reason this last restriction cannot be lifted in the future,
+someone just has to implement it.
+
+As an example of how this might be usefull, here is an example.  Consider an
+matrix 'M' with 3 row dimensions named ('a', 'b', 'c') and 2 column dimensions
+('x', 'y').  Now consider a vector 'V' with 2 dimensions ('x', 'y') (with axis
+'x' the same length of M axis 'x', etc.).  What should the structure of the
+vector W = M*V?  Obviously W should have three dimensions named ('a', 'b',
+'c').  This is implemented in the 'dot' function of this module.
 """
 
 import os
+import warnings
 
 import scipy as sp
 import numpy.lib.format as npfor
@@ -58,6 +89,10 @@ class info_array(sp.ndarray) :
     def __array_finalize__(self, obj):
         if obj is None: return
         self.info = getattr(obj, 'info', {})
+    
+    def __deepcopy__(self, copy):
+        """Not implemented, raises an exception."""
+        raise NotImeplementedError("Deep copy won't work.")
 
 class info_memmap(sp.memmap) :
     """A standard numpy memmap object with a dictionary for holding extra info.
@@ -67,10 +102,12 @@ class info_memmap(sp.memmap) :
     
     Initialization arguments :
     marray : A numpy memmap.
-    info=None : A dictionary to be used as the info metadata dictionary. 
+    info=None : A dictionary to be used as the info metadata dictionary. If
+        None, create a new dictionary.
     metafile=None : String filename to write the metadata to.  In some
         versions of numpy, the metadata will be written to file even if the
-        memmap is in read only mode.  To avoid this pass metafile=None.
+        memmap is in read only mode.  To avoid this pass metafile=None, which
+        prevents the metadata from being stored on disk at all.
     """
 
     def __new__(cls, input_array, info=None, metafile=None):
@@ -124,6 +161,10 @@ class info_memmap(sp.memmap) :
         self.flush()
         sp.memmap.__del__(self)
 
+    def __deepcopy__(self, copy) :
+        """Not implemented, raises an exception."""
+        raise NotImeplementedError("Deep copy w on't work.")
+
 def assert_info(array) :
     """Check if passed array is an info_array or info_memmap.
 
@@ -142,7 +183,9 @@ def open_memmap(filename, mode='r+', dtype=None, shape=None,
 
     This is similar to the numpy.lib.format.openmemmap() function but also
     deals with the meta data dictionary, which is read and written from a
-    meta data file.
+    meta data file.  The only extra argument over the numpy version is the meta
+    data file name metafile.  If it is None, then the meta data file name is
+    assumed to be filename + ".meta".
     """
     
     # Memory map the data part.
@@ -168,12 +211,14 @@ def open_memmap(filename, mode='r+', dtype=None, shape=None,
         
     return marray
 
-
 def load(file, metafile=None) :
     """Open a .npy file and load it into memory as a info_aray.
     
     Similar to the numpy.load function.  Does not support memory
-    mapping.
+    mapping (use open_memmap).  Over the regular file argument, also 
+    pass the filename for the meta data.  The default is the data 
+    file name + ".meta".  If this does not exist, the info attribute is
+    intialized to an empy dictionary.
     """
     
     # Load the data from .npy format.
@@ -201,7 +246,10 @@ def load(file, metafile=None) :
     return array
 
 def save(file, info_array, metafile=None) :
-    """Save a info array to a .npy file and a metadata file.
+    """Save a info array to a .npy file and a metadata file.  Pass it a
+    filename or file pointer object, an info array object and optionally a
+    filename for the meta data.  If the meta data file name is not present, use
+    the data filename + ".meta".
     """
     # Make sure that the meta data will be representable as a string.
     infostring = repr(info_array.info)
@@ -228,6 +276,8 @@ def save(file, info_array, metafile=None) :
 
 # ---- Functions for manipulating above arrays as matrices and vectors. ------
 
+#### Some helper functions that perform some quick checks. ####
+
 def _set_type_axes(array, type, axis_names) :
     """Sets the array.info['type'] and array.info[axes] metadata and does some
     checks.  Used in vect and mat constructors.
@@ -241,13 +291,13 @@ def _set_type_axes(array, type, axis_names) :
         _check_axis_names(array, axis_names)
         axes = tuple(axis_names)
     array.info['type'] = type
-    array.info['axes'] = axes
+    array.axes = axes
 
 def _check_axis_names(array, axis_names=None) :
-    """Checks that axis names sequence is valid for array."""
+    """Checks that axis names  sequence is valid for array."""
 
     if axis_names is None :
-        axis_names = array.info['axes']
+        axis_names = array.axes
 
     if len(axis_names) != array.ndim :
         raise ValueError("axis_names parameter must be a sequence of length "
@@ -257,14 +307,46 @@ def _check_axis_names(array, axis_names=None) :
             if (not isinstance(name, str)) and (not name is None) :
                 raise TypeError("Invalid axis name.")
 
+def _check_rows_cols(arr, row_axes=None, col_axes=None) :
+    """Check that rows and cols are valid for the matrix."""
+
+    if row_axes is None and col_axes is None :
+        row_axes = arr.info['rows']
+        col_axes = arr.info['cols']
+    # Both parameters had better be sequences of integers.
+    for ind in row_axes :
+        if not ind in range(arr.ndim) :
+            raise ValueError("Invalid row axes.")
+    for ind in col_axes :
+        if not ind in range(arr.ndim) :
+            raise ValueError("Invalid col axes")
+    # Make sure each axis is spoken for.
+    for ii in range(arr.ndim) :
+        if (not ii in row_axes) and (not ii in col_axes) :
+            raise ValueError("Every axis must be identified varying over "
+                             "as the matrix row, column or both.")
+
+#### Vector class definitions ####
+
 class vect(object) :
-    """Base class for vectors.
+    """Base class for vectors. 
     
     This is only half a class.  A complete vector class is created by making a
     class that inherits from both this class and from info_array or
     info_memmap, for example the classes vect_array and vect_memmap.
     """
-    pass
+    
+    def flat_view(self) :
+        """Returns a view of the vector that has been flattend.
+
+        The view will be cast as a scipy.ndarray and its shape will be
+        (self.size, ).  It is a view, so writing to it will write back to the
+        origional vector object.
+        """
+        
+        flat = self.view(sp.ndarray)
+        flat.shape = (self.size, )
+        return flat
     
 def _vect_class_factory(base_class) :
     """Internal class factory for making a vector class that inherits from
@@ -280,6 +362,9 @@ def _vect_class_factory(base_class) :
         to identify it as a vector.  Optionally pass names for the axes in the
         array. The axis names should be passed as a tuple with length 
         vect.ndims.  The entries should be either string names or None.
+        See module documentation for a full explanation of how these work.  If
+        the info_array already has the required metadata, all other arguments
+        are ignored.
         """
         
         def __new__(cls, input_array, axis_names=None) :
@@ -288,7 +373,17 @@ def _vect_class_factory(base_class) :
                 raise ValueError("Array to convert must be instance of " +
                                  str(base_class))
             obj = input_array.view(cls)
-            _set_type_axes(obj, 'vect', axis_names)
+            if obj.info.has_key('type') :
+                if not axis_names is None :
+                    warnings.warn("Initialization argument ignored. Requisite "
+                                  "metadata for vector already exists. "
+                                  "Clear info dictionary if you want opposite "
+                                  "behaviour.")
+                if not obj.info['type'] == 'vect' :
+                    raise ValueError("Meta data present is incompatible.")
+                _check_axis_names(obj)
+            else :
+                _set_type_axes(obj, 'vect', axis_names)
             return obj
 
         def __setattr__(self, name, value) :
@@ -319,13 +414,14 @@ def make_vect(array, axis_names=None) :
         if not isinstance(array, info_memmap) :
             array = info_memmap(array)
         return vect_memmap(array, axis_names)
-    elif sp.isarray(array, sp.ndarray) :
+    elif isinstance(array, sp.ndarray) :
         if not isinstance(array, info_array) :
             array = info_array(array)
-        return vect_array(array, asix_names)
+        return vect_array(array, axis_names)
     else :
         raise TypeError("Object cannot be converted to a vector.")
 
+#### Matrix class definitions ####
 
 class mat(object) :
     """Base class for matricies.
@@ -338,7 +434,122 @@ class mat(object) :
     def check_rows_cols(self) :
         """Check that rows and cols are valid for the matrix."""
         _check_rows_cols(self)
+
+    def assert_axes_ordered(self) :
+        """Enforces a specific ordering to the matrix row and column axis
+        associations.
+        """
+
+        rows = self.info['rows']
+        cols = self.info['cols']
+        r_ind = len(rows) - 1
+        c_ind = len(cols) - 1
+        in_rows = False
+        in_cols = True
+
+        for axis in range(self.ndim-1, -1, -1) :
+            if cols[c_ind] == axis and in_cols and c_ind >= 0:
+                c_ind -= 1
+                continue
+            elif in_cols :
+                in_cols = False
+                in_rows = True
+            if rows[r_ind] == axis and in_rows and r_ind >= 0:
+                r_ind -= 1
+                continue
+            elif in_rows :
+                in_rows = False
+            if rows[r_ind] == axis and cols[c_ind] == axis :
+                r_ind -= 1
+                c_ind -= 1
+            else :
+                raise NotImplementedError("Matrix row and column array axis"
+                                          "associations not ordered correctly.")
+    
+    def get_num_blocks(self, return_block_shape=False, return_n_axes_diag=False) :
+        """Get the number of blocks in a block diagonal matrix."""
         
+        shape = self.mat_shape
+        # Current algorithm assumes specific format.
+        self.assert_axes_ordered()
+        
+        diag_axes = [ii for ii in range(self.ndim) if ii in self.rows 
+                     and ii in self.cols]
+        num_blocks = sp.prod([self.shape[ii] for ii in diag_axes])
+        if return_block_shape and return_n_axes_diag :
+            return num_blocks, (shape[0]/num_blocks, shape[1]/num_blocks), \
+                   len(diag_axes)
+        elif return_block_shape :
+            return num_blocks, (shape[0]/num_blocks, shape[1]/num_blocks)
+        elif return_n_axes_diag :
+            return num_blocks, len(diag_axes)
+        else :
+            return num_blocks
+    
+    def iter_blocks(self) :
+        """Returns an iterator that iterates over the blocks of an matrix."""
+        
+        # Build the iterator class.
+        class iterator(object) :
+            
+            def __init__(self, arr) :
+                self.arr = arr
+                self.n_blocks, self.block_shape, self.n_axes_diag = \
+                    arr.get_num_blocks(True, True)
+                self.ii = 0
+
+            def __iter__(self) :
+                return self
+
+            def next(self) :
+                if self.ii >= self.n_blocks :
+                    raise StopIteration()
+                else :
+                    # Find the indices for this block.
+                    array_index = ()
+                    tmp_block_num = self.ii
+                    self.ii += 1
+                    for jj in range(self.n_axes_diag -1, -1, -1) :
+                        array_index = ((tmp_block_num%self.arr.shape[jj],) 
+                                       + array_index)
+                        tmp_block_num = tmp_block_num//self.arr.shape[jj]
+                    # Return the data.
+                    return sp.reshape(self.arr[array_index], self.block_shape)
+        
+        # Initialize it and return it.
+        return iterator(self) 
+            
+    def expand(self) :
+        """Calculates expanded matrix in 2 dimensional form.
+
+        Takes an arbitrary matrix and returns the expanded version of it,
+        as matrix with internal array dimensions of shape(mat).  If the
+        original matrix has efficiency from any block diagonal structure, this
+        is lost in the returned matrix.
+        """
+        
+        # Also verifies the validity of the matrix.
+        shape = self.mat_shape
+        # Current algorithm assumes specific format.
+        self.assert_axes_ordered()
+        # Allocate memory.
+        out_mat = sp.zeros(shape, dtype=self.dtype)
+        out_mat = info_array(out_mat)
+        out_mat = mat_array(out_mat)
+
+        # Figure out how many axes are in both row and col (and therefore block
+        # diagonal).
+        n_blocks, block_shape = self.get_num_blocks(True, False)
+        
+        # Loop over the blocks and assign data.
+        for ii, mat_block in enumerate(self.iter_blocks()) :
+            # Figure out where this block starts.
+            row_start = ii*block_shape[0]
+            col_start = ii*block_shape[1]
+            out_mat[row_start:row_start + block_shape[0], 
+                    col_start:col_start + block_shape[1]] = mat_block
+        return out_mat
+
 def _mat_class_factory(base_class) :
     """Internal class factory for making a matrix class that inherits from
     either info_array or info_memmap."""
@@ -347,7 +558,27 @@ def _mat_class_factory(base_class) :
         raise TypeError("Matrices inherit from info arrays or info memmaps.")
 
     class mat_class(base_class, mat) :
-        """Matrix class for this module."""
+        """Matrix class for this module.
+        
+        When passed an info_array or info_memmap, set the necessary metadata to
+        identify it as a Matrix.  If the info array already has the required
+        meta data, all other arguments are ignored.
+        
+        Other arguments:
+        row_axes and col_axes: Unless the array is exactly 2D, the row_axes and
+                    col_axes parameters must be specified.  They are sequences
+                    of integers telling which axes to identify as the matrix
+                    rows and which to identify as matrix columns.  All axes of
+                    the array must be accounted for.  An axis may be identified
+                    as both in which case the matrix is block diagonal in some
+                    space.
+        axis_names: (optional) Names for the axes in the array. The axis names
+                    should be passed as a tuple with length vect.ndims.  The
+                    entries should be either string names or None.
+        
+        See module documentation for a full explanation of how matrices work in
+        this module.
+        """
         # TODO: Write a long doc string.
                 
         def __new__(cls, input_array, row_axes=None, col_axes=None, 
@@ -356,19 +587,31 @@ def _mat_class_factory(base_class) :
             if not isinstance(input_array, base_class) :
                 raise ValueError("Array to convert must be instance of " +
                                  str(base_class))
-
-            if row_axes is None and col_axes is None and input_array.ndim==2 :
-                row_axes = (0,)
-                col_axes = (1,)
-            else :
-                _check_rows_cols(input_array, row_axes, col_axes)
             
             obj = input_array.view(cls)
-            
-            _set_type_axes(obj, 'mat', axis_names)
-            obj.rows = row_axes
-            obj.cols = col_axes
-            
+
+            if obj.info.has_key('type') :
+                if ((not axis_names is None) or (not row_axes is None) or 
+                    (not col_axes is None)) :
+                    warnings.warn("Initialization argument ignored. Requisite "
+                                  "metadata for vector already exists. "
+                                  "Clear info dictionary if you want opposite "
+                                  "behaviour.")
+                if not obj.info['type'] == 'mat' :
+                    raise ValueError("Meta data present is incompatible.")
+                _check_axis_names(obj)
+                _check_rows_cols(obj)
+            else :
+                if row_axes is None and col_axes is None and input_array.ndim==2 :
+                    row_axes = (0,)
+                    col_axes = (1,)
+                else :
+                    _check_rows_cols(input_array, row_axes, col_axes)
+                
+                _set_type_axes(obj, 'mat', axis_names)
+                obj.rows = row_axes
+                obj.cols = col_axes
+                
             return obj
 
         def __setattr__(self, name, value) :
@@ -383,7 +626,7 @@ def _mat_class_factory(base_class) :
             elif name == 'cols' :
                 for ind in value :
                     if not ind in range(self.ndim) :
-                        raise ValueError("Invalid row axes.")
+                        raise ValueError("Invalid col axes.")
                 self.info['cols'] = tuple(value)
             else :
                 base_class.__setattr__(self, name, value)
@@ -399,214 +642,41 @@ def _mat_class_factory(base_class) :
                 self.check_rows_cols()
                 _check_axis_names(self)
                 nrows = 1
-                for axis in self.info['rows'] :
+                for axis in self.rows :
                     nrows *= self.shape[axis]
                 ncols = 1
-                for axis in self.info['cols'] :
+                for axis in self.cols :
                     ncols *= self.shape[axis]
                 return (nrows, ncols)
             else :
-                raise AttributeError("Attribute " + name + "not found.")
+                raise AttributeError("Attribute " + name + " not found.")
 
     return mat_class
 
 mat_array = _mat_class_factory(info_array)
 mat_memmap = _mat_class_factory(info_memmap)
 
+def make_mat(array, row_axes=None, col_axes=None, axis_names=None) :
+    """Do what ever it takes to make an mat out of an array."""
 
-
-
-
-
-
-
-def make_mat(mat, row_axes=None, col_axes=None, axis_names=None) :
-    """Identify an info array as a matrix.
-
-    When passed an info_array or info_memmap, set the necessary metadata to
-    identify it as a Matrix.
-    Other arguments:
-    row_axes and col_axes: Unless the array is exactly 2D, the row_axes and
-                col_axes parameters must be specified.  They are sequences of
-                integers telling which axes to identify as the matrix rows and
-                which to identify as matrix columns.  All axes of the array
-                must be accounted.  An axis may be identified as both in which
-                case the matrix is block diagonal in some space.
-    axis_names: name for the axes in the array. The axis names should be passed
-                as a tuple with length vect.ndims.  The entries should be either
-                string names or None.
-    """
-
-    # Check the row and col arguments.
-    if row_axes is None and col_axes is None and mat.ndim==2 :
-        row_axes = (0,)
-        col_axes = (1,)
+    if isinstance(array, sp.memmap) :
+        if not isinstance(array, info_memmap) :
+            array = info_memmap(array)
+        return mat_memmap(array, row_axes, col_axes, axis_names)
+    elif isinstance(array, sp.ndarray) :
+        if not isinstance(array, info_array) :
+            array = info_array(array)
+        return mat_array(array, row_axes, col_axes, axis_names)
     else :
-        _check_rows_cols(mat, row_axes, col_axes)
-    _set_type_axes(mat, 'mat', axis_names)
-    mat.info['rows'] = tuple(row_axes)
-    mat.info['cols'] = tuple(col_axes)
+        raise TypeError("Object cannot be converted to a vector.")
 
-def _check_rows_cols(arr, row_axes=None, col_axes=None) :
-    """Check that rows and cols are valid for the matrix."""
+#### Functions ####
 
-    if row_axes is None and col_axes is None :
-        row_axes = arr.info['rows']
-        col_axes = arr.info['cols']
-    # Both parameters had better be sequences of integers.
-    for ind in row_axes :
-        if not ind in range(arr.ndim) :
-            raise ValueError("Invalid row axes.")
-    for ind in col_axes :
-        if not ind in range(arr.ndim) :
-            raise ValueError("Invalid col axes")
-    # Make sure each axis is spoken for.
-    for ii in range(arr.ndim) :
-        if (not ii in row_axes) and (not ii in col_axes) :
-            raise ValueError("Every axis must be identified varying over "
-                             "as the matrix row, column or both.")
-
-def get_shape(arr) :
-    """Returns the external dimensions of a matrix or vector.
-
-    Given an info array that has been identified as a matrix pr vector
-    (using make_mat or make_vect),
-    this function returns the dimensions of that matrix.  It also performs
-    several checks to ensure that the matrix is valid.  Calling this function
-    is the preferred way to check the validity of a matrix.
-    """
-
-    assert_info(arr)
-    _check_axis_names(arr)
-    
-    if arr.info['type'] == 'vect' :
-        return (sp.size(arr),)
-    elif arr.info['type'] == 'mat' :
-        _check_rows_cols(arr)
-        nrows = 1
-        for axis in arr.info['rows'] :
-            nrows *= arr.shape[axis]
-        ncols = 1
-        for axis in arr.info['cols'] :
-            ncols *= arr.shape[axis]
-        return (nrows, ncols)
-    else :
-        raise ValueError("Unrecognized algebra type.")
-
-def assert_axes_ordered(mat) :
-    """Enforces a specific ordering to the matrix row and column axis
-    associations.
-    """
-
-    rows = mat.info['rows']
-    cols = mat.info['cols']
-    r_ind = len(rows) - 1
-    c_ind = len(cols) - 1
-    in_rows = False
-    in_cols = True
-
-    for axis in range(mat.ndim-1, -1, -1) :
-        if cols[c_ind] == axis and in_cols and c_ind >= 0:
-            c_ind -= 1
-            continue
-        elif in_cols :
-            in_cols = False
-            in_rows = True
-        if rows[r_ind] == axis and in_rows and r_ind >= 0:
-            r_ind -= 1
-            continue
-        elif in_rows :
-            in_rows = False
-        if rows[r_ind] == axis and cols[c_ind] == axis :
-            r_ind -= 1
-            c_ind -= 1
-        else :
-            raise NotImplementedError("Matrix row and column array axis"
-                                      "associations not ordered correctly.")
-
-def get_num_blocks(mat, return_block_shape=False, return_n_axes_diag=False) :
-    """Get the number of blocks in a block diagonal matrix."""
-    
-    shape = get_shape(mat)
-    # Current algorithm assumes specific format.
-    assert_axes_ordered(mat)
-    
-    diag_axes = [ii for ii in range(mat.ndim) if ii in mat.info['rows'] and 
-                 ii in mat.info['cols']]
-    num_blocks = sp.prod([mat.shape[ii] for ii in diag_axes])
-    if return_block_shape and return_n_axes_diag :
-        return num_blocks, (shape[0]/num_blocks, shape[1]/num_blocks), \
-               len(diag_axes)
-    elif return_block_shape :
-        return num_blocks, (shape[0]/num_blocks, shape[1]/num_blocks)
-    elif return_n_axes_diag :
-        return num_blocks, len(diag_axes)
-    else :
-        return num_blocks
-
-class iterate_blocks(object) :
-    """An iterator that iterates over the blocks of an matrix."""
-    
-    def __init__(self, mat) :
-        self.mat = mat
-        self.n_blocks, self.block_shape, self.n_axes_diag = \
-            get_num_blocks(mat, True, True)
-        self.ii = 0
-
-    def __iter__(self) :
-        return self
-
-    def next(self) :
-        if self.ii >= self.n_blocks :
-            raise StopIteration
-        else :
-            # Find the indices for this block.
-            array_index = ()
-            tmp_block_num = self.ii
-            self.ii += 1
-            for jj in range(self.n_axes_diag -1, -1, -1) :
-                array_index = (tmp_block_num%self.mat.shape[jj],) + array_index
-                tmp_block_num = tmp_block_num//self.mat.shape[jj]
-            # Return the data.
-            return sp.reshape(self.mat[array_index], self.block_shape)
-        
-
-def expand_mat(mat) :
-    """Calculates expanded matrix in 2 dimensional form.
-
-    Takes an arbitrary matrix and returns the expanded version of it, as matrix
-    with internal array dimensions of shape(mat).  If the original matrix has
-    efficiency from any block diagonal structure, this is lost in the returned
-    matrix.
-    """
-    
-    # Also verifies the validity of the matrix.
-    shape = get_shape(mat)
-    # Current algorithm assumes specific format.
-    assert_axes_ordered(mat)
-    # Allocate memory.
-    out_mat = sp.zeros(shape, dtype=mat.dtype)
-    out_mat = info_array(out_mat)
-    make_mat(out_mat)
-
-    # Figure out how many axes are in both row and col (and therefore block
-    # diagonal).
-    n_blocks, block_shape = get_num_blocks(mat, True, False)
-    
-    # Loop over the blocks and assign data.
-    for ii, mat_block in enumerate(iterate_blocks(mat)) :
-        # Figure out where this block starts.
-        row_start = ii*block_shape[0]
-        col_start = ii*block_shape[1]
-        out_mat[row_start:row_start + block_shape[0], 
-                col_start:col_start + block_shape[1]] = mat_block
-    return out_mat
-
-def dot(arr1, arr2) :
+def dot(arr1, arr2, check_inner_axes=True) :
     """Perform matrix multiplication."""
 
-    shape1 = get_shape(arr1)
-    shape2 = get_shape(arr2)
+    shape1 = arr1.mat_shape
+    shape2 = arr2.mat_shape
 
     if shape1[-1] != shape2[0] :
         raise ValueError("Matrix dimensions incompatible for matrix ",
@@ -614,12 +684,44 @@ def dot(arr1, arr2) :
     
     # Matrix-vector product case.
     if len(shape1) == 2 and len(shape2) ==1 :
+        # Strict axis checking has been requested, make sure that the axis
+        # number, lengths and names of the input vector are equal to the 
+        # column axis names of the input matrix.
+        if check_inner_axes : 
+            if not arr2.ndim == len(arr1.cols) :
+                raise ce.DataError("Matrix column axis number are not the "
+                                   "same as vector ndim and strict checking "
+                                   "has been requested.")
+            for ii, name in enumerate(arr2.axes) :
+                if not arr1.shape[arr1.cols[ii]] == arr2.shape[ii] :
+                    raise ce.DataError("Matrix column axis lens are not the "
+                                       "same as vector axis lens and strict "
+                                       "checking has been requested.")
+                if not name == arr1.axes[arr1.cols[ii]] :
+                    raise ce.DataError("Matrix column axis names are not the "
+                                       "same as vector axes names and strict "
+                                       "checking has been requested.")
+
+        # Figure out what the output vector is going to look like.
         out_shape = [arr1.shape[ii] for ii in range(arr1.ndim)
                      if ii in arr1.info['rows']]
         out_names = [arr1.info['axes'][ii] for ii in range(arr1.ndim)
                      if ii in arr1.info['rows']]
         out_vect = sp.empty(out_shape)
-        out_vect = info_array(out_vect)
-        out_vect = vect_array(out_vect, out_names)
+        out_vect = make_vect(out_vect, out_names)
+        n_blocks, block_shape = arr1.get_num_blocks(return_block_shape=True)
+        # Make flattened veiws for the acctual matrix algebra.
+        out_flat = out_vect.flat_view()
+        arr2_flat = arr2.flat_view()
 
+        for ii, block in enumerate(arr1.iter_blocks()) :
+            out_flat[ii*block_shape[0]:(ii+1)*block_shape[0]] = \
+                sp.dot(block, arr2_flat[ii*block_shape[1]:
+                                        (ii+1)*block_shape[1]])
+            
         return out_vect
+    else :
+        raise NotImplementedError("Matrix-matrix multiplication has not been "
+                                  "Implemented yet.")
+
+
