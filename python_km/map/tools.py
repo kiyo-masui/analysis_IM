@@ -56,7 +56,6 @@ def calc_bins(centre, shape, spacing=1., edge='lower') :
     
     return bins
 
-
 def get_map_params(Map) :
     """Calculates the centre, shape, and pixel spacing of a map."""
     
@@ -68,8 +67,6 @@ def get_map_params(Map) :
                Map.field['CDELT3'].item())
 
     return centre, shape, spacing
-
-
 
 def set_up_map(Data, centre, shape, spacing) :
     """Sets up a data_map.DataMap object.

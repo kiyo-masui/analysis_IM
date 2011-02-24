@@ -71,7 +71,6 @@ def time2float(UT) :
     return (float('0.' + partial_sec) + to.tm_sec + 60*(to.tm_min + 
             60*(to.tm_hour + 24*(to.tm_yday + 365*(to.tm_year-2000)))))
 
-
 def mk_map_grid(centre, shape, spacing) :
     """Make a grid of coordinates in Ra and Dec.
 
@@ -91,7 +90,6 @@ def mk_map_grid(centre, shape, spacing) :
 
     return grid_ra, grid_dec
 
-
 def get_beam(freq) :
     """Get the GBT beam width at a frequency (or an array of frequencies).
 
@@ -110,4 +108,54 @@ def get_beam(freq) :
     b[b<0] = 0.316148488246
     return b
     
+def polint2str(pol_int) :
+    """Convert an interger representing a polarization to a representing the
+    polarization.
 
+    This is based on the SDfits convention that I pulled from: 
+        https://safe.nrao.edu/wiki/bin/view/Main/SdfitsDetails
+
+    Here are the return values based on the passed integer.
+
+    RR  -1
+    LL 	-2
+    RL 	-3
+    LR 	-4
+    XX 	-5
+    YY 	-6
+    XY 	-7
+    YX 	-8
+    I 	1
+    Q 	2
+    U 	3
+    V 	4
+    Otherwise raises a ValueError.
+    """
+
+    if pol_int == -1 :
+        return 'RR'
+    elif pol_int == -2 :
+        return 'LL'
+    elif pol_int == -3 :
+        return 'RL'
+    elif pol_int == -4 :
+        return 'LR'
+    elif pol_int == -5 :
+        return 'XX'
+    elif pol_int == -6 :
+        return 'YY'
+    elif pol_int == -7 :
+        return 'XY'
+    elif pol_int == -8 :
+        return 'YX'
+    elif pol_int == 1 :
+        return 'I'
+    elif pol_int == 2 :
+        return 'Q'
+    elif pol_int == 3 :
+        return 'U'
+    elif pol_int == 4 :
+        return 'V'
+    else :
+        raise ValueError("Polarization integer must be in range(-8, 5) and "
+                         "nonzero")

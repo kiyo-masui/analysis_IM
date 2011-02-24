@@ -41,7 +41,7 @@ fields_and_axes = {
                    'OBSERVER' : (),
                    'RESTFREQ' : (),
                    'DURATION' : (),
-                   'EXPOSURE' : (),
+                   'EXPOSURE' : ('time', 'cal'),
                    'CTYPE2' : (), # Type of longetudinal axis (probably AZ)
                    'CTYPE3' : (),
                    'DATE-OBS' : ('time', ),
@@ -254,14 +254,22 @@ class Reader(object) :
                     field_format = self.hdulist[1].columns.formats[
                                 self.hdulist[1].columns.names.index(field)]
                     if axis :
-                        # From the indices in inds_sif, we only need a 1D
+                        # From the indices in inds_sif, we only need a
                         # subset: which_data will subscript inds_sif.
-                        axis_index = list(Data_sif.axes).index(axis[0])
-                        which_data = [0, 0, 0]
-                        which_data[axis_index] = sp.arange(
-                                                    Data_sif.dims[axis_index])
-                        Data_sif.set_field(field, self.fitsdata.field(field)
-                            [inds_sif[tuple(which_data)]], axis, field_format)
+                        temp_data = self.fitsdata.field(field)[inds_sif]
+                        # For reshaping at the end.
+                        field_shape = []
+                        for ii, single_axis in enumerate(Data_sif.axes[0:-1]) :
+                            # For each axis, slice out all the data except the
+                            # stuff we need.
+                            which_data = [slice(None)] * 3
+                            if single_axis in axis :
+                                field_shape.append(Data_sif.dims[ii])
+                            else :
+                                which_data[ii] = [0]
+                            temp_data = temp_data[tuple(which_data)]
+                        temp_data.shape = tuple(field_shape)
+                        Data_sif.set_field(field, temp_data, axis, field_format)
                     else :
                         Data_sif.set_field(field, self.fitsdata.field(field)
                             [inds_sif[0,0,0]], axis, field_format)

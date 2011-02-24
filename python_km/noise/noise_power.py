@@ -34,6 +34,9 @@ params_init = {
                # Polarizations and Cal States
                "pol_weights" : ( 1., 0., 0., 1.),
                "cal_weights" : (0., 1.),
+               # Whether to stack the results for all the files togther or to
+               # hold everything in a list.
+               "stack_files' : True
                }
 prefix = 'np_'
 

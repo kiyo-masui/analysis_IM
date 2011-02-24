@@ -58,6 +58,22 @@ class TestMakeMapGrid(unittest.TestCase) :
         self.assertTrue(sp.allclose(grid_ra[:,7], centre[0] + 
                         2/sp.cos(centre[1]*sp.pi/180.)))
 
+class TestPolInt2String(unittest.TestCase):
+
+    def test_all_functionality(self):
+        self.assertEqual(utils.polint2str(1), 'I')
+        self.assertEqual(utils.polint2str(2), 'Q')
+        self.assertEqual(utils.polint2str(3), 'U')
+        self.assertEqual(utils.polint2str(4), 'V')
+        self.assertEqual(utils.polint2str(-5), 'XX')
+        self.assertEqual(utils.polint2str(-6), 'YY')
+        self.assertEqual(utils.polint2str(-7), 'XY')
+        self.assertEqual(utils.polint2str(-8), 'YX')
+        self.assertEqual(utils.polint2str(-1), 'RR')
+        self.assertEqual(utils.polint2str(-2), 'LL')
+        self.assertEqual(utils.polint2str(-3), 'RL')
+        self.assertEqual(utils.polint2str(-4), 'LR')
+        self.assertRaises(ValueError, utils.polint2str, 7)
 
 if __name__ == '__main__' :
     unittest.main()

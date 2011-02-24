@@ -2,9 +2,9 @@
 intensity mapping analysis.
 
 At the heart of this module is the need to organize multidimensional data (such
-as a map which has 3 axis: ra, dec, frequency) as a 1D vector for linear
+as a map which has 3 axes: ra, dec, frequency) as a 1D vector for linear
 algegra operations.  However we do not want to lose the multidimensional
-organization of the data.  In addition that are efficiencies to be gained by
+organization of the data.  In addition there are efficiencies to be gained by
 orgainizing data in a multidimensional way.  For example, some matricies will
 be block diagonal in that they will not couple different frequency bins.  We
 would like to exploit this.  To address this, classes are provided that store
@@ -51,6 +51,10 @@ matrix 'M' with 3 row dimensions named ('a', 'b', 'c') and 2 column dimensions
 'x' the same length of M axis 'x', etc.).  What should the structure of the
 vector W = M*V?  Obviously W should have three dimensions named ('a', 'b',
 'c').  This is implemented in the 'dot' function of this module.
+
+Note that all views and slices of mat and vect objects should be treated as
+numpy arrays and you should not assume that any mat and vect functionalty has
+been preserved.
 """
 
 import os
@@ -408,7 +412,11 @@ vect_array = _vect_class_factory(info_array)
 vect_memmap = _vect_class_factory(info_memmap)
     
 def make_vect(array, axis_names=None) :
-    """Do what ever it takes to make an vect out of an array."""
+    """Do what ever it takes to make an vect out of an array.
+    
+    Convert any class that can be converted to a vect (array, info_array,
+    memmap, info_memmap) to the appropriate vect object (vect_array,
+    vect_memmap)."""
 
     if isinstance(array, sp.memmap) :
         if not isinstance(array, info_memmap) :
@@ -657,7 +665,11 @@ mat_array = _mat_class_factory(info_array)
 mat_memmap = _mat_class_factory(info_memmap)
 
 def make_mat(array, row_axes=None, col_axes=None, axis_names=None) :
-    """Do what ever it takes to make an mat out of an array."""
+    """Do what ever it takes to make an mat out of an array.
+    
+    Convert any class that can be converted to a mat (array, info_array,
+    memmap, info_memmap) to the appropriate mat object (mat_array or
+    mat_memmap)."""
 
     if isinstance(array, sp.memmap) :
         if not isinstance(array, info_memmap) :
@@ -668,7 +680,7 @@ def make_mat(array, row_axes=None, col_axes=None, axis_names=None) :
             array = info_array(array)
         return mat_array(array, row_axes, col_axes, axis_names)
     else :
-        raise TypeError("Object cannot be converted to a vector.")
+        raise TypeError("Object cannot be converted to a matrix.")
 
 #### Functions ####
 

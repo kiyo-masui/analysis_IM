@@ -74,16 +74,19 @@ class BaseData(object) :
         self.field_formats[field_name] = format
 
     def _verify_single_axis_names(self, axis_names) :
+        axis_indices = []
+        temp_axes = list(self.axes)
         for name in axis_names :
-            if not name in self.axes :
+            if not name in temp_axes :
                 raise ValueError("Field axes must contain only entries from: ",
                                  str(self.axes))
-        # XXX: If someone decides they want to implement multi dimensional
-        # fields, it shouldn't be to bad.  Make sure you update the fits
-        # and writer though.
-        if len(axis_names) > 1 :
-            raise NotImplementedError("There is no reason we couldn't handle "
-                                      "multi dimensional fields.")
+            temp_axes.remove(name)
+            axis_indices.append(list(self.axes).index(name))
+        sorted = list(axis_indices)
+        sorted.sort()
+        if not axis_indices == sorted :
+            raise ValueError("Field axes must be well sorted.")
+
 
     def verify(self) :
         """Verifies that all the data is consistant.
