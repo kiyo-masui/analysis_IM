@@ -1,0 +1,439 @@
+#!/usr/bin/python
+"""Convert psrfits with subintegration extension to SDfits.
+
+This script does a rough conversion from psrfits to SDfits.  It was written
+with the HI intensity mapping analysis pipeline in mind, so there is no
+guarantee that it will conform Exactly to the SDfits standard.  The idea is
+simply to arange the data in a familiar way for SDfits.
+
+This is run using a parameter file using kiyopy parameter reading
+(github.com/kiyo-masui/kiyopy).
+
+This also needs to go into the antenna fits files to get the precise pointing
+information.
+"""
+
+import time
+
+import scipy as sp
+import scipy.interpolate as interp
+import pyfits
+
+from core import fitsGBT
+from kiyopy import parse_ini, utils
+import kiyopy.custom_exceptions as ce
+from core import data_block
+
+params_init = {# Inputs.
+               "guppi_input_root" : "./",
+               "guppi_input_end" : ".fits",
+               "fits_log_dir" : "./",
+               # Outputs.
+               "output_root" : "./",
+               # Scans to convert.  At least on from every RaLongMap.
+               "scans" : (0,),
+               "combine_map_scans" : False,
+               "partition_cal" : False,
+               "time_bins_to_average" : 1
+               }
+prefix = ''
+
+def convert(input_file_or_dict=None) :
+    """Main function."""
+    
+    # First read the parameter file.
+    params = parse_ini.parse(input_file_or_dict, params_init, prefix=prefix)
+    scans = list(params["scans"])
+
+    # Now we need to read in the Scan Log fits file.
+    log_dir = params["fits_log_dir"]
+    scan_log_list = pyfits.open(log_dir + "/ScanLog.fits", "readonly")
+    # From the header we need the project session.
+    session = scan_log_list[0].header["PROJID"].split('_')[-1]
+    scan_log = scan_log_list[1].data
+    
+    # Whethar we will fold the data to look for the cal or not.
+    get_cal = params["partition_cal"]
+    if get_cal :
+        ncal = 2
+    else :
+        ncal = 1
+    
+    # Keep track of scans already processed because some scans are processed by
+    # being in the same map as another.
+    finished_scans = []
+    for initial_scan in scans :
+        if initial_scan in finished_scans :
+            continue
+
+        # Open the go fits file.
+        scan_log_files = scan_log.field('FILEPATH')[
+            scan_log.field('SCAN')==initial_scan]
+        # Find the one that's a GO fits file.
+        found_file = False
+        for file_name in scan_log_files :
+            if 'GO' in file_name :
+                go_file = (log_dir + "/GO" + file_name.split("GO")[1])
+                found_file = True
+                break
+        if not found_file :
+            raise ce.DataError("GO file not in Scan Log")
+        go_hdu = pyfits.open(go_file)[0].header
+
+        # From the go information get the source and the scan type.
+        object = go_hdu["OBJECT"].strip()
+        proceedure = go_hdu["PROCNAME"].strip().lower()
+
+        if params["combine_map_scans"] :
+            # Read the go file and figure out all the scans in the same map.
+            # Check the go files for all scans make sure everything is
+            # consistant.
+            n_scans_proc = go_hdu["PROCSIZE"]
+            # Which scan this is of the sequence (1 indexed).
+            initial_scan_ind = go_hdu["PROCSEQN"]
+            scans_this_file = (sp.arange(n_scans_proc, dtype=int) + 1 -
+                               initial_scan_ind + initial_scan)
+            scans_this_file = list(scans_this_file)
+
+        else :
+            scans_this_file = [initial_scan]
+        finished_scans += scans_this_file
+
+        # Initialize a list to store all the data that will be saved to a
+        # single fits file (generally 8 scans).
+        Block_list = []
+        first_scan_file = True
+        # Loop over the scans to process for this output file.
+        for scan in scans_this_file :
+            # First find the GO fits file.
+            scan_log_files = scan_log.field('FILEPATH')[
+                scan_log.field('SCAN')==scan]
+            # Find the one that's a GO fits file.
+            found_file = False
+            for file_name in scan_log_files :
+                if 'GO' in file_name :
+                    go_file = (log_dir + "/GO" + file_name.split("GO")[1])
+                    found_file = True
+                    break
+            if not found_file :
+                raise ce.DataError("GO file not in Scan Log")
+            # If we are combining multiple scans from one proceedure, make sure
+            # that they all cam from the same one (ie that the proceedure
+            # wasn't aborted).
+            if params["combine_map_scans"] :
+                go_hdu = pyfits.open(go_file)[0].header
+                if (n_scans_proc != go_hdu["PROCSIZE"] or go_hdu["PROCSEQN"] 
+                    - initial_scan_ind != scan - initial_scan) :
+                    print initial_scan, scan
+                    print go_hdu["PROCSEQN"], initial_scan_ind
+                    raise ce.DataError("Scans don't agree on proceedure "
+                                       "sequence. Aborted scan?  Scans: "
+                                       + str(scan) + " and " + 
+                                       str(initial_scan))
+
+            # Now find the Antenna fits file.
+            found_file = False
+            for file_name in scan_log_files :
+                if 'Antenna' in file_name :
+                    antenna_file = (log_dir + "/Antenna" +
+                                    file_name.split("Antenna")[1])
+                    found_file = True
+                    break
+            if not found_file :
+                raise ce.DataError("Antenna file not in Scan Log")
+            # Open the antenna fits file.
+            antenna_hdu_list = pyfits.open(antenna_file, 'readonly')
+            ant_main = antenna_hdu_list[0].header
+            ant_header = antenna_hdu_list[2].header
+            ant_data = antenna_hdu_list[2].data
+            # Get the time of the scan midpoint in seconds since 00:00 UTC.
+            ant_scan_mid = ant_main["SDMJD"]%1.0 * 24.0 * 3600.0
+            n_ant = ant_header["NAXIS2"]
+            # Antenna sample speed is 10 Hz always.
+            ant_periode = 0.100
+            ant_times = ant_scan_mid + ant_periode*(sp.arange(n_ant) -
+                                                    n_ant/2.0)
+            # Get the az and el out of the antenna.
+            ant_az = ant_data.field("OBSC_AZ")
+            ant_el = ant_data.field("OBSC_EL")
+            az_interp = interp.interp1d(ant_times, ant_az,
+                                              kind="nearest")
+            el_interp = interp.interp1d(ant_times, ant_el,
+                                              kind="nearest")
+            
+            # Get the guppi file name.
+            guppi_file = (params["guppi_input_root"] + "%04d"%scan +
+                          params["guppi_input_end"])
+            print "Converting file: " + guppi_file,
+            if params['combine_map_scans'] :
+               print (" (scan " + str(go_hdu["PROCSEQN"]) + " of " +
+                      str(n_scans_proc))
+            else :
+                print
+            psrhdu_list = pyfits.open(guppi_file, 'readonly')
+            # A record array with each row holding about 2 seconds of data.
+            psrdata = psrhdu_list[1].data
+            psrheader = psrhdu_list[1].header
+            psrmain = psrhdu_list[0].header
+            # Some numbers we need to pull from the header.
+            if not psrheader["TTYPE17"] == "DATA" :
+                raise ce.DataError("Expected to find DATA as the 17th field")
+            data_shape = eval(psrheader["TDIM17"])
+            if data_shape[0] != 1:
+                raise ce.DataError("Data not shaped as expected.")
+            # Change data shape to C ordering.
+            data_shape = (list(data_shape[1:]))
+            data_shape.reverse()
+            data_shape = tuple(data_shape)
+            # Number of times in a record (only a fraction of the total
+            # number of times in the fits file).
+            ntimes = data_shape[0]
+            npol = data_shape[1]
+            nfreq = data_shape[2]
+            
+            # Number of times to average to together when rebinning.
+            n_bins_ave = params["time_bins_to_average"]
+            if ntimes%n_bins_ave != 0 :
+                raise ValueError("Number of time bins to average must divide "
+                                 "the number of time bins in a sub integration.")
+            # Number of time bins AFTER rebinning
+            n_bins = ntimes//n_bins_ave
+            
+            # Figure out the file start time
+            start_string = psrmain["DATE-OBS"] # UTC string including date.
+            # Since 00h00 UTC.
+            start_seconds = psrmain["STT_SMJD"] + psrmain["STT_OFFS"]
+            # String that will be converted to the time at each sample.
+            time_string = start_string.split('T')[0] + 'T'
+            time_string = time_string + '%02d:%02d:%06.3f'
+            # Figure out the sample periode after rebinning.
+            sample_time = psrheader["TBIN"]
+            resampled_time = sample_time*n_bins_ave
+            
+            # In current scan startegy, Zenith angle is approximatly 
+            # constant over a file.  We will verify this to make sure we
+            # are combining the right data.  This is very specific to our scan
+            # strategy but is a good check for us.
+            if first_scan_file and proceedure == 'ralongmap' :
+                zenith_angle = psrdata[0]["TEL_ZEN"]
+                if not sp.allclose(90.0 - zenith_angle, ant_el, atol=0.1) :
+                    raise ce.DataError("Antenna el disagrees with guppi el.")
+
+            # Allowcate memory for this whole scan.
+            # final_shape is ordered (ntimes, npols, ncal, nfreq) where ntimes
+            # is after rebining and combing the records.
+            final_shape = (n_bins*len(psrdata), npol, ncal,
+                                  nfreq)
+            Data = data_block.DataBlock(sp.empty(final_shape, dtype=float))
+            # Allowcate memory for the the fields that are time dependant.
+            Data.set_field('CRVAL2', sp.empty(final_shape[0]),
+                           ('time',), '1D')
+            Data.set_field('CRVAL3', sp.empty(final_shape[0]),
+                           ('time',), '1D')
+            Data.set_field('DATE-OBS', sp.empty(final_shape[0], dtype='S22'),
+                           ('time',), '22A')
+
+            # Copy as much field information as we can without looping.
+            crpix1 = nfreq//2 + 1
+            crval1 = psrdata.field("DAT_FREQ")[0, crpix1 - 1]*1e6
+            Data.set_field('CRVAL1', crval1, (), '1D')
+            Data.set_field('CRPIX1', crpix1, (), '1I')
+            Data.set_field('SCAN', scan, (), '1I')
+            Data.set_field('BANDWID', psrmain['OBSBW']*1e6, (), '1D')
+            Data.set_field('CDELT1', psrheader['CHAN_BW']*1e6, (), '1D')
+            Data.set_field('OBJECT', psrmain['SRC_NAME'], (), '32A')
+            Data.set_field('EXPOSURE', resampled_time/ncal, (), '1D')
+            if psrheader["POL_TYPE"].strip() == 'IQUV' :
+                Data.set_field('CRVAL4', [1,2,3,4], ('pol',), '1I')
+            else :
+                raise ce.DataError("Unrecognized polarizations.")
+            Data.set_field('OBSERVER', psrmain['OBSERVER'], (), '32A')
+            if get_cal :
+                Data.set_field('CAL', ['T', 'F'], ('cal',), '1A')
+            else :
+                Data.set_field('CAL', ['F'], ('cal',), '1A')
+            Data.verify()
+
+            # Loop over the records and modify the data.
+            for jj, record in enumerate(psrdata) :
+                if not abs(record["TEL_ZEN"] - zenith_angle) < 0.01 :
+                    raise ce.DataError("Scans to combine are not at the same "
+                                       "Elevation")
+                # Reshape the data making the last index the one that is
+                # averaged over when we rebin.
+                data = sp.array(record["DATA"], dtype=int)
+                data.shape = (n_bins, n_bins_ave, npol, nfreq)
+                # Q, U, V are signed characters, not signed ones.  We need to
+                # convert them (if data > 127: data -= 256).
+                inds = data>127
+                inds[:,:,0,:] = False
+                data[inds] -= 256
+                # Now get the scale and offsets for the data.
+                scls = record["DAT_SCL"]
+                scls.shape = (1, 1, npol, nfreq)
+                offs = record["DAT_OFFS"]
+                offs.shape = (1, 1, npol, nfreq)
+                data = scls*data + offs
+
+                if get_cal :
+                    import matplotlib.pyplot as plt
+                    # Figure out the number of time bins in a cal period.
+                    cal_period = 1.0/psrmain["CAL_FREQ"]
+                    n_bins_cal = cal_period/sample_time
+                    if n_bins_cal%1.0 > 0.00001 :
+                        raise NotImplementedError("Need an integer number of "
+                                                  "samples per cal periode.")
+                    n_bins_cal = int(round(n_bins_cal))
+                    if n_bins_ave%n_bins_cal != 0 :
+                        raise ValueError("You should rebin on a multiple of "
+                                         "the cal period.  Change parameter "
+                                         "time_bins _to_average.")
+                    # Now we fold the Stokes I data on the cal period to figure
+                    # out the phase.
+                    # Sum over the frequencies.
+                    folded_data = sp.sum(data[:,:,0,:], -1, dtype=float)
+                    # Fold the data over the slower varying time indicies.
+                    folded_data = sp.sum(folded_data, 0)
+                    folded_data.shape = ((n_bins_ave//n_bins_cal, n_bins_cal) +
+                                         folded_data.shape[1:])
+                    folded_data = sp.sum(folded_data, 0)
+                    # Split the data into cal on and cal offs.
+                    base = sp.mean(folded_data)
+                    diff = sp.std(folded_data)
+                    transition = sp.logical_and(folded_data < base + 0.95*diff,
+                                                folded_data > base - 0.95*diff)
+                    if sp.sum(transition) > 2:
+                        profile_str = repr(folded_data)
+                        raise ce.DataError("Cal profile has too many "
+                                           "transitions.  Profile array: "
+                                           + profile_str)
+                    #plt.plot(folded_data, linestyle='', marker='.')
+                    # Find the transistions.
+                    for kk in xrange(n_bins_cal) :
+                        if ((folded_data[kk] < base-0.90*diff) and not
+                            (folded_data[(kk+1)%n_bins_cal] < base-0.90*diff)):
+                            last_off_ind = kk
+                            break
+                    # If last_off_ind+1 is a transitional bin, then we only need
+                    # to cut 2 bins.  If it's in the cal-on category, we should
+                    # cut 4 bins.
+                    # Lims are indicies (first index included, second
+                    # excluded).
+                    first_on_ind = (last_off_ind + 2)%n_bins_cal
+                    if folded_data[(last_off_ind+1)%n_bins_cal] < base+0.90*diff :
+                        n_cal_state = n_bins_cal//2 - 1
+                        n_blank = 1
+                    else :
+                        n_cal_state = n_bins_cal//2 - 2
+                        n_blank = 2
+                    # Make sure none of the bins flagged as transitions ended
+                    # up in these ranges.
+                    first_off_ind = (first_on_ind + n_bins_cal//2)%n_bins_cal
+                    t_inds, = sp.where(transition)
+                    for kk in t_inds :
+                        if ((kk in (sp.arange(n_cal_state) + first_on_ind)
+                             % n_bins_cal) or
+                            (kk in (sp.arange(n_cal_state) + first_off_ind) %
+                             n_bins_cal)) :
+                            profile_str = repr(folded_data)
+                            raise ce.DataError("Cal profile not lining up "
+                                               "correctly.  Profile array: "
+                                               + profile_str)
+                    # Get the masks for the on and off data.
+                    wrapped_inds = sp.arange(data.shape[1])%n_bins_cal
+                    if first_on_ind == min((sp.arange(n_cal_state) +
+                                            first_on_ind)% n_bins_cal) :
+                        on_mask = sp.logical_and(wrapped_inds >= first_on_ind,
+                                                 wrapped_inds < first_on_ind +
+                                                 n_cal_state)
+                        off_mask = sp.logical_or(wrapped_inds >= first_off_ind,
+                                                 wrapped_inds < (first_off_ind +
+                                                 n_cal_state) % n_bins_cal)
+                    else :
+                        on_mask = sp.logical_or(wrapped_inds >= first_on_ind,
+                                                wrapped_inds < (first_on_ind +
+                                                n_cal_state) % n_bins_cal)
+                        off_mask = sp.logical_and(wrapped_inds >= first_off_ind,
+                                                  wrapped_inds < first_off_ind +
+                                                  n_cal_state)
+                    # Finally, apply mask and average the data.
+                    on_data = sp.mean(data[:,on_mask,:,:], 1)
+                    off_data = sp.mean(data[:,off_mask,:,:], 1)
+                    data = sp.empty((n_bins, npol, ncal, nfreq), dtype=float)
+                    data[:,:,0,:] = on_data
+                    data[:,:,1,:] = off_data
+                else :
+                    data = sp.mean(data, 1)
+                    data.shape = (n_bins, npol, ncal, nfreq)
+                
+                # Now figure out the timing information.
+                time = start_seconds + record["OFFS_SUB"]
+                time = time + (sp.arange(-n_bins/2.0 + 0.5, n_bins/2.0 + 0.5)
+                               * resampled_time)
+                # Make sure that our pointing data covers the guppi data time
+                # range within the 0.1 second accuracy.
+                if ((max(time) - max(ant_times) > 0.1) or 
+                    (min(time) - min(ant_times) < 0.1)) :
+                    raise ce.DataError("Guppi data time range not covered by "
+                                       "antenna.")
+                az = az_interp(time)
+                el = el_interp(time)
+                
+                # Convert the time to hours, minutes and seconds.
+                hours = time//3600
+                minutes = (time%3600)//60
+                seconds = time%60
+
+                # Put all the data into the DataBlock for writing out.
+                Data.data[jj*n_bins:(jj+1)*n_bins,:,:,:] = data
+                Data.field['CRVAL2'][jj*n_bins:(jj+1)*n_bins] = az
+                Data.field['CRVAL3'][jj*n_bins:(jj+1)*n_bins] = el
+                # If the scan strattles midnight UTC, this is extra
+                # complecated.
+                if sp.any(hours >= 24) :
+                    # TODO
+                    raise NotImplementedError("Date rollover in scan.")
+                else :
+                    # sp.char.mod not included in scipy 0.7.
+                    #time = char.mod(time_string, (hours, minutes, seconds))
+                    for mm, kk in enumerate(xrange(jj*n_bins, (jj+1)*n_bins)) :
+                        tmp_time = time_string%(hours[mm], minutes[mm],
+                                                seconds[mm])
+                        Data.field["DATE-OBS"][kk] = tmp_time
+            Data.add_history('Converted from a guppi sub-integration fits'
+                             + ' file.',
+                             (utils.abbreviate_file_path(guppi_file),
+                              utils.abbreviate_file_path(antenna_file),
+                              utils.abbreviate_file_path(go_file)))
+            Block_list.append(Data)
+            first_scan_file = False
+        # Now we can write our list of scans to disk.
+        if len(scans_this_file) > 1 :
+            str_scan_range = (str(scans_this_file[0]) + '-' +
+                              str(scans_this_file[-1]))
+        else :
+            str_scan_range = str(scans_this_file[0])
+        out_file = (params["output_root"] + session + '_' + object + '_' +
+                    proceedure + '_' + str_scan_range + '.fits')
+
+        Writer = fitsGBT.Writer(Block_list)
+        Writer.write(out_file)
+
+# Functions for the most error prone parts of the above script.  Unit testing
+# applied to these.
+
+def format_data(data, ntime, npol, nfreq) :
+    """Does the first reformating of the guppi data.  Reshapes it and converts
+    the data type to float."""
+    pass
+
+        
+if __name__ == '__main__' :
+    import sys
+    if len(sys.argv) == 2 :
+        convert(str(sys.argv[1]))
+    elif len(sys.argv) > 2:
+        print 'Maximum one argument, a parameter file name.'
+    else :
+        convert()
+

@@ -71,7 +71,6 @@ def time2float(UT) :
     return (float('0.' + partial_sec) + to.tm_sec + 60*(to.tm_min + 
             60*(to.tm_hour + 24*(to.tm_yday + 365*(to.tm_year-2000)))))
 
-
 def mk_map_grid(centre, shape, spacing) :
     """Make a grid of coordinates in Ra and Dec.
 
@@ -90,7 +89,6 @@ def mk_map_grid(centre, shape, spacing) :
     grid_ra, grid_dec = sp.meshgrid(ra, dec)
 
     return grid_ra, grid_dec
-
 
 def get_beam(freq) :
     """Get the GBT beam width at a frequency (or an array of frequencies).
