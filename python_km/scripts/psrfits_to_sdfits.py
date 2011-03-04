@@ -118,7 +118,7 @@ def convert(input_file_or_dict=None) :
             if not found_file :
                 raise ce.DataError("GO file not in Scan Log")
             # If we are combining multiple scans from one proceedure, make sure
-            # that they all cam from the same one (ie that the proceedure
+            # that they all came from the same one (ie that the proceedure
             # wasn't aborted).
             if params["combine_map_scans"] :
                 go_hdu = pyfits.open(go_file)[0].header
@@ -187,17 +187,17 @@ def convert(input_file_or_dict=None) :
             data_shape = tuple(data_shape)
             # Number of times in a record (only a fraction of the total
             # number of times in the fits file).
-            ntimes = data_shape[0]
+            ntime = data_shape[0]
             npol = data_shape[1]
             nfreq = data_shape[2]
             
             # Number of times to average to together when rebinning.
             n_bins_ave = params["time_bins_to_average"]
-            if ntimes%n_bins_ave != 0 :
+            if ntime%n_bins_ave != 0 :
                 raise ValueError("Number of time bins to average must divide "
                                  "the number of time bins in a sub integration.")
             # Number of time bins AFTER rebinning
-            n_bins = ntimes//n_bins_ave
+            n_bins = ntime//n_bins_ave
             
             # Figure out the file start time
             start_string = psrmain["DATE-OBS"] # UTC string including date.
@@ -220,7 +220,7 @@ def convert(input_file_or_dict=None) :
                     raise ce.DataError("Antenna el disagrees with guppi el.")
 
             # Allowcate memory for this whole scan.
-            # final_shape is ordered (ntimes, npols, ncal, nfreq) where ntimes
+            # final_shape is ordered (ntime, npol, ncal, nfreq) where ntime
             # is after rebining and combing the records.
             final_shape = (n_bins*len(psrdata), npol, ncal,
                                   nfreq)
@@ -259,24 +259,18 @@ def convert(input_file_or_dict=None) :
                 if not abs(record["TEL_ZEN"] - zenith_angle) < 0.01 :
                     raise ce.DataError("Scans to combine are not at the same "
                                        "Elevation")
-                # Reshape the data making the last index the one that is
-                # averaged over when we rebin.
-                data = sp.array(record["DATA"], dtype=int)
-                data.shape = (n_bins, n_bins_ave, npol, nfreq)
-                # Q, U, V are signed characters, not signed ones.  We need to
-                # convert them (if data > 127: data -= 256).
-                inds = data>127
-                inds[:,:,0,:] = False
-                data[inds] -= 256
-                # Now get the scale and offsets for the data.
+                # Get the data field.
+                data = record["DATA"]
+                # Convert the Data to the proper shape and type.
+                data = format_data(data, ntime, npol, nfreq)
+                # Now get the scale and offsets for the data and apply them.
                 scls = record["DAT_SCL"]
-                scls.shape = (1, 1, npol, nfreq)
+                scls.shape = (1, npol, nfreq)
                 offs = record["DAT_OFFS"]
-                offs.shape = (1, 1, npol, nfreq)
+                offs.shape = (1, npol, nfreq)
                 data = scls*data + offs
 
                 if get_cal :
-                    import matplotlib.pyplot as plt
                     # Figure out the number of time bins in a cal period.
                     cal_period = 1.0/psrmain["CAL_FREQ"]
                     n_bins_cal = cal_period/sample_time
@@ -288,83 +282,19 @@ def convert(input_file_or_dict=None) :
                         raise ValueError("You should rebin on a multiple of "
                                          "the cal period.  Change parameter "
                                          "time_bins _to_average.")
-                    # Now we fold the Stokes I data on the cal period to figure
-                    # out the phase.
-                    # Sum over the frequencies.
-                    folded_data = sp.sum(data[:,:,0,:], -1, dtype=float)
-                    # Fold the data over the slower varying time indicies.
-                    folded_data = sp.sum(folded_data, 0)
-                    folded_data.shape = ((n_bins_ave//n_bins_cal, n_bins_cal) +
-                                         folded_data.shape[1:])
-                    folded_data = sp.sum(folded_data, 0)
-                    # Split the data into cal on and cal offs.
-                    base = sp.mean(folded_data)
-                    diff = sp.std(folded_data)
-                    transition = sp.logical_and(folded_data < base + 0.95*diff,
-                                                folded_data > base - 0.95*diff)
-                    if sp.sum(transition) > 2:
-                        profile_str = repr(folded_data)
-                        raise ce.DataError("Cal profile has too many "
-                                           "transitions.  Profile array: "
-                                           + profile_str)
-                    #plt.plot(folded_data, linestyle='', marker='.')
-                    # Find the transistions.
-                    for kk in xrange(n_bins_cal) :
-                        if ((folded_data[kk] < base-0.90*diff) and not
-                            (folded_data[(kk+1)%n_bins_cal] < base-0.90*diff)):
-                            last_off_ind = kk
-                            break
-                    # If last_off_ind+1 is a transitional bin, then we only need
-                    # to cut 2 bins.  If it's in the cal-on category, we should
-                    # cut 4 bins.
-                    # Lims are indicies (first index included, second
-                    # excluded).
-                    first_on_ind = (last_off_ind + 2)%n_bins_cal
-                    if folded_data[(last_off_ind+1)%n_bins_cal] < base+0.90*diff :
-                        n_cal_state = n_bins_cal//2 - 1
-                        n_blank = 1
-                    else :
-                        n_cal_state = n_bins_cal//2 - 2
-                        n_blank = 2
-                    # Make sure none of the bins flagged as transitions ended
-                    # up in these ranges.
-                    first_off_ind = (first_on_ind + n_bins_cal//2)%n_bins_cal
-                    t_inds, = sp.where(transition)
-                    for kk in t_inds :
-                        if ((kk in (sp.arange(n_cal_state) + first_on_ind)
-                             % n_bins_cal) or
-                            (kk in (sp.arange(n_cal_state) + first_off_ind) %
-                             n_bins_cal)) :
-                            profile_str = repr(folded_data)
-                            raise ce.DataError("Cal profile not lining up "
-                                               "correctly.  Profile array: "
-                                               + profile_str)
-                    # Get the masks for the on and off data.
-                    wrapped_inds = sp.arange(data.shape[1])%n_bins_cal
-                    if first_on_ind == min((sp.arange(n_cal_state) +
-                                            first_on_ind)% n_bins_cal) :
-                        on_mask = sp.logical_and(wrapped_inds >= first_on_ind,
-                                                 wrapped_inds < first_on_ind +
-                                                 n_cal_state)
-                        off_mask = sp.logical_or(wrapped_inds >= first_off_ind,
-                                                 wrapped_inds < (first_off_ind +
-                                                 n_cal_state) % n_bins_cal)
-                    else :
-                        on_mask = sp.logical_or(wrapped_inds >= first_on_ind,
-                                                wrapped_inds < (first_on_ind +
-                                                n_cal_state) % n_bins_cal)
-                        off_mask = sp.logical_and(wrapped_inds >= first_off_ind,
-                                                  wrapped_inds < first_off_ind +
-                                                  n_cal_state)
-                    # Finally, apply mask and average the data.
-                    on_data = sp.mean(data[:,on_mask,:,:], 1)
-                    off_data = sp.mean(data[:,off_mask,:,:], 1)
-                    data = sp.empty((n_bins, npol, ncal, nfreq), dtype=float)
-                    data[:,:,0,:] = on_data
-                    data[:,:,1,:] = off_data
-                else :
+                    # We can speed up the separating of the cal by rebinning in
+                    # time first.
+                    tmp_n_bins_ave = n_bins_ave//n_bins_cal
+                    data.shape = (n_bins, tmp_n_bins_ave, n_bins_cal, npol,
+                                  nfreq)
                     data = sp.mean(data, 1)
-                    data.shape = (n_bins, npol, ncal, nfreq)
+                    data.shape = (n_bins*n_bins_cal, npol, nfreq)
+                    # Finally devided into cal on and cal off.
+                    data = separate_cal(data, n_bins_cal)
+                else :
+                    # Just rebin in time and add a length 1 cal index.
+                    data.shape = (n_bins, n_bins_ave, npol, ncal, nfreq)
+                    data = sp.mean(data, 1)
                 
                 # Now figure out the timing information.
                 time = start_seconds + record["OFFS_SUB"]
@@ -405,8 +335,10 @@ def convert(input_file_or_dict=None) :
                              (utils.abbreviate_file_path(guppi_file),
                               utils.abbreviate_file_path(antenna_file),
                               utils.abbreviate_file_path(go_file)))
+            # End loop over records.
             Block_list.append(Data)
             first_scan_file = False
+        # End loop over scans (input files).
         # Now we can write our list of scans to disk.
         if len(scans_this_file) > 1 :
             str_scan_range = (str(scans_this_file[0]) + '-' +
@@ -418,14 +350,137 @@ def convert(input_file_or_dict=None) :
 
         Writer = fitsGBT.Writer(Block_list)
         Writer.write(out_file)
+    # End loop over maps (output files or input 'scans' parameter).
 
 # Functions for the most error prone parts of the above script.  Unit testing
 # applied to these.
 
 def format_data(data, ntime, npol, nfreq) :
     """Does the first reformating of the guppi data.  Reshapes it and converts
-    the data type to float."""
-    pass
+    the data type to float.
+    
+    The input data matrix is not preserved in this function.
+    """
+    if (not data.dtype == sp.uint8) or (len(data.shape) != 1) :
+        raise TypeError("Expected flat uint8 data.")
+    out_data = sp.empty((ntime, npol, nfreq), dtype=float)
+    # Reshape the data making the last index the one that is
+    # averaged over when we rebin.
+    data.shape = (ntime, npol, nfreq)
+    # Q, U, V are signed characters, not signed ones.  We need to
+    # convert them.
+    out_data[:,0,:] = data[:,0,:]
+    data.dtype = sp.int8
+    out_data[:,1:,:] = data[:,1:,:]
+    data.dtype = sp.uint8
+
+    return out_data
+
+def get_cal_mask(data, n_bins_cal) :
+    """Figures out where the cal is turning on and off.
+    
+    This function has been separated from separate_cal for testing purposes."""
+    
+    ntime = data.shape[0]
+    
+    if ntime%n_bins_cal != 0 :
+        raise ValueError("Number of bins in a cal period must devide the number"
+                        " of time bins in a subintegration (generally number"
+                        " of bins in a cal period should be a power of 2).")
+
+    # Fold the Stokes I data on the cal period to figure out the phase.
+    # Sum over the frequencies.
+    folded_data = sp.sum(data[:,0,:], -1, dtype=float)
+    # Fold the data at the cal period.
+    folded_data.shape = ((ntime//n_bins_cal, n_bins_cal) +
+                         folded_data.shape[1:])
+    folded_data = sp.sum(folded_data, 0)
+    # Split the data into cal on and cal offs.
+    base = sp.mean(folded_data)
+    diff = sp.std(folded_data)
+    transition = sp.logical_and(folded_data < base + 0.95*diff,
+                                folded_data > base - 0.95*diff)
+    if sp.sum(transition) > 2:
+        profile_str = repr(folded_data)
+        raise ce.DataError("Cal profile has too many "
+                           "transitions.  Profile array: "
+                           + profile_str)
+    # Find the last bin off before on.
+    for kk in xrange(n_bins_cal) :
+        if ((folded_data[kk] < base-0.90*diff) and not
+            (folded_data[(kk+1)%n_bins_cal] < base-0.90*diff)):
+            last_off_ind = kk
+            break
+    # If last_off_ind+1 is a transitional bin, then we only need
+    # to cut 2 bins.  If it's in the cal-on category, we should
+    # cut 4 bins.
+    # Lims are indicies (first index included, second
+    # excluded).
+    first_on = (last_off_ind + 2)%n_bins_cal
+    if folded_data[(last_off_ind+1)%n_bins_cal] < base+0.90*diff :
+        n_cal_state = n_bins_cal//2 - 1
+        n_blank = 1
+    else :
+        n_cal_state = n_bins_cal//2 - 2
+        n_blank = 2
+
+    long_profile = sp.concatenate((folded_data, folded_data), 0)
+    first_off = first_on + n_bins_cal//2
+    if (sp.any(long_profile[first_on:first_on+n_cal_state] < base + 0.95*diff)
+        or sp.any(long_profile[first_off:first_off+n_cal_state] > base -
+                  0.95*diff)) :
+        profile_str = repr(folded_data)
+        raise ce.DataError("Cal profile not lining up "
+                           "correctly.  Profile array: "
+                           + profile_str)
+
+    return first_on, n_blank
+
+def separate_cal(data, n_bins_cal) :
+    """Function separates data into cal_on and cal off.
+    
+    No Guarantee that data argument remains unchanged."""
+    
+    # Get the phase offset of the cal.
+    first_on, n_blank = get_cal_mask(data, n_bins_cal)
+    
+    # How many samples for each cal state.
+    n_cal_state = n_bins_cal//2 - n_blank
+    first_off = (first_on + n_bins_cal//2) % n_bins_cal
+
+    # Reshape data to add an index to average over.
+    ntime, npol, nfreq = data.shape
+    n_bins_after_cal = ntime//n_bins_cal
+    data.shape = (n_bins_after_cal, n_bins_cal) + data.shape[1:]
+
+    # Get the masks for the on and off data.
+    inds = sp.arange(n_bins_cal)
+    if first_on == min((sp.arange(n_cal_state) +
+                    first_on)% n_bins_cal) :
+        on_mask = sp.logical_and(inds >= first_on, inds < first_on+n_cal_state)
+    else :
+        on_mask = sp.logical_or(inds >= first_on, inds < 
+                                (first_on + n_cal_state) % n_bins_cal)
+    if first_off == min((sp.arange(n_cal_state) +
+                    first_off)% n_bins_cal) :
+        off_mask = sp.logical_and(inds >= first_off, inds < 
+                                  first_off + n_cal_state)
+    else :
+        off_mask = sp.logical_or(inds >= first_off, inds < 
+                                 (first_off + n_cal_state) % n_bins_cal)
+
+    # Find cal on and cal off averages.
+    on_data = sp.mean(data[:,on_mask,:,:], 1)
+    off_data = sp.mean(data[:,off_mask,:,:], 1)
+    data = sp.empty((n_bins_after_cal, npol, 2, nfreq), dtype=float)
+    data[:,:,0,:] = on_data
+    data[:,:,1,:] = off_data
+
+    return data
+
+
+
+
 
         
 if __name__ == '__main__' :

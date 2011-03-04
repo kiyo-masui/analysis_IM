@@ -264,7 +264,6 @@ def add_data_2_map(data, ra_inds, dec_inds, map, noise_i, counts, weight=1) :
                 else :
                     noise_i[ind_map] += weight[unmasked_inds]
 
-
 def pixel_counts(data, ra_inds, dec_inds, counts, map_shape=(-1,-1)) :
     """Counts the hits on each unique pixel.
 
