@@ -57,7 +57,7 @@ class TestFoldOnCal(unittest.TestCase) :
             s = slice(self.offset + ii*self.n_bins_cal, self.offset +
                       (2*ii+1)*self.n_bins_cal//2)
             self.data[s, :, :] += self.level
-        self.t_slice = slice(self.offset, sys.maxsize, self.n_bins_cal//2)
+        self.t_slice = slice(self.offset, sys.maxint, self.n_bins_cal//2)
         self.t_vals = 0.5*self.level + rand.normal(loc=0, scale=self.level/10,
                             size=(2*self.ntime//self.n_bins_cal, 4, self.nfreq))
 
@@ -90,14 +90,14 @@ class TestFoldOnCal(unittest.TestCase) :
     def test_fails_offs_in_ons(self) :
         self.data[self.t_slice, :, :] = self.t_vals
         
-        s = slice(self.offset+7, sys.maxsize, self.n_bins_cal)
+        s = slice(self.offset+7, sys.maxint, self.n_bins_cal)
         self.data[s, :, :] *= 0
         self.assertRaises(ce.DataError, p2s.get_cal_mask, self.data,
                           self.n_bins_cal)
 
     def test_fails_late_on(self) :
         self.data[self.t_slice, :, :] = 0
-        s = slice(self.offset+1, sys.maxsize, self.n_bins_cal)
+        s = slice(self.offset+1, sys.maxint, self.n_bins_cal)
         self.data[s, :, :] = 0
         self.assertRaises(ce.DataError, p2s.get_cal_mask, self.data,
                           self.n_bins_cal)
@@ -105,7 +105,7 @@ class TestFoldOnCal(unittest.TestCase) :
     def test_fails_to_many_semi_bins(self) :
         self.data[self.t_slice, :, :] = self.t_vals
 
-        s = slice(self.offset+7, sys.maxsize, self.n_bins_cal)
+        s = slice(self.offset+7, sys.maxint, self.n_bins_cal)
         self.data[s, :, :] *= 0.7
         self.assertRaises(ce.DataError, p2s.get_cal_mask, self.data,
                           self.n_bins_cal)
@@ -130,10 +130,10 @@ class TestSeparateCal(unittest.TestCase) :
             s = slice(self.offset + ii*self.n_bins_cal, self.offset +
                       (2*ii+1)*self.n_bins_cal//2)
             self.data[s, :, :] = 1
-        self.t_slice_on = slice(self.offset, sys.maxsize, self.n_bins_cal)
+        self.t_slice_on = slice(self.offset, sys.maxint, self.n_bins_cal)
         self.t_slice_off = slice((self.offset +
                                   self.n_bins_cal//2)%self.n_bins_cal,
-                                 sys.maxsize, self.n_bins_cal)
+                                 sys.maxint, self.n_bins_cal)
 
     def check_answer(self) :
         data = p2s.separate_cal(self.data, self.n_bins_cal)

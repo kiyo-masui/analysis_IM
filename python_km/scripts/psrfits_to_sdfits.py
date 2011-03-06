@@ -65,6 +65,7 @@ class Converter(object) :
         for initial_scan in scans :
             if initial_scan in finished_scans :
                 continue
+	    self.initial_scan = initial_scan
 
             # Open the go fits file.
             scan_log_files = scan_log.field('FILEPATH')[
@@ -90,9 +91,9 @@ class Converter(object) :
                 # consistant.
                 self.n_scans_proc = go_hdu["PROCSIZE"]
                 # Which scan this is of the sequence (1 indexed).
-                initial_scan_ind = go_hdu["PROCSEQN"]
+                self.initial_scan_ind = go_hdu["PROCSEQN"]
                 scans_this_file = (sp.arange(self.n_scans_proc, dtype=int) + 1 -
-                                   initial_scan_ind + initial_scan)
+                                   self.initial_scan_ind + initial_scan)
                 scans_this_file = list(scans_this_file)
 
             else :
@@ -102,7 +103,6 @@ class Converter(object) :
             # Initialize a list to store all the data that will be saved to a
             # single fits file (generally 8 scans).
             Block_list = []
-            self.first_scan_file = True
             # Loop over the scans to process for this output file.
             for scan in scans_this_file :
                 # The acctual reading of the guppi fits file needs to be split
@@ -118,7 +118,6 @@ class Converter(object) :
                 
                 # Store our processed data.
                 Block_list.append(Data)
-                self.first_scan_file = False
             # End loop over scans (input files).
             # Now we can write our list of scans to disk.
             if len(scans_this_file) > 1 :
@@ -128,9 +127,13 @@ class Converter(object) :
                 str_scan_range = str(scans_this_file[0])
             out_file = (params["output_root"] + session + '_' + object + '_' +
                         self.proceedure + '_' + str_scan_range + '.fits')
-
-            Writer = fitsGBT.Writer(Block_list)
-            Writer.write(out_file)
+            
+            # Output data is pretty large so we'd better protect the pyfits part
+            # in a process lest memory leaks kill us.
+            p = mp.Process(target=out_write, args=(Block_list, out_file))
+            p.start()
+            del Block_list
+            p.join()
         # End loop over maps (output files or input 'scans' parameter).
 
             
@@ -165,13 +168,13 @@ class Converter(object) :
         if params["combine_map_scans"] :
             go_hdu = pyfits.open(go_file)[0].header
             if (self.n_scans_proc != go_hdu["PROCSIZE"] or go_hdu["PROCSEQN"] 
-                - initial_scan_ind != scan - initial_scan) :
-                print initial_scan, scan
-                print go_hdu["PROCSEQN"], initial_scan_ind
+                - self.initial_scan_ind != scan - self.initial_scan) :
+                print self.initial_scan, scan
+                print go_hdu["PROCSEQN"], self.initial_scan_ind
                 raise ce.DataError("Scans don't agree on proceedure "
                                    "sequence. Aborted scan?  Scans: "
                                    + str(scan) + " and " + 
-                                   str(initial_scan))
+                                   str(self.initial_scan))
 
         # Now find the Antenna fits file.
         found_file = False
@@ -253,10 +256,9 @@ class Converter(object) :
         resampled_time = sample_time*n_bins_ave
         
         # In current scan startegy, Zenith angle is approximatly 
-        # constant over a file.  We will verify this to make sure we
-        # are combining the right data.  This is very specific to our scan
-        # strategy but is a good check for us.
-        if self.first_scan_file and self.proceedure == 'ralongmap' :
+        # constant over a file.  We will verify that this matches the antenna 
+	# fits file as a good (but scan strategy specific) check.
+        if self.proceedure == 'ralongmap' :
             zenith_angle = psrdata[0]["TEL_ZEN"]
             if not sp.allclose(90.0 - zenith_angle, ant_el, atol=0.1) :
                 raise ce.DataError("Antenna el disagrees with guppi el.")
@@ -297,20 +299,18 @@ class Converter(object) :
         Data.verify()
 
         # Loop over the records and modify the data.
+        print "Record: ",
         for jj, record in enumerate(psrdata) :
-            if not abs(record["TEL_ZEN"] - zenith_angle) < 0.01 :
-                raise ce.DataError("Scans to combine are not at the same "
-                                   "Elevation")
+            print jj,
             # Get the data field.
             data = record["DATA"]
             # Convert the Data to the proper shape and type.
             data = format_data(data, ntime, npol, nfreq)
             # Now get the scale and offsets for the data and apply them.
-            scls = record["DAT_SCL"]
+            scls = sp.array(record["DAT_SCL"], dtype=sp.float32)
             scls.shape = (1, npol, nfreq)
-            offs = record["DAT_OFFS"]
+            offs = sp.array(record["DAT_OFFS"], dtype=sp.float32)
             offs.shape = (1, npol, nfreq)
-            data = scls*data + offs
 
             if get_cal :
                 # Figure out the number of time bins in a cal period.
@@ -329,14 +329,17 @@ class Converter(object) :
                 tmp_n_bins_ave = n_bins_ave//n_bins_cal
                 data.shape = (n_bins, tmp_n_bins_ave, n_bins_cal, npol,
                               nfreq)
-                data = sp.mean(data, 1)
+                # Mean here instead of median for speed.
+                data = scls*sp.mean(data, 1) + offs
                 data.shape = (n_bins*n_bins_cal, npol, nfreq)
                 # Finally devided into cal on and cal off.
                 data = separate_cal(data, n_bins_cal)
             else :
                 # Just rebin in time and add a length 1 cal index.
-                data.shape = (n_bins, n_bins_ave, npol, ncal, nfreq)
-                data = sp.mean(data, 1)
+                data.shape = (n_bins, n_bins_ave, npol, nfreq)
+                data = sp.median(data, 1)
+                data = scls*data + offs
+                data.shape = (n_bins, npol, ncal, nfreq)
             
             # Now figure out the timing information.
             time = start_seconds + record["OFFS_SUB"]
@@ -378,11 +381,19 @@ class Converter(object) :
                           utils.abbreviate_file_path(antenna_file),
                           utils.abbreviate_file_path(go_file)))
         # End loop over records.
+        print
         # Send Data back on the pipe.
         Pipe.send(Data)
 
 # Functions for the most error prone parts of the above script.  Unit testing
 # applied to these.
+
+def out_write(Block_list, file_name) :
+    """Fits file writer protected in a function so it can be multiprocessed, 
+    thus avoiding memory leaks in pyfits."""
+
+    Writer = fitsGBT.Writer(Block_list)
+    Writer.write(file_name)
 
 def format_data(data, ntime, npol, nfreq) :
     """Does the first reformating of the guppi data.  Reshapes it and converts
@@ -392,7 +403,7 @@ def format_data(data, ntime, npol, nfreq) :
     """
     if (not data.dtype == sp.uint8) or (len(data.shape) != 1) :
         raise TypeError("Expected flat uint8 data.")
-    out_data = sp.empty((ntime, npol, nfreq), dtype=float)
+    out_data = sp.empty((ntime, npol, nfreq), dtype=sp.float32)
     # Reshape the data making the last index the one that is
     # averaged over when we rebin.
     data.shape = (ntime, npol, nfreq)
@@ -423,21 +434,22 @@ def get_cal_mask(data, n_bins_cal) :
     # Fold the data at the cal period.
     folded_data.shape = ((ntime//n_bins_cal, n_bins_cal) +
                          folded_data.shape[1:])
-    folded_data = sp.sum(folded_data, 0)
+    folded_data = sp.median(folded_data, 0)
     # Split the data into cal on and cal offs.
     base = sp.mean(folded_data)
     diff = sp.std(folded_data)
-    transition = sp.logical_and(folded_data < base + 0.95*diff,
-                                folded_data > base - 0.95*diff)
+    transition = sp.logical_and(folded_data < base + 0.90*diff,
+                                folded_data > base - 0.90*diff)
     if sp.sum(transition) > 2:
-        profile_str = repr(folded_data)
+        profile_str = repr((folded_data - sp.mean(folded_data))
+                           / sp.std(folded_data))
         raise ce.DataError("Cal profile has too many "
                            "transitions.  Profile array: "
                            + profile_str)
     # Find the last bin off before on.
     for kk in xrange(n_bins_cal) :
-        if ((folded_data[kk] < base-0.90*diff) and not
-            (folded_data[(kk+1)%n_bins_cal] < base-0.90*diff)):
+        if ((folded_data[kk] < base-0.80*diff) and not
+            (folded_data[(kk+1)%n_bins_cal] < base-0.80*diff)):
             last_off_ind = kk
             break
     # If last_off_ind+1 is a transitional bin, then we only need
@@ -446,7 +458,7 @@ def get_cal_mask(data, n_bins_cal) :
     # Lims are indicies (first index included, second
     # excluded).
     first_on = (last_off_ind + 2)%n_bins_cal
-    if folded_data[(last_off_ind+1)%n_bins_cal] < base+0.90*diff :
+    if folded_data[(last_off_ind+1)%n_bins_cal] < base+0.80*diff :
         n_cal_state = n_bins_cal//2 - 1
         n_blank = 1
     else :
@@ -455,10 +467,11 @@ def get_cal_mask(data, n_bins_cal) :
 
     long_profile = sp.concatenate((folded_data, folded_data), 0)
     first_off = first_on + n_bins_cal//2
-    if (sp.any(long_profile[first_on:first_on+n_cal_state] < base + 0.95*diff)
+    if (sp.any(long_profile[first_on:first_on+n_cal_state] < base + 0.90*diff)
         or sp.any(long_profile[first_off:first_off+n_cal_state] > base -
-                  0.95*diff)) :
-        profile_str = repr(folded_data)
+                  0.90*diff)) :
+        profile_str = repr((folded_data - sp.mean(folded_data))
+                           / sp.std(folded_data))
         raise ce.DataError("Cal profile not lining up "
                            "correctly.  Profile array: "
                            + profile_str)
@@ -499,9 +512,9 @@ def separate_cal(data, n_bins_cal) :
                                  (first_off + n_cal_state) % n_bins_cal)
 
     # Find cal on and cal off averages.
-    on_data = sp.mean(data[:,on_mask,:,:], 1)
-    off_data = sp.mean(data[:,off_mask,:,:], 1)
-    data = sp.empty((n_bins_after_cal, npol, 2, nfreq), dtype=float)
+    on_data = sp.median(data[:,on_mask,:,:], 1)
+    off_data = sp.median(data[:,off_mask,:,:], 1)
+    data = sp.empty((n_bins_after_cal, npol, 2, nfreq), dtype=sp.float32)
     data[:,:,0,:] = on_data
     data[:,:,1,:] = off_data
 
