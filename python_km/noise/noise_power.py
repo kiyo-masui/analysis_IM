@@ -31,6 +31,10 @@ params_init = {
                "subtract_freq_average" : False,
                "lags" : tuple(sp.arange(0.01, 61, 5.)),
                "normalize_to_average" : False,
+               "norm_pol_weights" : ( 1., 0., 0., 1.),
+               "norm_cal_weights" : ( 1., 1.),
+               "normalize_dnudt" : True,
+               "segment_length" : 0,
                # Polarizations and Cal States
                "pol_weights" : ( 1., 0., 0., 1.),
                "cal_weights" : (0., 1.),
@@ -56,6 +60,7 @@ class NoisePower(object) :
                                prefix=prefix)
         cal_weights = params['cal_weights']
         pol_weights = params['pol_weights']
+        scan_len = params['segment_length']
         
         first_iteration = True
         # Loop over files to process.
@@ -64,26 +69,44 @@ class NoisePower(object) :
                            params['input_end'])
             # Read in the data, and loop over data blocks.
             Reader = core.fitsGBT.Reader(input_fname)
-            Blocks = Reader.read(params['scans'], params['IFs'])
+            Blocks = Reader.read(params['scans'], params['IFs'],
+                                 force_tuple=True)
             # Loop over scans.
             for Data in Blocks :
                 if (Data.dims[1] != len(pol_weights) or
                     Data.dims[2] != len(cal_weights)) :
                     raise ValueError("pol_wieght or cal_weight parameter "
                                      "dimensions don' match data dimensions.")
-                data = ma.zeros((Data.dims[0], Data.dims[-1]))
+                if scan_len == 0 :
+                    scan_len = Data.dims[0]
+                if scan_len > Data.dims[0] :
+                    print "Warning: asked for segment length longer than scan."
+                # Get the desired combination fo polarizations and cal states.
+                data = ma.zeros((scan_len, Data.dims[-1]))
                 for ii, pol_w in enumerate(pol_weights) :
                     for jj, cal_w in enumerate(cal_weights) :
-                        data += Data.data[:,ii,jj,:]*pol_w*cal_w
+                        data[:scan_len] += (Data.data[:scan_len,ii,jj,:]
+                                            *pol_w*cal_w)
+                # Calculate the time axis.
+                Data.calc_time()
+                time = Data.time[:scan_len]
+                n_time = scan_len
+                dt = abs(sp.mean(sp.diff(time)))
                 tmean = ma.mean(data, 0)
                 data -= tmean
+                if params["normalize_dnudt"] :
+                    dnu = abs(Data.field["CDELT1"])
+                    data *= sp.sqrt(dnu*dt)
                 if params['normalize_to_average'] :
-                    data /= tmean
+                    # Get normalization for each frequency.
+                    tmp_mean = ma.mean(Data.data, 0)
+                    norm = sp.zeros((Data.dims[-1],))
+                    for ii, pol_w in enumerate(params["norm_pol_weights"]) :
+                        for jj, cal_w in enumerate(params["norm_cal_weights"]) :
+                            norm += tmp_mean[ii,jj,:] *pol_w*cal_w
+                    data /= norm
                 if params['subtract_freq_average'] :
                     data -= ma.mean(data, 1)[:,sp.newaxis]
-                Data.calc_time()
-                time = Data.time
-                n_time = len(time)
                 if params["calculate_covariance"] :
                     if first_iteration :
                         lags = params['lags']
@@ -94,7 +117,6 @@ class NoisePower(object) :
                         # Take products of data not yet considered and find
                         # thier lag.
                         squares = data[ii,:]*data[ii:,:]
-                        dt = abs(time[ii:]-time[ii])
                         # Loop over lags.
                         for jj in range(nlags) :
                             if jj == 0 :
@@ -118,7 +140,6 @@ class NoisePower(object) :
                         power_spectrum = sp.zeros((n_time//2 + 1, 
                                                    Data.dims[-1]))
                         power_counts = sp.zeros(Data.dims[-1], dtype=int)
-                        dt = abs(sp.mean(sp.diff(time)))
                         ps_freqs = sp.arange(n_time//2 + 1, dtype=float)
                         ps_freqs /= (n_time//2 + 1)*dt*2
                     # Throw frequencies with masked data.
