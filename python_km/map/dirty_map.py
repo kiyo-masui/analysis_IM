@@ -120,18 +120,10 @@ class DirtyMap(object) :
                     # On first pass set up the map parameters.
                     if first_block :
                         shape = map_shape + (dims[-1],)
-                        if first_pol :
+                        if pol_ind==0 :
                             npol = dims[1]
                         # Get the current polarization integer.
                         this_pol = Data.field['CRVAL4'][pol_ind]
-                        # The Map skeleton is a DataMap object that contains
-                        # all the information to make a map except for the map
-                        # data itself.  The skeleton is saved to disk as a fits
-                        # file so it can be used in the future to make fits
-                        # maps.
-                        MapSkeleton = tools.set_up_map(Data, 
-                                            params['field_centre'], shape[0:2], 
-                                            (ra_spacing, spacing))
                         # Allowcate memory for the map.
                         map_data = sp.zeros(shape, dtype=float)
                         map_data = algebra.make_vect(map_data,
@@ -149,7 +141,7 @@ class DirtyMap(object) :
                             # reasonable.
                             size = shape[0]^2*shape[1]^2*shape[2]
                             if size > 4e9 : # 16 GB
-                                raise RuntimError('Map size too big.  Asked '
+                                raise RunTimeError('Map size too big.  Asked '
                                                   'for a lot of memory.')
                             noise_inv = sp.zeros(shape[0:2] + shape,
                                                  dtype=sp.float32)
@@ -162,8 +154,8 @@ class DirtyMap(object) :
                             pixel_hits = sp.empty((dims[0], dims[-1]))
                         first_block = False
                     else :
-                        MapSkeleton.history = data_map.merge_histories(
-                            Map, Data)
+                        #MapSkeleton.history = data_map.merge_histories(
+                        #        Map, Data)
 
                     # Figure out the pointing pixel index and the frequency 
                     # indicies.
@@ -192,11 +184,8 @@ class DirtyMap(object) :
         algebra.save(map_data, map_file_name)
         noise_file_name = (params['output_root'] + 'noise_inv_' +
                          utils.polint2str(this_pol) + '.npy')
-        # Also write 
+        algebra.save(noise_inv, noise_file_name)
         # End polarization for loop.
-
-
-
 
 
 def add_data_2_map(data, ra_inds, dec_inds, map, noise_i, counts=None,
