@@ -41,6 +41,21 @@ dec = ( arange(image_cube.shape[1]) +1 - crpix2)*cdelt2 + crval2
 freqs = ( arange(image_cube.shape[0]) +1 - crpix3)*cdelt3 + crval3
 freqs = freqs/1e6
 
+# Alternate plotting of frequency for given ra/dec
+#for rind,r in enumerate(ra):
+#   for dind,d in enumerate(dec):
+#       nancut = (image_cube[:,dind,rind]<10e10) & ( image_cube[:,dind,rind] !=NaN)
+#       image_cube[:,dind,rind][~nancut] = 0
+#       pylab.plot(freqs,image_cube[:,dind,rind])
+#       pylab.xlabel('frequency (MHz)')
+#       pylab.ylabel('Temperature (K)')
+#       pylab.title('Stokes V Temperature for RA = '+str(r)[:3]+' and DEC = '+str(d)[:3])
+#       pylab.xlim(670,928)
+#       pylab.ylim( -10,10 )
+#       pylab.savefig('v_'+filename1+'_'+str(r)[:3]+'_'+str(d)[:3]+'.png')
+#       pylab.clf()
+
+
 for slice, freq in enumerate(freqs):
    nancut = (image_cube[slice] < 10e10) & ( image_cube[slice] != NaN )
    #print nancut
@@ -53,6 +68,9 @@ for slice, freq in enumerate(freqs):
    medianv = median(image_cube[slice][nancut])
    for element in image_cube[slice][cut]:
       print element
+# Alternate plotting command to set temperature limits
+#   pylab.imshow(image_cube[slice], interpolation='gaussian',vmin=-0.5, vmax=0.5, extent=(ra.max(),ra.min(),dec.min(),dec.max()), origin='lower')
    pylab.imshow(image_cube[slice], interpolation='gaussian', extent=(ra.max(),ra.min(),dec.min(),dec.max()), origin='lower')
-   pylab.savefig(filename1+str(freq)[:3]+'.png')
+   pylab.colorbar()
+   pylab.savefig('v_'+filename1+str(freq)[:3]+'.png')
    pylab.clf()
