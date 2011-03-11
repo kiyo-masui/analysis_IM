@@ -155,6 +155,7 @@ cc_IFs = ()
 
 cc_subtract_time_mean = True
 cc_average_cal_states = True
+cc_weights = (0, 1.0)
 
 from map import map_maker
 # Comment this line to skip this step in pipeline

@@ -165,11 +165,15 @@ class Reader(object) :
             # change across pol and cal.
             lastLST = 0
             for ii in range(ntimes) :
-                thisLST = self.fitsdata.field('LST')[inds_sif[ii,0,0]]
+                # Sometimes won't have the LST.
+                try :
+                    thisLST = self.fitsdata.field('LST')[inds_sif[ii,0,0]]
+                except KeyError :
+                    break
                 if not (sp.allclose(self.fitsdata.field('LST')
                         [inds_sif[ii,:,:]] - thisLST, 0)) :
-                    raise ce.DataError("LST change across cal or pol in file: "
-                                       + self.fname)
+                    raise ce.DataError("LST change across cal or pol in "
+                                       "file: " + self.fname)
 
         return inds_sif
 
@@ -193,7 +197,6 @@ class Reader(object) :
             if ii == n_cards or prihdr.ascardlist().keys()[ii] == card_hist :
                 Block.add_history(hist_entry, details)
 
-    
     def read(self, scans=None, IFs=None, force_tuple=False) :
         """Read in data from the fits file.
 
