@@ -16,7 +16,6 @@ class TestAddingData(unittest.TestCase) :
         self.shape = (5, 5, 20) 
         self.ntime = 15
         self.map = ma.zeros(self.shape, dtype=float)
-        self.counts = sp.zeros(self.shape, dtype=int)
         self.noise_inv = sp.zeros(self.shape, dtype=float)
         self.data = ma.ones((self.ntime, self.shape[-1]))
         self.centre = (90.0,0.0,100.0)
@@ -30,60 +29,39 @@ class TestAddingData(unittest.TestCase) :
         
     def test_adds_data(self) :
         dirty_map.add_data_2_map(self.data, self.ra_inds,  self.dec_inds, 
-                                 self.map, self.noise_inv, self.counts)
+                                 self.map, self.noise_inv)
         self.assertAlmostEqual(ma.sum(self.map), self.ntime*self.shape[-1])
-        self.assertAlmostEqual(ma.sum(self.counts), 
-                               self.ntime*self.shape[-1])
-        self.assertTrue(sp.allclose(self.counts, self.noise_inv))
 
     def test_mask_data(self) :
         self.data[5,8] = ma.masked 
         dirty_map.add_data_2_map(self.data, self.ra_inds, self.dec_inds, 
-                          self.map, self.noise_inv, self.counts)
+                          self.map, self.noise_inv)
         self.assertAlmostEqual(ma.sum(self.map), self.ntime*self.shape[-1]-1)
-        self.assertAlmostEqual(ma.sum(self.counts),
-                               self.ntime*self.shape[-1]-1)
-        self.assertTrue(sp.allclose(self.counts, self.noise_inv))
 
     def test_off_map(self) :
         self.ra_inds[3] = 10 
         self.dec_inds[6] = -1
         dirty_map.add_data_2_map(self.data, self.ra_inds, self.dec_inds, 
-                          self.map, self.noise_inv, self.counts)
+                          self.map, self.noise_inv)
         self.assertAlmostEqual(ma.sum(self.map),
                                self.ntime*self.shape[-1]-2*self.shape[2])
-        self.assertAlmostEqual(ma.sum(self.counts), 
-                               self.ntime*self.shape[-1]-2*self.shape[2])
-        self.assertTrue(sp.allclose(self.counts, self.noise_inv))
-
-    def test_weight(self) :
-        weight = sp.arange(self.shape[-1]) + 1.0 
-        dirty_map.add_data_2_map(self.data, self.ra_inds, self.dec_inds, 
-                          self.map, self.noise_inv, self.counts, weight)
-        self.assertTrue(sp.allclose(self.counts*weight, self.noise_inv))
-
-
-    # TODO: test a pointing we know is right
 
     def test_checks_shapes(self) :
-        self.assertRaises(ValueError, dirty_map.add_data_2_ map, 
+        self.assertRaises(ValueError, dirty_map.add_data_2_map, 
                           self.data, self.ra, sp.arange(self.ntime+1), 
-                          self.map, self.noise_inv, self.counts)
+                          self.map, self.noise_inv)
         self.assertRaises(ValueError, dirty_map.add_data_2_map, 
                           self.data, self.ra, self.dec, self.map[:,:,0:-1], 
-                          self.noise_inv, self.counts)
+                          self.noise_inv)
 
     def test_no_noise(self) :
-        dirty_map.add_data_2_map(self.data, s elf.ra_inds, self.dec_inds, 
-                          self.map, None, self.counts)
+        dirty_map.add_data_2_map(self.data, self.ra_inds, self.dec_inds, 
+                          self.map, None)
         self.assertAlmostEqual(ma.sum(self.map), self.ntime*self.shape[-1])
-        self.assertAlmostEqual(ma.sum(self.counts), self.ntime*self.shape[-1])
         
-
     def tearDown(self) :
         del self.data 
         del self.map
-        del self.counts
 
 class TestDisjointScans(unittest.TestCase) :
     
@@ -161,7 +139,6 @@ class TestDisjointScans(unittest.TestCase) :
         self.noise_inv = self.noise_inv[1,...]
         self.assertRaises(ValueError, dirty_map.add_scan_noise, pixels, 
                           self.pix_counts, 2.0, self.noise_inv)
-        
 
     def tearDown(self) :
         del self.data
@@ -171,27 +148,32 @@ class TestDisjointScans(unittest.TestCase) :
         del self.noise_inv
 
 class TestRuns(unittest.TestCase) :
+
+    def setUp(self) :
+        self.pars = { "dm_output_root" : "./testoutput_"
+                    }
     
     def test_gridder(self) :
-        pars = { 'dm_noise_model' : 'grid'} 
-        Maker = dirty_map.MapMaker(pars, 0)
+        pars = { 'dm_noise_model' : 'grid'}
+        pars.update(self.pars)
+        Maker = dirty_map.DirtyMap(pars, 0)
         Maker.execute()
 
     def test_diag(self) :
         pars = { 'dm_noise_model' : 'diag_file'}
-        Maker = dirty_map.MapMaker(pars, 0)
+        pars.update(self.pars)
+        Maker = dirty_map.DirtyMap(pars, 0)
         Maker.execute()
 
     def test_full(self) :
         pars = { 'dm_noise_model' : 'disjoint_scans'}
-        Maker = dirty_map.MapMaker(pars, 0)
+        pars.update(self.pars)
+        Maker = dirty_map.DirtyMap(pars, 0)
         Maker.execute()
 
     def tearDown(self) :
-        os.remove('testoutput_params.ini')
-        os.remove('testoutput_map.fits')
-        noise_files = glob.glob('testoutput_noise*.fits')
-        for f in noise_files :
+        files = glob.glob('testoutput_*')
+        for f in files :
             os.remove(f)
 
 if __name__ == '__main__' :

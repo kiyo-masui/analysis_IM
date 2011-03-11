@@ -13,7 +13,7 @@ import numpy.linalg as linalg
 from kiyopy import parse_ini
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
-from core import utils, data_block, fitsGBT, data_map, fits_map, algebra
+from core import utils, data_block, fitsGBT, algebra, hist
 import tools
 
 prefix = 'dm_'
@@ -92,6 +92,8 @@ class DirtyMap(object) :
         npol = 2 # This will be reset when we read the first data block.
         pol_ind = 0
 
+        all_file_names = []
+
         while pol_ind < npol :
             # Flag for the first block processed (will allowcate memory on the 
             # first iteration).
@@ -116,12 +118,17 @@ class DirtyMap(object) :
                 
                 for Data in Blocks :
                     dims = Data.dims
-                    Data.calc_freq()
                     # On first pass set up the map parameters.
                     if first_block :
                         shape = map_shape + (dims[-1],)
+                        Data.calc_freq()
+                        centre_freq = Data.freq[dims[-1]//2]
+                        delta_freq = Data.field['CDELT1']
                         if pol_ind==0 :
+                            # Figure out the length of the polarization loop.
                             npol = dims[1]
+                            # Accumulate the data history.
+                            history = hist.History(Data.history)
                         # Get the current polarization integer.
                         this_pol = Data.field['CRVAL4'][pol_ind]
                         # Allowcate memory for the map.
@@ -154,9 +161,8 @@ class DirtyMap(object) :
                             pixel_hits = sp.empty((dims[0], dims[-1]))
                         first_block = False
                     else :
-                        #MapSkeleton.history = data_map.merge_histories(
-                        #        Map, Data)
-
+                        if pol_ind==0 :
+                            history.merge(Data)
                     # Figure out the pointing pixel index and the frequency 
                     # indicies.
                     Data.calc_pointing()
@@ -168,28 +174,72 @@ class DirtyMap(object) :
                     data = Data.data[:,pol_ind,0,:]
                     if algorithm in ('grid', 'diag_file') :
                         add_data_2_map(data, ra_inds, dec_inds, map_data, 
-                                       noise_inv, None, weight)
+                                       noise_inv, weight)
                     elif algorithm in ('disjoint_scans', ) :
                         add_data_2_map(data - ma.mean(data, 0), ra_inds, 
-                                       dec_inds, map_data, None, None, weight)
+                                       dec_inds, map_data, None, weight)
                         pixel_hits[:] = 0
                         pixel_list = pixel_counts(data, ra_inds, dec_inds, 
                                         pixel_hits, map_shape=shape[0:2])
                         add_scan_noise(pixel_list, pixel_hits, var, noise_inv)
-                # End Blocks for loop.
-            # End file name for loop.
-        # Now write the dirty maps out for this polarization.
-        map_file_name = (params['output_root'] + 'map_' +
-                         utils.polint2str(this_pol) + '.npy')
-        algebra.save(map_data, map_file_name)
-        noise_file_name = (params['output_root'] + 'noise_inv_' +
-                         utils.polint2str(this_pol) + '.npy')
-        algebra.save(noise_inv, noise_file_name)
-        # End polarization for loop.
+                    # End Blocks for loop.
+                # End file name for loop.
+            # Now write the dirty maps out for this polarization. Use memmaps
+            # for this since we want to reorganize data and write at the same
+            # time.
+            # New maps will have the frequency axis as slowly varying, for
+            # future efficiency.
+            map_file_name = (params['output_root'] + 'map_' +
+                             utils.polint2str(this_pol) + '.npy')
+            mfile = algebra.open_memmap(map_file_name, mode='w+',
+                                         shape=(shape[2],) + shape[:2])
+            map_mem = algebra.make_vect(mfile, axis_names=('freq', 'ra',
+                                                            'dec'))
+            # And the noise matrix.
+            noise_file_name = (params['output_root'] + 'noise_inv_' +
+                             utils.polint2str(this_pol) + '.npy')
+            if algorithm in ('disjoint_scans', 'ds_grad') :
+                mfile = algebra.open_memmap(noise_file_name, mode='w+',
+                                             shape=(shape[2],) + shape[:2]*2)
+                noise_mem = algebra.make_mat(mfile, axis_names=('freq', 'ra',
+                                'dec', 'ra', 'dec'), row_axes=(0, 1, 2), 
+                                col_axes=(0, 3, 4))
+            else :
+                mfile = algebra.open_memmap(noise_file_name, mode='w+',
+                                             shape=(shape[2],) + shape[:2])
+                noise_mem = algebra.make_mat(mfile, axis_names=('freq', 'ra', 
+                    'dec'), row_axes=(0, 1, 2), col_axes=(0, 1, 2))
+            # Give the data arrays axis information.
+            map_mem.set_axis_info('freq', centre_freq, delta_freq)
+            map_mem.set_axis_info('ra', params['field_centre'][0], ra_spacing)
+            map_mem.set_axis_info('dec', params['field_centre'][1], 
+                                  params['pixel_spacing'])
+            noise_mem.set_axis_info('freq', centre_freq, delta_freq)
+            noise_mem.set_axis_info('ra', params['field_centre'][0], ra_spacing)
+            noise_mem.set_axis_info('dec', params['field_centre'][1], 
+                                  params['pixel_spacing'])
+            # Copy the data to the memory maps after rearranging.  The roll_axis
+            # should return a view, so this should be memory efficient.
+            map_mem[...] = sp.rollaxis(map_data, -1)
+            noise_mem[...] = sp.rollaxis(noise_inv, -1)
+
+            # Free up all that memory and flush memory maps to file.
+            del mfile, map_mem, noise_mem, map_data, noise_inv 
+            
+            # Save the file names for the history.
+            all_file_names.append(kiyopy.utils.abbreviate_file_path(
+                map_file_name))
+            all_file_names.append(kiyopy.utils.abbreviate_file_path(
+                noise_file_name))
+            
+            pol_ind += 1
+            # End polarization for loop.
+        history.add("Made a dirty map.", all_file_names)
+        h_file_name = (params['output_root'] + 'history.hist')
+        history.write(h_file_name)
 
 
-def add_data_2_map(data, ra_inds, dec_inds, map, noise_i, counts=None,
-                   weight=1) :
+def add_data_2_map(data, ra_inds, dec_inds, map, noise_i=None, weight=1) :
     """Add a data masked array to a map.
     
     This function also adds the weight to the noise matrix for diagonal noise.
@@ -199,10 +249,10 @@ def add_data_2_map(data, ra_inds, dec_inds, map, noise_i, counts=None,
     shape = sp.shape(map)
     if len(dec_inds) != ntime or len(data[:,0]) != ntime :
         raise ValueError('Time axis of data, ra_inds and dec_inds must be'
-                         ' same length.') 
-    if sp.shape(counts) != sp.shape(map) or len(map[0,0,:]) != len(data[0,:]) :
-        raise ValueError('Map-counts shape  mismatch or data frequency axis '
-                         'length mismatch.')
+                         ' same length.')
+    if not noise_i is None and map.shape != noise_i.shape :
+        raise ValueError('Inverse noise array must be the same size as the map'
+                         ' or None.')
 
     for time_ind in range(ntime) :
         if (ra_inds[time_ind] >= 0 and ra_inds[time_ind] < shape[0] and
@@ -210,14 +260,12 @@ def add_data_2_map(data, ra_inds, dec_inds, map, noise_i, counts=None,
             # Get unmasked
             unmasked_inds = sp.logical_not(ma.getmaskarray(data[time_ind,:]))
             ind_map = (ra_inds[time_ind], dec_inds[time_ind], unmasked_inds)
-            if not counts is None :
-                counts[ind_map] += 1
             map[ind_map] += (weight*data)[time_ind, unmasked_inds]
             if not noise_i is None :
                 if not hasattr(weight, '__iter__') :
                     noise_i[ind_map] += weight
                 else :
-                    noise_i[ind_map] += weight[unmasked_ inds]
+                    noise_i[ind_map] += weight[unmasked_inds]
 
 def pixel_counts(data, ra_inds, dec_inds, pixel_hits, map_shape=(-1,-1)) :
     """Counts the hits on each unique pixel.
@@ -232,7 +280,8 @@ def pixel_counts(data, ra_inds, dec_inds, pixel_hits, map_shape=(-1,-1)) :
 
     if ra_inds.shape != dec_inds.shape or ra_inds.ndim != 1 :
         raise ValueError('Ra and Dec arrays not properly shaped.')
-    if counts.shape[-1] != data.shape[-1] or counts.shape[0] < len(ra_inds):
+    if (pixel_hits.shape[-1] != data.shape[-1] or pixel_hits.shape[0] < 
+        len(ra_inds)) :
         raise ValueError('counts not allowcated to right shape.')
 
     pix_list = []
@@ -245,7 +294,7 @@ def pixel_counts(data, ra_inds, dec_inds, pixel_hits, map_shape=(-1,-1)) :
         elif not pix in pix_list :
             pix_list.append(pix)
         unmasked_freqs = sp.logical_not(ma.getmaskarray(data)[ii,:])
-        counts[pix_list.index(pix), unmasked_freqs] += 1
+        pixel_hits[pix_list.index(pix), unmasked_freqs] += 1
 
     return pix_list
 

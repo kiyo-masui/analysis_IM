@@ -48,5 +48,4 @@ class DataMap(base_data.BaseData) :
 
 
 # Clone some extra functions:
-merge_histories = base_data.merge_histories
-
+from hist import merge_histories

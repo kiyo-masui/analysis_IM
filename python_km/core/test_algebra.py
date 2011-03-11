@@ -332,6 +332,26 @@ class TestMatUtils(unittest.TestCase) :
         os.remove('temp.npy')
         os.remove('temp.npy.meta')
 
+    def test_set_axis_info_raises(self) :
+        self.assertRaises(ValueError, self.mat.set_axis_info, 'stuff', 3, 3)
+
+    def test_sets_values_calcs_axes(self) :
+        self.mat.set_axis_info('freq', 800.0, 2.0)
+        self.vect.set_axis_info('a', 5.0, 1.0)
+        self.assertAlmostEqual(self.mat.info['freq_centre'], 800.0)
+        self.assertAlmostEqual(self.mat.info['freq_delta'], 2.0)
+        self.assertAlmostEqual(self.vect.info['a_centre'], 5.0)
+        self.assertAlmostEqual(self.vect.info['a_delta'], 1.0)
+
+        self.assertAlmostEqual(self.mat.get_axis('freq')[5//2], 800)
+        self.assertTrue(sp.allclose(self.mat.get_axis('freq'), 
+                                    2.0*(sp.arange(5) - 5//2) + 800))
+        self.assertTrue(sp.allclose(self.vect.get_axis('a'), 
+                                    1.0*(sp.arange(2) - 2//2) + 5))
+        
+        
+
+
 if __name__ == '__main__' :
     unittest.main()
 

@@ -69,6 +69,4 @@ class DataBlock(base_data.BaseData) :
 
 
 # Clone some extra functions:
-
-merge_histories = base_data.merge_histories
-History = base_data.History
+from hist import History, merge_histories

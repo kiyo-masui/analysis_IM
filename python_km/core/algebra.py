@@ -330,13 +330,56 @@ def _check_rows_cols(arr, row_axes=None, col_axes=None) :
             raise ValueError("Every axis must be identified varying over "
                              "as the matrix row, column or both.")
 
+
+#### Common class definitions ####
+
+class alg_object(object) :
+    """Base class for all vectors and matricies.  Not an actual class by
+    itself, just defines some methods common to both."""
+    
+    def set_axis_info(self, axis_name, centre, delta) :
+        """Set meta data for calculating values of an axis.
+        
+        This provides the meta data required to calculate one of the axes.
+        This data is stored in the self.info dictionary, which is carried
+        around by this class and easily written to disk.
+
+        The information provided is subsequently used in 
+
+        Arguments :
+            axis_name : string.  Must match one of the entries of self.axes.
+            centre : The value of the axis at the centre bin (indexed by n//2),
+                where n = self.shape[i] and self.axes[i] = axis_name.
+            delta : The width of each bin.
+        """
+
+        if not axis_name in self.axes :
+            raise ValueError("axis_name not in self.axes.")
+
+        self.info[axis_name + '_centre'] = float(centre)
+        self.info[axis_name + '_delta'] = float(delta)
+
+    def get_axis(self, axis_name) :
+        """Calculate the full array representing a named axis.  
+        
+        This first requires that the nessisary information be provided using
+        self.self_axis_info.
+        """
+        
+        len = self.shape[self.axes.index(axis_name)]
+
+        return (self.info[axis_name + '_delta']*(sp.arange(len) - len//2) 
+                + self.info[axis_name + '_centre'])
+
+
+
 #### Vector class definitions ####
 
-class vect(object) :
+class vect(alg_object) :
     """Base class for vectors. 
     
-    This is only half a class.  A complete vector class is created by making a
-    class that inherits from both this class and from info_array or
+    This is only half a class.  A complete vector class is created by making
+    a class that inherits from both this class and from info_array or
     info_memmap, for example the classes vect_array and vect_memmap.
     """
     
@@ -359,7 +402,7 @@ def _vect_class_factory(base_class) :
     if (not base_class is info_array) and (not base_class is info_memmap) :
         raise TypeError("Vectors inherit from info arrays or info memmaps.")
 
-    class vect_class(base_class, vect) :
+    class vect_class(vect, base_class) :
         """Vector class for this module.
         
         When passed an info_array or info_memmap, set the necessary metadata
@@ -370,7 +413,9 @@ def _vect_class_factory(base_class) :
         the info_array already has the required metadata, all other arguments
         are ignored.
         """
-        
+
+        # Only define methods here that have to refer to base_class.
+        # Everything else can go into vect.
         def __new__(cls, input_array, axis_names=None) :
             
             if not isinstance(input_array, base_class) :
@@ -431,11 +476,11 @@ def make_vect(array, axis_names=None) :
 
 #### Matrix class definitions ####
 
-class mat(object) :
+class mat(alg_object) :
     """Base class for matricies.
     
-    This is only half a class.  A complete matris class is created by making a
-    class that inherits from both this class and from info_array or
+    This is only half a class.  A complete matris class is created by making
+    a class that inherits from both this class and from info_array or
     info_memmap, for example the classes mat_array and mat_memmap.
     """
     
@@ -565,7 +610,7 @@ def _mat_class_factory(base_class) :
     if (not base_class is info_array) and (not base_class is info_memmap) :
         raise TypeError("Matrices inherit from info arrays or info memmaps.")
 
-    class mat_class(base_class, mat) :
+    class mat_class(mat, base_class) :
         """Matrix class for this module.
         
         When passed an info_array or info_memmap, set the necessary metadata to
@@ -587,7 +632,6 @@ def _mat_class_factory(base_class) :
         See module documentation for a full explanation of how matrices work in
         this module.
         """
-        # TODO: Write a long doc string.
                 
         def __new__(cls, input_array, row_axes=None, col_axes=None, 
                     axis_names=None) :
@@ -735,5 +779,4 @@ def dot(arr1, arr2, check_inner_axes=True) :
     else :
         raise NotImplementedError("Matrix-matrix multiplication has not been "
                                   "Implemented yet.")
-
 

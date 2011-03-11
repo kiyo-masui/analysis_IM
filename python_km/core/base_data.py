@@ -5,6 +5,7 @@ import numpy.ma as ma
 
 import kiyopy.custom_exceptions as ce
 import utils
+from hist import History, merge_histories
 
 class BaseData(object) :
     """This is a base class for variouse Data Containers which are intended to
@@ -87,7 +88,6 @@ class BaseData(object) :
         if not axis_indices == sorted :
             raise ValueError("Field axes must be well sorted.")
 
-
     def verify(self) :
         """Verifies that all the data is consistant.
 
@@ -149,68 +149,5 @@ class BaseData(object) :
         """print_history function called on self.history."""
 
         self.history.display()
-
-class History(dict) :
-    """Class that contains the history of a piece of data."""
-
-    def add(self, history_entry, details=()) :
-
-        local_details = details
-        # Input checks.
-        if len(history_entry) > 70 :
-            raise ValueError('History entries limited to 70 characters.')
-        if type(details) is str :
-            if len(details) > 70 :
-                raise ValueError('History details limited to 70 characters.')
-            local_details = (details, )
-        for detail in details :
-            if not type(detail) is str :
-                raise TypeError('History details must be a squence of strings'
-                                ' or a single string.')
-            if len(detail) > 70 :
-                raise ValueError('History details limited to 70 characters.')
-
-        n_entries = len(self)
-        # '+' operator performs input type check.
-        hist_str = ('%03d: ' % n_entries) + history_entry
-        self[hist_str] = tuple(local_details)
-
-    def display(self) :
-        """Prints the data history in human readable format."""
-    
-        history_keys = self.keys()
-        history_keys.sort()
-        for history in history_keys :
-            details = self[history]
-            print history
-            for detail in details :
-                print '    ' + detail
-
-def merge_histories(*args) :
-    """Merges DataBlock histories.
-
-    This function accepts an arbitray number of DataBlocks and returns a 
-    history dictionary that is a merger of the two.  History keys must match; 
-    details are added."""
-    
-    if hasattr(args[0], 'history') :
-        history = History(args[0].history)
-    else :
-        history = History(args[0])
-    for ii in range(1, len(args)) :
-        if hasattr(args[ii], 'history') :
-            thishistory = args[ii].history
-        else :
-            thishistory = args[ii]
-        for entry, details in thishistory.iteritems() :
-            for detail in details :
-                try :
-                    if not detail in history[entry] :
-                        history[entry] = history[entry] + (detail, )
-                except KeyError :
-                    raise ce.DataError("Histories to be merged must have"
-                                           " identical keys.")
-    
-    return history
 
 
