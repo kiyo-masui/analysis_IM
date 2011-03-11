@@ -31,10 +31,12 @@ crval3 = hdr['CRVAL3']
 crpix3 = hdr['CRPIX3']
 cdelt3 = hdr['CDELT3']
 
+# If want to do i_slices need first version
+#image_cube = hdudata[1].data
 image_cube = hdudata[4].data
 
 slices = image_cube.shape[0]
-print slices
+#print slices
 
 ra = ( arange(image_cube.shape[2]) + 1 - crpix1)*cdelt1 + crval1
 dec = ( arange(image_cube.shape[1]) +1 - crpix2)*cdelt2 + crval2
@@ -59,17 +61,17 @@ freqs = freqs/1e6
 for slice, freq in enumerate(freqs):
    nancut = (image_cube[slice] < 10e10) & ( image_cube[slice] != NaN )
    #print nancut
-   print image_cube[slice][nancut].std()
-   print median(image_cube[slice][nancut])
+#   print image_cube[slice][nancut].std()
+#   print median(image_cube[slice][nancut])
    cut = ( image_cube[slice] > 3.0*image_cube[slice][nancut].std() ) 
    image_cube[slice][cut] = 3.0*image_cube[slice][nancut].std()
    cut = ( image_cube[slice] < -3.0*image_cube[slice][nancut].std() ) 
    image_cube[slice][cut] = -3.0*image_cube[slice][nancut].std()
    medianv = median(image_cube[slice][nancut])
-   for element in image_cube[slice][cut]:
-      print element
+#   for element in image_cube[slice][cut]:
+#      print element
 # Alternate plotting command to set temperature limits
-#   pylab.imshow(image_cube[slice], interpolation='gaussian',vmin=-0.5, vmax=0.5, extent=(ra.max(),ra.min(),dec.min(),dec.max()), origin='lower')
+#   pylab.imshow(image_cube[slice], interpolation='gaussian',vmin=-0.8, vmax=0.8, extent=(ra.max(),ra.min(),dec.min(),dec.max()), origin='lower')
    pylab.imshow(image_cube[slice], interpolation='gaussian', extent=(ra.max(),ra.min(),dec.min(),dec.max()), origin='lower')
    pylab.colorbar()
    pylab.savefig('v_'+filename1+str(freq)[:3]+'.png')
