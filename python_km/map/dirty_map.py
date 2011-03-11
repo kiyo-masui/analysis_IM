@@ -65,7 +65,7 @@ class DirtyMap(object) :
     def __init__(self, parameter_file_or_dict=None, feedback=2) :
         # Read in the parameters.
         self.params = parse_ini.parse(parameter_file_or_dict, params_init, 
-                                 prefix='mm_')
+                                 prefix=prefix)
         self.feedback = feedback
 
     def execute(self, nprocesses=1) :
@@ -154,11 +154,13 @@ class DirtyMap(object) :
                                                  dtype=sp.float32)
                             noise_inv = algebra.make_mat(noise_inv,
                                             axis_names=('ra', 'dec', 'ra',
-                                                        'dec' 'freq'),
+                                                        'dec', 'freq'),
                                             row_axes=(0,1,4), col_axes=(2,3,4))
                             # Allowcate memory for temporary data. Hold the
                             # number of times each pixel in this scan is hit.
-                            pixel_hits = sp.empty((dims[0], dims[-1]))
+                            # Factor of 2 longer in time in case some scans are
+                            # longer than first block (guppi).
+                            pixel_hits = sp.empty((2*dims[0], dims[-1]))
                         first_block = False
                     else :
                         if pol_ind==0 :
@@ -237,7 +239,6 @@ class DirtyMap(object) :
         history.add("Made a dirty map.", all_file_names)
         h_file_name = (params['output_root'] + 'history.hist')
         history.write(h_file_name)
-
 
 def add_data_2_map(data, ra_inds, dec_inds, map, noise_i=None, weight=1) :
     """Add a data masked array to a map.

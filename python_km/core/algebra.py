@@ -305,7 +305,7 @@ def _check_axis_names(array, axis_names=None) :
 
     if len(axis_names) != array.ndim :
         raise ValueError("axis_names parameter must be a sequence of length "
-                         "vect.ndims")
+                         "arr.ndim")
     else :
         for name in axis_names :
             if (not isinstance(name, str)) and (not name is None) :
