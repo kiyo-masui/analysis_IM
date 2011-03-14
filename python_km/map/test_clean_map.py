@@ -24,8 +24,7 @@ class TestRuns(unittest.TestCase) :
                       # Clean map params:
                       'cm_input_root' :  "./testoutput_",
                       'cm_output_root' : "./testoutput_",
-                      'cm_dirty_map_files' : ('dirty_map_XX.npy',),
-                      'cm_noise_inverse_files' : ('noise_inv_XX.npy',)
+                      'cm_polarizations' : ('XX', 'YY')
                       }
     
     def test_gridder(self) :
