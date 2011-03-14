@@ -56,6 +56,6 @@ if __name__ == '__main__' :
     elif len(sys.argv) == 2 :
         convert(str(sys.argv[1]))
     else :
-        print ("Usage: 'map2fits.py mapfile.npy' or 'map2fits.py mapfile.npy "
-               "historyfile.hist'")
+        print ("Usage: 'python map2fits.py mapfile.npy' or "
+               "'python map2fits.py mapfile.npy historyfile.hist'")
 

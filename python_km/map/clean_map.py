@@ -3,7 +3,7 @@
 import scipy as sp
 import scipy.linalg as linalg
 
-from core import algebra
+from core import algebra, hist
 from kiyopy import parse_ini
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
@@ -21,7 +21,7 @@ class CleanMapMaker(object) :
     def __init__(self, parameter_file_or_dict=None, feedback=2) :
         # Read in the parameters.
         self.params = parse_ini.parse(parameter_file_or_dict, params_init, 
-                                 prefix=prefix)
+                                 prefix=prefix, feedback=feedback)
         self.feedback = feedback
 
     def execute(self, nprocesses=1) :
@@ -32,10 +32,16 @@ class CleanMapMaker(object) :
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
                                prefix='mm_')
         in_root = params['input_root']
+        all_out_fname_list = []
+        all_in_fname_list = []
         # Loop over files to process.
         for pol_str in params['polarizations']:
             dmap_fname = in_root + 'dirty_map_' + pol_str + '.npy'
             noise_fname = in_root + 'noise_inv_' + pol_str + '.npy'
+            all_in_fname_list.append(
+                kiyopy.utils.abbreviate_file_path(dmap_fname))
+            all_in_fname_list.append(
+                kiyopy.utils.abbreviate_file_path(noise_fname))
             # Load the dirty map and the noise matrix.
             dirty_map = algebra.load(dmap_fname)
             dirty_map = algebra.make_vect(dirty_map)
@@ -75,6 +81,9 @@ class CleanMapMaker(object) :
                 # Arrange the dirty map as a vector.
                 dirty_map_vect = sp.array(dirty_map) # A view.
                 dirty_map_vect.shape = (shape[0], shape[1]*shape[2])
+                frequencies = dirty_map.get_axis('freq')/1.0e6
+                if self.feedback > 1 :
+                    print "Inverting noise matrix."
                 # Block diagonal in frequency so loop over frequencies.
                 for ii in xrange(dirty_map.shape[0]) :
                     noise_inv_freq = sp.array(noise_inv[ii, ...], copy=True)
@@ -85,7 +94,12 @@ class CleanMapMaker(object) :
                                                          overwrite_a=True)
                     map_rotated = sp.dot(Rot.T, dirty_map_vect[ii])
                     # Zero out infinite noise modes.
-                    bad_modes = noise_inv_diag < 1.0e5*noise_inv_diag.max()
+                    bad_modes = noise_inv_diag < 1.0e-5*noise_inv_diag.max()
+                    if self.feedback > 1:
+                        print "Frequency: ", "%5.1f"%(frequencies[ii]), 
+                        print ", discarded: ",
+                        print "%4.1f"%(100.0*sp.sum(bad_modes)/bad_modes.size),
+                        print "% of modes."
                     map_rotated[bad_modes] = 0.
                     noise_inv_diag[bad_modes] = 1.0
                     # Solve for the clean map and rotate back.
@@ -103,4 +117,12 @@ class CleanMapMaker(object) :
             # Write the clean map to file.
             out_fname = params['output_root'] + 'clean_map_' + pol_str + '.npy'
             algebra.save(out_fname, clean_map)
+            all_out_fname_list.append(
+                kiyopy.utils.abbreviate_file_path(out_fname))
+        # Finally update the history object.
+        history = hist.read(in_root + 'history.hist')
+        history.add('Read map and noise files:', all_in_fname_list)
+        history.add('Converted dirty map to clean map.', all_out_fname_list)
+        h_fname = params['output_root'] + "history.hist"
+        history.write(h_fname)
 

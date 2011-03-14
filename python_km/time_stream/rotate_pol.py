@@ -56,6 +56,9 @@ def rotate(Data, new_pols=(1,), average_cals=False) :
             raise ce.DataError('Polarization types not as expected.')
     on_ind = 0
     off_ind = 1
+    if average_cals and Data.field.has_key('EXPOSURE') :
+        Data.field['EXPOSURE'] = sp.mean(Data.field['EXPOSURE'], -1)
+        Data.field['EXPOSURE'].shape = Data.field['EXPOSURE'].shape + (1,)
     if (Data.field['CAL'][on_ind] != 'T' or
         Data.field['CAL'][off_ind] != 'F') :
             raise ce.DataError('Cal states not in expected order.')

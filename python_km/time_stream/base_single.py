@@ -76,8 +76,7 @@ class BaseSingle(object) :
         
         # Read in the parameters.
         self.params = parse_ini.parse(parameter_file_or_dict, params_init,
-                                      prefix=self.prefix,
-                                      checking=10*self.feedback + 2)
+                                      prefix=self.prefix, feedback=feedback)
     
     def execute(self, n_processes=1) :
         """Process all data.

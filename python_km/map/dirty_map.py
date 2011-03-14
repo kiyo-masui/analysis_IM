@@ -65,7 +65,7 @@ class DirtyMapMaker(object) :
     def __init__(self, parameter_file_or_dict=None, feedback=2) :
         # Read in the parameters.
         self.params = parse_ini.parse(parameter_file_or_dict, params_init, 
-                                 prefix=prefix)
+                                 prefix=prefix, feedback=feedback)
         self.feedback = feedback
 
     def execute(self, nprocesses=1) :
@@ -103,7 +103,7 @@ class DirtyMapMaker(object) :
                 input_fname = (params['input_root'] + file_middle +
                                params['input_end'])
                 # Read in the data, and loop over data blocks.
-                Reader = fitsGBT.Reader(input_fname)
+                Reader = fitsGBT.Reader(input_fname, feedback=self.feedback)
                 Blocks = Reader.read(params['scans'], params['IFs'])
                 
                 # Calculate the time varience at each frequency.  This will be

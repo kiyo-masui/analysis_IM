@@ -34,7 +34,7 @@ raw_data_dir = os.getenv('GBT10B_DATA')
 prefix = ''
 IFs = ()
 
-from time_stream import hanning 
+#from time_stream import hanning 
 #pipe_modules.append(hanning.Hanning)
 ha_input_root = raw_data_dir
 ha_file_middles = file_middles
@@ -46,7 +46,7 @@ ha_scans = ()
 # the only IF's saved to the following fits files).
 ha_IFs = IFs
 
-from time_stream import flag_data
+#from time_stream import flag_data
 #pipe_modules.append(flag_data.FlagData)
 fd_input_root = ha_output_root
 fd_file_middles = file_middles
@@ -63,7 +63,7 @@ fd_flatten_pol = True
 fd_derivative_cuts = 5
 fd_derivative_width = 1
 
-from time_stream import rebin_freq
+#from time_stream import rebin_freq
 #pipe_modules.append(rebin_freq.RebinFreq)
 rf_input_root = fd_output_root
 rf_file_middles = file_middles
@@ -76,7 +76,7 @@ rf_IFs = ()
 rf_channel_width = 2.0
 rf_mean_instead_median = True
 
-from time_stream import stitch_windows_crude
+#from time_stream import stitch_windows_crude
 #pipe_modules.append(stitch_windows_crude.Stitch)
 sw_input_root = rf_output_root
 sw_file_middles = file_middles
@@ -86,7 +86,7 @@ sw_output_end = '.fits'
 sw_scans = ()
 sw_IFs = ()
 
-from time_stream import cal_scale
+#from time_stream import cal_scale
 #pipe_modules.append(cal_scale.CalScale)
 cs_input_root = sw_output_root
 cs_file_middles = file_middles
@@ -100,7 +100,7 @@ cs_scale_time_average = True
 cs_scale_freq_average = False
 cs_subtract_time_median = False
 
-from time_stream import calibrate
+#from time_stream import calibrate
 #pipe_modules.append(calibrate.Calibrate)
 cl_input_root = cs_output_root
 cl_file_middles = file_middles
@@ -112,7 +112,7 @@ cl_IFs = ()
 
 cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
 
-from time_stream import rotate_pol
+#from time_stream import rotate_pol
 #pipe_modules.append(rotate_pol.RotatePol)
 rp_input_root = cl_output_root
 rp_file_middles = file_middles
@@ -125,7 +125,7 @@ rp_IFs = ()
 rp_new_pols = (1,)
 rp_average_cals = False
 
-from time_stream import combine_cal
+#from time_stream import combine_cal
 #pipe_modules.append(combine_cal.CombineCal)
 cc_input_root = rp_output_root
 cc_file_middles = file_middles
@@ -138,8 +138,8 @@ cc_IFs = ()
 cc_subtract_time_mean = True
 cc_average_cal_states = True
 
-from map import dirty_map
-pipe_modules.append(dirty_map.DirtyMap)
+#from map import dirty_map
+#pipe_modules.append(dirty_map.DirtyMapMaker)
 dm_input_root = cc_output_root
 dm_file_middles = file_middles
 dm_input_end = '.fits'
@@ -152,6 +152,12 @@ dm_map_shape = (70, 45)
 #dm_map_shape = (100, 80)
 dm_pixel_spacing = .075
 dm_noise_model = 'disjoint_scans'
+
+from map import clean_map
+pipe_modules.append(clean_map.CleanMapMaker)
+cm_input_root = dm_output_root
+cm_output_root = cm_input_root
+cm_polarizations = ('I',)
 
 
 # Not acctually nessisary, but good do do anyway.

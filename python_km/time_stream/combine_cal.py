@@ -42,6 +42,9 @@ def combine(Data, weights=(0.5, 0.5), sub_mean=True, average_cals=True) :
                    Data.data[:,:,[1],:]*weights[1])
         Data.set_data(newdata)
         Data.field['CAL'] = sp.array(['A']) # For averaged.
+        if Data.field.has_key('EXPOSURE') :
+            Data.field['EXPOSURE'] = (Data.field['EXPOSURE'][:, [0]]*weights[0]
+                                + Data.field['EXPOSURE'][:, [1]]*weights[1])
 
     # Subtract the time median if desired.
     if sub_mean :

@@ -17,7 +17,7 @@ params_init = {
               }
 
 
-def execute(pipe_file_or_dict) :
+def execute(pipe_file_or_dict, feedback=2) :
     """Execute all the modules listed in the input file."""
 
     params, module_params = parse_ini.parse(pipe_file_or_dict, params_init, 
@@ -25,7 +25,7 @@ def execute(pipe_file_or_dict) :
     
     for module in params['modules'] :
         print 'Excuting analysis module: ' + str(module)
-        module(module_params).execute(params['processes'])
+        module(module_params, feedback).execute(params['processes'])
 
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":

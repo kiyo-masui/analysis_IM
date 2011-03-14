@@ -22,7 +22,8 @@ class TestManager(unittest.TestCase) :
         os.remove('testoutput_testfile_GBTfits.testhanning.fits')
         os.remove('testoutput_testfile_GBTfits.testflag.fits')
         os.remove('testoutput_testfile_GBTfits.testrebin.fits')
-        os.remove('testoutput_.testmap.fits')
+        os.remove('testoutput_map.testmap.fits')
+        os.remove('testoutput_noise.testmap.fits')
 
 if __name__ == '__main__' :
     unittest.main()

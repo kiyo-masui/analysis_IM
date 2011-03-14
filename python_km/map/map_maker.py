@@ -63,7 +63,7 @@ class MapMaker(object) :
     def __init__(self, parameter_file_or_dict=None, feedback=2) :
         # Read in the parameters.
         self.params = parse_ini.parse(parameter_file_or_dict, params_init, 
-                                 prefix='mm_')
+                                 prefix='mm_', feedback=feedback)
         self.feedback = feedback
 
     def execute(self, nprocesses=1) :
