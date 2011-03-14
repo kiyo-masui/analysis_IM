@@ -237,7 +237,6 @@ class MapMaker(object) :
             fits_map.write(noise_list, params['output_root'] + 'noise' 
                            + params['output_end'])
 
-
 def add_data_2_map(data, ra_inds, dec_inds, map, noise_i, counts, weight=1) :
     """Add a data masked array to a map."""
 

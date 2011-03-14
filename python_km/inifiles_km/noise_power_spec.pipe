@@ -1,0 +1,73 @@
+import os
+from core import dir_data
+import scipy as sp
+
+file_middles = ("117-124",
+                "125-132",
+				"133-140",
+				"141-148")
+#file_middles = ("113-116",
+#                "21-24")
+#file_middles = ("40_3C286_onoff_topo_21-24",)
+
+base_dir = os.getenv('GBT10B_OUT')
+data_dir = base_dir + '/data/'
+prefix = 'spec_noise_40_wigglez15hr_'
+#prefix = 'spec_noise_40_onoff_'
+
+pipe_modules = []
+pipe_processes = 1
+
+from time_stream import rebin_freq
+pipe_modules.append(rebin_freq.RebinFreq)
+rf_input_root = data_dir + "/40_wigglez15hr_azel_stepping_topo_"
+#rf_input_root = data_dir + "/40_3c286_onoff_topo_"
+rf_file_middles = file_middles
+rf_input_end = '.raw.acs.fits'
+rf_output_root = base_dir + 'rebinned/' + prefix
+rf_output_end = '.fits'
+rf_scans = ()
+rf_IFs = ()
+
+rf_channel_width = 5.0
+rf_mean_instead_median = True
+
+from time_stream import stitch_windows_crude
+pipe_modules.append(stitch_windows_crude.Stitch)
+#sw_input_root = data_dir
+sw_input_root = rf_output_root
+sw_file_middles = file_middles
+sw_input_end = '.fits'
+#sw_input_end = '.raw.acs.fits'
+sw_output_root = base_dir + 'stitched/' + prefix
+sw_output_end = '.fits'
+sw_scans = ()
+sw_IFs = ()
+
+from noise import noise_power
+#pipe_modules.append(noise_power.NoisePower)
+np_input_root = rf_output_root
+np_file_middles = file_middles
+np_input_end = '.fits'
+np_output_root = base_dir + 'noise/' + prefix
+np_output_end = '.fits'
+np_scans = ()
+#np_scans = (1,3)
+np_IFs = (3,)
+
+np_calculate_power_spectrum = True
+np_calculate_covariance = False
+np_lags = tuple(sp.arange(0.01, 61, 5.))
+np_segment_length = 60
+
+#np_pol_weights = (1.0,)
+np_pol_weights = (1.0, 0.0, 0., 1.0)
+np_cal_weights = (1.0, -1.0)
+#np_cal_weights = (1.0, 1.0)
+
+np_subtract_freq_average = False
+np_normalize_to_average = True
+np_normalize_dnudt = True
+np_norm_pol_weights = (1.0, 0.0, 0.0, 1.0)
+np_norm_cal_weights = (1.0, 1.0)
+

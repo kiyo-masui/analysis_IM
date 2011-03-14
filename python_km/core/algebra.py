@@ -371,8 +371,6 @@ class alg_object(object) :
         return (self.info[axis_name + '_delta']*(sp.arange(len) - len//2) 
                 + self.info[axis_name + '_centre'])
 
-
-
 #### Vector class definitions ####
 
 class vect(alg_object) :
@@ -646,7 +644,7 @@ def _mat_class_factory(base_class) :
                 if ((not axis_names is None) or (not row_axes is None) or 
                     (not col_axes is None)) :
                     warnings.warn("Initialization argument ignored. Requisite "
-                                  "metadata for vector already exists. "
+                                  "metadata for matrix already exists. "
                                   "Clear info dictionary if you want opposite "
                                   "behaviour.")
                 if not obj.info['type'] == 'mat' :

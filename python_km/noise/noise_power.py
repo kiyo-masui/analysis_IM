@@ -1,7 +1,5 @@
 """
-Proceedure to estimate a GBT noise model from data.  This module is now
-deprecated and will not work with new support code.
-"""
+Proceedure to estimate a GBT noise model from data."""
 import os
 
 import scipy as sp
@@ -40,7 +38,7 @@ params_init = {
                "cal_weights" : (0., 1.),
                # Whether to stack the results for all the files togther or to
                # hold everything in a list.
-               "stack_files' : True
+               "stack_files" : True
                }
 prefix = 'np_'
 

@@ -150,25 +150,32 @@ class TestDisjointScans(unittest.TestCase) :
 class TestRuns(unittest.TestCase) :
 
     def setUp(self) :
-        self.pars = { "dm_output_root" : "./testoutput_"
+        self.pars = { "dm_output_root" : "./testoutput_",
+                      'dm_file_middles' : ("testfile_GBTfits",),
+                      'dm_input_end' : ".fits",
+                      'dm_scans' : (),
+                      'dm_IFs' : (0,),
+                      'dm_field_centre' : (325.0, 0.0),
+                      'dm_map_shape' : (5, 5),
+                      'dm_pixel_spacing' : 0.5
                     }
     
     def test_gridder(self) :
         pars = { 'dm_noise_model' : 'grid'}
         pars.update(self.pars)
-        Maker = dirty_map.DirtyMap(pars, 0)
+        Maker = dirty_map.DirtyMapMaker(pars, 0)
         Maker.execute()
 
     def test_diag(self) :
         pars = { 'dm_noise_model' : 'diag_file'}
         pars.update(self.pars)
-        Maker = dirty_map.DirtyMap(pars, 0)
+        Maker = dirty_map.DirtyMapMaker(pars, 0)
         Maker.execute()
 
     def test_full(self) :
         pars = { 'dm_noise_model' : 'disjoint_scans'}
         pars.update(self.pars)
-        Maker = dirty_map.DirtyMap(pars, 0)
+        Maker = dirty_map.DirtyMapMaker(pars, 0)
         Maker.execute()
 
     def tearDown(self) :

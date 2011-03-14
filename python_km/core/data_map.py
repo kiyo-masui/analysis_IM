@@ -45,7 +45,5 @@ class DataMap(base_data.BaseData) :
                          self.field['CRPIX1'])*self.field['CDELT1'] + 
                          self.field['CRVAL1'])
 
-
-
 # Clone some extra functions:
 from hist import merge_histories

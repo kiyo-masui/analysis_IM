@@ -44,7 +44,7 @@ params_init = {
                'noise_model' : 'grid'
                }
 
-class DirtyMap(object) :
+class DirtyMapMaker(object) :
     """Converts time stream data into a dirty map.
     
     This module reads in multiple time stream files and turns them into a 
@@ -191,7 +191,7 @@ class DirtyMap(object) :
             # time.
             # New maps will have the frequency axis as slowly varying, for
             # future efficiency.
-            map_file_name = (params['output_root'] + 'map_' +
+            map_file_name = (params['output_root'] + 'dirty_map_' +
                              utils.polint2str(this_pol) + '.npy')
             mfile = algebra.open_memmap(map_file_name, mode='w+',
                                          shape=(shape[2],) + shape[:2])

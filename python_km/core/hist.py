@@ -85,7 +85,6 @@ def read(fname) :
         f.close()
     return History(eval(filestring))
 
-
 def merge_histories(*args) :
     """Merges DataBlock histories.
 
