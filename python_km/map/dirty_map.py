@@ -236,7 +236,7 @@ class DirtyMapMaker(object) :
             
             pol_ind += 1
             # End polarization for loop.
-        history.add("Made a dirty map.", all_file_names)
+        history.add("Made dirty map.", all_file_names)
         h_file_name = (params['output_root'] + 'history.hist')
         history.write(h_file_name)
 
