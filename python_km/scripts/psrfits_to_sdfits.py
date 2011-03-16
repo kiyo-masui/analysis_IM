@@ -15,7 +15,7 @@ information.
 
 import time
 import multiprocessing as mp
-
+import sys
 
 import scipy as sp
 import scipy.interpolate as interp
@@ -135,8 +135,6 @@ class Converter(object) :
             del Block_list
             p.join()
         # End loop over maps (output files or input 'scans' parameter).
-
-            
             
     def ProcessFile(self, scan, Pipe) :
         params = self.params
@@ -301,7 +299,10 @@ class Converter(object) :
         # Loop over the records and modify the data.
         print "Record: ",
         for jj, record in enumerate(psrdata) :
+            # Print the record we are currently on and force a flush to
+            # standard out (so we can watch the progress update).
             print jj,
+            sys.stdout.flush()
             # Get the data field.
             data = record["DATA"]
             # Convert the Data to the proper shape and type.
