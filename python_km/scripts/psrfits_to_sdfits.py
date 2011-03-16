@@ -50,6 +50,8 @@ class Converter(object) :
     def execute(self, nprocesses=1) :
         params = self.params
         scans = list(params["scans"])
+        # Make sure that the output directory exists.
+        utils.mkparents(params["output_root"])
 
         # Now we need to read in the Scan Log fits file.
         log_dir = params["fits_log_dir"]
