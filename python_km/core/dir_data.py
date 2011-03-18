@@ -84,7 +84,7 @@ def get_kiyo_data_files(session_list, field) :
             # See if the file matches.
             if re.match(match_str, file_name) :
                 # Chop off extension and append to list to be returned.
-                root = file_name.split('.')[0]
+                root = file_name.split('.')[0] 
                 out_files_kiyo.append(root)
 
     return out_files_kiyo
