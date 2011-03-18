@@ -170,6 +170,63 @@ class TestMakeAlgebra(unittest.TestCase) :
         self.assertRaises(ValueError, algebra.mat_array, self.array, (0,1), 
                           (3,))
 
+class TestViewsTemplates(unittest.TestCase) :
+
+    def setUp(self) :
+        data = sp.arange(20)
+        data.shape = (5,4)
+        self.mat_arr = algebra.make_mat(data.copy())
+        self.vect_arr = algebra.make_vect(data.copy())
+        mem = npfor.open_memmap('temp.npy', mode='w+', shape=(5, 4))
+        mem[:] = data
+        self.vect_mem = algebra.make_vect(mem)
+        self.arr = data.copy()
+
+    def test_slices(self) :
+        # Slices should always always give arrays or memmaps.
+        a = self.mat_arr[:,2]
+        self.assertTrue(not a.base is None)
+        b = self.vect_arr[:,2]
+        c = self.vect_mem[:,3]
+        self.assertTrue(not c.base is None)
+        self.assertTrue(isinstance(a, sp.ndarray))
+        self.assertTrue(not isinstance(a, algebra.mat))
+        self.assertTrue(not isinstance(a, algebra.alg_object))
+        self.assertTrue(isinstance(b, sp.ndarray))
+        self.assertTrue(not isinstance(b, algebra.vect))
+        self.assertTrue(isinstance(c, sp.ndarray))
+        self.assertTrue(isinstance(c, sp.memmap))
+        self.assertTrue(hasattr(c, '_mmap'))
+        self.assertTrue(not isinstance(c, algebra.vect))
+
+    def test_ufuncs(self) :
+        # For ufuncs, if the shape is the same, copy the meta data.  Otherwise,
+        # it should be an array.  Matricies higher priority than vectors.
+        a = self.vect_arr + self.vect_arr
+        self.assertTrue(isinstance(a, algebra.vect))
+        b = self.mat_arr - self.vect_arr
+        self.assertTrue(isinstance(b, algebra.mat))
+        q = sp.arange(3)
+        q.shape = (3, 1, 1)
+        c = q*self.mat_arr
+        self.assertTrue(not isinstance(c, algebra.alg_object))
+        self.assertTrue(not isinstance(c, algebra.info_array))
+        
+    def test_ufuncs_memmap(self) :
+        # Same as above, but should always be the array, not the memmap
+        # version.
+        c = self.vect_mem / 2.0
+        self.assertTrue(not isinstance(c, sp.memmap))
+        self.assertTrue(isinstance(c, sp.ndarray))
+        self.assertTrue(isinstance(c, algebra.alg_object))
+
+    # How to implement: define __array_wrap__ and __getitem__ in
+    # the mat and vect factories.
+
+    def tearDown(self) :
+        del self.vect_mem
+        os.remove('temp.npy')
+
 class TestMatVectFromArray(unittest.TestCase) :
     
     def setUp(self) :
@@ -349,8 +406,6 @@ class TestMatUtils(unittest.TestCase) :
         self.assertTrue(sp.allclose(self.vect.get_axis('a'), 
                                     1.0*(sp.arange(2) - 2//2) + 5))
         
-        
-
 
 if __name__ == '__main__' :
     unittest.main()
