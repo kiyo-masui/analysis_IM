@@ -2946,63 +2946,13 @@ fail:
 }
 
 
-SWIGINTERN PyObject *_wrap_testing(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  double arg1 ;
-  double val1 ;
-  int ecode1 = 0 ;
-  PyObject * obj0 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"O:testing",&obj0)) SWIG_fail;
-  ecode1 = SWIG_AsVal_double(obj0, &val1);
-  if (!SWIG_IsOK(ecode1)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "testing" "', argument " "1"" of type '" "double""'");
-  } 
-  arg1 = (double)(val1);
-  testing(arg1);
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_testing2(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  double arg1 ;
-  double *arg2 ;
-  double val1 ;
-  int ecode1 = 0 ;
-  void *argp2 = 0 ;
-  int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OO:testing2",&obj0,&obj1)) SWIG_fail;
-  ecode1 = SWIG_AsVal_double(obj0, &val1);
-  if (!SWIG_IsOK(ecode1)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "testing2" "', argument " "1"" of type '" "double""'");
-  } 
-  arg1 = (double)(val1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_double, 0 |  0 );
-  if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "testing2" "', argument " "2"" of type '" "double [10]""'"); 
-  } 
-  arg2 = (double *)(argp2);
-  testing2(arg1,arg2);
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
 SWIGINTERN PyObject *_wrap_get_rms(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
-  double *arg1 ;
+  double *arg1 = (double *) 0 ;
   int arg2 ;
-  double *arg3 ;
-  double *arg4 ;
+  double *arg3 = (double *) 0 ;
+  double *arg4 = (double *) 0 ;
+  int result;
   void *argp1 = 0 ;
   int res1 = 0 ;
   int val2 ;
@@ -3019,8 +2969,8 @@ SWIGINTERN PyObject *_wrap_get_rms(PyObject *SWIGUNUSEDPARM(self), PyObject *arg
   if (!PyArg_ParseTuple(args,(char *)"OOOO:get_rms",&obj0,&obj1,&obj2,&obj3)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "get_rms" "', argument " "1"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "get_rms" "', argument " "1"" of type '" "double *""'"); 
+  }
   arg1 = (double *)(argp1);
   ecode2 = SWIG_AsVal_int(obj1, &val2);
   if (!SWIG_IsOK(ecode2)) {
@@ -3029,16 +2979,16 @@ SWIGINTERN PyObject *_wrap_get_rms(PyObject *SWIGUNUSEDPARM(self), PyObject *arg
   arg2 = (int)(val2);
   res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res3)) {
-    SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "get_rms" "', argument " "3"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "get_rms" "', argument " "3"" of type '" "double *""'"); 
+  }
   arg3 = (double *)(argp3);
   res4 = SWIG_ConvertPtr(obj3, &argp4,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res4)) {
-    SWIG_exception_fail(SWIG_ArgError(res4), "in method '" "get_rms" "', argument " "4"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res4), "in method '" "get_rms" "', argument " "4"" of type '" "double *""'"); 
+  }
   arg4 = (double *)(argp4);
-  get_rms(arg1,arg2,arg3,arg4);
-  resultobj = SWIG_Py_Void();
+  result = (int)get_rms(arg1,arg2,arg3,arg4);
+  resultobj = SWIG_From_int((int)(result));
   return resultobj;
 fail:
   return NULL;
@@ -3047,9 +2997,9 @@ fail:
 
 SWIGINTERN PyObject *_wrap_xi_square_fit(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
-  double *arg1 ;
-  double *arg2 ;
-  double *arg3 ;
+  double *arg1 = (double *) 0 ;
+  double *arg2 = (double *) 0 ;
+  double *arg3 = (double *) 0 ;
   int arg4 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
@@ -3067,18 +3017,18 @@ SWIGINTERN PyObject *_wrap_xi_square_fit(PyObject *SWIGUNUSEDPARM(self), PyObjec
   if (!PyArg_ParseTuple(args,(char *)"OOOO:xi_square_fit",&obj0,&obj1,&obj2,&obj3)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "xi_square_fit" "', argument " "1"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "xi_square_fit" "', argument " "1"" of type '" "double *""'"); 
+  }
   arg1 = (double *)(argp1);
   res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "xi_square_fit" "', argument " "2"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "xi_square_fit" "', argument " "2"" of type '" "double *""'"); 
+  }
   arg2 = (double *)(argp2);
   res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res3)) {
-    SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "xi_square_fit" "', argument " "3"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "xi_square_fit" "', argument " "3"" of type '" "double *""'"); 
+  }
   arg3 = (double *)(argp3);
   ecode4 = SWIG_AsVal_int(obj3, &val4);
   if (!SWIG_IsOK(ecode4)) {
@@ -3095,36 +3045,45 @@ fail:
 
 SWIGINTERN PyObject *_wrap_get_fit(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
-  double *arg1 ;
-  double *arg2 ;
-  double *arg3 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
+  int arg1 ;
+  double *arg2 = (double *) 0 ;
+  double *arg3 = (double *) 0 ;
+  double *arg4 = (double *) 0 ;
+  int val1 ;
+  int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
   void *argp3 = 0 ;
   int res3 = 0 ;
+  void *argp4 = 0 ;
+  int res4 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   PyObject * obj2 = 0 ;
+  PyObject * obj3 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOO:get_fit",&obj0,&obj1,&obj2)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_double, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "get_fit" "', argument " "1"" of type '" "double [2048]""'"); 
+  if (!PyArg_ParseTuple(args,(char *)"OOOO:get_fit",&obj0,&obj1,&obj2,&obj3)) SWIG_fail;
+  ecode1 = SWIG_AsVal_int(obj0, &val1);
+  if (!SWIG_IsOK(ecode1)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "get_fit" "', argument " "1"" of type '" "int""'");
   } 
-  arg1 = (double *)(argp1);
+  arg1 = (int)(val1);
   res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "get_fit" "', argument " "2"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "get_fit" "', argument " "2"" of type '" "double *""'"); 
+  }
   arg2 = (double *)(argp2);
   res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res3)) {
-    SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "get_fit" "', argument " "3"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "get_fit" "', argument " "3"" of type '" "double *""'"); 
+  }
   arg3 = (double *)(argp3);
-  get_fit(arg1,arg2,arg3);
+  res4 = SWIG_ConvertPtr(obj3, &argp4,SWIGTYPE_p_double, 0 |  0 );
+  if (!SWIG_IsOK(res4)) {
+    SWIG_exception_fail(SWIG_ArgError(res4), "in method '" "get_fit" "', argument " "4"" of type '" "double *""'"); 
+  }
+  arg4 = (double *)(argp4);
+  get_fit(arg1,arg2,arg3,arg4);
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -3134,27 +3093,36 @@ fail:
 
 SWIGINTERN PyObject *_wrap_flatten(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
-  double *arg1 ;
-  double *arg2 ;
+  double *arg1 = (double *) 0 ;
+  double *arg2 = (double *) 0 ;
+  int arg3 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
+  int val3 ;
+  int ecode3 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
+  PyObject * obj2 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:flatten",&obj0,&obj1)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"OOO:flatten",&obj0,&obj1,&obj2)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "flatten" "', argument " "1"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "flatten" "', argument " "1"" of type '" "double *""'"); 
+  }
   arg1 = (double *)(argp1);
   res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "flatten" "', argument " "2"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "flatten" "', argument " "2"" of type '" "double *""'"); 
+  }
   arg2 = (double *)(argp2);
-  flatten(arg1,arg2);
+  ecode3 = SWIG_AsVal_int(obj2, &val3);
+  if (!SWIG_IsOK(ecode3)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "flatten" "', argument " "3"" of type '" "int""'");
+  } 
+  arg3 = (int)(val3);
+  flatten(arg1,arg2,arg3);
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -3165,9 +3133,9 @@ fail:
 SWIGINTERN PyObject *_wrap_mask_array(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   int arg1 ;
-  double *arg2 ;
+  double *arg2 = (double *) 0 ;
   double arg3 ;
-  int *arg4 ;
+  int *arg4 = (int *) 0 ;
   int arg5 ;
   int val1 ;
   int ecode1 = 0 ;
@@ -3193,8 +3161,8 @@ SWIGINTERN PyObject *_wrap_mask_array(PyObject *SWIGUNUSEDPARM(self), PyObject *
   arg1 = (int)(val1);
   res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "mask_array" "', argument " "2"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "mask_array" "', argument " "2"" of type '" "double *""'"); 
+  }
   arg2 = (double *)(argp2);
   ecode3 = SWIG_AsVal_double(obj2, &val3);
   if (!SWIG_IsOK(ecode3)) {
@@ -3203,8 +3171,8 @@ SWIGINTERN PyObject *_wrap_mask_array(PyObject *SWIGUNUSEDPARM(self), PyObject *
   arg3 = (double)(val3);
   res4 = SWIG_ConvertPtr(obj3, &argp4,SWIGTYPE_p_int, 0 |  0 );
   if (!SWIG_IsOK(res4)) {
-    SWIG_exception_fail(SWIG_ArgError(res4), "in method '" "mask_array" "', argument " "4"" of type '" "int [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res4), "in method '" "mask_array" "', argument " "4"" of type '" "int *""'"); 
+  }
   arg4 = (int *)(argp4);
   ecode5 = SWIG_AsVal_int(obj4, &val5);
   if (!SWIG_IsOK(ecode5)) {
@@ -3221,9 +3189,9 @@ fail:
 
 SWIGINTERN PyObject *_wrap_rfi_find_dTdf(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
-  double *arg1 ;
-  double *arg2 ;
-  int *arg3 ;
+  double *arg1 = (double *) 0 ;
+  double *arg2 = (double *) 0 ;
+  int *arg3 = (int *) 0 ;
   int arg4 ;
   int arg5 ;
   void *argp1 = 0 ;
@@ -3245,18 +3213,18 @@ SWIGINTERN PyObject *_wrap_rfi_find_dTdf(PyObject *SWIGUNUSEDPARM(self), PyObjec
   if (!PyArg_ParseTuple(args,(char *)"OOOOO:rfi_find_dTdf",&obj0,&obj1,&obj2,&obj3,&obj4)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "rfi_find_dTdf" "', argument " "1"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "rfi_find_dTdf" "', argument " "1"" of type '" "double *""'"); 
+  }
   arg1 = (double *)(argp1);
   res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "rfi_find_dTdf" "', argument " "2"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "rfi_find_dTdf" "', argument " "2"" of type '" "double *""'"); 
+  }
   arg2 = (double *)(argp2);
   res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_int, 0 |  0 );
   if (!SWIG_IsOK(res3)) {
-    SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "rfi_find_dTdf" "', argument " "3"" of type '" "int [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "rfi_find_dTdf" "', argument " "3"" of type '" "int *""'"); 
+  }
   arg3 = (int *)(argp3);
   ecode4 = SWIG_AsVal_int(obj3, &val4);
   if (!SWIG_IsOK(ecode4)) {
@@ -3278,43 +3246,47 @@ fail:
 
 SWIGINTERN PyObject *_wrap_hi_f_spikes(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
-  double *arg1 ;
-  double *arg2 ;
-  int arg3 ;
+  int arg1 ;
+  double *arg2 = (double *) 0 ;
+  double *arg3 = (double *) 0 ;
   int arg4 ;
   int arg5 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
+  int arg6 ;
+  int val1 ;
+  int ecode1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
-  int val3 ;
-  int ecode3 = 0 ;
+  void *argp3 = 0 ;
+  int res3 = 0 ;
   int val4 ;
   int ecode4 = 0 ;
   int val5 ;
   int ecode5 = 0 ;
+  int val6 ;
+  int ecode6 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   PyObject * obj2 = 0 ;
   PyObject * obj3 = 0 ;
   PyObject * obj4 = 0 ;
+  PyObject * obj5 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOOOO:hi_f_spikes",&obj0,&obj1,&obj2,&obj3,&obj4)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_double, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "hi_f_spikes" "', argument " "1"" of type '" "double [2048]""'"); 
+  if (!PyArg_ParseTuple(args,(char *)"OOOOOO:hi_f_spikes",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5)) SWIG_fail;
+  ecode1 = SWIG_AsVal_int(obj0, &val1);
+  if (!SWIG_IsOK(ecode1)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "hi_f_spikes" "', argument " "1"" of type '" "int""'");
   } 
-  arg1 = (double *)(argp1);
+  arg1 = (int)(val1);
   res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "hi_f_spikes" "', argument " "2"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "hi_f_spikes" "', argument " "2"" of type '" "double *""'"); 
+  }
   arg2 = (double *)(argp2);
-  ecode3 = SWIG_AsVal_int(obj2, &val3);
-  if (!SWIG_IsOK(ecode3)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "hi_f_spikes" "', argument " "3"" of type '" "int""'");
-  } 
-  arg3 = (int)(val3);
+  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_double, 0 |  0 );
+  if (!SWIG_IsOK(res3)) {
+    SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "hi_f_spikes" "', argument " "3"" of type '" "double *""'"); 
+  }
+  arg3 = (double *)(argp3);
   ecode4 = SWIG_AsVal_int(obj3, &val4);
   if (!SWIG_IsOK(ecode4)) {
     SWIG_exception_fail(SWIG_ArgError(ecode4), "in method '" "hi_f_spikes" "', argument " "4"" of type '" "int""'");
@@ -3325,7 +3297,12 @@ SWIGINTERN PyObject *_wrap_hi_f_spikes(PyObject *SWIGUNUSEDPARM(self), PyObject 
     SWIG_exception_fail(SWIG_ArgError(ecode5), "in method '" "hi_f_spikes" "', argument " "5"" of type '" "int""'");
   } 
   arg5 = (int)(val5);
-  hi_f_spikes(arg1,arg2,arg3,arg4,arg5);
+  ecode6 = SWIG_AsVal_int(obj5, &val6);
+  if (!SWIG_IsOK(ecode6)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode6), "in method '" "hi_f_spikes" "', argument " "6"" of type '" "int""'");
+  } 
+  arg6 = (int)(val6);
+  hi_f_spikes(arg1,arg2,arg3,arg4,arg5,arg6);
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -3338,27 +3315,30 @@ SWIGINTERN PyObject *_wrap_rfi_flag(PyObject *SWIGUNUSEDPARM(self), PyObject *ar
   int arg1 ;
   int arg2 ;
   int arg3 ;
-  double arg4 ;
-  double *arg5 ;
-  double *arg6 ;
-  double *arg7 ;
-  int *arg8 ;
+  int arg4 ;
+  double arg5 ;
+  double *arg6 = (double *) 0 ;
+  double *arg7 = (double *) 0 ;
+  double *arg8 = (double *) 0 ;
+  int *arg9 = (int *) 0 ;
   int val1 ;
   int ecode1 = 0 ;
   int val2 ;
   int ecode2 = 0 ;
   int val3 ;
   int ecode3 = 0 ;
-  double val4 ;
+  int val4 ;
   int ecode4 = 0 ;
-  void *argp5 = 0 ;
-  int res5 = 0 ;
+  double val5 ;
+  int ecode5 = 0 ;
   void *argp6 = 0 ;
   int res6 = 0 ;
   void *argp7 = 0 ;
   int res7 = 0 ;
   void *argp8 = 0 ;
   int res8 = 0 ;
+  void *argp9 = 0 ;
+  int res9 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   PyObject * obj2 = 0 ;
@@ -3367,8 +3347,9 @@ SWIGINTERN PyObject *_wrap_rfi_flag(PyObject *SWIGUNUSEDPARM(self), PyObject *ar
   PyObject * obj5 = 0 ;
   PyObject * obj6 = 0 ;
   PyObject * obj7 = 0 ;
+  PyObject * obj8 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOOOOOOO:rfi_flag",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6,&obj7)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"OOOOOOOOO:rfi_flag",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6,&obj7,&obj8)) SWIG_fail;
   ecode1 = SWIG_AsVal_int(obj0, &val1);
   if (!SWIG_IsOK(ecode1)) {
     SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "rfi_flag" "', argument " "1"" of type '" "int""'");
@@ -3384,32 +3365,37 @@ SWIGINTERN PyObject *_wrap_rfi_flag(PyObject *SWIGUNUSEDPARM(self), PyObject *ar
     SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "rfi_flag" "', argument " "3"" of type '" "int""'");
   } 
   arg3 = (int)(val3);
-  ecode4 = SWIG_AsVal_double(obj3, &val4);
+  ecode4 = SWIG_AsVal_int(obj3, &val4);
   if (!SWIG_IsOK(ecode4)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode4), "in method '" "rfi_flag" "', argument " "4"" of type '" "double""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode4), "in method '" "rfi_flag" "', argument " "4"" of type '" "int""'");
   } 
-  arg4 = (double)(val4);
-  res5 = SWIG_ConvertPtr(obj4, &argp5,SWIGTYPE_p_double, 0 |  0 );
-  if (!SWIG_IsOK(res5)) {
-    SWIG_exception_fail(SWIG_ArgError(res5), "in method '" "rfi_flag" "', argument " "5"" of type '" "double [2048]""'"); 
+  arg4 = (int)(val4);
+  ecode5 = SWIG_AsVal_double(obj4, &val5);
+  if (!SWIG_IsOK(ecode5)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode5), "in method '" "rfi_flag" "', argument " "5"" of type '" "double""'");
   } 
-  arg5 = (double *)(argp5);
+  arg5 = (double)(val5);
   res6 = SWIG_ConvertPtr(obj5, &argp6,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res6)) {
-    SWIG_exception_fail(SWIG_ArgError(res6), "in method '" "rfi_flag" "', argument " "6"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res6), "in method '" "rfi_flag" "', argument " "6"" of type '" "double *""'"); 
+  }
   arg6 = (double *)(argp6);
   res7 = SWIG_ConvertPtr(obj6, &argp7,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res7)) {
-    SWIG_exception_fail(SWIG_ArgError(res7), "in method '" "rfi_flag" "', argument " "7"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res7), "in method '" "rfi_flag" "', argument " "7"" of type '" "double *""'"); 
+  }
   arg7 = (double *)(argp7);
-  res8 = SWIG_ConvertPtr(obj7, &argp8,SWIGTYPE_p_int, 0 |  0 );
+  res8 = SWIG_ConvertPtr(obj7, &argp8,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res8)) {
-    SWIG_exception_fail(SWIG_ArgError(res8), "in method '" "rfi_flag" "', argument " "8"" of type '" "int [2048]""'"); 
-  } 
-  arg8 = (int *)(argp8);
-  rfi_flag(arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8);
+    SWIG_exception_fail(SWIG_ArgError(res8), "in method '" "rfi_flag" "', argument " "8"" of type '" "double *""'"); 
+  }
+  arg8 = (double *)(argp8);
+  res9 = SWIG_ConvertPtr(obj8, &argp9,SWIGTYPE_p_int, 0 |  0 );
+  if (!SWIG_IsOK(res9)) {
+    SWIG_exception_fail(SWIG_ArgError(res9), "in method '" "rfi_flag" "', argument " "9"" of type '" "int *""'"); 
+  }
+  arg9 = (int *)(argp9);
+  rfi_flag(arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9);
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -3419,20 +3405,21 @@ fail:
 
 SWIGINTERN PyObject *_wrap_clean(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
-  double arg1 ;
-  int arg2 ;
+  int arg1 ;
+  double arg2 ;
   int arg3 ;
   int arg4 ;
   int arg5 ;
   int arg6 ;
-  double *arg7 ;
-  double *arg8 ;
-  double *arg9 ;
-  double *arg10 ;
-  int *arg11 ;
-  double val1 ;
+  int arg7 ;
+  double *arg8 = (double *) 0 ;
+  double *arg9 = (double *) 0 ;
+  double *arg10 = (double *) 0 ;
+  double *arg11 = (double *) 0 ;
+  int *arg12 = (int *) 0 ;
+  int val1 ;
   int ecode1 = 0 ;
-  int val2 ;
+  double val2 ;
   int ecode2 = 0 ;
   int val3 ;
   int ecode3 = 0 ;
@@ -3442,8 +3429,8 @@ SWIGINTERN PyObject *_wrap_clean(PyObject *SWIGUNUSEDPARM(self), PyObject *args)
   int ecode5 = 0 ;
   int val6 ;
   int ecode6 = 0 ;
-  void *argp7 = 0 ;
-  int res7 = 0 ;
+  int val7 ;
+  int ecode7 = 0 ;
   void *argp8 = 0 ;
   int res8 = 0 ;
   void *argp9 = 0 ;
@@ -3452,6 +3439,8 @@ SWIGINTERN PyObject *_wrap_clean(PyObject *SWIGUNUSEDPARM(self), PyObject *args)
   int res10 = 0 ;
   void *argp11 = 0 ;
   int res11 = 0 ;
+  void *argp12 = 0 ;
+  int res12 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   PyObject * obj2 = 0 ;
@@ -3463,18 +3452,19 @@ SWIGINTERN PyObject *_wrap_clean(PyObject *SWIGUNUSEDPARM(self), PyObject *args)
   PyObject * obj8 = 0 ;
   PyObject * obj9 = 0 ;
   PyObject * obj10 = 0 ;
+  PyObject * obj11 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOOOOOOOOOO:clean",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6,&obj7,&obj8,&obj9,&obj10)) SWIG_fail;
-  ecode1 = SWIG_AsVal_double(obj0, &val1);
+  if (!PyArg_ParseTuple(args,(char *)"OOOOOOOOOOOO:clean",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6,&obj7,&obj8,&obj9,&obj10,&obj11)) SWIG_fail;
+  ecode1 = SWIG_AsVal_int(obj0, &val1);
   if (!SWIG_IsOK(ecode1)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "clean" "', argument " "1"" of type '" "double""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode1), "in method '" "clean" "', argument " "1"" of type '" "int""'");
   } 
-  arg1 = (double)(val1);
-  ecode2 = SWIG_AsVal_int(obj1, &val2);
+  arg1 = (int)(val1);
+  ecode2 = SWIG_AsVal_double(obj1, &val2);
   if (!SWIG_IsOK(ecode2)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "clean" "', argument " "2"" of type '" "int""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "clean" "', argument " "2"" of type '" "double""'");
   } 
-  arg2 = (int)(val2);
+  arg2 = (double)(val2);
   ecode3 = SWIG_AsVal_int(obj2, &val3);
   if (!SWIG_IsOK(ecode3)) {
     SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "clean" "', argument " "3"" of type '" "int""'");
@@ -3495,32 +3485,37 @@ SWIGINTERN PyObject *_wrap_clean(PyObject *SWIGUNUSEDPARM(self), PyObject *args)
     SWIG_exception_fail(SWIG_ArgError(ecode6), "in method '" "clean" "', argument " "6"" of type '" "int""'");
   } 
   arg6 = (int)(val6);
-  res7 = SWIG_ConvertPtr(obj6, &argp7,SWIGTYPE_p_double, 0 |  0 );
-  if (!SWIG_IsOK(res7)) {
-    SWIG_exception_fail(SWIG_ArgError(res7), "in method '" "clean" "', argument " "7"" of type '" "double [2048]""'"); 
+  ecode7 = SWIG_AsVal_int(obj6, &val7);
+  if (!SWIG_IsOK(ecode7)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode7), "in method '" "clean" "', argument " "7"" of type '" "int""'");
   } 
-  arg7 = (double *)(argp7);
+  arg7 = (int)(val7);
   res8 = SWIG_ConvertPtr(obj7, &argp8,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res8)) {
-    SWIG_exception_fail(SWIG_ArgError(res8), "in method '" "clean" "', argument " "8"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res8), "in method '" "clean" "', argument " "8"" of type '" "double *""'"); 
+  }
   arg8 = (double *)(argp8);
   res9 = SWIG_ConvertPtr(obj8, &argp9,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res9)) {
-    SWIG_exception_fail(SWIG_ArgError(res9), "in method '" "clean" "', argument " "9"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res9), "in method '" "clean" "', argument " "9"" of type '" "double *""'"); 
+  }
   arg9 = (double *)(argp9);
   res10 = SWIG_ConvertPtr(obj9, &argp10,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res10)) {
-    SWIG_exception_fail(SWIG_ArgError(res10), "in method '" "clean" "', argument " "10"" of type '" "double [2048]""'"); 
-  } 
+    SWIG_exception_fail(SWIG_ArgError(res10), "in method '" "clean" "', argument " "10"" of type '" "double *""'"); 
+  }
   arg10 = (double *)(argp10);
-  res11 = SWIG_ConvertPtr(obj10, &argp11,SWIGTYPE_p_int, 0 |  0 );
+  res11 = SWIG_ConvertPtr(obj10, &argp11,SWIGTYPE_p_double, 0 |  0 );
   if (!SWIG_IsOK(res11)) {
-    SWIG_exception_fail(SWIG_ArgError(res11), "in method '" "clean" "', argument " "11"" of type '" "int [2048]""'"); 
-  } 
-  arg11 = (int *)(argp11);
-  clean(arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10,arg11);
+    SWIG_exception_fail(SWIG_ArgError(res11), "in method '" "clean" "', argument " "11"" of type '" "double *""'"); 
+  }
+  arg11 = (double *)(argp11);
+  res12 = SWIG_ConvertPtr(obj11, &argp12,SWIGTYPE_p_int, 0 |  0 );
+  if (!SWIG_IsOK(res12)) {
+    SWIG_exception_fail(SWIG_ArgError(res12), "in method '" "clean" "', argument " "12"" of type '" "int *""'"); 
+  }
+  arg12 = (int *)(argp12);
+  clean(arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10,arg11,arg12);
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -3539,8 +3534,6 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"intarray_setitem", _wrap_intarray_setitem, METH_VARARGS, NULL},
 	 { (char *)"absl", _wrap_absl, METH_VARARGS, NULL},
 	 { (char *)"sq", _wrap_sq, METH_VARARGS, NULL},
-	 { (char *)"testing", _wrap_testing, METH_VARARGS, NULL},
-	 { (char *)"testing2", _wrap_testing2, METH_VARARGS, NULL},
 	 { (char *)"get_rms", _wrap_get_rms, METH_VARARGS, NULL},
 	 { (char *)"xi_square_fit", _wrap_xi_square_fit, METH_VARARGS, NULL},
 	 { (char *)"get_fit", _wrap_get_fit, METH_VARARGS, NULL},
