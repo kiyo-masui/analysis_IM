@@ -226,7 +226,6 @@ class DirtyMapMaker(object) :
             noise_mem[...] = sp.rollaxis(noise_inv, -1)
 
             # Free up all that memory and flush memory maps to file.
-            print map_mem.info
             del mfile, map_mem, noise_mem, map_data, noise_inv 
             
             # Save the file names for the history.
