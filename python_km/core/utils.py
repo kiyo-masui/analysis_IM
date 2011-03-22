@@ -3,6 +3,7 @@
 import time
 
 import scipy as sp
+from scipy.interpolate import interp1d
 import ephem
 
 def elaz2radec_lst(el, az, lst, lat = 38.43312) :
@@ -59,6 +60,16 @@ def elaz2radecGBT(el, az, UT) :
 
     return ra*180.0/sp.pi, dec*180.0/sp.pi
 
+def time2float(UT) :
+    """Calculates float seconds from a time string.
+
+    Convert a time string in format %Y-%m-%dT%H:%M:%S.partial to a float number
+    of seconds ignaroing all posible corrections."""
+    
+    UT_wholesec, partial_sec = UT.split('.', 1)
+    to = time.strptime(UT_wholesec, "%Y-%m-%dT%H:%M:%S")
+    return (float('0.' + partial_sec) + to.tm_sec + 60*(to.tm_min + 
+            60*(to.tm_hour + 24*(to.tm_yday + 365*(to.tm_year-2000)))))
 
 def mk_map_grid(centre, shape, spacing) :
     """Make a grid of coordinates in Ra and Dec.
@@ -79,5 +90,72 @@ def mk_map_grid(centre, shape, spacing) :
 
     return grid_ra, grid_dec
 
+def get_beam(freq) :
+    """Get the GBT beam width at a frequency (or an array of frequencies).
 
+    This is currently pretty rough and only uses on scans worth of data.
+    """
 
+    # This data is pretty rough.  Just cut and pasted from one scan, not
+    # averaged.
+    beam_data = [0.316148488246, 0.306805630985, 0.293729620792, 
+                 0.281176247549, 0.270856788455, 0.26745856078, 
+                 0.258910010848, 0.249188429031]
+    freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905], dtype=float)
+    freq_data *= 1.0e6
+    f = interp1d(freq_data, beam_data, bounds_error=False, fill_value = -1)
+    b = f(freq)
+    b[b<0] = 0.316148488246
+    return b
+    
+def polint2str(pol_int) :
+    """Convert an interger representing a polarization to a representing the
+    polarization.
+
+    This is based on the SDfits convention that I pulled from: 
+        https://safe.nrao.edu/wiki/bin/view/Main/SdfitsDetails
+
+    Here are the return values based on the passed integer.
+
+    RR  -1
+    LL 	-2
+    RL 	-3
+    LR 	-4
+    XX 	-5
+    YY 	-6
+    XY 	-7
+    YX 	-8
+    I 	1
+    Q 	2
+    U 	3
+    V 	4
+    Otherwise raises a ValueError.
+    """
+
+    if pol_int == -1 :
+        return 'RR'
+    elif pol_int == -2 :
+        return 'LL'
+    elif pol_int == -3 :
+        return 'RL'
+    elif pol_int == -4 :
+        return 'LR'
+    elif pol_int == -5 :
+        return 'XX'
+    elif pol_int == -6 :
+        return 'YY'
+    elif pol_int == -7 :
+        return 'XY'
+    elif pol_int == -8 :
+        return 'YX'
+    elif pol_int == 1 :
+        return 'I'
+    elif pol_int == 2 :
+        return 'Q'
+    elif pol_int == 3 :
+        return 'U'
+    elif pol_int == 4 :
+        return 'V'
+    else :
+        raise ValueError("Polarization integer must be in range(-8, 5) and "
+                         "nonzero")

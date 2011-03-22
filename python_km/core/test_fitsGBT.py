@@ -142,6 +142,11 @@ class TestReads(unittest.TestCase) :
             self.assertEqual(cal_set[ii], self.DBlock.field['CAL'][ii])
         self.assertEqual(self.DBlock.field_formats['CRVAL1'], '1D')
         self.assertEqual(self.DBlock.field_formats['CRVAL4'], '1I')
+        # Multi Dimensional field read.
+        self.assertEqual(self.DBlock.field['EXPOSURE'].shape, 
+                         (ntimes_scan, ncal))
+        self.assertEqual(self.DBlock.field_axes['EXPOSURE'], 
+                         ('time', 'cal'))
 
     def tearDown(self) :
         del self.Reader
@@ -231,11 +236,10 @@ class TestCircle(unittest.TestCase) :
             for field in ['SCAN', 'OBJECT', 'TIMESTAMP',
                           'OBSERVER', 'CRPIX1', 'CDELT1'] :
                 self.assertEqual(OldDB.field[field], NewDB.field[field])
-            for field in ['CRVAL1', 'BANDWID', 'RESTFREQ', 'DURATION',
-                          'EXPOSURE'] :
+            for field in ['CRVAL1', 'BANDWID', 'RESTFREQ', 'DURATION'] :
                 self.assertAlmostEqual(OldDB.field[field], NewDB.field[field])
             for field in ['LST', 'ELEVATIO', 'AZIMUTH', 
-                          'OBSFREQ', 'CRVAL2', 'CRVAL3'] :
+                          'OBSFREQ', 'CRVAL2', 'CRVAL3', 'EXPOSURE'] :
                 self.assertTrue(sp.allclose(OldDB.field[field], 
                                             NewDB.field[field]))
             for field in ['DATE-OBS'] :

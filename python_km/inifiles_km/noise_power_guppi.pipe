@@ -1,0 +1,54 @@
+import os
+from core import dir_data
+import scipy as sp
+
+#file_middles = ("40_wigglez15hrst_ralongmap_69-76",
+#                "40_wigglez15hrst_ralongmap_85-92",
+#                "40_wigglez15hrst_ralongmap_77-84")
+file_middles = ("40_3C286_onoff_66", "40_3C286_onoff_68")
+
+base_dir = os.getenv('GBT10B_OUT')
+data_dir = base_dir + '/guppi_data/'
+prefix = 'guppi_niose_'
+
+pipe_modules = []
+pipe_processes = 6
+
+from time_stream import rebin_freq
+pipe_modules.append(rebin_freq.RebinFreq)
+rf_input_root = data_dir
+rf_file_middles = file_middles
+rf_input_end = '.fits'
+rf_output_root = base_dir + 'rebinned/' + prefix
+rf_output_end = '.fits'
+rf_scans = ()
+rf_IFs = ()
+
+rf_channel_width = 5.0
+rf_mean_instead_median = True
+
+from noise import noise_power
+#pipe_modules.append(noise_power.NoisePower)
+np_input_root = rf_output_root
+np_file_middles = file_middles
+np_input_end = '.fits'
+np_output_root = base_dir + 'noise/' + prefix
+np_output_end = '.fits'
+np_scans = ()
+np_IFs = ()
+
+np_calculate_power_spectrum = True
+np_calculate_covariance = False
+np_lags = tuple(sp.arange(0.01, 61, 5.))
+np_segment_length = 432
+
+#np_pol_weights = (1.0,)
+np_pol_weights = (1.0, 0.0, 0., 0.0)
+np_cal_weights = (1.0, 1.0)
+
+np_subtract_freq_average = True
+np_normalize_to_average = True
+np_normalize_dnudt = True
+np_norm_pol_weights = (1.0, 0.0, 0.0, 0.0)
+np_norm_cal_weights = (1.0, 1.0)
+

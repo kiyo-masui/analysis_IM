@@ -60,11 +60,13 @@ class DataBlock(base_data.BaseData) :
 
     def plot_spectra(self, times=(), pols=(), cals=(), time_average=False) :
         """Make a plot along frequency axis."""
-        # 
+        #
+
+    def calc_time(self) :
+        self.time = sp.empty(self.dims[0])
+        for ii in range(self.dims[0]) :
+            self.time[ii] = utils.time2float(self.field['DATE-OBS'][ii])
 
 
 # Clone some extra functions:
-
-merge_histories = base_data.merge_histories
-
-History = base_data.History
+from hist import History, merge_histories

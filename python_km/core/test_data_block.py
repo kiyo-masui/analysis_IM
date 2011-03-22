@@ -91,8 +91,17 @@ class TestFields(unittest.TestCase) :
         self.assertRaises(ValueError, self.TestDB.verify)
 
     def test_multiD_field(self) :
-        self.assertRaises(NotImplementedError, self.TestDB.set_field, 'afield', 
-                          sp.ones((npol,ncal)), ('pol', 'cal'), '1I')
+        self.TestDB.set_field('afield', sp.ones((npol,ncal)), ('pol', 'cal'), '1I')
+        self.TestDB.verify()
+        self.assertTrue(sp.allclose(self.TestDB.field['afield'],
+                                    sp.ones((npol,ncal))))
+        self.assertEqual(self.TestDB.field_axes['afield'], ('pol', 'cal'))
+        # fitsGBT depends on these tests.  If you generalize this, add tests to
+        # fitsGBT.
+        self.assertRaises(ValueError, self.TestDB.set_field, 'afield',
+                          sp.ones((npol,npol)), ('pol', 'pol'), '1I')
+        self.assertRaises(ValueError, self.TestDB.set_field, 'afield',
+                          sp.ones((ncal,npol)), ('cal', 'pol'), '1I')
 
     def test_zeroD_fields(self) :
         self.TestDB.set_field('SCAN', 113, format='1I')
@@ -186,7 +195,6 @@ class TestHistory(unittest.TestCase) :
     def tearDown(self) :
         del self.TestDB
 
-
 class TestGBTmethods(unittest.TestCase) :
     """Unit tests for methods that should only work if the Data Block is from a
     GBT fits file.  Assumes specific fields have been set."""
@@ -215,7 +223,12 @@ class TestGBTmethods(unittest.TestCase) :
                                sp.amax(self.Data.freq) -
                                sp.amin(self.Data.freq), -5)
 
-
+    def test_calculates_time(self) :
+        self.Data.calc_time()
+        self.assertTrue(hasattr(self.Data, 'time'))
+        t_copy = sp.copy(self.Data.time)
+        t_copy.sort()
+        self.assertTrue(sp.allclose(t_copy, self.Data.time))
 
 
 if __name__ == '__main__' :

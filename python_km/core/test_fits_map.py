@@ -48,6 +48,13 @@ class Tests(unittest.TestCase) :
         hist = read_map.history
         self.assertTrue(hist.has_key('000: Created from scratch.'))
 
+    def test_read_works_missing_field(self) :
+        del self.test_map.field['POL']
+        fits_map.write(self.test_map, 'temp_testmap.fits', feedback=0)
+        read_map = fits_map.read('temp_testmap.fits', feedback=0)
+        os.remove('temp_testmap.fits')
+
+
         
     def tearDown(self) :
         del self.test_map

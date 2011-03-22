@@ -6,7 +6,7 @@ import cProfile
 import numpy.ma as ma
 
 from core import fitsGBT
-from time_stream import flag_data
+import time_stream.flag_data_aravind as flag_data
 
 data_file_name = (os.getenv('GBT10B_DATA') +
                   '06_wigglez1hr_azel_180-187.raw.acs.fits')

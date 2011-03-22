@@ -48,8 +48,8 @@ rf_scans = ()
 rf_IFs = ()
 rf_channel_width = 2.0
 
-from map import map_maker_simple
-pipe_modules.append(map_maker_simple.MapMaker)
+from map import dirty_map
+pipe_modules.append(dirty_map.DirtyMapMaker)
 mm_input_root = out_root
 mm_file_middles = file_middles
 mm_input_end = rf_output_end

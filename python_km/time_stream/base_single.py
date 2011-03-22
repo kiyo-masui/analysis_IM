@@ -64,7 +64,7 @@ class BaseSingle(object) :
         self.block_feedback = 'Did nothing.'
         return Data
     # Don't worry too much about the feedback stuff; it's safe to ignore it.
-    # If you want to see feedback in action loof at time_stream/flag_data.py.
+    # If you want to see feedback in action look at time_stream/flag_data.py.
 
     # Don't overwrite these in derivative classes.
     def __init__(self, parameter_file_or_dict=None, feedback=2) :
@@ -76,8 +76,7 @@ class BaseSingle(object) :
         
         # Read in the parameters.
         self.params = parse_ini.parse(parameter_file_or_dict, params_init,
-                                      prefix=self.prefix,
-                                      checking=10*self.feedback + 2)
+                                      prefix=self.prefix, feedback=feedback)
     
     def execute(self, n_processes=1) :
         """Process all data.

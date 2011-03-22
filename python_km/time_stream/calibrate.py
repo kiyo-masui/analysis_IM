@@ -25,6 +25,24 @@ class Calibrate(base_single.BaseSingle) :
                    'cal_temperature_files' : ('some_file_name.fits',)
                    }
 
+    # Add extra stuff to the constructor.
+    def __init__(self, parameter_file_or_dict=None, feedback=2):
+        
+        # Call the base_single init.
+        base_single.BaseSingle.__init__(self, parameter_file_or_dict, 
+                                        feedback)
+        # Read in the calibration file.
+        file_names = self.params['cal_temperature_files']
+        if len(file_names) > 1 :
+            raise NotImplementedError('Can use a single calibration file'
+                                      ' at a time.')
+        Reader = fitsGBT.Reader(file_names[0], feedback=self.feedback)
+        self.CalData = Reader.read([],[])
+        if type(self.CalData) is tuple :
+            raise ce.DataError('Expected calibration file to have only a'
+                               ' single scan and IF.')
+
+
     def action(self, Data) :
         """Calls multiply_by_cal.
         
@@ -32,19 +50,9 @@ class Calibrate(base_single.BaseSingle) :
         temperature to the data.
         """
         
-        # On first iteration read in noise cal data and store it.
-        if not hasattr(self, 'CalData') :
-            file_names = self.params['cal_temperature_files']
-            if len(file_names) > 1 :
-                raise NotImplementedError('Can use a single calibration file'
-                                          ' at a time.')
-            Reader = fitsGBT.Reader(file_names[0], feedback=self.feedback)
-            self.CalData = Reader.read([],[])
-            if type(self.CalData) is tuple :
-                raise ce.DataError('Expected calibration file to have only a'
-                                   ' single scan and IF.')
         # Scale data by noise cal termperature.
         multiply_by_cal(Data, self.CalData)
+        Data.add_history("Put into units of Kelvin.")
         return Data
 
 
