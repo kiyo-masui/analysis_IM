@@ -27,15 +27,26 @@ import kiyopy.custom_exceptions as ce
 import kiyopy.pickle_method
 
 params_init = {# Inputs.
+               # Everything up to the scan number.
                "guppi_input_root" : "./",
+               # Everything after the scan number
                "guppi_input_end" : ".fits",
+               # The directory containing the fits scan log file (with antenna
+               # and go fits subdirectories).
                "fits_log_dir" : "./",
-               # Outputs.
+               # Where to write converted files.
                "output_root" : "./",
-               # Scans to convert.  At least on from every RaLongMap.
+               # Scans to convert.  List of scan numbers to convert.  Other
+               # scans in same proceedure are automatically selected if
+               # combine_map_scans = True
                "scans" : (0,),
+               # Whethar to combine all the scans from a proceedure into a
+               # single file.
                "combine_map_scans" : False,
+               # Split cal on and cal off.
                "partition_cal" : False,
+               # How many time bins to average over when resampling.  Must be a
+               # power of 2 and less than 2048.
                "time_bins_to_average" : 1
                }
 prefix = ''
