@@ -16,7 +16,7 @@ filename1 = filename1.split('.')[0]
 
 hdudata = pyfits.open(filename1+'.fits')
 # 0 is nothing, 1 is I, 2 is Q, 3 is U, 4 is V
-hdr = hdudata[4].header
+hdr = hdudata[1].header
 #RA I think, 3rd index in data
 crval1 = hdr['CRVAL1']
 crpix1 = hdr['CRPIX1']
@@ -32,8 +32,8 @@ crpix3 = hdr['CRPIX3']
 cdelt3 = hdr['CDELT3']
 
 # If want to do i_slices need first version
-#image_cube = hdudata[1].data
-image_cube = hdudata[4].data
+image_cube = hdudata[1].data
+#image_cube = hdudata[4].data
 
 slices = image_cube.shape[0]
 #print slices
@@ -71,8 +71,9 @@ for slice, freq in enumerate(freqs):
 #   for element in image_cube[slice][cut]:
 #      print element
 # Alternate plotting command to set temperature limits
-#   pylab.imshow(image_cube[slice], interpolation='gaussian',vmin=-0.8, vmax=0.8, extent=(ra.max(),ra.min(),dec.min(),dec.max()), origin='lower')
-   pylab.imshow(image_cube[slice], interpolation='gaussian', extent=(ra.max(),ra.min(),dec.min(),dec.max()), origin='lower')
+   pylab.imshow(image_cube[slice], interpolation='gaussian',vmin=-2, vmax=2, extent=(ra.max(),ra.min(),dec.min(),dec.max()), origin='lower')
+#   pylab.imshow(image_cube[slice], interpolation='gaussian', extent=(ra.max(),ra.min(),dec.min(),dec.max()), origin='lower')
    pylab.colorbar()
-   pylab.savefig('v_'+filename1+str(freq)[:3]+'.png')
+   pylab.savefig(filename1+str(freq)[:3]+'.png')
+#   pylab.savefig('v_'+filename1+str(freq)[:3]+'.png')
    pylab.clf()
