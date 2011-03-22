@@ -6,16 +6,16 @@ import core.algebra as al
 
 filename1 = sys.argv[1]
 
-#filename1 = filename1.split('.')[0]
+filename2 = filename1.split('.')[0]
 
 array = al.load(filename1)
 array = al.make_vect(array)
 
 #   creates a 3D array with indices (freq, ra, dec)
 
-ra = array.calc_axis('ra')
-dec = array.calc_axis('dec')
-freqs = array.calc_axis('freq')
+ra = array.get_axis('ra')
+dec = array.get_axis('dec')
+freqs = array.get_axis('freq')
 freqs = freqs/1e6
 
 for slice, freq in enumerate(freqs):
@@ -31,9 +31,9 @@ for slice, freq in enumerate(freqs):
 #   for element in image_cube[slice][cut]:
 #      print element
 #   Alternate plotting command to set temperature limits
-#   pylab.imshow(image_cube[slice], interpolation='gaussian',vmin=-2, vmax=2, extent=(ra.max(),ra.min(),dec.min(),dec.max()), origin='lower')
-   pylab.imshow(image_cube[slice], interpolation='gaussian', extent=(ra.max(),ra.min(),dec.min(),dec.max()), origin='lower')
+#   pylab.imshow(array[slice], interpolation='gaussian',vmin=-2, vmax=2, extent=(dec.max(),dec.min(),ra.min(),ra.max()), origin='lower')
+   pylab.imshow(array[slice], interpolation='gaussian', extent=(dec.max(),dec.min(),ra.min(),ra.max()), origin='lower')
    pylab.colorbar()
-   pylab.savefig(filename1+str(freq)[:3]+'.png')
-#   pylab.savefig('v_'+filename1+str(freq)[:3]+'.png')
+   pylab.savefig(filename2+str(freq)[:3]+'.png')
+#   pylab.savefig('v_'+filename2+str(freq)[:3]+'.png')
    pylab.clf()
