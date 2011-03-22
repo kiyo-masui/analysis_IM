@@ -450,11 +450,18 @@ def get_cal_mask(data, n_bins_cal) :
                            "transitions.  Profile array: "
                            + profile_str)
     # Find the last bin off before on.
+    last_off_ind = None
     for kk in xrange(n_bins_cal) :
         if ((folded_data[kk] < base-0.80*diff) and not
             (folded_data[(kk+1)%n_bins_cal] < base-0.80*diff)):
             last_off_ind = kk
             break
+    if last_off_ind is None :
+        profile_str = repr((folded_data - sp.mean(folded_data))
+                           / sp.std(folded_data))
+        raise ce.DataError("Cal profile not lining up "
+                           "correctly.  Profile array: "
+                           + profile_str)
     # If last_off_ind+1 is a transitional bin, then we only need
     # to cut 2 bins.  If it's in the cal-on category, we should
     # cut 4 bins.

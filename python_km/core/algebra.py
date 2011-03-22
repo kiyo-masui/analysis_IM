@@ -52,9 +52,10 @@ matrix 'M' with 3 row dimensions named ('a', 'b', 'c') and 2 column dimensions
 vector W = M*V?  Obviously W should have three dimensions named ('a', 'b',
 'c').  This is implemented in the 'dot' function of this module.
 
-Note that all views and slices of mat and vect objects should be treated as
-numpy arrays and you should not assume that any mat and vect functionalty has
-been preserved.
+Note that slices of mat and vect objects are generally just normal arrays or
+memmaps.  In general operations that change the same of an vect or mat are
+dangerouse and to be avoided.  Instead, make a view and mess with around with
+that.
 """
 
 import os
@@ -91,8 +92,10 @@ class info_array(sp.ndarray) :
         return obj
 
     def __array_finalize__(self, obj):
-        if obj is None: return
-        self.info = getattr(obj, 'info', {})
+        if obj is None: 
+            return
+        # Info is a reference to the origional for views.
+        self.info = (getattr(obj, 'info', {}))
     
     def __deepcopy__(self, copy):
         """Not implemented, raises an exception."""
@@ -132,7 +135,8 @@ class info_memmap(sp.memmap) :
     def __array_finalize__(self, obj):
         sp.memmap.__array_finalize__(self, obj)
         if obj is None: return
-        self.info = getattr(obj, 'info', {})
+        # Info is a reference to the origional for views.
+        self.info = (getattr(obj, 'info', {}))
         self.metafile = getattr(obj, 'metafile', None)
 
     def flush(self) :
@@ -371,6 +375,12 @@ class alg_object(object) :
         return (self.info[axis_name + '_delta']*(sp.arange(len) - len//2) 
                 + self.info[axis_name + '_centre'])
 
+    def __getitem__(self, key) :
+        if isinstance(self, sp.memmap) :
+            return self.view(sp.memmap)[key]
+        else :
+            return sp.asarray(self)[key]
+
 #### Vector class definitions ####
 
 class vect(alg_object) :
@@ -392,6 +402,16 @@ class vect(alg_object) :
         flat = self.view(sp.ndarray)
         flat.shape = (self.size, )
         return flat
+
+    __array_priority__ = 2.0
+
+    def __array_wrap__(self, out_arr, context=None) :
+        if out_arr.shape == self.shape :
+            out = out_arr.view(vect_array)
+            out.info = dict(self.info)
+            return out
+        else :
+            return sp.asarray(out_arr)
     
 def _vect_class_factory(base_class) :
     """Internal class factory for making a vector class that inherits from
@@ -447,12 +467,16 @@ def _vect_class_factory(base_class) :
                 _check_axis_names(self)
                 return (self.size,)
             else :
+                # Since numpy uses __get_attribute__ not __getattr__, we should
+                # raise an Attribute error.
                 raise AttributeError("Attribute " + name + " not found.")
 
     return vect_class
 
 vect_array = _vect_class_factory(info_array)
+vect_array.__name__ = 'vect_array'
 vect_memmap = _vect_class_factory(info_memmap)
+vect_memmap.__name__ = 'vect_memmap'
     
 def make_vect(array, axis_names=None) :
     """Do what ever it takes to make an vect out of an array.
@@ -482,6 +506,16 @@ class mat(alg_object) :
     info_memmap, for example the classes mat_array and mat_memmap.
     """
     
+    __array_priority__ = 3.0
+
+    def __array_wrap__(self, out_arr, context=None) :
+        if out_arr.shape == self.shape :
+            out = out_arr.view(mat_array)
+            out.info = dict(self.info)
+            return out
+        else :
+            return sp.asarray(out_arr)
+
     def check_rows_cols(self) :
         """Check that rows and cols are valid for the matrix."""
         _check_rows_cols(self)
@@ -699,12 +733,17 @@ def _mat_class_factory(base_class) :
                     ncols *= self.shape[axis]
                 return (nrows, ncols)
             else :
+                # Since numpy uses __get_attribute__ not __getattr__, we should
+                # raise an Attribute error.
                 raise AttributeError("Attribute " + name + " not found.")
 
     return mat_class
 
 mat_array = _mat_class_factory(info_array)
+mat_array.__name__ = 'mat_array'
 mat_memmap = _mat_class_factory(info_memmap)
+mat_memmap.__name__ = 'mat_memmap'
+
 
 def make_mat(array, row_axes=None, col_axes=None, axis_names=None) :
     """Do what ever it takes to make an mat out of an array.
@@ -778,3 +817,20 @@ def dot(arr1, arr2, check_inner_axes=True) :
         raise NotImplementedError("Matrix-matrix multiplication has not been "
                                   "Implemented yet.")
 
+def zeros_like(obj) :
+    """Create a new algebra full of zeros but otherwise the same as the passed
+    object."""
+
+    out = sp.zeros_like(obj)
+
+    if isinstance(obj, vect) :
+        out = make_vect(out)
+        out.info = dict(obj.info)
+    elif isinstance(obj, mat) :
+        out = info_array(out)
+        out.info = dict(obj.info)
+        out = make_mat(out)
+    else :
+        raise TypeError("Expected an algebra mat or vect.")
+    
+    return out

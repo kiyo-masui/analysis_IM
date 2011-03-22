@@ -1,22 +1,22 @@
 # Pipeline file for guppi data.
 
 import os
+
 from core import dir_data
 import scipy as sp
 
 
 field = '15hr'
-file_middles = ("40_wigglez15hrst_ralongmap_69-76",
-                "40_wigglez15hrst_ralongmap_85-92",
-                "40_wigglez15hrst_ralongmap_77-84")
-#file_middles = ("40_3C286_onoff_66", "40_3C286_onoff_68")
+file_middles = tuple(dir_data.get_data_files([40, 41], '15hr', type='guppi'))
 
 base_dir = os.getenv('GBT10B_OUT')
 data_dir = base_dir + '/guppi_data/'
-prefix = 'guppi_pipe_'
+prefix = ''
+#map_prefix = prefix + field + '_40-41_'
+map_prefix = 'test_tbug_' + field + '_40-41_'
 
 pipe_modules = []
-pipe_processes = 6
+pipe_processes = 7
 
 from time_stream import rebin_freq
 #pipe_modules.append(rebin_freq.RebinFreq)
@@ -28,21 +28,57 @@ rf_output_end = '.fits'
 rf_scans = ()
 rf_IFs = ()
 
-rf_channel_width = 5.0
+rf_channel_width = 2.0
 rf_mean_instead_median = True
 
+from time_stream import cal_scale
+#pipe_modules.append(cal_scale.CalScale)
+cs_input_root = rf_output_root
+cs_file_middles = file_middles
+cs_input_end = '.fits'
+cs_output_root = base_dir + 'cal_scaled/' + prefix
+cs_output_end = '.fits'
+cs_scans = ()
+cs_IFs = ()
+
+cs_scale_time_average = True
+cs_scale_freq_average = False
+cs_subtract_time_median = False
+
+from time_stream import combine_cal
+#pipe_modules.append(combine_cal.CombineCal)
+cc_input_root = cs_output_root
+cc_file_middles = file_middles
+cc_input_end = '.fits'
+cc_output_root = base_dir + 'combined/' + prefix
+cc_output_end = '.fits'
+cc_scans = ()
+cc_IFs = ()
+
+cc_subtract_time_mean = True
+cc_average_cal_states = True
+
 from map import dirty_map
-pipe_modules.append(dirty_map.DirtyMap)
-dm_input_root = rf_output_root
+pipe_modules.append(dirty_map.DirtyMapMaker)
+dm_input_root = cc_output_root
 dm_file_middles = file_middles
 dm_input_end = '.fits'
-dm_output_root = base_dir + 'maps/' + prefix
+dm_output_root = base_dir + 'maps/' + map_prefix
 dm_scans = ()
 dm_IFs = (0,)
 
-dm_field_centre = (218.25, 2.0)
-#dm_map_shape = (70, 45)
-dm_map_shape = (100, 80)
+dm_field_centre = (218., 2.0)
+#dm_map_shape = (65, 30)
+dm_map_shape = (20, 10)
+#dm_map_shape = (100, 80)
 dm_pixel_spacing = .075
-dm_noise_model = 'grid'
+dm_noise_model = 'disjoint_scans'
+
+from map import clean_map
+pipe_modules.append(clean_map.CleanMapMaker)
+cm_input_root = dm_output_root
+cm_output_root = cm_input_root
+cm_polarizations = ('I',)
+
+
 
