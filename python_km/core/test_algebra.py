@@ -405,7 +405,20 @@ class TestMatUtils(unittest.TestCase) :
                                     2.0*(sp.arange(5) - 5//2) + 800))
         self.assertTrue(sp.allclose(self.vect.get_axis('a'), 
                                     1.0*(sp.arange(2) - 2//2) + 5))
-        
+
+    def test_zeros_like(self) :
+        zvect = algebra.zeros_like(self.vect)
+        self.assertEqual(self.vect.info, zvect.info)
+        self.assertTrue(sp.allclose(zvect, 0))
+        self.assertTrue(isinstance(zvect, algebra.vect))
+        self.assertTrue(not sp.allclose(self.vect, 0))
+        zmat = algebra.zeros_like(self.mat)
+        self.assertEqual(self.mat.info, zmat.info)
+        self.assertTrue(sp.allclose(zmat, 0))
+        self.assertTrue(isinstance(zmat, algebra.mat))
+        self.assertTrue(not sp.allclose(self.mat, 0))
+        self.assertRaises(TypeError, algebra.zeros_like, {'a': 3})
+
 
 if __name__ == '__main__' :
     unittest.main()
