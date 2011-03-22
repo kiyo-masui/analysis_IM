@@ -94,9 +94,8 @@ class info_array(sp.ndarray) :
     def __array_finalize__(self, obj):
         if obj is None: 
             return
-        #elif isinstance(obj, info_array):
-
-        self.info = dict(getattr(obj, 'info', {}))
+        # Info is a reference to the origional for views.
+        self.info = (getattr(obj, 'info', {}))
     
     def __deepcopy__(self, copy):
         """Not implemented, raises an exception."""
@@ -136,7 +135,8 @@ class info_memmap(sp.memmap) :
     def __array_finalize__(self, obj):
         sp.memmap.__array_finalize__(self, obj)
         if obj is None: return
-        self.info = dict(getattr(obj, 'info', {}))
+        # Info is a reference to the origional for views.
+        self.info = (getattr(obj, 'info', {}))
         self.metafile = getattr(obj, 'metafile', None)
 
     def flush(self) :
@@ -412,8 +412,6 @@ class vect(alg_object) :
             return out
         else :
             return sp.asarray(out_arr)
-
-
     
 def _vect_class_factory(base_class) :
     """Internal class factory for making a vector class that inherits from
@@ -819,3 +817,20 @@ def dot(arr1, arr2, check_inner_axes=True) :
         raise NotImplementedError("Matrix-matrix multiplication has not been "
                                   "Implemented yet.")
 
+def zeros_like(obj) :
+    """Create a new algebra full of zeros but otherwise the same as the passed
+    object."""
+
+    out = sp.zeros_like(obj)
+
+    if isinstance(obj, vect) :
+        out = make_vect(out)
+        out.info = dict(obj.info)
+    elif isinstance(obj, mat) :
+        out = info_array(out)
+        out.info = dict(obj.info)
+        out = make_mat(out)
+    else :
+        raise TypeError("Expected an algebra mat or vect.")
+    
+    return out

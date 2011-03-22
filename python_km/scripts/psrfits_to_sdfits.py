@@ -27,15 +27,26 @@ import kiyopy.custom_exceptions as ce
 import kiyopy.pickle_method
 
 params_init = {# Inputs.
+               # Everything up to the scan number.
                "guppi_input_root" : "./",
+               # Everything after the scan number
                "guppi_input_end" : ".fits",
+               # The directory containing the fits scan log file (with antenna
+               # and go fits subdirectories).
                "fits_log_dir" : "./",
-               # Outputs.
+               # Where to write converted files.
                "output_root" : "./",
-               # Scans to convert.  At least on from every RaLongMap.
+               # Scans to convert.  List of scan numbers to convert.  Other
+               # scans in same proceedure are automatically selected if
+               # combine_map_scans = True
                "scans" : (0,),
+               # Whethar to combine all the scans from a proceedure into a
+               # single file.
                "combine_map_scans" : False,
+               # Split cal on and cal off.
                "partition_cal" : False,
+               # How many time bins to average over when resampling.  Must be a
+               # power of 2 and less than 2048.
                "time_bins_to_average" : 1
                }
 prefix = ''
@@ -450,11 +461,18 @@ def get_cal_mask(data, n_bins_cal) :
                            "transitions.  Profile array: "
                            + profile_str)
     # Find the last bin off before on.
+    last_off_ind = None
     for kk in xrange(n_bins_cal) :
         if ((folded_data[kk] < base-0.80*diff) and not
             (folded_data[(kk+1)%n_bins_cal] < base-0.80*diff)):
             last_off_ind = kk
             break
+    if last_off_ind is None :
+        profile_str = repr((folded_data - sp.mean(folded_data))
+                           / sp.std(folded_data))
+        raise ce.DataError("Cal profile not lining up "
+                           "correctly.  Profile array: "
+                           + profile_str)
     # If last_off_ind+1 is a transitional bin, then we only need
     # to cut 2 bins.  If it's in the cal-on category, we should
     # cut 4 bins.
