@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from kiyopy import parse_ini
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
-from core import fits_map, utils
+from core import utils, algebra
 import map.tools
 
 params_init = {
@@ -51,26 +51,29 @@ class FreqSlices(object) :
                          params['input_end_map'])
             noise_file = (params['input_root'] + params['file_middles'][0] + 
                          params['input_end_noise'])
-            Map1 = fits_map.read(map_file)
-            Noise1 = fits_map.read(noise_file)
-            Map2 = copy.deepcopy(Map1)
-            Noise2 = copy.deepcopy(Noise1)
+            map1 = algebra.read(map_file)
+            noise1 = algebra.open_memmap(noise_file, mode='r')
+            noise1 = noise1.diag()
+            map2 = copy.deepcopy(Map1)
+            noise2 = copy.deepcopy(Noise1)
         elif len(params['file_middles']) == 2 :
             map_file = (params['input_root'] + params['file_middles'][0] + 
                          params['input_end_map'])
             noise_file = (params['input_root'] + params['file_middles'][0] + 
                          params['input_end_noise'])
-            Map1 = fits_map.read(map_file)
-            Noise1 = fits_map.read(noise_file)
+            map1 = algebra.read(map_file)
+            noise1 = algebra.open_memmap(noise_file, mode='r')
+            noise1 = Noise1.diag()
             map_file = (params['input_root'] + params['file_middles'][1] + 
                          params['input_end_map'])
             noise_file = (params['input_root'] + params['file_middles'][1] + 
                          params['input_end_noise'])
-            Map2 = fits_map.read(map_file)
-            Noise2 = fits_map.read(noise_file)
+            map2 = algebra.read(map_file)
+            noise2 = algebra.open_memmap(noise_file, mode='r')
+            noise2 = noise1.diag()
         else :
             raise ce.FileParameterTypeError('For now can only process one'
-                                            'file.')
+                                            ' or two files.')
         # If any eigenmodes have been marked for subtraction, subtract them
         # out.
         freq = sp.array(params['freq'], dtype=int)
@@ -221,7 +224,6 @@ class FreqSlices(object) :
         self.freq_eig_values = h
         self.freq_eig_modes = vectors
 
-
     def plot(self, finds1, finds2) :
         """After performing analysis, make plots."""
 
@@ -301,7 +303,6 @@ class FreqSlices(object) :
                  marker='o')
         plt.xlabel('Frequency Lag (MHz)')
         plt.ylabel('Correlation (mK$^2$)')
-
         
     def get_freq_svd_modes(self, n) :
         """Same as get freq eigenmodes, but treats left and right maps
@@ -498,8 +499,6 @@ def plot_collapsed(self, norms=False, lag_inds=(0)) :
     plt.xlabel('lag (Mpc/h)')
     plt.ylabel('correlation (mK)')
 
-            
-
 def degrade_corr_res(self, beam=0.4) :
     """Brings all freqencies to the same resolution in correlation."""
 
@@ -564,8 +563,6 @@ def fake_degrade_corr_res(self, beam=0.4) :
     self.norms = norms
     self.corr = corr
 
-
-
 def subtract_svd_modes_corr(self) :
     """Removes svd modes from corr (as opposed to the map)."""
 
@@ -607,8 +604,6 @@ def generate_fake_corr(self) :
     new_corr /= norms[:,:,sp.newaxis]
     self.norms *= norms
     self.corr = new_corr
-
-
 
 
 # For running this module from the command line
