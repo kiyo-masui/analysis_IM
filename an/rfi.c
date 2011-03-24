@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include <assert.h>
 
 #include "rfi.h"
 #include "Python.h"
@@ -148,6 +149,16 @@ void get_fit(int len, double *array, double *f, double *fit_array)    {
 	}
 }
 
+void get_fit_py(int len1, double *array, int len2, double *f, int len3, double *fit_array) {
+  // A swig compatible wrapper for get_fit
+  
+  // Check that len1, len2, and len3 are all equal.
+  assert(len1 == len2);
+  assert(len1 == len3);
+
+  get_fit(len1, array, f, fit_array);
+}
+
 
 void flatten(double *array, double *fit_array, int len)    {
 
@@ -266,3 +277,17 @@ void clean(int len, double sig, int tol, int flat, int spike, int dTdf_limit, in
 	for(i=0; i<num_entries; m[ind[i++]]=0);	 /* mark as clean. */	
 }
 
+void clean_py(double sig, int tol, int flat, int spike, int dTdf_limit, int dTdf_tol, 
+              int len1, double *fit, int len2, double *cross1, int len3, double *array1, 
+              int len4, double *f1, int len5, int *m) {
+  // Swig compatible wrapper for clean.
+
+  // Make sure all the lengths are the same
+  assert(len1 == len2);
+  assert(len1 == len3);
+  assert(len1 == len4);
+  assert(len1 == len5);
+
+  clean(len1, sig, tol, flat, spike, dTdf_limit, dTdf_tol, fit, cross1, array1, f1, m);
+}
+  
