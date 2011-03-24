@@ -61,7 +61,7 @@ class TestFoldOnCal(unittest.TestCase) :
         self.t_vals = 0.5*self.level + rand.normal(loc=0, scale=self.level/10,
                             size=(2*self.ntime//self.n_bins_cal, 4, self.nfreq))
 
-    def test_runs(self) :
+    def test_runs(self) : 
         p2s.get_cal_mask(self.data, self.n_bins_cal)
 
     def test_right_answer_basic(self) :
@@ -87,6 +87,11 @@ class TestFoldOnCal(unittest.TestCase) :
         self.assertRaises(ce.DataError, p2s.get_cal_mask, self.data,
                           self.n_bins_cal//2)
 
+    def test_fails_any_nan(self) :
+        self.data[self.t_slice,0,:] = float('nan')
+        self.assertRaises(ce.DataError, p2s.get_cal_mask, self.data,
+                          self.n_bins_cal)
+
     def test_fails_offs_in_ons(self) :
         self.data[self.t_slice, :, :] = self.t_vals
         
@@ -109,7 +114,6 @@ class TestFoldOnCal(unittest.TestCase) :
         self.data[s, :, :] *= 0.7
         self.assertRaises(ce.DataError, p2s.get_cal_mask, self.data,
                           self.n_bins_cal)
-
 
 class TestSeparateCal(unittest.TestCase) :
     """Unlike the tests for get_cal_mask, these tests are tihgtly controled
