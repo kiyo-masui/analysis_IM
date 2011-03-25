@@ -277,7 +277,7 @@ class TestMatUtils(unittest.TestCase) :
         self.mat = algebra.info_array(data)
         self.mat.shape = (5, 4, 6)
         self.mat = algebra.mat_array(self.mat, row_axes=(0,1), col_axes=(0,2), 
-                                      axis_names=('freq', 'mode', 'mode'))
+                                      axis_names=('freq', 'mode1', 'mode2'))
 
     def test_invalid_assignments(self) :
         self.assertRaises(TypeError, self.vect.__setattr__, 'axes', 
@@ -418,7 +418,33 @@ class TestMatUtils(unittest.TestCase) :
         self.assertTrue(isinstance(zmat, algebra.mat))
         self.assertTrue(not sp.allclose(self.mat, 0))
         self.assertRaises(TypeError, algebra.zeros_like, {'a': 3})
+    
+    def test_row_cols_names(self) :
+        self.assertEqual(self.mat.row_names(), ('freq', 'mode1'))
+        self.assertEqual(self.mat.col_names(), ('freq', 'mode2'))
+        self.mat.shape = (5, 4, 2, 3)
+        self.mat.axes = ('freq', 'mode', 'a', 'b')
+        self.mat.cols = (0, 2, 3)
+        self.mat.rows = (0, 1)
+        self.assertEqual(self.mat.col_names(), ('freq', 'a', 'b'))
 
+
+class TestMatUtilsSq(unittest.TestCase) :
+
+    def setUp(self) :
+        data = sp.arange(160)
+        data.shape = (10, 4, 4)
+        self.mat = algebra.make_mat(data, row_axes=(0,1), col_axes=(0,2), 
+                            axis_names=('freq', 'ra', 'ra'))
+
+    def test_diag(self) :
+        d = self.mat.mat_diag()
+        e = self.mat.expand()
+        self.assertTrue(sp.allclose(d.flat_view(), sp.diag(e)))
+
+# Rules I'd like to impose:
+    # vect axis names must be unique
+    # mat axis names can occure both as a row and a col, but on ones each.
 
 if __name__ == '__main__' :
     unittest.main()

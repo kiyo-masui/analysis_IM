@@ -571,6 +571,16 @@ class mat(alg_object) :
         else :
             return num_blocks
     
+    def row_names(self) :
+        """Return the axis names that correspond to rows."""
+
+        pass
+
+    def col_names(self) : 
+        """Return the axis names that correspond to columns."""
+
+        pass
+
     def iter_blocks(self) :
         """Returns an iterator that iterates over the blocks of an matrix."""
         
@@ -602,7 +612,35 @@ class mat(alg_object) :
                     return sp.reshape(self.arr[array_index], self.block_shape)
         
         # Initialize it and return it.
-        return iterator(self) 
+        return iterator(self)
+
+    def mat_diag(self) :
+        """Get the daigonal elements of the matrix, as a vect object."""
+
+        # Current algorithm assumes specific format.
+        self.assert_axes_ordered()
+        # We expect a square matrix
+        shape = self.mat_shape
+        if shape[0] != shape[1] :
+            raise NotImplementedError("Only works for square mats.")
+        # output memory
+        out = sp.empty((shape[0],))
+        # Figure out how many axes are in both row and col (and therefore block
+        # diagonal).
+        n_blocks, block_shape = self.get_num_blocks(True, False)
+        # For square matricies, n_blocks*block_shape[ii] == shape[ii].
+        block_size = shape[0]//n_blocks
+        # Transfer over the diagonals.
+        for ii, mat_block in enumerate(self.iter_blocks()) :
+            out[ii*block_size:(ii+1)*block_size] = sp.diag(mat_block)
+
+        # XXX Now make this a vect object and transfer the relevant metadata.
+        out = make_vect(out)
+
+        
+        return out
+
+       
             
     def expand(self) :
         """Calculates expanded matrix in 2 dimensional form.
@@ -612,6 +650,10 @@ class mat(alg_object) :
         original matrix has efficiency from any block diagonal structure, this
         is lost in the returned matrix.
         """
+
+        # XXX Obviouse improvement: Check if this matrix is already full 
+        # (ie not diagonal structure)
+        # and if so, return a view.
         
         # Also verifies the validity of the matrix.
         shape = self.mat_shape
