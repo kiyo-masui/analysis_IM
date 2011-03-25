@@ -84,15 +84,15 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
     """
     
     # Here we check the polarizations and cal indicies
-    xx_ind = 0
-    yy_ind = 3
-    xy_inds = [1,2]
-    if (Data.field['CRVAL4'][xx_ind] != -5 or
-        Data.field['CRVAL4'][yy_ind] != -6 or
-        Data.field['CRVAL4'][xy_inds[0]] != -7 or
-        Data.field['CRVAL4'][xy_inds[1]] != -8) :
-            raise ce.DataError('Polarization types not as expected,'
-                               ' function needs to be generalized.')
+    if tuple(Data.field['CRVAL4']) == (-5, -7, -8, -6) :
+        xx_ind = 0
+        yy_ind = 3
+        xy_inds = [1,2]
+    elif tuple(Data.field['CRVAL4']) == (1, 2, 3, 4) :
+        xy_inds = [2,3]
+    else :
+        raise ce.DataError('Polarization types not as expected,'
+                           ' function needs to be generalized.')
     if pol_thres > 0 :
         Data.calc_freq()
         freq = Data.freq
@@ -111,6 +111,7 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
         # Outer loops performed in python.
         for tii in range(dims[0]) :
             for cjj in range(dims[2]) :
+                # XXX: To convert to IQUV:  xy, yx -> U, V and XX, YY -> I.
                 # Polarization cross correlation coefficient.
                 cross = ma.sum(data[tii,xy_inds,cjj,:]**2, 0)
                 cross /= data[tii,xx_ind,cjj,:]*data[tii,yy_ind,cjj,:]
@@ -121,25 +122,28 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
                 # have attributes data (an array) and mask (a bool array).  So
                 # thisdata and thismask are just normal arrays.
                 rfi.get_fit(cross,freq,fit)
+                # XXX: To convert to IQUV:  XX-> I and yy -> Q.
                 # XX polarization.
                 data_array = data.data[tii,xx_ind,cjj,:]
                 rfi.clean(pol_thres, width, int(flatten), derivative_cut, 
                           der_flags, der_width, fit, cross,
                           data_array, freq, mask)
                 # Copy mask the flagged points and set up for YY.
-                data[tii,:,cjj,mask==1] = ma.masked
+                data[tii,:,cjj,mask] = ma.masked
                 data_array = data.data[tii,yy_ind,cjj,:]
                 # Clean The YY pol.
                 rfi.clean(pol_thres, width, int(flatten), derivative_cut, 
                           der_flags, der_width, fit, cross,
                           data_array, freq, mask)
                 # Mask flagged YY data.
-                data[tii,:,cjj,mask==1] = ma.masked
+                data[tii,:,cjj,mask] = ma.masked
     
     if sig_thres > 0 :
+        # XXX : Convert this to all four polarizations (no reason not to and it
+        # eliminates basis dependance).
         # Will work with squared data so no square roots needed.
         nt = Data.dims[0]
-        data = Data.data[:,[xx_ind, yy_ind], :, :]
+        data = Data.data[:, :, :, :]
         norm_data = (data/ma.mean(data, 0) - 1)**2
         var = ma.mean(norm_data, 0)
         # Use an iteratively flagged mean instead of a median as medians are
@@ -147,9 +151,9 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
         for jj in range(3) :
             # First check for any outliers that could throw the initial mean off
             # more than sqrt(3*nt/4) sigma.  This is the 'weak' cut.
-            bad_mask = ma.where(ma.logical_or(
-                                norm_data[:,0,:,:] > 3.*nt*var[0,:,:]/4., 
-                                norm_data[:,1,:,:] > 3.*nt*var[1,:,:]/4.))
+            bad_mask = ma.where(sp.any(norm_data[:,:,:,:] >
+                                       3.*nt*var[:,:,:]/4., 1)) 
+                                ))
             if len(bad_mask[0]) == 0:
                 break
             for ii in range(4) :
