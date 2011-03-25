@@ -38,6 +38,7 @@ class FlagData(base_single.BaseSingle) :
                    'derivative_width' : 2
                    }
     feedback_title = 'New flags each data Block: '
+    
     def action(self, Data) :
         already_flagged = ma.count_masked(Data.data)
         params = self.params
@@ -53,7 +54,6 @@ class FlagData(base_single.BaseSingle) :
                     str(self.params['sigma_thres']), 'Polarization threshold: '
                     + str(self.params['pol_thres'])))
         return Data
-
 
 def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
                der_flags=10, der_width=2) :
@@ -75,7 +75,7 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
                     time median.
         pol_thres - (float) Any data cross polarized by more than this 
                     many sigmas is flagged.
-        width -     (int) In the polarization cut, flag data within this many
+        width -     (int) In the polaridezation cut, flag data within this many
                     frequency bins of offending data.
         flatten -   (Bool) Preflatten the polarization spectrum.
         der_flags - (int) Find RFI in XX and YY by looking for spikes in the

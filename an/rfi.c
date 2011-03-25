@@ -16,6 +16,9 @@
 #include "rfi.h"
 #include "Python.h"
 
+// Number of sections for the polynomical fit.
+#define NUM_PIECES 32
+
 double absl(double x)  {  return x < 0. ? -x : x;  }
 double sq(double x)  {  return x*x;   }
 
@@ -130,8 +133,9 @@ void get_fit(int len, double *array, double *f, double *fit_array)    {
 	/*         This flattens the waveform stored in variable array[], by means of the fit. 
 		  The fit is obtained and then removed from the data. */
 	
-	int num_pieces = 32, 
-		i,j,block = len/num_pieces;
+	int num_pieces = NUM_PIECES,
+        i,j,block = len/num_pieces;
+    assert(len%num_pieces == 0);
 	
 	double *pieces, *f_pieces, *fit,rms,mean;
 
@@ -149,14 +153,19 @@ void get_fit(int len, double *array, double *f, double *fit_array)    {
 	}
 }
 
-void get_fit_py(int len1, double *array, int len2, double *f, int len3, double *fit_array) {
+int get_fit_py(int len1, double *array, int len2, double *f, int len3, double *fit_array) {
   // A swig compatible wrapper for get_fit
   
   // Check that len1, len2, and len3 are all equal.
-  assert(len1 == len2);
-  assert(len1 == len3);
-
+  if ((len1 != len2) || (len1 != len3)){ 
+    return 1;
+  }
+  if (len1%NUM_PIECES != 0) {
+    return 1;
+  }
+  
   get_fit(len1, array, f, fit_array);
+  return 0;
 }
 
 
@@ -283,11 +292,10 @@ void clean_py(double sig, int tol, int flat, int spike, int dTdf_limit, int dTdf
   // Swig compatible wrapper for clean.
 
   // Make sure all the lengths are the same
-  assert(len1 == len2);
-  assert(len1 == len3);
-  assert(len1 == len4);
-  assert(len1 == len5);
-
-  clean(len1, sig, tol, flat, spike, dTdf_limit, dTdf_tol, fit, cross1, array1, f1, m);
+  if ((len1 == len2) && (len1 == len3) && (len1 == len4) && (len1 == len5)){
+    clean(len1, sig, tol, flat, spike, dTdf_limit, dTdf_tol, 
+          fit, cross1, array1, f1, m);
+    return 0;
+  } else return 1;
 }
   
