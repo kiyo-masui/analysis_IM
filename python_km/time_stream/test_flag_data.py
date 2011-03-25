@@ -8,7 +8,7 @@ import numpy.random as rand
 import matplotlib.pyplot as plt
 
 import kiyopy.custom_exceptions as ce
-import time_stream.flag_data_aravind as flag_data
+import time_stream.flag_data as flag_data
 from core import data_block, fitsGBT
 
 test_file = 'testfile_GBTfits.fits'
@@ -19,11 +19,36 @@ class TestFlagData(unittest.TestCase) :
         Reader = fitsGBT.Reader(test_file, feedback=0)
         self.Data = Reader.read(1,0)
 
+    def test_different_lenght(self) :
+        self.Data.data = self.Data.data[:,:,:,:1024]
+        self.Data.verify()
+        ind = (6,1,1,125)
+        ind2 = (3,2,0,987)
+        self.Data.data[ind] = 0.2
+        self.Data.data[ind2] = 0.2
+        flag_data.apply_cuts(self.Data, -1, 5.0, 0, True, 0, 0)
+        self.assertTrue(self.Data.data[ind] is ma.masked)
+        self.assertTrue(self.Data.data[ind2] is ma.masked)
+
     def test_pol_cut(self) :
         ind = (6,1,1,676)
         ind2 = (3,2,0,245)
-        self.Data.data[ind] = 10.0
-        self.Data.data[ind2] = 5.0
+        self.Data.data[ind] = 0.2
+        self.Data.data[ind2] = 0.2
+        flag_data.apply_cuts(self.Data, -1, 5.0, 0, True, 0, 0)
+        self.assertTrue(self.Data.data[ind] is ma.masked)
+        self.assertTrue(self.Data.data[ind2] is ma.masked)
+        self.assertTrue(float(ma.count_masked(self.Data.data)) / 
+                        float(self.Data.data.size) < 0.1)
+
+    def test_pol_cut_IQUV(self) :
+        self.Data.field['CRVAL4'] = sp.array([1, 2, 3, 4], dtype=int)
+        self.Data.data[0::2,:,:,:] = 1
+        self.Data.data[1::2,:,:,:] = 2
+        ind = (6,3,1,676)
+        ind2 = (3,2,0,245)
+        self.Data.data[ind] = 8
+        self.Data.data[ind2] = 10
         flag_data.apply_cuts(self.Data, -1, 5.0, 0, True, 0, 0)
         self.assertTrue(self.Data.data[ind] is ma.masked)
         self.assertTrue(self.Data.data[ind2] is ma.masked)
@@ -44,13 +69,16 @@ class TestFlagData(unittest.TestCase) :
         self.Data.data[1::2,:,:,:] = 2
         ind = (5,0,0,1345)
         ind2 = (2,3,1,425)
+        ind3 = (8,1,1,754)
         self.Data.data[ind] = 5
         self.Data.data[ind2] = 6
+        self.Data.data[ind3] = 6
         flag_data.apply_cuts(self.Data, 5, -1)
         self.assertTrue(self.Data.data[ind] is ma.masked)
         self.assertTrue(self.Data.data[ind2] is ma.masked)
+        self.assertTrue(self.Data.data[ind3] is ma.masked)
         # 8 = 2 bad data * 4 polarizations
-        self.assertTrue(ma.count_masked(self.Data.data) == 8)
+        self.assertTrue(ma.count_masked(self.Data.data) == 12)
     
     def test_pol_cal_off_controled(self) :
         self.Data.data[:,[0,3],1,:] = rand.normal(5, 0.1, (10, 2, 2048))

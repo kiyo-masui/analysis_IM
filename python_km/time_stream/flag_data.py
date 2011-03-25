@@ -7,6 +7,7 @@ import os
 import numpy.ma as ma
 import scipy as sp
 from scipy import weave
+import matplotlib.pyplot as plt
 
 import kiyopy.custom_exceptions as ce
 import base_single
@@ -87,9 +88,13 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
     if tuple(Data.field['CRVAL4']) == (-5, -7, -8, -6) :
         xx_ind = 0
         yy_ind = 3
-        xy_inds = [1,2]
+        pol_inds = [1,2]
+        norm_inds = [0, 3]
     elif tuple(Data.field['CRVAL4']) == (1, 2, 3, 4) :
-        xy_inds = [2,3]
+        pol_inds = [2,3]
+        xx_ind = 0
+        yy_ind = 1
+        norm_inds = [0,0]
     else :
         raise ce.DataError('Polarization types not as expected,'
                            ' function needs to be generalized.')
@@ -98,49 +103,52 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
         freq = Data.freq
         dims = Data.dims
         data = Data.data
-        if dims[3] != 2048 :
-            raise ce.DataError('C code expects 2048 frequency channels.')
         derivative_cut = 0
         if der_flags > 0:
             derivative_cut = 1
 
         # Allocate memory in SWIG array types.
-        fit = sp.empty(dims[3])
-        mask = sp.empty(dims[3], dtype=sp.int32)
+        fit = sp.empty((dims[3],), dtype=float)
+        mask = sp.empty((dims[3],), dtype=sp.int32)
 
         # Outer loops performed in python.
         for tii in range(dims[0]) :
             for cjj in range(dims[2]) :
-                # XXX: To convert to IQUV:  xy, yx -> U, V and XX, YY -> I.
                 # Polarization cross correlation coefficient.
-                cross = ma.sum(data[tii,xy_inds,cjj,:]**2, 0)
-                cross /= data[tii,xx_ind,cjj,:]*data[tii,yy_ind,cjj,:]
+                cross = ma.sum(data[tii,pol_inds,cjj,:]**2, 0)
+                cross /= (data[tii,norm_inds[0],cjj,:] *
+                          data[tii,norm_inds[1],cjj,:])
                 cross = ma.filled(cross, 1000.)
                 # Copy data to the SWIG arrays.
                 # This may be confusing: Data is a DataBlock object which has
                 # an attribute data which is a masked array.  Masked arrays
                 # have attributes data (an array) and mask (a bool array).  So
                 # thisdata and thismask are just normal arrays.
-                rfi.get_fit(cross,freq,fit)
-                # XXX: To convert to IQUV:  XX-> I and yy -> Q.
+                status = rfi.get_fit(cross,freq,fit)
+                if status :
+                    raise ce.DataError("Problem with data flagger.")
                 # XX polarization.
                 data_array = data.data[tii,xx_ind,cjj,:]
-                rfi.clean(pol_thres, width, int(flatten), derivative_cut, 
-                          der_flags, der_width, fit, cross,
-                          data_array, freq, mask)
+                status =  rfi.clean(pol_thres, width, int(flatten), 
+                                    derivative_cut, der_flags, der_width, fit,
+                                    cross, data_array, freq, mask)
+                if status :
+                    raise ce.DataError("Problem with data flagger.")
                 # Copy mask the flagged points and set up for YY.
-                data[tii,:,cjj,mask] = ma.masked
+                bad_inds, = sp.where(mask)
+                data[tii,:,cjj,bad_inds] = ma.masked
                 data_array = data.data[tii,yy_ind,cjj,:]
                 # Clean The YY pol.
-                rfi.clean(pol_thres, width, int(flatten), derivative_cut, 
-                          der_flags, der_width, fit, cross,
-                          data_array, freq, mask)
+                status = rfi.clean(pol_thres, width, int(flatten),
+                                   derivative_cut, der_flags, der_width, fit,
+                                   cross, data_array, freq, mask)
+                if status :
+                    raise ce.DataError("Problem with data flagger.")
                 # Mask flagged YY data.
-                data[tii,:,cjj,mask] = ma.masked
+                bad_inds, = sp.where(mask)
+                data[tii,:,cjj,bad_inds] = ma.masked
     
     if sig_thres > 0 :
-        # XXX : Convert this to all four polarizations (no reason not to and it
-        # eliminates basis dependance).
         # Will work with squared data so no square roots needed.
         nt = Data.dims[0]
         data = Data.data[:, :, :, :]
@@ -153,7 +161,6 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
             # more than sqrt(3*nt/4) sigma.  This is the 'weak' cut.
             bad_mask = ma.where(sp.any(norm_data[:,:,:,:] >
                                        3.*nt*var[:,:,:]/4., 1)) 
-                                ))
             if len(bad_mask[0]) == 0:
                 break
             for ii in range(4) :
@@ -166,9 +173,8 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
         # Strong cut, flag data deviating from the t and f var.
         # Want the varience over t,f. mean_f(var_t(data)) = var_t,f(data)
         var = ma.mean(var, -1)
-        bad_mask = ma.where(ma.logical_or(
-                        norm_data[:,0,:,:] > var[0,:,sp.newaxis]*sig_thres**2, 
-                        norm_data[:,1,:,:] > var[0,:,sp.newaxis]*sig_thres**2))
+        bad_mask = ma.where(sp.any(norm_data[:,:,:,:] > 
+                                   var[:,:,sp.newaxis]*sig_thres**2, 1))
         for ii in range(4) :
             data_this_pol = Data.data[:,ii,:,:]
             data_this_pol[bad_mask] = ma.masked

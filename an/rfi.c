@@ -286,7 +286,7 @@ void clean(int len, double sig, int tol, int flat, int spike, int dTdf_limit, in
 	for(i=0; i<num_entries; m[ind[i++]]=0);	 /* mark as clean. */	
 }
 
-void clean_py(double sig, int tol, int flat, int spike, int dTdf_limit, int dTdf_tol, 
+int clean_py(double sig, int tol, int flat, int spike, int dTdf_limit, int dTdf_tol, 
               int len1, double *fit, int len2, double *cross1, int len3, double *array1, 
               int len4, double *f1, int len5, int *m) {
   // Swig compatible wrapper for clean.
