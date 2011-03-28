@@ -671,8 +671,6 @@ class mat(alg_object) :
         
         return out
 
-       
-            
     def expand(self) :
         """Calculates expanded matrix in 2 dimensional form.
 
@@ -816,7 +814,6 @@ mat_array = _mat_class_factory(info_array)
 mat_array.__name__ = 'mat_array'
 mat_memmap = _mat_class_factory(info_memmap)
 mat_memmap.__name__ = 'mat_memmap'
-
 
 def make_mat(array, row_axes=None, col_axes=None, axis_names=None) :
     """Do what ever it takes to make an mat out of an array.

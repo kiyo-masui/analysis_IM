@@ -447,6 +447,8 @@ class TestMatUtilsSq(unittest.TestCase) :
 # Rules I'd like to impose:
     # vect axis names must be unique
     # mat axis names can occure both as a row and a col, but only once each.
+    # Shape changing operations like sp.sum() are still preserving the type.
+    # Why?
 
 if __name__ == '__main__' :
     unittest.main()

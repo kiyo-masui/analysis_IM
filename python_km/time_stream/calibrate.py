@@ -42,7 +42,6 @@ class Calibrate(base_single.BaseSingle) :
             raise ce.DataError('Expected calibration file to have only a'
                                ' single scan and IF.')
 
-
     def action(self, Data) :
         """Calls multiply_by_cal.
         
@@ -62,14 +61,16 @@ def multiply_by_cal(Data, CalData) :
 
     # For now we just assume that the cal and polarizations are arranged in a
     # certain way and then check to make sure we are right.
-    xx_ind = 0
-    yy_ind = 3
-    xy_inds = [1,2]
-    if (Data.field['CRVAL4'][xx_ind] != -5 or
-        Data.field['CRVAL4'][yy_ind] != -6 or
-        Data.field['CRVAL4'][xy_inds[0]] != -7 or
-        Data.field['CRVAL4'][xy_inds[1]] != -8) :
-            raise ce.DataError('Polarization types not as expected in data.')
+    calibrate_to_I = False
+    if tuple(Data.field['CRVAL4']) == (-5, -7, -8, -6) :
+        xx_ind = 0
+        yy_ind = 3
+        xy_inds = [1,2]
+    elif tuple(Data.field['CRVAL4']) == (1, 2, 3, 4) :
+        # This is a hack.  Completly temporairy.
+        calibrate_to_I = True
+    else :
+        raise ce.DataError('Polarization types not as expected in data.')
 
     cal_xx_ind = 0
     cal_yy_ind = 1
@@ -83,7 +84,7 @@ def multiply_by_cal(Data, CalData) :
 
     # Cal state should be special state 'R'.
     if CalData.field['CAL'][0] != 'R' :
-        raise ce.DataError("Cal state should in cal temperture data should be "
+        raise ce.DataError("Cal state in cal temperture data should be "
                            "'R'.")
 
     # Bring the Cal data to the same frequencies as the other data.
@@ -106,13 +107,16 @@ def multiply_by_cal(Data, CalData) :
                                            CalData.freq < f + width/2.0))
             cdata[:,:,:,find] = ma.mean(CalData.data[:,:,:,inds], 3)
     
-    # Loop over times and cal and scale each polarizations appropriately.
-    for tind in range(Data.dims[0]) :
-        for cind in range(Data.dims[2]) :
-            Data.data[tind,xx_ind,cind,:] *= cdata[0,cal_xx_ind,0,:]
-            Data.data[tind,yy_ind,cind,:] *= cdata[0,cal_yy_ind,0,:]
-            Data.data[tind,xy_inds,cind,:] *= ma.sqrt(cdata[0,cal_yy_ind,0,:]
-                                                   * cdata[0,cal_xx_ind,0,:])
+    if calibrate_to_I :
+        Data.data *= (cdata[0,cal_xx_ind,0,:] + cdata[0,cal_yy_ind,0,:])/2.0
+    else :
+        # Loop over times and cal and scale each polarization appropriately.
+        for tind in range(Data.dims[0]) :
+            for cind in range(Data.dims[2]) :
+                Data.data[tind,xx_ind,cind,:] *= cdata[0,cal_xx_ind,0,:]
+                Data.data[tind,yy_ind,cind,:] *= cdata[0,cal_yy_ind,0,:]
+                Data.data[tind,xy_inds,cind,:] *= ma.sqrt(
+                     cdata[0,cal_yy_ind,0,:] * cdata[0,cal_xx_ind,0,:])
 
 
 # If this file is run from the command line, execute the main function.
