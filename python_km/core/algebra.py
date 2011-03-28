@@ -363,6 +363,19 @@ class alg_object(object) :
         self.info[axis_name + '_centre'] = float(centre)
         self.info[axis_name + '_delta'] = float(delta)
 
+    def copy_axis_info(self, alg_obj) :
+        """Set the axis info by copying from another alg_object."""
+
+        for axis in self.axes :
+            if axis in alg_obj.axes :
+                try :
+                    centre = alg_obj.info[axis + '_centre']
+                    delta = alg_obj.info[axis + '_delta']
+                except KeyError :
+                    continue
+                self.info[axis + '_centre'] = centre
+                self.info[axis + '_delta'] = delta
+
     def get_axis(self, axis_name) :
         """Calculate the full array representing a named axis.  
         
@@ -668,6 +681,7 @@ class mat(alg_object) :
         out = make_vect(out)
         if self.row_names() == self.col_names() :
             out.axes = self.row_names()
+            out.copy_axis_info(self)
         
         return out
 

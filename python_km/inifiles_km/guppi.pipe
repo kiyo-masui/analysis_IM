@@ -23,7 +23,7 @@ pipe_processes = 8
 
 
 from time_stream import hanning 
-pipe_modules.append(hanning.Hanning)
+#pipe_modules.append(hanning.Hanning)
 ha_input_root = data_dir
 ha_file_middles = file_middles
 ha_input_end = ".fits"
@@ -35,7 +35,7 @@ ha_scans = ()
 ha_IFs = ()
 
 from time_stream import flag_data
-pipe_modules.append(flag_data.FlagData)
+#pipe_modules.append(flag_data.FlagData)
 fd_input_root = ha_output_root
 fd_file_middles = file_middles
 fd_input_end = '.fits'
@@ -53,7 +53,7 @@ fd_derivative_width = 1
 
 
 from time_stream import rebin_freq
-#pipe_modules.append(rebin_freq.RebinFreq)
+pipe_modules.append(rebin_freq.RebinFreq)
 rf_input_root = fd_output_root
 rf_file_middles = file_middles
 rf_input_end = '.fits'
@@ -66,7 +66,7 @@ rf_channel_width = 2.0
 rf_mean_instead_median = True
 
 from time_stream import cal_scale
-#pipe_modules.append(cal_scale.CalScale)
+pipe_modules.append(cal_scale.CalScale)
 cs_input_root = rf_output_root
 cs_file_middles = file_middles
 cs_input_end = '.fits'
@@ -79,9 +79,21 @@ cs_scale_time_average = True
 cs_scale_freq_average = False
 cs_subtract_time_median = False
 
+from time_stream import calibrate
+pipe_modules.append(calibrate.Calibrate)
+cl_input_root = cs_output_root
+cl_file_middles = file_middles
+cl_input_end = '.fits'
+cl_output_root = base_dir + 'calibrated/' + prefix
+cl_output_end = '.fits'
+cl_scans = ()
+cl_IFs = ()
+
+cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
+
 from time_stream import combine_cal
-#pipe_modules.append(combine_cal.CombineCal)
-cc_input_root = cs_output_root
+pipe_modules.append(combine_cal.CombineCal)
+cc_input_root = cl_output_root
 cc_file_middles = file_middles
 cc_input_end = '.fits'
 cc_output_root = base_dir + 'combined/' + prefix
@@ -92,8 +104,8 @@ cc_IFs = ()
 cc_subtract_time_mean = True
 cc_average_cal_states = True
 
-#from map import dirty_map
-#pipe_modules.append(dirty_map.DirtyMapMaker)
+from map import dirty_map
+pipe_modules.append(dirty_map.DirtyMapMaker)
 dm_input_root = cc_output_root
 dm_file_middles = file_middles
 dm_input_end = '.fits'
@@ -110,7 +122,7 @@ dm_noise_model = 'disjoint_scans'
 dm_polarizations = ('I',)
 
 from map import clean_map
-#pipe_modules.append(clean_map.CleanMapMaker)
+pipe_modules.append(clean_map.CleanMapMaker)
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
 cm_polarizations = ('I',)

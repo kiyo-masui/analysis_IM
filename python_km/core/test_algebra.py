@@ -435,6 +435,8 @@ class TestMatUtilsSq(unittest.TestCase) :
         data.shape = (10, 4, 4)
         self.mat = algebra.make_mat(data, row_axes=(0,1), col_axes=(0,2), 
                             axis_names=('freq', 'ra', 'ra'))
+        self.mat.set_axis_info('ra', 215, 0.5)
+        self.mat.set_axis_info('freq', 800, 2.0)
 
     def test_diag(self) :
         d = self.mat.mat_diag()
@@ -443,6 +445,9 @@ class TestMatUtilsSq(unittest.TestCase) :
         self.assertTrue(isinstance(d, algebra.vect))
         self.assertEqual(d.shape, (10, 4))
         self.assertEqual(d.axes, ('freq', 'ra'))
+        self.assertTrue(sp.allclose(d.get_axis('ra'), self.mat.get_axis('ra')))
+        self.assertTrue(sp.allclose(d.get_axis('freq'), 
+                                    self.mat.get_axis('freq')))
 
 # Rules I'd like to impose:
     # vect axis names must be unique
