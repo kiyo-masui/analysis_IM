@@ -428,7 +428,6 @@ class TestMatUtils(unittest.TestCase) :
         self.mat.rows = (0, 1)
         self.assertEqual(self.mat.col_names(), ('freq', 'a', 'b'))
 
-
 class TestMatUtilsSq(unittest.TestCase) :
 
     def setUp(self) :
@@ -441,10 +440,13 @@ class TestMatUtilsSq(unittest.TestCase) :
         d = self.mat.mat_diag()
         e = self.mat.expand()
         self.assertTrue(sp.allclose(d.flat_view(), sp.diag(e)))
+        self.assertTrue(isinstance(d, algebra.vect))
+        self.assertEqual(d.shape, (10, 4))
+        self.assertEqual(d.axes, ('freq', 'ra'))
 
 # Rules I'd like to impose:
     # vect axis names must be unique
-    # mat axis names can occure both as a row and a col, but on ones each.
+    # mat axis names can occure both as a row and a col, but only once each.
 
 if __name__ == '__main__' :
     unittest.main()

@@ -574,12 +574,40 @@ class mat(alg_object) :
     def row_names(self) :
         """Return the axis names that correspond to rows."""
 
-        pass
+        names = ()
+        for axis_ind in self.rows :
+            names = names + (self.axes[axis_ind],)
+
+        return names
 
     def col_names(self) : 
         """Return the axis names that correspond to columns."""
 
-        pass
+        names = ()
+        for axis_ind in self.cols :
+            names = names + (self.axes[axis_ind],)
+
+        return names
+
+    def row_shape(self) :
+        """Return the shape of the array only including axes that correspond to
+        rows."""
+
+        shape = ()
+        for axis_ind in self.rows :
+            shape = shape + (self.shape[axis_ind],)
+
+        return shape
+    
+    def col_shape(self) :
+        """Return the shape of the array only including axes that correspond to
+        rows."""
+
+        shape = ()
+        for axis_ind in self.cols :
+            shape = shape + (self.shape[axis_ind],)
+
+        return shape
 
     def iter_blocks(self) :
         """Returns an iterator that iterates over the blocks of an matrix."""
@@ -634,9 +662,12 @@ class mat(alg_object) :
         for ii, mat_block in enumerate(self.iter_blocks()) :
             out[ii*block_size:(ii+1)*block_size] = sp.diag(mat_block)
 
-        # XXX Now make this a vect object and transfer the relevant metadata.
+        # Now make this a vect object and transfer the relevant metadata.
+        if self.row_shape() == self.col_shape() :
+            out.shape = self.row_shape()
         out = make_vect(out)
-
+        if self.row_names() == self.col_names() :
+            out.axes = self.row_names()
         
         return out
 
