@@ -7,10 +7,10 @@ import scipy as sp
 
 
 field = '15hr'
-#file_middles = tuple(dir_data.get_data_files([40, 41, 42, 43], '15hr', 
-#                                             type='guppi'))
-file_middles = tuple(dir_data.get_data_files([40], '15hr', 
+file_middles = tuple(dir_data.get_data_files([40, 41, 42, 43], '15hr', 
                                              type='guppi'))
+#file_middles = tuple(dir_data.get_data_files([40], '15hr', 
+#                                             type='guppi'))
 
 base_dir = os.getenv('GBT10B_OUT')
 data_dir = base_dir + '/guppi_data/'
@@ -19,11 +19,11 @@ map_prefix = prefix + field + '_40-43_'
 #map_prefix = 'test_tbug_' + field + '_40-41_'
 
 pipe_modules = []
-pipe_processes = 1
+pipe_processes = 8
 
 
 from time_stream import hanning 
-#pipe_modules.append(hanning.Hanning)
+pipe_modules.append(hanning.Hanning)
 ha_input_root = data_dir
 ha_file_middles = file_middles
 ha_input_end = ".fits"
