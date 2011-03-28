@@ -68,7 +68,7 @@ class CleanMapMaker(object) :
                 noise_inv_memory = sp.array(noise_inv, copy=True)
                 # Find the non-singular (covered) pixels.
                 max_information = noise_inv_memory.max()
-                good_data = noise_inv_memory < 1.0e-5*max_information
+                good_data = noise_inv_memory < 1.0e-10*max_information
                 # Make the clean map.
                 clean_map[good_data] = (dirty_map[good_data] 
                                         / noise_inv_memory[good_data])

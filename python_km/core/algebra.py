@@ -902,8 +902,8 @@ def dot(arr1, arr2, check_inner_axes=True) :
                                   "Implemented yet.")
 
 def zeros_like(obj) :
-    """Create a new algebra full of zeros but otherwise the same as the passed
-    object."""
+    """Create a new algebra object full of zeros but otherwise the same 
+    as the passed object."""
 
     out = sp.zeros_like(obj)
 
