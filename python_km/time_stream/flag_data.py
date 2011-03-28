@@ -6,8 +6,6 @@ import os
 
 import numpy.ma as ma
 import scipy as sp
-from scipy import weave
-import matplotlib.pyplot as plt
 
 import kiyopy.custom_exceptions as ce
 import base_single
@@ -108,7 +106,8 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
             derivative_cut = 1
 
         # Allocate memory in SWIG array types.
-        fit = sp.empty((dims[3],), dtype=float)
+        #fit = sp.empty((dims[3],), dtype=sp.float64)
+        fit = sp.arange(dims[3], dtype=sp.float64)
         mask = sp.empty((dims[3],), dtype=sp.int32)
 
         # Outer loops performed in python.
@@ -128,7 +127,7 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
                 if status :
                     raise ce.DataError("Problem with data flagger.")
                 # XX polarization.
-                data_array = data.data[tii,xx_ind,cjj,:]
+                data_array = sp.asarray(data[tii,xx_ind,cjj,:])
                 status =  rfi.clean(pol_thres, width, int(flatten), 
                                     derivative_cut, der_flags, der_width, fit,
                                     cross, data_array, freq, mask)
@@ -137,7 +136,7 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
                 # Copy mask the flagged points and set up for YY.
                 bad_inds, = sp.where(mask)
                 data[tii,:,cjj,bad_inds] = ma.masked
-                data_array = data.data[tii,yy_ind,cjj,:]
+                data_array = sp.asarray(data[tii,yy_ind,cjj,:])
                 # Clean The YY pol.
                 status = rfi.clean(pol_thres, width, int(flatten),
                                    derivative_cut, der_flags, der_width, fit,

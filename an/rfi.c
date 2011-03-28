@@ -62,6 +62,8 @@ int get_rms(double *array, int len, double *rms, double *mean)    {
 	}	
 
 	*rms = rms1; *mean = mu;
+
+    free(copy);
 	return status;
 }
 	
@@ -81,7 +83,7 @@ void xi_square_fit(double *freq, double *array, double *fit, int len)    {
 	 */     
 	
 	double *T,*nu,count,rms,d_parts,d_pieces,mean,
-	avg,x,y,x_bar,y_bar,sum_x_x,sum_x_y,a,b;
+	x,y,x_bar,y_bar,sum_x_x,sum_x_y,a,b;
 	
 	int i,j,pieces,parts;
 	
@@ -94,7 +96,7 @@ void xi_square_fit(double *freq, double *array, double *fit, int len)    {
 	
 	T = (double *)(malloc(sizeof(double)*parts));
 	nu = (double *)(malloc(sizeof(double)*parts));
-	
+
 	get_rms(array,len,&rms,&mean);
 	
 	for(i=0; i<parts; i++)   {
@@ -124,7 +126,10 @@ void xi_square_fit(double *freq, double *array, double *fit, int len)    {
 	b = (sum_x_y - (d_parts*x_bar*y_bar)) / (sum_x_x - (d_parts*sq(x_bar)));
 	a = y_bar - (b*x_bar);
 		
-	for(i=0; i<len; fit[i] = a + b*freq[i],i++);	
+	for(i=0; i<len; fit[i] = a + b*freq[i],i++);
+
+    free(nu);
+    free(T);
 }
 
 
@@ -137,20 +142,27 @@ void get_fit(int len, double *array, double *f, double *fit_array)    {
         i,j,block = len/num_pieces;
     assert(len%num_pieces == 0);
 	
-	double *pieces, *f_pieces, *fit,rms,mean;
+	double *pieces, *f_pieces, *fit;
 
 	pieces   = (double *)(malloc(sizeof(double)*block));
 	f_pieces = (double *)(malloc(sizeof(double)*block));
 	fit = (double *)(malloc(sizeof(double)*block));
+    if ((pieces == NULL) ||(f_pieces == NULL) ||(fit == NULL) ) { perror("malloc");}
 	
 	for(i=0; i<num_pieces; i++)   {
 		
-		for(j=0; j<block; j++)    
+	    for(j=0; j<block; j++)    
 			{  pieces[j] = array[j + (i*block)]; f_pieces[j] = f[j + (i*block)];  }
-					
+
 		xi_square_fit(f_pieces,pieces, fit, block);
-		for(j=0; j<block; fit_array[j+(block*i)] = fit[j],j++);			
+		for(j=0; j<block; j++)    {
+          fit_array[j+(block*i)] = fit[j];
+        }
 	}
+
+    free(fit);
+    free(f_pieces);
+    free(pieces);
 }
 
 int get_fit_py(int len1, double *array, int len2, double *f, int len3, double *fit_array) {
@@ -200,7 +212,7 @@ void rfi_find_dTdf(double *nu, double *arr, int *mask, int count, int lim)    {
 
 	/*   Get the noisiest XX or YY frequencies, which may have been missed. */
 	
-	int i,k,points,*max_pos,*max_sign;
+	int i,k,*max_pos,*max_sign;
 	double *diff,max;
 	
 	diff = (double *)(malloc(sizeof(double)*count));	
@@ -224,7 +236,11 @@ void rfi_find_dTdf(double *nu, double *arr, int *mask, int count, int lim)    {
 	}
 		
 	for(i=0; i<lim; i++)   
-		mask[i] = ( max_sign[i] > 0 ? max_pos[i]+1 : max_pos[i] );	
+		mask[i] = ( max_sign[i] > 0 ? max_pos[i]+1 : max_pos[i] );
+
+    free(max_sign);
+    free(max_pos);
+    free(diff);
 }
 
 void hi_f_spikes(int len, double *array, double *f, int lim, int count, int tol)      {
@@ -236,6 +252,8 @@ void hi_f_spikes(int len, double *array, double *f, int lim, int count, int tol)
 	rfi_find_dTdf(f,array,temp_mask,count,lim);	
 	for(i=0; i<lim; i++)
 		for(j=temp_mask[i]-tol; j <= temp_mask[i]+tol; array[j++] = 0.);
+
+    free(temp_mask);
 }
 
 void rfi_flag(int len,  int flat, int spike, int tol, double sig, double *fit, double *array, double *f, int *mask)  {
@@ -252,7 +270,7 @@ void rfi_flag(int len,  int flat, int spike, int tol, double sig, double *fit, d
 
 void clean(int len, double sig, int tol, int flat, int spike, int dTdf_limit, int dTdf_tol, double *fit, double *cross1, double *array1, double *f1, int *m)  { 
 
-	int i,lim,ct,num_entries,	
+	int i,ct,num_entries,	
 		*ind = (int *)(malloc(sizeof(int)*len)),
 		*mask = (int *)(malloc(sizeof(int)*len)),
 		*temp_ind = (int *)(malloc(sizeof(int)*len));
@@ -283,7 +301,16 @@ void clean(int len, double sig, int tol, int flat, int spike, int dTdf_limit, in
 		if(temp_arr[i]!=0.) 
 		{  f[num_entries] = temp_f[i]; array[num_entries] = temp_arr[i]; ind[num_entries]=temp_ind[i]; ++num_entries;   }
 	
-	for(i=0; i<num_entries; m[ind[i++]]=0);	 /* mark as clean. */	
+	for(i=0; i<num_entries; m[ind[i++]]=0);	 /* mark as clean. */ 
+
+    free(f);
+    free(array);
+    free(cross);
+    free(temp_arr);
+    free(temp_f);
+    free(temp_ind);
+    free(mask);
+    free(ind);
 }
 
 int clean_py(double sig, int tol, int flat, int spike, int dTdf_limit, int dTdf_tol, 

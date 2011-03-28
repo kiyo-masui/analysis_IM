@@ -30,6 +30,19 @@ class TestFlagData(unittest.TestCase) :
         self.assertTrue(self.Data.data[ind] is ma.masked)
         self.assertTrue(self.Data.data[ind2] is ma.masked)
 
+    def test_different_lenght2(self) :
+        self.Data.data = ma.copy(ma.concatenate((ma.copy(self.Data.data),
+                                                 self.Data.data), -1))
+        self.Data.verify()
+        ind = (6,1,1,362)
+        ind2 = (3,2,0,1942)
+        self.Data.data[ind] = 0.2
+        self.Data.data[ind2] = 0.2
+        flag_data.apply_cuts(self.Data, -1, 5.0, 0, True, 0, 0)
+        self.assertTrue(self.Data.data[ind] is ma.masked)
+        self.assertTrue(self.Data.data[ind2] is ma.masked)
+
+
     def test_pol_cut(self) :
         ind = (6,1,1,676)
         ind2 = (3,2,0,245)
