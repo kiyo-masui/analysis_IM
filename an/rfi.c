@@ -11,9 +11,13 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include <assert.h>
 
 #include "rfi.h"
 #include "Python.h"
+
+// Number of sections for the polynomical fit.
+#define NUM_PIECES 32
 
 double absl(double x)  {  return x < 0. ? -x : x;  }
 double sq(double x)  {  return x*x;   }
@@ -27,13 +31,12 @@ int get_rms(double *array, int len, double *rms, double *mean)    {
 	/* Threshold = About how many sigma's is teh data treated as noise? */
 	/* when_to_quit:   Quit when successive computations of the RMS differ by this amount. */
 	   
-	double lim,rms1,count,mu,*copy,
+	double lim,rms1,count,mu,copy[4096],
 		   threshold = 3.,
 		   when_to_quit = 0.1;
 
 	int i,l,big_number = 50,status = 0;
 	
-	copy = (double *)(malloc(len*sizeof(double))); 
 	for(i=0; i<len; copy[i]=array[i],i++);      /* Make a copy. */
 	
 	for(mu=0.,i=0; i<len; mu += (copy[i]/((double)(len))), i++);
@@ -58,6 +61,7 @@ int get_rms(double *array, int len, double *rms, double *mean)    {
 	}	
 
 	*rms = rms1; *mean = mu;
+
 	return status;
 }
 	
@@ -76,8 +80,8 @@ void xi_square_fit(double *freq, double *array, double *fit, int len)    {
 	 len is the length..
 	 */     
 	
-	double *T,*nu,count,rms,d_parts,d_pieces,mean,
-	avg,x,y,x_bar,y_bar,sum_x_x,sum_x_y,a,b;
+	double T[4096],nu[4096],count,rms,d_parts,d_pieces,mean,
+	x,y,x_bar,y_bar,sum_x_x,sum_x_y,a,b;
 	
 	int i,j,pieces,parts;
 	
@@ -88,9 +92,7 @@ void xi_square_fit(double *freq, double *array, double *fit, int len)    {
 	pieces = len/parts;            
 	d_pieces = (double)(pieces);
 	
-	T = (double *)(malloc(sizeof(double)*parts));
-	nu = (double *)(malloc(sizeof(double)*parts));
-	
+
 	get_rms(array,len,&rms,&mean);
 	
 	for(i=0; i<parts; i++)   {
@@ -120,7 +122,8 @@ void xi_square_fit(double *freq, double *array, double *fit, int len)    {
 	b = (sum_x_y - (d_parts*x_bar*y_bar)) / (sum_x_x - (d_parts*sq(x_bar)));
 	a = y_bar - (b*x_bar);
 		
-	for(i=0; i<len; fit[i] = a + b*freq[i],i++);	
+	for(i=0; i<len; fit[i] = a + b*freq[i],i++);
+
 }
 
 
@@ -129,23 +132,40 @@ void get_fit(int len, double *array, double *f, double *fit_array)    {
 	/*         This flattens the waveform stored in variable array[], by means of the fit. 
 		  The fit is obtained and then removed from the data. */
 	
-	int num_pieces = 32, 
-		i,j,block = len/num_pieces;
+	int num_pieces = NUM_PIECES,
+        i,j,block = len/num_pieces;
+    assert(len%num_pieces == 0);
 	
-	double *pieces, *f_pieces, *fit,rms,mean;
+	double pieces[4096], f_pieces[4096], fit[4096];
 
-	pieces   = (double *)(malloc(sizeof(double)*block));
-	f_pieces = (double *)(malloc(sizeof(double)*block));
-	fit = (double *)(malloc(sizeof(double)*block));
+    if ((pieces == NULL) ||(f_pieces == NULL) ||(fit == NULL) ) { perror("malloc");}
 	
 	for(i=0; i<num_pieces; i++)   {
 		
-		for(j=0; j<block; j++)    
+	    for(j=0; j<block; j++)    
 			{  pieces[j] = array[j + (i*block)]; f_pieces[j] = f[j + (i*block)];  }
-					
+
 		xi_square_fit(f_pieces,pieces, fit, block);
-		for(j=0; j<block; fit_array[j+(block*i)] = fit[j],j++);			
+		for(j=0; j<block; j++)    {
+          fit_array[j+(block*i)] = fit[j];
+        }
 	}
+
+}
+
+int get_fit_py(int len1, double *array, int len2, double *f, int len3, double *fit_array) {
+  // A swig compatible wrapper for get_fit
+  
+  // Check that len1, len2, and len3 are all equal.
+  if ((len1 != len2) || (len1 != len3)){ 
+    return 1;
+  }
+  if (len1%NUM_PIECES != 0) {
+    return 1;
+  }
+  
+  get_fit(len1, array, f, fit_array);
+  return 0;
 }
 
 
@@ -180,13 +200,9 @@ void rfi_find_dTdf(double *nu, double *arr, int *mask, int count, int lim)    {
 
 	/*   Get the noisiest XX or YY frequencies, which may have been missed. */
 	
-	int i,k,points,*max_pos,*max_sign;
-	double *diff,max;
+	int i,k,max_pos[4096],max_sign[4096];
+	double diff[4096],max;
 	
-	diff = (double *)(malloc(sizeof(double)*count));	
-	max_pos = (int *)(malloc(sizeof(int)*lim));	
-	max_sign = (int *)(malloc(sizeof(int)*lim));		
-		
 	diff[count-1] = 0.;	
 	for(i=0; i<count-1; ++i)   		
 		diff[i] = -(arr[i+1]-arr[i])/(nu[i+1]-nu[i]);  /* derivatives dT/df. */
@@ -204,18 +220,20 @@ void rfi_find_dTdf(double *nu, double *arr, int *mask, int count, int lim)    {
 	}
 		
 	for(i=0; i<lim; i++)   
-		mask[i] = ( max_sign[i] > 0 ? max_pos[i]+1 : max_pos[i] );	
+		mask[i] = ( max_sign[i] > 0 ? max_pos[i]+1 : max_pos[i] );
+
 }
 
 void hi_f_spikes(int len, double *array, double *f, int lim, int count, int tol)      {
 	
 	int i,j,
-		*temp_mask = (int *)(malloc(sizeof(int)*len));
+		temp_mask[4096];
 	
 	for(i=0; i<lim; temp_mask[i]=0,i++);
 	rfi_find_dTdf(f,array,temp_mask,count,lim);	
 	for(i=0; i<lim; i++)
 		for(j=temp_mask[i]-tol; j <= temp_mask[i]+tol; array[j++] = 0.);
+
 }
 
 void rfi_flag(int len,  int flat, int spike, int tol, double sig, double *fit, double *array, double *f, int *mask)  {
@@ -232,17 +250,17 @@ void rfi_flag(int len,  int flat, int spike, int tol, double sig, double *fit, d
 
 void clean(int len, double sig, int tol, int flat, int spike, int dTdf_limit, int dTdf_tol, double *fit, double *cross1, double *array1, double *f1, int *m)  { 
 
-	int i,lim,ct,num_entries,	
-		*ind = (int *)(malloc(sizeof(int)*len)),
-		*mask = (int *)(malloc(sizeof(int)*len)),
-		*temp_ind = (int *)(malloc(sizeof(int)*len));
+	int i,ct,num_entries,	
+		ind[4096],
+		mask[4096],
+		temp_ind[4096];
 	
 	double 		
-		*temp_f = (double *)(malloc(sizeof(double)*len)),
-		*temp_arr = (double *)(malloc(sizeof(double)*len)),
-		*cross = (double *)(malloc(sizeof(double)*len)),
-		*array = (double *)(malloc(sizeof(double)*len)),	
-		*f = (double *)(malloc(sizeof(double)*len));
+		temp_f[4096],
+		temp_arr[4096],
+		cross[4096],
+		array[4096],	
+		f[4096];
 	
 	for(i=0; i<len; ind[i]=i, i++);
 	for(i=0; i<len; (cross[i]=cross1[i],array[i]=array1[i],f[i]=f1[i]),i++); /* Make a copy. */
@@ -263,6 +281,20 @@ void clean(int len, double sig, int tol, int flat, int spike, int dTdf_limit, in
 		if(temp_arr[i]!=0.) 
 		{  f[num_entries] = temp_f[i]; array[num_entries] = temp_arr[i]; ind[num_entries]=temp_ind[i]; ++num_entries;   }
 	
-	for(i=0; i<num_entries; m[ind[i++]]=0);	 /* mark as clean. */	
+	for(i=0; i<num_entries; m[ind[i++]]=0);	 /* mark as clean. */ 
+
 }
 
+int clean_py(double sig, int tol, int flat, int spike, int dTdf_limit, int dTdf_tol, 
+              int len1, double *fit, int len2, double *cross1, int len3, double *array1, 
+              int len4, double *f1, int len5, int *m) {
+  // Swig compatible wrapper for clean.
+
+  // Make sure all the lengths are the same
+  if ((len1 == len2) && (len1 == len3) && (len1 == len4) && (len1 == len5)){
+    clean(len1, sig, tol, flat, spike, dTdf_limit, dTdf_tol, 
+          fit, cross1, array1, f1, m);
+    return 0;
+  } else return 1;
+}
+  
