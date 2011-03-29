@@ -428,6 +428,18 @@ class TestMatUtils(unittest.TestCase) :
         self.mat.rows = (0, 1)
         self.assertEqual(self.mat.col_names(), ('freq', 'a', 'b'))
 
+    def test_iter_col_axes(self) :
+        for ii, index in enumerate(self.mat.iter_col_index()) :
+            self.mat[index] = ii
+        self.assertTrue(sp.allclose(self.mat[:,:,2], 2))
+        self.assertTrue(sp.allclose(self.mat[:,:,5], 5))
+
+    def test_iter_row_axes(self) :
+        for ii, index in enumerate(self.mat.iter_row_index()) :
+            self.mat[index] = ii
+        self.assertTrue(sp.allclose(self.mat[:,1,:], 1))
+        self.assertTrue(sp.allclose(self.mat[:,3,:], 3))
+
 class TestMatUtilsSq(unittest.TestCase) :
 
     def setUp(self) :

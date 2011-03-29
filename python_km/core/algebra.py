@@ -59,6 +59,7 @@ that.
 """
 
 import os
+import sys
 import warnings
 
 import scipy as sp
@@ -514,7 +515,7 @@ def make_vect(array, axis_names=None) :
 class mat(alg_object) :
     """Base class for matricies.
     
-    This is only half a class.  A complete matris class is created by making
+    This is only.3 half a class.  A complete matris class is created by making
     a class that inherits from both this class and from info_array or
     info_memmap, for example the classes mat_array and mat_memmap.
     """
@@ -623,7 +624,7 @@ class mat(alg_object) :
         return shape
 
     def iter_blocks(self) :
-        """Returns an iterator that iterates over the blocks of an matrix."""
+        """Returns an iterator over the blocks of a matrix."""
         
         # Build the iterator class.
         class iterator(object) :
@@ -654,6 +655,96 @@ class mat(alg_object) :
         
         # Initialize it and return it.
         return iterator(self)
+    
+    def _iter_row_col_index(self, row_or_col) :
+        """Implementation of iter_col_index and iter_row_index."""
+
+        # Build the iterator class.
+        class iterator(object) :
+
+            def __init__(self, arr) :
+                self.ndim = arr.ndim
+                self.ii = 0
+                # Axes that we will iteration over.
+                if row_or_col == 'col' :
+                    self.axes = list(arr.cols)
+                    other_axes = arr.rows
+                elif row_or_col == 'row' :
+                    self.axes = list(arr.rows)
+                    other_axes = arr.cols
+                else :
+                    raise RunTimeError()
+                # Do not iterate over axes that are shared with rows.
+                for oth in other_axes :
+                    if oth in self.axes :
+                        self.axes.remove(oth)
+                # Get the shape of these axes, as well as the total size.
+                self.shape = ()
+                self.size = 1
+                for axis in self.axes :
+                    self.shape += (arr.shape[axis],)
+                    self.size *= arr.shape[axis]
+
+            def __iter__(self) :
+                return self
+
+            def next(self) :
+                inds = ()
+                ii = self.ii
+                self.ii += 1
+                if ii >= self.size :
+                    raise StopIteration()
+                # The sequence that will eventually be used to subscript the
+                # array.
+                array_index = [slice(sys.maxint)] * self.ndim
+                # Get the indices.  Loop through the axes backward.
+                for jj in range(len(self.axes) - 1, -1, -1) :
+                    array_index[self.axes[jj]] = ii%self.shape[jj]
+                    ii = ii//self.shape[jj]
+                # Return the indices.
+                return array_index
+
+        # Initiallize and return iterator.
+        return iterator(self)
+
+    def iter_row_index(self) :
+        """Returns an iterator over row axes of the mat.
+
+        This iterates over all the axes that are assotiated only with rows
+        of the mat.  Any axis that is identified as both a column and a row is
+        not iterated over.  The iterator returns an tuple that can subscript
+        the mat (not a view of the mat).  This is useful when you have an
+        operation that has to be applied uniformly to all the columns of a mat.
+
+        Examples
+        --------
+        >>> for index in mat.iter_row_axes :
+        >>>     sub_arr = mat[index]
+        >>>     sub_arr.shape == mat.col_shape()
+        True
+        """
+
+        return self._iter_row_col_index('row')
+
+
+    def iter_col_index(self) :
+        """Returns an iterator over column axes of the mat.
+
+        This iterates over all the axes that are assotiated only with columns
+        of the mat.  Any axis that is identified as both a column and a row is
+        not iterated over.  The iterator returns an tuple that can subscript
+        the mat (not a view of the mat).  This is useful when you have an
+        operation that has to be applied uniformly to all the columns of a mat.
+
+        Examples
+        --------
+        >>> for index in mat.iter_col_axes :
+        >>>     sub_arr = mat[index]
+        >>>     sub_arr.shape == mat.row_shape()
+        True
+        """
+
+        return self._iter_row_col_index('col')
 
     def mat_diag(self) :
         """Get the daigonal elements of the matrix, as a vect object."""
