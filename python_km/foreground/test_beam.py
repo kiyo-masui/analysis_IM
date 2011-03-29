@@ -120,8 +120,21 @@ class TestOperatorsMatrix(unittest.TestCase) :
         self.Beam = beam.GaussianBeam([0.2, 0.3], [600, 900])
         conv_op = self.Beam.apply(self.op)
         conv_map = self.Beam.apply(self.map)
-        self.assertAlmostEqual(sp.sum(self.op), sp.sum(conv_op), 4)
+        self.assertAlmostEqual(sp.sum(self.op), sp.sum(conv_op), 3)
         self.assertTrue(sp.allclose(conv_op[:, :, :, 2, 3], conv_map))
+
+    def test_apply_right(self) :
+        self.op[1,9,8,6,4] = 2.0
+        self.op[3,11,7,11,8] = 2.0
+        self.op[3,11,7,8,6] = 1.0
+        self.map[3, 11, 8] = 2.0
+        self.map[3, 8, 6] = 1.0
+        self.Beam = beam.GaussianBeam([0.2, 0.3], [600, 900])
+        conv_op = self.Beam.apply(self.op, right_apply=True)
+        conv_map = self.Beam.apply(self.map)
+        self.assertAlmostEqual(sp.sum(self.op), sp.sum(conv_op), 3)
+        self.assertTrue(sp.allclose(conv_op[:, 11, 7, :, :], conv_map))
+
 
     # Write a test for the axis names.
 

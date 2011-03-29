@@ -515,7 +515,7 @@ def make_vect(array, axis_names=None) :
 class mat(alg_object) :
     """Base class for matricies.
     
-    This is only.3 half a class.  A complete matris class is created by making
+    This is only half a class.  A complete matris class is created by making
     a class that inherits from both this class and from info_array or
     info_memmap, for example the classes mat_array and mat_memmap.
     """
@@ -658,7 +658,7 @@ class mat(alg_object) :
     
     def _iter_row_col_index(self, row_or_col) :
         """Implementation of iter_col_index and iter_row_index."""
-
+        #
         # Build the iterator class.
         class iterator(object) :
 
@@ -725,7 +725,6 @@ class mat(alg_object) :
         """
 
         return self._iter_row_col_index('row')
-
 
     def iter_col_index(self) :
         """Returns an iterator over column axes of the mat.

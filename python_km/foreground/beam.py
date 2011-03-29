@@ -16,7 +16,7 @@ class Beam(object) :
     whethar they be imperical or functional.
     """
     
-    def apply(self, alg_object, wrap=False) :
+    def apply(self, alg_object, wrap=False, right_apply=False) :
         """Apply the beam, as a linear operator, to vector or matrix.
 
         If the beam is viewed as a matrix, this operation is equivalent to
@@ -68,12 +68,19 @@ class Beam(object) :
                 convolve(alg_object[ii, ...], kernal, out[ii], mode=mode,
                          cval=0)
             elif isinstance(alg_object, algebra.mat) :
-                if alg_object.row_names() != ('freq', 'ra', 'dec') :
-                    raise ce.DataError("Matrix row axis names must be exactly "
-                                       "('freq', 'ra', 'dec')")
-                # Loop over all the columns of the matrix and convolve the
-                # rows.
-                for index in alg_object.iter_col_only_inds() :
+                # If applying from the left, loop over columns and convolve
+                # over rows.  If applying from the right, do the oposite.
+                if right_apply :
+                    if alg_object.col_names() != ('freq', 'ra', 'dec') :
+                        raise ce.DataError("Matrix column axis names must be "
+                                           "exactly ('freq', 'ra', 'dec')")
+                    iterator = alg_object.iter_row_index()
+                else :
+                    if alg_object.row_names() != ('freq', 'ra', 'dec') :
+                        raise ce.DataError("Matrix row axis names must be "
+                                           "exactly ('freq', 'ra', 'dec')")
+                    iterator = alg_object.iter_col_index()
+                for index in iterator :
                     sub_mat = alg_object[index] # A view.
                     # Pick out this frequency.
                     sub_mat = sub_mat[ii, ...]
