@@ -1,5 +1,4 @@
-"""This module provides vector and matrix interfaces tailored to the needs of
-intensity mapping analysis.
+"""Provides vector and matrix interfaces tailored to the needs of IM analysis.
 
 At the heart of this module is the need to organize multidimensional data (such
 as a map which has 3 axes: ra, dec, frequency) as a 1D vector for linear
@@ -53,7 +52,7 @@ vector W = M*V?  Obviously W should have three dimensions named ('a', 'b',
 'c').  This is implemented in the 'dot' function of this module.
 
 Note that slices of mat and vect objects are generally just normal arrays or
-memmaps.  In general operations that change the same of an vect or mat are
+memmaps.  In general operations that change the shape of a vect or mat are
 dangerouse and to be avoided.  Instead, make a view and mess with around with
 that.
 """
@@ -75,10 +74,25 @@ class info_array(sp.ndarray) :
     """A standard numpy ndarray object with a dictionary for holding extra info.
 
     This class should work exactly the same as a numpy ndarray object but has an
-    attribute named info, which is a dictionary.
+    attribute named info, which is a dictionary.  This class performs basic
+    meta data handling for the higher lever classes that subclass this one:
+    mat_array and vect_array. 
 
-    Initialize this class by passing it a ndarray and optionally a dictionary
-    which will be used as info.
+    Parameters
+    ----------
+    input_array : array like
+        Array to converted to an info_array.  The info_array will be a
+        view to the input array.
+    info : dictionary
+        Dictionary to be set as the `info` attribute (default is None, which
+        implies creat a new empty dictionary).
+
+    Attributes
+    ----------
+    info : dictionary
+        Holds any meta data associated with this array.  All items should be
+        easily represented as a string so they can be written to and read from
+        file.
     """
 
     def __new__(cls, input_array, info=None):
@@ -106,25 +120,45 @@ class info_memmap(sp.memmap) :
     """A standard numpy memmap object with a dictionary for holding extra info.
 
     This class should work exactly the same as a numpy memmap object but has an
-    attribute named info, which is a dictionary.
+    attribute named info, which is a dictionary. This class performs basic
+    meta data handling for the higher lever classes that subclass this one:
+    mat_memmap and vect_memmap.  This array is written to file at the same time
+    that the memmap is flushed.
     
-    Initialization arguments :
-    marray : A numpy memmap.
-    info=None : A dictionary to be used as the info metadata dictionary. If
-        None, create a new dictionary.
-    metafile=None : String filename to write the metadata to.  In some
+    Parameters
+    ----------
+    marray : numpy.memmap
+        Array to be converted to an info_memmap.  The info_memmap will be a
+        view to the input array.
+    info : dictionary
+        Dictionary to be set as the `info` attribute (default is None, which
+        implies creat a new empty dictionary).
+    metafile : str 
+        filename to write the metadata to.  In some
         versions of numpy, the metadata will be written to file even if the
         memmap is in read only mode.  To avoid this pass metafile=None, which
         prevents the metadata from being stored on disk at all.
+
+    Attributes
+    ----------
+    info : dictionary
+        Holds any meta data associated with this array.  All items should be
+        easily represented as a string so they can be written to and read from
+        file.
+    metafile : str
+        filename where the metadata is written to.  `info` is written to this
+        file whenever the `flush` method is called (which includes deletion of
+        the object).  This can happen even if the memmap was opened in 'r'
+        mode.  Set to None if you wish to protect the data on file.
     """
 
-    def __new__(cls, input_array, info=None, metafile=None):
+    def __new__(cls, marray, info=None, metafile=None):
         # Input array is an already formed ndarray instance.
         # We first cast to be our class type.
-        if not isinstance(input_array, sp.memmap) :
+        if not isinstance(marray, sp.memmap) :
             raise TypeError("info_memmaps can only be initialized off of "
                             "numpy memmaps.")
-        obj = input_array.view(cls)
+        obj = marray.view(cls)
         # Add the new attribute to the created instance.
         if info is None :
             info = {}
@@ -192,9 +226,25 @@ def open_memmap(filename, mode='r+', dtype=None, shape=None,
 
     This is similar to the numpy.lib.format.openmemmap() function but also
     deals with the meta data dictionary, which is read and written from a
-    meta data file.  The only extra argument over the numpy version is the meta
-    data file name metafile.  If it is None, then the meta data file name is
-    assumed to be filename + ".meta".
+    meta data file.
+
+    The only extra argument over the numpy version is the meta data file name
+    `metafile`.
+    
+    Parameters
+    ----------
+    metafile : str
+        File name for which the `info` attribute of the returned info_memmap
+        will be read from and written to. Default is None, where the it is
+        assumed to be filename + ".meta".
+        
+    Returns
+    -------
+    marray : info_memmap
+        The `info` is intialized as an empty dictionary if `mode` is 'w' or if
+        the file corresponding to `metafile` does not exist.  The `metafile`
+        attribute of marray is set to the `metafile` parameter unless `mode` is
+        'r' or 'c' in which case it is set to None.
     """
     
     # Memory map the data part.
