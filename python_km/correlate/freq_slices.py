@@ -101,8 +101,8 @@ class FreqSlices(object) :
             Rmodes = self.freq_eig_modes
             subflag = True
         if subflag :
-            for ira in range(Map1.shape[0]) :
-                for jdec in range(Map1.shape[1]) :
+            for ira in range(Map1.shape[1]) :
+                for jdec in range(Map1.shape[2]) :
                     # if sp.any(Map1.data.mask[ira,jdec,freq]) :
                     #    continue
                     # else :
@@ -110,15 +110,15 @@ class FreqSlices(object) :
                         # v.shape = freq.shape
                         v = v.reshape(freq.shape)
                         # amp = sp.sum(v*Map1.data[ira,jdec,freq])
-                        amp = np.dot(v, Map1[freq,ira,jdec])
+                        amp = sp.dot(v, Map1[freq,ira,jdec])
                         Map1[freq,ira,jdec] -= amp*v
                         map_out = (params['output_root'] + params['file_middles'][0] + 
                                    '_cleaned' + params['input_end_map'])
             # fits_map.write(Map1, map_out)
             algebra.save(map_out, Map1)
             
-            for ira in range(Map2.shape[0]) :
-                for jdec in range(Map2.shape[1]) :
+            for ira in range(Map2.shape[1]) :
+                for jdec in range(Map2.shape[2]) :
                     # if sp.any(Map1.data.mask[ira,jdec,freq]) :
                     #    continue
                     # else :
@@ -126,7 +126,7 @@ class FreqSlices(object) :
                         # v.shape = freq.shape
                         v = v.reshape(freq.shape)
                         # amp = sp.sum(v*Map1.data[ira,jdec,freq])
-                        amp = np.dot(v, Map2[freq,ira,jdec])
+                        amp = sp.dot(v, Map2[freq,ira,jdec])
                         Map2[freq,ira,jdec] -= amp*v
                         map_out = (params['output_root'] + params['file_middles'][1] + 
                                    '_cleaned' + params['input_end_map'])
@@ -185,9 +185,10 @@ class FreqSlices(object) :
         # Noting that if DEC != 0, then a degree of RA is less than a degree.
         ra_fact = sp.cos(sp.pi*Map1.info['dec_centre'] / 180.0) * Map1.info['ra_delta']
         #dec_fact = Map1.info['dec_delta']
-        
+
         # Double loop over all three coordinates. Using only a 2 space indent
         # because this loop is 6 deep.
+        print "Starting Correlation."
         for ira1 in range(map1.shape[1]) :
             for ira2 in range(map2.shape[1]) :
                 for jdec1 in range(map1.shape[2]) :
@@ -369,10 +370,10 @@ def plot_contour(self, norms=False, lag_inds=(0)) :
     nf = len(self.freq_inds)
     #freq_diffs = sp.sort(self.allfreq - min(self.allfreq))
     n_bins = 12
-    factor = 1.5
+    factor = 2.0
     start = 2.1e6
     freq_diffs = sp.empty(n_bins)
-    freq_diffs[0] = 0.1
+    freq_diffs[0] = 0.5
     freq_diffs[1] = start
     for ii in range(2,n_bins) :
        freq_diffs[ii] = factor*freq_diffs[ii-1]
@@ -501,21 +502,28 @@ def plot_collapsed(self, norms=False, lag_inds=(0)) :
     ax.set_xscale("log")
     errors = sp.empty((2, nbins))
     errors[:,:] = pdatb_sig
-    #errors[0,errors[0,:]>abs(pdat)] = abs(pdat[errors[0,:]>abs(pdat)]) - 0.0001
-    f = plt.errorbar(lags[pdat>0][0:3], pdat[pdat>0][0:3],
-                     errors[:,pdat>0][:,0:3], linestyle='None', marker='o', 
+    f = plt.errorbar(lags[pdat-errors[0,:]>0], pdat[pdat-errors[0,:]>0],
+                     errors[:,pdat-errors[0,:]>0], linestyle='None', marker='o', 
                      color='b')
-    vals = pdat[pdat>0][3:] + 2*errors[1,pdat>0][3:]
-    es = sp.zeros((2, len(vals)))
-    es[0,:] = 0.25*vals
-    f = plt.errorbar(lags[pdat>0][3:], vals, es, linestyle='None', 
-                     marker='None', 
-                     color='b', lolims=True)
-    vals = 0.0*pdat[pdat<0] + 2*errors[1,pdat<0]
-    es = sp.zeros((2, len(vals)))
-    es[0,:] = 0.25*vals
-    f = plt.errorbar(lags[pdat<0], vals, es,
-                 linestyle='None', marker='None', color='b', lolims=True)
+    f = plt.errorbar(lags[pdat+errors[1,:]<0], -pdat[pdat+errors[1,:]<0],
+                     errors[:,pdat+errors[1,:]<0], linestyle='None', marker='o', 
+                     color='r')
+    inds = sp.logical_and(pdat-errors[0,:]<=0, pdat > 0)
+    if sp.any(inds) :
+        vals = pdat[inds] + 2*errors[1, inds]
+        es = sp.zeros((2, len(vals)))
+        es[0,:] = 0.25*abs(vals)
+        f = plt.errorbar(lags[inds], vals,
+                         es, linestyle='None', marker='None', 
+                         color='b', lolims=True)
+    inds = sp.logical_and(pdat+errors[1,:]>=0, pdat < 0)
+    if sp.any(inds) :
+        vals = pdat[inds] - 2*errors[0, inds]
+        es = sp.zeros((2, len(vals)))
+        es[0,:] = 0.25*abs(vals)
+        f = plt.errorbar(lags[inds], -vals,
+                         es, linestyle='None', marker='None', 
+                         color='r', lolims=True)
     t_lags = sp.arange(0.1,100,0.1)
     r0 = 5.5
     rb = 7.0
