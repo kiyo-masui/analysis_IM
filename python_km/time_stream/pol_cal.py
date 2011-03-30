@@ -86,8 +86,8 @@ def mueller() :
     epsilon = [0.008,0.013,0.015,0.019,0.024,0.016,0.016,0.017]
     phi = [-164.9,-4.0,-7.9,0.5,6.1,23.2,17.6,55.4]
     CFR = [694,724,754,784,814,844,874,904]
-    delf = sp.array([(CFR[i]-1485.8) for i in range(0,8)])
-    psi = sp.array([(psi[i]-0.0086*delf[i]) for i in range(0,8)])
+#    delf = sp.array([(CFR[i]-1485.8) for i in range(0,8)])
+#    psi = sp.array([(psi[i]-0.0086*delf[i]) for i in range(0,8)])
     mp = sp.array([deltaG,psi,alpha,epsilon,phi,CFR])
 
 # Amplifier Mueller Matrix
@@ -135,17 +135,35 @@ def mueller() :
 # Generates Inverse Mueller Matrix for use
     m_total = sp.zeros((4,4,8), float)
     for i in range(0,8):
+        m_total[0,0,i] = 1
+        m_total[0,1,i] = -2*mp[3,i]*ma.sin(mp[4,i]*sp.pi/180)*ma.sin(2*mp[2,i]*sp.pi/180)+mp[0,i]*ma.cos(2*mp[2,i]*sp.pi/180)/2
+        m_total[0,2,i] = 2*mp[3,i]*ma.cos(mp[4,i]*sp.pi/180)
+        m_total[0,3,i] = 2*mp[3,i]*ma.sin(mp[4,i]*sp.pi/180)*ma.cos(2*mp[2,i]*sp.pi/180)+mp[0,i]*ma.sin(2*mp[2,i]*sp.pi/180)/2
+        m_total[1,0,i] = mp[0,i]/2
+        m_total[1,1,i] = ma.cos(2*mp[2,i]*sp.pi/180)
+        m_total[1,3,i] = ma.sin(2*mp[2,i]*sp.pi/180)
+        m_total[2,0,i] = 2*mp[3,i]*ma.cos((mp[4,i]+mp[1,i])*sp.pi/180)
+        m_total[2,1,i] = ma.sin(2*mp[2,i]*sp.pi/180)*ma.sin(mp[1,i]*sp.pi/180)
+        m_total[2,2,i] = ma.cos(mp[1,i]*sp.pi/180)
+        m_total[2,3,i] = -ma.cos(2*mp[2,i]*sp.pi/180)*ma.sin(mp[1,i]*sp.pi/180)
+        m_total[3,0,i] = 2*mp[3,i]*ma.sin((mp[4,i]+mp[1,i])*sp.pi/180)
+        m_total[3,1,i] = -ma.sin(2*mp[2,i]*sp.pi/180)*ma.cos(mp[1,i]*sp.pi/180)
+        m_total[3,2,i] = ma.sin(mp[1,i]*sp.pi/180)
+        m_total[3,3,i] = ma.cos(2*mp[2,i]*sp.pi/180)*ma.cos(mp[1,i]*sp.pi/180)
         M_a = sp.mat(m_a[:,:,i])
         M_f = sp.mat(m_f[:,:,i])
         M_ilfr = sp.mat(m_ilfr[:,:,i])
-        M_tot = M_a*M_f*M_ilfr
+#        M_tot2 = M_a*M_f*M_ilfr
+#        print M_tot2
+        M_tot = sp.mat(m_total[:,:,i])
+#        print M_tot
         M_total = M_tot.I
         M_astron = sp.mat(m_astron[:,:,i])
         M_total = M_astron*M_total
         for j in range(0,4):
             for k in range(0,4):
                 m_total[j,k,i] = M_total[j,k]
- 
+
     return m_total
 
 
@@ -191,21 +209,21 @@ def calibrate_pol(Data, m_total) :
         # Determines the frequency bin (and Inverse Mueller Matrix)  to use   
             CenterFrequency = int(Data.field['CRVAL1']/1000000)
             
-            if CenterFrequency in range(690,700):
+            if CenterFrequency in range(669,699):
                 bin = 0
-            elif CenterFrequency in range(720,730):
+            elif CenterFrequency in range(700,729):
                 bin = 1
-            elif CenterFrequency in range(750,760):
+            elif CenterFrequency in range(730,759):
                 bin = 2
-            elif CenterFrequency in range(780,790):
+            elif CenterFrequency in range(760,789):
                 bin = 3
-            elif CenterFrequency in range(810,820):
+            elif CenterFrequency in range(790,819):
                 bin = 4
-            elif CenterFrequency in range(840,850):
+            elif CenterFrequency in range(820,849):
                 bin = 5
-            elif CenterFrequency in range(870,880):
+            elif CenterFrequency in range(850,879):
                 bin = 6
-            elif CenterFrequency in range(900,910):
+            elif CenterFrequency in range(880,929):
                 bin = 7
             else :
                 raise ce.DataError('The center frequency does not match expected') 
