@@ -90,41 +90,7 @@ def mueller() :
 #    psi = sp.array([(psi[i]-0.0086*delf[i]) for i in range(0,8)])
     mp = sp.array([deltaG,psi,alpha,epsilon,phi,CFR])
 
-# Amplifier Mueller Matrix
-    m_a = sp.zeros((4,4,8), float)
-    for i in range(0,8):
-        m_a[0,0,i] = 1
-        m_a[1,0,i] = 0.5*mp[0,i]
-        m_a[0,1,i] = 0.5*mp[0,i]
-        m_a[1,1,i] = 1
-        m_a[2,2,i] = ma.cos(mp[1,i]*sp.pi/180)
-        m_a[3,2,i] = -ma.sin(mp[1,i]*sp.pi/180)
-        m_a[2,3,i] = -m_a[3,2,i]
-        m_a[3,3,i] = m_a[2,2,i]
-
-# Feed Mueller Matrix
-    m_f = sp.zeros((4,4,8), float)
-    for i in range(0,8):
-        m_f[0,0,i] = 1
-        m_f[1,1,i] = ma.cos(mp[2,i]*sp.pi/180)*ma.cos(mp[2,i]*sp.pi/180)-ma.sin(mp[2,i]*sp.pi/180)*ma.sin(mp[2,i]*sp.pi/180)
-        m_f[3,1,i] = 2*ma.cos(mp[2,i]*sp.pi/180)*ma.sin(mp[2,i]*sp.pi/180)
-        m_f[2,2,i] = ma.cos(mp[2,i]*sp.pi/180)*ma.cos(mp[2,i]*sp.pi/180)+ma.sin(mp[2,i]*sp.pi/180)*ma.sin(mp[2,i]*sp.pi/180)
-        m_f[1,3,i] = -2*ma.cos(mp[2,i]*sp.pi/180)*ma.sin(mp[2,i]*sp.pi/180)
-        m_f[3,3,i] = ma.cos(mp[2,i]*sp.pi/180)*ma.cos(mp[2,i]*sp.pi/180)-ma.sin(mp[2,i]*sp.pi/180)
-
-# Feed Imperfections Mueller Matrix
-    m_ilfr = sp.zeros((4,4,8), float)
-    for i in range(0,8):
-        m_ilfr[0,0,i] = 1
-        m_ilfr[2,0,i] = 2*mp[3,i]*ma.cos(mp[4,i]*sp.pi/180)
-        m_ilfr[3,0,i] = 2*mp[3,i]*ma.sin(mp[4,i]*sp.pi/180)
-        m_ilfr[1,1,i] = 1
-        m_ilfr[0,2,i] = m_ilfr[2,0,i]
-        m_ilfr[2,2,i] = 1
-        m_ilfr[0,3,i] = m_ilfr[3,0,i]
-        m_ilfr[3,3,i] = 1
-
-# Rotates Matrix into Astronomical frame
+# Matrix for rotating Mueller Matrix into Astronomical frame
     m_astron = sp.zeros((4,4,8), float)
     for i in range(0,8):
         m_astron[0,0,i] = 1
@@ -135,6 +101,7 @@ def mueller() :
 # Generates Inverse Mueller Matrix for use
     m_total = sp.zeros((4,4,8), float)
     for i in range(0,8):
+#Note that this version is based on the combined matrix in the theory paper.
         m_total[0,0,i] = 1
         m_total[0,1,i] = -2*mp[3,i]*ma.sin(mp[4,i]*sp.pi/180)*ma.sin(2*mp[2,i]*sp.pi/180)+mp[0,i]*ma.cos(2*mp[2,i]*sp.pi/180)/2
         m_total[0,2,i] = 2*mp[3,i]*ma.cos(mp[4,i]*sp.pi/180)
@@ -150,13 +117,7 @@ def mueller() :
         m_total[3,1,i] = -ma.sin(2*mp[2,i]*sp.pi/180)*ma.cos(mp[1,i]*sp.pi/180)
         m_total[3,2,i] = ma.sin(mp[1,i]*sp.pi/180)
         m_total[3,3,i] = ma.cos(2*mp[2,i]*sp.pi/180)*ma.cos(mp[1,i]*sp.pi/180)
-        M_a = sp.mat(m_a[:,:,i])
-        M_f = sp.mat(m_f[:,:,i])
-        M_ilfr = sp.mat(m_ilfr[:,:,i])
-#        M_tot2 = M_a*M_f*M_ilfr
-#        print M_tot2
         M_tot = sp.mat(m_total[:,:,i])
-#        print M_tot
         M_total = M_tot.I
         M_astron = sp.mat(m_astron[:,:,i])
         M_total = M_astron*M_total
@@ -206,40 +167,36 @@ def calibrate_pol(Data, m_total) :
 
     for time_index in range(0,Data.dims[0]):
         for cal_index in range(0,Data.dims[2]):
-        # Determines the frequency bin (and Inverse Mueller Matrix)  to use   
-            CenterFrequency = int(Data.field['CRVAL1']/1000000)
-            
-            if CenterFrequency in range(669,699):
-                bin = 0
-            elif CenterFrequency in range(700,729):
-                bin = 1
-            elif CenterFrequency in range(730,759):
-                bin = 2
-            elif CenterFrequency in range(760,789):
-                bin = 3
-            elif CenterFrequency in range(790,819):
-                bin = 4
-            elif CenterFrequency in range(820,849):
-                bin = 5
-            elif CenterFrequency in range(850,879):
-                bin = 6
-            elif CenterFrequency in range(880,929):
-                bin = 7
-            else :
-                raise ce.DataError('The center frequency does not match expected') 
+        # Determines the Inverse Mueller Matrix to use   
+#            CenterFrequency = int(Data.field['CRVAL1']/1000000)
+            for freq in range(0,Data.dims[3]):
+               if Data.freq[freq] in range(669,699):
+                  bin = 0
+               elif Data.freq[freq] in range(700,729):
+                  bin = 1
+               elif Data.freq[freq] in range(730,759):
+                  bin = 2
+               elif Data.freq[freq] in range(760,789):
+                  bin = 3
+               elif Data.freq[freq] in range(790,819):
+                  bin = 4
+               elif Data.freq[freq] in range(820,849):
+                  bin = 5
+               elif Data.freq[freq] in range(850,879):
+                  bin = 6
+               elif Data.freq[freq] in range(880,929):
+                  bin = 7
+               else :
+                  raise ce.DataError('The frequency outside viable window') 
 
     # Converts files into matrix format 
-            STOKES = sp.mat(Data.data[time_index,:,cal_index,:])        
-            MUELLER = sp.mat(m_total[:,:,bin])
+               STOKES = sp.mat(Data.data[time_index,:,cal_index,freq])        
+               MUELLER = sp.mat(m_total[:,:,bin])
     # Next there is a matrix multiplication that will generate 
     # a new set of stokes values.
-       	    stokesmod = MUELLER*STOKES
-
-    # Should now have a matrix with dimensions [4,nfreq] where nfreq is the 
-    # number of frequencies in that bin (aka same dim as original stokes)
-            for i in range(0,Data.dims[1]):
-                for j in range(0,Data.dims[3]):
-                    Data.data[time_index,i,cal_index,j] = stokesmod[i,j]	
+               stokesmod = MUELLER*STOKES
+               for i in range(0,Data.dims[1]):
+                    Data.data[time_index,i,cal_index,j] = stokesmod[i]	
 
     # At this point the polarization values should be adjusted. 
 
