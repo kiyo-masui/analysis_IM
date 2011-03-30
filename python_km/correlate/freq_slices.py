@@ -100,39 +100,38 @@ class FreqSlices(object) :
             Lmodes = self.freq_eig_modes
             Rmodes = self.freq_eig_modes
             subflag = True
+        if subflag :
+            for ira in range(Map1.shape[0]) :
+                for jdec in range(Map1.shape[1]) :
+                    # if sp.any(Map1.data.mask[ira,jdec,freq]) :
+                    #    continue
+                    # else :
+                    for v in Lmodes :
+                        # v.shape = freq.shape
+                        v = v.reshape(freq.shape)
+                        # amp = sp.sum(v*Map1.data[ira,jdec,freq])
+                        amp = np.dot(v, Map1[freq,ira,jdec])
+                        Map1[freq,ira,jdec] -= amp*v
+                        map_out = (params['output_root'] + params['file_middles'][0] + 
+                                   '_cleaned' + params['input_end_map'])
+            # fits_map.write(Map1, map_out)
+            algebra.save(map_out, Map1)
             
-            if subflag :
-                for ira in range(Map1.shape[0]) :
-                    for jdec in range(Map1.shape[1]) :
-                        # if sp.any(Map1.data.mask[ira,jdec,freq]) :
-                        #    continue
-                        # else :
-                        for v in Lmodes :
-                            # v.shape = freq.shape
-                            v = v.reshape(freq.shape)
-                            # amp = sp.sum(v*Map1.data[ira,jdec,freq])
-                            amp = np.dot(v, Map1[freq,ira,jdec])
-                            Map1[freq,ira,jdec] -= amp*v
-                            map_out = (params['output_root'] + params['file_middles'][0] + 
-                                       '_cleaned' + params['input_end_map'])
-                # fits_map.write(Map1, map_out)
-                algebra.save(map_out, Map1)
-                
-                for ira in range(Map2.shape[0]) :
-                    for jdec in range(Map2.shape[1]) :
-                        # if sp.any(Map1.data.mask[ira,jdec,freq]) :
-                        #    continue
-                        # else :
-                        for v in Lmodes :
-                            # v.shape = freq.shape
-                            v = v.reshape(freq.shape)
-                            # amp = sp.sum(v*Map1.data[ira,jdec,freq])
-                            amp = np.dot(v, Map2[freq,ira,jdec])
-                            Map2[freq,ira,jdec] -= amp*v
-                            map_out = (params['output_root'] + params['file_middles'][1] + 
-                                       '_cleaned' + params['input_end_map'])
-                # fits_map.write(Map2, map_out)
-                algebra.save(map_out, Map2)
+            for ira in range(Map2.shape[0]) :
+                for jdec in range(Map2.shape[1]) :
+                    # if sp.any(Map1.data.mask[ira,jdec,freq]) :
+                    #    continue
+                    # else :
+                    for v in Lmodes :
+                        # v.shape = freq.shape
+                        v = v.reshape(freq.shape)
+                        # amp = sp.sum(v*Map1.data[ira,jdec,freq])
+                        amp = np.dot(v, Map2[freq,ira,jdec])
+                        Map2[freq,ira,jdec] -= amp*v
+                        map_out = (params['output_root'] + params['file_middles'][1] + 
+                                   '_cleaned' + params['input_end_map'])
+            # fits_map.write(Map2, map_out)
+            algebra.save(map_out, Map2)
 
         # Inverse noise weight the data.
         #if (not sp.alltrue(Map1.data.mask == Noise1.data.mask) 
