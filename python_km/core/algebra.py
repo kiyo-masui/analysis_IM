@@ -858,7 +858,6 @@ class mat(alg_object) :
             ncols *= self.shape[axis]
         return (nrows, ncols)
 
-
     def iter_blocks(self) :
         """Returns an iterator over the blocks of a matrix."""
         

@@ -43,7 +43,15 @@ class TestGaussianSetUp(unittest.TestCase):
         self.assertAlmostEqual(self.Beam.beam_function(1.0, None), 
                                0.0551589, 6)
 
-    # Extrapolation, with frequency?
+    def test_extrapolate(self) :
+        self.Beam = beam.GaussianBeam(self.width, self.frequencies,
+                                      extrapolate=False)
+        self.assertRaises(Exception, self.Beam.beam_function, 1.0, 6)
+        self.Beam = beam.GaussianBeam(self.width, self.frequencies,
+                                      extrapolate=True)
+        # Compare FWHM=1 to FWHM = 1/4.  Just check normalization.
+        self.assertAlmostEqual(float(self.Beam.beam_function(0, 5.0)), 
+                               float(self.Beam.beam_function(0, -2.5))/4**2)
 
 class TestOperatorsMap(unittest.TestCase) :
     
@@ -98,25 +106,25 @@ class TestOperatorsMap(unittest.TestCase) :
 class TestOperatorsMatrix(unittest.TestCase) :
 
     def setUp(self) :
-        arr = sp.zeros((5, 20, 15, 20, 15))
+        arr = sp.zeros((2, 20, 15, 20, 15))
         self.op = algebra.make_mat(arr, col_axes = (0, 3, 4), 
                                    row_axes = (0, 1, 2),
                                    axis_names=('freq','ra','dec','ra','dec'))
         self.op.set_axis_info('freq', 700.0, 5.0)
         self.op.set_axis_info('ra', 215.5, 0.075*sp.cos(2*sp.pi/180))
         self.op.set_axis_info('dec', 2.0, 0.075)
-        arr = sp.zeros((5, 20, 15))
+        arr = sp.zeros((2, 20, 15))
         self.map = algebra.make_vect(arr, ('freq', 'ra', 'dec'))
         self.map.set_axis_info('freq', 700.0, 5.0)
         self.map.set_axis_info('ra', 215.5, 0.075*sp.cos(2*sp.pi/180))
         self.map.set_axis_info('dec', 2.0, 0.075)
 
     def test_apply(self) :
-        self.op[1,9,8,6,4] = 2.0
-        self.op[3,11,7,2,3] = 2.0
-        self.op[3,10,8,2,3] = 1.0
-        self.map[3, 11, 7] = 2.0
-        self.map[3, 10, 8] = 1.0
+        self.op[0,9,8,6,4] = 2.0
+        self.op[1,11,7,2,3] = 2.0
+        self.op[1,10,8,2,3] = 1.0
+        self.map[1, 11, 7] = 2.0
+        self.map[1, 10, 8] = 1.0
         self.Beam = beam.GaussianBeam([0.2, 0.3], [600, 900])
         conv_op = self.Beam.apply(self.op)
         conv_map = self.Beam.apply(self.map)
@@ -124,23 +132,24 @@ class TestOperatorsMatrix(unittest.TestCase) :
         self.assertTrue(sp.allclose(conv_op[:, :, :, 2, 3], conv_map))
 
     def test_apply_right(self) :
-        self.op[1,9,8,6,4] = 2.0
-        self.op[3,11,7,11,8] = 2.0
-        self.op[3,11,7,8,6] = 1.0
-        self.map[3, 11, 8] = 2.0
-        self.map[3, 8, 6] = 1.0
+        self.op[0,9,8,6,4] = 2.0
+        self.op[1,11,7,11,8] = 2.0
+        self.op[1,11,7,8,6] = 1.0
+        self.map[1, 11, 8] = 2.0
+        self.map[1, 8, 6] = 1.0
         self.Beam = beam.GaussianBeam([0.2, 0.3], [600, 900])
         conv_op = self.Beam.apply(self.op, right_apply=True)
         conv_map = self.Beam.apply(self.map)
         self.assertAlmostEqual(sp.sum(self.op), sp.sum(conv_op), 3)
         self.assertTrue(sp.allclose(conv_op[:, 11, 7, :, :], conv_map))
-
-
-    # Write a test for the axis names.
-
-
-# Should work on matrices with row_names=('mode'), col_names=('freq', 'ra',
-# 'dec').
+    
+    def test_checks_axes(self) :
+        self.op.axes = ('freq','ra','dec','mode1','mode2')
+        self.Beam = beam.GaussianBeam([0.2, 0.3], [600, 900])
+        self.assertRaises(ce.DataError, self.Beam.apply, self.op,
+                         right_apply=True)
+        conv_op = self.Beam.apply(self.op)
+        self.assertEqual(conv_op.axes, ('freq','ra','dec','mode1','mode2'))
 
 if __name__ == '__main__' :
     unittest.main()

@@ -414,7 +414,8 @@ def plot_contour(self, norms=False, lag_inds=(0)) :
     c = plt.colorbar(f)
     c.ax.set_ylabel("correlation (mK)")
 
-def plot_collapsed(self, norms=False, lag_inds=(0)) :
+def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
+                   plot_old=False) :
     
     lag_inds = list(lag_inds)
     # Set up binning.    
@@ -502,6 +503,9 @@ def plot_collapsed(self, norms=False, lag_inds=(0)) :
     ax.set_xscale("log")
     errors = sp.empty((2, nbins))
     errors[:,:] = pdatb_sig
+    if save_old :
+        self.old_pdat = pdat
+        self.old_errors = errors
     f = plt.errorbar(lags[pdat-errors[0,:]>0], pdat[pdat-errors[0,:]>0],
                      errors[:,pdat-errors[0,:]>0], linestyle='None', marker='o', 
                      color='b')
@@ -530,7 +534,32 @@ def plot_collapsed(self, norms=False, lag_inds=(0)) :
     t = (sp.sqrt(((rb + t_lags)/r0)**(-1.8)))
     t = t*0.15/t[0]
     f = plt.plot(t_lags, t, marker='None', color='k', linestyle='-')
-    plt.axis([4, 100, 0.01, 2.0])
+    if plot_old :
+        pdat = self.old_pdat
+        errors = self.old_errors
+        f = plt.errorbar(lags[pdat-errors[0,:]>0], pdat[pdat-errors[0,:]>0],
+                         errors[:,pdat-errors[0,:]>0], linestyle='None', 
+                         marker='o', color='b')
+        f = plt.errorbar(lags[pdat+errors[1,:]<0], -pdat[pdat+errors[1,:]<0],
+                         errors[:,pdat+errors[1,:]<0], linestyle='None',
+                         marker='o', color='r')
+        inds = sp.logical_and(pdat-errors[0,:]<=0, pdat > 0)
+        if sp.any(inds) :
+            vals = pdat[inds] + 2*errors[1, inds]
+            es = sp.zeros((2, len(vals)))
+            es[0,:] = 0.25*abs(vals)
+            f = plt.errorbar(lags[inds], vals,
+                             es, linestyle='None', marker='None', 
+                             color='b', lolims=True)
+        inds = sp.logical_and(pdat+errors[1,:]>=0, pdat < 0)
+        if sp.any(inds) :
+            vals = pdat[inds] - 2*errors[0, inds]
+            es = sp.zeros((2, len(vals)))
+            es[0,:] = 0.25*abs(vals)
+            f = plt.errorbar(lags[inds], -vals,
+                             es, linestyle='None', marker='None', 
+                             color='r', lolims=True)
+    plt.axis([4, 100, 0.01, 200.0])
     plt.xlabel('lag (Mpc/h)')
     plt.ylabel('correlation (mK)')
 

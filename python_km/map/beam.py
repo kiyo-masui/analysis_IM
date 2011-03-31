@@ -97,7 +97,7 @@ class GaussianBeam(Beam) :
     exact frequency dependant Gaussian.
     """
 
-    def __init__(self, width, freq=None) :
+    def __init__(self, width, freq=None, extrapolate=False) :
         
         # Calculate the standard deviation.
         sig = width/(2*sp.sqrt(2*sp.log(2)))
@@ -105,11 +105,16 @@ class GaussianBeam(Beam) :
         # Make function that returns the beam sigma.
         if freq is None :
             # Frequency independant case.
-            def sigma(freq) :
-                return float(sig)
-            self.sigma = sigma
+            sig = float(sig)
+            def sigma(f) :
+                return sig
+            self._sigma = sigma
         else :
-            self.sigma = interpolate.interp1d(freq, sig)
+            if not extrapolate :
+                self._sigma = interpolate.interp1d(freq, sig)
+            else :
+                self._sigma = interpolate.InterpolatedUnivariateSpline(
+                    freq, sig, k=1)
 
     def beam_function(self, delta_r, frequency, squared_delta=False) :
         """Returns the beam weight as a funciton of angular lag.
@@ -118,7 +123,7 @@ class GaussianBeam(Beam) :
         """
         
         # Get the width.
-        sig = self.sigma(frequency)
+        sig = self._sigma(frequency)
         # Square the lags.
         if squared_delta :
             dr_sqr = delta_r
@@ -134,5 +139,5 @@ class GaussianBeam(Beam) :
         """Gets the minimum convolution kernal size in degrees."""
 
         # For gaussian, 5 sigma taper is good enough.
-        return 10.0*self.sigma(frequency)
+        return 10.0*self._sigma(frequency)
 

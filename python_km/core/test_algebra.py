@@ -498,11 +498,11 @@ class TestMatUtilsSq(unittest.TestCase) :
         self.assertTrue(sp.allclose(d.get_axis('freq'), 
                                     self.mat.get_axis('freq')))
 
-# Rules I'd like to impose:
+# TODO: Rules I'd like to impose:
     # vect axis names must be unique
     # mat axis names can occure both as a row and a col, but only once each.
-    # Shape changing operations like sp.sum() are still preserving the type.
-    # Why?
+    # Shape changing operations like sp.sum() are still preserving the type...
+    # why?
 
 if __name__ == '__main__' :
     unittest.main()
