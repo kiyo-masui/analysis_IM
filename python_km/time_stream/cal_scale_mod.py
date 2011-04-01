@@ -85,8 +85,8 @@ def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False) :
             sys_xx_tmed = ma.median(sys_xx)
             sys_yy_tmed = ma.median(sys_yy)
             
-            maskbad_xx = (sys_xx > sys_xx_tmed + sys_xx*percent_ok)|(sys_xx < sys_xx_tmed - sys_xx*percent_ok)
-            maskbad_yy = (sys_yy > sys_yy_tmed + sys_yy*percent_ok)|(sys_yy < sys_yy_tmed - sys_yy*percent_ok)
+            maskbad_xx = (sys_xx > sys_xx_tmed + sys_xx_tmed*percent_ok)|(sys_xx < sys_xx_tmed - sys_xx_tmed*percent_ok)
+            maskbad_yy = (sys_yy > sys_yy_tmed + sys_yy_tmed*percent_ok)|(sys_yy < sys_yy_tmed - sys_yy_tmed*percent_ok)
 
             cal_tmed_xx[maskbad_xx] = ma.masked
             cal_tmed_yy[maskbad_yy] = ma.masked  
