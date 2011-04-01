@@ -147,8 +147,7 @@ pc_file_middles = file_middles
 pc_input_end = '.fits'
 pc_output_root = base_dir + 'pol_cal/'
 pc_output_end = '.fits'
-pc_scans = ()
-pc_IFs = ()
+
 
 from time_stream import combine_cal
 # Comment this line to skip this step in pipeline
