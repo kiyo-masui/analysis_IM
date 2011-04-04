@@ -16,33 +16,65 @@ class Beam(object) :
     whethar they be imperical or functional.
     """
     
-    def apply(self, alg_object, wrap=False, right_apply=False) :
+    def apply(self, alg_ob, wrap=False, right_apply=False) :
         """Apply the beam, as a linear operator, to vector or matrix.
 
-        If the beam is viewed as a matrix, this operation is equivalent to
-        matrix multiplication with the beam on the left.
+        This operation is equivalent to matrix multiplication by the beam
+        matrix.  The matrix multiplication can be performed with the beam
+        matrix on either the left or the right.  The beam matrix is a symetric
+        matrix.
+
+        Parameters
+        ----------
+        alg_ob : `vect` or `mat` subclass.
+            Object to which the beam will be applied.  This object must live in
+            map space.  If it is a vect, alg_ob.axes must be ('freq', 'ra',
+            'dec').  If it is a mat, and `right_apply` is False, then
+            alg_ob.row_names() must return ('freq', 'ra', 'dec').  If
+            `right_apply` is True, then alg_ob.col_names() should return
+            this tuple.  Also, the meta data for these three axis must be set
+            (see `algebra.alg_object.set_axis_info`).
+        wrap : bool
+            If tests True, use periodic boundary conditions for the
+            convolution. Otherwise zero pad (default).
+        right_apply : bool
+            Whethar to apply the beam operator with the from the left (False,
+            default) or from the right (True).  If `alg_ob` is a vect subclass,
+            this has no effect (because the beam matrix is symetric).
+
+        Returns
+        -------
+        out : `vect` or `mat` subclass same shape as `alg_ob`.
+            Convolved map or matrix.
+
+        Notes
+        -----
+        The missing feature here is the ability to preallowcate memory or to be
+        able to overwrite the input alg_ob in place.  This will be important
+        for large matricies that we can only hold in memory one at a time.
+        Also this would be pretty easy to implement.
         """
 
-        if ((not 'freq' in alg_object.axes) 
-            or (not 'ra' in alg_object.axes)
-            or (not 'dec' in alg_object.axes)) :
+        if ((not 'freq' in alg_ob.axes) 
+            or (not 'ra' in alg_ob.axes)
+            or (not 'dec' in alg_ob.axes)) :
                 raise ce.DataError("Beam operation only works in frequncy, "
                                    "ra, dec, coords.")
         
         # allowcate memory for the output.
-        out = algebra.zeros_like(alg_object)
+        out = algebra.zeros_like(alg_ob)
         # Figure out the pixel sizes (in real degrees).
-        dfreq = alg_object.info['freq_delta']
-        dra = alg_object.info['ra_delta']
-        dra /= sp.cos(alg_object.info['dec_centre']*sp.pi/180)
-        ddec = alg_object.info['dec_delta']
+        dfreq = alg_ob.info['freq_delta']
+        dra = alg_ob.info['ra_delta']
+        dra /= sp.cos(alg_ob.info['dec_centre']*sp.pi/180)
+        ddec = alg_ob.info['dec_delta']
         # Figure out the convolution mode.
         if wrap :
             mode = 'wrap'
         else :
             mode = 'constant'
         # Loop over frequencies and do convolution one frequency at a time.
-        freq_array = alg_object.get_axis('freq')
+        freq_array = alg_ob.get_axis('freq')
         for ii, freq in enumerate(freq_array) :
             # How wide the kernal has to be.
             width = self.kernal_size(freq)
@@ -60,28 +92,28 @@ class Beam(object) :
             # Make gaussian beam profile.
             kernal = dra*ddec*self.beam_function(lags_sq, freq, 
                                                  squared_delta=True)
-            if isinstance(alg_object, algebra.vect) :
-                if alg_object.axes != ('freq', 'ra', 'dec') :
+            if isinstance(alg_ob, algebra.vect) :
+                if alg_ob.axes != ('freq', 'ra', 'dec') :
                     raise ce.DataError("Vector axis names must be exactly "
                                        "('freq', 'ra', 'dec')")
                 # Do the convolution.
-                convolve(alg_object[ii, ...], kernal, out[ii], mode=mode,
+                convolve(alg_ob[ii, ...], kernal, out[ii], mode=mode,
                          cval=0)
-            elif isinstance(alg_object, algebra.mat) :
+            elif isinstance(alg_ob, algebra.mat) :
                 # If applying from the left, loop over columns and convolve
                 # over rows.  If applying from the right, do the oposite.
                 if right_apply :
-                    if alg_object.col_names() != ('freq', 'ra', 'dec') :
+                    if alg_ob.col_names() != ('freq', 'ra', 'dec') :
                         raise ce.DataError("Matrix column axis names must be "
                                            "exactly ('freq', 'ra', 'dec')")
-                    iterator = alg_object.iter_row_index()
+                    iterator = alg_ob.iter_row_index()
                 else :
-                    if alg_object.row_names() != ('freq', 'ra', 'dec') :
+                    if alg_ob.row_names() != ('freq', 'ra', 'dec') :
                         raise ce.DataError("Matrix row axis names must be "
                                            "exactly ('freq', 'ra', 'dec')")
-                    iterator = alg_object.iter_col_index()
+                    iterator = alg_ob.iter_col_index()
                 for index in iterator :
-                    sub_mat = alg_object[index] # A view.
+                    sub_mat = alg_ob[index] # A view.
                     # Pick out this frequency.
                     sub_mat = sub_mat[ii, ...]
                     # make a view of the ouput array.
@@ -91,10 +123,66 @@ class Beam(object) :
                     convolve(sub_mat, kernal, sub_out, mode=mode,
                              cval=0)
         return out
+    
+    def angular_transform(self, frequency) :
+        """Return angular beam Fourrier transform function."""
+
+        raise NotImplementedError("General function not written yet.")
+
+    def radial_transform(self, width) :
+        """Return the radial beam Fourrier transform function.
+
+        In the radial direction the beam is just top hat function, so the
+        Fourrier transform is a sinc function.
+        
+        Parameters
+        ----------
+        width : float
+            The frequency width of the beam function.
+
+        Returns
+        -------
+        transform : function.
+            Call signiture : transform(k_rad). Vectorized radial beam transform
+            as a function of radial wave number.  Accepts an array of wave 
+            numbers (with units the reciprocal of those of `width`) and returns
+            an array of the same shape.
+        """
+        
+        factor = width/2.0/sp.pi
+        return lambda k_rad : sp.sinc(k_rad * factor)
+    
 
 class GaussianBeam(Beam) :
-    """Object representing the beam operator for the special case that it is an
-    exact frequency dependant Gaussian.
+    """Beam operator for Gaussian angular shape.
+
+    This object inherits from the `Beam` object and gets much of it's
+    functionality from there.  The object contains all the information about
+    the beam of an instrument (which may be frequency dependant) and provides 
+    operations like the convolution of a map with the beam and matrix 
+    opertations with the beam.
+
+    This function fixes only the angular parts of the beam.  Along the
+    frequency axis, the beam is assumed to be a top hat.  The frequency width
+    of the beam is not fixed.  The width of the objects that the beam works
+    with is assumed.  This reflects the fact that 21 cm experiments typically
+    have essentially perfect frequency resolution and therefore the beam along
+    the frequency axis is just a matter of binning.
+
+    Parameters
+    ----------
+    width : float or array
+        The full width half max of the Gaussian beam.  If an array is provided,
+        the beam is frequency dependant, with the corresponding frequencies
+        given in `freq`. Linear interpolation is used to fill out the function.
+        Generally any units should work as long as you are consistant.
+    freq : None or array
+        The frequencies that correspond to the the provided widths.  A
+        frequency indepenant beam is given by freq=None and only a single
+        number for `width`.  Any units will work as long as you are consistant.
+    extrapolate : bool
+        whethar to allow extrapolation of the beam function beyond the provided
+        frequencies. Default is False.
     """
 
     def __init__(self, width, freq=None, extrapolate=False) :
@@ -117,9 +205,27 @@ class GaussianBeam(Beam) :
                     freq, sig, k=1)
 
     def beam_function(self, delta_r, frequency, squared_delta=False) :
-        """Returns the beam weight as a funciton of angular lag.
+        """Return the beam weight as a funciton of angular lag.
         
-        This has units 1/strad.
+        This gives the angular beam as a function of angular lag.  This
+        function is fully vectorized. The result has units 1/degrees**2.
+
+        Parameters
+        ----------
+        delta_r : array
+            Angular lags at which to evaluate the beam function.  Units of
+            degrees.
+        frequency : float or array
+            Frequencies at which to evalutate the beam.  Either a single
+            frequency can be provided or one for each angular lag.
+        squared_delta : bool
+            If True, assume that `delta_r` is the squared angular lag instead
+            of just the angular lag.  Default is False.
+
+        Returns
+        -------
+        profile : array
+            The beam profile value at the given lags.
         """
         
         # Get the width.
@@ -134,9 +240,44 @@ class GaussianBeam(Beam) :
         profile *= 1/(2*sp.pi*sig**2)
 
         return profile
+    
+    def angular_transform(self, frequency) :
+        """Return the angular beam Fourrier transform function.
+        
+        Parameters
+        ----------
+        frequency : float
+            For a frequency dependant beam, the frequency at wihch the Fourrier
+            transform should be calculated.
+
+        Returns
+        -------
+        transform : function
+            Call signature : transform(k_trans). Vectorized angular beam 
+            transform function. Accepts an array of wave numbers (generally
+            with unites inverse degrees) and returns an array of the same
+            shape.
+        """
+
+
 
     def kernal_size(self, frequency) :
-        """Gets the minimum convolution kernal size in degrees."""
+        """Return the minimum convolution kernal size in degrees.
+        
+        Gives the width of the box that will adequately represent the whole
+        beam.
+        
+        Parameters
+        ----------
+        frequency : array
+            Frequencies at which to get the kernal size.
+            
+        Returns
+        -------
+        widths : array
+            The width of the required box at each frequency.  In degrees if
+            `width` was given in degrees on initialization of this class.
+        """
 
         # For gaussian, 5 sigma taper is good enough.
         return 10.0*self._sigma(frequency)

@@ -37,6 +37,16 @@ class TestGaussianSetUp(unittest.TestCase):
         self.assertRaises(ValueError, self.Beam.beam_function, sp.arange(5),
                           sp.arange(6))
 
+    def test_radial_transform(self) :
+        Beam = beam.GaussianBeam(self.width, self.frequencies)
+        width = 6.0
+        factor = width/2.0
+        transform = Beam.radial_transform(width)
+        r = sp.arange(1.5, 6)
+        self.assertTrue(sp.allclose(transform(r), sp.sin(r*factor)/r/factor))
+        self.assertAlmostEqual(transform(0), 1.0)
+
+
     def test_freq_independant(self) :
         self.Beam = beam.GaussianBeam(1.0)
         self.assertAlmostEqual(self.Beam.beam_function(1.0, 2.0), 0.0551589, 6)
