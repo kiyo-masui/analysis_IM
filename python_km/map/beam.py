@@ -191,9 +191,11 @@ class Beam(object) :
             # Climbing region.
             mask = ((freq <= (width1 - width2)/2.0) & 
                     (freq >= -(width1 + width2)/2.0))
-            out[mask] = (plateau*((width2 + width1)/2.0 + freq[mask])
-                         / ((width2 - width1)/2.0))
-
+            out[mask] = (plateau*((width2 + width1)/2.0 + freq[mask])/width1)
+            # Falling region.
+            mask = ((freq >= (width2 - width1)/2.0) & 
+                    (freq <= (width1 + width2)/2.0))
+            out[mask] = (plateau*((width2 + width1)/2.0 - freq[mask])/width1)
             return out
 
         return window
@@ -309,7 +311,36 @@ class GaussianBeam(Beam) :
         frequency = float(frequency)
         sig = self._sigma(frequency)
         factor = sig**2/2.0
-        return lambda k_trans : exp(-factor*k_trans**2)
+        return lambda k_trans : sp.exp(-factor*k_trans**2)
+
+    def angular_real_space_window(self, f1, f2) :
+        """Return a vectorized angular real space window funtion.
+        
+        Gives the convolution of the angular parts of the beams for two pixels
+        along the frequency axis. Since the beam is just a Gaussian in the
+        radial direction, the window is also a Gaussian.
+
+        Parameters
+        ----------
+        f1, f2 : floats
+            Centre frequencies of the two pixels for which to construct the
+            window.
+        
+        Returns
+        -------
+        Window : function
+            Vectorized window function.  Maps angular lag (usually in degrees)
+            onto the window function (usually inverse degrees).  Both inputs
+            and outputs should be arrays.  Window function is centred at zero,
+            not the angular separation of the pixels.
+        """
+
+        v1 = self._sigma(f1)**2
+        v2 = self._sigma(f2)**2
+        v = v1 + v2
+        norm = 1/2.0/sp.pi/v
+        factor = 1/2.0/v
+        return lambda lag : norm*sp.exp(-lag**2*factor)
 
     def kernal_size(self, frequency) :
         """Return the minimum convolution kernal size in degrees.
