@@ -130,7 +130,7 @@ class Beam(object) :
         raise NotImplementedError("General function not written yet.")
 
     def radial_transform(self, width) :
-        """Return the radial beam Fourrier transform function.
+        """Return the radial beam Fourier transform function.
 
         In the radial direction the beam is just top hat function, so the
         Fourrier transform is a sinc function.
@@ -142,7 +142,7 @@ class Beam(object) :
 
         Returns
         -------
-        transform : function.
+        transform : function
             Call signiture : transform(k_rad). Vectorized radial beam transform
             as a function of radial wave number.  Accepts an array of wave 
             numbers (with units the reciprocal of those of `width`) and returns
@@ -151,6 +151,54 @@ class Beam(object) :
         
         factor = width/2.0/sp.pi
         return lambda k_rad : sp.sinc(k_rad * factor)
+
+    def radial_real_space_window(self, width1, width2) :
+        """Return the radial beam window function in real space.
+
+        Gives the convolution of the radial parts of the beams for two pixels
+        along the frequency axis. Since the beam is just a top hat in the
+        radial direction, the window is just a trapeziodal function.
+
+        Parameters
+        ----------
+        width1, width2 : floats
+            The frequency widths of the beam functions for the two pixels.
+            Note that this information is not stored in this class (which only
+            hold angular infomation about the beam).
+
+        Returns
+        -------
+        window : function
+            Vectorized window function, accepting and returning numpy arrays
+            of floats.  The function is centred at 0, not delta_f.
+        """
+        
+        if width1 <= 0 or width2 <= 0 :
+            raise ValueError("Widths must be floats greater than 0.")
+
+        if width2 < width1 :
+            tmp = width1
+            width1 = width2
+            width2 = tmp
+
+        def window(freq) :
+            # Outside the window case.
+            out = sp.empty(len(freq), dtype = float)
+            out[abs(freq) > (width1 + width2)/2.0] = 0.
+            # Flat part of the function.
+            plateau = 1.0/width2
+            out[abs(freq) < (width2 - width1)/2.0] = plateau
+            # Climbing region.
+            mask = ((freq <= (width1 - width2)/2.0) & 
+                    (freq >= -(width1 + width2)/2.0))
+            out[mask] = (plateau*((width2 + width1)/2.0 + freq[mask])
+                         / ((width2 - width1)/2.0))
+
+            return out
+
+        return window
+
+            
     
 
 class GaussianBeam(Beam) :
@@ -238,7 +286,6 @@ class GaussianBeam(Beam) :
         # Calculate the profile.
         profile = sp.exp(-dr_sqr/(2*sig**2))
         profile *= 1/(2*sp.pi*sig**2)
-
         return profile
     
     def angular_transform(self, frequency) :
@@ -259,7 +306,10 @@ class GaussianBeam(Beam) :
             shape.
         """
 
-
+        frequency = float(frequency)
+        sig = self._sigma(frequency)
+        factor = sig**2/2.0
+        return lambda k_trans : exp(-factor*k_trans**2)
 
     def kernal_size(self, frequency) :
         """Return the minimum convolution kernal size in degrees.

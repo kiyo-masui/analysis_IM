@@ -46,6 +46,15 @@ class TestGaussianSetUp(unittest.TestCase):
         self.assertTrue(sp.allclose(transform(r), sp.sin(r*factor)/r/factor))
         self.assertAlmostEqual(transform(0), 1.0)
 
+    def test_radial_window(self) :
+        Beam = beam.GaussianBeam(self.width, self.frequencies)
+        window = Beam.radial_real_space_window(4.0, 8.0)
+        self.assertTrue(sp.allclose(window(sp.array([-2.0, -4.0, 4.0, 0])),
+                                    1/8.0))
+        self.assertTrue(sp.allclose(window(sp.array([-6.0, 6, -10.0])), 0))
+        df = 0.001
+        self.assertAlmostEqual(sp.sum(window(sp.arange(-7/df, 7/df)))*df, 1.0)
+
 
     def test_freq_independant(self) :
         self.Beam = beam.GaussianBeam(1.0)
