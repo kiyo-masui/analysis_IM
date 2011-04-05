@@ -49,17 +49,18 @@ class TestGaussianSetUp(unittest.TestCase):
     def test_windows(self) :
         Beam = beam.GaussianBeam(self.width, self.frequencies)
         # Radial window.
-        window = Beam.radial_real_space_window(4.0, 8.0)
+        window, limits = Beam.radial_real_space_window(4.0, 8.0, True)
         self.assertTrue(sp.allclose(window(sp.array([-6.0, 6, -10.0])), 0))
         self.assertTrue(sp.allclose(window(sp.array([-2.0, -1.0, 2.0, 0])),
                                     1/8.0))
         df = 0.01
-        self.assertAlmostEqual(sp.sum(window(sp.arange(-7, 7, df)))*df, 1.0)
+        self.assertAlmostEqual(sp.sum(window(
+            sp.arange(limits[0], limits[1], df)))*df, 1.0)
         # Angular window.
-        window = Beam.angular_real_space_window(3.0, 5.0)
+        window, limits = Beam.angular_real_space_window(3.0, 5.0, True)
         dr = 0.0001
-        r = sp.arange(0, 8, dr)
-        self.assertAlmostEqual(sp.sum(window(r)*r*2.0*sp.pi)*dr, 1.0)
+        r = sp.arange(limits[0], limits[1], dr)
+        self.assertAlmostEqual(sp.sum(window(r)*r*2.0*sp.pi)*dr, 1.0, 4)
 
     def test_freq_independant(self) :
         self.Beam = beam.GaussianBeam(1.0)

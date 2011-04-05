@@ -152,7 +152,7 @@ class Beam(object) :
         factor = width/2.0/sp.pi
         return lambda k_rad : sp.sinc(k_rad * factor)
 
-    def radial_real_space_window(self, width1, width2) :
+    def radial_real_space_window(self, width1, width2, return_limits=False) :
         """Return the radial beam window function in real space.
 
         Gives the convolution of the radial parts of the beams for two pixels
@@ -165,12 +165,18 @@ class Beam(object) :
             The frequency widths of the beam functions for the two pixels.
             Note that this information is not stored in this class (which only
             hold angular infomation about the beam).
+        return_limits : bool
+            Also return the integration limits that will capture most of the 
+            of the window. Default is False.
 
         Returns
         -------
         window : function
             Vectorized window function, accepting and returning numpy arrays
             of floats.  The function is centred at 0, not delta_f.
+        limits : tuple
+            Only returned if `return_limits` is True.  Limits of integration
+            that will capture most of the window.
         """
         
         if width1 <= 0 or width2 <= 0 :
@@ -197,11 +203,11 @@ class Beam(object) :
                     (freq <= (width1 + width2)/2.0))
             out[mask] = (plateau*((width2 + width1)/2.0 - freq[mask])/width1)
             return out
-
-        return window
-
-            
-    
+        
+        if return_limits :
+            return window, (-(width1 + width2)*0.6, (width1 + width2)*0.6)
+        else :
+            return window
 
 class GaussianBeam(Beam) :
     """Beam operator for Gaussian angular shape.
@@ -313,7 +319,7 @@ class GaussianBeam(Beam) :
         factor = sig**2/2.0
         return lambda k_trans : sp.exp(-factor*k_trans**2)
 
-    def angular_real_space_window(self, f1, f2) :
+    def angular_real_space_window(self, f1, f2, return_limits=False) :
         """Return a vectorized angular real space window funtion.
         
         Gives the convolution of the angular parts of the beams for two pixels
@@ -325,6 +331,9 @@ class GaussianBeam(Beam) :
         f1, f2 : floats
             Centre frequencies of the two pixels for which to construct the
             window.
+        return_limits : bool
+            Also return the integration limits that will capture most of the 
+            of the window. Default is False.
         
         Returns
         -------
@@ -333,6 +342,9 @@ class GaussianBeam(Beam) :
             onto the window function (usually inverse degrees).  Both inputs
             and outputs should be arrays.  Window function is centred at zero,
             not the angular separation of the pixels.
+        limits : tuple
+            Only returned if `return_limits` is True.  Radial limits of 
+            integration that will capture most of the window.
         """
 
         v1 = self._sigma(f1)**2
@@ -340,7 +352,10 @@ class GaussianBeam(Beam) :
         v = v1 + v2
         norm = 1/2.0/sp.pi/v
         factor = 1/2.0/v
-        return lambda lag : norm*sp.exp(-lag**2*factor)
+        if return_limits :
+            return lambda lag : norm*sp.exp(-lag**2*factor), (0, 5.0*sp.sqrt(v))
+        else :
+            return lambda lag : norm*sp.exp(-lag**2*factor)
 
     def kernal_size(self, frequency) :
         """Return the minimum convolution kernal size in degrees.
