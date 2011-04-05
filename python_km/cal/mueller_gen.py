@@ -163,7 +163,7 @@ class MuellerGen(object) :
             p0 = sp.zeros(9,range(0,freq_len))           
 
 # The seven parameters are in order deltaG[0], alpha[1], psi[2], phi[3], epsilon[4], Qsrc[5], Usrc[6] => the parameter vector is p
-            p0 = [] # preliminary values based on guesses and heiles generation.
+            p0 = [0.3, -2.0, 170.0, 10.0, 0.016, 0.005, 0.026] # preliminary values based on guesses and heiles generation.
             d[0,:] = d_3[0,:,0]
             d[1,:] = d_3[0,:,1]
             d[2,:] = d_3[0,:,2]
