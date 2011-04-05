@@ -5,6 +5,7 @@ import os
 from scipy.optimize import leastsq
 import scipy as sp
 import numpy.ma as ma
+import numpy as np
 
 from kiyopy import parse_ini
 import kiyopy.utils
@@ -44,6 +45,7 @@ class MuellerGen(object) :
         ep = p[4]
         Q = p[5]
         U = p[6]
+        theta = self.theta
         t[0] = 0.5*dG + Q*ma.cos(2*al)*ma.cos(2*theta[0])+U*ma.cos(2*al)*ma.sin(2*theta[0])
         t[1] = 2*ep*ma.cos(ps+ph)+Q*(ma.sin(2*al)*ma.sin(ps)*ma.cos(2*theta[0]) - ma.cos(ps)*ma.sin(2*theta[0]))+U*(ma.sin(2*theta[0])*ma.sin(ps) - ma.sin(2*al)*ma.sin(ps)*ma.cos(2*theta[0]))
         t[2] = 2*ep*ma.sin(ps+ph)+Q*(-ma.sin(2*al)*ma.cos(ps)*ma.cos(2*theta[0]) - ma.sin(ps)*ma.sin(2*theta[0]))+U*(ma.sin(2*theta[0])*ma.sin(ps) - ma.sin(2*al)*ma.cos(ps)*ma.cos(2*theta[0]))
@@ -85,7 +87,9 @@ class MuellerGen(object) :
 
 
             #PA = sp.zeros(len(Reader.Blocks))# Trying to get an array of zeros the size of the number of data block
-            #theta = [] # Parallactic angle vector if entering manually => Should be in units of fraction of pi.
+            self.theta = [295,336,15]
+            self.theta *= sp.pi/180
+ # Parallactic angle vector if entering manually => Should be in units of fraction of pi.
             on_ind = 0
             off_ind = 1
             I_ind = 0
@@ -180,6 +184,10 @@ class MuellerGen(object) :
             plsq = leastsq(residuals,p0,args=(d,value,error),full_output=1, maxfev=2000)
             p_val = plsq[0]
             p_err = plsq[1]
+            p_val_out = [freq_val,p_val]
+            p_err_out = [freq_val,p_err]
+            np.savetxt('mueller_params_calc.txt', p_val_out, delimiter = ' ')
+            np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')
 
 #If this file is run from the command line, execute the main function.
 if __name__ == "__main__":
