@@ -18,19 +18,21 @@ class CalScale(base_single.BaseSingle) :
     prefix = 'cs_'
     params_init = {
                    'scale_time_average' : True,
+                   'scale_time_average_mod' : False,
                    'scale_freq_average' : False,
                    'subtract_time_median' : False
                    }
 
     def action(self, Data):
         scale_by_cal(Data, self.params['scale_time_average'],
+                     self.params['scale_time_average_mod'],
                      self.params['scale_freq_average'], 
                      self.params['subtract_time_median'])
         Data.add_history('Converted to units of noise cal temperture.')
         return Data
 
 
-def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False) :
+def scale_by_cal(Data, scale_t_ave=True, scale_t_ave_mod=False, scale_f_ave=False, sub_med=False) :
     """Puts all data in units of the cal temperature.
     
     Data is put into units of the cal temperature, thus removing dependance on
@@ -71,8 +73,19 @@ def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False) :
         
         diff_xx = Data.data[:,xx_ind,on_ind,:] - Data.data[:,xx_ind,off_ind,:]
         diff_yy = Data.data[:,yy_ind,on_ind,:] - Data.data[:,yy_ind,off_ind,:]
-        
-        if scale_t_ave :
+
+        if scale_t_ave :       
+            # Find the cal medians (in time) and scale by them.
+            cal_tmed_xx = ma.median(diff_xx, 0)
+            cal_tmed_yy = ma.median(diff_yy, 0)
+            cal_tmed_xx[sp.logical_or(cal_tmed_xx<=0, cal_tmed_yy<=0)] = ma.masked
+            cal_tmed_yy[cal_tmed_xx.mask] = ma.masked
+
+            Data.data[:,xx_ind,:,:] /= cal_tmed_xx
+            Data.data[:,yy_ind,:,:] /= cal_tmed_yy
+            Data.data[:,xy_inds,:,:] /= ma.sqrt(cal_tmed_yy*cal_tmed_xx)
+
+        if scale_t_ave_mod :
             # Find the cal medians (in time) and scale by them.
             cal_tmed_xx = ma.median(diff_xx, 0)
             cal_tmed_yy = ma.median(diff_yy, 0)
@@ -96,7 +109,7 @@ def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False) :
             Data.data[:,xx_ind,:,:] /= cal_tmed_xx
             Data.data[:,yy_ind,:,:] /= cal_tmed_yy
             Data.data[:,xy_inds,:,:] /= ma.sqrt(cal_tmed_yy*cal_tmed_xx)
-        
+
         if scale_f_ave :
             # The frequency gains have have systematic structure to them, 
             # they are not by any approximation gaussian distributed.  Use
@@ -131,7 +144,18 @@ def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False) :
             Data.data[:,xx_ind,:,:] *= cal_xx
             Data.data[:,yy_ind,:,:] *= cal_yy
             Data.data[:,xy_inds,:,:] *= ma.sqrt(cal_yy*cal_xx)
-    
+
+        if scale_f_ave and scale_t_ave_mod :
+            #Same divide out twice problem.
+            cal_xx = operation(cal_tmed_xx)
+            cal_yy = operation(cal_tmed_yy)
+            Data.data[:,xx_ind,:,:] *= cal_xx
+            Data.data[:,yy_ind,:,:] *= cal_yy
+            Data.data[:,xy_inds,:,:] *= ma.sqrt(cal_yy*cal_xx)
+           
+        if scale_t_ave and scale_t_ave_mod :
+            raise ce.DataError("time averaging twice")    
+
     elif tuple(Data.field['CRVAL4']) == (1, 2, 3, 4) :
         # For the shot term, just devide everything by on-off in I.
         I_ind = 0
