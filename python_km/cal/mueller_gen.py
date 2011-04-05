@@ -36,7 +36,7 @@ class MuellerGen(object) :
                                           prefix=prefix)
         self.feedback = feedback
 
-    def t(p):
+    def t(self,p):
         dG = p[0]
         al = p[1]*sp.pi/180
         ps = p[2]*sp.pi/180
@@ -55,11 +55,11 @@ class MuellerGen(object) :
         t[6] = 0.5*dG + Q*ma.cos(2*al)*ma.cos(2*theta[2])+U*ma.cos(2*al)*ma.sin(2*theta[2])
         t[7] = 2*ep*ma.cos(ps+ph)+Q*(ma.sin(2*al)*ma.sin(ps)*ma.cos(2*theta[2]) - ma.cos(ps)*ma.sin(2*theta[2]))+U*(ma.sin(2*theta[2])*ma.sin(ps) - ma.sin(2*al)*ma.sin(ps)*ma.cos(2*theta[2])) 
         t[8] = 2*ep*ma.sin(ps+ph)+Q*(-ma.sin(2*al)*ma.cos(ps)*ma.cos(2*theta[2]) - ma.sin(ps)*ma.sin(2*theta[2]))+U*(ma.sin(2*theta[2])*ma.sin(ps) - ma.sin(2*al)*ma.cos(ps)*ma.cos(2*theta[2]))
-        return t
+        return self.t
 
-    def residuals(p, d, value, errors):
+    def residuals(self, p, d, value, errors):
         err[value] = (d[value] - t(p)[value])/errors[value]
-        return err
+        return self.err
                         
     def execute(self, nprocesses=1) :
         
@@ -132,7 +132,7 @@ class MuellerGen(object) :
                 Q_med = ma.median(Data.data[:,Q_ind,off_ind,:],axis=0)
                 U_med = ma.median(Data.data[:,U_ind,off_ind,:],axis=0) 
                 V_med = ma.median(Data.data[:,V_ind,off_ind,:],axis=0)
-. 
+
                 S_med[Data] = [I_med,Q_med,U_med,V_med]
 
                 if n_scans>1 :
@@ -174,7 +174,9 @@ class MuellerGen(object) :
 
             value = [0,1,2,3,4,5,6,7,8]
 
+            error = [1,1,1,1,1,1,1,1,1]
 #Note that error can be used to weight the equations if not all set to one.
+
             plsq = leastsq(residuals,p0,args=(d,value,error),full_output=1, maxfev=2000)
             p_val = plsq[0]
             p_err = plsq[1]

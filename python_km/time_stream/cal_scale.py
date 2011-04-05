@@ -18,21 +18,21 @@ class CalScale(base_single.BaseSingle) :
     prefix = 'cs_'
     params_init = {
                    'scale_time_average' : True,
-                   'scale_time_average_mod' : False,
                    'scale_freq_average' : False,
-                   'subtract_time_median' : False
+                   'subtract_time_median' : False,
+                   'scale_time_average_mod' : False
                    }
 
     def action(self, Data):
         scale_by_cal(Data, self.params['scale_time_average'],
-                     self.params['scale_time_average_mod'],
                      self.params['scale_freq_average'], 
-                     self.params['subtract_time_median'])
+                     self.params['subtract_time_median'],
+                     self.params['scale_time_average_mod'])
         Data.add_history('Converted to units of noise cal temperture.')
         return Data
 
 
-def scale_by_cal(Data, scale_t_ave=True, scale_t_ave_mod=False, scale_f_ave=False, sub_med=False) :
+def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False, scale_t_ave_mod=False) :
     """Puts all data in units of the cal temperature.
     
     Data is put into units of the cal temperature, thus removing dependance on
