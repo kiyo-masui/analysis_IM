@@ -37,7 +37,7 @@ class MuellerGen(object) :
                                           prefix=prefix)
         self.feedback = feedback
 
-    def t(self,p):
+    def peval(self,p):
         dG = p[0]
         al = p[1]*sp.pi/180
         ps = p[2]*sp.pi/180
@@ -46,6 +46,7 @@ class MuellerGen(object) :
         Q = p[5]
         U = p[6]
         theta = self.theta
+        t = sp.zeros(9)
         t[0] = 0.5*dG + Q*ma.cos(2*al)*ma.cos(2*theta[0])+U*ma.cos(2*al)*ma.sin(2*theta[0])
         t[1] = 2*ep*ma.cos(ps+ph)+Q*(ma.sin(2*al)*ma.sin(ps)*ma.cos(2*theta[0]) - ma.cos(ps)*ma.sin(2*theta[0]))+U*(ma.sin(2*theta[0])*ma.sin(ps) - ma.sin(2*al)*ma.sin(ps)*ma.cos(2*theta[0]))
         t[2] = 2*ep*ma.sin(ps+ph)+Q*(-ma.sin(2*al)*ma.cos(ps)*ma.cos(2*theta[0]) - ma.sin(ps)*ma.sin(2*theta[0]))+U*(ma.sin(2*theta[0])*ma.sin(ps) - ma.sin(2*al)*ma.cos(ps)*ma.cos(2*theta[0]))
@@ -57,12 +58,12 @@ class MuellerGen(object) :
         t[6] = 0.5*dG + Q*ma.cos(2*al)*ma.cos(2*theta[2])+U*ma.cos(2*al)*ma.sin(2*theta[2])
         t[7] = 2*ep*ma.cos(ps+ph)+Q*(ma.sin(2*al)*ma.sin(ps)*ma.cos(2*theta[2]) - ma.cos(ps)*ma.sin(2*theta[2]))+U*(ma.sin(2*theta[2])*ma.sin(ps) - ma.sin(2*al)*ma.sin(ps)*ma.cos(2*theta[2])) 
         t[8] = 2*ep*ma.sin(ps+ph)+Q*(-ma.sin(2*al)*ma.cos(ps)*ma.cos(2*theta[2]) - ma.sin(ps)*ma.sin(2*theta[2]))+U*(ma.sin(2*theta[2])*ma.sin(ps) - ma.sin(2*al)*ma.cos(ps)*ma.cos(2*theta[2]))
-        return self.t
+        return t 
 
-    def residuals(self, p, d, value, errors):
-        err[value] = (d[value] - t(p)[value])/errors[value]
-        return self.err
-                        
+    def residuals(self, p, d, errors,f):
+        err = (d[:,f] - self.peval(p) )/errors
+        return err
+    
     def execute(self, nprocesses=1) :
         
         params = self.params
@@ -161,8 +162,9 @@ class MuellerGen(object) :
                 Q_off = S_med[0,:,1]
                 U_off = S_med[0,:,2]
                 V_off = S_med[0,:,3]
-
+   
             I_onoff = I_on - I_off
+#            print I_onoff
             Q_onoff_ratio = (Q_on - Q_off)/I_onoff
             U_onoff_ratio = (U_on - U_off)/I_onoff
             V_onoff_ratio = (V_on - V_off)/I_onoff
@@ -181,33 +183,53 @@ class MuellerGen(object) :
                 d_3_2_2 = V_onoff_ratio    
             k+=1
                         
+        self.freq_len = freq_len
 # The seven parameters are in order deltaG[0], alpha[1], psi[2], phi[3], epsilon[4], Qsrc[5], Usrc[6] => the parameter vector is p
         p0 = [0.3, -2.0, 170.0, 10.0, 0.016, 0.005, 0.026] # preliminary values based on guesses and heiles generation.
-        d0 = d_3_0_0
-        d1 = d_3_0_1
-        d2 = d_3_0_2
-        d3 = d_3_1_0
-        d4 = d_3_1_1
-        d5 = d_3_1_2
-        d6 = d_3_2_0
-        d7 = d_3_2_1
-        d8 = d_3_2_2
-        d = [d0,d1,d2,d3,d4,d5,d6,d7,d8]
+#        print freq_len
+        d = sp.zeros((9,freq_len))
+        d[0,:] = d_3_0_0
+        d[1,:] = d_3_0_1
+        d[2,:] = d_3_0_2
+        d[3,:] = d_3_1_0
+        d[4,:] = d_3_1_1
+        d[5,:] = d_3_1_2
+        d[6,:] = d_3_2_0
+        d[7,:] = d_3_2_1
+        d[8,:] = d_3_2_2
+#        print d
 # t is the array of equations for each frequency that should equal d for each frequency if the parameters are correct.
-
-        value = [0,1,2,3,4,5,6,7,8]
 
         error = [1,1,1,1,1,1,1,1,1]
 #Note that error can be used to weight the equations if not all set to one.
 ###############################################################################
 #Debugged above this point.
-        plsq = leastsq(self.residuals,p0,args=(d,value,error),full_output=1, maxfev=2000)
-        p_val = plsq[0]
-        print p_val
-        p_err = plsq[1]
-        p_val_out = [freq_val,p_val]
-        print p_val_out
-        p_err_out = [freq_val,p_err]
+        p_val_out = sp.zeros((freq_len, 8))
+        p_err_out = sp.zeros((freq_len, 8))
+        for f in range(0,freq_len):   
+            plsq = leastsq(self.residuals,p0,args=(d,error,f),full_output=1, maxfev=2000)
+            pval = plsq[0]
+#            print pval
+            perr = plsq[1]
+#            print perr
+            p_val_out[f,0] = freq_val[f]
+            p_val_out[f,1] = pval[0]
+            p_val_out[f,2] = pval[1]
+            p_val_out[f,3] = pval[2]
+            p_val_out[f,4] = pval[3]
+            p_val_out[f,5] = pval[4]
+            p_val_out[f,6] = pval[5]
+            p_val_out[f,7] = pval[6]
+            p_err_out[f,0] = freq_val[f]
+            p_err_out[f,1] = perr[-1:,0]
+            p_err_out[f,2] = perr[-1:,1]
+            p_err_out[f,3] = perr[-1:,2]
+            p_err_out[f,4] = perr[-1:,3]
+            p_err_out[f,5] = perr[-1:,4]
+            p_err_out[f,6] = perr[-1:,5]
+            p_err_out[f,7] = perr[-1:,6]
+#        print perr[-1:]
+#        print p_val_out[40]
         np.savetxt('mueller_params_calc.txt', p_val_out, delimiter = ' ')
         np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')
 
