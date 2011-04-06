@@ -47,7 +47,7 @@ class MuellerGen(object) :
         U = p[6]
         theta = self.theta
         t = sp.zeros(9)
-        t[0] = 0.5*dG + Q*ma.cos(2*al)*ma.cos(2*theta[0])+U*ma.cos(2*al)*ma.sin(2*theta[0])
+        t[0] = 0.5*dG + Q*np.cos(2*al)*np.cos(2*theta[0])+U*np.cos(2*al)*np.sin(2*theta[0])
         t[1] = 2*ep*ma.cos(ps+ph)+Q*(ma.sin(2*al)*ma.sin(ps)*ma.cos(2*theta[0]) - ma.cos(ps)*ma.sin(2*theta[0]))+U*(ma.sin(2*theta[0])*ma.sin(ps) - ma.sin(2*al)*ma.sin(ps)*ma.cos(2*theta[0]))
         t[2] = 2*ep*ma.sin(ps+ph)+Q*(-ma.sin(2*al)*ma.cos(ps)*ma.cos(2*theta[0]) - ma.sin(ps)*ma.sin(2*theta[0]))+U*(ma.sin(2*theta[0])*ma.sin(ps) - ma.sin(2*al)*ma.cos(ps)*ma.cos(2*theta[0]))
         
@@ -210,6 +210,19 @@ class MuellerGen(object) :
 #            print pval
             perr = plsq[1]
 #            print perr
+#want to adjust results if angles not between +/- 180 
+            while pval[1]>180:
+                pval[1] -= 180
+            while pval[1]<-180:
+                pval[1] += 180 
+            while pval[2]>180:
+                pval[2] -= 180
+            while pval[2]<-180:
+                pval[2] += 180
+            while pval[3]>180:
+                pval[3] -= 180
+            while pval[3]<-180:
+                pval[3] += 180
             p_val_out[f,0] = freq_val[f]
             p_val_out[f,1] = pval[0]
             p_val_out[f,2] = pval[1]
