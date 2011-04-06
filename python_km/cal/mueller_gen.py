@@ -71,7 +71,11 @@ class MuellerGen(object) :
                                prefix=prefix)
 
         first_iteration = True
+        self.theta = [295*sp.pi/180,336*sp.pi/180,15*sp.pi/180]
+ # Parallactic angle vector if entering manually => Should be in units of fraction of pi.
+
         # Loop over files to process.
+        k=0
         for file_middle in params['file_middles'] :
             input_fname = (params['input_root'] + file_middle +
                            params['input_end'])
@@ -87,9 +91,7 @@ class MuellerGen(object) :
 
 
             #PA = sp.zeros(len(Reader.Blocks))# Trying to get an array of zeros the size of the number of data block
-            self.theta = [295,336,15]
-            self.theta *= sp.pi/180
- # Parallactic angle vector if entering manually => Should be in units of fraction of pi.
+
             on_ind = 0
             off_ind = 1
             I_ind = 0
@@ -97,9 +99,7 @@ class MuellerGen(object) :
             U_ind = 2
             V_ind = 3
                        
-            for Data in Blocks :
-                #S_med = sp.zeros(6,range(0,Data.dims[3]),4)# Don't know if I need to preload the arrays
-                #d_3 = sp.zeros(3,range(0,Data.dims[3]),3)
+            for Data in Blocks:
                 freq_len = Data.dims[3]
                 #Calculate Parallactic Angle
                 #Data.calc_pointing()
@@ -108,86 +108,108 @@ class MuellerGen(object) :
                 #LST = #Still need to figure this one out.
                 #LAT = 38
                 #PA[Data] = ma.arctan((ma.sin(LST-RA))/(ma.cos(DEC)*ma.tan(LAT)-ma.sin(DEC)*ma.cos(LST-RA)))
-
                 Data.calc_freq()
                 freq_val = Data.freq
+            
+            S_med_on = sp.zeros((2,freq_len,4))
+            S_med = sp.zeros((2,freq_len,4))  
 
+            i=0  
             for Data in OnBlocks :
                 I_med_on = ma.median(Data.data[:,I_ind,off_ind,:],axis=0)
                 Q_med_on = ma.median(Data.data[:,Q_ind,off_ind,:],axis=0)
                 U_med_on = ma.median(Data.data[:,U_ind,off_ind,:],axis=0) 
                 V_med_on = ma.median(Data.data[:,V_ind,off_ind,:],axis=0)
+                S_med_on[i,:,0] = I_med_on
+                S_med_on[i,:,1] = Q_med_on
+                S_med_on[i,:,2] = U_med_on
+                S_med_on[i,:,3] = V_med_on
+                i+=1
+
+
+            if n_scans>1 :
+                I_on = 0.5*(S_med_on[0,:,0]+S_med_on[1,:,0])
+                Q_on = 0.5*(S_med_on[0,:,1]+S_med_on[1,:,1])
+                U_on = 0.5*(S_med_on[0,:,2]+S_med_on[1,:,2])
+                V_on = 0.5*(S_med_on[0,:,3]+S_med_on[1,:,3])                    
+            else :
+                I_on = S_med_on[0,:,0]
+                Q_on = S_med_on[0,:,1]
+                U_on = S_med_on[0,:,2]
+                V_on = S_med_on[0,:,3]
  
-                S_med_on[Data] = [I_med_on,Q_med_on,U_med_on,V_med_on]
-
-                if n_scans>1 :
-                    I_on = 0.5*(S_med_on[Data,:,0]+S_med_on[Data+1,:,0])
-                    Q_on = 0.5*(S_med_on[Data,:,1]+S_med_on[Data+1,:,1])
-                    U_on = 0.5*(S_med_on[Data,:,2]+S_med_on[Data+1,:,2])
-                    V_on = 0.5*(S_med_on[Data,:,3]+S_med_on[Data+1,:,3])                    
-                else :
-                    I_on = S_med_on[Data,:,0]
-                    Q_on = S_med_on[Data,:,1]
-                    U_on = S_med_on[Data,:,2]
-                    V_on = S_med_on[Data,:,3]
-
+            j=0
             for Data in OffBlocks :
                 I_med = ma.median(Data.data[:,I_ind,off_ind,:],axis=0)
                 Q_med = ma.median(Data.data[:,Q_ind,off_ind,:],axis=0)
                 U_med = ma.median(Data.data[:,U_ind,off_ind,:],axis=0) 
                 V_med = ma.median(Data.data[:,V_ind,off_ind,:],axis=0)
 
-                S_med[Data] = [I_med,Q_med,U_med,V_med]
+                S_med[j,:,0] = I_med
+                S_med[j,:,1] = Q_med
+                S_med[j,:,2] = U_med
+                S_med[j,:,3] = V_med
+                j+=1
 
-                if n_scans>1 :
-                    I_off = 0.5*(S_med[Data,:,0]+S_med[Data+1,:,0])
-                    Q_off = 0.5*(S_med[Data,:,1]+S_med[Data+1,:,1])
-                    U_off = 0.5*(S_med[Data,:,2]+S_med[Data+1,:,2])
-                    V_off = 0.5*(S_med[Data,:,3]+S_med[Data+1,:,3])                    
-                else :
-                    I_off = S_med[Data,:,0]
-                    Q_off = S_med[Data,:,1]
-                    U_off = S_med[Data,:,2]
-                    V_off = S_med[Data,:,3]
+            if n_scans>1 :
+                I_off = 0.5*(S_med[0,:,0]+S_med[1,:,0])
+                Q_off = 0.5*(S_med[0,:,1]+S_med[1,:,1])
+                U_off = 0.5*(S_med[0,:,2]+S_med[1,:,2])
+                V_off = 0.5*(S_med[0,:,3]+S_med[1,:,3])                    
+            else :
+                I_off = S_med[0,:,0]
+                Q_off = S_med[0,:,1]
+                U_off = S_med[0,:,2]
+                V_off = S_med[0,:,3]
 
-#Each I_onoff should be a 2D array of dim[3,number of freq bins] where 3 matches to number of distinct datasets
             I_onoff = I_on - I_off
             Q_onoff_ratio = (Q_on - Q_off)/I_onoff
             U_onoff_ratio = (U_on - U_off)/I_onoff
             V_onoff_ratio = (V_on - V_off)/I_onoff
-            d_3 = [Q_onoff_ratio, U_onoff_ratio, V_onoff_ratio]
-            
-#Note that there should be 3 indices for d_3[datafile which corresponds to PA (3), freq, 3 (Q,U,V)]
-                        
-            d = sp.zeros(9,range(0,freq_len))
-            p0 = sp.zeros(9,range(0,freq_len))           
 
+            if k == 0:
+                d_3_0_0 = Q_onoff_ratio
+                d_3_0_1 = U_onoff_ratio
+                d_3_0_2 = V_onoff_ratio
+            elif k == 1:
+                d_3_1_0 = Q_onoff_ratio
+                d_3_1_1 = U_onoff_ratio
+                d_3_1_2 = V_onoff_ratio
+            elif k == 2:
+                d_3_2_0 = Q_onoff_ratio
+                d_3_2_1 = U_onoff_ratio
+                d_3_2_2 = V_onoff_ratio    
+            k+=1
+                        
 # The seven parameters are in order deltaG[0], alpha[1], psi[2], phi[3], epsilon[4], Qsrc[5], Usrc[6] => the parameter vector is p
-            p0 = [0.3, -2.0, 170.0, 10.0, 0.016, 0.005, 0.026] # preliminary values based on guesses and heiles generation.
-            d[0,:] = d_3[0,:,0]
-            d[1,:] = d_3[0,:,1]
-            d[2,:] = d_3[0,:,2]
-            d[3,:] = d_3[1,:,0]
-            d[4,:] = d_3[1,:,1]
-            d[5,:] = d_3[1,:,2]
-            d[6,:] = d_3[2,:,0]
-            d[7,:] = d_3[2,:,1]
-            d[8,:] = d_3[2,:,2]
-        
+        p0 = [0.3, -2.0, 170.0, 10.0, 0.016, 0.005, 0.026] # preliminary values based on guesses and heiles generation.
+        d0 = d_3_0_0
+        d1 = d_3_0_1
+        d2 = d_3_0_2
+        d3 = d_3_1_0
+        d4 = d_3_1_1
+        d5 = d_3_1_2
+        d6 = d_3_2_0
+        d7 = d_3_2_1
+        d8 = d_3_2_2
+        d = [d0,d1,d2,d3,d4,d5,d6,d7,d8]
 # t is the array of equations for each frequency that should equal d for each frequency if the parameters are correct.
 
-            value = [0,1,2,3,4,5,6,7,8]
+        value = [0,1,2,3,4,5,6,7,8]
 
-            error = [1,1,1,1,1,1,1,1,1]
+        error = [1,1,1,1,1,1,1,1,1]
 #Note that error can be used to weight the equations if not all set to one.
-
-            plsq = leastsq(residuals,p0,args=(d,value,error),full_output=1, maxfev=2000)
-            p_val = plsq[0]
-            p_err = plsq[1]
-            p_val_out = [freq_val,p_val]
-            p_err_out = [freq_val,p_err]
-            np.savetxt('mueller_params_calc.txt', p_val_out, delimiter = ' ')
-            np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')
+###############################################################################
+#Debugged above this point.
+        plsq = leastsq(self.residuals,p0,args=(d,value,error),full_output=1, maxfev=2000)
+        p_val = plsq[0]
+        print p_val
+        p_err = plsq[1]
+        p_val_out = [freq_val,p_val]
+        print p_val_out
+        p_err_out = [freq_val,p_err]
+        np.savetxt('mueller_params_calc.txt', p_val_out, delimiter = ' ')
+        np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')
 
 #If this file is run from the command line, execute the main function.
 if __name__ == "__main__":
