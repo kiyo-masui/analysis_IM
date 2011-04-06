@@ -118,8 +118,8 @@ def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False, scale
             operation = ma.mean
             cal_fmea_xx = operation(diff_xx, -1)
             cal_fmea_yy = operation(diff_yy, -1)
-            cal_fmea_xx_off = operation(Data.data[:,xx_ind,off_ind,:], 0)
-            cal_fmea_yy_off = operation(Data.data[:,yy_ind,off_ind,:], 0)
+            cal_fmea_xx_off = operation(Data.data[:,xx_ind,off_ind,:], -1)
+            cal_fmea_yy_off = operation(Data.data[:,yy_ind,off_ind,:], -1)
 
 
             sys_xx = cal_fmea_xx_off/cal_fmea_xx

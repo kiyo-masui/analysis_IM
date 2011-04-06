@@ -108,7 +108,7 @@ cs_output_end = '.fits'
 cs_scans = ()
 cs_IFs = ()
 
-cs_scale_time_average = False
+cs_scale_time_average = True
 cs_scale_freq_average = False
 cs_subtract_time_median = False
 cs_scale_freq_average_mod = True
