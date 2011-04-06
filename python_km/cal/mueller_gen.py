@@ -60,7 +60,7 @@ class MuellerGen(object) :
         t[8] = 2*ep*ma.sin(ps+ph)+Q*(-ma.sin(2*al)*ma.cos(ps)*ma.cos(2*theta[2]) - ma.sin(ps)*ma.sin(2*theta[2]))+U*(ma.sin(2*theta[2])*ma.sin(ps) - ma.sin(2*al)*ma.cos(ps)*ma.cos(2*theta[2]))
         return t 
 
-    def residuals(self, p, d, errors,f):
+    def residuals(self, p, d, errors, f):
         err = (d[:,f] - self.peval(p) )/errors
         return err
     
@@ -90,9 +90,6 @@ class MuellerGen(object) :
             Blocks = Reader.read(params['scans'], params['IFs'],
                                  force_tuple=True)
 
-
-            #PA = sp.zeros(len(Reader.Blocks))# Trying to get an array of zeros the size of the number of data block
-
             on_ind = 0
             off_ind = 1
             I_ind = 0
@@ -111,7 +108,8 @@ class MuellerGen(object) :
                 #PA[Data] = ma.arctan((ma.sin(LST-RA))/(ma.cos(DEC)*ma.tan(LAT)-ma.sin(DEC)*ma.cos(LST-RA)))
                 Data.calc_freq()
                 freq_val = Data.freq
-            
+                freq_val = freq_val/1000000       
+     
             S_med_on = sp.zeros((2,freq_len,4))
             S_med = sp.zeros((2,freq_len,4))  
 
