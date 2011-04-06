@@ -189,7 +189,7 @@ class Beam(object) :
 
         def window(freq) :
             # Outside the window case.
-            out = sp.empty(len(freq), dtype = float)
+            out = sp.empty(freq.shape, dtype = float)
             out[abs(freq) > (width1 + width2)/2.0] = 0.
             # Flat part of the function.
             plateau = 1.0/width2
