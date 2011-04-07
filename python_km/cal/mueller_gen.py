@@ -48,17 +48,17 @@ class MuellerGen(object) :
         U = p[6]
         theta = self.theta
         t = sp.zeros(9)
-        t[0] = 0.5*dG + Q*np.cos(2*al)*np.cos(2*theta[0])+U*np.cos(2*al)*np.sin(2*theta[0])
-        t[1] = 2*ep*ma.cos(ps+ph)+Q*(ma.sin(2*al)*ma.sin(ps)*ma.cos(2*theta[0]) - ma.cos(ps)*ma.sin(2*theta[0]))+U*(ma.sin(2*theta[0])*ma.sin(ps) - ma.sin(2*al)*ma.sin(ps)*ma.cos(2*theta[0]))
-        t[2] = 2*ep*ma.sin(ps+ph)+Q*(-ma.sin(2*al)*ma.cos(ps)*ma.cos(2*theta[0]) - ma.sin(ps)*ma.sin(2*theta[0]))+U*(ma.sin(2*theta[0])*ma.sin(ps) - ma.sin(2*al)*ma.cos(ps)*ma.cos(2*theta[0]))
-        
-        t[3] = 0.5*dG + Q*ma.cos(2*al)*ma.cos(2*theta[1])+U*ma.cos(2*al)*ma.sin(2*theta[1])
-        t[4] = 2*ep*ma.cos(ps+ph)+Q*(ma.sin(2*al)*ma.sin(ps)*ma.cos(2*theta[1]) - ma.cos(ps)*ma.sin(2*theta[1]))+U*(ma.sin(2*theta[1])*ma.sin(ps) - ma.sin(2*al)*ma.sin(ps)*ma.cos(2*theta[1])) 
-        t[5] = 2*ep*ma.sin(ps+ph)+Q*(-ma.sin(2*al)*ma.cos(ps)*ma.cos(2*theta[1]) - ma.sin(ps)*ma.sin(2*theta[1]))+U*(ma.sin(2*theta[1])*ma.sin(ps) - ma.sin(2*al)*ma.cos(ps)*ma.cos(2*theta[1]))
+        t[0] = 0.5*dG + Q*ma.cos(2.*(al+theta[0]))+U*ma.sin (2.*(al+theta[0]))
+        t[1] = 2*ep*ma.cos(ps+ph)+ma.cos(ps)*(-Q*ma.sin(2.*(al+theta[0]))+U*ma.cos(2.*(al+theta[0])))
+        t[2] = 2*ep*ma.sin(ps+ph)+ma.sin(ps)*(-Q*ma.sin(2*(al+theta[0]))+U*ma.cos(2*(al+theta[0])))
 
-        t[6] = 0.5*dG + Q*ma.cos(2*al)*ma.cos(2*theta[2])+U*ma.cos(2*al)*ma.sin(2*theta[2])
-        t[7] = 2*ep*ma.cos(ps+ph)+Q*(ma.sin(2*al)*ma.sin(ps)*ma.cos(2*theta[2]) - ma.cos(ps)*ma.sin(2*theta[2]))+U*(ma.sin(2*theta[2])*ma.sin(ps) - ma.sin(2*al)*ma.sin(ps)*ma.cos(2*theta[2])) 
-        t[8] = 2*ep*ma.sin(ps+ph)+Q*(-ma.sin(2*al)*ma.cos(ps)*ma.cos(2*theta[2]) - ma.sin(ps)*ma.sin(2*theta[2]))+U*(ma.sin(2*theta[2])*ma.sin(ps) - ma.sin(2*al)*ma.cos(ps)*ma.cos(2*theta[2]))
+        t[3] = 0.5*dG + Q*ma.cos(2*(al+theta[1]))+U*ma.sin (2*(al+theta[1]))
+        t[4] = 2*ep*ma.cos(ps+ph)+ma.cos(ps)*(-Q*ma.sin(2*(al+theta[1]))+U*ma.cos(2*(al+theta[1])))        
+        t[5] = 2*ep*ma.sin(ps+ph)+ma.sin(ps)*(-Q*ma.sin(2*(al+theta[1]))+U*ma.cos(2*(al+theta[1]))) 
+
+        t[6] = 0.5*dG + Q*ma.cos(2*(al+theta[2]))+U*ma.sin (2*(al+theta[2]))
+        t[7] = 2*ep*ma.cos(ps+ph)+ma.cos(ps)*(-Q*ma.sin(2*(al+theta[2]))+U*ma.cos(2*(al+theta[2])))        
+        t[8] = 2*ep*ma.sin(ps+ph)+ma.sin(ps)*(-Q*ma.sin(2*(al+theta[2]))+U*ma.cos(2*(al+theta[2]))) 
         return t 
 
     def residuals(self, p, d, errors, f):
@@ -109,8 +109,8 @@ class MuellerGen(object) :
                 if guppi_result == True :
                     Data.calc_LST()
                     LST = ma.mean(Data.LST)
-                RA = Data.field['CRVAL2'][0]
-                DEC = Data.field['CRVAL3'][0]
+                RA = ma.mean(Data.field['CRVAL2'])
+                DEC = ma.mean(Data.field['CRVAL3'])
                 H = LST-RA
                 LAT = 38.0+26.0/60
                 sinH = ma.sin(H*sp.pi/180)

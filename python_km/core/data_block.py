@@ -2,6 +2,7 @@
 
 import scipy as sp
 import matplotlib as plt
+import numpy.ma as ma
 
 import utils
 import base_data
@@ -57,7 +58,25 @@ class DataBlock(base_data.BaseData) :
         self.LST = sp.zeros(self.dims[0])
         for ii in range(self.dims[0]) :
             self.LST[ii] = utils.LSTatGBT(self.field['DATE-OBS'][ii])
-             
+    
+    def calc_PA(self) :
+        """Calculates the telescope PA. requires LST to be either a field or 
+        previously calculated array
+        Outputs an  array of PA values for each time in radians.
+        This requires the fields Ra = 'CRVAL2', Dec = 'CRVAL3' and 'DATE-OBS'
+        to be set.
+        """
+        
+        self.PA = sp.zeros(self.dims[0])
+        for ii in range(self.dims[0]) :
+            RA = self.field['CRVAL2'][ii]
+            DEC = self.field['CRVAL3'][ii]
+            LST = utils.LSTatGBT(self.field['DATE-OBS'][ii])
+            H = LST-RA
+            Latit = 38.0+26.0/60
+            tanPA = ma.sin(H*sp.pi/180)/(ma.cos(DEC*sp.pi/180)*ma.tan(Latit*sp.pi/180)-ma.sin(DEC*sp.pi/180)*ma.cos(H*sp.pi/180))
+            self.PA[ii] = ma.arctan(tanPA)
+         
     def calc_freq(self) :
         """Calculates the frequency axis.
         
