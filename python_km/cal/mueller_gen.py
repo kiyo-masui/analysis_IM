@@ -23,6 +23,7 @@ params_init = {
                # Select data to process.
                "scans" : (),
                "IFs" : (),
+               "Guppi_test" : False,
                }
 prefix = 'mg_'
 
@@ -70,6 +71,7 @@ class MuellerGen(object) :
         kiyopy.utils.mkparents(params['output_root'])
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
                                prefix=prefix)
+        guppi_result = params['Guppi_test']
 
         first_iteration = True
         self.theta = [295*sp.pi/180,336*sp.pi/180,15*sp.pi/180]
@@ -96,20 +98,34 @@ class MuellerGen(object) :
             Q_ind = 1
             U_ind = 2
             V_ind = 3
-                       
+            
+            m=0
+            PA = sp.zeros(n_scans)           
             for Data in Blocks:
                 freq_len = Data.dims[3]
-                #Calculate Parallactic Angle
-                #Data.calc_pointing()
-                #RA = Data.ra
-                #DEC = Data.dec
-                #LST = #Still need to figure this one out.
-                #LAT = 38
-                #PA[Data] = ma.arctan((ma.sin(LST-RA))/(ma.cos(DEC)*ma.tan(LAT)-ma.sin(DEC)*ma.cos(LST-RA)))
+                if guppi_result == False :
+                    LST = ma.mean(Data.field['LST'])
+                    LST *= 15.0/3600
+                if guppi_result == True :
+                    Data.calc_LST()
+                    LST = ma.mean(Data.LST)
+                RA = Data.field['CRVAL2'][0]
+                DEC = Data.field['CRVAL3'][0]
+                H = LST-RA
+                LAT = 38.0+26.0/60
+                sinH = ma.sin(H*sp.pi/180)
+                cosDEC = ma.cos(DEC*sp.pi/180)
+                tanLAT = ma.tan(LAT*sp.pi/180)
+                sinDEC = ma.sin(DEC*sp.pi/180)
+                cosH = ma.cos(H*sp.pi/180)
+                tanPA = sinH/(cosDEC*tanLAT-sinDEC*cosH)
+                PA[m] = ma.arctan(tanPA)
                 Data.calc_freq()
                 freq_val = Data.freq
                 freq_val = freq_val/1000000       
-     
+                m+=1    
+
+            self.theta[k] = ma.mean(PA)
             S_med_on = sp.zeros((2,freq_len,4))
             S_med = sp.zeros((2,freq_len,4))  
 
@@ -212,17 +228,17 @@ class MuellerGen(object) :
 #            print perr
 #want to adjust results if angles not between +/- 180 
             while pval[1]>180:
-                pval[1] -= 180
+                pval[1] -= 360
             while pval[1]<-180:
-                pval[1] += 180 
+                pval[1] += 360 
             while pval[2]>180:
-                pval[2] -= 180
+                pval[2] -= 360
             while pval[2]<-180:
-                pval[2] += 180
+                pval[2] += 360
             while pval[3]>180:
-                pval[3] -= 180
+                pval[3] -= 360
             while pval[3]<-180:
-                pval[3] += 180
+                pval[3] += 360
             p_val_out[f,0] = freq_val[f]
             p_val_out[f,1] = pval[0]
             p_val_out[f,2] = pval[1]

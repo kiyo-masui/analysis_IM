@@ -35,7 +35,8 @@ class DataBlock(base_data.BaseData) :
     
     def calc_pointing(self) :
         """Calculates the telescope pointing.
-
+        
+        Should only be used if in alt/az mode. 
         At every time the Ra and Dec of the telescope time is calculated.
         These are stored as attributes (not fields) named ra and dec.  This
         requires the fields 'CRVAL3', 'CRVAL2' and 'DATE-OBS' to be set.
@@ -48,6 +49,15 @@ class DataBlock(base_data.BaseData) :
                                             self.field['CRVAL2'][ii],
                                             self.field['DATE-OBS'][ii])
 
+    def calc_LST(self) :
+        """Calculates the telescope LST for guppi data
+
+        This requires the fields 'CRVAL3', 'CRVAL2' and 'DATE-OBS' to be set.
+        """
+        self.LST = sp.zeros(self.dims[0])
+        for ii in range(self.dims[0]) :
+            self.LST[ii] = utils.LSTatGBT(self.field['DATE-OBS'][ii])
+             
     def calc_freq(self) :
         """Calculates the frequency axis.
         
