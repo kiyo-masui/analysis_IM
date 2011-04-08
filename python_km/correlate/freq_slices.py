@@ -15,6 +15,7 @@ import kiyopy.utils
 import kiyopy.custom_exceptions as ce
 from core import utils, algebra
 import map.tools
+from map import beam
 
 params_init = {
                # IO:
@@ -87,6 +88,12 @@ class FreqSlices(object) :
         # out.
         freq = sp.array(params['freq'], dtype=int)
         subflag = False
+        #
+        gfreq=Map1.get_axis("freq")
+        fwhm = utils.get_beam(gfreq)
+
+        b = beam.GaussianBeam(gfreq,fwhm)
+        
         if (hasattr(self, 'freq_Lsvd_modes') and 
             hasattr(self, 'freq_Rsvd_modes')) :
             print 'Subtracting ' + str(len(self.freq_Lsvd_modes)),
