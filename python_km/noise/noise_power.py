@@ -50,7 +50,7 @@ class NoisePower(object) :
     def __init__(self, parameter_file_or_dict=None, feedback=2) :
         # Read the parameter file, store in dictionary named parameters.
         self.params = parse_ini.parse(parameter_file_or_dict, params_init, 
-                                          prefix=prefix)
+                                      prefix=prefix, feedback=feedback)
         self.feedback = feedback
 
     def execute(self, nprocesses=1) :
@@ -164,7 +164,6 @@ class NoisePower(object) :
             self.power_spectrum = power_spectrum/power_counts
             self.power_counts = power_counts
             self.ps_freqs = ps_freqs
-
 
 def make_plots(data, ini) :
     """

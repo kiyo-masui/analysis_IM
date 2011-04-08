@@ -7,16 +7,16 @@ import scipy as sp
 
 
 field = '15hr'
-#file_middles = tuple(dir_data.get_data_files([40, 41, 42, 43], '15hr', 
-#                                             type='guppi'))
-file_middles = tuple(dir_data.get_data_files([40], '15hr', 
+file_middles = tuple(dir_data.get_data_files([40, 41, 42, 43], '15hr', 
                                              type='guppi'))
+#file_middles = tuple(dir_data.get_data_files([40], '15hr', 
+#                                             type='guppi'))
 
 base_dir = os.getenv('GBT10B_OUT')
 data_dir = base_dir + '/guppi_data/'
 prefix = ''
 #map_prefix = prefix + field + '_42_'
-map_prefix = 'test_' + field + '_40_'
+map_prefix = 'large_' + field + '_40-43_'
 
 pipe_modules = []
 pipe_processes = 8
