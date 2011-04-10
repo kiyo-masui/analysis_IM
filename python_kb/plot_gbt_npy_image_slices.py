@@ -38,11 +38,11 @@ for slice, freq in enumerate(freqs):
 #   for element in image_cube[slice][cut]:
 #      print element
 #   Alternate plotting command to set temperature limits
-   pylab.imshow(new_array, interpolation='gaussian', vmin=-0.8, vmax=0.8, extent=(ra.max(),ra.min(),dec.min(),dec.max()), origin='lower')
+   pylab.imshow(new_array, interpolation='gaussian', vmin=-0.3, vmax=0.3, extent=(ra.max(),ra.min(),dec.min(),dec.max()), origin='lower')
 #   pylab.xlabel('Dec')
 #   pylab.ylabel('RA')
 #   pylab.imshow(new_array, interpolation='gaussian', extent=(ra.max(),ra.min(),dec.min(),dec.max()), origin='lower')
-#   pylab.colorbar() #For some reason this isn't working
-   pylab.savefig(filename2+str(freq)[:3]+'_0.8K.png')
+   pylab.colorbar() #For some reason this isn't working
+   pylab.savefig(filename2+str(freq)[:3]+'.png')
 #   pylab.savefig('v_'+filename2+str(freq)[:3]+'.png')
    pylab.clf()
