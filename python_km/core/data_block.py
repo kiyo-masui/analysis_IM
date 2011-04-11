@@ -1,7 +1,6 @@
 """This module contains the class that holds an IF and scan of GBT data"""
 
 import scipy as sp
-import matplotlib as plt
 
 import utils
 import base_data
@@ -60,6 +59,7 @@ class DataBlock(base_data.BaseData) :
 
     def plot_spectra(self, times=(), pols=(), cals=(), time_average=False) :
         """Make a plot along frequency axis."""
+        import matplotlib as plt
         #
 
     def calc_time(self) :

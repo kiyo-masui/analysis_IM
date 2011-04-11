@@ -180,8 +180,5 @@ class TestModule(unittest.TestCase) :
         os.remove('params.ini')
         os.remove('test_gain.pickle')
         
-
-
-
 if __name__ == '__main__' :
     unittest.main()

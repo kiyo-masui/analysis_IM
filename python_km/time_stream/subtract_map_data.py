@@ -74,9 +74,6 @@ class Subtract(base_single.BaseSingle) :
             f = open(gain_fname, 'w')
             cPickle.dump(self.gain_list, f, 0)
 
-
-
-
 def sub_map(Data, Map, correlate=False) :
     """Subtracts a Map out of Data."""
 
@@ -134,7 +131,6 @@ def sub_map(Data, Map, correlate=False) :
             out_gains[pol_ind,cal_ind,:] = gain
         else :
             gain = 1.0
-
         # Now do the subtraction and mask the off map data.
         data -= gain*subdata
     if correlate :
