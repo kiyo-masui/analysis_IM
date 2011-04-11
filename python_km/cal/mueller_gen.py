@@ -255,7 +255,7 @@ class MuellerGen(object) :
             p_err_out[f,5] = perr[-1:,4]
             p_err_out[f,6] = perr[-1:,5]
             p_err_out[f,7] = perr[-1:,6]
-#        print perr[-1:]
+        print perr[-1:]
 #        print p_val_out[40]
         np.savetxt('mueller_params_calc.txt', p_val_out, delimiter = ' ')
         np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')
