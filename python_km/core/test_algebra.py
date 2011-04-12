@@ -102,6 +102,7 @@ class TestLoadSave(unittest.TestCase) :
     def test_memmap_read(self) :
         algebra.save('temp.npy', self.Mat)
         marray = algebra.open_memmap('temp.npy', mode="r")
+        marray
         self.assertTrue(isinstance(marray, sp.ndarray))
         self.assertTrue(isinstance(marray, algebra.info_memmap))
         self.assertTrue(sp.allclose(marray, self.Mat))
@@ -114,6 +115,27 @@ class TestLoadSave(unittest.TestCase) :
                                      )
         marray[:] = self.Mat[:]
         marray.info = self.Mat.info
+        del marray
+        marray = None
+        Loaded = algebra.load('temp.npy')
+        self.assertTrue(isinstance(Loaded, sp.ndarray))
+        self.assertTrue(isinstance(Loaded, algebra.info_array))
+        self.assertTrue(sp.allclose(Loaded, self.Mat))
+        self.assertEqual(Loaded.info['a'], self.Mat.info['a'])
+
+    def test_memmap_write_view(self) :
+        marray = algebra.open_memmap('temp.npy', mode="w+",
+                                     shape=self.Mat.shape,
+                                     dtype=self.Mat.dtype,
+                                     )
+        # Work with a higher level view, make sure se can deal with it.
+        # This is testing a bug I had earlier where base data's were
+        # overwriting the meta data of higher level objects.
+        inf = marray.info
+        marray = marray.view(algebra.info_memmap)
+        inf2 = marray.info
+        marray[:] = self.Mat[:]
+        marray.info.update(self.Mat.info)
         del marray
         marray = None
         Loaded = algebra.load('temp.npy')
@@ -175,8 +197,8 @@ class TestViewsTemplates(unittest.TestCase) :
     def setUp(self) :
         data = sp.arange(20)
         data.shape = (5,4)
-        self.mat_arr = algebra.make_mat(data.copy())
-        self.vect_arr = algebra.make_vect(data.copy())
+        self.mat_arr = algebra.make_mat(data.copy(), axis_names=('ra', 'dec'))
+        self.vect_arr = algebra.make_vect(data.copy(), axis_names=('ra', 'dec'))
         mem = npfor.open_memmap('temp.npy', mode='w+', shape=(5, 4))
         mem[:] = data
         self.vect_mem = algebra.make_vect(mem)
@@ -220,8 +242,23 @@ class TestViewsTemplates(unittest.TestCase) :
         self.assertTrue(isinstance(c, sp.ndarray))
         self.assertTrue(isinstance(c, algebra.alg_object))
 
+    def test_sum_mean(self) :
+        s = sp.sum(self.vect_arr, 1)
+        self.assertFalse(s.info is self.vect_arr.info)
+
+    def test_copy(self) :
+        c = self.vect_arr.copy()
+        self.assertFalse(c.info is self.vect_arr.info)
+
+    def test_views(self) :
+        # Views should always share metadata references.
+        pass
+
+
     # How to implement: define __array_wrap__ and __getitem__ in
     # the mat and vect factories.
+
+    # Should test that info is copied (not referenced) when we want it to be.
 
     def tearDown(self) :
         del self.vect_mem
@@ -277,7 +314,7 @@ class TestMatUtils(unittest.TestCase) :
         self.mat = algebra.info_array(data)
         self.mat.shape = (5, 4, 6)
         self.mat = algebra.mat_array(self.mat, row_axes=(0,1), col_axes=(0,2), 
-                                      axis_names=('freq', 'mode', 'mode'))
+                                      axis_names=('freq', 'mode1', 'mode2'))
 
     def test_invalid_assignments(self) :
         self.assertRaises(TypeError, self.vect.__setattr__, 'axes', 
@@ -291,24 +328,24 @@ class TestMatUtils(unittest.TestCase) :
 
     def test_mat_shape(self) :
         """ Check basic functionality."""
-        self.assertEqual(self.vect.mat_shape, (30,))
-        self.assertEqual(self.mat.mat_shape, (20, 30))
+        self.assertEqual(self.vect.mat_shape(), (30,))
+        self.assertEqual(self.mat.mat_shape(), (20, 30))
         # Check that it fails if I mess with stuff.
         self.vect.info['axes'] = (None, 5, 'a')
-        self.assertRaises(TypeError, self.vect.__getattr__, 'mat_shape')
+        self.assertRaises(TypeError, self.vect.mat_shape)
         self.vect.info['axes'] = (None, 'a')
-        self.assertRaises(ValueError, self.vect.__getattr__, 'mat_shape')
+        self.assertRaises(ValueError, self.vect.mat_shape)
         self.mat.info['rows'] = (0,)
-        self.assertRaises(ValueError, self.mat.__getattr__, 'mat_shape')
+        self.assertRaises(ValueError, self.mat.mat_shape)
         self.mat.info['rows'] = (0,1,4)
-        self.assertRaises(ValueError, self.mat.__getattr__, 'mat_shape')
+        self.assertRaises(ValueError, self.mat.mat_shape)
 
     def test_another_mat_shape(self) :
         self.mat.shape = (5, 4, 2, 3)
         self.mat.axes = ('freq', 'mode', 'a', 'b')
         self.mat.cols = (0, 2, 3)
         self.mat.rows = (0, 1)
-        self.assertEqual(self.mat.mat_shape, (5*4, 5*2*3))
+        self.assertEqual(self.mat.mat_shape(), (5*4, 5*2*3))
 
     def test_assert_axes_ordered(self) :
         self.mat.assert_axes_ordered()
@@ -323,7 +360,7 @@ class TestMatUtils(unittest.TestCase) :
 
     def test_expand_mat(self) :
         expanded = self.mat.expand()
-        self.assertEqual(expanded.shape, self.mat.mat_shape)
+        self.assertEqual(expanded.shape, self.mat.mat_shape())
         self.assertTrue(sp.allclose(self.mat[0,:,:], expanded[0:4, 0:6]))
     
     def test_flat_view(self) :
@@ -338,7 +375,7 @@ class TestMatUtils(unittest.TestCase) :
         self.mat.cols = (0, 2, 3)
         self.mat.axes = ('freq', 'mode', 'a', 'b')
         prod = algebra.dot(self.mat, self.vect)
-        self.assertEqual(prod.mat_shape, (20,))
+        self.assertEqual(prod.mat_shape(), (20,))
         self.assertEqual(prod.shape, (5, 4))
         self.assertEqual(prod.info['axes'], ('freq', 'mode'))
         self.assertTrue(sp.allclose(prod.flatten(),
@@ -418,7 +455,54 @@ class TestMatUtils(unittest.TestCase) :
         self.assertTrue(isinstance(zmat, algebra.mat))
         self.assertTrue(not sp.allclose(self.mat, 0))
         self.assertRaises(TypeError, algebra.zeros_like, {'a': 3})
+    
+    def test_row_cols_names(self) :
+        self.assertEqual(self.mat.row_names(), ('freq', 'mode1'))
+        self.assertEqual(self.mat.col_names(), ('freq', 'mode2'))
+        self.mat.shape = (5, 4, 2, 3)
+        self.mat.axes = ('freq', 'mode', 'a', 'b')
+        self.mat.cols = (0, 2, 3)
+        self.mat.rows = (0, 1)
+        self.assertEqual(self.mat.col_names(), ('freq', 'a', 'b'))
 
+    def test_iter_col_axes(self) :
+        for ii, index in enumerate(self.mat.iter_col_index()) :
+            self.mat[index] = ii
+        self.assertTrue(sp.allclose(self.mat[:,:,2], 2))
+        self.assertTrue(sp.allclose(self.mat[:,:,5], 5))
+
+    def test_iter_row_axes(self) :
+        for ii, index in enumerate(self.mat.iter_row_index()) :
+            self.mat[index] = ii
+        self.assertTrue(sp.allclose(self.mat[:,1,:], 1))
+        self.assertTrue(sp.allclose(self.mat[:,3,:], 3))
+
+class TestMatUtilsSq(unittest.TestCase) :
+
+    def setUp(self) :
+        data = sp.arange(160)
+        data.shape = (10, 4, 4)
+        self.mat = algebra.make_mat(data, row_axes=(0,1), col_axes=(0,2), 
+                            axis_names=('freq', 'ra', 'ra'))
+        self.mat.set_axis_info('ra', 215, 0.5)
+        self.mat.set_axis_info('freq', 800, 2.0)
+
+    def test_diag(self) :
+        d = self.mat.mat_diag()
+        e = self.mat.expand()
+        self.assertTrue(sp.allclose(d.flat_view(), sp.diag(e)))
+        self.assertTrue(isinstance(d, algebra.vect))
+        self.assertEqual(d.shape, (10, 4))
+        self.assertEqual(d.axes, ('freq', 'ra'))
+        self.assertTrue(sp.allclose(d.get_axis('ra'), self.mat.get_axis('ra')))
+        self.assertTrue(sp.allclose(d.get_axis('freq'), 
+                                    self.mat.get_axis('freq')))
+
+# Rules I'd like to impose:
+    # vect axis names must be unique
+    # mat axis names can occure both as a row and a col, but only once each.
+    # Shape changing operations like sp.sum() are still preserving the type.
+    # Why?
 
 if __name__ == '__main__' :
     unittest.main()

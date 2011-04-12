@@ -7,20 +7,54 @@ import scipy as sp
 
 
 field = '15hr'
-file_middles = tuple(dir_data.get_data_files([40, 41], '15hr', type='guppi'))
+#file_middles = tuple(dir_data.get_data_files([40, 41, 42, 43], '15hr', 
+#                                             type='guppi'))
+file_middles = tuple(dir_data.get_data_files([40], '15hr', 
+                                             type='guppi'))
 
 base_dir = os.getenv('GBT10B_OUT')
 data_dir = base_dir + '/guppi_data/'
 prefix = ''
-#map_prefix = prefix + field + '_40-41_'
-map_prefix = 'test_tbug_' + field + '_40-41_'
+#map_prefix = prefix + field + '_42_'
+map_prefix = 'test_' + field + '_40_'
 
 pipe_modules = []
-pipe_processes = 7
+pipe_processes = 8
+
+
+from time_stream import hanning 
+#pipe_modules.append(hanning.Hanning)
+ha_input_root = data_dir
+ha_file_middles = file_middles
+ha_input_end = ".fits"
+ha_output_root = base_dir + 'hanning/' + prefix
+ha_output_end = ".fits"
+ha_scans = ()
+# All following steps will inherit this choice by default (because these are
+# the only IF's saved to the following fits files).
+ha_IFs = ()
+
+from time_stream import flag_data
+#pipe_modules.append(flag_data.FlagData)
+fd_input_root = ha_output_root
+fd_file_middles = file_middles
+fd_input_end = '.fits'
+fd_output_root = base_dir + 'flagged/' + prefix
+fd_output_end = '.fits'
+fd_scans = ()
+fd_IFs = ()
+
+fd_sigma_thres = 5
+fd_pol_thres = 5
+fd_pol_width = 1
+fd_flatten_pol = True
+fd_derivative_cuts = 5
+fd_derivative_width = 1
+
 
 from time_stream import rebin_freq
 #pipe_modules.append(rebin_freq.RebinFreq)
-rf_input_root = data_dir
+rf_input_root = fd_output_root
 rf_file_middles = file_middles
 rf_input_end = '.fits'
 rf_output_root = base_dir + 'rebinned/' + prefix
@@ -45,9 +79,21 @@ cs_scale_time_average = True
 cs_scale_freq_average = False
 cs_subtract_time_median = False
 
+from time_stream import calibrate
+#pipe_modules.append(calibrate.Calibrate)
+cl_input_root = cs_output_root
+cl_file_middles = file_middles
+cl_input_end = '.fits'
+cl_output_root = base_dir + 'calibrated/' + prefix
+cl_output_end = '.fits'
+cl_scans = ()
+cl_IFs = ()
+
+cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
+
 from time_stream import combine_cal
 #pipe_modules.append(combine_cal.CombineCal)
-cc_input_root = cs_output_root
+cc_input_root = cl_output_root
 cc_file_middles = file_middles
 cc_input_end = '.fits'
 cc_output_root = base_dir + 'combined/' + prefix
@@ -68,11 +114,12 @@ dm_scans = ()
 dm_IFs = (0,)
 
 dm_field_centre = (218., 2.0)
-#dm_map_shape = (65, 30)
-dm_map_shape = (20, 10)
+dm_map_shape = (65, 30)
+#dm_map_shape = (20, 10)
 #dm_map_shape = (100, 80)
 dm_pixel_spacing = .075
 dm_noise_model = 'disjoint_scans'
+dm_polarizations = ('I',)
 
 from map import clean_map
 pipe_modules.append(clean_map.CleanMapMaker)

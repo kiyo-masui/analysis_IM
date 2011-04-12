@@ -3,6 +3,7 @@ import pyfits
 import sys
 from numpy import *
 import core.algebra as al
+import scipy
 
 filename1 = sys.argv[1]
 
@@ -18,6 +19,7 @@ dec = array.get_axis('dec')
 freqs = array.get_axis('freq')
 freqs = freqs/1e6
 
+
 for slice, freq in enumerate(freqs):
    nancut = (array[slice] < 10e10) & ( array[slice] != NaN )
 #   print nancut
@@ -27,12 +29,19 @@ for slice, freq in enumerate(freqs):
    array[slice][cut] = 3.0*array[slice][nancut].std()
    cut = ( array[slice] < -3.0*array[slice][nancut].std() ) 
    array[slice][cut] = -3.0*array[slice][nancut].std()
+
+#   Need to rotate array[slice] because axes were flipped
+#   print array[0]
+   new_array = scipy.transpose(array[slice])
+#   print new_array
 #   medianv = median(array[slice][nancut])
 #   for element in image_cube[slice][cut]:
 #      print element
 #   Alternate plotting command to set temperature limits
-#   pylab.imshow(array[slice], interpolation='gaussian',vmin=-2, vmax=2, extent=(dec.max(),dec.min(),ra.min(),ra.max()), origin='lower')
-   pylab.imshow(array[slice], interpolation='gaussian', extent=(dec.max(),dec.min(),ra.min(),ra.max()), origin='lower')
+   pylab.imshow(new_array, interpolation='gaussian', vmin=-0.3, vmax=0.3, extent=(ra.max(),ra.min(),dec.min(),dec.max()), origin='lower')
+#   pylab.xlabel('Dec')
+#   pylab.ylabel('RA')
+#   pylab.imshow(new_array, interpolation='gaussian', extent=(ra.max(),ra.min(),dec.min(),dec.max()), origin='lower')
    pylab.colorbar()
    pylab.savefig(filename2+str(freq)[:3]+'.png')
 #   pylab.savefig('v_'+filename2+str(freq)[:3]+'.png')

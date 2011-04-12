@@ -33,6 +33,8 @@ params_init = {
                # In pixels.
                'map_shape' : (5, 5),
                'pixel_spacing' : 0.5, # degrees
+               # What polarizations to process.
+               'polarizations' : (),
                # What noise model to use.  Options are:
                #  'grid' : just grid the data and devid by number of counts.
                #  'diag_file' : measure the time varience of each file.
@@ -99,142 +101,160 @@ class DirtyMapMaker(object) :
             # first iteration).
             first_block = True
             # Loop over the files to process.
-            for file_middle in params['file_middles'] :
-                input_fname = (params['input_root'] + file_middle +
-                               params['input_end'])
-                # Read in the data, and loop over data blocks.
-                Reader = fitsGBT.Reader(input_fname, feedback=self.feedback)
-                Blocks = Reader.read(params['scans'], params['IFs'])
-                
-                # Calculate the time varience at each frequency.  This will be
-                # used as weights in most algorithms.
-                if not algorithm == 'grid' :
-                    var = tools.calc_time_var_file(Blocks, pol_ind, 0)
-                    # Convert from masked array to array.
-                    var = var.filled(9999.)
-                else :
-                    var = 1.
-                weight = 1/var
-                
-                for Data in Blocks :
-                    dims = Data.dims
-                    # On first pass set up the map parameters.
-                    if first_block :
-                        shape = map_shape + (dims[-1],)
-                        Data.calc_freq()
-                        centre_freq = Data.freq[dims[-1]//2]
-                        delta_freq = Data.field['CDELT1']
-                        if pol_ind==0 :
-                            # Figure out the length of the polarization loop.
-                            npol = dims[1]
-                            # Accumulate the data history.
-                            history = hist.History(Data.history)
-                        # Get the current polarization integer.
-                        this_pol = Data.field['CRVAL4'][pol_ind]
-                        # Allowcate memory for the map.
-                        map_data = sp.zeros(shape, dtype=float)
-                        map_data = algebra.make_vect(map_data,
-                                        axis_names=('ra', 'dec', 'freq'))
-                        # Allowcate memory for the inverse map noise.
-                        if algorithm in ('grid', 'diag_file') :
-                            noise_inv = sp.zeros(shape, dtype=float)
-                            noise_inv = algebra.make_mat(noise_inv,
+            try :
+                for file_middle in params['file_middles'] :
+                    input_fname = (params['input_root'] + file_middle +
+                                   params['input_end'])
+                    # Read in the data, and loop over data blocks.
+                    Reader = fitsGBT.Reader(input_fname, feedback=self.feedback)
+                    Blocks = Reader.read(params['scans'], params['IFs'])
+                    
+                    # Calculate the time varience at each frequency.  This will
+                    # be used as weights in most algorithms.
+                    if not algorithm == 'grid' :
+                        var = tools.calc_time_var_file(Blocks, pol_ind, 0)
+                        # Convert from masked array to array.
+                        var = var.filled(9999.)
+                    else :
+                        var = 1.
+                    weight = 1/var
+                    
+                    for Data in Blocks :
+                        dims = Data.dims
+                        # On first pass set up the map parameters.
+                        if first_block :
+                            shape = map_shape + (dims[-1],)
+                            Data.calc_freq()
+                            centre_freq = Data.freq[dims[-1]//2]
+                            delta_freq = Data.field['CDELT1']
+                            if pol_ind==0 :
+                                # Figure out the length of the polarization
+                                # loop.
+                                npol = dims[1]
+                                # Accumulate the data history.
+                                history = hist.History(Data.history)
+                            # Get the current polarization integer.
+                            this_pol = Data.field['CRVAL4'][pol_ind]
+                            # Check that we even want to make a dirty map for
+                            # this polarization.
+                            if ((not utils.polint2str(this_pol) in
+                                params['polarizations']) and
+                                params['polarizations']) :
+                                # Break to the end of the polarization loop.
+                                raise ce.NextIteration()
+                            # Allowcate memory for the map.
+                            map_data = sp.zeros(shape, dtype=float)
+                            map_data = algebra.make_vect(map_data,
+                                            axis_names=('ra', 'dec', 'freq'))
+                            # Allowcate memory for the inverse map noise.
+                            if algorithm in ('grid', 'diag_file') :
+                                noise_inv = sp.zeros(shape, dtype=float)
+                                noise_inv = algebra.make_mat(noise_inv,
                                             axis_names=('ra', 'dec', 'freq'),
                                             row_axes=(0,1,2), col_axes=(0,1,2))
-                        elif algorithm in ('disjoint_scans', 'ds_grad') :
-                            # At each frequency use full N^2 noise matrix, but
-                            # assume each frequency has uncorrelated noise.
-                            # This is a big matrix so make sure it is
-                            # reasonable.
-                            size = shape[0]^2*shape[1]^2*shape[2]
-                            if size > 4e9 : # 16 GB
-                                raise RunTimeError('Map size too big.  Asked '
-                                                  'for a lot of memory.')
-                            noise_inv = sp.zeros(shape[0:2] + shape,
-                                                 dtype=sp.float32)
-                            noise_inv = algebra.make_mat(noise_inv,
-                                            axis_names=('ra', 'dec', 'ra',
-                                                        'dec', 'freq'),
-                                            row_axes=(0,1,4), col_axes=(2,3,4))
-                            # Allowcate memory for temporary data. Hold the
-                            # number of times each pixel in this scan is hit.
-                            # Factor of 2 longer in time in case some scans are
-                            # longer than first block (guppi).
-                            pixel_hits = sp.empty((2*dims[0], dims[-1]))
-                        first_block = False
-                    else :
-                        if pol_ind==0 :
-                            history.merge(Data)
-                    # Figure out the pointing pixel index and the frequency 
-                    # indicies.
-                    Data.calc_pointing()
-                    ra_inds = tools.calc_inds(Data.ra, 
-                               params['field_centre'][0], shape[0], ra_spacing)
-                    dec_inds = tools.calc_inds(Data.dec, 
-                                         params['field_centre'][1], 
-                                         shape[1], params['pixel_spacing'])
-                    data = Data.data[:,pol_ind,0,:]
-                    if algorithm in ('grid', 'diag_file') :
-                        add_data_2_map(data, ra_inds, dec_inds, map_data, 
-                                       noise_inv, weight)
-                    elif algorithm in ('disjoint_scans', ) :
-                        add_data_2_map(data - ma.mean(data, 0), ra_inds, 
-                                       dec_inds, map_data, None, weight)
-                        pixel_hits[:] = 0
-                        pixel_list = pixel_counts(data, ra_inds, dec_inds, 
-                                        pixel_hits, map_shape=shape[0:2])
-                        add_scan_noise(pixel_list, pixel_hits, var, noise_inv)
-                    # End Blocks for loop.
-                # End file name for loop.
-            # Now write the dirty maps out for this polarization. Use memmaps
-            # for this since we want to reorganize data and write at the same
-            # time.
-            # New maps will have the frequency axis as slowly varying, for
-            # future efficiency.
-            map_file_name = (params['output_root'] + 'dirty_map_' +
-                             utils.polint2str(this_pol) + '.npy')
-            mfile = algebra.open_memmap(map_file_name, mode='w+',
-                                         shape=(shape[2],) + shape[:2])
-            map_mem = algebra.make_vect(mfile, axis_names=('freq', 'ra',
-                                                            'dec'))
-            # And the noise matrix.
-            noise_file_name = (params['output_root'] + 'noise_inv_' +
-                             utils.polint2str(this_pol) + '.npy')
-            if algorithm in ('disjoint_scans', 'ds_grad') :
-                mfile = algebra.open_memmap(noise_file_name, mode='w+',
-                                             shape=(shape[2],) + shape[:2]*2)
-                noise_mem = algebra.make_mat(mfile, axis_names=('freq', 'ra',
-                                'dec', 'ra', 'dec'), row_axes=(0, 1, 2), 
-                                col_axes=(0, 3, 4))
-            else :
-                mfile = algebra.open_memmap(noise_file_name, mode='w+',
+                            elif algorithm in ('disjoint_scans', 'ds_grad') :
+                                # At each frequency use full N^2 noise matrix, 
+                                # but assume each frequency has uncorrelated
+                                # noise. This is a big matrix so make sure it
+                                # is reasonable.
+                                size = shape[0]^2*shape[1]^2*shape[2]
+                                if size > 4e9 : # 16 GB
+                                    raise RunTimeError('Map size too big. '
+                                                       'Asked for a lot '
+                                                       'of memory.')
+                                noise_inv = sp.zeros(shape[0:2] + shape,
+                                                     dtype=sp.float32)
+                                noise_inv = algebra.make_mat(noise_inv,
+                                                axis_names=('ra', 'dec', 'ra',
+                                                            'dec', 'freq'),
+                                                row_axes=(0,1,4), 
+                                                col_axes=(2,3,4))
+                                # Allowcate memory for temporary data. Hold the
+                                # number of times each pixel in this scan is
+                                # hit. Factor of 2 longer in time in case some
+                                # scans are longer than first block (guppi).
+                                pixel_hits = sp.empty((2*dims[0], dims[-1]))
+                            first_block = False
+                        else :
+                            if pol_ind==0 :
+                                history.merge(Data)
+                        # Figure out the pointing pixel index and the frequency 
+                        # indicies.
+                        Data.calc_pointing()
+                        ra_inds = tools.calc_inds(Data.ra, 
+                                    params['field_centre'][0], shape[0], 
+                                    ra_spacing)
+                        dec_inds = tools.calc_inds(Data.dec, 
+                                             params['field_centre'][1], 
+                                             shape[1], params['pixel_spacing'])
+                        data = Data.data[:,pol_ind,0,:]
+                        if algorithm in ('grid', 'diag_file') :
+                            add_data_2_map(data, ra_inds, dec_inds, map_data, 
+                                           noise_inv, weight)
+                        elif algorithm in ('disjoint_scans', ) :
+                            add_data_2_map(data - ma.mean(data, 0), ra_inds, 
+                                           dec_inds, map_data, None, weight)
+                            pixel_hits[:] = 0
+                            pixel_list = pixel_counts(data, ra_inds, dec_inds, 
+                                            pixel_hits, map_shape=shape[0:2])
+                            add_scan_noise(pixel_list, pixel_hits, var,
+                                           noise_inv)
+                        # End Blocks for loop.
+                    # End file name for loop.
+                # Now write the dirty maps out for this polarization. 
+                # Use memmaps for this since we want to reorganize data 
+                # and write at the same time.
+                # New maps will have the frequency axis as slowly varying, for
+                # future efficiency.
+                map_file_name = (params['output_root'] + 'dirty_map_' +
+                                 utils.polint2str(this_pol) + '.npy')
+                mfile = algebra.open_memmap(map_file_name, mode='w+',
                                              shape=(shape[2],) + shape[:2])
-                noise_mem = algebra.make_mat(mfile, axis_names=('freq', 'ra', 
-                    'dec'), row_axes=(0, 1, 2), col_axes=(0, 1, 2))
-            # Give the data arrays axis information.
-            map_mem.set_axis_info('freq', centre_freq, delta_freq)
-            map_mem.set_axis_info('ra', params['field_centre'][0], ra_spacing)
-            map_mem.set_axis_info('dec', params['field_centre'][1], 
-                                  params['pixel_spacing'])
-            noise_mem.set_axis_info('freq', centre_freq, delta_freq)
-            noise_mem.set_axis_info('ra', params['field_centre'][0], ra_spacing)
-            noise_mem.set_axis_info('dec', params['field_centre'][1], 
-                                  params['pixel_spacing'])
-            # Copy the data to the memory maps after rearranging.  The roll_axis
-            # should return a view, so this should be memory efficient.
-            map_mem[...] = sp.rollaxis(map_data, -1)
-            noise_mem[...] = sp.rollaxis(noise_inv, -1)
+                map_mem = algebra.make_vect(mfile, axis_names=('freq', 'ra',
+                                                                'dec'))
+                # And the noise matrix.
+                noise_file_name = (params['output_root'] + 'noise_inv_' +
+                                 utils.polint2str(this_pol) + '.npy')
+                if algorithm in ('disjoint_scans', 'ds_grad') :
+                    mfile = algebra.open_memmap(noise_file_name, mode='w+',
+                                                shape=(shape[2],) +
+                                                shape[:2]*2)
+                    noise_mem = algebra.make_mat(mfile, axis_names=('freq', 
+                                'ra', 'dec', 'ra', 'dec'), row_axes=(0, 1, 2), 
+                                col_axes=(0, 3, 4))
+                else :
+                    mfile = algebra.open_memmap(noise_file_name, mode='w+',
+                                                 shape=(shape[2],) +
+                                                shape[:2])
+                    noise_mem = algebra.make_mat(mfile, axis_names=('freq', 
+                        'ra', 'dec'), row_axes=(0, 1, 2), col_axes=(0, 1, 2))
+                # Give the data arrays axis information.
+                map_mem.set_axis_info('freq', centre_freq, delta_freq)
+                map_mem.set_axis_info('ra', params['field_centre'][0], 
+                                      ra_spacing)
+                map_mem.set_axis_info('dec', params['field_centre'][1], 
+                                      params['pixel_spacing'])
+                noise_mem.set_axis_info('freq', centre_freq, delta_freq)
+                noise_mem.set_axis_info('ra', params['field_centre'][0], 
+                                        ra_spacing)
+                noise_mem.set_axis_info('dec', params['field_centre'][1], 
+                                      params['pixel_spacing'])
+                # Copy the data to the memory maps after rearranging.  
+                # The roll_axis should return a view, so this should
+                # be memory efficient.
+                map_mem[...] = sp.rollaxis(map_data, -1)
+                noise_mem[...] = sp.rollaxis(noise_inv, -1)
 
-            # Free up all that memory and flush memory maps to file.
-            print map_mem.info
-            del mfile, map_mem, noise_mem, map_data, noise_inv 
-            
-            # Save the file names for the history.
-            all_file_names.append(kiyopy.utils.abbreviate_file_path(
-                map_file_name))
-            all_file_names.append(kiyopy.utils.abbreviate_file_path(
-                noise_file_name))
-            
+                # Free up all that memory and flush memory maps to file.
+                del mfile, map_mem, noise_mem, map_data, noise_inv 
+                
+                # Save the file names for the history.
+                all_file_names.append(kiyopy.utils.abbreviate_file_path(
+                    map_file_name))
+                all_file_names.append(kiyopy.utils.abbreviate_file_path(
+                    noise_file_name))
+            except ce.NextIteration :
+                pass
             pol_ind += 1
             # End polarization for loop.
         history.add("Made dirty map.", all_file_names)

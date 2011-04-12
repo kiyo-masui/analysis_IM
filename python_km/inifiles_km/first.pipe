@@ -27,7 +27,7 @@ file_middles = tuple(dir_data.get_data_files(range(22, 35), field))
 					 
 
 pipe_modules = []
-pipe_processes = 6
+pipe_processes = 1
 
 base_dir = os.getenv('GBT10B_OUT')
 raw_data_dir = os.getenv('GBT10B_DATA')
@@ -46,8 +46,8 @@ ha_scans = ()
 # the only IF's saved to the following fits files).
 ha_IFs = IFs
 
-#from time_stream import flag_data
-#pipe_modules.append(flag_data.FlagData)
+from time_stream import flag_data
+pipe_modules.append(flag_data.FlagData)
 fd_input_root = ha_output_root
 fd_file_middles = file_middles
 fd_input_end = '.fits'
