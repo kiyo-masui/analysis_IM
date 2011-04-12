@@ -4,7 +4,7 @@ import os
 
 from core import dir_data
 
-file_middles = ('39_3c286_onoff_5-8','39_3c286_onoff_119-122','40_3c286_onoff_topo_113-116')  					 
+file_middles = ('25_3c286_onoff_21-24','25_3c286_onoff_305-308','27_3c286_onoff_5-8')  					 
 
 pipe_modules = []
 # Chime has 8 cores, but you should save a few for other people.  Use 6 max.
