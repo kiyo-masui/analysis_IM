@@ -29,7 +29,8 @@ def calc_inds(pointing, centre, shape, spacing=1.) :
         pointing = sp.array(pointing, dtype=float)
     shape = int(shape)
 
-    inds = sp.array((pointing - centre) / spacing + shape/2.0, dtype=int)
+    inds = sp.around(sp.array((pointing - centre) / spacing + shape//2))
+    inds = sp.array(inds, dtype=int)
     
     return inds
 
