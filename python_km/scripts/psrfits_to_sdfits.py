@@ -527,7 +527,8 @@ def separate_cal(data, n_bins_cal) :
         inds = sp.arange(n_bins_cal)
         if first_on == min((sp.arange(n_cal_state) +
                         first_on)% n_bins_cal) :
-            on_mask = sp.logical_and(inds >= first_on, inds < first_on+n_cal_state)
+            on_mask = sp.logical_and(inds >= first_on, inds < 
+                                     first_on+n_cal_state)
         else :
             on_mask = sp.logical_or(inds >= first_on, inds < 
                                 (first_on + n_cal_state) % n_bins_cal)

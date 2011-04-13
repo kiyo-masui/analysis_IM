@@ -9,7 +9,7 @@ import numpy.ma as ma
 import kiyopy.custom_exceptions as ce
 import base_single
 import map.tools
-from core import fits_map
+from core import algebra
 
 class Subtract(base_single.BaseSingle) :
     """Pipeline module subtracts a map from time stream data.
@@ -38,7 +38,8 @@ class Subtract(base_single.BaseSingle) :
                                         feedback)
         # Read in the calibration file.
         map_file_name = self.params['map_file']
-        self.Map = fits_map.read(map_file_name, 1, feedback=self.feedback)
+        self.Map = algebra.load(map_file_name)
+        self.Map = algebra.make_vect(self.Map)
 
     def action(self, Data) :
         if (not self.params['solve_for_gain'] or
@@ -108,11 +109,9 @@ def sub_map(Data, Maps, correlate=False, pols=()) :
         # These indices are the length of the time axis. Integer indicies.
         ra_ind = map.tools.calc_inds(Data.ra, centre[1], shape[1], spacing[1])
         dec_ind = map.tools.calc_inds(Data.dec, centre[2], shape[2], spacing[2])
-        print ra_ind, dec_ind
         # Length of the data frequency axis.
         freq_ind = map.tools.calc_inds(Data.freq, centre[0], shape[0], 
                                        spacing[0])
-        print freq_ind
         # Exclude indices that are off map or out of band. Boolian indices.
         on_map_inds = sp.logical_and(sp.logical_and(ra_ind>=0, ra_ind<shape[1]),
                                  sp.logical_and(dec_ind>=0, dec_ind<shape[2]))
@@ -131,23 +130,24 @@ def sub_map(Data, Maps, correlate=False, pols=()) :
         # Now start using the actual data.  Loop over cal and pol indicies.
         for cal_ind in range(Data.dims[2]) :
             data = Data.data[:,pol_ind, cal_ind, :]
+            # Find the common mask.
+            un_mask = sp.logical_not(sp.logical_or(data.mask, subdata.mask))
+            # Subtract out the mean from the map.
+            tmp_subdata = (subdata - sp.sum(un_mask*subdata, 0) / 
+                        sp.sum(un_mask, 0))
             # Correlate to solve for an unknown gain.
             if correlate :
-                # Find the common mask.
-                un_mask = sp.logical_not(sp.logical_or(data.mask, subdata.mask))
-                # Subtract out the mean from both data and map.
-                tsubdata = (subdata - sp.sum(un_mask*subdata, 0) / 
-                            sp.sum(un_mask, 0))
-                tdata = data - sp.sum(un_mask*data, 0)/sp.sum(un_mask, 0)
-                gain = (sp.sum(un_mask*tsubdata*tdata, 0) / 
-                        sp.sum(un_mask*tsubdata*tsubdata, 0))
+                tmp_data = data - sp.sum(un_mask*data, 0)/sp.sum(un_mask, 0)
+                gain = (sp.sum(un_mask*tmp_subdata*tmp_data, 0) / 
+                        sp.sum(un_mask*tmp_subdata*tmp_subdata, 0))
                 out_gains[pol_ind,cal_ind,:] = gain
             else :
                 gain = 1.0
-            # Now do the subtraction and mask the off map data.
-            data -= gain*subdata
-        if correlate :
-            return out_gains
+            # Now do the subtraction and mask the off map data.  We use the
+            # mean subtracted map, to preserve data mean.
+            data[...] -= gain*tmp_subdata
+    if correlate :
+        return out_gains
 
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":

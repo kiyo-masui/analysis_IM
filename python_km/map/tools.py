@@ -42,18 +42,18 @@ def calc_bins(centre, shape, spacing=1., edge='lower') :
     """
     
     if edge == 'left' :
-        offset = 0.
+        offset = -spacing/2.0
     elif edge == 'middle' :
-        offset = spacing/2.0
+        offset = 0
     elif edge == 'right' :
-        offset = float(spacing)
+        offset = spacing/2.0
     else :
         raise ValueError("Argument edge must be either 'left', 'middle' or "
                          "'right'")
     shape = int(shape)
     
-    bins = (spacing * sp.arange(-shape/2.0, shape/2.0, dtype=float)
-            + centre + offset)
+    bins = (spacing * (sp.arange(shape, dtype=float) - shape//2) +
+            centre + offset)
     
     return bins
 

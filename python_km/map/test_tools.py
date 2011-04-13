@@ -40,19 +40,19 @@ class TestCalcFunctions(unittest.TestCase) :
         shape = 5
         spacing = 2
         bins = tools.calc_bins(centre, shape, spacing, edge='left')
-        self.assertEqual(bins[0], 0)
-        self.assertEqual(bins[-1], 8)
-        self.assertEqual(bins[2], 4)
+        self.assertAlmostEqual(bins[0], 0)
+        self.assertAlmostEqual(bins[-1], 8)
+        self.assertAlmostEqual(bins[2], 4)
         bins = tools.calc_bins(centre, shape, spacing, edge='middle')
-        self.assertEqual(bins[0], 1)
-        self.assertEqual(bins[-1], 9)
-        self.assertEqual(bins[2], 5)
+        self.assertAlmostEqual(bins[0], 1)
+        self.assertAlmostEqual(bins[-1], 9)
+        self.assertAlmostEqual(bins[2], 5)
         shape = 10
         spacing = 1
         bins = tools.calc_bins(centre, shape, spacing, edge='right')
-        self.assertEqual(bins[0], 0.5)
-        self.assertEqual(bins[-1], 9.5)
-        self.assertEqual(bins[4], 4.5)
+        self.assertAlmostEqual(bins[0], 0.5)
+        self.assertAlmostEqual(bins[-1], 9.5)
+        self.assertAlmostEqual(bins[4], 4.5)
 
     def test_circle(self) :
         centre = 4.6
