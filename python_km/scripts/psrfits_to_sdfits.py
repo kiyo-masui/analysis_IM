@@ -224,7 +224,8 @@ class Converter(object) :
                       params["guppi_input_end"])
         # Sometimes guppi files are just missing.
         if not os.path.isfile(guppi_file) :
-            pipe.send(None)
+            print "Missing psrfits file: " + guppi_file
+            Pipe.send(None)
             return
         print "Converting file: " + guppi_file,
         if params['combine_map_scans'] :
