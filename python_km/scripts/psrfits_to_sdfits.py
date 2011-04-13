@@ -16,6 +16,7 @@ information.
 import time
 import multiprocessing as mp
 import sys
+import os.path
 
 import scipy as sp
 import scipy.interpolate as interp
@@ -130,7 +131,8 @@ class Converter(object) :
                 p.join()
                 
                 # Store our processed data.
-                Block_list.append(Data)
+                if not Data is None :
+                    Block_list.append(Data)
             # End loop over scans (input files).
             # Now we can write our list of scans to disk.
             if len(scans_this_file) > 1 :
@@ -220,6 +222,10 @@ class Converter(object) :
         # Get the guppi file name.
         guppi_file = (params["guppi_input_root"] + "%04d"%scan +
                       params["guppi_input_end"])
+        # Sometimes guppi files are just missing.
+        if not os.path.isfile(guppi_file) :
+            pipe.send(None)
+            return
         print "Converting file: " + guppi_file,
         if params['combine_map_scans'] :
            print (" (scan " + str(go_hdu["PROCSEQN"]) + " of " +
@@ -268,7 +274,7 @@ class Converter(object) :
         
         # In current scan startegy, Zenith angle is approximatly 
         # constant over a file.  We will verify that this matches the antenna 
-	# fits file as a good (but scan strategy specific) check.
+        # fits file as a good (but scan strategy specific) check.
         if self.proceedure == 'ralongmap' :
             zenith_angle = psrdata[0]["TEL_ZEN"]
             if not sp.allclose(90.0 - zenith_angle, ant_el, atol=0.1) :
