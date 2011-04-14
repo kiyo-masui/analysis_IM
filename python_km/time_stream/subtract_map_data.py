@@ -7,6 +7,7 @@ import scipy as sp
 import numpy.ma as ma
 
 import kiyopy.custom_exceptions as ce
+import kiyopy.utils as ku
 import base_single
 import map.tools
 from core import algebra
@@ -49,13 +50,13 @@ class Subtract(base_single.BaseSingle) :
             block_gain = {}
             Data.calc_freq()
             block_gain['freq'] = sp.copy(Data.freq)
-            block_gain['time'] = Data.field['TIMESTAMP']
+            block_gain['time'] = Data.field['DATE-OBS'][0]
             block_gain['scan'] = Data.field['SCAN']
             block_gain['gain'] = sub_map(Data, self.Map, True)
             self.gain_list.append(block_gain)
 
         Data.add_history('Subtracted map from data.', 
-                         ('Map file: ' + self.params['map_file'],))
+            ('Map file: ' + ku.abbreviate_file_path(self.params['map_file']),))
         return Data
 
     # Overwrite the base single process file method so we can also pickle the
