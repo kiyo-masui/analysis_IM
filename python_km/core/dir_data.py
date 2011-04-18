@@ -53,15 +53,16 @@ def get_data_files(session_list, field, type=None) :
 
     return out_files
 
-def get_cal_files(session_list) :
+def get_cal_files(session_list,calibrator) :
     """Given a list of data files, returns a list of lists of cal files for
-    each data file.
+    each data file an a particular calibrator. calibrator data should be cXXX
+    for spectrometer data and CXXX for guppi data.
     """
     all_files = os.listdir(_data_dir)
     cal_files = []
 
     for session in session_list:
-        match_str = ('(%02d'%session+'_3c'+'.*_onoff_'+".*\.raw.acs.fits)")
+        match_str = ('(%02d'%session+'_3'+calibrator+'_onoff_'+".*\.raw.acs.fits)")
         for file_name in all_files:
             if re.match(match_str, file_name) :
                 root = file_name.split('.')[0]

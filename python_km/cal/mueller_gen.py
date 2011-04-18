@@ -47,18 +47,11 @@ class MuellerGen(object) :
         Q = p[5]
         U = p[6]
         theta = self.theta
-        t = sp.zeros(9)
-        t[0] = 0.5*dG + Q*ma.cos(2.*(al+theta[0]))+U*ma.sin (2.*(al+theta[0]))
-        t[1] = 2*ep*ma.cos(ps+ph)+ma.cos(ps)*(-Q*ma.sin(2.*(al+theta[0]))+U*ma.cos(2.*(al+theta[0])))
-        t[2] = 2*ep*ma.sin(ps+ph)+ma.sin(ps)*(-Q*ma.sin(2*(al+theta[0]))+U*ma.cos(2*(al+theta[0])))
-
-        t[3] = 0.5*dG + Q*ma.cos(2*(al+theta[1]))+U*ma.sin (2*(al+theta[1]))
-        t[4] = 2*ep*ma.cos(ps+ph)+ma.cos(ps)*(-Q*ma.sin(2*(al+theta[1]))+U*ma.cos(2*(al+theta[1])))        
-        t[5] = 2*ep*ma.sin(ps+ph)+ma.sin(ps)*(-Q*ma.sin(2*(al+theta[1]))+U*ma.cos(2*(al+theta[1]))) 
-
-        t[6] = 0.5*dG + Q*ma.cos(2*(al+theta[2]))+U*ma.sin (2*(al+theta[2]))
-        t[7] = 2*ep*ma.cos(ps+ph)+ma.cos(ps)*(-Q*ma.sin(2*(al+theta[2]))+U*ma.cos(2*(al+theta[2])))        
-        t[8] = 2*ep*ma.sin(ps+ph)+ma.sin(ps)*(-Q*ma.sin(2*(al+theta[2]))+U*ma.cos(2*(al+theta[2]))) 
+        t = self.function
+        for i in range(0,len(t),3):
+            t[i] = 0.5*dG + Q*ma.cos(2.*(al+theta[i]))+U*ma.sin (2.*(al+theta[i]))
+            t[i+1] = 2*ep*ma.cos(ps+ph)+ma.cos(ps)*(-Q*ma.sin(2.*(al+theta[i]))+U*ma.cos(2.*(al+theta[i])))
+            t[i+2] = 2*ep*ma.sin(ps+ph)+ma.sin(ps)*(-Q*ma.sin(2*(al+theta[i]))+U*ma.cos(2*(al+theta[i])))
         return t 
 
     def residuals(self, p, d, errors, f):
@@ -72,11 +65,19 @@ class MuellerGen(object) :
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
                                prefix=prefix)
         guppi_result = params['Guppi_test']
-
-        first_iteration = True
-        self.theta = [295*sp.pi/180,336*sp.pi/180,15*sp.pi/180]
- # Parallactic angle vector if entering manually => Should be in units of fraction of pi.
-
+        # Need to know the general frequency binning (going to assume that it's 200 for guppi, 260 for spectrometer)
+        if guppi_result == True :
+            freq_num = 200
+        if guppi_result == False :
+            freq_num = 260
+       
+        self.file_num = len(params['file_middles']) # getting a variable for number of calibrator files being used
+        if guppi_result == False :
+            self.file_num *= 2 #because there are two sets of scans per file for spectrometer.
+        self.function = sp.zeros(3*self.file_num) #setting a variable for peval
+        self.theta = sp.zeros(3*self.file_num) #parallactic angle in radians
+        d = sp.zeros((3*self.file_num,freq_num)) #measured values
+        print self.file_num   
         # Loop over files to process.
         k=0
         for file_middle in params['file_middles'] :
@@ -99,125 +100,95 @@ class MuellerGen(object) :
             U_ind = 2
             V_ind = 3
             
-            m=0
-            PA = sp.zeros(n_scans)           
+            PA = sp.zeros(n_scans)
+            m = 0           
             for Data in Blocks:
                 freq_len = Data.dims[3]
-                if guppi_result == False :
-                    LST = ma.mean(Data.field['LST'])
-                    LST *= 15.0/3600
-                if guppi_result == True :
-                    Data.calc_LST()
-                    LST = ma.mean(Data.LST)
-                RA = ma.mean(Data.field['CRVAL2'])
-                DEC = ma.mean(Data.field['CRVAL3'])
-                H = LST-RA
-                LAT = 38.0+26.0/60
-                sinH = ma.sin(H*sp.pi/180)
-                cosDEC = ma.cos(DEC*sp.pi/180)
-                tanLAT = ma.tan(LAT*sp.pi/180)
-                sinDEC = ma.sin(DEC*sp.pi/180)
-                cosH = ma.cos(H*sp.pi/180)
-                tanPA = sinH/(cosDEC*tanLAT-sinDEC*cosH)
-                PA[m] = ma.arctan(tanPA)
                 Data.calc_freq()
                 freq_val = Data.freq
                 freq_val = freq_val/1000000       
-                m+=1    
+                Data.calc_PA()
+                PA[m] = ma.mean(Data.PA)  
+                m+=1
+    
+            print PA
 
-            self.theta[k] = ma.mean(PA)
-            S_med_on = sp.zeros((2,freq_len,4))
-            S_med = sp.zeros((2,freq_len,4))  
+            if guppi_result == False :
+                self.theta[k] = 0.5*(PA[0]+PA[1])
+                self.theta[k+1] =0.5*(PA[0]+PA[1])
+                self.theta[k+2] = 0.5*(PA[0]+PA[1])
+                self.theta[k+3] = 0.5*(PA[2]+PA[3]) 
+                self.theta[k+4] = 0.5*(PA[2]+PA[3])
+                self.theta[k+5] = 0.5*(PA[2]+PA[3])
 
-            i=0  
-            for Data in OnBlocks :
-                I_med_on = ma.median(Data.data[:,I_ind,off_ind,:],axis=0)
-                Q_med_on = ma.median(Data.data[:,Q_ind,off_ind,:],axis=0)
-                U_med_on = ma.median(Data.data[:,U_ind,off_ind,:],axis=0) 
-                V_med_on = ma.median(Data.data[:,V_ind,off_ind,:],axis=0)
-                S_med_on[i,:,0] = I_med_on
-                S_med_on[i,:,1] = Q_med_on
-                S_med_on[i,:,2] = U_med_on
-                S_med_on[i,:,3] = V_med_on
-                i+=1
+                S_med_on = sp.zeros((2,freq_len,4))
+                S_med = sp.zeros((2,freq_len,4))  
+            
+                i=0  
+                for Data in OnBlocks :
+                    S_med_on[i,:,0] = ma.median(Data.data[:,I_ind,off_ind,:],axis=0)
+                    S_med_on[i,:,1] = ma.median(Data.data[:,Q_ind,off_ind,:],axis=0)
+                    S_med_on[i,:,2] = ma.median(Data.data[:,U_ind,off_ind,:],axis=0) 
+                    S_med_on[i,:,3] = ma.median(Data.data[:,V_ind,off_ind,:],axis=0)
+                    i+=1
+             
+                j=0
+                for Data in OffBlocks :
+                    S_med[j,:,0] = ma.median(Data.data[:,I_ind,off_ind,:],axis=0)
+                    S_med[j,:,1] = ma.median(Data.data[:,Q_ind,off_ind,:],axis=0)
+                    S_med[j,:,2] = ma.median(Data.data[:,U_ind,off_ind,:],axis=0) 
+                    S_med[j,:,3] = ma.median(Data.data[:,V_ind,off_ind,:],axis=0)
+                    j+=1
 
+                I_onoff_1 = S_med_on[0,:,0]-S_med[0,:,0]
+                I_onoff_2 = S_med_on[1,:,0]-S_med[1,:,0]
 
-            if n_scans>1 :
-                I_on = 0.5*(S_med_on[0,:,0]+S_med_on[1,:,0])
-                Q_on = 0.5*(S_med_on[0,:,1]+S_med_on[1,:,1])
-                U_on = 0.5*(S_med_on[0,:,2]+S_med_on[1,:,2])
-                V_on = 0.5*(S_med_on[0,:,3]+S_med_on[1,:,3])                    
-            else :
-                I_on = S_med_on[0,:,0]
-                Q_on = S_med_on[0,:,1]
-                U_on = S_med_on[0,:,2]
-                V_on = S_med_on[0,:,3]
+                d[k,:] = (S_med_on[0,:,1]-S_med[0,:,1])/I_onoff_1
+                d[k+1,:] = (S_med_on[0,:,2]-S_med[0,:,2])/I_onoff_1
+                d[k+2,:] = (S_med_on[0,:,3]-S_med[0,:,3])/I_onoff_1
+                d[k+3,:] = (S_med_on[1,:,1]-S_med[1,:,1])/I_onoff_2 
+                d[k+4,:] = (S_med_on[1,:,2]-S_med[1,:,2])/I_onoff_2
+                d[k+5,:] = (S_med_on[1,:,3]-S_med[1,:,3])/I_onoff_2
+                k+=6
+
+            if guppi_result == True :    
+                self.theta[k] = ma.mean(PA)
+                self.theta[k+1] = ma.mean(PA)
+                self.theta[k+2] = ma.mean(PA)
+
+                S_med_on = sp.zeros((freq_len,4))
+                S_med = sp.zeros((freq_len,4))
+
+                for Data in OnBlocks:
+                    S_med_on[:,0] = ma.median(Data.data[:,I_ind,off_ind,:],axis=0)
+                    S_med_on[:,1]  = ma.median(Data.data[:,Q_ind,off_ind,:],axis=0)
+                    S_med_on[:,2]  = ma.median(Data.data[:,U_ind,off_ind,:],axis=0)
+                    S_med_on[:,3] = ma.median(Data.data[:,V_ind,off_ind,:],axis=0)
+                    
+                for Data in OffBlocks :
+                    S_med[:,0] = ma.median(Data.data[:,I_ind,off_ind,:],axis=0)
+                    S_med[:,1]  = ma.median(Data.data[:,Q_ind,off_ind,:],axis=0)
+                    S_med[:,2]  = ma.median(Data.data[:,U_ind,off_ind,:],axis=0)
+                    S_med[:,3] = ma.median(Data.data[:,V_ind,off_ind,:],axis=0)
+
+                I_onoff = S_med_on[:,0]-S_med[:,0]
  
-            j=0
-            for Data in OffBlocks :
-                I_med = ma.median(Data.data[:,I_ind,off_ind,:],axis=0)
-                Q_med = ma.median(Data.data[:,Q_ind,off_ind,:],axis=0)
-                U_med = ma.median(Data.data[:,U_ind,off_ind,:],axis=0) 
-                V_med = ma.median(Data.data[:,V_ind,off_ind,:],axis=0)
+                d[k,:] = (S_med_on[:,1]-S_med[:,1])/I_onoff
+                d[k+1,:] = (S_med_on[:,2]-S_med[:,2])/I_onoff
+                d[k+2,:] = (S_med_on[:,3]-S_med[:,3])/I_onoff
+                k+=3
 
-                S_med[j,:,0] = I_med
-                S_med[j,:,1] = Q_med
-                S_med[j,:,2] = U_med
-                S_med[j,:,3] = V_med
-                j+=1
-
-            if n_scans>1 :
-                I_off = 0.5*(S_med[0,:,0]+S_med[1,:,0])
-                Q_off = 0.5*(S_med[0,:,1]+S_med[1,:,1])
-                U_off = 0.5*(S_med[0,:,2]+S_med[1,:,2])
-                V_off = 0.5*(S_med[0,:,3]+S_med[1,:,3])                    
-            else :
-                I_off = S_med[0,:,0]
-                Q_off = S_med[0,:,1]
-                U_off = S_med[0,:,2]
-                V_off = S_med[0,:,3]
-   
-            I_onoff = I_on - I_off
-#            print I_onoff
-            Q_onoff_ratio = (Q_on - Q_off)/I_onoff
-            U_onoff_ratio = (U_on - U_off)/I_onoff
-            V_onoff_ratio = (V_on - V_off)/I_onoff
-
-            if k == 0:
-                d_3_0_0 = Q_onoff_ratio
-                d_3_0_1 = U_onoff_ratio
-                d_3_0_2 = V_onoff_ratio
-            elif k == 1:
-                d_3_1_0 = Q_onoff_ratio
-                d_3_1_1 = U_onoff_ratio
-                d_3_1_2 = V_onoff_ratio
-            elif k == 2:
-                d_3_2_0 = Q_onoff_ratio
-                d_3_2_1 = U_onoff_ratio
-                d_3_2_2 = V_onoff_ratio    
-            k+=1
-                        
-        self.freq_len = freq_len
-# The seven parameters are in order deltaG[0], alpha[1], psi[2], phi[3], epsilon[4], Qsrc[5], Usrc[6] => the parameter vector is p
-        p0 = [0.3, -2.0, 170.0, 10.0, 0.016, 0.005, 0.026] # preliminary values based on guesses and heiles generation.
-#        print freq_len
-        d = sp.zeros((9,freq_len))
-        d[0,:] = d_3_0_0
-        d[1,:] = d_3_0_1
-        d[2,:] = d_3_0_2
-        d[3,:] = d_3_1_0
-        d[4,:] = d_3_1_1
-        d[5,:] = d_3_1_2
-        d[6,:] = d_3_2_0
-        d[7,:] = d_3_2_1
-        d[8,:] = d_3_2_2
 #        print d
-# t is the array of equations for each frequency that should equal d for each frequency if the parameters are correct.
+#        print self.theta
+#The seven parameters are in order deltaG[0], alpha[1], psi[2], phi[3], epsilon[4], Qsrc[5], Usrc[6] => the parameter vector is p
+        p0 = [0.3, -2.0, 170.0, 10.0, 0.016, 0.005, 0.026] # preliminary values based on guesses and heiles generation.
+#        p_err = [0.025, 13.5, 27.2, 37, 0.006, 0.009, 0.008]
 
-        error = [1,1,1,1,1,1,1,1,1]
+#        print freq_len
+
+        error = sp.ones(3*self.file_num)
 #Note that error can be used to weight the equations if not all set to one.
-###############################################################################
-#Debugged above this point.
+
         p_val_out = sp.zeros((freq_len, 8))
         p_err_out = sp.zeros((freq_len, 8))
         for f in range(0,freq_len):   
@@ -225,6 +196,7 @@ class MuellerGen(object) :
             pval = plsq[0]
 #            print pval
             perr = plsq[1]
+# this is a 2d array representing the estimated covariance of the results.
 #            print perr
 #want to adjust results if angles not between +/- 180 
             while pval[1]>180:
@@ -248,13 +220,13 @@ class MuellerGen(object) :
             p_val_out[f,6] = pval[5]
             p_val_out[f,7] = pval[6]
             p_err_out[f,0] = freq_val[f]
-            p_err_out[f,1] = perr[-1:,0]
-            p_err_out[f,2] = perr[-1:,1]
-            p_err_out[f,3] = perr[-1:,2]
-            p_err_out[f,4] = perr[-1:,3]
-            p_err_out[f,5] = perr[-1:,4]
-            p_err_out[f,6] = perr[-1:,5]
-            p_err_out[f,7] = perr[-1:,6]
+            p_err_out[f,1] = perr[0,0]
+            p_err_out[f,2] = perr[1,1]
+            p_err_out[f,3] = perr[2,2]
+            p_err_out[f,4] = perr[3,3]
+            p_err_out[f,5] = perr[4,4]
+            p_err_out[f,6] = perr[5,5]
+            p_err_out[f,7] = perr[6,6]
 #        print perr[-1:]
 #        print p_val_out[40]
         np.savetxt('mueller_params_calc.txt', p_val_out, delimiter = ' ')
