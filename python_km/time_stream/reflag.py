@@ -11,7 +11,8 @@ import kiyopy.custom_exceptions as ce
 
 params_init = {
                'thres' : 3.0,
-               'subtracted_input_root' : './'
+               'subtracted_input_root' : './',
+               'subtracted_output_root' : './subtracted_'
               }
 
 prefix = 'sf_'
@@ -26,11 +27,14 @@ class ReFlag(base_single.BaseSingle) :
         file_middle = params['file_middles'][file_ind]
         input_fname = (params['input_root'] + file_middle +
                        params['input_end'])
-        sub_input_fname = (params['subtracted_input_root'] + file_middle +
-                       params['input_end'])
+        sub_input_fname = (params['subtracted_input_root'] + file_middle
+                           + params['input_end'])
         output_fname = (params['output_root']
                         + file_middle + params['output_end'])
+        sub_output_fname = (params['subtracted_output_root']
+                            + file_middle + params['output_end'])
         Writer = fitsGBT.Writer(feedback=self.feedback)
+        SubWriter = fitsGBT.Writer(feedback=self.feedback)
         
         # Read in the data, and loop over data blocks.
         Reader = fitsGBT.Reader(input_fname, feedback=self.feedback)
@@ -54,9 +58,10 @@ class ReFlag(base_single.BaseSingle) :
                 # Now do the flagging.
                 flag(Data, SubData, params['thres'])
                 Writer.add_data(Data)
+                SubWriter.add_data(SubData)
         # Finally write the data back to file.
         Writer.write(output_fname)
-
+        SubWriter.write(sub_output_fname)
 
     
 def flag(Data, NoiseData, thres=3.0) :
@@ -82,6 +87,7 @@ def flag(Data, NoiseData, thres=3.0) :
     mask = abs(residuals) > thres*ma.std(NoiseData.data, 0)
     # Mask the data.
     Data.data[mask] = ma.masked
+    NoiseData.data[mask] = ma.masked
 
 
 # If this file is run from the command line, execute the main function.

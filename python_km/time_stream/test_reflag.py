@@ -23,7 +23,7 @@ class TestFlag(unittest.TestCase) :
         self.DataSub = Reader.read(1,0)
         rotate_pol.rotate(self.DataSub, (1,))
 
-    def test_works(self) :
+    def test_runs(self) :
         reflag.flag(self.Data, self.DataSub, thres=3)
 
     def test_flags(self) :
@@ -40,16 +40,18 @@ class TestFlag(unittest.TestCase) :
         self.assertTrue(self.Data.data[3, 0, 0, 986] is ma.masked)
         self.assertTrue(self.Data.data[8, 0, 1, 734] is ma.masked)
         self.assertEqual(ma.count_masked(self.Data.data), 3)
+        self.assertEqual(ma.count_masked(self.DataSub.data), 3)
 
 class TestModule(unittest.TestCase) :
 
     def test_module(self) :
         params = {'sf_thres' : 3.0,
-                  'sf_subtracted_input_root' : './'
+                  'sf_subtracted_input_root' : './',
+                  'sf_subtracted_output_root' : './subtracted_'
                  }
         reflag.ReFlag(params, feedback=0).execute()
         files = glob.glob('*testout*')
-        self.assertTrue(len(files) > 0)
+        self.assertTrue(len(files) > 1)
 
     def tearDown(self) :
         files = glob.glob('*testout*')

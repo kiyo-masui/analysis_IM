@@ -1,5 +1,5 @@
-"""
-Proceedure to estimate a GBT noise model from data."""
+"""Proceedure to estimate a GBT noise model from data."""
+
 import os
 
 import scipy as sp

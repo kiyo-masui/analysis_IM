@@ -7,9 +7,9 @@ import scipy as sp
 
 
 field = '15hr'
-file_middles = tuple(dir_data.get_data_files(range(41,49), '15hr', 
+file_middles = tuple(dir_data.get_data_files(range(41,52), '15hr', 
                                              type='guppi'))
-#file_middles = tuple(dir_data.get_data_files(range(45,49), '15hr', 
+#file_middles = tuple(dir_data.get_data_files(range(49,52), '15hr', 
 #                                             type='guppi'))
 #file_middles = tuple(dir_data.get_data_files([40], '15hr', 
 #                                             type='guppi'))
@@ -17,7 +17,7 @@ file_middles = tuple(dir_data.get_data_files(range(41,49), '15hr',
 base_dir = os.getenv('GBT10B_OUT')
 data_dir = base_dir + '/guppi_data/'
 prefix = ''
-map_prefix = 'large_' + field + '_41-48_'
+map_prefix = 'large_' + field + '_41-51_'
 
 pipe_modules = []
 pipe_processes = 8
@@ -92,12 +92,22 @@ cl_IFs = ()
 
 cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
 
-#from time_stream import rotate_pol
-#pipe_modules.append(rotate_pol.Rotate)
+from time_stream import rotate_pol
+pipe_modules.append(rotate_pol.Rotate)
+rp_input_root = cl_output_root
+rp_file_middles = file_middles
+rp_input_end = '.fits'
+rp_output_root = base_dir + 'pol_selected/' + prefix
+rp_output_end = '.fits'
+rp_scans = ()
+rp_IFs = ()
 
-#from time_stream import combine_cal
-#pipe_modules.append(combine_cal.CombineCal)
-cc_input_root = cl_output_root
+rp_new_pols = (1,)
+rp_average_cals = False
+
+from time_stream import combine_cal
+pipe_modules.append(combine_cal.CombineCal)
+cc_input_root = rp_output_root
 cc_file_middles = file_middles
 cc_input_end = '.fits'
 cc_output_root = base_dir + 'combined/' + prefix
@@ -105,7 +115,7 @@ cc_output_end = '.fits'
 cc_scans = ()
 cc_IFs = ()
 
-cc_subtract_time_mean = True
+cc_subtract_time_mean = False
 cc_average_cal_states = True
 
 #from map import dirty_map
@@ -126,17 +136,50 @@ dm_pixel_spacing = .075
 dm_noise_model = 'disjoint_scans'
 dm_polarizations = ('I',)
 
-from map import clean_map
-pipe_modules.append(clean_map.CleanMapMaker)
+#from map import clean_map
+#pipe_modules.append(clean_map.CleanMapMaker)
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
 cm_polarizations = ('I',)
 
-#Subdata
-#
-#Reflag
-#
-#MeasureNoise
+#from time_stream import subtract_map_data
+#pipe_modules.append(subtract_map_data.Subtract)
+sm_input_root = cc_output_root
+sm_file_middles = file_middles
+sm_input_end = '.fits'
+sm_output_root = base_dir + 'map_subtracted/'
+sm_output_end = '.fits'
+sm_scans = ()
+sm_IFs = ()
+sm_pols = ()
+
+sm_map_file = base_dir + 'maps/' + map_prefix + 'clean_map_I.npy'
+sm_solve_for_gain = True
+sm_gain_output_end = '_gain.pickle'
+
+#from time_stream import reflag
+#pipe_modules.append(reflag.ReFlag)
+rf_input_root = cc_output_root
+rf_file_middles = file_middles
+rf_input_end = '.fits'
+rf_output_root = base_dir + 'reflagged/'
+rf_output_end = '.fits'
+rf_scans = ()
+rf_IFs = ()
+
+rf_thres = 3.0
+rf_subtracted_input_root = sm_output_root
+rf_subtracted_output_root = base_dir + 'reflagged_subtracted/'
+
+#from noise import measure_noise
+#pipe_modules.append(measure_noise.MeasureNoise)
+mn_input_root = rf_subtracted_input_root
+mn_file_middles = file_middles
+mn_input_end = '.fits'
+mn_output_root = base_dir + 'noise_measurments/'
+
+mn_model = "scan_var"
+
 
 
 
