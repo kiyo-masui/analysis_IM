@@ -7,17 +7,17 @@ import scipy as sp
 
 
 field = '15hr'
-#file_middles = tuple(dir_data.get_data_files(range(41,49), '15hr', 
-#                                             type='guppi'))
-file_middles = tuple(dir_data.get_data_files(range(45,49), '15hr', 
+file_middles = tuple(dir_data.get_data_files(range(41,49), '15hr', 
                                              type='guppi'))
+#file_middles = tuple(dir_data.get_data_files(range(45,49), '15hr', 
+#                                             type='guppi'))
 #file_middles = tuple(dir_data.get_data_files([40], '15hr', 
 #                                             type='guppi'))
 
 base_dir = os.getenv('GBT10B_OUT')
 data_dir = base_dir + '/guppi_data/'
 prefix = ''
-map_prefix = '' + field + '_45-48_'
+map_prefix = 'large_' + field + '_41-48_'
 
 pipe_modules = []
 pipe_processes = 8
@@ -64,7 +64,7 @@ rf_scans = ()
 rf_IFs = ()
 
 rf_channel_width = 2.0
-rf_mean_instead_median = True
+rf_mean_instead_median = False
 
 #from time_stream import cal_scale
 #pipe_modules.append(cal_scale.CalScale)
@@ -92,6 +92,9 @@ cl_IFs = ()
 
 cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
 
+#from time_stream import rotate_pol
+#pipe_modules.append(rotate_pol.Rotate)
+
 #from time_stream import combine_cal
 #pipe_modules.append(combine_cal.CombineCal)
 cc_input_root = cl_output_root
@@ -105,8 +108,8 @@ cc_IFs = ()
 cc_subtract_time_mean = True
 cc_average_cal_states = True
 
-from map import dirty_map
-pipe_modules.append(dirty_map.DirtyMapMaker)
+#from map import dirty_map
+#pipe_modules.append(dirty_map.DirtyMapMaker)
 dm_input_root = cc_output_root
 dm_file_middles = file_middles
 dm_input_end = '.fits'
@@ -115,9 +118,9 @@ dm_scans = ()
 dm_IFs = (0,)
 
 dm_field_centre = (218., 2.0)
-dm_map_shape = (66, 34)
+#dm_map_shape = (66, 36)
 #dm_map_shape = (20, 10)
-#dm_map_shape = (130, 70)
+dm_map_shape = (74, 40)
 dm_pixel_spacing = .075
 #dm_pixel_spacing = .03
 dm_noise_model = 'disjoint_scans'
@@ -128,6 +131,12 @@ pipe_modules.append(clean_map.CleanMapMaker)
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
 cm_polarizations = ('I',)
+
+#Subdata
+#
+#Reflag
+#
+#MeasureNoise
 
 
 

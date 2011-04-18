@@ -118,11 +118,14 @@ class Reader(object) :
         # know what is in the file.
         self._scans_all = self.fitsdata.field('SCAN')
         self.scan_set = sp.unique(self._scans_all)
+        # Sort scans for reapeatable ordering.
+        self.scan_set.sort()
         self._IFs_all = self.fitsdata.field('CRVAL1')/1E6 # MHz
         # Round the frequencies as we only need to tell the difference between
         # one IF and the other.
         self._IFs_all = self._IFs_all.round(0) 
         self.IF_set = sp.unique(self._IFs_all)
+        self.IF_set.sort()
 
     def get_scan_IF_inds(self, scan_ind, IF_ind) :
         """Gets the record indices of the fits file that correspond to the

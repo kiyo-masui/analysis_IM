@@ -18,9 +18,15 @@ class RebinFreq(base_single.BaseSingle) :
     prefix = 'rf_'
     params_init = {
                    'channel_width' : 1.0, # MHz
-                   'mean_instead_median' : False
+                   'mean_instead_median' : False,
+                   # If 0, rebin by width using `channel_width`.  Otherwise
+                   # ignore `chanel_width` and combine this many bins.
+                   'n_bins_combined' : 0
                    }
     def action(self, Data, ) :
+        if self.params['n_bins_combined'] :
+            raise NotImplementedError('Right now can only rebin by channel'
+                                      ' width.')
         rebin(Data, self.params['channel_width'], 
               mean=self.params['mean_instead_median'])
         Data.add_history('Rebinned Frequency axis.', ('Channel width: '

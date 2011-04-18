@@ -75,8 +75,12 @@ class Subtract(base_single.BaseSingle) :
             f = open(gain_fname, 'w')
             cPickle.dump(self.gain_list, f, 0)
 
-def sub_map(Data, Maps, correlate=False, pols=()) :
+def sub_map(Data, Maps, correlate=False, pols=(), make_plots=False) :
     """Subtracts a Map out of Data."""
+    
+    # Import locally since many machines don't have matplotlib.
+    if make_plots :
+        import matplotlib.pyplot as plt
     
     # Convert pols to an interable.
     if pols is None :
@@ -87,7 +91,7 @@ def sub_map(Data, Maps, correlate=False, pols=()) :
         pols = range(Data.dims[1])
     # If solving for gains, need a place to store them.
     if correlate :
-        out_gains = sp.empty(Data.dims[1:4])
+        out_gains = sp.empty((len(pols),) + Data.dims[2:4])
     for pol_ind in pols :
         # Check if there one map was passed or multiple.
         if isinstance(Maps, list) or isinstance(Maps, tuple) :
@@ -146,6 +150,13 @@ def sub_map(Data, Maps, correlate=False, pols=()) :
                 gain = 1.0
             # Now do the subtraction and mask the off map data.  We use the
             # mean subtracted map, to preserve data mean.
+            if make_plots :
+                plt.figure()
+                plt.plot(ma.mean((gain*tmp_subdata), -1), '.b')
+                plt.plot(ma.mean((data - ma.mean(data, 0)), -1), '.g')
+                #plt.plot(ma.mean((data), -1), '.g')
+                #plt.plot((gain*tmp_subdata)[:, 60], '.b')
+                #plt.plot((data - ma.mean(data, 0))[:, 60], '.g')
             data[...] -= gain*tmp_subdata
     if correlate :
         return out_gains
