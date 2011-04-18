@@ -16,6 +16,7 @@ information.
 import time
 import multiprocessing as mp
 import sys
+import os.path
 
 import scipy as sp
 import scipy.interpolate as interp
@@ -130,7 +131,8 @@ class Converter(object) :
                 p.join()
                 
                 # Store our processed data.
-                Block_list.append(Data)
+                if not Data is None :
+                    Block_list.append(Data)
             # End loop over scans (input files).
             # Now we can write our list of scans to disk.
             if len(scans_this_file) > 1 :
@@ -220,6 +222,11 @@ class Converter(object) :
         # Get the guppi file name.
         guppi_file = (params["guppi_input_root"] + "%04d"%scan +
                       params["guppi_input_end"])
+        # Sometimes guppi files are just missing.
+        if not os.path.isfile(guppi_file) :
+            print "Missing psrfits file: " + guppi_file
+            Pipe.send(None)
+            return
         print "Converting file: " + guppi_file,
         if params['combine_map_scans'] :
            print (" (scan " + str(go_hdu["PROCSEQN"]) + " of " +
@@ -268,7 +275,7 @@ class Converter(object) :
         
         # In current scan startegy, Zenith angle is approximatly 
         # constant over a file.  We will verify that this matches the antenna 
-	# fits file as a good (but scan strategy specific) check.
+        # fits file as a good (but scan strategy specific) check.
         if self.proceedure == 'ralongmap' :
             zenith_angle = psrdata[0]["TEL_ZEN"]
             if not sp.allclose(90.0 - zenith_angle, ant_el, atol=0.1) :
@@ -504,42 +511,46 @@ def separate_cal(data, n_bins_cal) :
     
     No Guarantee that data argument remains unchanged."""
     
-    # Get the phase offset of the cal.
-    first_on, n_blank = get_cal_mask(data, n_bins_cal)
-    
-    # How many samples for each cal state.
-    n_cal_state = n_bins_cal//2 - n_blank
-    first_off = (first_on + n_bins_cal//2) % n_bins_cal
-
-    # Reshape data to add an index to average over.
+    # Allowcate memeory for output    
     ntime, npol, nfreq = data.shape
     n_bins_after_cal = ntime//n_bins_cal
-    data.shape = (n_bins_after_cal, n_bins_cal) + data.shape[1:]
+    out_data = sp.empty((n_bins_after_cal, npol, 2, nfreq), dtype=sp.float32)
+    
+    # Get the phase offset of the cal.
+    try :
+        first_on, n_blank = get_cal_mask(data, n_bins_cal)
+    except ce.DataError :
+        print ": Discarded record due to bad profile. ",
+        out_data[:] = float('nan')
+    else :
+        # How many samples for each cal state.
+        n_cal_state = n_bins_cal//2 - n_blank
+        first_off = (first_on + n_bins_cal//2) % n_bins_cal
 
-    # Get the masks for the on and off data.
-    inds = sp.arange(n_bins_cal)
-    if first_on == min((sp.arange(n_cal_state) +
-                    first_on)% n_bins_cal) :
-        on_mask = sp.logical_and(inds >= first_on, inds < first_on+n_cal_state)
-    else :
-        on_mask = sp.logical_or(inds >= first_on, inds < 
+        # Reshape data to add an index to average over.
+        data.shape = (n_bins_after_cal, n_bins_cal) + data.shape[1:]
+
+        # Get the masks for the on and off data.
+        inds = sp.arange(n_bins_cal)
+        if first_on == min((sp.arange(n_cal_state) +
+                        first_on)% n_bins_cal) :
+            on_mask = sp.logical_and(inds >= first_on, inds < first_on+n_cal_state)
+        else :
+            on_mask = sp.logical_or(inds >= first_on, inds < 
                                 (first_on + n_cal_state) % n_bins_cal)
-    if first_off == min((sp.arange(n_cal_state) +
-                    first_off)% n_bins_cal) :
-        off_mask = sp.logical_and(inds >= first_off, inds < 
+        if first_off == min((sp.arange(n_cal_state) +
+                        first_off)% n_bins_cal) :
+            off_mask = sp.logical_and(inds >= first_off, inds < 
                                   first_off + n_cal_state)
-    else :
-        off_mask = sp.logical_or(inds >= first_off, inds < 
+        else :
+            off_mask = sp.logical_or(inds >= first_off, inds < 
                                  (first_off + n_cal_state) % n_bins_cal)
 
-    # Find cal on and cal off averages.
-    on_data = sp.median(data[:,on_mask,:,:], 1)
-    off_data = sp.median(data[:,off_mask,:,:], 1)
-    data = sp.empty((n_bins_after_cal, npol, 2, nfreq), dtype=sp.float32)
-    data[:,:,0,:] = on_data
-    data[:,:,1,:] = off_data
+        # Find cal on and cal off averages.
+        out_data[:,:,0,:] = sp.median(data[:,on_mask,:,:], 1)
+        out_data[:,:,1,:] = sp.median(data[:,off_mask,:,:], 1)
 
-    return data
+    return out_data
 
         
 if __name__ == '__main__' :
