@@ -95,7 +95,7 @@ def mueller() :
      mp = np.loadtxt('mueller_params_calc.txt')
 #     print mp
 #This is a file with first index being freq, second index being parameter where the values are:
-# 0 = Freq, 1 = deltaG, 2 = alpha, 3 = psi, 4 = phi, 5 = epsilon, 6 = Q_src, 7 = U_src
+# 0 = Freq, 1 = deltaG, 2 = alpha, 3 = psi, 4 = phi, 5 = epsilon, 6 = Q_src, 7 = U_src, 8 = chi
 
 # Matrix for rotating Mueller Matrix into Astronomical frame - assumes parallactic angle = 0
 #    m_astron = sp.zeros((4,4,8), float)
@@ -106,24 +106,34 @@ def mueller() :
 #        m_astron[2,2,i] = -1
 
 # Generates Inverse Mueller Matrix for use
-     m_total = sp.zeros((4,4,260),float)
-     for i in range(0,260):
+     freq_limit = len(mp[:,0])
+#     print freq_limit
+     m_total = sp.zeros((4,4,freq_limit),float)
+     for i in range(0,freq_limit):
 #Note that this version is based on the combined matrix I derived corrected for linear feed:
+        dG = mp[i,1]
+        al = mp[i,2]*sp.pi/180
+        ps = mp[i,3]*sp.pi/180
+        ph = mp[i,4]*sp.pi/180
+        ep = mp[i,5]
+        ch = mp[i,8]*sp.pi/180
+        
         m_total[0,0,i] = 1
-        m_total[0,1,i] = -2*mp[i,5]*ma.sin(2*mp[i,2]*sp.pi/180)*ma.cos(mp[i,4]*sp.pi/180)+mp[i,1]*ma.cos(2*mp[i,2]*sp.pi/180)/2
-        m_total[0,2,i] = 2*mp[i,5]*ma.cos(mp[i,4]*sp.pi/180)*ma.cos(2*mp[i,2]*sp.pi/180)+mp[i,1]*ma.sin(2*mp[i,2]*sp.pi/180)/2
-        m_total[0,3,i] = 2*mp[i,5]*ma.sin(mp[i,4]*sp.pi/180)
-        m_total[1,0,i] = mp[i,1]/2
-        m_total[1,1,i] = ma.cos(2*mp[i,2]*sp.pi/180)
-        m_total[1,2,i] = ma.sin(2*mp[i,2]*sp.pi/180)
-        m_total[2,0,i] = 2*mp[i,5]*ma.cos((mp[i,3]+mp[i,4])*sp.pi/180)
-        m_total[2,1,i] = -ma.sin(2*mp[i,2]*sp.pi/180)*ma.cos(mp[i,3]*sp.pi/180)
-        m_total[2,2,i] = ma.cos(mp[i,3]*sp.pi/180)*ma.cos(2*mp[i,2]*sp.pi/180)
-        m_total[2,3,i] = -ma.sin(mp[i,3]*sp.pi/180)
-        m_total[3,0,i] = 2*mp[i,5]*ma.sin((mp[i,3]+mp[i,4])*sp.pi/180)
-        m_total[3,1,i] = -ma.sin(2*mp[i,2]*sp.pi/180)*ma.sin(mp[i,3]*sp.pi/180)
-        m_total[3,2,i] = ma.sin(mp[i,3]*sp.pi/180)*ma.cos(2*mp[i,2]*sp.pi/180)
-        m_total[3,3,i] = ma.cos(mp[i,3]*sp.pi/180)
+        m_total[0,1,i] = 0.5*dG*sp.cos(2*al)-2*ep*sp.sin(2*al)*sp.cos(ph-ch)
+        m_total[0,2,i] = 0.5*dG*sp.sin(2*al)*sp.cos(ch)+2*ep*(sp.cos(al)*sp.cos(al)*sp.sin(ph)-sp.sin(al)*sp.sin(al)*sp.cos(ph-2*ch))
+        m_total[0,3,i] = 0.5*dG*sp.sin(2*al)*sp.sin(ch)+2*ep*(sp.cos(al)*sp.cos(al)*sp.sin(ph)+sp.sin(al)*sp.sin(al)*sp.sin(ph-2*ch))
+        m_total[1,0,i] = 0.5*dG
+        m_total[1,1,i] = sp.cos(2*al)
+        m_total[1,2,i] = sp.sin(2*al)*sp.cos(ch)
+        m_total[1,3,i] = sp.sin(2*al)*sp.sin(ch)
+        m_total[2,0,i] = 2*ep*sp.cos(ph+ps)
+        m_total[2,1,i] = -sp.sin(2*al)*sp.cos(ps+ch)
+        m_total[2,2,i] = sp.cos(al)*sp.cos(al)*sp.cos(ps)-sp.sin(al)*sp.sin(al)*sp.cos(ps+2*ch)
+        m_total[2,3,i] = -sp.cos(al)*sp.cos(al)*sp.sin(ps)-sp.sin(al)*sp.sin(al)*sp.sin(ps+2*ch)
+        m_total[3,0,i] = 2*ep*sp.sin(ps+ph)
+        m_total[3,1,i] = -sp.sin(2*al)*sp.sin(ps+ch)
+        m_total[3,2,i] = sp.cos(al)*sp.cos(al)*sp.sin(ps)-sp.sin(al)*sp.sin(al)*sp.sin(ps+2*ch)
+        m_total[3,3,i] = sp.cos(al)*sp.cos(al)*sp.cos(ps)+sp.sin(al)*sp.sin(al)*sp.cos(ps+2*ch)
         M_total = sp.mat(m_total[:,:,i])
 #        print M_total
         M_total = M_total.I
@@ -217,7 +227,11 @@ def calibrate_pol(Data, m_total) :
 
      # Tells which mueller matrix to use.
                frequency = int(Data.freq[freq]/1000000) 
-               bin = 929-frequency
+               freq_limit=len(m_total[0,0,:])
+               if freq_limit == 200:
+                   bin = 900-frequency
+               elif freq_limit == 260:
+                   bin = 929-frequency
 #               print bin
     # Converts files into matrix format 
                STOKES = Data.data[time_index,:,cal_index,freq]       

@@ -9,7 +9,7 @@ import scipy as sp
 field = '15hr'
 dm_field_centre = (218.25, 2.0) 
 #Here I'm grabbing the guppi data
-file_middles = tuple(dir_data.get_data_files([40, 41, 42, 43], '15hr', type='guppi'))
+file_middles = tuple(dir_data.get_data_files(range(40,50) , '15hr', type='guppi'))
 
 pipe_modules = []
 # Chime has 8 cores, but you should save a few for other people.  Use 6 max.
@@ -19,7 +19,7 @@ base_dir = os.getenv('GBT10B_OUT')
 #raw_data_dir = os.getenv('GBT10B_DATA')
 kiyo_dir = os.getenv('GBT10B_KM')
 prefix = ''
-map_prefix = prefix + field + '_40-43_'
+map_prefix = prefix + field + '_40-50_'
 IFs = ()
 
 from time_stream import hanning 
@@ -64,7 +64,7 @@ rf_output_end = '.fits'
 rf_scans = ()
 rf_IFs = ()
 
-rf_channel_width = 2.0
+rf_channel_width = 0.5
 rf_mean_instead_median = True
 
 from time_stream import cal_scale
@@ -81,6 +81,7 @@ cs_IFs = ()
 cs_scale_time_average = True
 cs_scale_freq_average = False
 cs_subtract_time_median = False
+cs_scale_freq_average_mod = False
 
 from time_stream import calibrate
 # Comment line below to skip this step when running pipeline/manager
@@ -144,7 +145,7 @@ cm_input_root = dm_output_root
 cm_output_root = cm_input_root
 cm_polarizations = ('I','V')
 
-# Not acctually nessesary, but good do do anyway.
+# Not actually nessesary, but good do do anyway.
 del file_middles
 del base_dir
 del prefix

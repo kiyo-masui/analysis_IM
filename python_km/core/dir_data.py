@@ -53,20 +53,38 @@ def get_data_files(session_list, field, type=None) :
 
     return out_files
 
-def get_cal_files(session_list,calibrator) :
-    """Given a list of data files, returns a list of lists of cal files for
-    each data file an a particular calibrator. calibrator data should be cXXX
-    for spectrometer data and CXXX for guppi data.
+def get_cal_files(session_list,calibrator,type=None) :
+    """Gets a list of the cal file names for each session and calibrator
+    calibrator=xxx (three numbers following 3c).
     """
-    all_files = os.listdir(_data_dir)
     cal_files = []
 
-    for session in session_list:
-        match_str = ('(%02d'%session+'_3'+calibrator+'_onoff_'+".*\.raw.acs.fits)")
-        for file_name in all_files:
-            if re.match(match_str, file_name) :
-                root = file_name.split('.')[0]
-                cal_files.append(root)
+    if type is None :
+        all_files = os.listdir(_data_dir)
+        for session in session_list:
+            match_str = ('(%02d'%session+'_3c'+calibrator+'_onoff_'+".*\.raw.acs.fits)")
+            for file_name in all_files:
+                if re.match(match_str, file_name) :
+                    root = file_name.split('.')[0]
+                    cal_files.append(root)
+
+    elif type == 'kiyo':
+        all_files = os.listdir(_kiyo_data_dir)
+        for session in session_list:
+            match_str = ('(%02d'%session+'_3c'+calibrator+'_onoff_'+".*\.raw.acs.fits)")
+            for file_name in all_files:
+                if re.match(match_str, file_name) :
+                    root = file_name.split('.')[0]
+                    cal_files.append(root)
+
+    elif type == 'guppi' :
+        all_files = os.listdir(_guppi_data_dir) 
+        for session in session_list: 
+            match_str = ('(%02d'%session+'_3C'+calibrator+'_onoff_'+".*\.fits)")
+            for file_name in all_files: 
+                if re.match(match_str, file_name) :
+                    root = file_name.split('.')[0]
+                    cal_files.append(root)
 
     return cal_files
 

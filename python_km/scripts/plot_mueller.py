@@ -14,12 +14,15 @@ alpha = mueller_params[:,2]
 psi = mueller_params[:,3]
 phi = mueller_params[:,4]
 epsilon = mueller_params[:,5]
-Q = sp.zeros(size)
-for ii in range(0,size):
-    Q[ii] = abs(mueller_params[ii,6])
-U = sp.zeros(size)
-for ii in range(0,size):
-    U[ii] = abs(mueller_params[ii,7])
+Q = mueller_params[:,6]
+U = mueller_params[:,7]
+chi = mueller_params[:,8]
+#Q = sp.zeros(size)
+#for ii in range(0,size):
+#    Q[ii] = abs(mueller_params[ii,6])
+#U = sp.zeros(size)
+#for ii in range(0,size):
+#    U[ii] = abs(mueller_params[ii,7])
 
 heiles_params = sp.zeros((8,8))
 heiles_error = sp.zeros((8,8))
@@ -106,6 +109,20 @@ pylab.legend()
 pylab.savefig('mueller_params_phi_'+prefix+'.png')
 pylab.clf()
 
+pylab.plot(freq, chi,label='generated')
+#pylab.errorbar(freq, chi, label = 'generated')
+#pylab.errorbar(heiles_params[:,0],heiles_params[:,4],heiles_error[:,4],label='heiles')
+chi_ave = mean(chi) 
+pylab.axhline(y=chi_ave,color='m',label='mean_gen')
+pylab.xlim(freq[-1],freq[0])
+pylab.ylim(-180,180)
+pylab.xlabel('freqency')
+pylab.ylabel('chi (degrees)')
+pylab.legend()
+pylab.savefig('mueller_params_chi_'+prefix+'.png')
+pylab.clf()
+
+
 pylab.plot(freq, Q,label='Q_generated')
 #pylab.errorbar(freq,Q,m_err[:,6],label='Q_generated')
 pylab.plot(freq, U,label='U_generated')
@@ -117,7 +134,7 @@ pylab.axhline(y=Q_ave,color='y',label='mean_Q')
 U_ave = mean(U)
 pylab.axhline(y=U_ave,color='m',label='mean_U')
 pylab.xlim(freq[-1],freq[0])
-pylab.ylim(0,0.1) 
+pylab.ylim(-0.1,0.1) 
 pylab.legend()
 pylab.xlabel('frequency')
 pylab.ylabel('fractional polarization')

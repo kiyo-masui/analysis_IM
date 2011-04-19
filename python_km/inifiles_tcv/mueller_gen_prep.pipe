@@ -4,7 +4,7 @@ import os
 
 from core import dir_data
 
-file_middles = tuple(dir_data.get_cal_files(range(0,40),'c286'))
+file_middles = tuple(dir_data.get_cal_files(range(0,40),'286'))
 #file_middles = ('25_3c286_onoff_21-24','25_3c286_onoff_305-308','27_3c286_onoff_5-8')  
 
 pipe_modules = []
