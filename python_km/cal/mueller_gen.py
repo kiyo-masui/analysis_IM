@@ -41,13 +41,14 @@ class MuellerGen(object) :
     def peval(self,p):
         #Original Version
         dG = p[0]
-        al = ((p[1]+180)%360-180)*sp.pi/180
+        al = ((p[1]+45)%90-45)*sp.pi/180
         ps = ((p[2]+180)%360-180)*sp.pi/180
-        ph = ((p[3]+180)%360-180)*sp.pi/180
+        ph = ((p[3]+90)%1800-90)*sp.pi/180
         ep = p[4]
         Q = p[5]
         U = p[6]
-        ch = ((p[7]+180)%360-180)*sp.pi/180
+        ch = 0 
+#        ch = ((p[7]+45)%180-45)*sp.pi/180
         theta = self.theta
         # Alternate values
 #        dG = p[0]
@@ -56,11 +57,11 @@ class MuellerGen(object) :
 #        ep = p[3]
         t = self.function
         for i in range(0,len(t),3):
-            t[i] = 0.5*dG + Q*(ma.cos(2.*al)*ma.cos(2.*theta[i])-ma.sin(2*al)*ma.cos(ch)*ma.sin(2*theta[i]))+U*(ma.cos(2*al)*ma.cos(2*theta[i])+ma.sin(2*al)*ma.cos(ch)*ma.sin(2*theta[i]))
+            t[i] = 0.5*dG + Q*(sp.cos(2.*al)*sp.cos(2.*theta[i])-sp.sin(2*al)*sp.cos(ch)*sp.sin(2*theta[i]))+U*(sp.cos(2*al)*sp.cos(2*theta[i])+sp.sin(2*al)*sp.cos(ch)*sp.sin(2*theta[i]))
 #            t[i] = 0.5*dG+Q*(p[4]*ma.cos(2*theta[i])-p[5]*ma.sin(2*theta[i]))+U*(p[4]*ma.sin(2*theta[i])+p[5]*ma.cos(2*theta[i]))
-            t[i+1] = 2*ep*ma.cos(ps+ph)+Q*(-ma.sin(2*al)*ma.cos(ps+ch)*ma.cos(2.*theta[i])-(ma.cos(al)*ma.cos(al)*ma.cos(ps)-ma.sin(al)*ma.sin(al)*ma.cos(ps+2*ch))*ma.sin(2*theta[i]))+U*(-ma.sin(2*al)*ma.cos(ps+ch)*ma.cos(2*theta[i])+(ma.cos(al)*ma.cos(al)*ma.cos(ps)-ma.sin(al)*ma.sin(al)*ma.cos(ps+2*ch))*ma.sin(2*theta[i]))
+            t[i+1] = 2*ep*sp.cos(ps+ph)+Q*(-sp.sin(2*al)*sp.cos(ps+ch)*sp.cos(2.*theta[i])-(sp.cos(al)*sp.cos(al)*sp.cos(ps)-sp.sin(al)*sp.sin(al)*sp.cos(ps+2*ch))*sp.sin(2*theta[i]))+U*(-sp.sin(2*al)*sp.cos(ps+ch)*sp.cos(2*theta[i])+(sp.cos(al)*sp.cos(al)*sp.cos(ps)-sp.sin(al)*sp.sin(al)*sp.cos(ps+2*ch))*sp.sin(2*theta[i]))
 #            t[i+1] = 2*ep*p[6]+Q*(-p[7]*ma.cos(2*theta[i])-p[8]*ma.sin(2*theta[i]))+U*(-p[7]*ma.sin(2*theta[i])+p[8]*ma.cos(2*theta[i]))
-            t[i+2] = 2*ep*ma.sin(ps+ph)+Q*(-ma.sin(2*al)*ma.sin(ps+ch)*ma.cos(2*theta[i])-(ma.sin(ps)*ma.cos(al)*ma.cos(al)-ma.sin(al)*ma.sin(al)*ma.sin(ps+2*ch))*ma.sin(2*theta[i]))+U*(-ma.sin(2*al)*ma.sin(ps+ch)*ma.cos(2*theta[i])+(ma.sin(ps)*ma.cos(al)*ma.cos(al)-ma.sin(al)*ma.sin(al)*ma.sin(ps+2*ch))*ma.sin(2*theta[i]))
+            t[i+2] = 2*ep*sp.sin(ps+ph)+Q*(-sp.sin(2*al)*sp.sin(ps+ch)*sp.cos(2*theta[i])-(sp.sin(ps)*sp.cos(al)*sp.cos(al)-sp.sin(al)*sp.sin(al)*sp.sin(ps+2*ch))*sp.sin(2*theta[i]))+U*(-sp.sin(2*al)*sp.sin(ps+ch)*sp.cos(2*theta[i])+(sp.sin(ps)*sp.cos(al)*sp.cos(al)-sp.sin(al)*sp.sin(al)*sp.sin(ps+2*ch))*sp.sin(2*theta[i]))
 #            t[i+2] = 2*ep*p[9]+Q*(-p[10]*ma.cos(2*theta[i])-p[11]*ma.sin(2*theta[i]))+U*(-p[10]*ma.sin(2*theta[i])+p[11]*ma.cos(2*theta[i]))
         return t 
 
@@ -192,7 +193,7 @@ class MuellerGen(object) :
 #        print d
 #        print self.theta
 #The seven parameters are in order deltaG[0], alpha[1], psi[2], phi[3], epsilon[4], Qsrc[5], Usrc[6] chi[7] => the parameter vector is p
-        p0 = [0.3, -2.0, 170.0, 10.0, 0.016, 0.005, 0.026, 1.0] # preliminary values based on guesses and heiles generation.
+        p0 = [0.3, -2.0, 170.0, 10.0, 0.016, 0.005, 0.026, 0] # preliminary values based on guesses and heiles generation.
 
         #Alternate p0 if leave chi as variable and  avoid trig functions because of modulo 2pi issue.
 #        p0 = [0.3, 0.005,0.026,0.016,0.997,-0.070,-1.0,0.069,-0.983,0,-0.012,0.173]
@@ -209,7 +210,7 @@ class MuellerGen(object) :
 #        p_err_out = sp.zeros((freq_len, 17))
       
         for f in range(0,freq_len):   
-            plsq = leastsq(self.residuals,p0,args=(d,error,f),full_output=1, maxfev=100000,factor =10)
+            plsq = leastsq(self.residuals,p0,args=(d,error,f),full_output=1, maxfev=100000,factor =1)
 #            plsq = fmin_slsqp(self.residuals,p0,args=(d,error,f),bounds=[(-1,1),(0,360),(0,360),(0,360),(-1,1),(-1,1),(-1,1),(0,360)],full_output=1,iter=2000)
             pval = plsq[0]
 #            print pval
@@ -217,23 +218,12 @@ class MuellerGen(object) :
             print plsq[3]
 # this is a 2d array representing the estimated covariance of the results.
 #            print perr
-#want to adjust results if angles not between +/- 180 
-            while pval[1]>180:
-                pval[1] -= 360
-            while pval[1]<-180:
-                pval[1] += 360 
-            while pval[2]>180:
-                pval[2] -= 360
-            while pval[2]<-180:
-                pval[2] += 360
-            while pval[3]>180:
-                pval[3] -= 360
-            while pval[3]<-180:
-                pval[3] += 360
-            while pval[7]>180:
-                pval[7] -= 360
-            while pval[7]<-180:
-                pval[7] += 360
+#want to adjust results if angles not in limits
+            pval[1]=(pval[1]+45)%90-45
+            pval[2]=(pval[2]+180)%360-180
+            pval[3]=(pval[3]+90)%180-90
+#            pval[7]=(pval[7]+45)%180-45
+
             p_val_out[f,0] = freq_val[f]
             p_val_out[f,1] = pval[0]
             p_val_out[f,2] = pval[1]
@@ -247,15 +237,15 @@ class MuellerGen(object) :
             p_val_out[f,7] = pval[6]
             p_val_out[f,8] = pval[7]
 #            print p_val_out[f,8]
-            p_err_out[f,0] = freq_val[f]
-            p_err_out[f,1] = perr[0,0]
-            p_err_out[f,2] = perr[1,1]
-            p_err_out[f,3] = perr[2,2]
-            p_err_out[f,4] = perr[3,3]
-            p_err_out[f,5] = perr[4,4]
-            p_err_out[f,6] = perr[5,5]
-            p_err_out[f,7] = perr[6,6]
-            p_err_out[f,8] = perr[7,7]
+#            p_err_out[f,0] = freq_val[f]
+#            p_err_out[f,1] = perr[0,0]
+#            p_err_out[f,2] = perr[1,1]
+#            p_err_out[f,3] = perr[2,2]
+#            p_err_out[f,4] = perr[3,3]
+#            p_err_out[f,5] = perr[4,4]
+#            p_err_out[f,6] = perr[5,5]
+#            p_err_out[f,7] = perr[6,6]
+#            p_err_out[f,8] = perr[7,7]
 #           Alternate version for different set of non-trig parameters
 #            p_val_out[f,1] = pval[0]
 #            p_err_out[f,1] = perr[0,0]
