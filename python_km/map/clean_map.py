@@ -1,5 +1,7 @@
 """Converter from a dirty map to a clean map."""
 
+import sys
+
 import scipy as sp
 import scipy.linalg as linalg
 
@@ -82,32 +84,55 @@ class CleanMapMaker(object) :
                 dirty_map_vect = sp.array(dirty_map) # A view.
                 dirty_map_vect.shape = (shape[0], shape[1]*shape[2])
                 frequencies = dirty_map.get_axis('freq')/1.0e6
+                # Allowcate memory only once.
+                noise_inv_freq = sp.empty((shape[1], shape[2], shape[1],
+                                           shape[2]), dtype=float)
                 if self.feedback > 1 :
                     print "Inverting noise matrix."
                 # Block diagonal in frequency so loop over frequencies.
                 for ii in xrange(dirty_map.shape[0]) :
-                    noise_inv_freq = sp.array(noise_inv[ii, ...], copy=True)
+                    if self.feedback > 1:
+                        print "Frequency: ", "%5.1f"%(frequencies[ii]),
+                    if self.feedback > 2:
+                        print ", start mmap read:",
+                        sys.stdout.flush()
+                    noise_inv_freq[...] = noise_inv[ii, ...]
+                    if self.feedback > 2:
+                        print "done, start eig:",
+                        sys.stdout.flush()
                     noise_inv_freq.shape = (shape[1]*shape[2],
                                             shape[1]*shape[2])
                     # Solve the map making equation by diagonalization.
                     noise_inv_diag, Rot = sp.linalg.eigh(noise_inv_freq, 
                                                          overwrite_a=True)
+                    if self.feedback > 2:
+                        print "done",
                     map_rotated = sp.dot(Rot.T, dirty_map_vect[ii])
                     # Zero out infinite noise modes.
                     bad_modes = noise_inv_diag < 1.0e-5*noise_inv_diag.max()
                     if self.feedback > 1:
-                        print "Frequency: ", "%5.1f"%(frequencies[ii]), 
                         print ", discarded: ",
                         print "%4.1f"%(100.0*sp.sum(bad_modes)/bad_modes.size),
-                        print "% of modes."
+                        print "% of modes",
+                    if self.feedback > 2:
+                        print ", start rotations:",
+                        sys.stdout.flush()
                     map_rotated[bad_modes] = 0.
                     noise_inv_diag[bad_modes] = 1.0
                     # Solve for the clean map and rotate back.
                     map_rotated /= noise_inv_diag
                     map = sp.dot(Rot, map_rotated)
+                    if self.feedback > 2:
+                        print "done",
+                        sys.stdout.flush()
                     # Fill the clean array.
                     map.shape = (shape[1], shape[2])
                     clean_map[ii, ...] = map
+                    noise_inv_freq.shape = (shape[1], shape[2],
+                                            shape[1], shape[2])
+                    if self.feedback > 1:
+                        print ""
+                        sys.stdout.flush()
             elif noise_inv.ndim == 6 :
                 raise NotImplementedError("Full noise matrix not yet "
                                           "implemented.  Best we can do is "

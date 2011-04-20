@@ -7,9 +7,10 @@ import scipy as sp
 import numpy.ma as ma
 
 import kiyopy.custom_exceptions as ce
+import kiyopy.utils as ku
 import base_single
 import map.tools
-from core import fits_map
+from core import algebra
 
 class Subtract(base_single.BaseSingle) :
     """Pipeline module subtracts a map from time stream data.
@@ -38,7 +39,8 @@ class Subtract(base_single.BaseSingle) :
                                         feedback)
         # Read in the calibration file.
         map_file_name = self.params['map_file']
-        self.Map = fits_map.read(map_file_name, 1, feedback=self.feedback)
+        self.Map = algebra.load(map_file_name)
+        self.Map = algebra.make_vect(self.Map)
 
     def action(self, Data) :
         if (not self.params['solve_for_gain'] or
@@ -48,19 +50,18 @@ class Subtract(base_single.BaseSingle) :
             block_gain = {}
             Data.calc_freq()
             block_gain['freq'] = sp.copy(Data.freq)
-            block_gain['time'] = Data.field['TIMESTAMP']
+            block_gain['time'] = Data.field['DATE-OBS'][0]
             block_gain['scan'] = Data.field['SCAN']
             block_gain['gain'] = sub_map(Data, self.Map, True)
             self.gain_list.append(block_gain)
 
         Data.add_history('Subtracted map from data.', 
-                         ('Map file: ' + self.params['map_file'],))
+            ('Map file: ' + ku.abbreviate_file_path(self.params['map_file']),))
         return Data
 
     # Overwrite the base single process file method so we can also pickle the
     # gains we've solved for.
     def process_file(self, file_ind) :
-        
         # Initialize a list to hold the gains calculated in sub_map.
         self.gain_list = []
         # Do the normal thing from the base class.
@@ -74,69 +75,95 @@ class Subtract(base_single.BaseSingle) :
             f = open(gain_fname, 'w')
             cPickle.dump(self.gain_list, f, 0)
 
-
-
-
-def sub_map(Data, Map, correlate=False) :
+def sub_map(Data, Maps, correlate=False, pols=(), make_plots=False) :
     """Subtracts a Map out of Data."""
-
-    # Some dimension checks.  Eventually may want to have a tuple of maps, one
-    # for each polaization.  For now, only use I.
-    if ((Data.dims[1] > 1) or 
-        (hasattr(Map, '__iter__') and len(Map) > 1)):
-        raise NotImplementedError('Multiple polarizations not supported.')
-    pol_ind = 0
-    if hasattr(Map, '__iter__') :
-        Map = Map[0]
-    if Map.field['POL'].item() != Data.field['CRVAL4'][0] :
-        raise ce.DataError("Polarization types don't match.")
-        
-    Data.calc_pointing()
-    Data.calc_freq()
-    centre, shape, spacing = map.tools.get_map_params(Map)
-    # These indices are the length of the time axis. Integer indicies.
-    ra_ind = map.tools.calc_inds(Data.ra, centre[0], shape[0], spacing[0])
-    dec_ind = map.tools.calc_inds(Data.dec, centre[1], shape[1], spacing[1])
-    # Length of the data frequency axis.
-    freq_ind = map.tools.calc_inds(Data.freq, centre[2], shape[2], spacing[2])
-    # Exclude indices that are off map or out of band. Boolian indices.
-    on_map_inds = sp.logical_and(sp.logical_and(ra_ind>=0, ra_ind<shape[0]),
-                                 sp.logical_and(dec_ind>=0, dec_ind<shape[1]))
-    in_band_inds = sp.logical_and(freq_ind >= 0, freq_ind < shape[2])
-    # Broadcast to the same shape and combine.
-    covered_inds = sp.logical_and(on_map_inds[:, sp.newaxis], 
-                                  in_band_inds[sp.newaxis, :])
-    # Make an array of map data the size of the time stream data.
-    submap = Map.data[ra_ind[on_map_inds], dec_ind[on_map_inds], :]
-    submap = submap[:, freq_ind[in_band_inds]]
-    # submap is the size of the data that is on the map.  Expand to full size 
-    # of data.
-    subdata = ma.zeros(sp.shape(covered_inds))
-    subdata[covered_inds] = submap.flatten()
-    del submap
-    subdata[sp.logical_not(covered_inds)] = ma.masked
+    
+    # Import locally since many machines don't have matplotlib.
+    if make_plots :
+        import matplotlib.pyplot as plt
+    
+    # Convert pols to an interable.
+    if pols is None :
+        pols = range(Data.dims[1])
+    elif not hasattr(pols, '__iter__') :
+        pols = (pols, )
+    elif len(pols) == 0 :
+        pols = range(Data.dims[1])
     # If solving for gains, need a place to store them.
     if correlate :
-        out_gains = sp.empty(Data.dims[1:4])
-
-    # Now start using the actual data.  Loop over cal and pol indicies.
-    for cal_ind in range(Data.dims[2]) :
-        data = Data.data[:,pol_ind, cal_ind, :]
-        # Correlate to solve for an unknown gain.
-        if correlate :
-            # Find the common mask.
-            un_mask = sp.logical_not(sp.logical_or(data.mask, subdata.mask))
-            # Subtract out the mean from both data and map.
-            tsubdata = subdata - sp.sum(un_mask*subdata, 0)/sp.sum(un_mask, 0)
-            tdata = data - sp.sum(un_mask*data, 0)/sp.sum(un_mask, 0)
-            gain = (sp.sum(un_mask*tsubdata*tdata, 0) 
-                    / sp.sum(un_mask*tsubdata*tsubdata, 0))
-            out_gains[pol_ind,cal_ind,:] = gain
+        out_gains = sp.empty((len(pols),) + Data.dims[2:4])
+    for pol_ind in pols :
+        # Check if there one map was passed or multiple.
+        if isinstance(Maps, list) or isinstance(Maps, tuple) :
+            if len(Maps) != len(pols) :
+                raise ValueError("Must provide one map, or one map per "
+                                 "polarization.")
+            Map = Maps[pol_ind]
         else :
-            gain = 1.0
-
-        # Now do the subtraction and mask the off map data.
-        data -= gain*subdata
+            Map = Maps
+        if not Map.axes == ('freq', 'ra', 'dec') :
+            raise ValueError("Expected map axes to be ('freq', 'ra', 'dec').")
+        Data.calc_pointing()
+        Data.calc_freq()
+        # Map Parameters.
+        centre = (Map.info['freq_centre'], Map.info['ra_centre'],
+                  Map.info['dec_centre'])
+        shape = Map.shape
+        spacing = (Map.info['freq_delta'], Map.info['ra_delta'], 
+                   Map.info['dec_delta'])
+        # These indices are the length of the time axis. Integer indicies.
+        ra_ind = map.tools.calc_inds(Data.ra, centre[1], shape[1], spacing[1])
+        dec_ind = map.tools.calc_inds(Data.dec, centre[2], shape[2], spacing[2])
+        # Length of the data frequency axis.
+        freq_ind = map.tools.calc_inds(Data.freq, centre[0], shape[0], 
+                                       spacing[0])
+        # Exclude indices that are off map or out of band. Boolian indices.
+        on_map_inds = sp.logical_and(sp.logical_and(ra_ind>=0, ra_ind<shape[1]),
+                                 sp.logical_and(dec_ind>=0, dec_ind<shape[2]))
+        in_band_inds = sp.logical_and(freq_ind >= 0, freq_ind < shape[0])
+        # Broadcast to the same shape and combine.
+        covered_inds = sp.logical_and(on_map_inds[:, sp.newaxis], 
+                                      in_band_inds[sp.newaxis, :])
+        # Make an array of map data the size of the time stream data.
+        submap = Map[:, ra_ind[on_map_inds], dec_ind[on_map_inds]]
+        submap = submap[freq_ind[in_band_inds], ...]
+        # submap is the size of the data that is on the map.  Expand to full 
+        # size of data.
+        subdata = sp.zeros(sp.shape(covered_inds))
+        subdata[covered_inds] = sp.rollaxis(submap, 1, 0).flatten()
+        subdata[sp.logical_not(covered_inds)] = 0.0
+        # Now start using the actual data.  Loop over cal and pol indicies.
+        for cal_ind in range(Data.dims[2]) :
+            data = Data.data[:,pol_ind, cal_ind, :]
+            data[sp.logical_not(covered_inds)] = ma.masked
+            # Find the common good indicies.
+            un_mask = sp.logical_not(data.mask)
+            # Find the number of good indicies at each frequency.
+            counts = sp.sum(un_mask, 0)
+            counts[counts == 0] = -1
+            # Subtract out the mean from the map.
+            tmp_subdata = (subdata - sp.sum(un_mask*subdata, 0)/counts)
+            # Correlate to solve for an unknown gain.
+            if correlate :
+                tmp_data = data.filled(0.0)
+                tmp_data = (tmp_data - sp.sum(un_mask*data, 0)
+                            / counts)
+                gain = (sp.sum(un_mask*tmp_subdata*tmp_data, 0) / 
+                        sp.sum(un_mask*tmp_subdata*tmp_subdata, 0))
+                gain[counts == -1] = 0.0
+                out_gains[pol_ind,cal_ind,:] = gain
+            else :
+                gain = 1.0
+            # Now do the subtraction and mask the off map data.  We use the
+            # mean subtracted map, to preserve data mean.
+            if make_plots :
+                plt.figure()
+                #plt.plot(ma.mean((gain*tmp_subdata), -1), '.b')
+                #plt.plot(ma.mean((data - ma.mean(data, 0)), -1), '.g')
+                #plt.plot(ma.mean((data), -1), '.g')
+                plt.plot((gain*tmp_subdata)[:, 45], '.b')
+                plt.plot((data - ma.mean(data, 0))[:, 45], '.g')
+            data[...] -= gain*tmp_subdata
     if correlate :
         return out_gains
 

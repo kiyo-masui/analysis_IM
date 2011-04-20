@@ -58,6 +58,7 @@ True
 import os
 import sys
 import warnings
+from functools import wraps
 
 import scipy as sp
 import numpy.lib.format as npfor
@@ -65,6 +66,61 @@ from numpy.lib.utils import safe_eval
 
 import kiyopy.custom_exceptions as ce
 
+
+# ---- Slight modification to the NPY format. ---------------------------------
+
+
+def write_array_header_1_0(fp, d):
+    """ Write the header for an array using the 1.0 format.
+
+    This version of write array header has been modified to align the start of
+    the array data with the 4096 bytes, corresponding to the page size of most
+    systems.  This is so the npy files can be easily memmaped.
+
+    Parameters
+    ----------
+    fp : filelike object
+    d : dict
+        This has the appropriate entries for writing its string representation
+        to the header of the file.
+    """
+    import struct
+    header = ["{"]
+    for key, value in sorted(d.items()):
+        # Need to use repr here, since we eval these when reading
+        header.append("'%s': %s, " % (key, repr(value)))
+    header.append("}")
+    header = "".join(header)
+    # Pad the header with spaces and a final newline such that the magic
+    # string, the header-length short and the header are aligned on a 16-byte
+    # boundary.  Hopefully, some system, possibly memory-mapping, can take
+    # advantage of our premature optimization.
+    # 1 for the newline
+    current_header_len = npfor.MAGIC_LEN + 2 + len(header) + 1  
+    topad = 4096 - (current_header_len % 4096)
+    header = '%s%s\n' % (header, ' '*topad)
+    if len(header) >= (256*256):
+        raise ValueError("header does not fit inside %s bytes" % (256*256))
+    header_len_str = struct.pack('<H', len(header))
+    fp.write(header_len_str)
+    fp.write(header)
+
+def _replace_write_header(f) :
+    """Wrap functions such that np.lib.format.write_array_header_1_0 is
+    replaced by the local version, but only for the one function call."""
+    @wraps(f)
+    def wrapper(*args, **kwds):
+        # Replace the header writer in the format module.
+        tmp_write_header = npfor.write_array_header_1_0
+        npfor.write_array_header_1_0 = write_array_header_1_0
+        # Evaluate the function.
+        try :
+            result = f(*args, **kwds)
+        finally :
+            # Restore the header.
+            npfor.write_array_header_1_0 = tmp_write_header
+        return result
+    return wrapper
 
 # ---- Array classes for holding vectors and matricies. -----------------------
 
@@ -210,7 +266,6 @@ class info_memmap(sp.memmap) :
             out.info = self.info
         return out
 
-
     def flush(self) :
         """Flush changes to disk.
 
@@ -255,8 +310,9 @@ def assert_info(array) :
                          "algebra.info_memmap.")
 
 
-# ---- Functions for reading and writing the above to and from file. -----------
+# ---- Functions for reading and writing the above to and from file. ----------
 
+@_replace_write_header
 def open_memmap(filename, mode='r+', dtype=None, shape=None,
                 fortran_order=False, version=(1,0), metafile=None) :
     """Open a file and memory map it to an info_memmap object.
@@ -284,6 +340,10 @@ def open_memmap(filename, mode='r+', dtype=None, shape=None,
         'r' or 'c' in which case it is set to None.
     """
     
+    # Restrict to version (1,0) because we've only written write_header for
+    # this version.
+    if version != (1,0) :
+        raise ValueError("Only version (1,0) is safe from this function.")
     # Memory map the data part.
     marray = npfor.open_memmap(filename, mode, dtype, shape, fortran_order,
                                version)
@@ -353,7 +413,8 @@ def load(file, metafile=None) :
     
     return array
 
-def save(file, iarray, metafile=None) :
+@_replace_write_header
+def save(file, iarray, metafile=None, version=(1,0)) :
     """Save a info array to a .npy file and a metadata file.
     
     Similar to the numpy.save function.
@@ -370,7 +431,11 @@ def save(file, iarray, metafile=None) :
         assumed to be the file name associated with `file` with ".meta"
         appended.
     """
-
+    
+    # Restrict to version (1,0) because we've only written write_header for
+    # this version.
+    if version != (1,0) :
+        raise ValueError("Only version (1,0) is safe from this function.")
     # Make sure that the meta data will be representable as a string.
     infostring = repr(iarray.info)
     try:
@@ -378,7 +443,11 @@ def save(file, iarray, metafile=None) :
     except SyntaxError :
         raise ce.DataError("Array info not representable as a string.")
     # Save the array in .npy format.
-    sp.save(file, iarray)
+    if isinstance(file, basestring):
+        fid = open(file, "wb")
+    else:
+        fid = file
+    npfor.write_array(fid, iarray, version=version)
     # Figure out what the filename for the meta data should be.
     if metafile is None :
         try :
@@ -394,7 +463,7 @@ def save(file, iarray, metafile=None) :
         info_fid.close()
 
 
-# ---- Functions for manipulating above arrays as matrices and vectors. ------
+# ---- Functions for manipulating above arrays as matrices and vectors. -------
 
 #### Some helper functions that perform some quick checks. ####
 
@@ -857,7 +926,6 @@ class mat(alg_object) :
         for axis in self.cols :
             ncols *= self.shape[axis]
         return (nrows, ncols)
-
 
     def iter_blocks(self) :
         """Returns an iterator over the blocks of a matrix."""

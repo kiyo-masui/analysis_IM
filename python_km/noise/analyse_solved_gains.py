@@ -50,7 +50,8 @@ class SolvedGains(object) :
                     gain = ma.empty((n_scans,) + scan['gain'].shape)
                     time_arr = sp.empty(n_scans, dtype=int)
                 gain[scan_number, ...] = scan['gain']
-                to = time.strptime(str(scan['time']), "%Y_%m_%d_%H:%M:%S")
+                tstring = str(scan['time']).split('.')[0]
+                to = time.strptime(tstring, "%Y-%m-%dT%H:%M:%S")
                 time_arr[scan_number] = to.tm_sec + 60*(to.tm_min + 
                     60*(to.tm_hour + 24*(to.tm_yday + 365*(to.tm_year-2000))))
                 scan_number += 1

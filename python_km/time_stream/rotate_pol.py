@@ -45,46 +45,57 @@ def rotate(Data, new_pols=(1,), average_cals=False) :
     It also optionally takes the average of cal_on and cal_off.
     """
     
-    # Here we check the polarizations indicies
-    xx_ind = 0
-    yy_ind = 3
-    xy_inds = [1,2]
-    if (Data.field['CRVAL4'][xx_ind] != -5 or
-        Data.field['CRVAL4'][yy_ind] != -6 or
-        Data.field['CRVAL4'][xy_inds[0]] != -7 or
-        Data.field['CRVAL4'][xy_inds[1]] != -8) :
-            raise ce.DataError('Polarization types not as expected.')
-    on_ind = 0
-    off_ind = 1
-    if average_cals and Data.field.has_key('EXPOSURE') :
-        Data.field['EXPOSURE'] = sp.mean(Data.field['EXPOSURE'], -1)
-        Data.field['EXPOSURE'].shape = Data.field['EXPOSURE'].shape + (1,)
-    if (Data.field['CAL'][on_ind] != 'T' or
-        Data.field['CAL'][off_ind] != 'F') :
-            raise ce.DataError('Cal states not in expected order.')
-    if len(new_pols) == 1 and new_pols[0] == 1 :
-        I = (Data.data[:,[xx_ind],:,:] + Data.data[:,[yy_ind],:,:])/2.0
-        if average_cals :
-            I = (I[:,:,[0],:] + I[:,:,[1],:])/2.0
-            Data.field['CAL'] = sp.array(['A'])
-        Data.set_data(I)
-        Data.field['CRVAL4'] = sp.array([1])
-    elif tuple(new_pols) == (1,2,3,4) :
-        new_data = ma.empty(Data.dims)
-        new_data[:,[0],:,:] = (Data.data[:,[xx_ind],:,:] + 
-                             Data.data[:,[yy_ind],:,:])/2.0
-        new_data[:,[1],:,:] = (Data.data[:,[xx_ind],:,:] - 
-                             Data.data[:,[yy_ind],:,:])/2.0
-        new_data[:,[2],:,:] = Data.data[:,[xy_inds[0]],:,:] 
-        new_data[:,[3],:,:] = Data.data[:,[xy_inds[1]],:,:] 
-        if average_cals :
-            new_data = (new_data[:,:,[0],:] + new_data[:,:,[1],:])/2.0
-            Data.field['CAL'] = sp.array(['A'])
-        Data.set_data(new_data)
-        Data.field['CRVAL4'] = sp.array([1,2,3,4])
+    if (tuple(Data.field['CRVAL4']) == (1, 2, 3, 4)) :
+        if new_pols == (1,) :
+            new_data = Data.data[:, [0], :, :]
+            if average_cals :
+                new_data = (new_data[:,:,[0],:] + new_data[:,:,[1],:])/2.0
+                Data.field['CAL'] = sp.array(['A'])
+            Data.set_data(new_data)
+            Data.field['CRVAL4'] = sp.array([1])
+        else :
+            raise NotImplementedError("Conversion not supported.")
     else :
-        raise NotImplementedError('Right now we can only calculate I'
-                                  ' or (I, Q, U V)')
+        # Here we check the polarizations indicies
+        xx_ind = 0
+        yy_ind = 3
+        xy_inds = [1,2]
+        if (Data.field['CRVAL4'][xx_ind] != -5 or
+            Data.field['CRVAL4'][yy_ind] != -6 or
+            Data.field['CRVAL4'][xy_inds[0]] != -7 or
+            Data.field['CRVAL4'][xy_inds[1]] != -8) :
+                raise ce.DataError('Polarization types not as expected.')
+        on_ind = 0
+        off_ind = 1
+        if average_cals and Data.field.has_key('EXPOSURE') :
+            Data.field['EXPOSURE'] = sp.mean(Data.field['EXPOSURE'], -1)
+            Data.field['EXPOSURE'].shape = Data.field['EXPOSURE'].shape + (1,)
+        if (Data.field['CAL'][on_ind] != 'T' or
+            Data.field['CAL'][off_ind] != 'F') :
+                raise ce.DataError('Cal states not in expected order.')
+        if len(new_pols) == 1 and new_pols[0] == 1 :
+            I = (Data.data[:,[xx_ind],:,:] + Data.data[:,[yy_ind],:,:])/2.0
+            if average_cals :
+                I = (I[:,:,[0],:] + I[:,:,[1],:])/2.0
+                Data.field['CAL'] = sp.array(['A'])
+            Data.set_data(I)
+            Data.field['CRVAL4'] = sp.array([1])
+        elif tuple(new_pols) == (1,2,3,4) :
+            new_data = ma.empty(Data.dims)
+            new_data[:,[0],:,:] = (Data.data[:,[xx_ind],:,:] + 
+                                 Data.data[:,[yy_ind],:,:])/2.0
+            new_data[:,[1],:,:] = (Data.data[:,[xx_ind],:,:] - 
+                                 Data.data[:,[yy_ind],:,:])/2.0
+            new_data[:,[2],:,:] = Data.data[:,[xy_inds[0]],:,:] 
+            new_data[:,[3],:,:] = Data.data[:,[xy_inds[1]],:,:] 
+            if average_cals :
+                new_data = (new_data[:,:,[0],:] + new_data[:,:,[1],:])/2.0
+                Data.field['CAL'] = sp.array(['A'])
+            Data.set_data(new_data)
+            Data.field['CRVAL4'] = sp.array([1,2,3,4])
+        else :
+            raise NotImplementedError('Right now we can only calculate I'
+                                      ' or (I, Q, U V)')
     
 
 # If this file is run from the command line, execute the main function.
