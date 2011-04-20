@@ -148,6 +148,16 @@ class info_array(sp.ndarray) :
         easily represented as a string so they can be written to and read from
         file.  Setting this attribute is generally not safe, but modifying it
         is.
+
+    Notes
+    -----
+    
+
+    See Also
+    --------
+    info_memmap : Analogous class to this one with data stored on disk.
+    vect_array : Vector object based on this class.
+    mat_array " Matrix object based on this class.
     """
 
     def __new__(cls, input_array, info=None):
@@ -155,14 +165,13 @@ class info_array(sp.ndarray) :
         # We first cast to be our class type.
         obj = sp.asarray(input_array).view(cls)
         # Add the new attribute to the created instance.
-        if info is None :
-            info = {}
-        obj.info = info
+        if not info is None :
+            obj.info = info
         # Finally, we must return the newly created object.
         return obj
 
     def __array_finalize__(self, obj):
-        # Info is a reference to the origional only for an explicit call to
+        # `info` is a reference to the origional only for an explicit call to
         # self.view() (view casting).  Otherwise we copy to protect the data.
         self.info = dict(getattr(obj, 'info', {}))
 
@@ -224,6 +233,13 @@ class info_memmap(sp.memmap) :
         file whenever the `flush` method is called (which includes deletion of
         the object).  This can happen even if the memmap was opened in 'r'
         mode.  Set to None if you wish to protect the data on file.
+
+    See Also
+    --------
+    info_array : Similar class with data stored in memory.
+    vect_memmap : Vector object based on this class.
+    mat_memmap : Matrix object based on this class.
+    open_memmap : Open a file on disk as an info_memmap.
     """
 
     def __new__(cls, marray, info=None, metafile=None):

@@ -9,6 +9,7 @@ import scipy as sp
 
 import kiyopy.custom_exceptions as ce
 import base_single
+import hanning
 try :
     import an.rfi as rfi
 except ImportError as e:
@@ -28,6 +29,7 @@ class FlagData(base_single.BaseSingle) :
     params_init = {
                    # In multiples of the standard deviation of the whole block
                    # once normalized to the time median.
+                   'perform_hanning' : False,
                    'sigma_thres' : 5,
                    # In multiples of the measured standard deviation.
                    'pol_thres' : 5,
@@ -41,6 +43,9 @@ class FlagData(base_single.BaseSingle) :
     def action(self, Data) :
         already_flagged = ma.count_masked(Data.data)
         params = self.params
+        if params["perform_hanning"] :
+            hanning.hanning_smooth(Data)
+            Data.add_history('Hanning smoothed.')
         apply_cuts(Data, sig_thres=params['sigma_thres'], 
                    pol_thres=params['pol_thres'],
                    width=params['pol_width'], flatten=params['flatten_pol'],
@@ -104,7 +109,6 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
         derivative_cut = 0
         if der_flags > 0:
             derivative_cut = 1
-
         # Allocate memory in SWIG array types.
         #fit = sp.empty((dims[3],), dtype=sp.float64)
         fit = sp.arange(dims[3], dtype=sp.float64)
@@ -114,10 +118,9 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
         for tii in range(dims[0]) :
             for cjj in range(dims[2]) :
                 # Polarization cross correlation coefficient.
-                cross = ma.sum(data[tii,pol_inds,cjj,:]**2, 0)
+                cross = ma.sum(data[tii,pol_inds,cjj,:]**2, 0).filled(1.0e10)
                 cross /= (data[tii,norm_inds[0],cjj,:] *
-                          data[tii,norm_inds[1],cjj,:])
-                cross = ma.filled(cross, 1000.)
+                          data[tii,norm_inds[1],cjj,:]).filled(1.0e-10)
                 # Copy data to the SWIG arrays.
                 # This may be confusing: Data is a DataBlock object which has
                 # an attribute data which is a masked array.  Masked arrays
@@ -146,13 +149,12 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
                 # Mask flagged YY data.
                 bad_inds, = sp.where(mask)
                 data[tii,:,cjj,bad_inds] = ma.masked
-    
     if sig_thres > 0 :
         # Will work with squared data so no square roots needed.
         nt = Data.dims[0]
-        data = Data.data[:, :, :, :]
+        data = Data.data
         norm_data = (data/ma.mean(data, 0) - 1)**2
-        var = ma.mean(norm_data, 0)
+        var = ma.mean(norm_data, 0).filled(0)
         # Use an iteratively flagged mean instead of a median as medians are
         # very computationally costly.
         for jj in range(3) :
@@ -168,7 +170,6 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0, width=2, flatten=True,
             # Recalculate the mean and varience for the next iteration or step.
             norm_data = (data/ma.mean(data, 0) - 1)**2
             var = ma.mean(norm_data, 0)
-
         # Strong cut, flag data deviating from the t and f var.
         # Want the varience over t,f. mean_f(var_t(data)) = var_t,f(data)
         var = ma.mean(var, -1)

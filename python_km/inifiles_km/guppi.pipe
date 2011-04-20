@@ -13,31 +13,18 @@ file_middles = tuple(dir_data.get_data_files(range(41,52), '15hr',
 #                                             type='guppi'))
 #file_middles = tuple(dir_data.get_data_files([40], '15hr', 
 #                                             type='guppi'))
-
+#file_middles = ('42_wigglez15hrst_ralongmap_142-149',)
 base_dir = os.getenv('GBT10B_OUT')
 data_dir = base_dir + '/guppi_data/'
 prefix = ''
 map_prefix = 'med_' + field + '_41-51_'
 
 pipe_modules = []
-pipe_processes = 12
+pipe_processes = 8
 
-
-#from time_stream import hanning 
-#pipe_modules.append(hanning.Hanning)
-ha_input_root = data_dir
-ha_file_middles = file_middles
-ha_input_end = ".fits"
-ha_output_root = base_dir + 'hanning/' + prefix
-ha_output_end = ".fits"
-ha_scans = ()
-# All following steps will inherit this choice by default (because these are
-# the only IF's saved to the following fits files).
-ha_IFs = ()
-
-#from time_stream import flag_data
-#pipe_modules.append(flag_data.FlagData)
-fd_input_root = ha_output_root
+from time_stream import flag_data
+pipe_modules.append(flag_data.FlagData)
+fd_input_root = data_dir
 fd_file_middles = file_middles
 fd_input_end = '.fits'
 fd_output_root = base_dir + 'flagged/' + prefix
@@ -45,6 +32,7 @@ fd_output_end = '.fits'
 fd_scans = ()
 fd_IFs = ()
 
+fd_perform_hanning = True
 fd_sigma_thres = 5
 fd_pol_thres = 5
 fd_pol_width = 1
@@ -63,7 +51,8 @@ rf_output_end = '.fits'
 rf_scans = ()
 rf_IFs = ()
 
-rf_channel_width = 2.0
+rf_channel_width = 0.
+rf_n_bins_combined = 64
 rf_mean_instead_median = False
 
 #from time_stream import cal_scale
@@ -181,7 +170,7 @@ mn_output_root = base_dir + 'noise_measurments/'
 
 mn_model = "scan_var"
 
-if True :
+if False :
   from map import dirty_map
   pipe_modules.append(dirty_map.DirtyMapMaker)
   dm_input_root = cc_output_root
@@ -191,7 +180,7 @@ if True :
   dm_scans = ()
   dm_IFs = (0,)
 
-  dm_field_centre = (218., 2.0)
+  dm_field_centre = (217.8, 2.0)
   #dm_map_shape = (66, 36)
   #dm_map_shape = (20, 10)
   dm_map_shape = (64, 32)

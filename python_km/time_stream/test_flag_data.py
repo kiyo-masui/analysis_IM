@@ -8,7 +8,8 @@ import numpy.random as rand
 import matplotlib.pyplot as plt
 
 import kiyopy.custom_exceptions as ce
-import time_stream.flag_data as flag_data
+import flag_data
+import hanning
 from core import data_block, fitsGBT
 
 test_file = 'testfile_GBTfits.fits'
@@ -41,7 +42,6 @@ class TestFlagData(unittest.TestCase) :
         flag_data.apply_cuts(self.Data, -1, 5.0, 0, True, 0, 0)
         self.assertTrue(self.Data.data[ind] is ma.masked)
         self.assertTrue(self.Data.data[ind2] is ma.masked)
-
 
     def test_pol_cut(self) :
         ind = (6,1,1,676)
@@ -144,6 +144,39 @@ class TestFlagData(unittest.TestCase) :
 
     def tearDown(self) :
         del self.Data
+
+class TestHanning(unittest.TestCase) :
+
+    def setUp(self) :
+        Reader = core.fitsGBT.Reader(test_file, feedback=0)
+        self.Data = Reader.read(1,1)
+        self.Data.verify()
+        self.Data_copy = copy.deepcopy(self.Data)
+
+    def test_hanning_data_changed(self) :
+        """Copy the data, see that we did something."""
+        hanning.hanning_smooth(self.Data)
+        # For lack of anything better to test:
+        self.Data.verify()
+        # Make sure we actually did something.
+        self.assertTrue(not ma.allclose(self.Data.data, self.Data_copy.data))
+        # Make sure we didn't change other fields, like LST.
+        self.assertTrue(sp.allclose(self.Data.field['LST'],
+                        self.Data_copy.field['LST']))
+
+    def test_hanning_cases(self) :
+        data = self.Data.data
+        data[:,:,:,:] = 1.
+        data[5,2,1,631] = 4.
+        data[7,3,1,853] = ma.masked
+        hanning.hanning_smooth(self.Data)
+        self.assertTrue(data[7,3,1,853] is ma.masked)
+        self.assertTrue(data[7,3,1,852] is ma.masked)
+        self.assertTrue(data[7,3,1,854] is ma.masked)
+        self.assertAlmostEqual(data[5,2,1,631], 2.5)
+        self.assertAlmostEqual(data[5,2,1,630], 1.75)
+        self.assertAlmostEqual(data[5,2,1,632], 1.75)
+
 
 if __name__ == '__main__' :
     unittest.main()
