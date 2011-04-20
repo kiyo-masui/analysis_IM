@@ -43,7 +43,9 @@ params_init = {
                # 'diag*' and 'grid' produce a noise file in the same format as
                # the map. 'disjoint_scans' produces a full noise covarience
                # (n_pix^2 numbers), each polarization in its onwn file.
-               'noise_model' : 'grid'
+               'noise_model' : 'grid',
+               # Measured noise parameters.
+               'noise_parameters_input_root' : 'None'
                }
 
 class DirtyMapMaker(object) :
@@ -84,6 +86,7 @@ class DirtyMapMaker(object) :
         map_shape = params['map_shape']
         spacing = params['pixel_spacing']
         algorithm = params['noise_model']
+        noise_root = params['noise_parameters_input_root']
         ra_spacing = -spacing/sp.cos(params['field_centre'][1]*sp.pi/180.)
         if not algorithm in ('grid', 'diag_file', 'disjoint_scans') :
             raise ValueError('Invalid noise model: ' + algorithm)
@@ -112,9 +115,16 @@ class DirtyMapMaker(object) :
                     # Calculate the time varience at each frequency.  This will
                     # be used as weights in most algorithms.
                     if not algorithm == 'grid' :
-                        var = tools.calc_time_var_file(Blocks, pol_ind, 0)
-                        # Convert from masked array to array.
-                        var = var.filled(9999.)
+                        if not noise_root == 'None':
+                            # We have measured variance.
+                            noise_pars = sp.load(noise_root + file_middle 
+                                                 + ".npy")
+                            var = noise_pars[params['IFs'][0], pol_ind, 0, :]
+                        else :
+                            # We need to measure the variance.
+                            var = tools.calc_time_var_file(Blocks, pol_ind, 0)
+                            # Convert from masked array to array.
+                            var = var.filled(9999.)
                     else :
                         var = 1.
                     weight = 1/var

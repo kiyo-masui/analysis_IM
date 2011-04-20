@@ -11,6 +11,13 @@ import numpy.lib.format as npfor
 import algebra
 import kiyopy.custom_exceptions as ce
 
+class TestLongHeader(unittest.TestCase) :
+
+    def test_npfor_unchanged(self) :
+        # The following lines fail, but that's probably okay.
+        self.assertEqual(npfor.write_array_header_1_0.__module__,
+                         npfor.__name__)
+
 class TestMatTypes(unittest.TestCase) :
     
     def test_from_memory(self) :
@@ -102,7 +109,6 @@ class TestLoadSave(unittest.TestCase) :
     def test_memmap_read(self) :
         algebra.save('temp.npy', self.Mat)
         marray = algebra.open_memmap('temp.npy', mode="r")
-        marray
         self.assertTrue(isinstance(marray, sp.ndarray))
         self.assertTrue(isinstance(marray, algebra.info_memmap))
         self.assertTrue(sp.allclose(marray, self.Mat))
@@ -143,7 +149,6 @@ class TestLoadSave(unittest.TestCase) :
         self.assertTrue(isinstance(Loaded, algebra.info_array))
         self.assertTrue(sp.allclose(Loaded, self.Mat))
         self.assertEqual(Loaded.info['a'], self.Mat.info['a'])
-
 
     def tearDown(self) :
         del self.Mat
@@ -498,11 +503,11 @@ class TestMatUtilsSq(unittest.TestCase) :
         self.assertTrue(sp.allclose(d.get_axis('freq'), 
                                     self.mat.get_axis('freq')))
 
-# Rules I'd like to impose:
+# TODO: Rules I'd like to impose:
     # vect axis names must be unique
     # mat axis names can occure both as a row and a col, but only once each.
-    # Shape changing operations like sp.sum() are still preserving the type.
-    # Why?
+    # Shape changing operations like sp.sum() are still preserving the type...
+    # why?
 
 if __name__ == '__main__' :
     unittest.main()
