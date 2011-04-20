@@ -101,11 +101,13 @@ class Reader(object) :
             self.verify_ordering = 0
 
         self.fname = fname
-        if self.feedback > 0 :
-            print "Opened GBT fits file: ", ku.abbreviate_file_path(fname)
 
         # The passed file name is assumed to be a GBT spectrometer fits file.
         self.hdulist = pyfits.open(self.fname, 'readonly')
+        if len(self.hdulist) < 2 :
+            raise ce.DataError("File missing data extension")
+        if self.feedback > 0 :
+            print "Opened GBT fits file: ", ku.abbreviate_file_path(fname)
         # Separate in to the useful sub objects.  These assignments are all
         # done by reference, so this is efficient.
         self.fitsdata = self.hdulist[1].data

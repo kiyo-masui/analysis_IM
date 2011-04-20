@@ -47,7 +47,10 @@ def rotate(Data, new_pols=(1,), average_cals=False) :
     
     if (tuple(Data.field['CRVAL4']) == (1, 2, 3, 4)) :
         if new_pols == (1,) :
-            new_data = Data.data[:, 0, : :]
+            new_data = Data.data[:, [0], :, :]
+            if average_cals :
+                new_data = (new_data[:,:,[0],:] + new_data[:,:,[1],:])/2.0
+                Data.field['CAL'] = sp.array(['A'])
             Data.set_data(new_data)
             Data.field['CRVAL4'] = sp.array([1])
         else :

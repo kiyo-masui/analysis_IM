@@ -5,6 +5,7 @@ Right now just reflags data but will eventually do a fine calibration maybe?"""
 import scipy as sp
 import numpy.ma as ma
 
+from kiyopy import utils
 from core import fitsGBT
 import base_single
 import kiyopy.custom_exceptions as ce
@@ -21,6 +22,10 @@ class ReFlag(base_single.BaseSingle) :
 
     prefix = prefix
     params_init = params_init
+
+    def execute(self, n_processes=1) :
+        utils.mkparents(self.params['subtracted_output_root'])
+        base_single.BaseSingle.execute(self, n_processes)
     
     def process_file(self, file_ind) :
         params = self.params
@@ -50,15 +55,27 @@ class ReFlag(base_single.BaseSingle) :
         if_inds = params['IFs']
         if len(if_inds) == 0 or scan_inds is None :
             if_inds = range(len(Reader.IF_set))
+        if self.feedback > 1 :
+            print "New flags each block:",
         # Loop over scans and IFs
         for thisscan in scan_inds :
             for thisIF in if_inds :
                 Data = Reader.read(thisscan, thisIF)
                 SubData = SubReader.read(thisscan, thisIF)
+                n_flags = ma.count_masked(Data.data)
                 # Now do the flagging.
                 flag(Data, SubData, params['thres'])
+                Data.add_history("Reflaged for outliers.", ("Used file: "
+                    + utils.abbreviate_file_path(sub_input_fname),))
+                SubData.add_history("Reflaged for outliers.")
                 Writer.add_data(Data)
                 SubWriter.add_data(SubData)
+                # Report the numbe of new flags.
+                n_flags = ma.count_masked(Data.data) - n_flags
+                if self.feedback > 1 :
+                    print n_flags,
+        if self.feedback > 1 :
+            print ''
         # Finally write the data back to file.
         Writer.write(output_fname)
         SubWriter.write(sub_output_fname)

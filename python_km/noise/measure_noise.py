@@ -3,7 +3,7 @@
 import scipy as sp
 import numpy.ma as ma
 
-from kiyopy import parse_ini
+from kiyopy import parse_ini, utils
 import kiyopy.utils
 import core.fitsGBT
 
@@ -47,14 +47,30 @@ class Measure(object) :
                 n_scans = len(Reader.scan_set)
                 n_IFs = len(Reader.IF_set)
                 first_block = True
-                for ii in range(n_scans) :
-                    for jj in range(n_IFs) :
+                for jj in range(n_IFs) :
+                    # These all become arrays on the first iteration.
+                    var = 0.0
+                    mean = 0.0
+                    counts = 0
+                    for ii in range(n_scans) :
                         Data = Reader.read(ii, jj)
                         if first_block :
-                            out_shape = (n_scans, n_IFs) + Data.dims[1:]
+                            out_shape = (n_IFs,) + Data.dims[1:]
                             out_arr = sp.empty(out_shape, dtype=float)
-                        out_arr[ii, jj, ...] = ma.var(Data.data, 0)
+                            first_block = False
+                        var += ma.sum(Data.data**2, 0).filled(0)
+                        mean += ma.sum(Data.data, 0).filled(0)
+                        counts += ma.count(Data.data, 0)
+                    # If we didn't get at least 5 good hits, throw aways the
+                    # scan.
+                    counts[counts < 5] = -1
+                    var = var/counts - (mean/counts)**2
+                    var[counts < 5] = 1.0e10
+                    out_arr[jj, ...] = var
                 sp.save(output_fname, out_arr)
+                if self.feedback > 1 :
+                    print ("Wrote noise parameters to file: " 
+                           + utils.abbreviate_file_path(output_fname))
             else :
                 raise ValueError("Invalid noise model: " + model)
 

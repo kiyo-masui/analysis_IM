@@ -105,13 +105,27 @@ class BaseSingle(object) :
         else :
             # Spawn a bunch of new processes each with a single file to
             # analyse.
-            n_pools = int(math.ceil(float(n_files)/float(n_new)))
-            for ii in range(n_pools) :
-                p = mp.Pool(processes=n_new)
-                for jj in range(ii*n_new, min((ii+1)*n_new, n_files)) :
-                    p.apply_async(self.process_file, (jj,))
-                p.close()
-                p.join()
+            # Can't us an mp.Pool here because we don't want to reused processes
+            # due to pyfits memory leak.
+            process_list = range(n_new)
+            for ii in xrange(n_files + n_new) :
+                if ii > n_new :
+                    process_list[ii%n_new].join()
+                    if process_list[ii%n_new].exitcode != 0 : 
+                        raise RuntimeError("A thread failed with exit code: "
+                                        + str(process_list[ii%n_new].exitcode))
+                if ii < n_files :
+                    process_list[ii%n_new] = mp.Process(
+                        target=self.process_file, args=(ii,))
+                    process_list[ii%n_new].start()
+
+            #n_pools = int(math.ceil(float(n_files)/float(n_new)))
+            #for ii in range(n_pools) :
+            #    p = mp.Pool(processes=n_new)
+            #    for jj in range(ii*n_new, min((ii+1)*n_new, n_files)) :
+            #        p.apply_async(self.process_file, (jj,))
+            #    p.close()
+            #    p.join()
 
             
     def process_file(self, file_ind) :
@@ -145,7 +159,7 @@ class BaseSingle(object) :
         
         # Go to a new line if we are printing statistics.
         if hasattr(self, 'feedback_title') and self.feedback > 1:
-                print ''
+            print ''
         # Finally write the data back to file.
         Writer.write(output_fname)
 

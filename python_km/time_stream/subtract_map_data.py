@@ -129,22 +129,28 @@ def sub_map(Data, Maps, correlate=False, pols=(), make_plots=False) :
         submap = submap[freq_ind[in_band_inds], ...]
         # submap is the size of the data that is on the map.  Expand to full 
         # size of data.
-        subdata = ma.zeros(sp.shape(covered_inds))
+        subdata = sp.zeros(sp.shape(covered_inds))
         subdata[covered_inds] = sp.rollaxis(submap, 1, 0).flatten()
-        subdata[sp.logical_not(covered_inds)] = ma.masked
+        subdata[sp.logical_not(covered_inds)] = 0.0
         # Now start using the actual data.  Loop over cal and pol indicies.
         for cal_ind in range(Data.dims[2]) :
             data = Data.data[:,pol_ind, cal_ind, :]
-            # Find the common mask.
-            un_mask = sp.logical_not(sp.logical_or(data.mask, subdata.mask))
+            data[sp.logical_not(covered_inds)] = ma.masked
+            # Find the common good indicies.
+            un_mask = sp.logical_not(data.mask)
+            # Find the number of good indicies at each frequency.
+            counts = sp.sum(un_mask, 0)
+            counts[counts == 0] = -1
             # Subtract out the mean from the map.
-            tmp_subdata = (subdata - sp.sum(un_mask*subdata, 0) / 
-                        sp.sum(un_mask, 0))
+            tmp_subdata = (subdata - sp.sum(un_mask*subdata, 0)/counts)
             # Correlate to solve for an unknown gain.
             if correlate :
-                tmp_data = data - sp.sum(un_mask*data, 0)/sp.sum(un_mask, 0)
+                tmp_data = data.filled(0.0)
+                tmp_data = (tmp_data - sp.sum(un_mask*data, 0)
+                            / counts)
                 gain = (sp.sum(un_mask*tmp_subdata*tmp_data, 0) / 
                         sp.sum(un_mask*tmp_subdata*tmp_subdata, 0))
+                gain[counts == -1] = 0.0
                 out_gains[pol_ind,cal_ind,:] = gain
             else :
                 gain = 1.0
@@ -152,11 +158,11 @@ def sub_map(Data, Maps, correlate=False, pols=(), make_plots=False) :
             # mean subtracted map, to preserve data mean.
             if make_plots :
                 plt.figure()
-                plt.plot(ma.mean((gain*tmp_subdata), -1), '.b')
-                plt.plot(ma.mean((data - ma.mean(data, 0)), -1), '.g')
+                #plt.plot(ma.mean((gain*tmp_subdata), -1), '.b')
+                #plt.plot(ma.mean((data - ma.mean(data, 0)), -1), '.g')
                 #plt.plot(ma.mean((data), -1), '.g')
-                #plt.plot((gain*tmp_subdata)[:, 60], '.b')
-                #plt.plot((data - ma.mean(data, 0))[:, 60], '.g')
+                plt.plot((gain*tmp_subdata)[:, 45], '.b')
+                plt.plot((data - ma.mean(data, 0))[:, 45], '.g')
             data[...] -= gain*tmp_subdata
     if correlate :
         return out_gains
