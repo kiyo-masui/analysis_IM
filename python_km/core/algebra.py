@@ -147,6 +147,12 @@ class info_array(sp.ndarray) :
         easily represented as a string so they can be written to and read from
         file.  Setting this attribute is generally not safe, but modifying it
         is.
+    
+    See Also
+    --------
+    info_memmap : Analogous class to this one with data stored on disk.
+    vect_array : Vector object based on this class.
+    mat_array : Matrix object based on this class.
 
     Notes
     -----
@@ -156,12 +162,6 @@ class info_array(sp.ndarray) :
 
     See http://docs.scipy.org/doc/numpy/user/basics.subclassing.html for more
     information
-    
-    See Also
-    --------
-    info_memmap : Analogous class to this one with data stored on disk.
-    vect_array : Vector object based on this class.
-    mat_array " Matrix object based on this class.
     """
 
     def __new__(cls, input_array, info=None):
@@ -238,6 +238,13 @@ class info_memmap(sp.memmap) :
         the object).  This can happen even if the memmap was opened in 'r'
         mode.  Set to None if you wish to protect the data on file.
 
+    See Also
+    --------
+    info_array : Similar class with data stored in memory.
+    vect_memmap : Vector object based on this class.
+    mat_memmap : Matrix object based on this class.
+    open_memmap : Open a file on disk as an info_memmap.
+
     Notes
     -----
     All new from template array creation operations make a copy of the metadata
@@ -247,13 +254,6 @@ class info_memmap(sp.memmap) :
     
     See http://docs.scipy.org/doc/numpy/user/basics.subclassing.html for more
     information
-
-    See Also
-    --------
-    info_array : Similar class with data stored in memory.
-    vect_memmap : Vector object based on this class.
-    mat_memmap : Matrix object based on this class.
-    open_memmap : Open a file on disk as an info_memmap.
     """
 
     def __new__(cls, marray, info=None, metafile=None):
@@ -668,13 +668,87 @@ class alg_object(object) :
 #### Vector class definitions ####
 
 class vect(alg_object) :
-    """Base class for vectors. 
+    """Multidimentional array interpreted as a vector.
     
-    This is only half a class.  A complete vector class is created by making
-    a class that inherits from both this class and from info_array or
-    info_memmap, for example the classes vect_array and vect_memmap.
+    This class gets most of its functionality from the numpy ndarray class.
+    In addition it provides support for orgainizing it's data as a vector.
+    This class comes in two flavours: `vect_array` and `vect_memmap`
+    depending on whether the array is stored in memory or on disk.
+
+    The vector representation of the array is the flattend array.
+
+    One of the features that `vect`s implement is named axes.  This allows
+    maps to carry axis information with them, amonge other things.  For
+    `vect`s axis names must be unique (This is not true of `mat`s).
+
+    Parameters
+    ----------
+    input_array : info_array (for vect_array) or info_memmap (for
+                  vect_memmap)
+        Array to be converted to a vect.
+    axis_names : tuple of strings, optional
+        The sequence contains the name of each axis.  This sequence will be
+        stored in the `axes` attribute.  This parameter is ignored if
+        `input_array`'s info attribute already contains the axis names.
+
+    Attributes
+    ----------
+    axes : tuple of strings
+        The names of each of the axes of the array.
+
+    See Also
+    --------
+    make_vect : Cast any array as a vector.
+    info_array, info_memap : Base classes that handle meta data.
+
+    Notes
+    -----
+    Since much of the functionality provided by this class is only valid
+    for a certain shape of the array, shape changing operations in
+    general return an `info_array` or `info_memmap` as appropriate (except
+    explicit assignment to vect.shape).
+
+    The `axes` attribute is acctually stored in the `info_array`'s info
+    dictionary.  This is just an implimentation detail.
     """
+
+    __array_priority__ = 2.0
     
+    # self.info_base is set in the class factory.
+    def __new__(cls, input_array, axis_names=None) :
+        
+        if not isinstance(input_array, cls.info_base) :
+            raise ValueError("Array to convert must be instance of " +
+                             str(cls.info_base))
+        obj = input_array.view(cls)
+        if obj.info.has_key('type') :
+            if not axis_names is None :
+                warnings.warn("Initialization argument ignored. Requisite "
+                              "metadata for vector already exists. "
+                              "Clear info dictionary if you want opposite "
+                              "behaviour.")
+            if not obj.info['type'] == 'vect' :
+                raise ValueError("Meta data present is incompatible.")
+            _check_axis_names(obj)
+        else :
+            _set_type_axes(obj, 'vect', axis_names)
+        return obj
+
+    def __setattr__(self, name, value) :
+        if name == 'axes' :
+            _check_axis_names(self, value)
+            self.info['axes'] = value
+        else :
+            self.info_base.__setattr__(self, name, value)
+
+    def __getattr__(self, name) :
+        if name == 'axes' :
+            return self.info['axes']
+        else :
+            # Since numpy uses __get_attribute__ not __getattr__, we should
+            # raise an Attribute error.
+            raise AttributeError("Attribute " + name + " not found.")
+
     def flat_view(self) :
         """Returns a view of the vector that has been flattend.
 
@@ -697,8 +771,6 @@ class vect(alg_object) :
         _check_axis_names(self)
         return (self.size,)
 
-    __array_priority__ = 2.0
-
 def _vect_class_factory(base_class) :
     """Internal class factory for making a vector class that inherits from
     either info_array or info_memmap."""
@@ -707,82 +779,8 @@ def _vect_class_factory(base_class) :
         raise TypeError("Vectors inherit from info arrays or info memmaps.")
 
     class vect_class(vect, base_class) :
-        """Multidimentional array interpreted as a vector.
-        
-        This class gets most of its functionality from the numpy ndarray class.
-        In addition it provides support for orgainizing it's data as a vector.
-        This class comes in two flavours: `vect_array` and `vect_memmap`
-        depending on whether the array is stored in memory or on disk.
-
-        The vector representation of the array is the flattend array.
-
-        One of the features that `vect`s implement is named axes.  This allows
-        maps to carry axis information with them, amonge other things.  For
-        `vect`s axis names must be unique (This is not true of `mat`s).
-
-        Parameters
-        ----------
-        input_array : info_array (for vect_array) or info_memmap (for
-                      vect_memmap)
-            Array to be converted to a vect.
-        axis_names : tuple of strings, optional
-            The sequence contains the name of each axis.  This sequence will be
-            stored in the `axes` attribute.  This parameter is ignored if
-            `input_array`'s info attribute already contains the axis names.
-
-        Attributes
-        ----------
-        axes : tuple of strings
-            The names of each of the axes of the array.
-
-        See Also
-        --------
-        make_vect : Cast any array as a vector.
-        info_array, info_memap : Base classes that handle meta data.
-
-        Notes
-        -----
-        The `axes` attribute is acctually stored in the `info_array`'s info
-        dictionary.  This is just an implimentation detail.
-        """
-        
+        __doc__ = vect.__doc__
         info_base = base_class
-
-        # Only define methods here that have to refer to base_class.
-        # Everything else can go into vect.
-        def __new__(cls, input_array, axis_names=None) :
-            
-            if not isinstance(input_array, base_class) :
-                raise ValueError("Array to convert must be instance of " +
-                                 str(base_class))
-            obj = input_array.view(cls)
-            if obj.info.has_key('type') :
-                if not axis_names is None :
-                    warnings.warn("Initialization argument ignored. Requisite "
-                                  "metadata for vector already exists. "
-                                  "Clear info dictionary if you want opposite "
-                                  "behaviour.")
-                if not obj.info['type'] == 'vect' :
-                    raise ValueError("Meta data present is incompatible.")
-                _check_axis_names(obj)
-            else :
-                _set_type_axes(obj, 'vect', axis_names)
-            return obj
-
-        def __setattr__(self, name, value) :
-            if name == 'axes' :
-                _check_axis_names(self, value)
-                self.info['axes'] = value
-            else :
-                base_class.__setattr__(self, name, value)
-
-        def __getattr__(self, name) :
-            if name == 'axes' :
-                return self.info['axes']
-            else :
-                # Since numpy uses __get_attribute__ not __getattr__, we should
-                # raise an Attribute error.
-                raise AttributeError("Attribute " + name + " not found.")
 
     return vect_class
 
@@ -790,7 +788,7 @@ vect_array = _vect_class_factory(info_array)
 vect_array.__name__ = 'vect_array'
 vect_memmap = _vect_class_factory(info_memmap)
 vect_memmap.__name__ = 'vect_memmap'
-    
+
 def make_vect(array, axis_names=None) :
     """Do what ever it takes to make an vect out of an array.
     
@@ -832,14 +830,138 @@ def make_vect(array, axis_names=None) :
 #### Matrix class definitions ####
 
 class mat(alg_object) :
-    """Base class for matricies.
+    """Multidimentional array interpreted as a matrix.
     
-    This is only half a class.  A complete matris class is created by making
-    a class that inherits from both this class and from info_array or
-    info_memmap, for example the classes mat_array and mat_memmap.
+    This class gets most of its functionality from the numpy ndarray class.
+    In addition it provides support for orgainizing it's data as a vector.
+    This class comes in two flavours: `mat_array` and `mat_memmap`
+    depending on whether the array is stored in memory or on disk.
+
+    To make the assotiation between a multidimentional array and a matrix,
+    each axis of the array must be identified as varying over either the
+    rows or colums of a matrix.  For instance the shape of the array could
+    be (3, 5, 7).  We could identify the first axis as a row axis and the
+    second two as column axis in which case the matrix would have 3 rows
+    and 35 colums.  We generally make the rows axes left of the columns and
+    many algorithms assume this.  It is also possible for an axis to be
+    identified as both a row and a column, in which case the matrix is
+    block diagonal over that axis.  Generally the block diagonal axes are
+    the left most.
+
+    Like `vect`s, mats have named axes, however 2 axes may have the same
+    name as long as one is identified as a row axis and the other as a col
+    axis.
+
+    Parameters
+    ----------
+    input_array : info_array (for mat_array) or info_memmap (for
+                  mat_memmap)
+        Array to be converted to a vect.
+    row_axes : tuple of ints
+        Sequence contains the axis numbers of the array to identify as
+        varying over the matrix rows. This sequence is stored in the
+        `rows` attribute.  This parameter is ignored if
+        `input_array`'s info attribute already contains the rows.
+    col_axis : tuple of ints
+        Sequence contains the axis numbers of the array to identify as
+        varying over the matrix columns. This sequence is stored in the
+        `cols` attribute.  This parameter is ignored if
+        `input_array`'s info attribute already contains the cols.
+    axis_names : tuple of strings, optional
+        The sequence contains the name of each axis.  This sequence will be
+        stored in the `axes` attribute.  This parameter is ignored if
+        `input_array`'s info attribute already contains the axis names.
+
+    Attributes
+    ----------
+    axes : tuple of strings
+        The names of each of the axes of the array.
+    rows : tuple of ints
+        Which of the array's axes to identify as varying over the matrix
+        rows.
+    cols : tuple of ints
+        Which of the array's axes to identify as varying over the matrix
+        columns.
+
+    Notes
+    -----
+    Since much of the functionality provided by this class is only valid
+    for a certain shape of the array, shape changing operations in
+    general return an `info_array` or `info_memmap` as appropriate (except
+    explicit assignment to mat.shape).
+
+    The `axes`, `rows` and `cols` attributes are acctually stored in the 
+    `info_array`'s info dictionary.  This is just an implimentation detail.
+
+    See Also
+    --------
+    vect_array, vect_memmap : Vector classes.
+    make_mat : Funciton that casts any array as a matrix.
+    info_array, info_memmap : Base classes that handle meta data.
     """
-    
+
     __array_priority__ = 3.0
+    
+    def __new__(cls, input_array, row_axes=None, col_axes=None, 
+                axis_names=None) :
+        
+        if not isinstance(input_array, cls.info_base) :
+            raise ValueError("Array to convert must be instance of " +
+                             str(cls.info_base))
+        
+        obj = input_array.view(cls)
+
+        if obj.info.has_key('type') :
+            if ((not axis_names is None) or (not row_axes is None) or 
+                (not col_axes is None)) :
+                warnings.warn("Initialization argument ignored. Requisite "
+                              "metadata for matrix already exists. "
+                              "Clear info dictionary if you want opposite "
+                              "behaviour.")
+            if not obj.info['type'] == 'mat' :
+                raise ValueError("Meta data present is incompatible.")
+            _check_axis_names(obj)
+            _check_rows_cols(obj)
+        else :
+            if ((row_axes is None) and (col_axes is None)
+                and (input_array.ndim==2)) :
+                row_axes = (0,)
+                col_axes = (1,)
+            else :
+                _check_rows_cols(input_array, row_axes, col_axes)
+            _set_type_axes(obj, 'mat', axis_names)
+            obj.rows = row_axes
+            obj.cols = col_axes
+        return obj
+
+    def __setattr__(self, name, value) :
+        if name == 'axes' :
+            _check_axis_names(self, value)
+            self.info['axes'] = value
+        elif name == 'rows' :
+            for ind in value :
+                if not ind in range(self.ndim) :
+                    raise ValueError("Invalid row axes.")
+            self.info['rows'] = tuple(value)
+        elif name == 'cols' :
+            for ind in value :
+                if not ind in range(self.ndim) :
+                    raise ValueError("Invalid col axes.")
+            self.info['cols'] = tuple(value)
+        else :
+            self.info_base.__setattr__(self, name, value)
+
+    def __getattr__(self, name) :
+        if name == 'axes' :
+            return self.info['axes']
+        elif name == 'rows' :
+            return self.info['rows']
+        elif name == 'cols' :
+            return self.info['cols']
+        else :
+            # Since numpy uses __get_attribute__ not __getattr__, we should
+            # raise an Attribute error.
+            raise AttributeError("Attribute " + name + " not found.")
 
     def check_rows_cols(self) :
         """Check that rows and cols are valid for the matrix.
@@ -1146,135 +1268,8 @@ def _mat_class_factory(base_class) :
         raise TypeError("Matrices inherit from info arrays or info memmaps.")
 
     class mat_class(mat, base_class) :
-        """Multidimentional array interpreted as a matrix.
-        
-        This class gets most of its functionality from the numpy ndarray class.
-        In addition it provides support for orgainizing it's data as a vector.
-        This class comes in two flavours: `mat_array` and `mat_memmap`
-        depending on whether the array is stored in memory or on disk.
-
-        To make the assotiation between a multidimentional array and a matrix,
-        each axis of the array must be identified as varying over either the
-        rows or colums of a matrix.  For instance the shape of the array could
-        be (3, 5, 7).  We could identify the first axis as a row axis and the
-        second two as column axis in which case the matrix would have 3 rows
-        and 35 colums.  We generally make the rows axes left of the columns and
-        many algorithms assume this.  It is also possible for an axis to be
-        identified as both a row and a column, in which case the matrix is
-        block diagonal over that axis.  Generally the block diagonal axes are
-        the left most.
-
-        Like `vect`s, mats have named axes, however 2 axes may have the same
-        name as long as one is identified as a row axis and the other as a col
-        axis.
-
-        Parameters
-        ----------
-        input_array : info_array (for mat_array) or info_memmap (for
-                      mat_memmap)
-            Array to be converted to a vect.
-        row_axes : tuple of ints
-            Sequence contains the axis numbers of the array to identify as
-            varying over the matrix rows. This sequence is stored in the
-            `rows` attribute.  This parameter is ignored if
-            `input_array`'s info attribute already contains the rows.
-        col_axis : tuple of ints
-            Sequence contains the axis numbers of the array to identify as
-            varying over the matrix columns. This sequence is stored in the
-            `cols` attribute.  This parameter is ignored if
-            `input_array`'s info attribute already contains the cols.
-        axis_names : tuple of strings, optional
-            The sequence contains the name of each axis.  This sequence will be
-            stored in the `axes` attribute.  This parameter is ignored if
-            `input_array`'s info attribute already contains the axis names.
-
-        Attributes
-        ----------
-        axes : tuple of strings
-            The names of each of the axes of the array.
-        rows : tuple of ints
-            Which of the array's axes to identify as varying over the matrix
-            rows.
-        cols : tuple of ints
-            Which of the array's axes to identify as varying over the matrix
-            columns.
-
-        Notes
-        -----
-        The `axes`, `rows` and `cols` attributes are acctually stored in the 
-        `info_array`'s info dictionary.  This is just an implimentation detail.
-
-        See Also
-        --------
-        vect_array, vect_memmap : Vector classes.
-        make_mat : Funciton that casts any array as a matrix.
-        info_array, info_memmap : Base classes that handle meta data.
-        """
-
+        __doc__ = mat.__doc__
         info_base = base_class
-        
-        def __new__(cls, input_array, row_axes=None, col_axes=None, 
-                    axis_names=None) :
-            
-            if not isinstance(input_array, base_class) :
-                raise ValueError("Array to convert must be instance of " +
-                                 str(base_class))
-            
-            obj = input_array.view(cls)
-
-            if obj.info.has_key('type') :
-                if ((not axis_names is None) or (not row_axes is None) or 
-                    (not col_axes is None)) :
-                    warnings.warn("Initialization argument ignored. Requisite "
-                                  "metadata for matrix already exists. "
-                                  "Clear info dictionary if you want opposite "
-                                  "behaviour.")
-                if not obj.info['type'] == 'mat' :
-                    raise ValueError("Meta data present is incompatible.")
-                _check_axis_names(obj)
-                _check_rows_cols(obj)
-            else :
-                if row_axes is None and col_axes is None and input_array.ndim==2 :
-                    row_axes = (0,)
-                    col_axes = (1,)
-                else :
-                    _check_rows_cols(input_array, row_axes, col_axes)
-                
-                _set_type_axes(obj, 'mat', axis_names)
-                obj.rows = row_axes
-                obj.cols = col_axes
-                
-            return obj
-
-        def __setattr__(self, name, value) :
-            if name == 'axes' :
-                _check_axis_names(self, value)
-                self.info['axes'] = value
-            elif name == 'rows' :
-                for ind in value :
-                    if not ind in range(self.ndim) :
-                        raise ValueError("Invalid row axes.")
-                self.info['rows'] = tuple(value)
-            elif name == 'cols' :
-                for ind in value :
-                    if not ind in range(self.ndim) :
-                        raise ValueError("Invalid col axes.")
-                self.info['cols'] = tuple(value)
-            else :
-                base_class.__setattr__(self, name, value)
-
-        def __getattr__(self, name) :
-            if name == 'axes' :
-                return self.info['axes']
-            elif name == 'rows' :
-                return self.info['rows']
-            elif name == 'cols' :
-                return self.info['cols']
-            else :
-                # Since numpy uses __get_attribute__ not __getattr__, we should
-                # raise an Attribute error.
-                raise AttributeError("Attribute " + name + " not found.")
-
     return mat_class
 
 mat_array = _mat_class_factory(info_array)
