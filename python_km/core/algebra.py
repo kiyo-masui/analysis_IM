@@ -673,7 +673,8 @@ class vect(alg_object) :
     This class gets most of its functionality from the numpy ndarray class.
     In addition it provides support for orgainizing it's data as a vector.
     This class comes in two flavours: `vect_array` and `vect_memmap`
-    depending on whether the array is stored in memory or on disk.
+    depending on whether the array is stored in memory or on disk.  The raw
+    `vect` class is not a valid class by itself.
 
     The vector representation of the array is the flattend array.
 
@@ -683,8 +684,7 @@ class vect(alg_object) :
 
     Parameters
     ----------
-    input_array : info_array (for vect_array) or info_memmap (for
-                  vect_memmap)
+    input_array : info_array (for vect_array) or info_memmap (for vect_memmap)
         Array to be converted to a vect.
     axis_names : tuple of strings, optional
         The sequence contains the name of each axis.  This sequence will be
@@ -835,7 +835,8 @@ class mat(alg_object) :
     This class gets most of its functionality from the numpy ndarray class.
     In addition it provides support for orgainizing it's data as a vector.
     This class comes in two flavours: `mat_array` and `mat_memmap`
-    depending on whether the array is stored in memory or on disk.
+    depending on whether the array is stored in memory or on disk.  The raw
+    `mat` class is not a valid class by itself.
 
     To make the assotiation between a multidimentional array and a matrix,
     each axis of the array must be identified as varying over either the
