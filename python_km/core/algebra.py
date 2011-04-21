@@ -69,7 +69,6 @@ import kiyopy.custom_exceptions as ce
 
 # ---- Slight modification to the NPY format. ---------------------------------
 
-
 def write_array_header_1_0(fp, d):
     """ Write the header for an array using the 1.0 format.
 
@@ -151,8 +150,13 @@ class info_array(sp.ndarray) :
 
     Notes
     -----
-    
+    All new from template array creation operations make a copy of the metadata
+    not a reference.  To get a reference you need to explicitly make a call to
+    the `view` function.
 
+    See http://docs.scipy.org/doc/numpy/user/basics.subclassing.html for more
+    information
+    
     See Also
     --------
     info_memmap : Analogous class to this one with data stored on disk.
@@ -234,6 +238,16 @@ class info_memmap(sp.memmap) :
         the object).  This can happen even if the memmap was opened in 'r'
         mode.  Set to None if you wish to protect the data on file.
 
+    Notes
+    -----
+    All new from template array creation operations make a copy of the metadata
+    not a reference.  To get a reference you need to explicitly make a call to
+    the `view` function.  Also, the metafile is set to None on new from
+    template oberations.  
+    
+    See http://docs.scipy.org/doc/numpy/user/basics.subclassing.html for more
+    information
+
     See Also
     --------
     info_array : Similar class with data stored in memory.
@@ -261,7 +275,9 @@ class info_memmap(sp.memmap) :
         sp.memmap.__array_finalize__(self, obj)
         # Info is a reference to the origional for views.
         self.info = dict(getattr(obj, 'info', {}))
-        self.metafile = getattr(obj, 'metafile', None)
+        # Do not copy the metafile attribute, new arrays will clobber the data.
+        # This attribute is only copied on an explicit view() call.
+        self.metafile = None
 
     def view(self, *args) :
         """Return a numpy view of self.
@@ -280,6 +296,7 @@ class info_memmap(sp.memmap) :
         # reference (they will share metadata).
         if isinstance(out, info_memmap) :
             out.info = self.info
+            out.metafile = self.metafile
         return out
 
     def flush(self) :
@@ -288,7 +305,13 @@ class info_memmap(sp.memmap) :
         This method saves the info dictionary to metafile and then calls the
         flush method from the numpy memmap.
         """
-        
+        # Write the info dictionary to disk.
+        self._info_flush()
+        # Now flush the actual memmap.
+        sp.memmap.flush(self)
+
+    def _info_flush(self) :
+        """Write the info array to disk only."""
         # Prior to numpy 1.5, we can't get the mode, so just assume we are
         # allowed to write
         mode = getattr(self, 'mode', 'r+')
@@ -305,11 +328,9 @@ class info_memmap(sp.memmap) :
                 info_fid.write(infostring)
             finally :
                 info_fid.close()
-        # Now flush the actual memmap.
-        sp.memmap.flush(self)
 
     def __del__(self) :
-        self.flush()
+        self._info_flush()
         sp.memmap.__del__(self)
 
     def __deepcopy__(self, copy) :
@@ -638,11 +659,11 @@ class alg_object(object) :
         return (self.info[axis_name + '_delta']*(sp.arange(len) - len//2) 
                 + self.info[axis_name + '_centre'])
 
-    def __getitem__(self, key) :
-        if isinstance(self, sp.memmap) :
-            return self.view(sp.memmap)[key]
-        else :
-            return sp.asarray(self)[key]
+    def __array_finalize__(self, obj) :
+        self.info_base.__array_finalize__(self, obj)
+        if (not obj is None) and (self.shape != obj.shape) :
+            self.__class__ = self.info_base
+
 
 #### Vector class definitions ####
 
@@ -678,14 +699,6 @@ class vect(alg_object) :
 
     __array_priority__ = 2.0
 
-    def __array_wrap__(self, out_arr, context=None) :
-        if out_arr.shape == self.shape :
-            out = out_arr.view(vect_array)
-            out.info = dict(self.info)
-            return out
-        else :
-            return sp.asarray(out_arr)
-    
 def _vect_class_factory(base_class) :
     """Internal class factory for making a vector class that inherits from
     either info_array or info_memmap."""
@@ -724,13 +737,16 @@ def _vect_class_factory(base_class) :
 
         See Also
         --------
-        make_vect
+        make_vect : Cast any array as a vector.
+        info_array, info_memap : Base classes that handle meta data.
 
         Notes
         -----
         The `axes` attribute is acctually stored in the `info_array`'s info
         dictionary.  This is just an implimentation detail.
         """
+        
+        info_base = base_class
 
         # Only define methods here that have to refer to base_class.
         # Everything else can go into vect.
@@ -824,14 +840,6 @@ class mat(alg_object) :
     """
     
     __array_priority__ = 3.0
-
-    def __array_wrap__(self, out_arr, context=None) :
-        if out_arr.shape == self.shape :
-            out = out_arr.view(mat_array)
-            out.info = dict(self.info)
-            return out
-        else :
-            return sp.asarray(out_arr)
 
     def check_rows_cols(self) :
         """Check that rows and cols are valid for the matrix.
@@ -1198,11 +1206,13 @@ def _mat_class_factory(base_class) :
 
         See Also
         --------
-        vect_array
-        vect_memmap
-        make_mat
+        vect_array, vect_memmap : Vector classes.
+        make_mat : Funciton that casts any array as a matrix.
+        info_array, info_memmap : Base classes that handle meta data.
         """
 
+        info_base = base_class
+        
         def __new__(cls, input_array, row_axes=None, col_axes=None, 
                     axis_names=None) :
             
