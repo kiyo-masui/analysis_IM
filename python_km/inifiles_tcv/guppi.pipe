@@ -9,7 +9,7 @@ import scipy as sp
 field = '15hr'
 dm_field_centre = (218.25, 2.0) 
 #Here I'm grabbing the guppi data
-file_middles = tuple(dir_data.get_data_files(range(40,50) , '15hr', type='guppi'))
+file_middles = tuple(dir_data.get_data_files(range(41,52) , '15hr', type='guppi'))
 
 pipe_modules = []
 # Chime has 8 cores, but you should save a few for other people.  Use 6 max.
@@ -19,12 +19,12 @@ base_dir = os.getenv('GBT10B_OUT')
 #raw_data_dir = os.getenv('GBT10B_DATA')
 kiyo_dir = os.getenv('GBT10B_KM')
 prefix = ''
-map_prefix = prefix + field + '_40-50_'
+map_prefix = prefix + field + '_41-52_'
 IFs = ()
 
-from time_stream import hanning 
+#from time_stream import hanning 
 # Comment this line to skip this step when running python pipeline/manager
-pipe_modules.append(hanning.Hanning)
+#pipe_modules.append(hanning.Hanning)
 ha_input_root = kiyo_dir + '/guppi_data/'
 ha_file_middles = file_middles
 ha_input_end = ".fits"
@@ -35,9 +35,9 @@ ha_scans = ()
 # the only IF's saved to the following fits files).
 ha_IFs = IFs
 
-from time_stream import flag_data
+#from time_stream import flag_data
 # Comment this line to skip this step when running python pipeline/manager
-pipe_modules.append(flag_data.FlagData)
+#pipe_modules.append(flag_data.FlagData)
 fd_input_root = ha_output_root
 fd_file_middles = file_middles
 fd_input_end = '.fits'
@@ -53,9 +53,9 @@ fd_flatten_pol = True
 fd_derivative_cuts = 5
 fd_derivative_width = 1
 
-from time_stream import rebin_freq
+#from time_stream import rebin_freq
 # Comment this line to skip this step when running python pipeline/manager
-pipe_modules.append(rebin_freq.RebinFreq)
+#pipe_modules.append(rebin_freq.RebinFreq)
 rf_input_root = fd_output_root
 rf_file_middles = file_middles
 rf_input_end = '.fits'
@@ -64,12 +64,12 @@ rf_output_end = '.fits'
 rf_scans = ()
 rf_IFs = ()
 
-rf_channel_width = 0.5
+rf_channel_width = 1.0
 rf_mean_instead_median = True
 
-from time_stream import cal_scale
+#from time_stream import cal_scale
 # Comment the following line to skip this step when running pipeline/manager
-pipe_modules.append(cal_scale.CalScale)
+#pipe_modules.append(cal_scale.CalScale)
 cs_input_root = rf_output_root
 cs_file_middles = file_middles
 cs_input_end = '.fits'
@@ -83,9 +83,9 @@ cs_scale_freq_average = False
 cs_subtract_time_median = False
 cs_scale_freq_average_mod = False
 
-from time_stream import calibrate
+#from time_stream import calibrate
 # Comment line below to skip this step when running pipeline/manager
-pipe_modules.append(calibrate.Calibrate)
+#pipe_modules.append(calibrate.Calibrate)
 cl_input_root = cs_output_root
 cl_file_middles = file_middles
 cl_input_end = '.fits'
