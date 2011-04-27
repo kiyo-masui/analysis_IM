@@ -75,7 +75,8 @@ def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False) :
         if scale_t_ave :
             # Find the cal means (in time) and scale by them.
             # Means work much better than medians.  Medians seems to bias the
-            # result by up to 10%.  This seems to be discretization noise.
+            # result by up to 10%.  This seems to be discretization noise.  Cal
+            # switches fast enough that we shouldn't need this anyway.
             cal_tmed_xx = ma.mean(diff_xx, 0)
             cal_tmed_yy = ma.mean(diff_yy, 0)
             cal_tmed_xx[sp.logical_or(cal_tmed_xx<=0, cal_tmed_yy<=0)] = ma.masked
