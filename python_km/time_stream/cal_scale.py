@@ -73,9 +73,11 @@ def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False) :
         diff_yy = Data.data[:,yy_ind,on_ind,:] - Data.data[:,yy_ind,off_ind,:]
         
         if scale_t_ave :
-            # Find the cal medians (in time) and scale by them.
-            cal_tmed_xx = ma.median(diff_xx, 0)
-            cal_tmed_yy = ma.median(diff_yy, 0)
+            # Find the cal means (in time) and scale by them.
+            # Means work much better than medians.  Medians seems to bias the
+            # result by up to 10%.  This seems to be discretization noise.
+            cal_tmed_xx = ma.mean(diff_xx, 0)
+            cal_tmed_yy = ma.mean(diff_yy, 0)
             cal_tmed_xx[sp.logical_or(cal_tmed_xx<=0, cal_tmed_yy<=0)] = ma.masked
             cal_tmed_yy[cal_tmed_xx.mask] = ma.masked
             
@@ -122,7 +124,7 @@ def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False) :
         # For the shot term, just devide everything by on-off in I.
         I_ind = 0
         cal_I_t = Data.data[:,I_ind,on_ind,:] - Data.data[:,I_ind,off_ind,:]
-        cal_I = ma.median(cal_I_t, 0)
+        cal_I = ma.mean(cal_I_t, 0)
 
         Data.data /= cal_I
     else :

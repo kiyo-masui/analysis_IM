@@ -153,15 +153,15 @@ class TestFlagData(unittest.TestCase) :
 class TestFilterFlagger(unittest.TestCase) :
     
     def setUp(self) :
-        self.n = 100
+        self.n = 200
 
     def test_flags_out_liers(self) :
         arr = rand.normal(1, 1, (1, self.n))
-        arr[0, 50] = 8.
-        arr[0, 80] = 800.
-        arr[0, 70] = 400.
-        arr[0, 20] = 50.
-        arr[0, 30] = 12.
+        arr[0, 50] = 1 + 8.
+        arr[0, 80] = 1 + 800.
+        arr[0, 70] = 1 + 400.
+        arr[0, 20] = 1 + 50.
+        arr[0, 30] = 1 + 12.
         mask = flag_data.filter_flagger(arr, 10, 5)
         self.assertTrue(mask[0, 50])
         self.assertTrue(mask[0, 80])
@@ -171,32 +171,34 @@ class TestFilterFlagger(unittest.TestCase) :
         self.assertEqual(sp.sum(mask), 5)
 
     def test_smooths(self) :
-        arr = rand.normal(1, 1, (1, self.n))
-        arr += 30*sp.sin(sp.arange(self.n)/40.0*2.0*sp.pi)
-        arr[0, 50] += 8.
-        arr[0, 30] += 12.
-        arr[0, 80] += 800.
-        mask = flag_data.filter_flagger(arr, 10, 5)
-        self.assertTrue(mask[0, 50])
+        arr = rand.normal(0, 1, (1, self.n))
+        sin = 30*sp.sin(sp.arange(self.n)/40.0*2.0*sp.pi)
+        arr += sin
+        arr[0, 80] = sin[80] + 800.
+        arr[0, 30] = sin[30] + 12.
+        arr[0, 50] = sin[50] + 8.
+        mask = flag_data.filter_flagger(arr, 4, 5)
         self.assertTrue(mask[0, 30])
         self.assertTrue(mask[0, 80])
+        self.assertTrue(mask[0, 50])
         self.assertEqual(sp.sum(mask), 3)
 
     def test_multiD(self) :
-        arr = rand.normal(1, 1, (self.n, 12))
-        x = sp.reshape(sp.arange(self.n), (self.n, 1)) + 60*sp.arange(12)
-        arr += 30*sp.sin(x/40.0*2.0*sp.pi)
-        arr[50, 0] += 8
-        arr[50, 4] += 800
-        arr[50, 10] += 400
-        arr[20, 3] += 10
-        arr[30, 3] += 15
-        mask = flag_data.filter_flagger(arr, 10, 5, axis=0)
-        self.assertTrue(mask[50, 0])
+        arr = rand.normal(0, 1, (self.n, 12))
+        x = sp.reshape(sp.arange(self.n), (self.n, 1)) + 63*sp.arange(12)
+        sin = 30*sp.sin(x/40.0*2.0*sp.pi)
+        arr += sin
+        arr[50, 4] = sin[50, 4] + 800
+        arr[50, 10] = sin[50, 10] + 400
+        arr[20, 3] = sin[20, 3] + 10
+        arr[30, 3] = sin[30, 3] + 15
+        arr[50, 0] = sin[50, 0] + 8
+        mask = flag_data.filter_flagger(arr, 4, 5, axis=0)
         self.assertTrue(mask[50, 4])
         self.assertTrue(mask[50, 10])
         self.assertTrue(mask[20, 3])
         self.assertTrue(mask[30, 3])
+        self.assertTrue(mask[50, 0])
         self.assertEqual(sp.sum(mask), 5)
 
 class TestHanning(unittest.TestCase) :

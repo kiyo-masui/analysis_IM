@@ -12,6 +12,7 @@ import core.fitsGBT
 import kiyopy.custom_exceptions as ce
 import base_single
 import hanning
+import cal_scale
 
 class FlagData(base_single.BaseSingle) :
     """Pipeline module that flags rfi and other forms of bad data.
@@ -25,6 +26,7 @@ class FlagData(base_single.BaseSingle) :
                    # In multiples of the standard deviation of the whole block
                    # once normalized to the time median.
                    'perform_hanning' : False,
+                   'cal_scale' : False,
                    'sigma_thres' : 5,
                    # In multiples of the measured standard deviation.
                    'pol_thres' : 5
@@ -32,19 +34,26 @@ class FlagData(base_single.BaseSingle) :
     feedback_title = 'New flags each data Block: '
     
     def action(self, Data) :
-        already_flagged = ma.count_masked(Data.data)
         params = self.params
+        # Keep track of how many pre existing flags there are for feedback
+        # purposes.
+        already_flagged = ma.count_masked(Data.data)
+        # Few operations to be performed before flagging.
         if params["perform_hanning"] :
             hanning.hanning_smooth(Data)
             Data.add_history('Hanning smoothed.')
+        if params["cal_scale"] :
+            cal_scale.scale_by_cal(Data, True, False, False)
+            Data.add_history('Converted to units of noise cal temperture.')
+        # Flag the data.
         apply_cuts(Data, sig_thres=params['sigma_thres'], 
                    pol_thres=params['pol_thres'])
-        new_flags = ma.count_masked(Data.data) - already_flagged
-        self.block_feedback = str(new_flags) + ', '
-
         Data.add_history('Flagged Bad Data.', ('Sigma threshold: ' +
                     str(self.params['sigma_thres']), 'Polarization threshold: '
                     + str(self.params['pol_thres'])))
+        # Report the number of new flags.
+        new_flags = ma.count_masked(Data.data) - already_flagged
+        self.block_feedback = str(new_flags) + ', '
         return Data
 
 def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0) :
@@ -90,16 +99,16 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0) :
         off_ind = 1
     else :
         raise ce.DataError('Cal states not as expected.')
-    if pol_thres > 0 :    
+    if pol_thres > 0 :
         # Always flag cal on and cal off together. Don't use ma.sum because we
         # want to transfer flags.
         data = Data.data[:,:,0,:] + Data.data[:,:,1,:]
         # Calculate the polarization cross coefficient.
         cross = ma.sum(data[:,pol_inds,:]**2, 1)
-        #cross /= (data[:,norm_inds[0],:] *
-        #          data[:,norm_inds[1],:]).filled(1.0e-10)
-        # Run it throught the flagger.
-        mask = filter_flagger(cross, Data.dims[-1]//200, pol_thres, axis=-1)
+        # Run it throught the flagger.  Tenth order polynomial seems to be a
+        # well conditioned fit.
+        # For the order, 10 seems to work for polynomial, 20 for gauss.
+        mask = filter_flagger(cross, 20, pol_thres, axis=-1)
         for ii in range(Data.dims[1]) :
             Data.data[:, ii, 0, :][mask] = ma.masked
             Data.data[:, ii, 1, :][mask] = ma.masked
@@ -107,9 +116,14 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0) :
         data = Data.data[:,:,0,:] + Data.data[:,:,1,:]
         # Figure out the order of the polynomial by the range of azimuths.
         beam_width = 0.3 # Approximate.
-        order = round(abs(max(Data.field['CRVAL2']) - min(Data.field['CRVAL2']))
-                 / beam_width)
-        order = max([order, 1])
+        # For polynomial smoothing. Assumes azumuth scan at horizion.
+        #order = round(abs(max(Data.field['CRVAL2']) - min(Data.field['CRVAL2']))
+        #         / (beam_width))
+        #order = max([order, 1])
+        # For gauss smoothing. Roughly half a beam crossing time.
+        order = (abs(max(Data.field['CRVAL2']) - min(Data.field['CRVAL2']))
+                 / (beam_width))
+        order = Data.dims[0]/order/2.0
         # First flag the frequency average, looking for obviouse blips.
         tdata = ma.mean(data/ma.mean(data, 0), -1)
         for ii in range(Data.dims[1]) :
@@ -129,7 +143,7 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0) :
             Data.data[:, ii, 0, :][mask] = ma.masked
             Data.data[:, ii, 1, :][mask] = ma.masked
 
-def filter_flagger(arr, order, threshold, axis=-1) :
+def filter_flagger(arr, order, threshold, axis=-1, method='gauss') :
     """arr should be 2 d array, flagging done along the `axis` dimension."""
     
     # Maximum allowible number of iterations.
@@ -159,16 +173,19 @@ def filter_flagger(arr, order, threshold, axis=-1) :
     tmp_arr = arr.copy()
     smoothed = sp.empty(arr.shape, dtype=float)
     smoothed[...] = sp.mean(tmp_arr, 0)
-    # 'x' values for the polyfit.
-    x = sp.arange(n)
+    # Choose smoothing algorithm.
+    if method == 'poly' :
+        smooth = poly_smooth
+    elif method == 'gauss' :
+        smooth = gauss_smooth
+    else :
+        raise ValueError("Invalid smoothing method.")
     # Iteritivly flag data.
     for ii in range(max_itr) :
         # Get rid of bad data.
         tmp_arr[mask] = smoothed[mask]
         # Smooth the data.
-        p = sp.polyfit(x, tmp_arr, order)
-        for jj in range(p.shape[1]) :
-            smoothed[:, jj] = sp.polyval(p[:, jj], x)
+        smooth(tmp_arr, order, smoothed)
         # Flag the data.
         new_masks = (abs(tmp_arr - smoothed)
                      > thresholds[thres_ind]*sp.std(tmp_arr - smoothed, 0))
@@ -181,6 +198,24 @@ def filter_flagger(arr, order, threshold, axis=-1) :
     if axis == 1 or axis == -1 :
         mask = sp.rollaxis(mask, 0, 2)
     return mask
+
+def poly_smooth(arr, order, out) :
+    n = arr.shape[0]
+    x = sp.arange(n)
+    p = sp.polyfit(x, arr, order)
+    for jj in range(p.shape[1]) :
+        out[:, jj] = sp.polyval(p[:, jj], x)
+
+def gauss_smooth(arr, width, out) :
+    # Convert from FWHM to sigma.
+    width = width/2.355
+    nk = 4*round(width) + 1
+    kernal = sig.gaussian(nk, width)
+    kernal /= sp.sum(kernal)
+    kernal.shape = (nk, 1)
+    out[...] = sig.convolve2d(arr, kernal, mode='same', boundary='symm')
+
+
 
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":
