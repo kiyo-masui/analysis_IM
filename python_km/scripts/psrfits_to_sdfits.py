@@ -268,7 +268,7 @@ class Converter(object) :
         
         # In current scan startegy, Zenith angle is approximatly 
         # constant over a file.  We will verify that this matches the antenna 
-	# fits file as a good (but scan strategy specific) check.
+        # fits file as a good (but scan strategy specific) check.
         if self.proceedure == 'ralongmap' :
             zenith_angle = psrdata[0]["TEL_ZEN"]
             if not sp.allclose(90.0 - zenith_angle, ant_el, atol=0.1) :
@@ -343,7 +343,7 @@ class Converter(object) :
                 tmp_n_bins_ave = n_bins_ave//n_bins_cal
                 data.shape = (n_bins, tmp_n_bins_ave, n_bins_cal, npol,
                               nfreq)
-                # Mean here instead of median for speed.
+                # Use mean not median due to discritization.
                 data = scls*sp.mean(data, 1) + offs
                 data.shape = (n_bins*n_bins_cal, npol, nfreq)
                 # Finally devided into cal on and cal off.
@@ -351,7 +351,7 @@ class Converter(object) :
             else :
                 # Just rebin in time and add a length 1 cal index.
                 data.shape = (n_bins, n_bins_ave, npol, nfreq)
-                data = sp.median(data, 1)
+                data = sp.mean(data, 1)
                 data = scls*data + offs
                 data.shape = (n_bins, npol, ncal, nfreq)
             
@@ -448,7 +448,7 @@ def get_cal_mask(data, n_bins_cal) :
     # Fold the data at the cal period.
     folded_data.shape = ((ntime//n_bins_cal, n_bins_cal) +
                          folded_data.shape[1:])
-    folded_data = sp.median(folded_data, 0)
+    folded_data = sp.mean(folded_data, 0)
     # Split the data into cal on and cal offs.
     base = sp.mean(folded_data)
     diff = sp.std(folded_data)
@@ -540,9 +540,10 @@ def separate_cal(data, n_bins_cal) :
             off_mask = sp.logical_or(inds >= first_off, inds < 
                                  (first_off + n_cal_state) % n_bins_cal)
 
-        # Find cal on and cal off averages.
-        out_data[:,:,0,:] = sp.median(data[:,on_mask,:,:], 1)
-        out_data[:,:,1,:] = sp.median(data[:,off_mask,:,:], 1)
+        # Find cal on and cal off averages.  Always use mean not median due to
+        # discretization noise.
+        out_data[:,:,0,:] = sp.mean(data[:,on_mask,:,:], 1)
+        out_data[:,:,1,:] = sp.mean(data[:,off_mask,:,:], 1)
 
     return out_data
 
