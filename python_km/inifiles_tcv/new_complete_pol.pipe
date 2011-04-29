@@ -72,9 +72,9 @@ fd_flatten_pol = True
 fd_derivative_cuts = 5
 fd_derivative_width = 1
 
-#from time_stream import rebin_freq
+from time_stream import rebin_freq
 # Comment this line to skip this step when running python pipeline/manager
-#pipe_modules.append(rebin_freq.RebinFreq)
+pipe_modules.append(rebin_freq.RebinFreq)
 rf_input_root = fd_output_root
 rf_file_middles = file_middles
 rf_input_end = '.fits'
@@ -83,12 +83,12 @@ rf_output_end = '.fits'
 rf_scans = ()
 rf_IFs = ()
 
-rf_channel_width = 2.0
+rf_channel_width = 0.5
 rf_mean_instead_median = True
 
-#from time_stream import stitch_windows_crude
+from time_stream import stitch_windows_crude
 #Comment the following line to skip this step when running pipeline/manager
-#pipe_modules.append(stitch_windows_crude.Stitch)
+pipe_modules.append(stitch_windows_crude.Stitch)
 sw_input_root = rf_output_root
 sw_file_middles = file_middles
 sw_input_end = '.fits'
