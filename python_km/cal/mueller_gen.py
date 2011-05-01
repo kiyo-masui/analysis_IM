@@ -40,14 +40,15 @@ class MuellerGen(object) :
 
     def peval(self,p):
         dG = p[0]
+#        al = 90*sp.pi/180 # Note that this parameter is set based on observed results with chi = 0.
         al = ((p[1]+180)%360-180)*sp.pi/180
         ps = ((p[2]+180)%360-180)*sp.pi/180
         ph = ((p[3]+180)%360-180)*sp.pi/180
         ep = p[4]
         Q = p[5]
         U = p[6]
-        ch = 0
-#        ch = ((p[7]+45)%180-45)*sp.pi/180
+#        ch = 0
+        ch = ((p[7]+45)%180-45)*sp.pi/180
         theta = self.theta
         t = self.function
         for i in range(0,len(t)-1,3):
@@ -72,18 +73,16 @@ class MuellerGen(object) :
         self.file_num = len(params['file_middles']) # getting a variable for number of calibrator files being used
 
 # Need to remove count for calibrator files that are not the right size.
-        for file_middle in params['file_middles']
+        for file_middle in params['file_middles'] :
             input_fname = (params['input_root'] + file_middle + 
                            params['input_end'])
             Reader = core.fitsGBT.Reader(input_fname)
             n_scans = len(Reader.scan_set)
             if guppi_result == True : 
-                if n_scans == 2 :
-                else :
+                if n_scans != 2 :
                     self.file_num -=1
             elif guppi_result == False :
-                if n_scans == 4 :
-                else :
+                if n_scans != 4 :
                     self.file_num -=1
 
 # Need to know the general frequency binning (going to assume that it's 200 for guppi, 260 for spectrometer, aka 1 MHz binning)
@@ -203,7 +202,7 @@ class MuellerGen(object) :
 
         d[k,:] = sp.tan(2*33*sp.pi/180) # the 33 degrees here  is specific to 3C286, takes a different value for different calibrators
         #The seven parameters are in order deltaG[0], alpha[1], psi[2], phi[3], epsilon[4], Qsrc[5], Usrc[6] chi[7] => the parameter vector is p
-        p0 = [0.3, -2.0, 170.0, 10.0, 0.016, 0.005, 0.026, 0] # preliminary values based on guesses and heiles generation.
+        p0 = [0.3, 90.0, 170.0, 10.0, 0.016, 0.005, 0.026, 0] # preliminary values based on guesses and heiles generation.
         error = sp.ones(3*self.file_num+1)
         #Note that error can be used to weight the equations if not all set to one.
 
@@ -219,7 +218,7 @@ class MuellerGen(object) :
             pval[1]=(pval[1]+180)%360-180
             pval[2]=(pval[2]+180)%360-180
             pval[3]=(pval[3]+180)%360-180
-#            pval[7]=(pval[7]+180)%360-180
+            pval[7]=(pval[7]+180)%360-180
 
             p_val_out[f,0] = freq_val[f]
             p_val_out[f,1] = pval[0]
@@ -232,15 +231,15 @@ class MuellerGen(object) :
             p_val_out[f,8] = pval[7]
 
 # Gets error values, note that this doesn't work if set chi to zero. 
-#            p_err_out[f,0] = freq_val[f]
-#            p_err_out[f,1] = perr[0,0]
-#            p_err_out[f,2] = perr[1,1]
-#            p_err_out[f,3] = perr[2,2]
-#            p_err_out[f,4] = perr[3,3]
-#            p_err_out[f,5] = perr[4,4]
-#            p_err_out[f,6] = perr[5,5]
-#            p_err_out[f,7] = perr[6,6]
-#            p_err_out[f,8] = perr[7,7]
+            p_err_out[f,0] = freq_val[f]
+            p_err_out[f,1] = perr[0,0]
+            p_err_out[f,2] = perr[1,1]
+            p_err_out[f,3] = perr[2,2]
+            p_err_out[f,4] = perr[3,3]
+            p_err_out[f,5] = perr[4,4]
+            p_err_out[f,6] = perr[5,5]
+            p_err_out[f,7] = perr[6,6]
+            p_err_out[f,8] = perr[7,7]
 
         np.savetxt('mueller_params_calc.txt', p_val_out, delimiter = ' ')
         np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')

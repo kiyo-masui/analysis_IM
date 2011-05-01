@@ -19,7 +19,7 @@ base_dir = os.getenv('GBT10B_OUT')
 #raw_data_dir = os.getenv('GBT10B_DATA')
 kiyo_dir = os.getenv('GBT10B_KM')
 prefix = ''
-map_prefix = prefix + field + '_41-52_'
+map_prefix = prefix + field + '_41-52_add_rotate_'
 IFs = ()
 
 #from time_stream import hanning 
@@ -67,10 +67,24 @@ rf_IFs = ()
 rf_channel_width = 1.0
 rf_mean_instead_median = True
 
+#from time_stream import rotate_pol
+# Comment this line to skip this step in pipline.
+#pipe_modules.append(rotate_pol.RotatePol)
+#rp_input_root = rf_output_root
+#rp_file_middles = file_middles
+#rp_input_end = '.fits'
+#rp_output_root = base_dir + 'rotated_to_X_Y/'
+#rp_output_end = '.fits'
+#rp_scans = ()
+#rp_IFs = ()
+
+#rp_new_pols = (-5, -7, -8, -6)
+#rp_average_cals = False
+
 #from time_stream import cal_scale
 # Comment the following line to skip this step when running pipeline/manager
 #pipe_modules.append(cal_scale.CalScale)
-cs_input_root = rf_output_root
+#cs_input_root = rp_output_root
 cs_file_middles = file_middles
 cs_input_end = '.fits'
 cs_output_root = base_dir + 'cal_scaled/'
@@ -96,10 +110,24 @@ cl_IFs = ()
 
 cl_cal_temperature_files = (os.getenv('GBT10B_KM') + 'kevin_cal/cal_21.fits',)
 
+from time_stream import rotate_pol
+# Comment this line to skip this step in pipline.
+pipe_modules.append(rotate_pol.RotatePol)
+rp_input_root = cl_output_root
+rp_file_middles = file_middles
+rp_input_end = '.fits'
+rp_output_root = base_dir + 'rotated_to_I_Q/'
+rp_output_end = '.fits'
+rp_scans = ()
+rp_IFs = ()
+
+rp_new_pols = (1,2,3,4)
+rp_average_cals = False
+
 from time_stream import pol_cal
 # Comment this line to skip this step in pipline.
 pipe_modules.append(pol_cal.Calibrate)
-pc_input_root = cl_output_root
+pc_input_root = rp_output_root
 pc_file_middles = file_middles
 pc_input_end = '.fits'
 pc_output_root = base_dir + 'pol_cal/'

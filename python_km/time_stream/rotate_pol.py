@@ -29,7 +29,7 @@ class RotatePol(base_single.BaseSingle) :
                average_cals=self.params['average_cals'])
         Data.add_history('Rotated polarizations parameters.', ('Rotated to:' +
                                                 str(self.params['new_pols']),))
-        if params['average_cals'] :
+        if self.params['average_cals'] :
             Data.add_history('Averaged cal states.')
         return Data
 
@@ -59,10 +59,10 @@ def rotate(Data, new_pols=(1,), average_cals=False) :
         elif tuple(new_pols) == (-5, -7, -8, -6) :
             new_data = ma.empty(Data.dims)
             new_data[:,[0],:,:] = (Data.data[:,[Q_ind],:,:] 
-                                   - Data.data[:,[I_ind],:,:])/2.0
+                                   + Data.data[:,[I_ind],:,:])/2.0
             new_data[:,[1],:,:] = Data.data[:,[U_ind],:,:] 
             new_data[:,[2],:,:] = Data.data[:,[V_ind],:,:] 
-            new_data[:,[0],:,:] = (Data.data[:,[I_ind],:,:] 
+            new_data[:,[3],:,:] = (Data.data[:,[I_ind],:,:] 
                                    - Data.data[:,[Q_ind],:,:])/2.0
         else :
             msg = ("Converstion to " + str(tuple(new_pols)) + " from " 
