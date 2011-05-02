@@ -142,9 +142,11 @@ def mueller() :
         for j in range(0,4):
             for k in range(0,4):
                 m_total[j,k,i] = M_total[j,k]
-#     print m_total[:,:,79]
+#     np.savetxt('mueller_matrix_first_row.txt', m_total[:,0,:], delimiter=' ')
+#     np.savetxt('mueller_matrix_second_row.txt', m_total[:,1,:], delimiter=' ')
+#     np.savetxt('mueller_matrix_third_row.txt', m_total[:,2,:], delimiter=' ')
+#     np.savetxt('mueller_matrix_fourth_row.txt', m_total[:,3,:], delimiter=' ') 
      return m_total
-
 
 def calibrate_pol(Data, m_total) :
     """Subtracts a Map out of Data."""
@@ -225,7 +227,7 @@ def calibrate_pol(Data, m_total) :
 #               else :
 #                  raise ce.DataError('The frequency outside viable window') 
 
-     # Tells which mueller matrix to use.
+     # Tells which mueller matrix to use. Assumes at least 1 MHz bins.
                frequency = int(Data.freq[freq]/1000000) 
                freq_limit=len(m_total[0,0,:])
                if freq_limit == 200:

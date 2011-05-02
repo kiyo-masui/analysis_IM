@@ -40,15 +40,15 @@ class MuellerGen(object) :
 
     def peval(self,p):
         dG = p[0]
-#        al = 90*sp.pi/180 # Note that this parameter is set based on observed results with chi = 0.
-        al = ((p[1]+180)%360-180)*sp.pi/180
+        al = 90*sp.pi/180 # Note that this parameter is set based on observed results with chi = 0.
+#        al = ((p[1]+180)%360-180)*sp.pi/180
         ps = ((p[2]+180)%360-180)*sp.pi/180
         ph = ((p[3]+180)%360-180)*sp.pi/180
         ep = p[4]
         Q = p[5]
         U = p[6]
-#        ch = 0
-        ch = ((p[7]+45)%180-45)*sp.pi/180
+        ch = 0
+#        ch = ((p[7]+45)%180-45)*sp.pi/180
         theta = self.theta
         t = self.function
         for i in range(0,len(t)-1,3):
@@ -215,10 +215,10 @@ class MuellerGen(object) :
             perr = plsq[1] # this is a 2d array representing the estimated covariance of the results.
 
 #want to adjust results if angles not in limits
-            pval[1]=(pval[1]+180)%360-180
+#            pval[1]=(pval[1]+180)%360-180
             pval[2]=(pval[2]+180)%360-180
             pval[3]=(pval[3]+180)%360-180
-            pval[7]=(pval[7]+180)%360-180
+#            pval[7]=(pval[7]+180)%360-180
 
             p_val_out[f,0] = freq_val[f]
             p_val_out[f,1] = pval[0]
@@ -231,15 +231,15 @@ class MuellerGen(object) :
             p_val_out[f,8] = pval[7]
 
 # Gets error values, note that this doesn't work if set chi to zero. 
-            p_err_out[f,0] = freq_val[f]
-            p_err_out[f,1] = perr[0,0]
-            p_err_out[f,2] = perr[1,1]
-            p_err_out[f,3] = perr[2,2]
-            p_err_out[f,4] = perr[3,3]
-            p_err_out[f,5] = perr[4,4]
-            p_err_out[f,6] = perr[5,5]
-            p_err_out[f,7] = perr[6,6]
-            p_err_out[f,8] = perr[7,7]
+#            p_err_out[f,0] = freq_val[f]
+#            p_err_out[f,1] = perr[0,0]
+#            p_err_out[f,2] = perr[1,1]
+#            p_err_out[f,3] = perr[2,2]
+#            p_err_out[f,4] = perr[3,3]
+#            p_err_out[f,5] = perr[4,4]
+#            p_err_out[f,6] = perr[5,5]
+#            p_err_out[f,7] = perr[6,6]
+#            p_err_out[f,8] = perr[7,7]
 
         np.savetxt('mueller_params_calc.txt', p_val_out, delimiter = ' ')
         np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')

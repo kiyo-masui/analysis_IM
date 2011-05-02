@@ -110,9 +110,9 @@ cl_IFs = ()
 
 cl_cal_temperature_files = (os.getenv('GBT10B_KM') + 'kevin_cal/cal_21.fits',)
 
-from time_stream import rotate_pol
+#from time_stream import rotate_pol
 # Comment this line to skip this step in pipline.
-pipe_modules.append(rotate_pol.RotatePol)
+#pipe_modules.append(rotate_pol.RotatePol)
 rp_input_root = cl_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
@@ -124,9 +124,9 @@ rp_IFs = ()
 rp_new_pols = (1,2,3,4)
 rp_average_cals = False
 
-from time_stream import pol_cal
+#from time_stream import pol_cal
 # Comment this line to skip this step in pipline.
-pipe_modules.append(pol_cal.Calibrate)
+#pipe_modules.append(pol_cal.Calibrate)
 pc_input_root = rp_output_root
 pc_file_middles = file_middles
 pc_input_end = '.fits'
@@ -138,7 +138,7 @@ pc_IFs = ()
 from time_stream import combine_cal
 # Comment this line to skip this step in pipeline
 pipe_modules.append(combine_cal.CombineCal)
-cc_input_root = pc_output_root
+cc_input_root =rp_output_root
 cc_file_middles = file_middles
 cc_input_end = '.fits'
 cc_output_root = base_dir + 'combined/'
