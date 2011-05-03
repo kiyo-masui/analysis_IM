@@ -2,7 +2,6 @@
 
 import scipy as sp
 
-import matplotlib as plt
 import numpy.ma as ma
 
 import utils
