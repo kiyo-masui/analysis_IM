@@ -596,116 +596,123 @@ class DataChecker(object) :
         params = self.params
         # Loop over files, make one set of plots per file.
         for middle in params["file_middles"] :
-            # Construct the file name and read in all scans.
-            file_name = params["input_root"] + middle + ".fits"
-            Reader = fitsGBT.Reader(file_name)
-            Blocks = Reader.read((), ())
-            # Initialize a few variables.
-            counts = 0
-            cal_sum_unscaled = 0
-            cal_sum = 0
-            cal_time = ma.zeros((0, 4))
-            sys_time = ma.zeros((0, 4))
-            cal_noise_spec = 0
-            # Get the number of times in the first block and shorten to a
-            # number that should be smaller than all blocks.
-            nt = int(Blocks[0].dims[0]*.9)
-            # Get the frequency axis.  Must be before loop because the data is
-            # rebined in the loop.
-            Blocks[0].calc_freq()
-            f = Blocks[0].freq
-            for Data in Blocks :
-                # Rotate to XX, YY etc.
-                rotate_pol.rotate(Data, (-5, -7, -8, -6))
-                this_count = ma.count(Data.data[:,:,0,:] 
-                                      + Data.data[:,:,1,:], 0)
-                cal_sum_unscaled += ma.sum(Data.data[:,:,0,:] +
-                        Data.data[:,:,1,:], 0)
-                # Time series of the cal temperture.
-                cal_time = sp.concatenate((cal_time, ma.mean(Data.data[:,:,0,:]
-                    - Data.data[:,:,1,:], -1).filled(-1)), 0)
-                # Everything else done in cal units.
-                cal_scale.scale_by_cal(Data)
-                # Time serise of the system temperture.
-                sys_time = sp.concatenate((sys_time, ma.mean(Data.data[:,:,0,:]
-                    + Data.data[:,:,1,:], -1).filled(-5)), 0)
-                # Accumulate variouse sums.
-                counts += this_count
-                cal_sum += ma.sum(Data.data[:,:,0,:] + Data.data[:,:,1,:], 0)
-                # Take power spectrum of on-off/on+off.
-                rebin_freq.rebin(Data, 512, mean=True, by_nbins=True)
-                cal_diff = ((Data.data[:,[0,-1],0,:] 
-                             - Data.data[:,[0,-1],1,:])
-                            / (Data.data[:,[0,-1],0,:] 
-                               + Data.data[:,[0,-1],1,:]))
-                cal_diff -= ma.mean(cal_diff, 0)
-                cal_diff = cal_diff.filled(0)[0:nt,...]
-                power = abs(fft.fft(cal_diff, axis=0)[range(nt//2+1)])
-                power = power**2/nt
-                cal_noise_spec += power
-            # Normalize.
-            cal_sum_unscaled /= 2*counts
-            cal_sum /= 2*counts
-            # Get time steps and frequency wdith for noise power normalization.
-            Data = Blocks[0]
-            Data.calc_time()
-            dt = abs(sp.mean(sp.diff(Data.time)))
-            # Note that Data was rebined in the loop.
-            dnu = abs(Data.field["CDELT1"])
-            cal_noise_spec *= dt*dnu/len(Blocks)
-            # Power spectrum independant axis.
-            ps_freqs = sp.arange(nt//2 + 1, dtype=float)
-            ps_freqs /= (nt//2 + 1)*dt*2
-            # Long time axis.
-            t_total = sp.arange(cal_time.shape[0])*dt
-            # Make plots.
-            h = plt.figure(figsize=(10,10))
-            # Unscaled temperature spectrum.
-            plt.subplot(3, 2, 1)
-            plt.plot(f/1e6, sp.rollaxis(cal_sum_unscaled, -1))
-            plt.xlim((7e2, 9e2))
-            plt.xlabel("frequency (MHz)")
-            plt.title("Temperture spectrum")
-            # Temperture spectrum in terms of noise cal. 4 Polarizations.
-            plt.subplot(3, 2, 2)
-            plt.plot(f/1e6, sp.rollaxis(cal_sum, -1))
-            plt.ylim((-10, 40))
-            plt.xlim((7e2, 9e2))
-            plt.xlabel("frequency (MHz)")
-            plt.title("Temperture spectrum in cal units")
-            # Time serise of cal T.
-            plt.subplot(3, 2, 3)
-            plt.plot(t_total, cal_time)
-            plt.xlim((0,dt*3500))
-            plt.xlabel("time (s)")
-            plt.title("Cal time series")
-            # Time series of system T.
-            plt.subplot(3, 2, 4)
-            plt.plot(t_total, sys_time)
-            plt.xlim((0,dt*3500))
-            plt.xlabel("time (s)")
-            plt.ylim((-4, 35))
-            plt.title("System time series in cal units")
-            # XX cal PS.
-            plt.subplot(3, 2, 5)
-            plt.loglog(ps_freqs, cal_noise_spec[:,0,:])
-            plt.xlim((1.0/60, 1/(2*dt)))
-            plt.ylim((1e-1, 1e3))
-            plt.xlabel("frequency (Hz)")
-            plt.title("XX cal power spectrum")
-            # YY cal PS.
-            plt.subplot(3, 2, 6)
-            plt.loglog(ps_freqs, cal_noise_spec[:,1,:])
-            plt.xlim((1.0/60, 1/(2*dt)))
-            plt.ylim((1e-1, 1e3))
-            plt.xlabel("frequency (Hz)")
-            plt.title("YY cal power spectrum")
-            # Adjust spacing.
-            plt.subplots_adjust(hspace=.4)
-            # Save the figure.
-            plt.savefig(params['output_root'] + middle
-                    + params['output_end'])
-    
+            p = mp.Process(target=self.processfile, args=(middle,))
+            p.start()
+            p.join()
+
+    def process_file(self, middle) :
+        """Split off to fix pyfits memory leak."""
+        params = self.params
+        # Construct the file name and read in all scans.
+        file_name = params["input_root"] + middle + ".fits"
+        Reader = fitsGBT.Reader(file_name)
+        Blocks = Reader.read((), ())
+        # Initialize a few variables.
+        counts = 0
+        cal_sum_unscaled = 0
+        cal_sum = 0
+        cal_time = ma.zeros((0, 4))
+        sys_time = ma.zeros((0, 4))
+        cal_noise_spec = 0
+        # Get the number of times in the first block and shorten to a
+        # number that should be smaller than all blocks.
+        nt = int(Blocks[0].dims[0]*.9)
+        # Get the frequency axis.  Must be before loop because the data is
+        # rebined in the loop.
+        Blocks[0].calc_freq()
+        f = Blocks[0].freq
+        for Data in Blocks :
+            # Rotate to XX, YY etc.
+            rotate_pol.rotate(Data, (-5, -7, -8, -6))
+            this_count = ma.count(Data.data[:,:,0,:] 
+                                  + Data.data[:,:,1,:], 0)
+            cal_sum_unscaled += ma.sum(Data.data[:,:,0,:] +
+                    Data.data[:,:,1,:], 0)
+            # Time series of the cal temperture.
+            cal_time = sp.concatenate((cal_time, ma.mean(Data.data[:,:,0,:]
+                - Data.data[:,:,1,:], -1).filled(-1)), 0)
+            # Everything else done in cal units.
+            cal_scale.scale_by_cal(Data)
+            # Time serise of the system temperture.
+            sys_time = sp.concatenate((sys_time, ma.mean(Data.data[:,:,0,:]
+                + Data.data[:,:,1,:], -1).filled(-5)), 0)
+            # Accumulate variouse sums.
+            counts += this_count
+            cal_sum += ma.sum(Data.data[:,:,0,:] + Data.data[:,:,1,:], 0)
+            # Take power spectrum of on-off/on+off.
+            rebin_freq.rebin(Data, 512, mean=True, by_nbins=True)
+            cal_diff = ((Data.data[:,[0,-1],0,:] 
+                         - Data.data[:,[0,-1],1,:])
+                        / (Data.data[:,[0,-1],0,:] 
+                           + Data.data[:,[0,-1],1,:]))
+            cal_diff -= ma.mean(cal_diff, 0)
+            cal_diff = cal_diff.filled(0)[0:nt,...]
+            power = abs(fft.fft(cal_diff, axis=0)[range(nt//2+1)])
+            power = power**2/nt
+            cal_noise_spec += power
+        # Normalize.
+        cal_sum_unscaled /= 2*counts
+        cal_sum /= 2*counts
+        # Get time steps and frequency wdith for noise power normalization.
+        Data = Blocks[0]
+        Data.calc_time()
+        dt = abs(sp.mean(sp.diff(Data.time)))
+        # Note that Data was rebined in the loop.
+        dnu = abs(Data.field["CDELT1"])
+        cal_noise_spec *= dt*dnu/len(Blocks)
+        # Power spectrum independant axis.
+        ps_freqs = sp.arange(nt//2 + 1, dtype=float)
+        ps_freqs /= (nt//2 + 1)*dt*2
+        # Long time axis.
+        t_total = sp.arange(cal_time.shape[0])*dt
+        # Make plots.
+        h = plt.figure(figsize=(10,10))
+        # Unscaled temperature spectrum.
+        plt.subplot(3, 2, 1)
+        plt.plot(f/1e6, sp.rollaxis(cal_sum_unscaled, -1))
+        plt.xlim((7e2, 9e2))
+        plt.xlabel("frequency (MHz)")
+        plt.title("Temperture spectrum")
+        # Temperture spectrum in terms of noise cal. 4 Polarizations.
+        plt.subplot(3, 2, 2)
+        plt.plot(f/1e6, sp.rollaxis(cal_sum, -1))
+        plt.ylim((-10, 40))
+        plt.xlim((7e2, 9e2))
+        plt.xlabel("frequency (MHz)")
+        plt.title("Temperture spectrum in cal units")
+        # Time serise of cal T.
+        plt.subplot(3, 2, 3)
+        plt.plot(t_total, cal_time)
+        plt.xlim((0,dt*3500))
+        plt.xlabel("time (s)")
+        plt.title("Cal time series")
+        # Time series of system T.
+        plt.subplot(3, 2, 4)
+        plt.plot(t_total, sys_time)
+        plt.xlim((0,dt*3500))
+        plt.xlabel("time (s)")
+        plt.ylim((-4, 35))
+        plt.title("System time series in cal units")
+        # XX cal PS.
+        plt.subplot(3, 2, 5)
+        plt.loglog(ps_freqs, cal_noise_spec[:,0,:])
+        plt.xlim((1.0/60, 1/(2*dt)))
+        plt.ylim((1e-1, 1e3))
+        plt.xlabel("frequency (Hz)")
+        plt.title("XX cal power spectrum")
+        # YY cal PS.
+        plt.subplot(3, 2, 6)
+        plt.loglog(ps_freqs, cal_noise_spec[:,1,:])
+        plt.xlim((1.0/60, 1/(2*dt)))
+        plt.ylim((1e-1, 1e3))
+        plt.xlabel("frequency (Hz)")
+        plt.title("YY cal power spectrum")
+        # Adjust spacing.
+        plt.subplots_adjust(hspace=.4)
+        # Save the figure.
+        plt.savefig(params['output_root'] + middle
+                + params['output_end'])
+
 
 # This manager scripts together all the operations that need to be performed to
 # the data at GBT.
