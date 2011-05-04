@@ -145,7 +145,8 @@ class Converter(object) :
                             + ", " + str(initial_scan) + " in directory: "
                             + log_dir)
                 elif Data is None :
-                    warnings.warn("Missing psrfits file: " + guppi_file)
+                    warnings.warn("Missing psrfits file. Scan: " + str(scan) 
+                                  + " file root: " + params["guppi_input_root"])
                 else :
                     Block_list.append(Data)
 
@@ -742,15 +743,15 @@ class DataManager(object) :
         params = self.params
         # Redirect the standart in and out if desired.
         if params["log_file"] :
-            self.f_log = open(params["log_file"], 'a')
+            self.f_log = open(params["log_file"], 'w')
             old_out = sys.stdout
             sys.stdout = self.f_log
         else :
             self.f_log = None
         if params["error_file"] :
-            self.f_err = open(params["error_file"], 'a')
+            self.f_err = open(params["error_file"], 'w')
             old_err = sys.stderr
-            sys.sdterr = self.f_err
+            sys.stderr = self.f_err
         else :
             self.f_err = None
         # Loop over the sessions and process them.
