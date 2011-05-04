@@ -1,10 +1,20 @@
+r"""LOFAR foreground model.
 
+Implements the foreground simulation method of Jelic et al [1]_. At
+the moment only the Synchrotron is implemented.
 
-
+References
+----------
+.. [1] http://arxiv.org/abs/0804.1130
+"""
 import numpy as np
 from gaussianfield import RandomField
 
-class _LofarGSDE_3D(RandomField):
+from maps import *
+
+
+
+class _LofarGDSE_3D(RandomField):
 
     delta = -4.0
 
@@ -16,20 +26,15 @@ class _LofarGSDE_3D(RandomField):
 
         return ps
 
-class LofarGSDE(object):
+class LofarGDSE(Map3d):
+    r"""LOFAR synchrotron model.
 
-    widthx = 5.0
-    widthy = 5.0
-    
-    numx = 128
-    numy = 128
-
-    numf = 128
-
+    Generates a 3d section of the galaxy with a independent power law
+    emission at each point (seperate amplitude and spectral index),
+    and integrates over the third axis, to produce a 3d
+    angle-angle-frequency map.
+    """
     nu_0 = 325.0
-
-    nu_l = 120.0
-    nu_h = 325.0
     
     correlated = False
 
@@ -44,13 +49,12 @@ class LofarGSDE(object):
     def getfield(self):
         r"""Lofar synchrotron."""
 
-        numz = int((self.numx + self.numy)/2)
+        numz = int((self.x_num + self.y_num) / 2)
 
         # Set up 3D field generator
-        npix = [self.numx, self.numy, numz]
-        wsize = [5.0 / self.widthx, 5.0 / self.widthy, 1.0]
-        lf = _LofarGSDE_3D(npix = npix, wsize = wsize)
-        #lf.delta = self.alpha - 1.0
+        npix = [self.x_num, self.y_num, numz]
+        wsize = [5.0 / self.x_width, 5.0 / self.y_width, 1.0]
+        lf = _LofarGDSE_3D(npix = npix, wsize = wsize)
         lf.delta = self.alpha
         
         A = lf.getfield()
@@ -59,11 +63,12 @@ class LofarGSDE(object):
         A = ((1.0*self.A_amp) / numz) + A * (self.A_std / A.sum(axis = 2).std())
         beta = self.beta_mean + beta * (self.beta_std / beta.std())
 
-        freq = np.linspace(self.nu_l, self.nu_h, self.numf) / self.nu_0
+        ## Hmmmm need to check whether this should include the end point or not.
+        freq = np.linspace(self.nu_lower, self.nu_upper, self.nu_num) / self.nu_0
 
-        Tb = np.zeros((self.numf, self.numx, self.numy))
+        Tb = np.zeros(self._num_array())
 
-        for i in range(self.numf):
+        for i in range(self.nu_num):
             Tb[i,:,:] = (A * freq[i]**beta).sum(axis=2)
 
         return Tb

@@ -25,6 +25,7 @@ The correlation function routines can be slow as they require lots of integrals 
 Todo
 ----
 Things still to do are:
+
 - Regularise small scales in the correlation functions (currently they don't quite diverge)
 - Make point source maps return temperatures.
 

@@ -14,7 +14,7 @@ import pointsource
 
 cm = matplotlib.cm.hot
 
-ls = lofar.LofarGSDE()
+ls = lofar.LofarGDSE()
 
 tb = ls.getfield()
 fs = np.linspace(120.0,325.0,128) / 325.0
@@ -58,8 +58,8 @@ f.clf()
 
 cm = matplotlib.cm.gray
 
-ps = pointsource.PowerLawModel()
-ps.flux_max = 50.0
+ps = pointsource.DiMatteo()
+#ps.flux_max = 50.0
 psm = ps.generate_map(5.0, 256, 5.0, 256, 120.0, 325.0, 64)
 
 
