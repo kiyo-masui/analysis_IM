@@ -24,6 +24,7 @@ import warnings
 import numpy.ma as ma
 import scipy as sp
 import scipy.interpolate as interp
+import scipy.fftpack as fft
 import pyfits
 import matplotlib.pyplot as plt
 
@@ -143,8 +144,11 @@ class Converter(object) :
                             " Perhase a scan was aborted. Scans: " + str(scan)
                             + ", " + str(initial_scan) + " in directory: "
                             + log_dir)
-                elif not Data is None :
+                elif Data is None :
+                    warnings.warn("Missing psrfits file: " + guppi_file)
+                else :
                     Block_list.append(Data)
+
             # End loop over scans (input files).
             # Now we can write our list of scans to disk.
             if len(scans_this_file) > 1 :
@@ -236,7 +240,6 @@ class Converter(object) :
         # Sometimes guppi files are just missing.  This shouldn't crash the
         # program.
         if not os.path.isfile(guppi_file) :
-            warnings.warn("Missing psrfits file: " + guppi_file)
             Pipe.send(None)
             return
         print "Converting file: " + guppi_file,
@@ -580,7 +583,7 @@ params_init_checker = {
                       "input_root" : "",
                       "file_middles" : ("",),
                       "output_root" : "",
-                      "output_end" : ".eps"
+                      "output_end" : ".pdf"
                       }
 
 class DataChecker(object) :
@@ -600,10 +603,17 @@ class DataChecker(object) :
             # Initialize a few variables.
             counts = 0
             cal_sum_unscaled = 0
-            n_times = 0
             cal_sum = 0
             cal_time = ma.zeros((0, 4))
+            sys_time = ma.zeros((0, 4))
             cal_noise_spec = 0
+            # Get the number of times in the first block and shorten to a
+            # number that should be smaller than all blocks.
+            nt = int(Blocks[0].dims[0]*.9)
+            # Get the frequency axis.  Must be before loop because the data is
+            # rebined in the loop.
+            Blocks[0].calc_freq()
+            f = Blocks[0].freq
             for Data in Blocks :
                 # Rotate to XX, YY etc.
                 rotate_pol.rotate(Data, (-5, -7, -8, -6))
@@ -611,47 +621,90 @@ class DataChecker(object) :
                                       + Data.data[:,:,1,:], 0)
                 cal_sum_unscaled += ma.sum(Data.data[:,:,0,:] +
                         Data.data[:,:,1,:], 0)
+                # Time series of the cal temperture.
                 cal_time = sp.concatenate((cal_time, ma.mean(Data.data[:,:,0,:]
-                    + Data.data[:,:,1,:], -1).filled(-5)), 0)
+                    - Data.data[:,:,1,:], -1).filled(-1)), 0)
+                # Everything else done in cal units.
                 cal_scale.scale_by_cal(Data)
+                # Time serise of the system temperture.
+                sys_time = sp.concatenate((sys_time, ma.mean(Data.data[:,:,0,:]
+                    + Data.data[:,:,1,:], -1).filled(-5)), 0)
                 # Accumulate variouse sums.
                 counts += this_count
-                n_times += Data.dims[0]
                 cal_sum += ma.sum(Data.data[:,:,0,:] + Data.data[:,:,1,:], 0)
                 # Take power spectrum of on-off/on+off.
-                rebin_freq.rebin(Data, 
-                cal_diff += ma.sum(Data.data[:,:,0,:] - Data.data[:,:,1,:], 0)
+                rebin_freq.rebin(Data, 512, mean=True, by_nbins=True)
+                cal_diff = ((Data.data[:,[0,-1],0,:] 
+                             - Data.data[:,[0,-1],1,:])
+                            / (Data.data[:,[0,-1],0,:] 
+                               + Data.data[:,[0,-1],1,:]))
+                cal_diff -= ma.mean(cal_diff, 0)
+                cal_diff = cal_diff.filled(0)[0:nt,...]
+                power = abs(fft.fft(cal_diff, axis=0)[range(nt//2+1)])
+                power = power**2/nt
+                cal_noise_spec += power
             # Normalize.
             cal_sum_unscaled /= 2*counts
             cal_sum /= 2*counts
-            nan_frac = sp.array(n_times - counts, dtype=float)/n_times
-            # Get the frequency axis:
-            Blocks[0].calc_freq()
-            f = Blocks[0].freq
+            # Get time steps and frequency wdith for noise power normalization.
+            Data = Blocks[0]
+            Data.calc_time()
+            dt = abs(sp.mean(sp.diff(Data.time)))
+            # Note that Data was rebined in the loop.
+            dnu = abs(Data.field["CDELT1"])
+            cal_noise_spec *= dt*dnu/len(Blocks)
+            # Power spectrum independant axis.
+            ps_freqs = sp.arange(nt//2 + 1, dtype=float)
+            ps_freqs /= (nt//2 + 1)*dt*2
+            # Long time axis.
+            t_total = sp.arange(cal_time.shape[0])*dt
             # Make plots.
-            h = plt.figure()
+            h = plt.figure(figsize=(10,10))
             # Unscaled temperature spectrum.
-            plt.subplot(2, 2, 1)
-            plt.plot(f, sp.rollaxis(cal_sum_unscaled, -1))
-            plt.xlim((7e8, 9e8))
+            plt.subplot(3, 2, 1)
+            plt.plot(f/1e6, sp.rollaxis(cal_sum_unscaled, -1))
+            plt.xlim((7e2, 9e2))
+            plt.xlabel("frequency (MHz)")
+            plt.title("Temperture spectrum")
             # Temperture spectrum in terms of noise cal. 4 Polarizations.
-            plt.subplot(2, 2, 2)
-            plt.plot(f, sp.rollaxis(cal_sum, -1))
-            plt.ylim((-20, 40))
-            plt.xlim((7e8, 9e8))
-            # Time series of cal T.
-            plt.subplot(2, 2, 3)
-            plt.plot(cal_time)
-            plt.xlim((0,3500))
+            plt.subplot(3, 2, 2)
+            plt.plot(f/1e6, sp.rollaxis(cal_sum, -1))
+            plt.ylim((-10, 40))
+            plt.xlim((7e2, 9e2))
+            plt.xlabel("frequency (MHz)")
+            plt.title("Temperture spectrum in cal units")
+            # Time serise of cal T.
+            plt.subplot(3, 2, 3)
+            plt.plot(t_total, cal_time)
+            plt.xlim((0,dt*3500))
+            plt.xlabel("time (s)")
+            plt.title("Cal time series")
+            # Time series of system T.
+            plt.subplot(3, 2, 4)
+            plt.plot(t_total, sys_time)
+            plt.xlim((0,dt*3500))
+            plt.xlabel("time (s)")
             plt.ylim((-4, 35))
-            plt.show()
-            plt.close(h)
-
-
-
-
-
-
+            plt.title("System time series in cal units")
+            # XX cal PS.
+            plt.subplot(3, 2, 5)
+            plt.loglog(ps_freqs, cal_noise_spec[:,0,:])
+            plt.xlim((1.0/60, 1/(2*dt)))
+            plt.ylim((1e-1, 1e3))
+            plt.xlabel("frequency (Hz)")
+            plt.title("XX cal power spectrum")
+            # YY cal PS.
+            plt.subplot(3, 2, 6)
+            plt.loglog(ps_freqs, cal_noise_spec[:,1,:])
+            plt.xlim((1.0/60, 1/(2*dt)))
+            plt.ylim((1e-1, 1e3))
+            plt.xlabel("frequency (Hz)")
+            plt.title("YY cal power spectrum")
+            # Adjust spacing.
+            plt.subplots_adjust(hspace=.4)
+            # Save the figure.
+            plt.savefig(params['output_root'] + middle
+                    + params['output_end'])
     
 
 # This manager scripts together all the operations that need to be performed to
@@ -666,10 +719,9 @@ params_init_manager = {
                       "sessions_to_archive" : (),
                       "sessions_to_force" : (),
                       "sessions" : [],
-                      "conversion_log_file" : "conversion_log",
-                      "conversion_error_file" : "conversion_error",
                       "log_file" : "",
-                      "error_file" : ""
+                      "error_file" : "",
+                      "dry_run" : False
                       }
 
 class DataManager(object) :
@@ -720,11 +772,11 @@ class DataManager(object) :
         print ("Processing sesson " + str(number) + ", in guppi directory "
                 + guppi_dir)
         # Check that all the directories are present.
-        if (not os.path.isdir(guppi_root) or not os.path.isdir(fits_root)) :
+        if (not os.path.isdir(guppi_dir) or not os.path.isdir(fits_root)) :
             print "Skipped do to missing data."
             return
         # First thing we do is start to rsync to the archive.
-        if number in params['sessions_to_archive']:
+        if number in params['sessions_to_archive'] and not params["dry_run"]:
             SyncProc = subprocess.Popen("rsync -av -essh " + guppi_dir + " " 
                     + params["archive_root"] + session["guppi_dir"] + "/",
                     bufsize=4096, shell=True, stdout=self.f_log, 
@@ -775,9 +827,14 @@ class DataManager(object) :
                 converter_params["fits_log_dir"] = fits_root
                 converter_params["output_root"] = outroot
                 # Convert the files from this session.
-                Converter(converter_params).execute()
+                if not params["dry_run"] :
+                    Converter(converter_params).execute()
             # Check that the new files are in fact present.
             # Make a list of these files for the next section of the pipeline.
+            if params["dry_run"] :
+                # The files we need to set up the rest of the proceedure will
+                # be missing, just return.
+                return
             file_middles = []
             for scan in scans :
                 converted_file = check_file_matching_scan(scan,
@@ -797,8 +854,8 @@ class DataManager(object) :
                 for file_middle in file_middles :
                     # Figure out which files have already been checked by
                     # looking for the output file.
-                    checked_out_fname = (params["output_root"] +
-                            file_middle + ".eps")
+                    checked_out_fname = (params["quality_check_root"] +
+                            file_middle + ".pdf")
                     if os.path.isfile(checked_out_fname) :
                         print ("Skipped because file already checked "
                             "in file: " + utils.abbreviate_file_path(
@@ -808,7 +865,7 @@ class DataManager(object) :
             if len(files_to_check) != 0 :
                 # Build up input parameters for DataChecker.
                 checker_params = {
-                                  "output_end" : ".eps",
+                                  "output_end" : ".pdf",
                                   "file_middles" : tuple(files_to_check),
                                   "input_root" : params["output_root"],
                                   "output_root" : params["quality_check_root"]
