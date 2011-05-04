@@ -60,6 +60,30 @@ def elaz2radecGBT(el, az, UT) :
 
     return ra*180.0/sp.pi, dec*180.0/sp.pi
 
+def LSTatGBT(UT) :
+    """Calculates the LST from the UT of an observer at GBT.
+    
+    All input should be formated to correspond to the data in a GBT fits file.
+    UT a string like in the GBT DATE-OBS field.
+
+    Largely copied from Kevin's code.
+    """
+
+    GBT = ephem.Observer()
+    GBT.long = '-79:50:23.4'
+    GBT.lat = '38:25:59.23'
+    GBT.pressure = 0 # no refraction correction.
+    GBT.temp = 0
+
+    UT_wholesec, partial_sec = UT.split('.', 1)
+    time_obj = time.strptime(UT_wholesec, "%Y-%m-%dT%H:%M:%S")
+    UT_reformated = time.strftime("%Y/%m/%d %H:%M:%S", time_obj)
+    GBT.date = UT_reformated + "." + partial_sec
+
+    LST = GBT.sidereal_time() #IN format xx:xx:xx.xx ?
+    
+    return LST*180.0/sp.pi
+
 def time2float(UT) :
     """Calculates float seconds from a time string.
 

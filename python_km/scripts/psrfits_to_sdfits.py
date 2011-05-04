@@ -16,6 +16,7 @@ information.
 import time
 import multiprocessing as mp
 import sys
+import os.path
 
 import scipy as sp
 import scipy.interpolate as interp
@@ -130,7 +131,8 @@ class Converter(object) :
                 p.join()
                 
                 # Store our processed data.
-                Block_list.append(Data)
+                if not Data is None :
+                    Block_list.append(Data)
             # End loop over scans (input files).
             # Now we can write our list of scans to disk.
             if len(scans_this_file) > 1 :
@@ -220,6 +222,11 @@ class Converter(object) :
         # Get the guppi file name.
         guppi_file = (params["guppi_input_root"] + "%04d"%scan +
                       params["guppi_input_end"])
+        # Sometimes guppi files are just missing.
+        if not os.path.isfile(guppi_file) :
+            print "Missing psrfits file: " + guppi_file
+            Pipe.send(None)
+            return
         print "Converting file: " + guppi_file,
         if params['combine_map_scans'] :
            print (" (scan " + str(go_hdu["PROCSEQN"]) + " of " +
