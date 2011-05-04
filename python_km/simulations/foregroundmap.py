@@ -73,9 +73,7 @@ class ForegroundMap(Map3d):
         if self._weight_gen and not regen:
             return
         
-        freq = np.linspace(self.nu_lower, self.nu_upper, self.nu_num)
-
-        f1, f2 = np.meshgrid(freq, freq)
+        f1, f2 = np.meshgrid(self.nu_pixels, self.nu_pixels)
 
         ch = self.frequency_covariance(f1, f2)
 

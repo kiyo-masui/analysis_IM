@@ -6,7 +6,9 @@ from scipy.optimize import newton
 
 import poisson as ps
 
-class PointSourceModel(object):
+from maps import *
+
+class PointSourceModel(Map3d):
     r"""Represents a population of astrophysical point sources.
 
     This is the base class for modelling a population of point
@@ -51,7 +53,9 @@ class PointSourceModel(object):
     def spectral_realisation(self, flux, frequencies):
         r"""Generate a frequency distribution for a source of given `flux`.
         
-        This is an abstract method that must be implemented in an actual model.
+        This is an abstract method that must be implemented in an
+        actual model. Must be able to broadcast if `flux`, and
+        `frequencies` are numpy arrays.
 
         Parameters
         ----------
@@ -73,7 +77,7 @@ class PointSourceModel(object):
         Parameters
         ----------
         area : float
-            The area the population is contained within.
+            The area the population is contained within (in sq degrees).
             
         Returns
         -------
@@ -105,23 +109,14 @@ class PointSourceModel(object):
 
         return fluxes
 
-    def generate_map(self, widthx, numx, widthy, numy, freq0, freq1, numf, catalogue = False):
+
+    def getfield(self, catalogue = False):
         r"""Create a simulated cube of point sources.
 
         Create a pixelised realisation of the sources.
 
         Parameters
         ----------
-        widthx, widthy : float
-            width along each axis (in degrees).
-        numx, numy : int 
-            number of pixels along each axis.
-        freq0 : float
-            lower frequency bound (in Mhz).
-        freq1: float
-            upper frequency bound (in Mhz).
-        numf : int
-            number of equally spaced frequency bins.
         catalogue : boolean, optional
             if true return the population catalogue.
 
@@ -131,18 +126,20 @@ class PointSourceModel(object):
             An array of dimensions (`numf`, `numx` `numy`)
         """
 
-        c = np.zeros((numf, numx, numy))
+        c = np.zeros(self._num_array())
 
-        fluxes = self.generate_population(widthx*widthy)
+        fluxes = self.generate_population(self.x_width*self.y_width)
 
-        freq = np.linspace(freq0, freq1, numf)
-
-        for flux in fluxes:
+        freq = self.nu_pixels
+        
+        sr = self.spectral_realisation(fluxes[:,np.newaxis], freq[np.newaxis,:])
+        
+        for i in xrange(sr.shape[0]):
             # Pick random pixel
-            x = int(rnd.rand() * numx)
-            y = int(rnd.rand() * numy)
+            x = int(rnd.rand() * self.x_num)
+            y = int(rnd.rand() * self.y_num)
 
-            c[:,x,y] += self.spectral_realisation(flux, freq)
+            c[:,x,y] += sr[i,:]
 
         if not catalogue:
             return c
@@ -202,7 +199,7 @@ class PowerLawModel(PointSourceModel):
     def spectral_realisation(self, flux, freq):
         r"""Power-law spectral function with Gaussian distributed index."""
 
-        ind = self.spectral_mean + self.spectral_width * rnd.standard_normal()
+        ind = self.spectral_mean + self.spectral_width * rnd.standard_normal(flux.shape)
 
         return flux * (freq / self.spectral_pivot)**ind
 
@@ -260,17 +257,24 @@ class DiMatteo(PointSourceModel):
 
     def spectral_realisation(self, flux, freq):
         r"""Power-law spectral function with Gaussian distributed index."""
-
-        ind = self.spectral_mean + self.spectral_width * rnd.standard_normal()
+        #flux = np.atleast_1d(flux)
+        #ind = self.spectral_mean + self.spectral_width * rnd.standard_normal(flux.shape)
+        #
+        #ia = ind[:,np.newaxis]
+        #fa = (freq / self.spectral_pivot)[np.newaxis,:]
+        #aa = flux[:,np.newaxis]
+        #return np.squeeze(aa * fa**ia)
+        
+        ind = self.spectral_mean + self.spectral_width * rnd.standard_normal(flux.shape)
 
         return flux * (freq / self.spectral_pivot)**ind
-        
+
 
 
 ## Test program run when executing module.
 if __name__=='__main__':
     
-    p = PowerLawModel()
+    p = DiMattero()
     r = p.generate_population(1.0)
 
-    c = p.generate_map(2.0, 200, 2.0, 200, 300.0, 800.0, 200, catalogue = True)
+    c = p.getfield(catalogue = True)

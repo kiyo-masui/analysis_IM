@@ -6,8 +6,9 @@ import time
 st = time.clock()
 
 ps = pointsource.DiMatteo()
-#ps.flux_max = 50.0
-psm = ps.generate_map(5.0, 256, 5.0, 256, 120.0, 325.0, 64)
+ps.x_num, ps.y_num = (256, 256)
+ps.nu_lower, ps.nu_upper, ps.nu_num = (120.0, 325.0, 64)
+psm = ps.getfield()
 
 et = time.clock()
 

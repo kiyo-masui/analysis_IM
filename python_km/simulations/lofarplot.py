@@ -17,7 +17,7 @@ cm = matplotlib.cm.hot
 ls = lofar.LofarGDSE()
 
 tb = ls.getfield()
-fs = np.linspace(120.0,325.0,128) / 325.0
+fs = ls.nu_pixels / ls.nu_0
 tb = tb *fs[:,np.newaxis,np.newaxis]**2.55
 
 mint = 19.0
@@ -59,8 +59,10 @@ f.clf()
 cm = matplotlib.cm.gray
 
 ps = pointsource.DiMatteo()
+ps.x_num, ps.y_num = (256, 256)
+ps.nu_lower, ps.nu_upper, ps.nu_num = (120.0, 325.0, 64)
 #ps.flux_max = 50.0
-psm = ps.generate_map(5.0, 256, 5.0, 256, 120.0, 325.0, 64)
+psm = ps.getfield()
 
 
 s_aa = psm[0,:,:]

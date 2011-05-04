@@ -8,7 +8,7 @@ tf = foregroundsck.Synchrotron()
 
 #f1 = tf.getfield()
 
-freq = np.linspace(tf.nu_lower, tf.nu_upper, tf.nu_num)
+freq = tf.nu_pixels
 
 cv = tf.frequency_covariance(*np.meshgrid(freq, freq))
 #nm, aff = tf.getfield()

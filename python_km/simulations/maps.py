@@ -21,21 +21,34 @@ class Map2d(object):
     x_num = 128
     y_num = 128
 
-    def _width_array(self):
-        return np.array([self.x_width, self.y_width], dtype=np.float64)*units.degree
-
-    def _num_array(self):
-        return np.array([self.x_num, self.y_num], dtype=np.int)
-
+    
     @classmethod
-    def like_map(cls, mapobj):
-        c = cls()
+    def like_map(cls, mapobj, *args, **kwargs):
+        r"""Create a Map2d (or subclassed) object the same shape as a given object.
+        """
+        
+        c = cls(*args, **kwargs)
         c.x_width = mapobj.x_width
         c.y_width = mapobj.y_width
         c.x_num = mapobj.x_num
         c.y_num = mapobj.y_num
 
         return c
+
+    def _width_array(self):
+        return np.array([self.x_width, self.y_width], dtype=np.float64)*units.degree
+
+    def _num_array(self):
+        return np.array([self.x_num, self.y_num], dtype=np.int)
+
+    @property
+    def x_pixels(self):
+        return ((np.arange(self.x_num) + 0.5) * (self.x_width / self.x_num))
+
+    @property
+    def y_pixels(self):
+        return ((np.arange(self.y_num) + 0.5) * (self.y_width / self.y_num))
+
 
 class Map3d(object):
     r"""A 3-d sky map.
@@ -63,15 +76,11 @@ class Map3d(object):
     nu_lower = 120.0
     nu_upper = 325.0
 
-    def _width_array(self):
-        return np.array([self.nu_upper - self.nu_lower, self.x_width*units.degree, self.widthy*units.degree], dtype=np.float64)
-
-    def _num_array(self):
-        return np.array([self.nu_num, self.x_num, self.y_num], dtype=np.int)
-
     @classmethod
-    def like_map(cls, mapobj):
-        c = cls()
+    def like_map(cls, mapobj, *args, **kwargs):
+        r"""Create a Map3d (or subclassed) object the same shape as a given object.
+        """
+        c = cls(*args, **kwargs)
         c.x_width = mapobj.x_width
         c.y_width = mapobj.y_width
         c.nu_upper = mapobj.nu_upper
@@ -82,3 +91,21 @@ class Map3d(object):
 
         return c
 
+    def _width_array(self):
+        return np.array([self.nu_upper - self.nu_lower, self.x_width*units.degree, self.widthy*units.degree], dtype=np.float64)
+
+    def _num_array(self):
+        return np.array([self.nu_num, self.x_num, self.y_num], dtype=np.int)
+
+
+    @property
+    def x_pixels(self):
+        return ((np.arange(self.x_num) + 0.5) * (self.x_width / self.x_num))
+
+    @property
+    def y_pixels(self):
+        return ((np.arange(self.y_num) + 0.5) * (self.y_width / self.y_num))
+
+    @property
+    def nu_pixels(self):
+        return ((np.arange(self.nu_num) + 0.5) * ((self.nu_upper - self.nu_lower) / self.nu_num))
