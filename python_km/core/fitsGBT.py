@@ -173,7 +173,9 @@ class Reader(object) :
                 # Sometimes won't have the LST.
                 try :
                     thisLST = self.fitsdata.field('LST')[inds_sif[ii,0,0]]
-                except KeyError :
+                # If 'LST' is missing raises a KeyError in later versions of
+                # pyfits, and a NameError in earlier ones.
+                except (KeyError, NameError) :
                     break
                 if not (sp.allclose(self.fitsdata.field('LST')
                         [inds_sif[ii,:,:]] - thisLST, 0)) :

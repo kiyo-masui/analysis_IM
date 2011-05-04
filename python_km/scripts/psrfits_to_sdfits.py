@@ -13,15 +13,21 @@ This also needs to go into the antenna fits files to get the precise pointing
 information.
 """
 
-import time
+import datetime
 import multiprocessing as mp
 import sys
-import os.path
+import os
+import glob
+import subprocess
+import warnings
 
+import numpy.ma as ma
 import scipy as sp
 import scipy.interpolate as interp
 import pyfits
+import matplotlib.pyplot as plt
 
+from time_stream import rotate_pol, cal_scale, rebin_freq
 from core import fitsGBT, data_block
 from kiyopy import parse_ini, utils
 import kiyopy.custom_exceptions as ce
@@ -79,7 +85,7 @@ class Converter(object) :
         for initial_scan in scans :
             if initial_scan in finished_scans :
                 continue
-	    self.initial_scan = initial_scan
+            self.initial_scan = initial_scan
 
             # Open the go fits file.
             scan_log_files = scan_log.field('FILEPATH')[
@@ -125,13 +131,19 @@ class Converter(object) :
                 # Make a pipe over which we will receive out data back.
                 P_here, P_far = mp.Pipe()
                 # Start the forked process.
-                p = mp.Process(target=self.ProcessFile, args=(scan, P_far))
+                p = mp.Process(target=self.processfile, args=(scan, P_far))
                 p.start()
                 Data = P_here.recv()
                 p.join()
                 
                 # Store our processed data.
-                if not Data is None :
+                if Data == -1 :
+                    # Scan proceedure aborted.
+                    raise ce.DataError("Scan proceedures do not agree."
+                            " Perhase a scan was aborted. Scans: " + str(scan)
+                            + ", " + str(initial_scan) + " in directory: "
+                            + log_dir)
+                elif not Data is None :
                     Block_list.append(Data)
             # End loop over scans (input files).
             # Now we can write our list of scans to disk.
@@ -145,13 +157,14 @@ class Converter(object) :
             
             # Output data is pretty large so we'd better protect the pyfits part
             # in a process lest memory leaks kill us.
-            p = mp.Process(target=out_write, args=(Block_list, out_file))
-            p.start()
-            del Block_list
-            p.join()
+            if len(Block_list) > 0 :
+                p = mp.Process(target=out_write, args=(Block_list, out_file))
+                p.start()
+                del Block_list
+                p.join()
         # End loop over maps (output files or input 'scans' parameter).
             
-    def ProcessFile(self, scan, Pipe) :
+    def processfile(self, scan, Pipe) :
         params = self.params
         scan_log = self.scan_log
         log_dir = params["fits_log_dir"]
@@ -182,12 +195,10 @@ class Converter(object) :
             go_hdu = pyfits.open(go_file)[0].header
             if (self.n_scans_proc != go_hdu["PROCSIZE"] or go_hdu["PROCSEQN"] 
                 - self.initial_scan_ind != scan - self.initial_scan) :
-                print self.initial_scan, scan
-                print go_hdu["PROCSEQN"], self.initial_scan_ind
-                raise ce.DataError("Scans don't agree on proceedure "
-                                   "sequence. Aborted scan?  Scans: "
-                                   + str(scan) + " and " + 
-                                   str(self.initial_scan))
+                # Rather than crashing here, send an error code and crash the
+                # main program.
+                Pipe.send(-1)
+                return
 
         # Now find the Antenna fits file.
         found_file = False
@@ -222,9 +233,10 @@ class Converter(object) :
         # Get the guppi file name.
         guppi_file = (params["guppi_input_root"] + "%04d"%scan +
                       params["guppi_input_end"])
-        # Sometimes guppi files are just missing.
+        # Sometimes guppi files are just missing.  This shouldn't crash the
+        # program.
         if not os.path.isfile(guppi_file) :
-            print "Missing psrfits file: " + guppi_file
+            warnings.warn("Missing psrfits file: " + guppi_file)
             Pipe.send(None)
             return
         print "Converting file: " + guppi_file,
@@ -269,7 +281,16 @@ class Converter(object) :
         # String that will be converted to the time at each sample.
         time_string = start_string.split('T')[0] + 'T'
         time_string = time_string + '%02d:%02d:%06.3f'
-        # Figure out the sample periode after rebinning.
+        # Make a time string for the next day in the off chance that the scan
+        # strattles 00:00:00 UTC. This calculation is very rarely needed and
+        # suficiently complex that I won't write the whole algorithm more
+        # generally, lest I make a mistake.
+        time_obj = datetime.datetime.strptime(start_string.split('T')[0],
+                                              "%Y-%M-%d")
+        time_obj = time_obj + datetime.timedelta(days=1)
+        time_string_next_day = (time_obj.strftime("%Y-%M-%d") +
+                                'T%02d:%02d:%06.3f')
+        # Figure out the sample period after rebinning.
         sample_time = psrheader["TBIN"]
         resampled_time = sample_time*n_bins_ave
         
@@ -335,7 +356,11 @@ class Converter(object) :
 
             if get_cal :
                 # Figure out the number of time bins in a cal period.
-                cal_period = 1.0/psrmain["CAL_FREQ"]
+                try :
+                    cal_period = 1.0/psrmain["CAL_FREQ"]
+                except ZeroDivisionError :
+                    # Default value that we usually use.
+                    cal_period = 0.065536
                 n_bins_cal = cal_period/sample_time
                 if n_bins_cal%1.0 > 0.00001 :
                     raise NotImplementedError("Need an integer number of "
@@ -344,7 +369,7 @@ class Converter(object) :
                 if n_bins_ave%n_bins_cal != 0 :
                     raise ValueError("You should rebin on a multiple of "
                                      "the cal period.  Change parameter "
-                                     "time_bins _to_average.")
+                                     "time_bins_to_average.")
                 # We can speed up the separating of the cal by rebinning in
                 # time first.
                 tmp_n_bins_ave = n_bins_ave//n_bins_cal
@@ -386,18 +411,15 @@ class Converter(object) :
             Data.field['CRVAL3'][jj*n_bins:(jj+1)*n_bins] = el
             # If the scan strattles midnight UTC, this is extra
             # complecated.
-            if sp.any(hours >= 24) :
-                # TODO
-                raise NotImplementedError("Date rollover in scan.")
-            else :
-                # sp.char.mod not included in scipy 0.7.
-                #time = char.mod(time_string, (hours, minutes, seconds))
-                for mm, kk in enumerate(xrange(jj*n_bins, (jj+1)*n_bins)) :
+            for mm, kk in enumerate(xrange(jj*n_bins, (jj+1)*n_bins)) :
+                if hours[mm] >= 24 :
+                    tmp_time = (time_string_next_day
+                                % (hours[mm]-24, minutes[mm], seconds[mm]))
+                else :
                     tmp_time = time_string%(hours[mm], minutes[mm],
                                             seconds[mm])
-                    Data.field["DATE-OBS"][kk] = tmp_time
-        Data.add_history('Converted from a guppi sub-integration fits'
-                         + ' file.',
+                Data.field["DATE-OBS"][kk] = tmp_time
+        Data.add_history('Converted from a guppi sub-integration fits file.',
                          (utils.abbreviate_file_path(guppi_file),
                           utils.abbreviate_file_path(antenna_file),
                           utils.abbreviate_file_path(go_file)))
@@ -554,13 +576,300 @@ def separate_cal(data, n_bins_cal) :
 
     return out_data
 
+params_init_checker = {
+                      "input_root" : "",
+                      "file_middles" : ("",),
+                      "output_root" : "",
+                      "output_end" : ".eps"
+                      }
+
+class DataChecker(object) :
+
+    def __init__(self, parameter_file_or_dict, feedback=2) :    
+        self.params = parse_ini.parse(parameter_file_or_dict, 
+                params_init_checker, prefix="")
+
+    def execute(self) :
+        params = self.params
+        # Loop over files, make one set of plots per file.
+        for middle in params["file_middles"] :
+            # Construct the file name and read in all scans.
+            file_name = params["input_root"] + middle + ".fits"
+            Reader = fitsGBT.Reader(file_name)
+            Blocks = Reader.read((), ())
+            # Initialize a few variables.
+            counts = 0
+            cal_sum_unscaled = 0
+            n_times = 0
+            cal_sum = 0
+            cal_time = ma.zeros((0, 4))
+            cal_noise_spec = 0
+            for Data in Blocks :
+                # Rotate to XX, YY etc.
+                rotate_pol.rotate(Data, (-5, -7, -8, -6))
+                this_count = ma.count(Data.data[:,:,0,:] 
+                                      + Data.data[:,:,1,:], 0)
+                cal_sum_unscaled += ma.sum(Data.data[:,:,0,:] +
+                        Data.data[:,:,1,:], 0)
+                cal_time = sp.concatenate((cal_time, ma.mean(Data.data[:,:,0,:]
+                    + Data.data[:,:,1,:], -1).filled(-5)), 0)
+                cal_scale.scale_by_cal(Data)
+                # Accumulate variouse sums.
+                counts += this_count
+                n_times += Data.dims[0]
+                cal_sum += ma.sum(Data.data[:,:,0,:] + Data.data[:,:,1,:], 0)
+                # Take power spectrum of on-off/on+off.
+                rebin_freq.rebin(Data, 
+                cal_diff += ma.sum(Data.data[:,:,0,:] - Data.data[:,:,1,:], 0)
+            # Normalize.
+            cal_sum_unscaled /= 2*counts
+            cal_sum /= 2*counts
+            nan_frac = sp.array(n_times - counts, dtype=float)/n_times
+            # Get the frequency axis:
+            Blocks[0].calc_freq()
+            f = Blocks[0].freq
+            # Make plots.
+            h = plt.figure()
+            # Unscaled temperature spectrum.
+            plt.subplot(2, 2, 1)
+            plt.plot(f, sp.rollaxis(cal_sum_unscaled, -1))
+            plt.xlim((7e8, 9e8))
+            # Temperture spectrum in terms of noise cal. 4 Polarizations.
+            plt.subplot(2, 2, 2)
+            plt.plot(f, sp.rollaxis(cal_sum, -1))
+            plt.ylim((-20, 40))
+            plt.xlim((7e8, 9e8))
+            # Time series of cal T.
+            plt.subplot(2, 2, 3)
+            plt.plot(cal_time)
+            plt.xlim((0,3500))
+            plt.ylim((-4, 35))
+            plt.show()
+            plt.close(h)
+
+
+
+
+
+
+    
+
+# This manager scripts together all the operations that need to be performed to
+# the data at GBT.
+
+params_init_manager = {
+                      "default_guppi_input_root" : "",
+                      "fits_log_root" : "",
+                      "output_root" : "",
+                      "archive_root" : "",
+                      "quality_check_root" : "",
+                      "sessions_to_archive" : (),
+                      "sessions_to_force" : (),
+                      "sessions" : [],
+                      "conversion_log_file" : "conversion_log",
+                      "conversion_error_file" : "conversion_error",
+                      "log_file" : "",
+                      "error_file" : ""
+                      }
+
+class DataManager(object) :
+
+    def __init__(self, data_log, feedback=2) :    
+        # Read the data log.
+        self.params = parse_ini.parse(data_log, params_init_manager, 
+                                      prefix="")
+
+    def execute(self, nprocessors=1) :
+        params = self.params
+        # Redirect the standart in and out if desired.
+        if params["log_file"] :
+            self.f_log = open(params["log_file"], 'a')
+            old_out = sys.stdout
+            sys.stdout = self.f_log
+        else :
+            self.f_log = None
+        if params["error_file"] :
+            self.f_err = open(params["error_file"], 'a')
+            old_err = sys.stderr
+            sys.sdterr = self.f_err
+        else :
+            self.f_err = None
+        # Loop over the sessions and process them.
+        try :
+            for session in params["sessions"] :
+                self.process_session(session)
+        finally :
+            if params["log_file"] :
+                sys.stdout = old_out
+                self.f_log.close()
+            if params["error_file"] :
+                sys.stderr = old_err
+                self.f_err.close()
+
+    def process_session(self, session) :
+        params = self.params
+        # Get all the files names and such.
+        number = session["number"]
+        try :
+            guppi_root = session["guppi_input_root"]
+        except KeyError :
+            guppi_root = params["default_guppi_input_root"]
+        guppi_dir = guppi_root + session["guppi_dir"] + "/"
+        fits_root = params["fits_log_root"] + str(number) + "/"
+        outroot = params["output_root"]
+        print ("Processing sesson " + str(number) + ", in guppi directory "
+                + guppi_dir)
+        # Check that all the directories are present.
+        if (not os.path.isdir(guppi_root) or not os.path.isdir(fits_root)) :
+            print "Skipped do to missing data."
+            return
+        # First thing we do is start to rsync to the archive.
+        if number in params['sessions_to_archive']:
+            SyncProc = subprocess.Popen("rsync -av -essh " + guppi_dir + " " 
+                    + params["archive_root"] + session["guppi_dir"] + "/",
+                    bufsize=4096, shell=True, stdout=self.f_log, 
+                    stderr=self.f_err)
+        # Check if this session is in the list of force even if output file
+        # exist.
+        if number in params['sessions_to_force'] :
+            force_session = True
+        else :
+            force_session = False
+        # Now loop over the fields for this session.
+        for source in session["sources"] :
+            field = source[0]
+            # scans is a list of integers containing at least one scan number 
+            # from each process.
+            scans = source[1]
+            # File name pattern that output files should match.
+            converted_pattern  = (params["output_root"] + str(number)
+                            + '_' + field + '*.fits')
+            if force_session :
+                scans_to_convert = scans
+            else :
+                scans_to_convert = []
+                for scan in scans :
+                    # Check if the scan has already been convereted to SDfits
+                    # by looking for the output file.
+                    matched_file = check_file_matching_scan(scan, 
+                                                        converted_pattern)
+                    if not matched_file is None :
+                        print ("Skipped because scan already converted "
+                               "in file: "
+                                + utils.abbreviate_file_path(matched_file))
+                    else :
+                        scans_to_convert.append(scan)
+            if len(scans_to_convert) > 0 :
+                # Set up the converter for the scans that havn't been converted
+                # yet.
+                # Probably shouldn't hard code these.
+                converter_params = {"guppi_input_end" : "_0001.fits",
+                                    "combine_map_scans" : True,
+                                    "partition_cal" : True,
+                                    "time_bins_to_average" : 128
+                                    }
+                # The parameters that are acctually assigned dynamically.
+                converter_params["scans"] = tuple(scans_to_convert)
+                converter_params["guppi_input_root"] = (guppi_dir + "guppi_"
+                        + session["guppi_session"] + "_" + field + "_")
+                converter_params["fits_log_dir"] = fits_root
+                converter_params["output_root"] = outroot
+                # Convert the files from this session.
+                Converter(converter_params).execute()
+            # Check that the new files are in fact present.
+            # Make a list of these files for the next section of the pipeline.
+            file_middles = []
+            for scan in scans :
+                converted_file = check_file_matching_scan(scan,
+                        converted_pattern)
+                if converted_file is None :
+                    raise RuntimeError("Scan not converted: " + str(scan))
+                # Get the middle (unique) part of the file name.
+                converted_file = converted_file.split('/')[-1]
+                converted_file = converted_file.split('.')[0]
+                file_middles.append(converted_file)
+            # Now figure out which scans have had data quality checks
+            # already run.
+            if force_session :
+                files_to_check = file_middles
+            else :
+                files_to_check = []
+                for file_middle in file_middles :
+                    # Figure out which files have already been checked by
+                    # looking for the output file.
+                    checked_out_fname = (params["output_root"] +
+                            file_middle + ".eps")
+                    if os.path.isfile(checked_out_fname) :
+                        print ("Skipped because file already checked "
+                            "in file: " + utils.abbreviate_file_path(
+                            checked_out_fname))
+                    else :
+                        files_to_check.append(file_middle)
+            if len(files_to_check) != 0 :
+                # Build up input parameters for DataChecker.
+                checker_params = {
+                                  "output_end" : ".eps",
+                                  "file_middles" : tuple(files_to_check),
+                                  "input_root" : params["output_root"],
+                                  "output_root" : params["quality_check_root"]
+                                  }
+                # Execute the data checker.
+                DataChecker(checker_params).execute()
+            # Wait for the rsync to terminate:
+            if number in params['sessions_to_archive']:
+                SyncProc.wait()
+                if SyncProc.returncode :
+                    raise RuntimeError("rsync failed with exit code: " 
+                                       + str(SyncProc.returncode))
+
+def check_file_matching_scan(scan, match_str) :
+    """
+    Looks for a file that matches a provided pattern and contains given scan.
+
+    Parameters
+    ----------
+    scan : integer
+        Scan numbr to look for.
+    match_str : string
+        Look for file names that match this string.  Assumed to be of the form:
+        "*_<lo_scan>-<hi_scan>.extension", where <lo_scan> and <hi_scan> are
+        integers and the file name matchs if <lo_scan> <= `scan` and 
+        <hi_scan> >= `scan`.
+
+    Returns
+    -------
+    file_name : string
+        The file name of the matching file.  None if no file found.
+    """
+
+    file_list = glob.glob(match_str)
+
+    for file_name in file_list :
+        # Remove the '.fits'.
+        s = file_name.split('.')[-2]
+        # Get the scan range part.
+        s = s.split('_')[-1]
+        lo, hi = s.split('-')
+        lo = int(lo)
+        hi = int(hi)
+        # See if our scan is in that range.
+        if scan >= lo and scan <= hi :
+            return file_name
+    return None
+
+
         
 if __name__ == '__main__' :
     import sys
     if len(sys.argv) == 2 :
         Converter(str(sys.argv[1])).execute()
-    elif len(sys.argv) > 2:
-        print 'Maximum one argument, a parameter file name.'
-    else :
+    elif len(sys.argv) == 3:
+        if sys.argv[1] == str("auto") :
+            DataManager(str(sys.argv[2])).execute()
+    elif len(sys.argv) == 1:
         Converter().execute()
+    else :
+        print ("Usage : python psrfits_to_sdfits.py [input file] or"
+               " python psrfits_to_sdfits.py auto [data log file]")
+
 
