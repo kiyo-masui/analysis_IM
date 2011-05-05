@@ -633,7 +633,12 @@ class DataChecker(object) :
         # Construct the file name and read in all scans.
         file_name = params["input_root"] + middle + ".fits"
         Reader = fitsGBT.Reader(file_name)
-        Blocks = Reader.read((), ())
+        Blocks = Reader.read((), (), force_tuple=True)
+        # Plotting limits need to be adjusted for on-off scans.
+        if file_name.find("onoff") != -1 :
+            onoff=True
+        else :
+            onoff=False
         # Initialize a few variables.
         counts = 0
         cal_sum_unscaled = 0
@@ -703,22 +708,32 @@ class DataChecker(object) :
         # Temperture spectrum in terms of noise cal. 4 Polarizations.
         plt.subplot(3, 2, 2)
         plt.plot(f/1e6, sp.rollaxis(cal_sum, -1))
-        plt.ylim((-10, 40))
+        if onoff :
+            plt.ylim((-1, 60))
+        else :
+            plt.ylim((-10, 40))
         plt.xlim((7e2, 9e2))
         plt.xlabel("frequency (MHz)")
         plt.title("Temperture spectrum in cal units")
         # Time serise of cal T.
         plt.subplot(3, 2, 3)
         plt.plot(t_total, cal_time)
-        plt.xlim((0,dt*3500))
+        if onoff :
+            plt.xlim((0,dt*900))
+        else :
+            plt.xlim((0,dt*3500))
         plt.xlabel("time (s)")
         plt.title("Cal time series")
         # Time series of system T.
         plt.subplot(3, 2, 4)
         plt.plot(t_total, sys_time)
-        plt.xlim((0,dt*3500))
         plt.xlabel("time (s)")
-        plt.ylim((-4, 35))
+        if onoff :
+            plt.ylim((-4, 90))
+            plt.xlim((0,dt*900))
+        else :
+            plt.ylim((-4, 35))
+            plt.xlim((0,dt*3500))
         plt.title("System time series in cal units")
         # XX cal PS.
         plt.subplot(3, 2, 5)
