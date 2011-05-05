@@ -62,6 +62,7 @@ prefix = ''
 class Converter(object) :
 
     def __init__(self, input_file_or_dict=None, feedback=2) :    
+        self.feedback = feedback
         # Read the parameter file.
         self.params = parse_ini.parse(input_file_or_dict, params_init, 
                                       prefix=prefix)
@@ -125,31 +126,41 @@ class Converter(object) :
             # single fits file (generally 8 scans).
             Block_list = []
             # Loop over the scans to process for this output file.
-            for scan in scans_this_file :
-                # The acctual reading of the guppi fits file needs to be split
-                # off in a different process due to a memory leak in pyfits.
-                
-                # Make a pipe over which we will receive out data back.
-                P_here, P_far = mp.Pipe()
-                # Start the forked process.
-                p = mp.Process(target=self.processfile, args=(scan, P_far))
-                p.start()
-                Data = P_here.recv()
-                p.join()
-                
-                # Store our processed data.
-                if Data == -1 :
-                    # Scan proceedure aborted.
-                    raise ce.DataError("Scan proceedures do not agree."
-                            " Perhase a scan was aborted. Scans: " + str(scan)
-                            + ", " + str(initial_scan) + " in directory: "
-                            + log_dir)
-                elif Data is None :
-                    warnings.warn("Missing or corrupted psrfits file. Scan: "
-                     + str(scan) + " file root: " + params["guppi_input_root"])
-                else :
-                    Block_list.append(Data)
-
+            np = nprocesses
+            n = len(scans_this_file)
+            procs = [None]*np
+            pipes = [None]*np
+            for ii in range(n+np) :
+                if ii >= np :
+                    scan = scans_this_file[ii-np]
+                    Data = pipes[ii%np].recv()
+                    procs[ii%np].join()
+                    # Store our processed data.
+                    if Data == -1 :
+                        # Scan proceedure aborted.
+                        raise ce.DataError("Scan proceedures do not agree."
+                                " Perhase a scan was aborted. Scans: "
+                                + str(scan) + ", " + str(initial_scan) 
+                                + " in directory: " + log_dir)
+                    elif Data is None :
+                        warnings.warn("Missing or corrupted psrfits file."
+                            " Scan: " + str(scan) + " file root: " 
+                            + params["guppi_input_root"])
+                    else :
+                        Block_list.append(Data)
+                if ii < n :
+                    scan = scans_this_file[ii]
+                    # The acctual reading of the guppi fits file needs to
+                    # be split off in a different process due to a memory 
+                    # leak in pyfits. This also allow parralization.
+                    # Make a pipe over which we will receive out data back.
+                    P_here, P_far = mp.Pipe()
+                    pipes[ii%np] = P_here
+                    # Start the forked process.
+                    p = mp.Process(target=self.processfile,
+                                   args=(scan, P_far))
+                    p.start()
+                    procs[ii%np] = p
             # End loop over scans (input files).
             # Now we can write our list of scans to disk.
             if len(scans_this_file) > 1 :
@@ -347,12 +358,14 @@ class Converter(object) :
         Data.verify()
 
         # Loop over the records and modify the data.
-        print "Record: ",
+        if self.feedback > 1 :
+            print "Record: ",
         for jj, record in enumerate(psrdata) :
             # Print the record we are currently on and force a flush to
             # standard out (so we can watch the progress update).
-            print jj,
-            sys.stdout.flush()
+            if self.feedback > 1 :
+                print jj,
+                sys.stdout.flush()
             # Get the data field.
             data = record["DATA"]
             # Convert the Data to the proper shape and type.
@@ -433,7 +446,8 @@ class Converter(object) :
                           utils.abbreviate_file_path(antenna_file),
                           utils.abbreviate_file_path(go_file)))
         # End loop over records.
-        print
+        if self.feedback > 1 :
+            print
         # Send Data back on the pipe.
         Pipe.send(Data)
 
@@ -598,13 +612,20 @@ class DataChecker(object) :
         self.params = parse_ini.parse(parameter_file_or_dict, 
                 params_init_checker, prefix="")
 
-    def execute(self) :
+    def execute(self, nprocesses=1) :
         params = self.params
+        n = len(params["file_middles"])
+        np = nprocesses
+        procs = [None]*np
         # Loop over files, make one set of plots per file.
-        for middle in params["file_middles"] :
-            p = mp.Process(target=self.process_file, args=(middle,))
-            p.start()
-            p.join()
+        for ii in range(n+np) :
+            if ii >= np :
+                procs[ii%np].join()
+            if ii < n :
+                p = mp.Process(target=self.process_file,
+                               args=(params["file_middles"][ii],))
+                p.start()
+                procs[ii%np] = p
 
     def process_file(self, middle) :
         """Split off to fix pyfits memory leak."""
@@ -734,6 +755,7 @@ params_init_manager = {
                       "sessions" : [],
                       "log_file" : "",
                       "error_file" : "",
+                      "nprocesses": 1,
                       "dry_run" : False
                       }
 
@@ -744,7 +766,7 @@ class DataManager(object) :
         self.params = parse_ini.parse(data_log, params_init_manager, 
                                       prefix="")
 
-    def execute(self, nprocessors=1) :
+    def execute(self, nprocesses=1) :
         params = self.params
         # Redirect the standart in and out if desired.
         if params["log_file"] :
@@ -841,7 +863,8 @@ class DataManager(object) :
                 converter_params["output_root"] = outroot
                 # Convert the files from this session.
                 if not params["dry_run"] :
-                    Converter(converter_params).execute()
+                    C = Converter(converter_params, feedback=1)
+                    C.execute(params['nprocesses'])
             # Check that the new files are in fact present.
             # Make a list of these files for the next section of the pipeline.
             if params["dry_run"] :
@@ -884,7 +907,7 @@ class DataManager(object) :
                                   "output_root" : params["quality_check_root"]
                                   }
                 # Execute the data checker.
-                DataChecker(checker_params).execute()
+                DataChecker(checker_params).execute(params["nprocesses"])
             # Wait for the rsync to terminate:
             if number in params['sessions_to_archive']:
                 SyncProc.wait()
