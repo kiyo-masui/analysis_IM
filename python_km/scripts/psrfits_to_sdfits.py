@@ -145,8 +145,8 @@ class Converter(object) :
                             + ", " + str(initial_scan) + " in directory: "
                             + log_dir)
                 elif Data is None :
-                    warnings.warn("Missing psrfits file. Scan: " + str(scan) 
-                                  + " file root: " + params["guppi_input_root"])
+                    warnings.warn("Missing or corrupted psrfits file. Scan: "
+                     + str(scan) + " file root: " + params["guppi_input_root"])
                 else :
                     Block_list.append(Data)
 
@@ -249,7 +249,12 @@ class Converter(object) :
                   str(self.n_scans_proc) + ')')
         else :
             print
-        psrhdu_list = pyfits.open(guppi_file, 'readonly')
+        try :
+            psrhdu_list = pyfits.open(guppi_file, 'readonly')
+        except IOError :
+            # Currupted guppi file.  This happens occationally.
+            Pipe.send(None)
+            return
         # A record array with each row holding about 2 seconds of data.
         psrdata = psrhdu_list[1].data
         psrheader = psrhdu_list[1].header
@@ -597,7 +602,7 @@ class DataChecker(object) :
         params = self.params
         # Loop over files, make one set of plots per file.
         for middle in params["file_middles"] :
-            p = mp.Process(target=self.processfile, args=(middle,))
+            p = mp.Process(target=self.process_file, args=(middle,))
             p.start()
             p.join()
 
