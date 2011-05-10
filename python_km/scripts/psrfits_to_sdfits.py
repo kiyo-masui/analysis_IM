@@ -100,7 +100,9 @@ class Converter(object) :
                     found_file = True
                     break
             if not found_file :
-                raise ce.DataError("GO file not in Scan Log")
+                raise ce.DataError("GO file not in scan log file: " + log_dir
+                                   + "/ScanLog.fits. Scan: " 
+                                   + str(initial_scan))
             go_hdu = pyfits.open(go_file)[0].header
 
             # From the go information get the source and the scan type.
@@ -203,7 +205,8 @@ class Converter(object) :
                 found_file = True
                 break
         if not found_file :
-            raise ce.DataError("GO file not in Scan Log")
+            raise ce.DataError("GO file not in scan log file: " + log_dir
+                               + "/ScanLog.fits. Scan: " + str(scan))
         # If we are combining multiple scans from one proceedure, make sure
         # that they all came from the same one (ie that the proceedure
         # wasn't aborted).
@@ -704,7 +707,7 @@ class DataChecker(object) :
         plt.plot(f/1e6, sp.rollaxis(cal_sum_unscaled, -1))
         plt.xlim((7e2, 9e2))
         plt.xlabel("frequency (MHz)")
-        plt.title("Temperture spectrum")
+        plt.title("System temperature - mean over time")
         # Temperture spectrum in terms of noise cal. 4 Polarizations.
         plt.subplot(3, 2, 2)
         plt.plot(f/1e6, sp.rollaxis(cal_sum, -1))
@@ -714,7 +717,7 @@ class DataChecker(object) :
             plt.ylim((-10, 40))
         plt.xlim((7e2, 9e2))
         plt.xlabel("frequency (MHz)")
-        plt.title("Temperture spectrum in cal units")
+        plt.title("System temperature in cal units")
         # Time serise of cal T.
         plt.subplot(3, 2, 3)
         plt.plot(t_total, cal_time)
@@ -723,7 +726,7 @@ class DataChecker(object) :
         else :
             plt.xlim((0,dt*3500))
         plt.xlabel("time (s)")
-        plt.title("Cal time series")
+        plt.title("Noise cal temperature - mean over frequency")
         # Time series of system T.
         plt.subplot(3, 2, 4)
         plt.plot(t_total, sys_time)
@@ -734,7 +737,7 @@ class DataChecker(object) :
         else :
             plt.ylim((-4, 35))
             plt.xlim((0,dt*3500))
-        plt.title("System time series in cal units")
+        plt.title("System temperature in cal units")
         # XX cal PS.
         plt.subplot(3, 2, 5)
         plt.loglog(ps_freqs, cal_noise_spec[:,0,:])
