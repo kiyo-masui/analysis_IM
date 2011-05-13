@@ -29,7 +29,8 @@ params_init = {
                'freq' : (),
                # Angular lags at which to calculate the correlation.  Upper
                # edge bins in degrees.
-               'lags' : (0.1, 0.2)
+               'lags' : (0.1, 0.2),
+               'convolve' : True
                }
 prefix = 'fs_'
 
@@ -91,9 +92,38 @@ class FreqSlices(object) :
         #
         gfreq=Map1.get_axis("freq")
         fwhm = utils.get_beam(gfreq)
+        fwhm[:12]=fwhm[13]
+        beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792, 
+                 0.281176247549, 0.270856788455, 0.26745856078, 
+                 0.258910010848, 0.249188429031])
+        freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905], dtype=float)
+        freq_data *= 1.0e6
 
-        b = beam.GaussianBeam(gfreq,fwhm)
-        
+        beam_diff=sp.sqrt(max(1.1*beam_data)**2-(beam_data)**2)
+        b = beam.GaussianBeam(beam_diff,freq_data)
+        if params["convolve"] :
+            Map2=b.apply(Map2)
+            Map1=b.apply(Map1)
+            print "convolving"
+            Noise1[Noise1<1.e-30]=1.e-30
+            Noise1=1/Noise1
+            Noise1=b.apply(Noise1,cval=1.e30)
+            Noise1=ma.array(Noise1)
+            Noise1f=sp.mean(Noise1,0)
+            Noise1[Noise1>1.e20]=ma.masked
+            Noise1=Noise1/Noise1f[None,:,:]
+            Noise1=sp.mean(sp.mean(Noise1,1),1)[:,None,None]*Noise1f[None,:,:]
+            Noise1=(1/Noise1).filled(0)
+
+            Noise2=1/sp.minimum(1.e-30,Noise2)
+            Noise2=b.apply(Noise2,cval=1.e30)
+            Noise2=ma.array(Noise2)
+            Noise2f=sp.mean(Noise2,0)
+            Noise2[Noise2>1.e20]=ma.masked
+            Noise2=Noise2/Noise2f[None,:,:]
+            Noise2=sp.mean(sp.mean(Noise2,1),1)[:,None,None]*Noise2f[None,:,:]
+            Noise2=(1/Noise2).filled(0)
+
         if (hasattr(self, 'freq_Lsvd_modes') and 
             hasattr(self, 'freq_Rsvd_modes')) :
             print 'Subtracting ' + str(len(self.freq_Lsvd_modes)),
@@ -108,21 +138,28 @@ class FreqSlices(object) :
             Rmodes = self.freq_eig_modes
             subflag = True
         if subflag :
+            outmap = sp.empty((len(Lmodes),)+Map1.shape[1:])
+            outmap = algebra.make_vect(outmap,axis_names=('freq', 'ra', 'dec'))
+            outmap.copy_axis_info(Map1)
             for ira in range(Map1.shape[1]) :
                 for jdec in range(Map1.shape[2]) :
                     # if sp.any(Map1.data.mask[ira,jdec,freq]) :
                     #    continue
                     # else :
-                    for v in Lmodes :
+                    for i,v in enumerate(Lmodes) :
                         # v.shape = freq.shape
                         v = v.reshape(freq.shape)
                         # amp = sp.sum(v*Map1.data[ira,jdec,freq])
                         amp = sp.dot(v, Map1[freq,ira,jdec])
                         Map1[freq,ira,jdec] -= amp*v
-                        map_out = (params['output_root'] + params['file_middles'][0] + 
+                        outmap[i,ira,jdec] = amp
+            map_out = (params['output_root'] + params['file_middles'][0] + 
                                    '_cleaned' + params['input_end_map'])
+            map_out_modes = (params['output_root'] + params['file_middles'][0] + 
+                                   '_Lmodes' + params['input_end_map'])
             # fits_map.write(Map1, map_out)
             algebra.save(map_out, Map1)
+            algebra.save(map_out_modes, outmap)
             
             for ira in range(Map2.shape[1]) :
                 for jdec in range(Map2.shape[2]) :
