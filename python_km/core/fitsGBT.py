@@ -101,11 +101,13 @@ class Reader(object) :
             self.verify_ordering = 0
 
         self.fname = fname
-        if self.feedback > 0 :
-            print "Opened GBT fits file: ", ku.abbreviate_file_path(fname)
 
         # The passed file name is assumed to be a GBT spectrometer fits file.
         self.hdulist = pyfits.open(self.fname, 'readonly')
+        if len(self.hdulist) < 2 :
+            raise ce.DataError("File missing data extension")
+        if self.feedback > 0 :
+            print "Opened GBT fits file: ", ku.abbreviate_file_path(fname)
         # Separate in to the useful sub objects.  These assignments are all
         # done by reference, so this is efficient.
         self.fitsdata = self.hdulist[1].data
@@ -118,11 +120,14 @@ class Reader(object) :
         # know what is in the file.
         self._scans_all = self.fitsdata.field('SCAN')
         self.scan_set = sp.unique(self._scans_all)
+        # Sort scans for reapeatable ordering.
+        self.scan_set.sort()
         self._IFs_all = self.fitsdata.field('CRVAL1')/1E6 # MHz
         # Round the frequencies as we only need to tell the difference between
         # one IF and the other.
         self._IFs_all = self._IFs_all.round(0) 
         self.IF_set = sp.unique(self._IFs_all)
+        self.IF_set.sort()
 
     def get_scan_IF_inds(self, scan_ind, IF_ind) :
         """Gets the record indices of the fits file that correspond to the
@@ -168,7 +173,9 @@ class Reader(object) :
                 # Sometimes won't have the LST.
                 try :
                     thisLST = self.fitsdata.field('LST')[inds_sif[ii,0,0]]
-                except KeyError :
+                # If 'LST' is missing raises a KeyError in later versions of
+                # pyfits, and a NameError in earlier ones.
+                except (KeyError, NameError) :
                     break
                 if not (sp.allclose(self.fitsdata.field('LST')
                         [inds_sif[ii,:,:]] - thisLST, 0)) :

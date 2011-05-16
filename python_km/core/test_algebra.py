@@ -11,6 +11,13 @@ import numpy.lib.format as npfor
 import algebra
 import kiyopy.custom_exceptions as ce
 
+class TestLongHeader(unittest.TestCase) :
+
+    def test_npfor_unchanged(self) :
+        # The following lines fail, but that's probably okay.
+        self.assertEqual(npfor.write_array_header_1_0.__module__,
+                         npfor.__name__)
+
 class TestMatTypes(unittest.TestCase) :
     
     def test_from_memory(self) :
@@ -102,7 +109,6 @@ class TestLoadSave(unittest.TestCase) :
     def test_memmap_read(self) :
         algebra.save('temp.npy', self.Mat)
         marray = algebra.open_memmap('temp.npy', mode="r")
-        marray
         self.assertTrue(isinstance(marray, sp.ndarray))
         self.assertTrue(isinstance(marray, algebra.info_memmap))
         self.assertTrue(sp.allclose(marray, self.Mat))
@@ -143,7 +149,6 @@ class TestLoadSave(unittest.TestCase) :
         self.assertTrue(isinstance(Loaded, algebra.info_array))
         self.assertTrue(sp.allclose(Loaded, self.Mat))
         self.assertEqual(Loaded.info['a'], self.Mat.info['a'])
-
 
     def tearDown(self) :
         del self.Mat
@@ -210,49 +215,83 @@ class TestViewsTemplates(unittest.TestCase) :
         self.assertTrue(not a.base is None)
         b = self.vect_arr[:,2]
         c = self.vect_mem[:,3]
-        self.assertTrue(not c.base is None)
+        # These slices should all sitll be arrs obviously, but with a `base`
+        # attribute.
         self.assertTrue(isinstance(a, sp.ndarray))
-        self.assertTrue(not isinstance(a, algebra.mat))
-        self.assertTrue(not isinstance(a, algebra.alg_object))
-        self.assertTrue(isinstance(b, sp.ndarray))
-        self.assertTrue(not isinstance(b, algebra.vect))
-        self.assertTrue(isinstance(c, sp.ndarray))
+        self.assertTrue(not c.base is None)
         self.assertTrue(isinstance(c, sp.memmap))
-        self.assertTrue(hasattr(c, '_mmap'))
+        # None of them should be `vect`, `mat` or `alg_object`.
+        self.assertTrue(not isinstance(a, algebra.alg_object))
+        self.assertTrue(not isinstance(b, algebra.vect))
         self.assertTrue(not isinstance(c, algebra.vect))
+        # They should be info arrays.  The dictionaries should be copies.  The
+        # info_memmap metafile name should be none such that copies don't
+        # clobber origional data.
+        self.assertTrue(isinstance(a, algebra.info_array))
+        self.assertEqual(a.info, self.mat_arr.info)
+        self.assertTrue(not a.info is self.mat_arr.info)
+        self.assertTrue(isinstance(c, algebra.info_memmap))
+        self.assertTrue(c.metafile is None)
 
     def test_ufuncs(self) :
-        # For ufuncs, if the shape is the same, copy the meta data.  Otherwise,
-        # it should be an array.  Matricies higher priority than vectors.
+        # For ufuncs, always copy the meta data. If the shape is the same cast
+        # as an alg_object.  Matricies higher priority than vectors.
+        # Vector only.
         a = self.vect_arr + self.vect_arr
         self.assertTrue(isinstance(a, algebra.vect))
-        b = self.mat_arr - self.vect_arr
+        self.assertEqual(a.info, self.vect_arr.info)
+        self.assertTrue(not a.info is self.vect_arr.info)
+        # Matrix vector.
+        b = self.vect_arr - self.mat_arr
         self.assertTrue(isinstance(b, algebra.mat))
+        self.assertEqual(b.info, self.mat_arr.info)
+        self.assertTrue(not b.info is self.vect_arr.info)
+        self.assertTrue(not b.info is self.mat_arr.info)
+        # Shape changing.
         q = sp.arange(3)
         q.shape = (3, 1, 1)
         c = q*self.mat_arr
         self.assertTrue(not isinstance(c, algebra.alg_object))
-        self.assertTrue(not isinstance(c, algebra.info_array))
+        self.assertTrue(isinstance(c, algebra.info_array))
         
     def test_ufuncs_memmap(self) :
-        # Same as above, but should always be the array, not the memmap
-        # version.
+        # Same as above.
         c = self.vect_mem / 2.0
-        self.assertTrue(not isinstance(c, sp.memmap))
-        self.assertTrue(isinstance(c, sp.ndarray))
+        self.assertTrue(isinstance(c, algebra.info_memmap))
+        self.assertTrue(c.metafile is None)
         self.assertTrue(isinstance(c, algebra.alg_object))
 
     def test_sum_mean(self) :
         s = sp.sum(self.vect_arr, 1)
+        r = sp.sum(self.vect_mem, 1)
+        q = sp.sum(self.mat_arr, 1)
         self.assertFalse(s.info is self.vect_arr.info)
+        self.assertFalse(r.info is self.vect_mem.info)
+        self.assertTrue(not isinstance(s, algebra.alg_object))
+        self.assertTrue(not isinstance(r, algebra.alg_object))
+        self.assertTrue(not isinstance(q, algebra.alg_object))
 
     def test_copy(self) :
         c = self.vect_arr.copy()
         self.assertFalse(c.info is self.vect_arr.info)
 
     def test_views(self) :
-        # Views should always share metadata references.
-        pass
+        # Views should always share metadata references and be of the same
+        # type.
+        # Arrays.
+        a = self.mat_arr.view()
+        self.assertTrue(isinstance(a, algebra.mat_array))
+        self.assertTrue(a.info is self.mat_arr.info)
+        # Memmaps.
+        c = self.vect_mem.view()
+        self.assertTrue(isinstance(c, algebra.vect_memmap))
+        self.assertEqual(c.metafile, self.vect_mem.metafile)
+        self.assertTrue(c.info is self.vect_mem.info)
+        # Changing type.
+        b = self.vect_arr.view(algebra.info_array)
+        self.assertTrue(b.info is self.vect_arr.info)
+
+
 
 
     # How to implement: define __array_wrap__ and __getitem__ in

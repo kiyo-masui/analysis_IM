@@ -1,7 +1,8 @@
 """This module contains the class that holds an IF and scan of GBT data"""
 
 import scipy as sp
-import matplotlib as plt
+
+import numpy.ma as ma
 
 import utils
 import base_data
@@ -35,7 +36,8 @@ class DataBlock(base_data.BaseData) :
     
     def calc_pointing(self) :
         """Calculates the telescope pointing.
-
+        
+        Should only be used if in alt/az mode. 
         At every time the Ra and Dec of the telescope time is calculated.
         These are stored as attributes (not fields) named ra and dec.  This
         requires the fields 'CRVAL3', 'CRVAL2' and 'DATE-OBS' to be set.
@@ -48,6 +50,33 @@ class DataBlock(base_data.BaseData) :
                                             self.field['CRVAL2'][ii],
                                             self.field['DATE-OBS'][ii])
 
+    def calc_LST(self) :
+        """Calculates the telescope LST for guppi data
+
+        This requires the fields 'CRVAL3', 'CRVAL2' and 'DATE-OBS' to be set.
+        """
+        self.LST = sp.zeros(self.dims[0])
+        for ii in range(self.dims[0]) :
+            self.LST[ii] = utils.LSTatGBT(self.field['DATE-OBS'][ii])
+    
+    def calc_PA(self) :
+        """Calculates the telescope PA. requires LST to be either a field or 
+        previously calculated array
+        Outputs an  array of PA values for each time in radians.
+        This requires the fields Ra = 'CRVAL2', Dec = 'CRVAL3' and 'DATE-OBS'
+        to be set.
+        """
+        
+        self.PA = sp.zeros(self.dims[0])
+        for ii in range(self.dims[0]) :
+            RA = self.field['CRVAL2'][ii]
+            DEC = self.field['CRVAL3'][ii]
+            LST = utils.LSTatGBT(self.field['DATE-OBS'][ii])
+            H = LST-RA
+            Latit = 38.0+26.0/60
+            tanPA = ma.sin(H*sp.pi/180)/(ma.cos(DEC*sp.pi/180)*ma.tan(Latit*sp.pi/180)-ma.sin(DEC*sp.pi/180)*ma.cos(H*sp.pi/180))
+            self.PA[ii] = ma.arctan(tanPA)
+         
     def calc_freq(self) :
         """Calculates the frequency axis.
         
@@ -60,6 +89,7 @@ class DataBlock(base_data.BaseData) :
 
     def plot_spectra(self, times=(), pols=(), cals=(), time_average=False) :
         """Make a plot along frequency axis."""
+        import matplotlib as plt
         #
 
     def calc_time(self) :

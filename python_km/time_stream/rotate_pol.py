@@ -29,6 +29,8 @@ class RotatePol(base_single.BaseSingle) :
                average_cals=self.params['average_cals'])
         Data.add_history('Rotated polarizations parameters.', ('Rotated to:' +
                                                 str(self.params['new_pols']),))
+        if self.params['average_cals'] :
+            Data.add_history('Averaged cal states.')
         return Data
 
 
@@ -45,46 +47,70 @@ def rotate(Data, new_pols=(1,), average_cals=False) :
     It also optionally takes the average of cal_on and cal_off.
     """
     
-    # Here we check the polarizations indicies
-    xx_ind = 0
-    yy_ind = 3
-    xy_inds = [1,2]
-    if (Data.field['CRVAL4'][xx_ind] != -5 or
-        Data.field['CRVAL4'][yy_ind] != -6 or
-        Data.field['CRVAL4'][xy_inds[0]] != -7 or
-        Data.field['CRVAL4'][xy_inds[1]] != -8) :
-            raise ce.DataError('Polarization types not as expected.')
-    on_ind = 0
-    off_ind = 1
-    if average_cals and Data.field.has_key('EXPOSURE') :
-        Data.field['EXPOSURE'] = sp.mean(Data.field['EXPOSURE'], -1)
-        Data.field['EXPOSURE'].shape = Data.field['EXPOSURE'].shape + (1,)
-    if (Data.field['CAL'][on_ind] != 'T' or
-        Data.field['CAL'][off_ind] != 'F') :
-            raise ce.DataError('Cal states not in expected order.')
-    if len(new_pols) == 1 and new_pols[0] == 1 :
-        I = (Data.data[:,[xx_ind],:,:] + Data.data[:,[yy_ind],:,:])/2.0
-        if average_cals :
-            I = (I[:,:,[0],:] + I[:,:,[1],:])/2.0
-            Data.field['CAL'] = sp.array(['A'])
-        Data.set_data(I)
-        Data.field['CRVAL4'] = sp.array([1])
-    elif tuple(new_pols) == (1,2,3,4) :
-        new_data = ma.empty(Data.dims)
-        new_data[:,[0],:,:] = (Data.data[:,[xx_ind],:,:] + 
-                             Data.data[:,[yy_ind],:,:])/2.0
-        new_data[:,[1],:,:] = (Data.data[:,[xx_ind],:,:] - 
-                             Data.data[:,[yy_ind],:,:])/2.0
-        new_data[:,[2],:,:] = Data.data[:,[xy_inds[0]],:,:] 
-        new_data[:,[3],:,:] = Data.data[:,[xy_inds[1]],:,:] 
-        if average_cals :
-            new_data = (new_data[:,:,[0],:] + new_data[:,:,[1],:])/2.0
-            Data.field['CAL'] = sp.array(['A'])
-        Data.set_data(new_data)
-        Data.field['CRVAL4'] = sp.array([1,2,3,4])
+    # Two supported cases for input polarizations.
+    if (tuple(Data.field['CRVAL4']) == (1, 2, 3, 4)) :
+        I_ind = 0
+        Q_ind = 1
+        U_ind = 2
+        V_ind = 3
+        # Two supported cases for output polarizations.
+        if tuple(new_pols) == (1,) :
+            new_data = Data.data[:, [0], :, :]
+        elif tuple(new_pols) == (-5, -7, -8, -6) :
+            new_data = ma.empty(Data.dims)
+            new_data[:,[0],:,:] = (Data.data[:,[I_ind],:,:] 
+                                   - Data.data[:,[Q_ind],:,:])
+            new_data[:,[1],:,:] = Data.data[:,[U_ind],:,:] 
+            new_data[:,[2],:,:] = Data.data[:,[V_ind],:,:] 
+            new_data[:,[3],:,:] = (Data.data[:,[I_ind],:,:] 
+                                   + Data.data[:,[Q_ind],:,:])
+        else :
+            msg = ("Converstion to " + str(tuple(new_pols)) + " from " 
+                   + str(tuple(Data.field['CRVAL4'])) + " is not supported.")
+            raise NotImplementedError(msg)
+    elif (tuple(Data.field['CRVAL4']) == (-5, -7, -8, -6)):
+        xx_ind = 0
+        yy_ind = 3
+        xy_ind = 1
+        yx_ind = 2
+        # Two supported cases for output polarizations.
+        if tuple(new_pols) == (1,) :
+            new_data = (Data.data[:,[xx_ind],:,:] + 
+                        Data.data[:,[yy_ind],:,:])/2.0
+        elif tuple(new_pols) == (1,2,3,4) :
+            new_data = ma.empty(Data.dims)
+            new_data[:,[0],:,:] = (Data.data[:,[xx_ind],:,:] + 
+                                 Data.data[:,[yy_ind],:,:])/2.0
+            new_data[:,[1],:,:] = (-Data.data[:,[xx_ind],:,:] + 
+                                 Data.data[:,[yy_ind],:,:])/2.0
+            new_data[:,[2],:,:] = Data.data[:,[xy_ind],:,:] 
+            new_data[:,[3],:,:] = Data.data[:,[yx_ind],:,:] 
+        else :
+            msg = ("Converstion to " + str(tuple(new_pols)) + " from " 
+                   + str(tuple(Data.field['CRVAL4'])) + " is not supported.")
+            raise NotImplementedError(msg)
     else :
-        raise NotImplementedError('Right now we can only calculate I'
-                                  ' or (I, Q, U V)')
+        raise NotImplementedError('For now polarizations must be (I, Q, U, V)'
+                                  ' or (XX, XY, YX, YY) in those orders')
+    # Now deal with the cal if desired.
+    if average_cals :
+        on_ind = 0
+        off_ind = 1
+        if Data.field.has_key('EXPOSURE') :
+            Data.field['EXPOSURE'] = sp.mean(Data.field['EXPOSURE'], -1)
+            Data.field['EXPOSURE'].shape = (Data.field['EXPOSURE'].shape
+                                            + (1,))
+        if (Data.field['CAL'][on_ind] != 'T' or
+            Data.field['CAL'][off_ind] != 'F') :
+                raise ce.DataError('Cal states not in expected order.')
+        new_data = (new_data[:,:,[on_ind],:] + 
+                    new_data[:,:,[off_ind],:])/2.0
+        # Set cal field to 'A' for averaged.
+        Data.field['CAL'] = sp.array(['A'])
+    # Finally replace the data in the DataBlock.
+    Data.set_data(new_data)
+    Data.field['CRVAL4'] = sp.array(new_pols)
+
     
 
 # If this file is run from the command line, execute the main function.
