@@ -420,7 +420,7 @@ def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
     lag_inds = list(lag_inds)
     # Set up binning.    
     nf = len(self.freq_inds)
-    freq_diffs = sp.arange(0.1e6, 100e6, 2e6)
+    freq_diffs = sp.arange(0.1e6, 100e6, 3.125e6)
     n_diffs = len(freq_diffs)
     # Allowcate memory.
     corrf = sp.zeros((n_diffs, len(lag_inds)))
@@ -450,7 +450,7 @@ def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
     nbins = 8
     lags = sp.empty(nbins)
     lags[0] = 6.0
-    lags[1] = 10.0
+    lags[1] = 12.0
     for ii in range(2, nbins) :
         lags[ii] = 1.5*lags[ii-1]
     R = self.lags[lag_inds]
@@ -508,12 +508,16 @@ def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
         self.old_errors = errors
     elin = 2
     msize = 6
-    f = plt.errorbar(lags[pdat-errors[0,:]>0], pdat[pdat-errors[0,:]>0],
-                     errors[:,pdat-errors[0,:]>0], linestyle='None', marker='o', 
-                     color='b', elinewidth=elin, markersize=msize)
-    f = plt.errorbar(lags[pdat+errors[1,:]<0], -pdat[pdat+errors[1,:]<0],
-                     errors[:,pdat+errors[1,:]<0], linestyle='None', marker='o', 
-                     color='r', elinewidth=elin, markersize=msize)
+    inds = pdat-errors[0,:]>0
+    if sp.any(inds) :
+        f = plt.errorbar(lags[inds], pdat[inds],
+                         errors[:,inds], linestyle='None', marker='o', 
+                         color='b', elinewidth=elin, markersize=msize)
+    inds = pdat+errors[1,:]<0
+    if sp.any(inds) :
+        f = plt.errorbar(lags[inds], -pdat[inds], errors[:,inds], 
+                         linestyle='None', marker='o', color='r', 
+                         elinewidth=elin, markersize=msize)
     inds = sp.logical_and(pdat-errors[0,:]<=0, pdat > 0)
     if sp.any(inds) :
         vals = pdat[inds] + 2*errors[1, inds]
@@ -544,14 +548,18 @@ def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
         mfc = 'w'
         pdat = self.old_pdat
         errors = self.old_errors
-        f = plt.errorbar(lags[pdat-errors[0,:]>0], pdat[pdat-errors[0,:]>0],
-                         errors[:,pdat-errors[0,:]>0], linestyle='None', 
-                         marker='o', color='b', elinewidth=elin, mfc=mfc, 
-                         markersize=msize)
-        f = plt.errorbar(lags[pdat+errors[1,:]<0], -pdat[pdat+errors[1,:]<0],
-                         errors[:,pdat+errors[1,:]<0], linestyle='None',
-                         marker='o', color='r', elinewidth=elin, mfc=mfc,
-                         markersize=msize)
+        inds = pdat-errors[0,:]>0
+        if sp.any(inds) :
+            f = plt.errorbar(lags[inds], pdat[inds],
+                             errors[:,inds], linestyle='None', 
+                             marker='o', color='b', elinewidth=elin, mfc=mfc, 
+                             markersize=msize)
+        inds = pdat+errors[1,:]<0
+        if sp.any(inds) :
+            f = plt.errorbar(lags[inds], -pdat[inds],
+                             errors[:,inds], linestyle='None',
+                             marker='o', color='r', elinewidth=elin, mfc=mfc,
+                             markersize=msize)
         inds = sp.logical_and(pdat-errors[0,:]<=0, pdat > 0)
         if sp.any(inds) :
             vals = pdat[inds] + 2*errors[1, inds]

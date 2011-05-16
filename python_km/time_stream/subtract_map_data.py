@@ -158,11 +158,12 @@ def sub_map(Data, Maps, correlate=False, pols=(), make_plots=False) :
             # mean subtracted map, to preserve data mean.
             if make_plots :
                 plt.figure()
-                #plt.plot(ma.mean((gain*tmp_subdata), -1), '.b')
-                #plt.plot(ma.mean((data - ma.mean(data, 0)), -1), '.g')
+                plt.plot(ma.mean((gain*tmp_subdata), -1), '.b')
+                plt.plot(ma.mean((tmp_subdata), -1), '.r')
+                plt.plot(ma.mean((data - ma.mean(data, 0)), -1), '.g')
                 #plt.plot(ma.mean((data), -1), '.g')
-                plt.plot((gain*tmp_subdata)[:, 45], '.b')
-                plt.plot((data - ma.mean(data, 0))[:, 45], '.g')
+                #plt.plot((gain*tmp_subdata)[:, 45], '.b')
+                #plt.plot((data - ma.mean(data, 0))[:, 45], '.g')
             data[...] -= gain*tmp_subdata
     if correlate :
         return out_gains
