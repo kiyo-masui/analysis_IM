@@ -30,7 +30,7 @@ params_init = {
                # Angular lags at which to calculate the correlation.  Upper
                # edge bins in degrees.
                'lags' : (0.1, 0.2),
-               'convolve' : True
+               'convolve' : False
                }
 prefix = 'fs_'
 
@@ -96,7 +96,8 @@ class FreqSlices(object) :
         beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792, 
                  0.281176247549, 0.270856788455, 0.26745856078, 
                  0.258910010848, 0.249188429031])
-        freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905], dtype=float)
+        freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
+                             dtype=float)
         freq_data *= 1.0e6
 
         beam_diff=sp.sqrt(max(1.1*beam_data)**2-(beam_data)**2)
