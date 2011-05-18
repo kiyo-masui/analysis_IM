@@ -35,7 +35,7 @@ ha_IFs = IFs
 #from time_stream import flag_data
 # Comment this line to skip this step when running python pipeline/manager
 #pipe_modules.append(flag_data.FlagData)
-fd_input_root = ha_output_root
+fd_input_root = kiyo_dir + 'guppi_data/'
 fd_file_middles = file_middles
 fd_input_end = '.fits'
 fd_output_root = base_dir + 'flagged/'

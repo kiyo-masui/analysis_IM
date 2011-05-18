@@ -9,7 +9,7 @@ import scipy as sp
 field = '15hr'
 dm_field_centre = (218.25, 2.0) 
 #Here I'm grabbing the guppi data
-file_middles = tuple(dir_data.get_data_files(range(41,52) , '15hr', type='guppi'))
+file_middles = tuple(dir_data.get_data_files(range(41,49) , '15hr', type='guppi'))
 
 pipe_modules = []
 # Chime has 8 cores, but you should save a few for other people.  Use 6 max.
@@ -19,7 +19,7 @@ base_dir = os.getenv('GBT10B_OUT')
 #raw_data_dir = os.getenv('GBT10B_DATA')
 kiyo_dir = os.getenv('GBT10B_KM')
 prefix = ''
-map_prefix = prefix + field + '_41-52_add_rotate_'
+map_prefix = prefix + field + '_41-48_mod_pol_cal'
 IFs = ()
 
 #from time_stream import hanning 
@@ -38,7 +38,8 @@ ha_IFs = IFs
 #from time_stream import flag_data
 # Comment this line to skip this step when running python pipeline/manager
 #pipe_modules.append(flag_data.FlagData)
-fd_input_root = ha_output_root
+#fd_input_root = ha_output_root
+fd_input_root = kiyo_dir + '/guppi_data/'
 fd_file_middles = file_middles
 fd_input_end = '.fits'
 fd_output_root = base_dir + 'flagged/'
