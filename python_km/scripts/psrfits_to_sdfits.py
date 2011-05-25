@@ -36,7 +36,7 @@ import kiyopy.pickle_method
 
 params_init = {# Inputs.
                # Everything up to the scan number.
-               "guppi_input_root" : "./",
+               "guppi_input_roots" : ["./"],
                # Everything after the scan number
                "guppi_input_end" : ".fits",
                # The directory containing the fits scan log file (with antenna
@@ -146,8 +146,8 @@ class Converter(object) :
                                 + " in directory: " + log_dir)
                     elif Data is None :
                         warnings.warn("Missing or corrupted psrfits file."
-                            " Scan: " + str(scan) + " file root: " 
-                            + params["guppi_input_root"])
+                            " Scan: " + str(scan) + " file roots: " 
+                            + str(params["guppi_input_roots"]))
                     else :
                         Block_list.append(Data)
                 if ii < n :
@@ -249,12 +249,16 @@ class Converter(object) :
         el_interp = interp.interp1d(ant_times, ant_el,
                                           kind="nearest")
         
-        # Get the guppi file name.
-        guppi_file = (params["guppi_input_root"] + "%04d"%scan +
-                      params["guppi_input_end"])
+        # Get the guppi file name.  We check all of the guppi input roots to
+        # see if there is a corresponding file.
         # Sometimes guppi files are just missing.  This shouldn't crash the
         # program.
-        if not os.path.isfile(guppi_file) :
+        for in_root in params["guppi_input_roots"] :
+            guppi_file = (in_root + "%04d"%scan +
+                          params["guppi_input_end"])
+            if os.path.isfile(guppi_file) :
+                break
+        else :
             Pipe.send(None)
             return
         print "Converting file: " + guppi_file,
@@ -420,8 +424,9 @@ class Converter(object) :
             # range within the 0.1 second accuracy.
             if ((max(time) - max(ant_times) > 0.1) or 
                 (min(time) - min(ant_times) < 0.1)) :
+                #print max(time) - max(ant_times), min(time) - min(ant_times)
                 raise ce.DataError("Guppi data time range not covered by "
-                                   "antenna.")
+                        "antenna. File: " + antenna_file)
             az = az_interp(time)
             el = el_interp(time)
             
@@ -800,8 +805,10 @@ class DataManager(object) :
         else :
             self.f_err = None
         # Loop over the sessions and process them.
+        sessions = params["sessions"]
+        sessions.reverse()
         try :
-            for session in params["sessions"] :
+            for session in sessions :
                 self.process_session(session)
         finally :
             if params["log_file"] :
@@ -819,19 +826,37 @@ class DataManager(object) :
             guppi_root = session["guppi_input_root"]
         except KeyError :
             guppi_root = params["default_guppi_input_root"]
-        guppi_dir = guppi_root + session["guppi_dir"] + "/"
+        # Some observations are spread over multiple directories, in which case
+        # session["guppi_dir"] will be a list.
+        if isinstance(session["guppi_dir"], list) :
+            session_dirs = session["guppi_dir"]
+        else :
+            session_dirs = [session["guppi_dir"]]
+        # Version of session_dirs with absolute path.
+        guppi_dirs = [guppi_root + dir + "/" 
+                      for dir in session_dirs]
         fits_root = params["fits_log_root"] + str(number) + "/"
         outroot = params["output_root"]
-        print ("Processing sesson " + str(number) + ", in guppi directory "
-                + guppi_dir)
+        print ("Processing sesson " + str(number) + ", in guppi directories "
+                + str(guppi_dirs))
         # Check that all the directories are present.
-        if (not os.path.isdir(guppi_dir) or not os.path.isdir(fits_root)) :
-            print "Skipped do to missing data."
-            return
+        for dir in guppi_dirs :
+            if (not os.path.isdir(dir) or not os.path.isdir(fits_root)) :
+                print "Skipped do to missing data."
+                return
         # First thing we do is start to rsync to the archive.
         if number in params['sessions_to_archive'] and not params["dry_run"]:
-            SyncProc = subprocess.Popen("rsync -av -essh " + guppi_dir + " " 
-                    + params["archive_root"] + session["guppi_dir"] + "/",
+            # Construct the multiple line command that will tarnsfer all
+            # guppi directories to teh archive.
+            program = "rsync -av -essh "
+            command = ""
+            for ii in range(len(session_dirs)) :
+                command += program
+                command += guppi_dirs[ii] + " "
+                command += (params["archive_root"] + str(number) + "_" 
+                            + session_dirs[ii] + "/")
+                command += ";"
+            SyncProc = subprocess.Popen(command,
                     bufsize=4096, shell=True, stdout=self.f_log, 
                     stderr=self.f_err)
         # Check if this session is in the list of force even if output file
@@ -875,10 +900,20 @@ class DataManager(object) :
                                     }
                 # The parameters that are acctually assigned dynamically.
                 converter_params["scans"] = tuple(scans_to_convert)
-                converter_params["guppi_input_root"] = (guppi_dir + "guppi_"
-                        + session["guppi_session"] + "_" + field + "_")
                 converter_params["fits_log_dir"] = fits_root
                 converter_params["output_root"] = outroot
+                # Guppi input root should be a list of all possible roots for
+                # this session.  All permutations of guppi directory and of
+                # session number.
+                if isinstance(session["guppi_session"], list) :
+                    guppi_sessions = session["guppi_session"]
+                else :
+                    guppi_sessions = [session["guppi_session"]]
+                converter_params["guppi_input_roots"] = []
+                for dir in guppi_dirs :
+                    for se in guppi_sessions :
+                        converter_params["guppi_input_roots"].append(dir
+                                + "guppi_" + se + "_" + field + "_")
                 # Convert the files from this session.
                 if not params["dry_run"] :
                     C = Converter(converter_params, feedback=1)
