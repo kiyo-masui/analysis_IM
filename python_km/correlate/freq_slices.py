@@ -162,6 +162,9 @@ class FreqSlices(object) :
             algebra.save(map_out, Map1)
             algebra.save(map_out_modes, outmap)
             
+            outmap = sp.empty((len(Rmodes),)+Map1.shape[1:])
+            outmap = algebra.make_vect(outmap,axis_names=('freq', 'ra', 'dec'))
+            outmap.copy_axis_info(Map2)
             for ira in range(Map2.shape[1]) :
                 for jdec in range(Map2.shape[2]) :
                     # if sp.any(Map1.data.mask[ira,jdec,freq]) :
@@ -173,10 +176,14 @@ class FreqSlices(object) :
                         # amp = sp.sum(v*Map1.data[ira,jdec,freq])
                         amp = sp.dot(v, Map2[freq,ira,jdec])
                         Map2[freq,ira,jdec] -= amp*v
-                        map_out = (params['output_root'] + params['file_middles'][1] + 
-                                   '_cleaned' + params['input_end_map'])
+                        outmap[i,ira,jdec] = amp
+            map_out = (params['output_root'] + params['file_middles'][1] + 
+                       '_cleaned' + params['input_end_map'])
+            map_out_modes = (params['output_root'] + params['file_middles'][0] + 
+                                   '_Rmodes' + params['input_end_map'])
             # fits_map.write(Map2, map_out)
             algebra.save(map_out, Map2)
+            algebra.save(map_out_modes, outmap)
 
         # Inverse noise weight the data.
         #if (not sp.alltrue(Map1.data.mask == Noise1.data.mask) 
@@ -414,13 +421,15 @@ def plot_contour(self, norms=False, lag_inds=(0)) :
     # Set up binning.    
     nf = len(self.freq_inds)
     #freq_diffs = sp.sort(self.allfreq - min(self.allfreq))
-    n_bins = 12
-    factor = 2.0
-    start = 2.1e6
+    n_bins = 20
+    factor = 1.5
+    #start = 2.1e6
     freq_diffs = sp.empty(n_bins)
-    freq_diffs[0] = 0.5
-    freq_diffs[1] = start
-    for ii in range(2,n_bins) :
+    freq_diffs[0] = 0.0001
+    freq_diffs[1] = 2.5*200.0/256
+    freq_diffs[2] = 4.5*200.0/256
+    freq_diffs[3] = 6.5*200.0/256
+    for ii in range(4,n_bins) :
        freq_diffs[ii] = factor*freq_diffs[ii-1]
     n_diffs = len(freq_diffs)
     # Allowcate memory.
@@ -465,7 +474,7 @@ def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
     lag_inds = list(lag_inds)
     # Set up binning.    
     nf = len(self.freq_inds)
-    freq_diffs = sp.arange(0.1e6, 100e6, 3.125e6)
+    freq_diffs = sp.arange(0.1e6, 100e6, 200.0/256*1e6)
     n_diffs = len(freq_diffs)
     # Allowcate memory.
     corrf = sp.zeros((n_diffs, len(lag_inds)))
@@ -490,12 +499,13 @@ def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
             countsf[d_ind] +=1
     corrf /= countsf[:, sp.newaxis]
     # Now collapse to 1 axis:
+    # Cosmology dependant conersion to MPc.
     a_fact = 34.0
     f_fact = 4.5
     nbins = 8
     lags = sp.empty(nbins)
-    lags[0] = 6.0
-    lags[1] = 12.0
+    lags[0] = 2.0
+    lags[1] = 4.0
     for ii in range(2, nbins) :
         lags[ii] = 1.5*lags[ii-1]
     R = self.lags[lag_inds]
@@ -623,7 +633,7 @@ def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
                              es, linestyle='None', marker='None', 
                              color='r', lolims=True, elinewidth=elin,
                              markersize=msize, mfc=mfc)
-    plt.axis([4, 100, 0.01, 200.0])
+    plt.axis([1.5, 100, 0.01, 200.0])
     plt.xlabel('lag (Mpc/h)')
     plt.ylabel('correlation (mK)')
 
