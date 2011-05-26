@@ -77,7 +77,7 @@ def flag_data(Data):
     # check if localized in time. If that sucks too, then just hide freq.
     Data1 = copy.deepcopy(Data)
     itr = 0            # For recursion
-    max_itr = 10       # For recursion
+    max_itr = 20       # For recursion
     bad_freqs = []
     amount_masked = -1 # For recursion
     while not (amount_masked == 0) and itr < max_itr:                         
@@ -87,20 +87,23 @@ def flag_data(Data):
     print bad_freqs
     # Remember the flagged data.
     mask = Data1.data.mask
-    badness = determine_badness(bad_freqs)
+##    badness = determine_badness(bad_freqs)
+    badness = (float(len(bad_freqs)) / Data.dims[-1]) > 0.05
     # If too many frequencies flagged, it may be that the problem
     # happens in time, not in frequency.
     if badness:
         Data2 = copy.deepcopy(Data)
         flag_across_time(Data2)
         # Bad style for repeating as above, sorry.
+        itr = 0
         bad_freqs = []
         amount_masked = -1
         while not (amount_masked == 0) and itr < max_itr:
             amount_masked = destroy_with_variance(Data2, bad_freq_list=bad_freqs) 
             itr += 1
         bad_freqs.sort()
-        badness = determine_badness(bad_freqs)
+##        badness = determine_badness(bad_freqs)
+        badness = (float(len(bad_freqs)) / Data.dims[-1]) > 0.05
         # If this data does not have badness, that means there was
         # a problem in time and it was solved, so use this mask.
         # If the data is still bad, then the mask from Data1 will be used.
@@ -147,9 +150,10 @@ def destroy_with_variance(Data, level=1, bad_freq_list=[]):
             # mask
             amount_masked += 1
             bad_freq_list.append(freq)
-            for pols in range(0, Data.dims[1]):
-                Data.data[:, pols, 0, freq].mask = True
-                Data.data[:, pols, 1, freq].mask = True
+#           for pols in range(0, Data.dims[1]):
+#                Data.data[:, pols, 0, freq].mask = True
+#                Data.data[:, pols, 1, freq].mask = True
+            Data.data[:,:,:,freq].mask = True
     print amount_masked
     return amount_masked
 
@@ -190,21 +194,31 @@ def flag_across_time(Data, section_size=15):
             Data.data[splits:(splits+section_size), 1, 1, :],
             Data.data[splits:(splits+section_size), 2, 1, :],
             Data.data[splits:(splits+section_size), 3, 1, :]], mask=False)
-        destroy_with_variance_arrays(arr, bad_freq_list=bad_freqs)
-        destroy_with_variance_arrays(arr, bad_freq_list=bad_freqs)
-        destroy_with_variance_arrays(arr, bad_freq_list=bad_freqs)
-        destroy_with_variance_arrays(arr, bad_freq_list=bad_freqs)
-        destroy_with_variance_arrays(arr, bad_freq_list=bad_freqs)
+        # If there is masked data already in the split, it will ruin
+        # accuracy so all data from there is ignored.
+        if (True in Data.data[splits:(splits+section_size),:,:,:].mask):
+            bad_times.append(splits) 
+        itr = 0            # For recursion
+        max_itr = 20       # For recursion
+        bad_freqs = []
+        amount_masked = -1 # For recursion
+        while not (amount_masked == 0) and itr < max_itr:                         
+            amount_masked = destroy_with_variance_arrays(arr, bad_freq_list=bad_freqs) 
+            itr += 1
         bad_freqs.sort()
-        badness = determine_badness(bad_freqs)
+##        badness = determine_badness(bad_freqs)
+#        badness = (float(len(bad_freqs)) / Data.dims[-1]) > 0.05
+#        if badness:
         # If section in time is bad, remember it.
-        if badness:
+        if len(bad_freqs) > 50:
             bad_times.append(splits)
     # Flag Data in time for all bad time sections found.
+    print bad_times
     for time in bad_times:
-        for pols in range(0, Data.dims[1]):
-            Data.data[time:(time+section_size), pols, 0, :].mask = True
-            Data.data[time:(time+section_size), pols, 1, :].mask = True
+#        for pols in range(0, Data.dims[1]):
+#            Data.data[time:(time+section_size), pols, 0, :].mask = True
+#            Data.data[time:(time+section_size), pols, 1, :].mask = True
+        Data.data[time:(time+section_size),:,:,:].mask = True
     return
 
 def destroy_with_variance_arrays(arr, level=1, bad_freq_list=[]):
@@ -242,7 +256,7 @@ def destroy_with_variance_arrays(arr, level=1, bad_freq_list=[]):
             bad_freq_list.append(freq)
             arr.mask[:,:,freq] = True
     print amount_masked
-    return
+    return amount_masked
 
 
 # If this file is run from the command line, execute the main function.
