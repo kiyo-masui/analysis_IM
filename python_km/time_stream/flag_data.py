@@ -113,17 +113,24 @@ def destroy_with_variance(Data, level=1, bad_freq_list=[]):
     '''Mask spikes in Data using variance. Polarizations must be in
     XX,XY,YX,YY format.
     level represents how sensitive the flagger is (smaller = more masking).
-    The flagged frequencies are appended to bad_freq_list.
-    Note: only uses values for cal = 0 [cal on?].'''
-    XX_YY = ma.mean(Data.data[:, 0, 0, :], 0) * ma.mean(Data.data[:, 3, 0, :], 0)
+    The flagged frequencies are appended to bad_freq_list.'''
+    XX_YY_0 = ma.mean(Data.data[:, 0, 0, :], 0) * ma.mean(Data.data[:, 3, 0, :], 0)
+    XX_YY_1 = ma.mean(Data.data[:, 0, 1, :], 0) * ma.mean(Data.data[:, 3, 1, :], 0)
     # Get the normalized variance array for each polarization.
     a = ma.var(Data.data[:, 0, 0, :], 0) / (ma.mean(Data.data[:, 0, 0, :], 0)**2) # XX
-    b = ma.var(Data.data[:, 1, 0, :], 0) / XX_YY                                  # XY
-    c = ma.var(Data.data[:, 2, 0, :], 0) / XX_YY                                  # YX
+    b = ma.var(Data.data[:, 1, 0, :], 0) / XX_YY_0                                # XY
+    c = ma.var(Data.data[:, 2, 0, :], 0) / XX_YY_0                                # YX
     d = ma.var(Data.data[:, 3, 0, :], 0) / (ma.mean(Data.data[:, 3, 0, :], 0)**2) # YY
+    # And for cal off.
+    e = ma.var(Data.data[:, 0, 1, :], 0) / (ma.mean(Data.data[:, 0, 1, :], 0)**2) # XX
+    f = ma.var(Data.data[:, 1, 1, :], 0) / XX_YY_1                                # XY
+    g = ma.var(Data.data[:, 2, 1, :], 0) / XX_YY_1                                # YX
+    h = ma.var(Data.data[:, 3, 1, :], 0) / (ma.mean(Data.data[:, 3, 1, :], 0)**2) # YY
     # Get the mean and standard deviation [sigma].
-    means = sp.array([ma.mean(a), ma.mean(b), ma.mean(c), ma.mean(d)]) 
-    sig = sp.array([ma.std(a), ma.std(b), ma.std(c), ma.std(d)])
+    means = sp.array([ma.mean(a), ma.mean(b), ma.mean(c), ma.mean(d),
+                        ma.mean(e), ma.mean(f), ma.mean(g), ma.mean(h)]) 
+    sig = sp.array([ma.std(a), ma.std(b), ma.std(c), ma.std(d),
+                      ma.std(e), ma.std(f), ma.std(g), ma.std(h)])
     # Get the max accepted value [6*sigma, with level thrown in for fun].
     max_sig = 6*sig*level
     max_accepted = means + max_sig
@@ -132,7 +139,11 @@ def destroy_with_variance(Data, level=1, bad_freq_list=[]):
         if ((a[freq] > max_accepted[0]) or
             (b[freq] > max_accepted[1]) or
             (c[freq] > max_accepted[2]) or
-            (d[freq] > max_accepted[3])):
+            (d[freq] > max_accepted[3]) or
+            (e[freq] > max_accepted[4]) or
+            (f[freq] > max_accepted[5]) or
+            (g[freq] > max_accepted[6]) or
+            (h[freq] > max_accepted[7])):
             # mask
             amount_masked += 1
             bad_freq_list.append(freq)
@@ -174,7 +185,11 @@ def flag_across_time(Data, section_size=15):
         arr = ma.masked_array([Data.data[splits:(splits+section_size), 0, 0, :],
             Data.data[splits:(splits+section_size), 1, 0, :],
             Data.data[splits:(splits+section_size), 2, 0, :],
-            Data.data[splits:(splits+section_size), 3, 0, :]], mask=False)
+            Data.data[splits:(splits+section_size), 3, 0, :],
+            Data.data[splits:(splits+section_size), 0, 1, :],
+            Data.data[splits:(splits+section_size), 1, 1, :],
+            Data.data[splits:(splits+section_size), 2, 1, :],
+            Data.data[splits:(splits+section_size), 3, 1, :],], mask=False)
         destroy_with_variance_arrays(arr, bad_freq_list=bad_freqs)
         destroy_with_variance_arrays(arr, bad_freq_list=bad_freqs)
         destroy_with_variance_arrays(arr, bad_freq_list=bad_freqs)
@@ -194,15 +209,22 @@ def flag_across_time(Data, section_size=15):
 
 def destroy_with_variance_arrays(arr, level=1, bad_freq_list=[]):
     '''Same as "destroy_with_variance" but for arrays arr, not Data.
-    arr should contain 4 arrays for each XX,XY,YX,YY polarization
-    [in that order].'''
-    XX_YY = ma.mean(arr[0], 0) * ma.mean(arr[3], 0)
+    arr should contain 8 arrays for each XX,XY,YX,YY polarization
+    [in that order] with cal=0, then the same again with cal=1.'''
+    XX_YY_0 = ma.mean(arr[0], 0) * ma.mean(arr[3], 0)
+    XX_YY_1 = ma.mean(arr[4], 0) * ma.mean(arr[7], 0)
     a = ma.var(arr[0], 0) / (ma.mean(arr[0], 0)**2) # XX
-    b = ma.var(arr[1], 0) / XX_YY                   # XY
-    c = ma.var(arr[2], 0) / XX_YY                   # YX
+    b = ma.var(arr[1], 0) / XX_YY_0                 # XY
+    c = ma.var(arr[2], 0) / XX_YY_0                 # YX
     d = ma.var(arr[3], 0) / (ma.mean(arr[3], 0)**2) # YY
-    means = sp.array([ma.mean(a), ma.mean(b), ma.mean(c), ma.mean(d)]) 
-    sig = sp.array([ma.std(a), ma.std(b), ma.std(c), ma.std(d)])
+    e = ma.var(arr[4], 0) / (ma.mean(arr[4], 0)**2) # XX
+    f = ma.var(arr[5], 0) / XX_YY_1                 # XY
+    g = ma.var(arr[6], 0) / XX_YY_1                 # YX
+    h = ma.var(arr[7], 0) / (ma.mean(arr[7], 0)**2) # YY
+    means = sp.array([ma.mean(a), ma.mean(b), ma.mean(c), ma.mean(d),
+                        ma.mean(e), ma.mean(f), ma.mean(g), ma.mean(h)])
+    sig = sp.array([ma.std(a), ma.std(b), ma.std(c), ma.std(d),
+                      ma.std(e), ma.std(f), ma.std(g), ma.std(h)])
     max_sig = 6*sig*level
     max_accepted = means + max_sig
     amount_masked = 0
@@ -210,7 +232,11 @@ def destroy_with_variance_arrays(arr, level=1, bad_freq_list=[]):
         if ((a[freq] > max_accepted[0]) or
             (b[freq] > max_accepted[1]) or
             (c[freq] > max_accepted[2]) or
-            (d[freq] > max_accepted[3])):
+            (d[freq] > max_accepted[3]) or
+            (e[freq] > max_accepted[4]) or
+            (f[freq] > max_accepted[5]) or
+            (g[freq] > max_accepted[6]) or
+            (h[freq] > max_accepted[7])):
             # mask
             amount_masked += 1
             bad_freq_list.append(freq)
