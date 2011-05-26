@@ -189,7 +189,7 @@ def flag_across_time(Data, section_size=15):
             Data.data[splits:(splits+section_size), 0, 1, :],
             Data.data[splits:(splits+section_size), 1, 1, :],
             Data.data[splits:(splits+section_size), 2, 1, :],
-            Data.data[splits:(splits+section_size), 3, 1, :],], mask=False)
+            Data.data[splits:(splits+section_size), 3, 1, :]], mask=False)
         destroy_with_variance_arrays(arr, bad_freq_list=bad_freqs)
         destroy_with_variance_arrays(arr, bad_freq_list=bad_freqs)
         destroy_with_variance_arrays(arr, bad_freq_list=bad_freqs)
