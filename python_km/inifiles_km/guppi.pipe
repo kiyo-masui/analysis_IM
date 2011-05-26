@@ -7,9 +7,9 @@ import scipy as sp
 
 
 field = '15hr'
-file_middles = tuple(dir_data.get_data_files(range(49,57), '15hr', 
+file_middles = tuple(dir_data.get_data_files(range(41,57), '15hr', 
                                              type='guppi'))
-#file_middles = tuple(dir_data.get_data_files(range(51,52), '15hr', 
+#file_middles = tuple(dir_data.get_data_files(range(41,49), '15hr', 
 #                                             type='guppi'))
 #file_middles = tuple(dir_data.get_data_files([40], '15hr', 
 #                                             type='guppi'))
@@ -19,7 +19,7 @@ file_middles = tuple(dir_data.get_data_files(range(49,57), '15hr',
 base_dir = os.getenv('GBT10B_OUT')
 data_dir = base_dir + '/guppi_data/'
 prefix = ''
-map_prefix = '' + field + '_49-56_'
+map_prefix = '' + field + '_' + '41-56' + '_'
 
 pipe_modules = []
 pipe_processes = 12
@@ -51,7 +51,7 @@ rf_scans = ()
 rf_IFs = ()
 
 rf_channel_width = 0.
-rf_n_bins_combined = 64
+rf_n_bins_combined = 16
 rf_mean_instead_median = False
 
 from time_stream import calibrate
@@ -80,20 +80,21 @@ rp_new_pols = (1,)
 rp_average_cals = False
 
 from time_stream import combine_cal
-#pipe_modules.append(combine_cal.CombineCal)
+pipe_modules.append(combine_cal.CombineCal)
 cc_input_root = rp_output_root
 cc_file_middles = file_middles
 cc_input_end = '.fits'
-cc_output_root = base_dir + 'combined/' + prefix
+cc_output_root = base_dir + 'combined/' + prefix 
 cc_output_end = '.fits'
 cc_scans = ()
 cc_IFs = ()
 
 cc_subtract_time_mean = False
 cc_average_cal_states = True
+cc_weights = (0.5, 0.5)
 
 from map import dirty_map
-#pipe_modules.append(dirty_map.DirtyMapMaker)
+pipe_modules.append(dirty_map.DirtyMapMaker)
 dm_input_root = cc_output_root
 dm_file_middles = file_middles
 dm_input_end = '.fits'
@@ -112,7 +113,7 @@ dm_polarizations = ('I',)
 dm_noise_parameters_input_root = 'None'
 
 from map import clean_map
-#pipe_modules.append(clean_map.CleanMapMaker)
+pipe_modules.append(clean_map.CleanMapMaker)
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
 cm_polarizations = ('I',)
@@ -155,7 +156,7 @@ mn_output_root = base_dir + 'noise_measurments/'
 
 mn_model = "scan_var"
 
-if True :
+if False :
   from map import dirty_map
   pipe_modules.append(dirty_map.DirtyMapMaker)
   dm_input_root = cc_output_root
