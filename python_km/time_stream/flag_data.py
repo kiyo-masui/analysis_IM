@@ -63,11 +63,17 @@ def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0):
     """Flags bad data from RFI and far outliers.
     sig_thres and pol_thres not used at all."""
     # Make Data XX,XY,YX,YY only if in Stokes' parameters.
+    switched = False
     if (tuple(Data.field['CRVAL4']) == (1, 2, 3, 4)):
+        print 'switched'
         rotate_pol.rotate(Data, (-5,-7,-8,-6))
+        switched = True
     # Flag data and store if it was bad or not [see determine badness].
     badness = flag_data(Data)
     print badness
+    # Switch Data back to I,Q,U,V if they were so originally.
+    if switched:
+        rotate_pol.rotate(Data, (1,2,3,4))
     return
 
 
@@ -88,12 +94,13 @@ def flag_data(Data):
     # Remember the flagged data.
     mask = Data1.data.mask
 ##    badness = determine_badness(bad_freqs)
-    badness = (float(len(bad_freqs)) / Data.dims[-1]) > 0.05
+    badness = (float(len(bad_freqs)) / Data1.dims[-1]) > 0.05
     # If too many frequencies flagged, it may be that the problem
     # happens in time, not in frequency.
     if badness:
         Data2 = copy.deepcopy(Data)
-        flag_across_time(Data2)
+        #flag_across_time(Data2)
+        destroy_time_with_mean_arrays(Data2)
         # Bad style for repeating as above, sorry.
         itr = 0
         bad_freqs = []
@@ -103,7 +110,7 @@ def flag_data(Data):
             itr += 1
         bad_freqs.sort()
 ##        badness = determine_badness(bad_freqs)
-        badness = (float(len(bad_freqs)) / Data.dims[-1]) > 0.05
+        badness = (float(len(bad_freqs)) / Data2.dims[-1]) > 0.05
         # If this data does not have badness, that means there was
         # a problem in time and it was solved, so use this mask.
         # If the data is still bad, then the mask from Data1 will be used.
@@ -184,7 +191,6 @@ def flag_across_time(Data, section_size=15):
     flagged, so that [hopefully] the Data will no longer have badness overall.'''
     bad_times = []
     for splits in range(0, Data.dims[0], section_size):
-        bad_freqs = []
         # Make an array that mimics a Data block.
         arr = ma.masked_array([Data.data[splits:(splits+section_size), 0, 0, :],
             Data.data[splits:(splits+section_size), 1, 0, :],
@@ -258,6 +264,44 @@ def destroy_with_variance_arrays(arr, level=1, bad_freq_list=[]):
     print amount_masked
     return amount_masked
 
+def destroy_time_with_mean_arrays(Data, flag_size=40):
+    '''If there is a problem in time, the mean over all frequencies
+    will stand out greatly [>10 sigma has been seen]. Flag these bad
+    times and +- flag_size times around it. Will only be called if a Data has
+    "badness" [see determine_badness].'''
+    # Get the means over all frequencies.
+    a = ma.mean(Data.data[:, 0, 0, :], -1)
+    b = ma.mean(Data.data[:, 1, 0, :], -1)
+    c = ma.mean(Data.data[:, 2, 0, :], -1)
+    d = ma.mean(Data.data[:, 3, 0, :], -1)
+    e = ma.mean(Data.data[:, 0, 1, :], -1)
+    f = ma.mean(Data.data[:, 1, 1, :], -1)
+    g = ma.mean(Data.data[:, 2, 1, :], -1)
+    h = ma.mean(Data.data[:, 3, 1, :], -1)
+    # Get means and std for all arrays.
+    means = sp.array([ma.mean(a), ma.mean(b), ma.mean(c), ma.mean(d),
+                        ma.mean(e), ma.mean(f), ma.mean(g), ma.mean(h)])
+    sig = sp.array([ma.std(a), ma.std(b), ma.std(c), ma.std(d),
+                      ma.std(e), ma.std(f), ma.std(g), ma.std(h)])
+    # Get max accepted values.
+    max_accepted = means + 3*sig
+    # Find bad times.
+    bad_times = []
+    for time in range(0,len(a)):
+        if ((a[time] > max_accepted[0]) or
+            (b[time] > max_accepted[1]) or
+            (c[time] > max_accepted[2]) or
+            (d[time] > max_accepted[3]) or
+            (e[time] > max_accepted[4]) or
+            (f[time] > max_accepted[5]) or
+            (g[time] > max_accepted[6]) or
+            (h[time] > max_accepted[7])):
+            bad_times.append(time)
+    # Mask bad times and those +- flag_size around.
+    print bad_times
+    for time in bad_times:
+        Data.data[(time-flag_size):(time+flag_size),:,:,:].mask = True
+    return
 
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":
