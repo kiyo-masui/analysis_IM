@@ -36,7 +36,7 @@ import kiyopy.pickle_method
 
 params_init = {# Inputs.
                # Everything up to the scan number.
-               "guppi_input_root" : "./",
+               "guppi_input_roots" : ["./"],
                # Everything after the scan number
                "guppi_input_end" : ".fits",
                # The directory containing the fits scan log file (with antenna
@@ -55,7 +55,9 @@ params_init = {# Inputs.
                "partition_cal" : False,
                # How many time bins to average over when resampling.  Must be a
                # power of 2 and less than 2048.
-               "time_bins_to_average" : 1
+               "time_bins_to_average" : 1,
+               # Scans to not convert.
+               "blacklist" : []
                }
 prefix = ''
 
@@ -100,7 +102,9 @@ class Converter(object) :
                     found_file = True
                     break
             if not found_file :
-                raise ce.DataError("GO file not in Scan Log")
+                raise ce.DataError("GO file not in scan log file: " + log_dir
+                                   + "/ScanLog.fits. Scan: " 
+                                   + str(initial_scan))
             go_hdu = pyfits.open(go_file)[0].header
 
             # From the go information get the source and the scan type.
@@ -121,7 +125,6 @@ class Converter(object) :
             else :
                 scans_this_file = [initial_scan]
             finished_scans += scans_this_file
-
             # Initialize a list to store all the data that will be saved to a
             # single fits file (generally 8 scans).
             Block_list = []
@@ -133,34 +136,38 @@ class Converter(object) :
             for ii in range(n+np) :
                 if ii >= np :
                     scan = scans_this_file[ii-np]
-                    Data = pipes[ii%np].recv()
-                    procs[ii%np].join()
-                    # Store our processed data.
-                    if Data == -1 :
-                        # Scan proceedure aborted.
-                        raise ce.DataError("Scan proceedures do not agree."
-                                " Perhase a scan was aborted. Scans: "
-                                + str(scan) + ", " + str(initial_scan) 
-                                + " in directory: " + log_dir)
-                    elif Data is None :
-                        warnings.warn("Missing or corrupted psrfits file."
-                            " Scan: " + str(scan) + " file root: " 
-                            + params["guppi_input_root"])
-                    else :
-                        Block_list.append(Data)
+                    if not scan in params["blacklist"] :
+                        Data = pipes[ii%np].recv()
+                        procs[ii%np].join()
+                        # Store our processed data.
+                        if Data == -1 :
+                            # Scan proceedure aborted.
+                            message = ("Scan proceedures do not agree."
+                                    " Perhase a scan was aborted. Scans: "
+                                    + str(scan) + ", " + str(initial_scan) 
+                                    + " in directory: " + log_dir)
+                            raise ce.DataError(message)
+                        elif Data is None :
+                            message = ("Missing or corrupted psrfits file."
+                                " Scan: " + str(scan) + " file roots: " 
+                                + str(params["guppi_input_roots"]))
+                            warnings.warn(message)
+                        else :
+                            Block_list.append(Data)
                 if ii < n :
                     scan = scans_this_file[ii]
                     # The acctual reading of the guppi fits file needs to
                     # be split off in a different process due to a memory 
                     # leak in pyfits. This also allow parralization.
                     # Make a pipe over which we will receive out data back.
-                    P_here, P_far = mp.Pipe()
-                    pipes[ii%np] = P_here
-                    # Start the forked process.
-                    p = mp.Process(target=self.processfile,
-                                   args=(scan, P_far))
-                    p.start()
-                    procs[ii%np] = p
+                    if not scan in params["blacklist"] :
+                        P_here, P_far = mp.Pipe()
+                        pipes[ii%np] = P_here
+                        # Start the forked process.
+                        p = mp.Process(target=self.processfile,
+                                       args=(scan, P_far))
+                        p.start()
+                        procs[ii%np] = p
             # End loop over scans (input files).
             # Now we can write our list of scans to disk.
             if len(scans_this_file) > 1 :
@@ -203,7 +210,8 @@ class Converter(object) :
                 found_file = True
                 break
         if not found_file :
-            raise ce.DataError("GO file not in Scan Log")
+            raise ce.DataError("GO file not in scan log file: " + log_dir
+                               + "/ScanLog.fits. Scan: " + str(scan))
         # If we are combining multiple scans from one proceedure, make sure
         # that they all came from the same one (ie that the proceedure
         # wasn't aborted).
@@ -232,26 +240,29 @@ class Converter(object) :
         ant_header = antenna_hdu_list[2].header
         ant_data = antenna_hdu_list[2].data
         # Get the time of the scan midpoint in seconds since 00:00 UTC.
-        ant_scan_mid = ant_main["SDMJD"]%1.0 * 24.0 * 3600.0
-        n_ant = ant_header["NAXIS2"]
-        # Antenna sample speed is 10 Hz always.
-        ant_periode = 0.100
-        ant_times = ant_scan_mid + ant_periode*(sp.arange(n_ant) -
-                                                n_ant/2.0)
+        # Times in Julian Days.
+        ant_times = ant_data.field("DMJD")
+        # Times in days since midnight UTC on day of scan start. Time in this
+        # array become greater than one if scan spans midnight UTC.
+        ant_times -= (ant_times[0] - ant_times[0]%1.0)
+        # Seconds.
+        ant_times *= 24.0 * 3600.0
         # Get the az and el out of the antenna.
         ant_az = ant_data.field("OBSC_AZ")
         ant_el = ant_data.field("OBSC_EL")
-        az_interp = interp.interp1d(ant_times, ant_az,
-                                          kind="nearest")
-        el_interp = interp.interp1d(ant_times, ant_el,
-                                          kind="nearest")
+        az_interp = interp.interp1d(ant_times, ant_az)
+        el_interp = interp.interp1d(ant_times, ant_el)
         
-        # Get the guppi file name.
-        guppi_file = (params["guppi_input_root"] + "%04d"%scan +
-                      params["guppi_input_end"])
+        # Get the guppi file name.  We check all of the guppi input roots to
+        # see if there is a corresponding file.
         # Sometimes guppi files are just missing.  This shouldn't crash the
         # program.
-        if not os.path.isfile(guppi_file) :
+        for in_root in params["guppi_input_roots"] :
+            guppi_file = (in_root + "%04d"%scan +
+                          params["guppi_input_end"])
+            if os.path.isfile(guppi_file) :
+                break
+        else :
             Pipe.send(None)
             return
         print "Converting file: " + guppi_file,
@@ -321,11 +332,28 @@ class Converter(object) :
             zenith_angle = psrdata[0]["TEL_ZEN"]
             if not sp.allclose(90.0 - zenith_angle, ant_el, atol=0.1) :
                 raise ce.DataError("Antenna el disagrees with guppi el.")
+        # Occationally, the guppi integrates longer than the scan and the
+        # antenna fits file won't cover the first or last few records.
+        # Check for this and trunkate the rocords appropriately.
+        n_records = len(psrdata)
+        start_record = 0
+        record_offsets = psrdata.field("OFFS_SUB")
+        for ii in range(3) :
+            earliest = (start_seconds + record_offsets[start_record]
+                        - sample_time*ntime/2)
+            latest = (start_seconds + record_offsets[n_records-1]
+                      + sample_time*ntime/2)
+            if earliest < min(ant_times) :
+                start_record -= 1
+                print "Discarded first record due to antenna time mismatch."
+            if latest > max(ant_times) :
+                n_records -= 1
+                print "Discarded last record due to antenna time mismatch."
 
         # Allowcate memory for this whole scan.
         # final_shape is ordered (ntime, npol, ncal, nfreq) where ntime
         # is after rebining and combing the records.
-        final_shape = (n_bins*len(psrdata), npol, ncal,
+        final_shape = (n_bins*(n_records - start_record), npol, ncal,
                               nfreq)
         Data = data_block.DataBlock(sp.empty(final_shape, dtype=float))
         # Allowcate memory for the the fields that are time dependant.
@@ -360,7 +388,8 @@ class Converter(object) :
         # Loop over the records and modify the data.
         if self.feedback > 1 :
             print "Record: ",
-        for jj, record in enumerate(psrdata) :
+        for jj in range(start_record, n_records) :
+            record = psrdata[jj]
             # Print the record we are currently on and force a flush to
             # standard out (so we can watch the progress update).
             if self.feedback > 1 :
@@ -408,17 +437,20 @@ class Converter(object) :
                 data = sp.mean(data, 1)
                 data = scls*data + offs
                 data.shape = (n_bins, npol, ncal, nfreq)
-            
             # Now figure out the timing information.
             time = start_seconds + record["OFFS_SUB"]
             time = time + (sp.arange(-n_bins/2.0 + 0.5, n_bins/2.0 + 0.5)
                            * resampled_time)
             # Make sure that our pointing data covers the guppi data time
             # range within the 0.1 second accuracy.
-            if ((max(time) - max(ant_times) > 0.1) or 
-                (min(time) - min(ant_times) < 0.1)) :
-                raise ce.DataError("Guppi data time range not covered by "
-                                   "antenna.")
+            if ((max(time) - max(ant_times) > 0.) or 
+                (min(time) - min(ant_times) < 0.)) :
+                message = ("Guppi data time range not covered by antenna."
+                           " Antenna: file " + antenna_file + " range "
+                           + str((min(ant_times), max(ant_times)))
+                           + " guppi: file " + guppi_file + " range "
+                           + str((min(time), max(time))))
+                raise ce.DataError(message)
             az = az_interp(time)
             el = el_interp(time)
             
@@ -504,8 +536,8 @@ def get_cal_mask(data, n_bins_cal) :
     # Split the data into cal on and cal offs.
     base = sp.mean(folded_data)
     diff = sp.std(folded_data)
-    transition = sp.logical_and(folded_data < base + 0.90*diff,
-                                folded_data > base - 0.90*diff)
+    transition = sp.logical_and(folded_data < base + 0.80*diff,
+                                folded_data > base - 0.80*diff)
     if sp.sum(transition) > 2:
         profile_str = repr((folded_data - sp.mean(folded_data))
                            / sp.std(folded_data))
@@ -515,8 +547,8 @@ def get_cal_mask(data, n_bins_cal) :
     # Find the last bin off before on.
     last_off_ind = None
     for kk in xrange(n_bins_cal) :
-        if ((folded_data[kk] < base-0.80*diff) and not
-            (folded_data[(kk+1)%n_bins_cal] < base-0.80*diff)):
+        if ((folded_data[kk] < base-0.70*diff) and not
+            (folded_data[(kk+1)%n_bins_cal] < base-0.70*diff)):
             last_off_ind = kk
             break
     if last_off_ind is None :
@@ -531,7 +563,7 @@ def get_cal_mask(data, n_bins_cal) :
     # Lims are indicies (first index included, second
     # excluded).
     first_on = (last_off_ind + 2)%n_bins_cal
-    if folded_data[(last_off_ind+1)%n_bins_cal] < base+0.80*diff :
+    if folded_data[(last_off_ind+1)%n_bins_cal] < base+0.70*diff :
         n_cal_state = n_bins_cal//2 - 1
         n_blank = 1
     else :
@@ -540,9 +572,9 @@ def get_cal_mask(data, n_bins_cal) :
 
     long_profile = sp.concatenate((folded_data, folded_data), 0)
     first_off = first_on + n_bins_cal//2
-    if (sp.any(long_profile[first_on:first_on+n_cal_state] < base + 0.90*diff)
+    if (sp.any(long_profile[first_on:first_on+n_cal_state] < base + 0.80*diff)
         or sp.any(long_profile[first_off:first_off+n_cal_state] > base -
-                  0.90*diff)) :
+                  0.80*diff)) :
         profile_str = repr((folded_data - sp.mean(folded_data))
                            / sp.std(folded_data))
         raise ce.DataError("Cal profile not lining up "
@@ -565,7 +597,9 @@ def separate_cal(data, n_bins_cal) :
     try :
         first_on, n_blank = get_cal_mask(data, n_bins_cal)
     except ce.DataError :
-        print ": Discarded record due to bad profile. ",
+        if self.feedback < 2:
+            print
+        print "Discarded record due to bad profile. "
         out_data[:] = float('nan')
     else :
         # How many samples for each cal state.
@@ -704,7 +738,7 @@ class DataChecker(object) :
         plt.plot(f/1e6, sp.rollaxis(cal_sum_unscaled, -1))
         plt.xlim((7e2, 9e2))
         plt.xlabel("frequency (MHz)")
-        plt.title("Temperture spectrum")
+        plt.title("System temperature - mean over time")
         # Temperture spectrum in terms of noise cal. 4 Polarizations.
         plt.subplot(3, 2, 2)
         plt.plot(f/1e6, sp.rollaxis(cal_sum, -1))
@@ -714,7 +748,7 @@ class DataChecker(object) :
             plt.ylim((-10, 40))
         plt.xlim((7e2, 9e2))
         plt.xlabel("frequency (MHz)")
-        plt.title("Temperture spectrum in cal units")
+        plt.title("System temperature in cal units")
         # Time serise of cal T.
         plt.subplot(3, 2, 3)
         plt.plot(t_total, cal_time)
@@ -723,7 +757,7 @@ class DataChecker(object) :
         else :
             plt.xlim((0,dt*3500))
         plt.xlabel("time (s)")
-        plt.title("Cal time series")
+        plt.title("Noise cal temperature - mean over frequency")
         # Time series of system T.
         plt.subplot(3, 2, 4)
         plt.plot(t_total, sys_time)
@@ -734,7 +768,7 @@ class DataChecker(object) :
         else :
             plt.ylim((-4, 35))
             plt.xlim((0,dt*3500))
-        plt.title("System time series in cal units")
+        plt.title("System temperature in cal units")
         # XX cal PS.
         plt.subplot(3, 2, 5)
         plt.loglog(ps_freqs, cal_noise_spec[:,0,:])
@@ -770,6 +804,7 @@ params_init_manager = {
                       "sessions" : [],
                       "log_file" : "",
                       "error_file" : "",
+                      "rsync_file" : "",
                       "nprocesses": 1,
                       "dry_run" : False
                       }
@@ -796,17 +831,15 @@ class DataManager(object) :
             sys.stderr = self.f_err
         else :
             self.f_err = None
+        if params["rsync_file"] :
+            self.r_out = open(params["rsync_file"], 'w')
+        else :
+            self.r_out = None
         # Loop over the sessions and process them.
-        try :
-            for session in params["sessions"] :
-                self.process_session(session)
-        finally :
-            if params["log_file"] :
-                sys.stdout = old_out
-                self.f_log.close()
-            if params["error_file"] :
-                sys.stderr = old_err
-                self.f_err.close()
+        sessions = params["sessions"]
+        sessions.reverse()
+        for session in sessions :
+            self.process_session(session)
 
     def process_session(self, session) :
         params = self.params
@@ -816,21 +849,39 @@ class DataManager(object) :
             guppi_root = session["guppi_input_root"]
         except KeyError :
             guppi_root = params["default_guppi_input_root"]
-        guppi_dir = guppi_root + session["guppi_dir"] + "/"
+        # Some observations are spread over multiple directories, in which case
+        # session["guppi_dir"] will be a list.
+        if isinstance(session["guppi_dir"], list) :
+            session_dirs = session["guppi_dir"]
+        else :
+            session_dirs = [session["guppi_dir"]]
+        # Version of session_dirs with absolute path.
+        guppi_dirs = [guppi_root + dir + "/" 
+                      for dir in session_dirs]
         fits_root = params["fits_log_root"] + str(number) + "/"
         outroot = params["output_root"]
-        print ("Processing sesson " + str(number) + ", in guppi directory "
-                + guppi_dir)
+        print ("Processing sesson " + str(number) + ", in guppi directories "
+                + str(guppi_dirs))
         # Check that all the directories are present.
-        if (not os.path.isdir(guppi_dir) or not os.path.isdir(fits_root)) :
-            print "Skipped do to missing data."
-            return
+        for dir in guppi_dirs :
+            if (not os.path.isdir(dir) or not os.path.isdir(fits_root)) :
+                print "Skipped do to missing data."
+                return
         # First thing we do is start to rsync to the archive.
         if number in params['sessions_to_archive'] and not params["dry_run"]:
-            SyncProc = subprocess.Popen("rsync -av -essh " + guppi_dir + " " 
-                    + params["archive_root"] + session["guppi_dir"] + "/",
-                    bufsize=4096, shell=True, stdout=self.f_log, 
-                    stderr=self.f_err)
+            # Construct the multiple line command that will tarnsfer all
+            # guppi directories to teh archive.
+            program = "rsync -av -essh "
+            command = ""
+            for ii in range(len(session_dirs)) :
+                command += program
+                command += guppi_dirs[ii] + " "
+                command += (params["archive_root"] + str(number) + "_" 
+                            + session_dirs[ii] + "/")
+                command += ";"
+            print command
+            SyncProc = subprocess.Popen(command, shell=True,
+                           stdout=self.r_out, stderr=subprocess.STDOUT)
         # Check if this session is in the list of force even if output file
         # exist.
         if number in params['sessions_to_force'] :
@@ -872,10 +923,25 @@ class DataManager(object) :
                                     }
                 # The parameters that are acctually assigned dynamically.
                 converter_params["scans"] = tuple(scans_to_convert)
-                converter_params["guppi_input_root"] = (guppi_dir + "guppi_"
-                        + session["guppi_session"] + "_" + field + "_")
                 converter_params["fits_log_dir"] = fits_root
                 converter_params["output_root"] = outroot
+                try :
+                    blacklist = session["blacklist"]
+                except KeyError :
+                    blacklist = []
+                converter_params["blacklist"] = blacklist
+                # Guppi input root should be a list of all possible roots for
+                # this session.  All permutations of guppi directory and of
+                # session number.
+                if isinstance(session["guppi_session"], list) :
+                    guppi_sessions = session["guppi_session"]
+                else :
+                    guppi_sessions = [session["guppi_session"]]
+                converter_params["guppi_input_roots"] = []
+                for dir in guppi_dirs :
+                    for se in guppi_sessions :
+                        converter_params["guppi_input_roots"].append(dir
+                                + "guppi_" + se + "_" + field + "_")
                 # Convert the files from this session.
                 if not params["dry_run"] :
                     C = Converter(converter_params, feedback=1)
