@@ -376,6 +376,6 @@ class GaussianBeam(Beam) :
             `width` was given in degrees on initialization of this class.
         """
 
-        # For gaussian, 5 sigma taper is good enough.
+        # For gaussian, 3 sigma taper is good enough.
         return 6.0*self._sigma(frequency)
 
