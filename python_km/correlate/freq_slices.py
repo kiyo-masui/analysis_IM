@@ -30,7 +30,8 @@ params_init = {
                # Angular lags at which to calculate the correlation.  Upper
                # edge bins in degrees.
                'lags' : (0.1, 0.2),
-               'convolve' : False
+               'convolve' : False,
+               'sub_weighted_mean' : False,
                }
 prefix = 'fs_'
 
@@ -85,27 +86,27 @@ class FreqSlices(object) :
         else :
             raise ce.FileParameterTypeError('For now can only process one'
                                             ' or two files.')
-        # If any eigenmodes have been marked for subtraction, subtract them
-        # out.
         freq = sp.array(params['freq'], dtype=int)
-        subflag = False
-        #
-        gfreq=Map1.get_axis("freq")
-        fwhm = utils.get_beam(gfreq)
-        fwhm[:12]=fwhm[13]
-        beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792, 
-                 0.281176247549, 0.270856788455, 0.26745856078, 
-                 0.258910010848, 0.249188429031])
-        freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
-                             dtype=float)
-        freq_data *= 1.0e6
-
-        beam_diff=sp.sqrt(max(1.1*beam_data)**2-(beam_data)**2)
-        b = beam.GaussianBeam(beam_diff,freq_data)
+        # Convolving down to a common resolution and reducing to factorized
+        # noise.
         if params["convolve"] :
+            # Get the beam data.
+            gfreq=Map1.get_axis("freq")
+            fwhm = utils.get_beam(gfreq)
+            fwhm[:12]=fwhm[13]
+            beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792, 
+                     0.281176247549, 0.270856788455, 0.26745856078, 
+                     0.258910010848, 0.249188429031])
+            freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
+                                 dtype=float)
+            freq_data *= 1.0e6
+            beam_diff=sp.sqrt(max(1.1*beam_data)**2-(beam_data)**2)
+            b = beam.GaussianBeam(beam_diff,freq_data)
+            # Convolve to a common resolution.
+            print "convolving"
             Map2=b.apply(Map2)
             Map1=b.apply(Map1)
-            print "convolving"
+            # Reduce noise to factorizable.
             Noise1[Noise1<1.e-30]=1.e-30
             Noise1=1/Noise1
             Noise1=b.apply(Noise1,cval=1.e30)
@@ -124,7 +125,19 @@ class FreqSlices(object) :
             Noise2=Noise2/Noise2f[None,:,:]
             Noise2=sp.mean(sp.mean(Noise2,1),1)[:,None,None]*Noise2f[None,:,:]
             Noise2=(1/Noise2).filled(0)
-
+        # Subtracting the frequency weighted mean from each slice.
+        if params['sub_weighted_mean'] :
+            means1 = sp.sum(sp.sum(Noise1*Map1, -1), -1)
+            means1 /= sp.sum(sp.sum(Noise1, -1), -1)
+            means1.shape += (1, 1)
+            Map1 -= means1
+            means2 = sp.sum(sp.sum(Noise2*Map2, -1), -1)
+            means2 /= sp.sum(sp.sum(Noise2, -1), -1)
+            means2.shape += (1, 1)
+            Map2 -= means2
+        # If any eigenmodes have been marked for subtraction, subtract them
+        # out.
+        subflag = False
         if (hasattr(self, 'freq_Lsvd_modes') and 
             hasattr(self, 'freq_Rsvd_modes')) :
             print 'Subtracting ' + str(len(self.freq_Lsvd_modes)),
@@ -142,6 +155,7 @@ class FreqSlices(object) :
             outmap = sp.empty((len(Lmodes),)+Map1.shape[1:])
             outmap = algebra.make_vect(outmap,axis_names=('freq', 'ra', 'dec'))
             outmap.copy_axis_info(Map1)
+            M = Map1*Noise1
             for ira in range(Map1.shape[1]) :
                 for jdec in range(Map1.shape[2]) :
                     # if sp.any(Map1.data.mask[ira,jdec,freq]) :
@@ -151,7 +165,12 @@ class FreqSlices(object) :
                         # v.shape = freq.shape
                         v = v.reshape(freq.shape)
                         # amp = sp.sum(v*Map1.data[ira,jdec,freq])
-                        amp = sp.dot(v, Map1[freq,ira,jdec])
+                        amp = sp.dot(v, M[freq,ira,jdec])
+                        norm = sp.dot(v**2, Noise1[freq,ira,jdec])
+                        if norm/amp < 1e-30 :
+                            amp = 0
+                        else :
+                            amp /= norm
                         Map1[freq,ira,jdec] -= amp*v
                         outmap[i,ira,jdec] = amp
             map_out = (params['output_root'] + params['file_middles'][0] + 
@@ -165,6 +184,7 @@ class FreqSlices(object) :
             outmap = sp.empty((len(Rmodes),)+Map1.shape[1:])
             outmap = algebra.make_vect(outmap,axis_names=('freq', 'ra', 'dec'))
             outmap.copy_axis_info(Map2)
+            M = Map2*Noise2
             for ira in range(Map2.shape[1]) :
                 for jdec in range(Map2.shape[2]) :
                     # if sp.any(Map1.data.mask[ira,jdec,freq]) :
@@ -173,8 +193,12 @@ class FreqSlices(object) :
                     for v in Lmodes :
                         # v.shape = freq.shape
                         v = v.reshape(freq.shape)
-                        # amp = sp.sum(v*Map1.data[ira,jdec,freq])
-                        amp = sp.dot(v, Map2[freq,ira,jdec])
+                        amp = sp.dot(v, M[freq,ira,jdec])
+                        norm = sp.dot(v**2, Noise2[freq,ira,jdec])
+                        if norm/amp < 1e-30 :
+                            amp = 0
+                        else :
+                            amp /= norm
                         Map2[freq,ira,jdec] -= amp*v
                         outmap[i,ira,jdec] = amp
             map_out = (params['output_root'] + params['file_middles'][1] + 
@@ -431,6 +455,7 @@ def plot_contour(self, norms=False, lag_inds=(0)) :
     freq_diffs[3] = 6.5*200.0/256
     for ii in range(4,n_bins) :
        freq_diffs[ii] = factor*freq_diffs[ii-1]
+    freq_diffs *= 1e6
     n_diffs = len(freq_diffs)
     # Allowcate memory.
     corrf = sp.zeros((n_diffs, len(lag_inds)))
@@ -502,11 +527,11 @@ def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
     # Cosmology dependant conersion to MPc.
     a_fact = 34.0
     f_fact = 4.5
-    nbins = 8
+    nbins = 10
     lags = sp.empty(nbins)
     lags[0] = 2.0
     lags[1] = 4.0
-    for ii in range(2, nbins) :
+    for ii in range(1, nbins) :
         lags[ii] = 1.5*lags[ii-1]
     R = self.lags[lag_inds]
     R = (a_fact*R[:, sp.newaxis])**2
@@ -633,9 +658,13 @@ def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
                              es, linestyle='None', marker='None', 
                              color='r', lolims=True, elinewidth=elin,
                              markersize=msize, mfc=mfc)
-    plt.axis([1.5, 100, 0.01, 200.0])
+    plt.axis([1.5, 100, 0.01, 500.0])
     plt.xlabel('lag (Mpc/h)')
     plt.ylabel('correlation (mK)')
+
+
+
+# Following functions are old and not really used any more.
 
 def degrade_corr_res(self, beam=0.4) :
     """Brings all freqencies to the same resolution in correlation."""

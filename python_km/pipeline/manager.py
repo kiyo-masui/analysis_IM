@@ -25,9 +25,26 @@ def execute(pipe_file_or_dict, feedback=2) :
                                        feedback=feedback)
     
     for module in params['modules'] :
+        # Module is either the python object that should be executed, or a
+        # tuple, with the first element being the module and the second element
+        # being a prefix replacement of the form ('p1_', 'p2_').  Before
+        # executing the module, we rename all parameters begining with 'p1_'
+        # to 'p2_'.
+        if isinstance(module, tuple) :
+            mod =  module[0]
+            pars = dict(module_params)
+            old_prefix = module[1][0]
+            n = len(old_prefix)
+            new_prefix = module[1][1]
+            for key, value in module_params.iteritems() :
+                if key[0:n] == old_prefix :
+                    pars[new_prefix + key[n:]] = value
+        else :
+            mod = module
+            pars = module_params
         if feedback > 1 :
-            print 'Excuting analysis module: ' + str(module)
-        module(module_params, feedback=feedback).execute(params['processes'])
+            print 'Excuting analysis module: ' + str(mod)
+        mod(pars, feedback=feedback).execute(params['processes'])
 
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":
