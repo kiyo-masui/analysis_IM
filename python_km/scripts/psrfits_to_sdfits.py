@@ -597,8 +597,6 @@ def separate_cal(data, n_bins_cal) :
     try :
         first_on, n_blank = get_cal_mask(data, n_bins_cal)
     except ce.DataError :
-        if self.feedback < 2:
-            print
         print "Discarded record due to bad profile. "
         out_data[:] = float('nan')
     else :
