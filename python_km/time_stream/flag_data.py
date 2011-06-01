@@ -3,16 +3,19 @@
 """
 
 import os
+import copy
 
 import numpy.ma as ma
 import scipy as sp
 import scipy.signal as sig
+import matplotlib.pyplot as plt
 
 import core.fitsGBT
 import kiyopy.custom_exceptions as ce
 import base_single
 import hanning
 import cal_scale
+from time_stream import rotate_pol
 
 class FlagData(base_single.BaseSingle) :
     """Pipeline module that flags rfi and other forms of bad data.
@@ -56,166 +59,249 @@ class FlagData(base_single.BaseSingle) :
         self.block_feedback = str(new_flags) + ', '
         return Data
 
-def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0) :
-    """Flags bad data from RFI and far outliers..
-    
-    Masks any data that is further than 'sig_thres' sigmas from the mean of the
-    entire data block (all frequencies, all times).  Each cal, fequency and
-    polarization is first normalized to the time mean.  Cut only checked for XX
-    and YY polarizations but all polarizations are masked.  This cut is
-    deactivated by setting 'sig_thres' < 0.
-
-    Aravind rfi cut is also performed, cutting data with polarization lines, as
-    well as lines in XX and YY.
-
-    Arguments:
-        Data -      A DataBlock object containing data to be cleaned.
-        sig_thres - (float) Any XX or YY data that deviates by this more than 
-                    this many sigmas is flagged.  Data first normalized to 
-                    time median.
-        pol_thres - (float) Any data cross polarized by more than this 
-                    many sigmas is flagged.
-        width -     (int) In the polaridezation cut, flag data within this many
-                    frequency bins of offending data.
-        flatten -   (Bool) Preflatten the polarization spectrum.
-    """
-
-    # Here we check the polarizations and cal indicies
-    if tuple(Data.field['CRVAL4']) == (-5, -7, -8, -6) :
-        xx_ind = 0
-        yy_ind = 3
-        pol_inds = [1,2]
-        norm_inds = [0, 3]
-    elif tuple(Data.field['CRVAL4']) == (1, 2, 3, 4) :
-        pol_inds = [2,3]
-        xx_ind = 0
-        yy_ind = 1
-        norm_inds = [0,0]
-    else :
-        raise ce.DataError('Polarization types not as expected,'
-                           ' function needs to be generalized.')
-    if tuple(Data.field['CAL']) == ('T', 'F') :
-        on_ind = 0
-        off_ind = 1
-    else :
-        raise ce.DataError('Cal states not as expected.')
-    if pol_thres > 0 :
-        # Always flag cal on and cal off together. Don't use ma.sum because we
-        # want to transfer flags.
-        data = Data.data[:,:,0,:] + Data.data[:,:,1,:]
-        # Calculate the polarization cross coefficient.
-        cross = ma.sum(data[:,pol_inds,:]**2, 1)
-        # Run it throught the flagger.  Tenth order polynomial seems to be a
-        # well conditioned fit.
-        # For the order, 10 seems to work for polynomial, 20 for gauss.
-        mask = filter_flagger(cross, 20, pol_thres, axis=-1)
-        for ii in range(Data.dims[1]) :
-            Data.data[:, ii, 0, :][mask] = ma.masked
-            Data.data[:, ii, 1, :][mask] = ma.masked
-    if sig_thres > 0 :
-        data = Data.data[:,:,0,:] + Data.data[:,:,1,:]
-        # Figure out the order of the polynomial by the range of azimuths.
-        beam_width = 0.3 # Approximate.
-        # For polynomial smoothing. Assumes azumuth scan at horizion.
-        #order = round(abs(max(Data.field['CRVAL2']) - min(Data.field['CRVAL2']))
-        #         / (beam_width))
-        #order = max([order, 1])
-        # For gauss smoothing. Roughly half a beam crossing time.
-        order = (abs(max(Data.field['CRVAL2']) - min(Data.field['CRVAL2']))
-                 / (beam_width))
-        order = Data.dims[0]/order/2.0
-        # First flag the frequency average, looking for obviouse blips.
-        tdata = ma.mean(data/ma.mean(data, 0), -1)
-        for ii in range(Data.dims[1]) :
-            mask = filter_flagger(tdata[:, [ii]], order, 
-                                  sig_thres, axis=0)
-            Data.data[mask, ...] = ma.masked
-        # Now flag at each frequency.
-        data = Data.data[:,:,0,:] + Data.data[:,:,1,:]
-        for ii in range(Data.dims[1]) :
-            this_mask = filter_flagger(data[:, ii, :], order,
-                                  sig_thres, axis=0)
-            if ii == 0:
-                mask = this_mask
-            else :
-                mask[this_mask] = True
-        for ii in range(Data.dims[1]) :
-            Data.data[:, ii, 0, :][mask] = ma.masked
-            Data.data[:, ii, 1, :][mask] = ma.masked
-
-def filter_flagger(arr, order, threshold, axis=-1, method='gauss') :
-    """arr should be 2 d array, flagging done along the `axis` dimension."""
-    
-    # Maximum allowible number of iterations.
-    max_itr = 20
-    if arr.ndim == 1 :
-        arr = sp.reshape(arr, arr.shape + (1,))
-        axis = 0
-    elif arr.ndim == 2 :
-        pass
-    else :
-        raise ValueError("Input array must be 1 or 2 dimensional.")
-    # Bring axis to the first index.
-    arr = sp.rollaxis(arr, axis)
-    # Allowcate memory for the mask array.
-    mask = sp.zeros(arr.shape, dtype=bool)
-    # Convert to a normal array.
-    if isinstance(arr, ma.MaskedArray) :
-        mask[...] = arr.mask[...]
-        arr = arr.filled(0.0)
-    # We make progressivly tighter and tighter cuts, starting with the very
-    # weak sqrt(n/2)*stdev.
-    n = arr.shape[0]
-    coarse_thres = max(sp.sqrt(n/2), threshold)
-    thresholds = [coarse_thres, sp.sqrt(coarse_thres*threshold), threshold]
-    thres_ind = 0
-    # Initialize a few intermediate arrays.
-    tmp_arr = arr.copy()
-    smoothed = sp.empty(arr.shape, dtype=float)
-    smoothed[...] = sp.mean(tmp_arr, 0)
-    # Choose smoothing algorithm.
-    if method == 'poly' :
-        smooth = poly_smooth
-    elif method == 'gauss' :
-        smooth = gauss_smooth
-    else :
-        raise ValueError("Invalid smoothing method.")
-    # Iteritivly flag data.
-    for ii in range(max_itr) :
-        # Get rid of bad data.
-        tmp_arr[mask] = smoothed[mask]
-        # Smooth the data.
-        smooth(tmp_arr, order, smoothed)
-        # Flag the data.
-        new_masks = (abs(tmp_arr - smoothed)
-                     > thresholds[thres_ind]*sp.std(tmp_arr - smoothed, 0))
-        if sp.all(sp.sum(new_masks, 0) == 0) :
-            thres_ind += 1
-            if thres_ind == len(thresholds) :
-                break
-        else :
-            mask[new_masks] = True
-    if axis == 1 or axis == -1 :
-        mask = sp.rollaxis(mask, 0, 2)
-    return mask
-
-def poly_smooth(arr, order, out) :
-    n = arr.shape[0]
-    x = sp.arange(n)
-    p = sp.polyfit(x, arr, order)
-    for jj in range(p.shape[1]) :
-        out[:, jj] = sp.polyval(p[:, jj], x)
-
-def gauss_smooth(arr, width, out) :
-    # Convert from FWHM to sigma.
-    width = width/2.355
-    nk = 4*round(width) + 1
-    kernal = sig.gaussian(nk, width)
-    kernal /= sp.sum(kernal)
-    kernal.shape = (nk, 1)
-    out[...] = sig.convolve2d(arr, kernal, mode='same', boundary='symm')
+def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0):
+    """Flags bad data from RFI and far outliers.
+    sig_thres and pol_thres not used at all."""
+    # Make Data XX,XY,YX,YY only if in Stokes' parameters.
+    switched = False
+    if (tuple(Data.field['CRVAL4']) == (1, 2, 3, 4)):
+        print 'switched'
+        rotate_pol.rotate(Data, (-5,-7,-8,-6))
+        switched = True
+    # Flag data and store if it was bad or not [see determine badness].
+    badness = flag_data(Data)
+    print badness
+    # Switch Data back to I,Q,U,V if they were so originally.
+    if switched:
+        rotate_pol.rotate(Data, (1,2,3,4))
+    return
 
 
+def flag_data(Data):
+    '''Flag bad data from RFI and far outliers.'''
+    # Flag data on a [deep]copy of Data. If too much destroyed,
+    # check if localized in time. If that sucks too, then just hide freq.
+    Data1 = copy.deepcopy(Data)
+    itr = 0            # For recursion
+    max_itr = 20       # For recursion
+    bad_freqs = []
+    amount_masked = -1 # For recursion
+    while not (amount_masked == 0) and itr < max_itr:                         
+        amount_masked = destroy_with_variance(Data1, bad_freq_list=bad_freqs) 
+        itr += 1
+    bad_freqs.sort()
+    print bad_freqs
+    # Remember the flagged data.
+    mask = Data1.data.mask
+##    badness = determine_badness(bad_freqs)
+    badness = (float(len(bad_freqs)) / Data1.dims[-1]) > 0.05
+    # If too many frequencies flagged, it may be that the problem
+    # happens in time, not in frequency.
+    if badness:
+        Data2 = copy.deepcopy(Data)
+        #flag_across_time(Data2)
+        destroy_time_with_mean_arrays(Data2)
+        # Bad style for repeating as above, sorry.
+        itr = 0
+        bad_freqs = []
+        amount_masked = -1
+        while not (amount_masked == 0) and itr < max_itr:
+            amount_masked = destroy_with_variance(Data2, bad_freq_list=bad_freqs) 
+            itr += 1
+        bad_freqs.sort()
+##        badness = determine_badness(bad_freqs)
+        badness = (float(len(bad_freqs)) / Data2.dims[-1]) > 0.05
+        # If this data does not have badness, that means there was
+        # a problem in time and it was solved, so use this mask.
+        # If the data is still bad, then the mask from Data1 will be used.
+        if not badness:
+            mask = Data2.data.mask
+    Data.data.mask = mask
+    return badness
+
+def destroy_with_variance(Data, level=1, bad_freq_list=[]):
+    '''Mask spikes in Data using variance. Polarizations must be in
+    XX,XY,YX,YY format.
+    level represents how sensitive the flagger is (smaller = more masking).
+    The flagged frequencies are appended to bad_freq_list.'''
+    XX_YY_0 = ma.mean(Data.data[:, 0, 0, :], 0) * ma.mean(Data.data[:, 3, 0, :], 0)
+    XX_YY_1 = ma.mean(Data.data[:, 0, 1, :], 0) * ma.mean(Data.data[:, 3, 1, :], 0)
+    # Get the normalized variance array for each polarization.
+    a = ma.var(Data.data[:, 0, 0, :], 0) / (ma.mean(Data.data[:, 0, 0, :], 0)**2) # XX
+    b = ma.var(Data.data[:, 1, 0, :], 0) / XX_YY_0                                # XY
+    c = ma.var(Data.data[:, 2, 0, :], 0) / XX_YY_0                                # YX
+    d = ma.var(Data.data[:, 3, 0, :], 0) / (ma.mean(Data.data[:, 3, 0, :], 0)**2) # YY
+    # And for cal off.
+    e = ma.var(Data.data[:, 0, 1, :], 0) / (ma.mean(Data.data[:, 0, 1, :], 0)**2) # XX
+    f = ma.var(Data.data[:, 1, 1, :], 0) / XX_YY_1                                # XY
+    g = ma.var(Data.data[:, 2, 1, :], 0) / XX_YY_1                                # YX
+    h = ma.var(Data.data[:, 3, 1, :], 0) / (ma.mean(Data.data[:, 3, 1, :], 0)**2) # YY
+    # Get the mean and standard deviation [sigma].
+    means = sp.array([ma.mean(a), ma.mean(b), ma.mean(c), ma.mean(d),
+                        ma.mean(e), ma.mean(f), ma.mean(g), ma.mean(h)]) 
+    sig = sp.array([ma.std(a), ma.std(b), ma.std(c), ma.std(d),
+                      ma.std(e), ma.std(f), ma.std(g), ma.std(h)])
+    # Get the max accepted value [6*sigma, with level thrown in for fun].
+    max_sig = 6*sig*level
+    max_accepted = means + max_sig
+    amount_masked = 0
+    for freq in range(0, len(a)):
+        if ((a[freq] > max_accepted[0]) or
+            (b[freq] > max_accepted[1]) or
+            (c[freq] > max_accepted[2]) or
+            (d[freq] > max_accepted[3]) or
+            (e[freq] > max_accepted[4]) or
+            (f[freq] > max_accepted[5]) or
+            (g[freq] > max_accepted[6]) or
+            (h[freq] > max_accepted[7])):
+            # mask
+            amount_masked += 1
+            bad_freq_list.append(freq)
+#           for pols in range(0, Data.dims[1]):
+#                Data.data[:, pols, 0, freq].mask = True
+#                Data.data[:, pols, 1, freq].mask = True
+            Data.data[:,:,:,freq].mask = True
+    print amount_masked
+    return amount_masked
+
+def determine_badness(bad_freqs):
+    '''Return True if too many frequencies have been masked [hence, bad].
+    If True, the data must be flagged in time, not frequency.
+    "Too many frequencies" means that there exists a slice of bad_freqs
+    that contains at least 200 elements and the difference between adjacent
+    elements is less than 10. Something like this would happen if the 
+    telescope goes wonky for a few seconds.
+    bad_freqs is a SORTED list of integers representing flagged frequencies.'''
+    count = 0
+    high_score = 0
+    if len(bad_freqs) > 200:
+        for i in range(1, len(bad_freqs)):
+            if ((bad_freqs[i] - bad_freqs[i-1]) < 10):
+                count += 1
+            else:
+                high_score = count
+                count = 0
+    badness = (high_score >= 200)
+    return badness
+
+def flag_across_time(Data, section_size=15):
+    '''Will only be called if a Data has "badness" [see determine_badness].
+    Splits the Data into different pieces in time, section_size long, and
+    find the badness of each. The sections in time that have badness will be
+    flagged, so that [hopefully] the Data will no longer have badness overall.'''
+    bad_times = []
+    for splits in range(0, Data.dims[0], section_size):
+        # Make an array that mimics a Data block.
+        arr = ma.masked_array([Data.data[splits:(splits+section_size), 0, 0, :],
+            Data.data[splits:(splits+section_size), 1, 0, :],
+            Data.data[splits:(splits+section_size), 2, 0, :],
+            Data.data[splits:(splits+section_size), 3, 0, :],
+            Data.data[splits:(splits+section_size), 0, 1, :],
+            Data.data[splits:(splits+section_size), 1, 1, :],
+            Data.data[splits:(splits+section_size), 2, 1, :],
+            Data.data[splits:(splits+section_size), 3, 1, :]], mask=False)
+        # If there is masked data already in the split, it will ruin
+        # accuracy so all data from there is ignored.
+        if (True in Data.data[splits:(splits+section_size),:,:,:].mask):
+            bad_times.append(splits) 
+        itr = 0            # For recursion
+        max_itr = 20       # For recursion
+        bad_freqs = []
+        amount_masked = -1 # For recursion
+        while not (amount_masked == 0) and itr < max_itr:                         
+            amount_masked = destroy_with_variance_arrays(arr, bad_freq_list=bad_freqs) 
+            itr += 1
+        bad_freqs.sort()
+##        badness = determine_badness(bad_freqs)
+#        badness = (float(len(bad_freqs)) / Data.dims[-1]) > 0.05
+#        if badness:
+        # If section in time is bad, remember it.
+        if len(bad_freqs) > 50:
+            bad_times.append(splits)
+    # Flag Data in time for all bad time sections found.
+    print bad_times
+    for time in bad_times:
+#        for pols in range(0, Data.dims[1]):
+#            Data.data[time:(time+section_size), pols, 0, :].mask = True
+#            Data.data[time:(time+section_size), pols, 1, :].mask = True
+        Data.data[time:(time+section_size),:,:,:].mask = True
+    return
+
+def destroy_with_variance_arrays(arr, level=1, bad_freq_list=[]):
+    '''Same as "destroy_with_variance" but for arrays arr, not Data.
+    arr should contain 8 arrays for each XX,XY,YX,YY polarization
+    [in that order] with cal=0, then the same again with cal=1.'''
+    XX_YY_0 = ma.mean(arr[0], 0) * ma.mean(arr[3], 0)
+    XX_YY_1 = ma.mean(arr[4], 0) * ma.mean(arr[7], 0)
+    a = ma.var(arr[0], 0) / (ma.mean(arr[0], 0)**2) # XX
+    b = ma.var(arr[1], 0) / XX_YY_0                 # XY
+    c = ma.var(arr[2], 0) / XX_YY_0                 # YX
+    d = ma.var(arr[3], 0) / (ma.mean(arr[3], 0)**2) # YY
+    e = ma.var(arr[4], 0) / (ma.mean(arr[4], 0)**2) # XX
+    f = ma.var(arr[5], 0) / XX_YY_1                 # XY
+    g = ma.var(arr[6], 0) / XX_YY_1                 # YX
+    h = ma.var(arr[7], 0) / (ma.mean(arr[7], 0)**2) # YY
+    means = sp.array([ma.mean(a), ma.mean(b), ma.mean(c), ma.mean(d),
+                        ma.mean(e), ma.mean(f), ma.mean(g), ma.mean(h)])
+    sig = sp.array([ma.std(a), ma.std(b), ma.std(c), ma.std(d),
+                      ma.std(e), ma.std(f), ma.std(g), ma.std(h)])
+    max_sig = 6*sig*level
+    max_accepted = means + max_sig
+    amount_masked = 0
+    for freq in range(0, len(a)):
+        if ((a[freq] > max_accepted[0]) or
+            (b[freq] > max_accepted[1]) or
+            (c[freq] > max_accepted[2]) or
+            (d[freq] > max_accepted[3]) or
+            (e[freq] > max_accepted[4]) or
+            (f[freq] > max_accepted[5]) or
+            (g[freq] > max_accepted[6]) or
+            (h[freq] > max_accepted[7])):
+            # mask
+            amount_masked += 1
+            bad_freq_list.append(freq)
+            arr.mask[:,:,freq] = True
+    print amount_masked
+    return amount_masked
+
+def destroy_time_with_mean_arrays(Data, flag_size=40):
+    '''If there is a problem in time, the mean over all frequencies
+    will stand out greatly [>10 sigma has been seen]. Flag these bad
+    times and +- flag_size times around it. Will only be called if a Data has
+    "badness" [see determine_badness].'''
+    # Get the means over all frequencies.
+    a = ma.mean(Data.data[:, 0, 0, :], -1)
+    b = ma.mean(Data.data[:, 1, 0, :], -1)
+    c = ma.mean(Data.data[:, 2, 0, :], -1)
+    d = ma.mean(Data.data[:, 3, 0, :], -1)
+    e = ma.mean(Data.data[:, 0, 1, :], -1)
+    f = ma.mean(Data.data[:, 1, 1, :], -1)
+    g = ma.mean(Data.data[:, 2, 1, :], -1)
+    h = ma.mean(Data.data[:, 3, 1, :], -1)
+    # Get means and std for all arrays.
+    means = sp.array([ma.mean(a), ma.mean(b), ma.mean(c), ma.mean(d),
+                        ma.mean(e), ma.mean(f), ma.mean(g), ma.mean(h)])
+    sig = sp.array([ma.std(a), ma.std(b), ma.std(c), ma.std(d),
+                      ma.std(e), ma.std(f), ma.std(g), ma.std(h)])
+    # Get max accepted values.
+    max_accepted = means + 3*sig
+    # Find bad times.
+    bad_times = []
+    for time in range(0,len(a)):
+        if ((a[time] > max_accepted[0]) or
+            (b[time] > max_accepted[1]) or
+            (c[time] > max_accepted[2]) or
+            (d[time] > max_accepted[3]) or
+            (e[time] > max_accepted[4]) or
+            (f[time] > max_accepted[5]) or
+            (g[time] > max_accepted[6]) or
+            (h[time] > max_accepted[7])):
+            bad_times.append(time)
+    # Mask bad times and those +- flag_size around.
+    print bad_times
+    for time in bad_times:
+        Data.data[(time-flag_size):(time+flag_size),:,:,:].mask = True
+    return
 
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":
