@@ -39,12 +39,8 @@ def combine(Data, weights=(0.5, 0.5), sub_mean=True, average_cals=True) :
             Data.field['CAL'][off_ind] != 'F') :
                 raise ce.DataError('Cal states not in expected order.')
         # If giving equal weights, use mean such that flags aren't propagated.
-        if weights == (0.5, 0.5) :
-            newdata = ma.mean(Data.data, 2)
-            newdata.shape = newdata.shape[:2] + (1,) + (newdata.shape[2],)
-        else :
-            newdata = (Data.data[:,:,[0],:]*weights[0] +
-                       Data.data[:,:,[1],:]*weights[1])
+        newdata = (Data.data[:,:,[0],:]*weights[0] +
+                   Data.data[:,:,[1],:]*weights[1])
         Data.set_data(newdata)
         Data.field['CAL'] = sp.array(['A']) # For averaged.
         if Data.field.has_key('EXPOSURE') :

@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 from kiyopy import parse_ini
 import kiyopy.utils
+import kiyopy.custom_exceptions as ce
 import core.fitsGBT
 
 # Define a dictionary with keys the names of parameters to be read from
@@ -165,129 +166,120 @@ class NoisePower(object) :
             self.power_counts = power_counts
             self.ps_freqs = ps_freqs
 
-def make_plots(data, ini) :
-    """
-    Make plots for noise model.
-
-    This function takes the data from noise_model.noise_model and plots it.  It
-    can then either show the plots, or save them to file.
-
-    Arguments:
-        data : A dictionary of data that is the output of noise_model() (or
-               compatable).
-        ini : Either a dictionary or file name containing the parameters
-              for this program.  This is parsed using the kiyopy.parser.
-              All parameters begin with the prefix plot_ and so common
-              practice should be to include the parameters for this
-              program in the parameter file for noise_model()
-    """
+def make_masked_time_stream(Blocks) :
+    """Converts Data Blocks into a single uniformly sampled time stream.
     
-    # Get input parameters.
-    params_init = {
-                      "plot_save_file" : False,
-                      "plot_norm_to_first_lag" : False,
-                      "plot_fbins" : [],
-                      "plot_show" : False,
-                      "plot_output_root" : "",
-                      "plot_output_dir" : "./"
-                      }
-    parameters = parse_ini.parse(ini, params_init)
-    # Unpack data.
-    block_LST = data["block_LST"]
-    block_medians = data["block_medians"]
-    block_RMS = data["block_RMS"]
-    if data.has_key("covariance") :
-        covariance = data["covariance"]
-        lags = data["lags"]
-        nlags = len(lags)
-        # Get center bins for plotting
-        plot_lags = [lags[0]/2]
-        for ii in range(1,nlags) :
-            plot_lags.append((lags[ii]+lags[ii-1])/2)
-        plot_lags = sp.array(plot_lags)
-        if parameters["plot_norm_to_first_lag"] :
-            covariance /= covariance[0,:]
-    if data.has_key("power_spectrum") :
-        power_spectrum = data["power_spectrum"]
-        ps_freqs = data["ps_freqs"]
-    # Isolate only the frequency bins we need for plotting. 
-    fbins_plot = parameters["plot_fbins"]
-    nfbins_plot = len(fbins_plot)
-    if nfbins_plot == 0 :
-        nfbins_plot = len(block_medians[0,:])
-        fbins_plot = range(nfbins_plot)
-    plot_block_RMS = block_RMS[:,fbins_plot]
-    plot_block_medians = block_medians[:,fbins_plot]
-    markers = ['o','s','^','h','p','v']
-    colours = ['b','g','r','c','m','y']
-    nmarkers = len(markers)
-    ncolours = len(colours)
+    Also produces the mask giving whether elements are valid entries or came
+    from a zero pad.  This produes the required inputs for calculating a
+    windowed power spectrum.
 
-    plt.figure(1)
-    for ii in range(nfbins_plot) :
-        plt.plot(block_LST, plot_block_medians[:,ii],
-                 linestyle='None',
-                 marker=markers[ii%nmarkers],
-                 markerfacecolor=colours[ii%ncolours])
-    plt.xlabel("File Start LST")
-    plt.ylabel("File Time Median")
+    Parameters
+    ----------
+    Blocks : tuple of DataBlock objects.
 
-    plt.figure(2)
-    for ii in range(nfbins_plot) :
-        plt.plot(block_LST, plot_block_RMS[:,ii],
-                 linestyle='None',
-                 marker=markers[ii%nmarkers],
-                 markerfacecolor=colours[ii%ncolours])
-    plt.xlabel("File Start LST")
-    plt.ylabel("File RMS")
+    Returns
+    -------
+    time_stream : array
+        All the data in `Blocks` but concatenated along the time axis and
+        padded with zeros such that the time axis is uniformly sampled and
+        uninterupted.
+    mask : array same shape as `time_stream`
+        1.0 if data in the correspoonding `time_stream` element is filled 
+        and 0 if the data was missing.  This is like a window where 
+        time_stream = mask*real_data.
+    """
+
+    # Shape of all axes except the time axis.
+    back_shape = Blocks[0].dims[1:]
+    # Get the time sample spacing.
+    Blocks[0].calc_time()
+    dt = abs(sp.mean(sp.diff(Blocks[0].time)))
+    # Find the beginning and the end of the time axis by looping through
+    # blocks.
+    min_time = float('inf')
+    max_time = 0.0
+    for Data in Blocks :
+        Data.calc_time()
+        min_time = min(min_time, min(Data.time))
+        max_time = max(min_time, max(Data.time))
+        # Ensure that the time sampling is uniform.
+        if not (sp.allclose(abs(sp.diff(Data.time)), dt, rtol=0.1)
+                and sp.allclose(abs(sp.mean(sp.diff(Data.time))), dt)) :
+            msg = ("Time sampling not uniformly spaced or Data Blocks don't "
+                   "agree on sampling.")
+            raise ce.DataError(msg)
+        # Ensure the shapes are right.
+        if Data.dims[1:] != back_shape :
+            msg = ("All data blocks must have the same shape except the time "
+                   "axis.")
+            raise ce.DataError(msg)
+    # Calculate the time axis.
+    time = sp.arange(min_time, max_time + dt, dt)
+    ntime = len(time)
+    # Allowcate memory for the outputs.
+    time_stream = sp.zeros((ntime,) + back_shape, dtype=float)
+    mask = sp.zeros((ntime,) + back_shape, dtype=sp.float32)
+    # Loop over all times and fill in the arrays.
+    for Data in Blocks :
+        # Apply an offset to the time in case the start of the Data Block
+        # doesn't line up with the time array perfectly.
+        offset = time[sp.argmin(abs(time - Data.time[0]))] - Data.time[0]
+        for ii in range(Data.dims[0]) :
+            ind = sp.argmin(abs(time - (Data.time[ii] + offset)))
+            if sp.any(mask[ind, ...]) :
+                msg = "Overlapping times in Data Blocks."
+                raise ce.DataError(msg)
+            time_stream[ind, ...] = Data.data[ii, ...].filled(0.0)
+            mask[ind, ...] = sp.logical_not(Data.data.mask[ii, ...])
+    return time_stream, mask
+
+def windowed_power(data1, window1, data2=None, window2=None) :
+    """Calculates a windowed cross power spectrum.
+
+    Calculates the cross power spectrum of uniformly and continuously
+    sampled time stream data.  There may be missing data samples in where both
+    the data and the window should be 0, otherwise the window should be unity.
     
-    if data.has_key("covariance") :
-        plt.figure(3)
-        for ii in range(nfbins_plot) :
-            inds, = sp.where(covariance[:,fbins_plot[ii]] > 0)
-            a = sp.array(plot_lags[inds])
-            b = sp.array(covariance[inds,fbins_plot[ii]])
-            plt.loglog(plot_lags[inds], covariance[inds,fbins_plot[ii]],
-                       linestyle='None',
-                       marker=markers[ii%nmarkers],
-                       markerfacecolor=colours[ii%ncolours])
-            inds, = sp.where(covariance[:,fbins_plot[ii]] < 0)
-            plt.loglog(plot_lags[inds], -covariance[inds,fbins_plot[ii]],
-                       linestyle='None',
-                       marker=markers[ii%nmarkers],
-                       markeredgecolor=colours[ii%ncolours],
-                       markerfacecolor='w')
-        plt.xlabel("Lag (sidereal seconds)")
-        plt.ylabel("covariance")
+    All input arrays must be 1D and the same length.
 
-    if data.has_key("power_spectrum") :
-        plt.figure(4)
-        for ii in range(nfbins_plot) :
-            plt.loglog(ps_freqs, power_spectrum[:,fbins_plot[ii]],
-                       linestyle='None',
-                       marker=markers[ii%nmarkers],
-                       markerfacecolor=colours[ii%ncolours])
-        plt.xlabel("frequency (sidereal Hz)")
-        plt.ylabel("power")
-        
+    Parameters
+    ----------
+    data1 : array
+        First data time stream.
+    window1 : array
+        Window for first time stream.
+    data2 : array
+        Second data time stream. If None, set equal to `data1`.
+    window2 : array
+        Window for second time stream. If None, set equal to `window1`.  
+        Ignored if data2 is None.
 
-    if parameters['plot_save_file'] :
-        os.system('mkdir -p ' + parameters["plot_output_dir"])
-        out_root = (parameters["plot_output_dir"] + '/' +
-                   parameters["plot_output_root"])
-        plt.figure(1)
-        plt.savefig(out_root+"medians.eps")
-        plt.figure(2)
-        plt.savefig(out_root+"RMS.eps")
-        if data.has_key("covariance") :
-            plt.figure(3)
-            plt.savefig(out_root+"covariance.eps")
-        if data.has_key("power_spectrum") :
-            plt.figure(4)
-            plt.savefig(out_root+"power_spectrum.eps")
+    Returns
+    -------
+    power_spectrum : 1D array
+        Cross power of the input time streams accounting for the windows.
+    
+    Notes
+    -----
+    This function calculates the best estimate for the cross power of
+    real_data1 and real_data2 given data1 = window1*real_data1 and 
+    data2 = window2*real_data2.  The most common case will be when the windows
+    are simply masks: arrays of 0s and 1s, but the function should work fien
+    for more general windows.
+    """
 
-    if parameters['plot_show'] :
-        plt.show()
+    if data2 is None :
+        data2 = data1
+        window2 = window1
+
+    data_power = fft.fft(data1)*fft.fft(data2).conj()
+    window_power = fft.fft(window1)*fft.fft(window2).conj()
+
+    true_corr = fft.ifft(data_power)/fft.ifft(window_power)
+    true_power = fft.fft(true_corr)
+
+    return true_power
+
 
 
 # If this file is run from the command line, execute the main function.

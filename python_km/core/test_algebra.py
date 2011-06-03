@@ -215,49 +215,83 @@ class TestViewsTemplates(unittest.TestCase) :
         self.assertTrue(not a.base is None)
         b = self.vect_arr[:,2]
         c = self.vect_mem[:,3]
-        self.assertTrue(not c.base is None)
+        # These slices should all sitll be arrs obviously, but with a `base`
+        # attribute.
         self.assertTrue(isinstance(a, sp.ndarray))
-        self.assertTrue(not isinstance(a, algebra.mat))
-        self.assertTrue(not isinstance(a, algebra.alg_object))
-        self.assertTrue(isinstance(b, sp.ndarray))
-        self.assertTrue(not isinstance(b, algebra.vect))
-        self.assertTrue(isinstance(c, sp.ndarray))
+        self.assertTrue(not c.base is None)
         self.assertTrue(isinstance(c, sp.memmap))
-        self.assertTrue(hasattr(c, '_mmap'))
+        # None of them should be `vect`, `mat` or `alg_object`.
+        self.assertTrue(not isinstance(a, algebra.alg_object))
+        self.assertTrue(not isinstance(b, algebra.vect))
         self.assertTrue(not isinstance(c, algebra.vect))
+        # They should be info arrays.  The dictionaries should be copies.  The
+        # info_memmap metafile name should be none such that copies don't
+        # clobber origional data.
+        self.assertTrue(isinstance(a, algebra.info_array))
+        self.assertEqual(a.info, self.mat_arr.info)
+        self.assertTrue(not a.info is self.mat_arr.info)
+        self.assertTrue(isinstance(c, algebra.info_memmap))
+        self.assertTrue(c.metafile is None)
 
     def test_ufuncs(self) :
-        # For ufuncs, if the shape is the same, copy the meta data.  Otherwise,
-        # it should be an array.  Matricies higher priority than vectors.
+        # For ufuncs, always copy the meta data. If the shape is the same cast
+        # as an alg_object.  Matricies higher priority than vectors.
+        # Vector only.
         a = self.vect_arr + self.vect_arr
         self.assertTrue(isinstance(a, algebra.vect))
-        b = self.mat_arr - self.vect_arr
+        self.assertEqual(a.info, self.vect_arr.info)
+        self.assertTrue(not a.info is self.vect_arr.info)
+        # Matrix vector.
+        b = self.vect_arr - self.mat_arr
         self.assertTrue(isinstance(b, algebra.mat))
+        self.assertEqual(b.info, self.mat_arr.info)
+        self.assertTrue(not b.info is self.vect_arr.info)
+        self.assertTrue(not b.info is self.mat_arr.info)
+        # Shape changing.
         q = sp.arange(3)
         q.shape = (3, 1, 1)
         c = q*self.mat_arr
         self.assertTrue(not isinstance(c, algebra.alg_object))
-        self.assertTrue(not isinstance(c, algebra.info_array))
+        self.assertTrue(isinstance(c, algebra.info_array))
         
     def test_ufuncs_memmap(self) :
-        # Same as above, but should always be the array, not the memmap
-        # version.
+        # Same as above.
         c = self.vect_mem / 2.0
-        self.assertTrue(not isinstance(c, sp.memmap))
-        self.assertTrue(isinstance(c, sp.ndarray))
+        self.assertTrue(isinstance(c, algebra.info_memmap))
+        self.assertTrue(c.metafile is None)
         self.assertTrue(isinstance(c, algebra.alg_object))
 
     def test_sum_mean(self) :
         s = sp.sum(self.vect_arr, 1)
+        r = sp.sum(self.vect_mem, 1)
+        q = sp.sum(self.mat_arr, 1)
         self.assertFalse(s.info is self.vect_arr.info)
+        self.assertFalse(r.info is self.vect_mem.info)
+        self.assertTrue(not isinstance(s, algebra.alg_object))
+        self.assertTrue(not isinstance(r, algebra.alg_object))
+        self.assertTrue(not isinstance(q, algebra.alg_object))
 
     def test_copy(self) :
         c = self.vect_arr.copy()
         self.assertFalse(c.info is self.vect_arr.info)
 
     def test_views(self) :
-        # Views should always share metadata references.
-        pass
+        # Views should always share metadata references and be of the same
+        # type.
+        # Arrays.
+        a = self.mat_arr.view()
+        self.assertTrue(isinstance(a, algebra.mat_array))
+        self.assertTrue(a.info is self.mat_arr.info)
+        # Memmaps.
+        c = self.vect_mem.view()
+        self.assertTrue(isinstance(c, algebra.vect_memmap))
+        self.assertEqual(c.metafile, self.vect_mem.metafile)
+        self.assertTrue(c.info is self.vect_mem.info)
+        # Changing type.
+        b = self.vect_arr.view(algebra.info_array)
+        self.assertTrue(b.info is self.vect_arr.info)
+
+
 
 
     # How to implement: define __array_wrap__ and __getitem__ in
@@ -307,7 +341,7 @@ class TestMatVectFromArray(unittest.TestCase) :
         del self.memmap_data
         os.remove('temp.npy')
 
-class TestMatUtils(unittest.TestCase) :
+class TestAlgUtils(unittest.TestCase) :
     
     def setUp(self) :
         data = sp.arange(30)
@@ -482,6 +516,57 @@ class TestMatUtils(unittest.TestCase) :
         self.assertTrue(sp.allclose(self.mat[:,1,:], 1))
         self.assertTrue(sp.allclose(self.mat[:,3,:], 3))
 
+    def test_slice_interpolate_linear(self) :
+        # Construct a 3D array that is a linear function.
+        v = self.vect
+        a = sp.arange(5)
+        a.shape = (5, 1, 1)
+        b = sp.arange(2)
+        b.shape = (1, 2, 1)
+        c = sp.arange(3)
+        c.shape = (1, 1, 3)
+        v[:,:,:] = a + b + c
+        v.set_axis_info('freq', 2, 1)
+        v.set_axis_info('a', 1, 1)
+        v.set_axis_info('b', 1, 1)
+
+        #### First test the weights.
+        # Test input sanitization.
+        self.assertRaises(ValueError, v.slice_interpolate_weights, [0,1], 2.5)
+        # Test bounds.
+        self.assertRaises(ValueError, v.slice_interpolate_weights, [1, 2], 
+                          [2.5, 1.5])
+        # Test linear interpolations in 1D.
+        points, weights = v.slice_interpolate_weights(0, 2.5, 'linear')
+        self.assertTrue(sp.allclose(weights, 0.5))
+        self.assertTrue(2 in points)
+        self.assertTrue(3 in points)
+        # Test liear interpolations in multi D.
+        points, weights = v.slice_interpolate_weights([0, 1, 2], 
+                                                      [0.5, 0.5, 1.5],
+                                                      'linear')
+        self.assertTrue(sp.allclose(weights, 1.0/8))
+        self.assertTrue(points.shape == (8, 3))
+        points, weights = v.slice_interpolate_weights([0, 1, 2], 
+                                                      [3, 1, 2],
+                                                      'linear')
+        self.assertTrue(sp.allclose(weights%1, 0))
+
+        #### Test linear interpolation on linear function.
+        # Test on the grid points.
+        self.assertEqual(v.slice_interpolate([0, 1, 2], [3.0, 1.0, 1.0]),
+                         3.0 + 1.0 + 1.0)
+        # Test in 1D interpoation.
+        out = a + c + 0.347
+        out.shape = (5, 3)
+        self.assertTrue(sp.allclose(out, v.slice_interpolate(1, 0.347,
+                                                             'linear')))
+        # Test in 2D.
+        out = b + 3.14159 + 1.4112 
+        out.shape = (2,)
+        self.assertTrue(sp.allclose(out, v.slice_interpolate([0, 2], 
+                             [3.14159, 1.4112], 'linear')))
+
 class TestMatUtilsSq(unittest.TestCase) :
 
     def setUp(self) :
@@ -503,11 +588,10 @@ class TestMatUtilsSq(unittest.TestCase) :
         self.assertTrue(sp.allclose(d.get_axis('freq'), 
                                     self.mat.get_axis('freq')))
 
+
 # TODO: Rules I'd like to impose:
     # vect axis names must be unique
     # mat axis names can occure both as a row and a col, but only once each.
-    # Shape changing operations like sp.sum() are still preserving the type...
-    # why?
 
 if __name__ == '__main__' :
     unittest.main()

@@ -8,7 +8,6 @@ import numpy.ma as ma
 
 import sys
 
-import hanning
 import rebin_freq
 import core.data_block
 import core.fitsGBT
@@ -25,35 +24,6 @@ class TestFunctions(unittest.TestCase) :
         self.Data.verify()
         self.Data_copy = copy.deepcopy(self.Data)
 
-    def test_hanning_data_changed(self) :
-        """Copy the data, see that we did something."""
-        hanning.hanning_smooth(self.Data)
-        # For lack of anything better to test:
-        self.Data.verify()
-        # Make sure we actually did something.
-        self.assertTrue(not ma.allclose(self.Data.data, self.Data_copy.data))
-        # Make sure we didn't change other fields, like LST.
-        self.assertTrue(sp.allclose(self.Data.field['LST'],
-                        self.Data_copy.field['LST']))
-
-    def test_hanning_cases(self) :
-        data = self.Data.data
-        data[:,:,:,:] = 1.
-        data[5,2,1,631] = 4.
-        data[7,3,1,853] = ma.masked
-        hanning.hanning_smooth(self.Data)
-        self.assertTrue(data[7,3,1,853] is ma.masked)
-        self.assertTrue(data[7,3,1,852] is ma.masked)
-        self.assertTrue(data[7,3,1,854] is ma.masked)
-        self.assertAlmostEqual(data[5,2,1,631], 2.5)
-        self.assertAlmostEqual(data[5,2,1,630], 1.75)
-        self.assertAlmostEqual(data[5,2,1,632], 1.75)
-
-    
-    # TODO For Hanning:
-    # Could test that end pointes end up masked.  Could test that points
-    # adjacent to masked data end up masked.
-    
     def test_rebin_runs(self) :
         rebin_freq.rebin(self.Data, 1.0)
         self.Data.verify()
@@ -89,6 +59,43 @@ class TestFunctions(unittest.TestCase) :
         self.assertNotAlmostEqual(0, self.Data.data[5,2,0,new_ind])
         self.Data.data[5,2,0,new_ind] = 0.0
         self.assertTrue(sp.allclose(self.Data.data, 0.0))
+
+    def test_by_number_axis(self) :
+        # For now rebin to a power of 2 for no residual
+        wbins = 2**4
+        # Get what we'd expect the new frequency axis to be
+        self.Data.calc_freq()
+        old_freq = self.Data.freq
+        new_freq = old_freq[wbins//2::wbins]
+        delta =  self.Data.field['CDELT1']
+        # Rebin.
+        rebin_freq.rebin(self.Data, wbins, by_nbins=True)
+        self.Data.verify()
+        # Check that the spaceing is right.
+        self.assertAlmostEqual(wbins*delta, self.Data.field['CDELT1'])
+        # Check that the axis is what we would think.
+        self.Data.calc_freq()
+        self.assertTrue(sp.allclose(new_freq, self.Data.freq, atol=abs(delta)))
+
+    def test_by_number_data(self) :
+        wbins = 9
+        # Set data = f.
+        self.Data.calc_freq()
+        self.Data.data[...] = self.Data.freq
+        delta =  self.Data.field['CDELT1']        
+        # Rebin.
+        rebin_freq.rebin(self.Data, wbins, by_nbins=True)
+        self.Data.verify()
+        # Except for the last bin, Data should still be freq.
+        self.Data.calc_freq()
+        self.assertTrue(sp.allclose(self.Data.data[:,:,:,:-1], 
+                                    self.Data.freq[:-1], abs(delta)))
+        # In last bin, same, but tolerance is worse.
+        self.assertTrue(sp.allclose(self.Data.data[:,:,:,-1], 
+            self.Data.freq[-1], abs(self.Data.field['CDELT1'])))
+
+
+
 
     def tearDown(self) :
         del self.Data
