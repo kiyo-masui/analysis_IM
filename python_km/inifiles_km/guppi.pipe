@@ -14,10 +14,10 @@ file_middles = tuple(dir_data.get_data_files(range(41,52), '15hr',
 #file_middles = tuple(dir_data.get_data_files([40], '15hr', 
 #                                             type='guppi'))
 #file_middles = ('42_wigglez15hrst_ralongmap_142-149',)
-file_middles = ('44_wigglez15hrst_ralongmap_297-304',)
+#file_middles = ('44_wigglez15hrst_ralongmap_297-304',)
 
 base_dir = os.getenv('GBT10B_OUT')
-data_dir = base_dir + '/guppi_data/'
+data_dir = os.getenv('GBT10B_KM') + '/guppi_data/'
 prefix = ''
 map_prefix = 'med_' + field + '_41-51_'
 

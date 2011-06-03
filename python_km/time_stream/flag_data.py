@@ -30,17 +30,26 @@ class FlagData(base_single.BaseSingle) :
                    # once normalized to the time median.
                    'perform_hanning' : False,
                    'cal_scale' : False,
-                   'sigma_thres' : 5,
-                   # In multiples of the measured standard deviation.
-                   'pol_thres' : 5
+                   # Rotate to XX,XY,YX,YY is True.
+                   'rotate' : False,
+                   # A Data that has more than badness_thres frequencies flagged
+                   # (as a %) will be considered bad.
+                   'badness_thres' : 0.1,
+                   # How many times to hide around a bad time.
+                   'time_cut' : 40
                    }
     feedback_title = 'New flags each data Block: '
     
     def action(self, Data) :
+        print 'i am here'
         params = self.params
         # Keep track of how many pre existing flags there are for feedback
         # purposes.
         already_flagged = ma.count_masked(Data.data)
+        if params["rotate"]:
+            if (tuple(Data.field['CRVAL4']) == (1, 2, 3, 4)):
+                print 'switched'
+                rotate_pol.rotate(Data, (-5,-7,-8,-6))
         # Few operations to be performed before flagging.
         if params["perform_hanning"] :
             hanning.hanning_smooth(Data)
@@ -49,36 +58,41 @@ class FlagData(base_single.BaseSingle) :
             cal_scale.scale_by_cal(Data, True, False, False)
             Data.add_history('Converted to units of noise cal temperture.')
         # Flag the data.
-        apply_cuts(Data, sig_thres=params['sigma_thres'], 
-                   pol_thres=params['pol_thres'])
-        Data.add_history('Flagged Bad Data.', ('Sigma threshold: ' +
-                    str(self.params['sigma_thres']), 'Polarization threshold: '
-                    + str(self.params['pol_thres'])))
+        print Data.field['CRVAL4']
+        apply_cuts(Data, badness_thres=params['badness_thres'],
+                    time_cut=params['time_cut'])
+        Data.add_history('Flagged Bad Data.', ('Rotated to XX,XY,YX,YY: ' + 
+                     str(self.params['rotate']))) #, ('Sigma threshold: ' +
+           #         str(self.params['sigma_thres']), 'Polarization threshold: '
+           #         + str(self.params['pol_thres'])))
         # Report the number of new flags.
         new_flags = ma.count_masked(Data.data) - already_flagged
         self.block_feedback = str(new_flags) + ', '
+        print Data.field['CRVAL4']
         return Data
 
-def apply_cuts(Data, sig_thres=5.0, pol_thres=5.0):
+def apply_cuts(Data, badness_thres=0.1, time_cut=40):
     """Flags bad data from RFI and far outliers.
-    sig_thres and pol_thres not used at all."""
+    See flag_data for other parameters."""
     # Make Data XX,XY,YX,YY only if in Stokes' parameters.
-    switched = False
-    if (tuple(Data.field['CRVAL4']) == (1, 2, 3, 4)):
-        print 'switched'
-        rotate_pol.rotate(Data, (-5,-7,-8,-6))
-        switched = True
+#    switched = False
+#    if (tuple(Data.field['CRVAL4']) == (1, 2, 3, 4)):
+#        print 'switched'
+#        rotate_pol.rotate(Data, (-5,-7,-8,-6))
+#        switched = True
     # Flag data and store if it was bad or not [see determine badness].
-    badness = flag_data(Data)
+    badness = flag_data(Data, badness_thres, time_cut)
     print badness
-    # Switch Data back to I,Q,U,V if they were so originally.
-    if switched:
-        rotate_pol.rotate(Data, (1,2,3,4))
+#    # Switch Data back to I,Q,U,V if they were so originally.
+#    if switched:
+#        rotate_pol.rotate(Data, (1,2,3,4))
     return
 
 
-def flag_data(Data):
-    '''Flag bad data from RFI and far outliers.'''
+def flag_data(Data, badness_thres, time_cut):
+    '''Flag bad data from RFI and far outliers. See params_init dictionary
+    for badness_thres. See 'flag_size' in destroy_time_with_mean_arrays
+    for time_cut.'''
     # Flag data on a [deep]copy of Data. If too much destroyed,
     # check if localized in time. If that sucks too, then just hide freq.
     Data1 = copy.deepcopy(Data)
@@ -94,13 +108,14 @@ def flag_data(Data):
     # Remember the flagged data.
     mask = Data1.data.mask
 ##    badness = determine_badness(bad_freqs)
-    badness = (float(len(bad_freqs)) / Data1.dims[-1]) > 0.05
+    percent_masked1 = (float(len(bad_freqs)) / Data1.dims[-1])
+    badness = percent_masked1 > badness_thres
     # If too many frequencies flagged, it may be that the problem
     # happens in time, not in frequency.
     if badness:
         Data2 = copy.deepcopy(Data)
         #flag_across_time(Data2)
-        destroy_time_with_mean_arrays(Data2)
+        destroy_time_with_mean_arrays(Data2, flag_size=time_cut)
         # Bad style for repeating as above, sorry.
         itr = 0
         bad_freqs = []
@@ -110,7 +125,9 @@ def flag_data(Data):
             itr += 1
         bad_freqs.sort()
 ##        badness = determine_badness(bad_freqs)
-        badness = (float(len(bad_freqs)) / Data2.dims[-1]) > 0.05
+        percent_masked2 = (float(len(bad_freqs)) / Data2.dims[-1])
+        # If the data is 5% or more cleaner this way <=> it is not bad.
+        badness = (percent_masked1 - percent_masked2) < 0.05
         # If this data does not have badness, that means there was
         # a problem in time and it was solved, so use this mask.
         # If the data is still bad, then the mask from Data1 will be used.
