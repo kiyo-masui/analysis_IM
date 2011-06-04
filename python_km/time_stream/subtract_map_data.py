@@ -26,7 +26,8 @@ class Subtract(base_single.BaseSingle) :
                    'map_file' : 'testfile_map.fits',
                    'solve_for_gain' : False,
                    # Empty string to not write an output.
-                   'gain_output_end' : ''
+                   'gain_output_end' : '',
+                   'interpolation' : 'nearest'
                    # XXX: What about if I start subtracing off a linear piece.
                    # TODO: Option to rescaleoutput data to map gain.
                    }
