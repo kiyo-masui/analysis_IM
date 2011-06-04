@@ -7,7 +7,7 @@ import scipy as sp
 
 
 field = '15hr'
-file_middles = tuple(dir_data.get_data_files(range(41,53), '15hr', 
+file_middles = tuple(dir_data.get_data_files(range(41,74), '15hr', 
                                              type='guppi'))
 #file_middles = tuple(dir_data.get_data_files(range(41,74), '15hr', 
 #                                             type='guppi'))
