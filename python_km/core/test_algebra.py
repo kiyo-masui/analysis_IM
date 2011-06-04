@@ -341,7 +341,7 @@ class TestMatVectFromArray(unittest.TestCase) :
         del self.memmap_data
         os.remove('temp.npy')
 
-class TestMatUtils(unittest.TestCase) :
+class TestAlgUtils(unittest.TestCase) :
     
     def setUp(self) :
         data = sp.arange(30)
@@ -516,6 +516,57 @@ class TestMatUtils(unittest.TestCase) :
         self.assertTrue(sp.allclose(self.mat[:,1,:], 1))
         self.assertTrue(sp.allclose(self.mat[:,3,:], 3))
 
+    def test_slice_interpolate_linear(self) :
+        # Construct a 3D array that is a linear function.
+        v = self.vect
+        a = sp.arange(5)
+        a.shape = (5, 1, 1)
+        b = sp.arange(2)
+        b.shape = (1, 2, 1)
+        c = sp.arange(3)
+        c.shape = (1, 1, 3)
+        v[:,:,:] = a + b + c
+        v.set_axis_info('freq', 2, 1)
+        v.set_axis_info('a', 1, 1)
+        v.set_axis_info('b', 1, 1)
+
+        #### First test the weights.
+        # Test input sanitization.
+        self.assertRaises(ValueError, v.slice_interpolate_weights, [0,1], 2.5)
+        # Test bounds.
+        self.assertRaises(ValueError, v.slice_interpolate_weights, [1, 2], 
+                          [2.5, 1.5])
+        # Test linear interpolations in 1D.
+        points, weights = v.slice_interpolate_weights(0, 2.5, 'linear')
+        self.assertTrue(sp.allclose(weights, 0.5))
+        self.assertTrue(2 in points)
+        self.assertTrue(3 in points)
+        # Test liear interpolations in multi D.
+        points, weights = v.slice_interpolate_weights([0, 1, 2], 
+                                                      [0.5, 0.5, 1.5],
+                                                      'linear')
+        self.assertTrue(sp.allclose(weights, 1.0/8))
+        self.assertTrue(points.shape == (8, 3))
+        points, weights = v.slice_interpolate_weights([0, 1, 2], 
+                                                      [3, 1, 2],
+                                                      'linear')
+        self.assertTrue(sp.allclose(weights%1, 0))
+
+        #### Test linear interpolation on linear function.
+        # Test on the grid points.
+        self.assertEqual(v.slice_interpolate([0, 1, 2], [3.0, 1.0, 1.0]),
+                         3.0 + 1.0 + 1.0)
+        # Test in 1D interpoation.
+        out = a + c + 0.347
+        out.shape = (5, 3)
+        self.assertTrue(sp.allclose(out, v.slice_interpolate(1, 0.347,
+                                                             'linear')))
+        # Test in 2D.
+        out = b + 3.14159 + 1.4112 
+        out.shape = (2,)
+        self.assertTrue(sp.allclose(out, v.slice_interpolate([0, 2], 
+                             [3.14159, 1.4112], 'linear')))
+
 class TestMatUtilsSq(unittest.TestCase) :
 
     def setUp(self) :
@@ -537,11 +588,10 @@ class TestMatUtilsSq(unittest.TestCase) :
         self.assertTrue(sp.allclose(d.get_axis('freq'), 
                                     self.mat.get_axis('freq')))
 
+
 # TODO: Rules I'd like to impose:
     # vect axis names must be unique
     # mat axis names can occure both as a row and a col, but only once each.
-    # Shape changing operations like sp.sum() are still preserving the type...
-    # why?
 
 if __name__ == '__main__' :
     unittest.main()

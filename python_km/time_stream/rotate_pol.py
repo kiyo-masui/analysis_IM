@@ -6,6 +6,7 @@ import numpy.ma as ma
 
 import kiyopy.custom_exceptions as ce
 import base_single
+import combine_cal
 
 
 class RotatePol(base_single.BaseSingle) :
@@ -92,26 +93,14 @@ def rotate(Data, new_pols=(1,), average_cals=False) :
     else :
         raise NotImplementedError('For now polarizations must be (I, Q, U, V)'
                                   ' or (XX, XY, YX, YY) in those orders')
-    # Now deal with the cal if desired.
-    if average_cals :
-        on_ind = 0
-        off_ind = 1
-        if Data.field.has_key('EXPOSURE') :
-            Data.field['EXPOSURE'] = sp.mean(Data.field['EXPOSURE'], -1)
-            Data.field['EXPOSURE'].shape = (Data.field['EXPOSURE'].shape
-                                            + (1,))
-        if (Data.field['CAL'][on_ind] != 'T' or
-            Data.field['CAL'][off_ind] != 'F') :
-                raise ce.DataError('Cal states not in expected order.')
-        new_data = (new_data[:,:,[on_ind],:] + 
-                    new_data[:,:,[off_ind],:])/2.0
-        # Set cal field to 'A' for averaged.
-        Data.field['CAL'] = sp.array(['A'])
-    # Finally replace the data in the DataBlock.
     Data.set_data(new_data)
     Data.field['CRVAL4'] = sp.array(new_pols)
 
-    
+    # Now deal with the cal if desired.
+    if average_cals :
+        combine_cal.combine(Data, weights=(0.5, 0.5), sub_mean=False,
+                            average_cals=True)
+
 
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":
