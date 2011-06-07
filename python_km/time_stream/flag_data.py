@@ -8,7 +8,6 @@ import copy
 import numpy.ma as ma
 import scipy as sp
 import scipy.signal as sig
-import matplotlib.pyplot as plt
 
 import core.fitsGBT
 import kiyopy.custom_exceptions as ce
@@ -79,7 +78,6 @@ def apply_cuts(Data, sigma_thres=6, badness_thres=0.1, time_cut=40):
     # Can print or return badness here if you would like
     # to see if the Data had a problem in time or not.
     return
-
 
 def flag_data(Data, sigma_thres, badness_thres, time_cut):
     '''Flag bad data from RFI and far outliers. See params_init dictionary
