@@ -2,7 +2,7 @@ import pylab
 from numpy import *
 import scipy as sp
 
-prefix = '41-51_mod'
+prefix = '56-73'
 
 mueller_params = loadtxt('mueller_params_calc.txt')
 m_err = loadtxt('mueller_params_error.txt')

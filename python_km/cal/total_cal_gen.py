@@ -1,5 +1,4 @@
-"""
-Procedure to calculate the Mueller parameters for each frequency from on-off scans of a calibrator such as 3C286."""
+"""Procedure to calculate the Mueller parameters for each frequency from on-off scans of a calibrator such as 3C286."""
 import os
 
 from scipy.optimize import *
@@ -50,7 +49,7 @@ class MuellerGen(object) :
         return t 
 
     def residuals(self, p,errors, f,freq_val):
-        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)
+        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*2 #2 is the approx KpJy number
         PAsrc = 33.0*sp.pi/180.0
         Psrc = 0.07 # The fraction is about 7% for 3C286 at high frequencies, but not as stable at our frequencies.  
         Qsrc = Isrc*Psrc*sp.cos(2*PAsrc)
@@ -72,27 +71,37 @@ class MuellerGen(object) :
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
                                prefix=prefix)
         guppi_result = params['Guppi_test']
+        output_root = params['output_root']
+        output_end = params['output_end']
 
         self.file_num = len(params['file_middles']) # getting a variable for number of calibrator files being used
 
 # Need to remove count for calibrator files that are not the right size.
+        session_nums = sp.zeros(self.file_num)
+        c = 0
         for file_middle in params['file_middles'] :
             input_fname = (params['input_root'] + file_middle + 
                            params['input_end'])
             Reader = core.fitsGBT.Reader(input_fname)
             n_scans = len(Reader.scan_set)
+            Len_set = Reader.read(0,0,force_tuple=True)
+            session_nums[c] = file_middle.split('_')[0]
+#            print session_nums[c]
+            for Data in Len_set :
+                freq_num = Data.dims[3] # Setting the frequency binning to match whatever it's been set to. 
             if guppi_result == True : 
                 if n_scans != 2 :
                     self.file_num -=1
             elif guppi_result == False :
                 if n_scans != 4 :
                     self.file_num -=1
+            c+=1
 
 # Need to know the general frequency binning (going to assume that it's 200 for guppi, 260 for spectrometer, aka 1 MHz binning)
-        if guppi_result == True :
-            freq_num = 200 
+#        if guppi_result == True :
+#            freq_num = 200 
         if guppi_result == False :
-            freq_num = 260    
+#            freq_num = 260    
             self.file_num *= 2 #because there are two sets of scans per file for spectrometer, need to double the number of values
 
 
@@ -216,6 +225,7 @@ class MuellerGen(object) :
                     self.d[k+2,:] = 0.5*(S_med_calon_src[:,2]+S_med_caloff_src[:,2]-S_med_calon[:,2]-S_med_caloff[:,2])
                     self.d[k+3,:] = 0.5*(S_med_calon_src[:,3]+S_med_caloff_src[:,3]-S_med_calon[:,3]-S_med_caloff[:,3])
                     k+=4
+
         for a in range(0,4*self.file_num):
             for b in range(0,freq_num):
 #                print self.d[a,b]
@@ -257,7 +267,9 @@ class MuellerGen(object) :
             p_val_out[f,15] = Mueller[3,2]
             p_val_out[f,16] = Mueller[3,3]
 
-        np.savetxt('flux_mueller_matrix_calc.txt', p_val_out, delimiter = ' ')
+        sess_num = int(session_nums[0])
+        print sess_num
+        np.savetxt(output_root+str(sess_num)+'_flux_mueller_matrix_calc'+output_end, p_val_out, delimiter = ' ')
 #        np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')
 
 #If this file is run from the command line, execute the main function.

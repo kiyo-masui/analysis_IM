@@ -15,16 +15,16 @@ from core import fits_map
 # thing it doesn't know how to do is the science, which is what will be added
 # here.
 class Calibrate(base_single.BaseSingle) :
-    """Pipeline module that corrects for polarization leakage."""
+    """Pipeline module that corrects for polarization leakage and flux calibrates."""
     # Here we define a bunch of stuff that BaseSingle needs to know to do its
     # thing.
     # prefix is a few letters that are added to all parameter names that are
-    # read from a configureation file.
+    # read from a configuration file.
     prefix = 'tc_'
     # These are the parameters that should be read from file.  These are in
     # addition to the ones defined at the top of base_single.py.
     params_init = {'mueler_file' : 'default_fname' }
-
+    
     # The base single initialization method does a bunch of stuff, but we want
     # to add one thing.  We want to read a mueler matrix from file.
     def __init__(self, parameter_file_or_dict=None, feedback=2):
@@ -32,9 +32,10 @@ class Calibrate(base_single.BaseSingle) :
         # Call the base_single init.
        	base_single.BaseSingle.__init__(self, parameter_file_or_dict,
                                         feedback)
+#        print self.params
         # Read in the mueler matrix file.
-       	mueler_file_name = self.params['mueler_file']
-       	self.mueler = mueller()
+       	mueler_file_name = self.params['mueler_file']+'41_flux_mueller_matrix_calc.txt'
+       	self.mueler = mueller(mueler_file_name)
     
     # This function tells BaseSingle what science to do.  Data is a
     # core.data_block.DataBlock object.  It holds all the data for a single
@@ -49,7 +50,13 @@ class Calibrate(base_single.BaseSingle) :
         pl.plot(frequency,Data.data[0,3,0,:],label='V-init')
 
         # Main Action
-       	calibrate_pol(Data, self.mueler)
+        i = self.file_ind
+        file_middle = self.params['file_middles'][i]
+        sess_num = file_middle.split('_')[0]
+        sess_num = int(sess_num)
+       	print sess_num
+        mueler_file_name = self.params['mueler_file']+str(sess_num)+'_flux_mueller_matrix_calc.txt'
+        calibrate_pol(Data, self.mueler)
        	Data.add_history('Flux calibrated and Corrected for polarization leakage.', 
                	         ('Mueller matrix file: ' + self.params['mueler_file'],))
         
@@ -61,7 +68,7 @@ class Calibrate(base_single.BaseSingle) :
         pl.ylim(-20,130)
         pl.xlabel("Frequency (MHz)")
         pl.ylabel("Sample Data")
-        title0 = str(Data.field['SCAN'])+'_caloff_pol'
+        title0 = str(Data.field['SCAN'])+'_caloff_pol_'
         pl.savefig(title0+'Comparison_Test_for_3C286.png')
         pl.clf()
 
@@ -73,8 +80,8 @@ class Calibrate(base_single.BaseSingle) :
 # bin where 0 is the lowest frequency bin and 7 is the highest, and the 
 # first and second indices represent the mueller matrix for each frquency bin. 
 
-def mueller() :
-    mp = np.loadtxt('flux_mueller_matrix_calc.txt')
+def mueller(mueler_file_name) :
+    mp = np.loadtxt(mueler_file_name)
 #     print mp
 #This is a file with first index being freq, second index being matrix element:
 # 0 = Freq, 1 = mII, 2 = mIQ, ... 16 = mVV
@@ -167,13 +174,15 @@ def calibrate_pol(Data, m_total) :
         # Determines the Mueller Matrix to use   
             for freq in range(0,Data.dims[3]):
 
-     # Tells which mueller matrix to use. Rounds to the nearest MHz integer bin.
-               frequency = int(Data.freq[freq]/1000000) 
-               freq_limit=len(m_total[0,0,:])
-               if freq_limit == 200:
-                   bin = 900-frequency
-               elif freq_limit == 260:
-                   bin = 929-frequency
+     # Tells which mueller matrix to use. 
+               freq_limit = len(m_total[0,0,:])
+               frequency = int(Data.freq[freq]/1000)
+               bin = int((900000-frequency)*freq_limit/200000)
+#               if freq_limit == 200:
+#                   bin = 900-frequency
+#Not setup to work with spectrometer data.
+#               elif freq_limit == 260:
+#                   bin = 929-frequency
 #               print bin
     # Converts files into matrix format 
                STOKES = Data.data[time_index,:,cal_index,freq]       

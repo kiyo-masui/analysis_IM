@@ -1,15 +1,18 @@
 import pylab
 from numpy import *
 import scipy as sp
+import sys
 
-prefix = '41-51_mod_may'
+prefix = '66-68'
 
 mm_1_row = loadtxt('mueller_matrix_first_row.txt')
 mm_2_row = loadtxt('mueller_matrix_second_row.txt')
 mm_3_row = loadtxt('mueller_matrix_third_row.txt')
 mm_4_row = loadtxt('mueller_matrix_fourth_row.txt')
 source = loadtxt('mueller_params_calc.txt')
-jones = loadtxt('Jones_May.txt')
+jones = loadtxt('jones_bin1.txt')
+filename = sys.argv[1]
+mm_dir = loadtxt(filename)
 
 freq = source[:,0]
 freq_j = sp.zeros(len(jones[:,0]))
@@ -70,6 +73,7 @@ mm_33 = mm_4_row[3]
 #M00
 pylab.plot(freq_j, mj_00, label='Jones')
 pylab.plot(freq, mm_00, label='Mueller')
+#pylab.plot(mm_dir[:,0],mm_dir[:,1], label='Direct')
 pylab.ylim(0,1.5)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency')
@@ -80,6 +84,7 @@ pylab.clf()
 #M01
 pylab.plot(freq_j, mj_01, label='Jones')
 pylab.plot(freq, mm_01, label='Mueller')
+#pylab.plot(mm_dir[:,0],mm_dir[:,2], label='Direct')
 pylab.ylim(-0.25,0.75)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency')
@@ -90,6 +95,7 @@ pylab.clf()
 #M02
 pylab.plot(freq_j, mj_02, label='Jones')
 pylab.plot(freq, mm_02, label='Mueller')
+#pylab.plot(mm_dir[:,0],mm_dir[:,3], label='Direct')
 pylab.ylim(-0.35,0.35)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency')
@@ -100,6 +106,7 @@ pylab.clf()
 #M03
 pylab.plot(freq_j, mj_03, label='Jones')
 pylab.plot(freq, mm_03, label='Mueller')
+#pylab.plot(mm_dir[:,0],mm_dir[:,4], label='Direct')
 pylab.ylim(-0.25,0.25)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency')
@@ -110,6 +117,7 @@ pylab.clf()
 #M10
 pylab.plot(freq_j, mj_10, label='Jones')
 pylab.plot(freq, mm_10, label='Mueller')
+#pylab.plot(mm_dir[:,0],mm_dir[:,5], label='Direct')
 pylab.ylim(-0.35,0.35)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency')
@@ -120,6 +128,7 @@ pylab.clf()
 #M11
 pylab.plot(freq_j, mj_11, label='Jones')
 pylab.plot(freq, mm_11, label='Mueller')
+#pylab.plot(mm_dir[:,0],mm_dir[:,6], label='Direct')
 pylab.ylim(-1.5,1.5)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency')
@@ -130,6 +139,7 @@ pylab.clf()
 #M12
 pylab.plot(freq_j, mj_12, label='Jones')
 pylab.plot(freq, mm_12, label='Mueller')
+#pylab.plot(mm_dir[:,0],mm_dir[:,7], label='Direct')
 pylab.ylim(-0.35,0.35)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency')
@@ -140,6 +150,7 @@ pylab.clf()
 #M13
 pylab.plot(freq_j, mj_13, label='Jones')
 pylab.plot(freq, mm_13, label='Mueller')
+#pylab.plot(mm_dir[:,0],mm_dir[:,8], label='Direct')
 pylab.ylim(-0.35,0.35)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency')
@@ -150,6 +161,7 @@ pylab.clf()
 #M20
 pylab.plot(freq_j, mj_20, label='Jones')
 pylab.plot(freq, mm_20, label='Mueller')
+#pylab.plot(mm_dir[:,0],mm_dir[:,9], label='Direct')
 pylab.ylim(-0.35,0.35)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency')
@@ -160,6 +172,7 @@ pylab.clf()
 #M21
 pylab.plot(freq_j, mj_21, label='Jones')
 pylab.plot(freq, mm_21, label='Mueller')
+#pylab.plot(mm_dir[:,0],mm_dir[:,10], label='Direct')
 pylab.ylim(-0.25,0.25)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency')
@@ -170,6 +183,7 @@ pylab.clf()
 #M22
 pylab.plot(freq_j, mj_22, label='Jones')
 pylab.plot(freq, mm_22, label='Mueller')
+#pylab.plot(mm_dir[:,0],mm_dir[:,11], label='Direct')
 pylab.ylim(-1.5,1.5)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency')
@@ -180,6 +194,7 @@ pylab.clf()
 #M23
 pylab.plot(freq_j, mj_23, label='Jones')
 pylab.plot(freq, mm_23, label='Mueller')
+#pylab.plot(mm_dir[:,0],mm_dir[:,12], label='Direct')
 pylab.ylim(-1.5,1.5)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency')
@@ -190,6 +205,7 @@ pylab.clf()
 #M30
 pylab.plot(freq_j, mj_30, label='Jones')
 pylab.plot(freq, mm_30, label='Mueller')
+#pylab.plot(mm_dir[:,0],mm_dir[:,13], label='Direct')
 pylab.ylim(-0.25,0.25)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency')
@@ -200,6 +216,7 @@ pylab.clf()
 #M31
 pylab.plot(freq_j, mj_31, label='Jones')
 pylab.plot(freq, mm_31, label='Mueller')
+#pylab.plot(mm_dir[:,0],mm_dir[:,14], label='Direct')
 pylab.ylim(-0.25,0.25)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency')
@@ -210,6 +227,7 @@ pylab.clf()
 #M32
 pylab.plot(freq_j, mj_32, label='Jones')
 pylab.plot(freq, mm_32, label='Mueller')
+#pylab.plot(mm_dir[:,0],mm_dir[:,15], label='Direct')
 pylab.ylim(-1.5,1.5)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency')
@@ -220,6 +238,7 @@ pylab.clf()
 #M33
 pylab.plot(freq_j, mj_33, label='Jones')
 pylab.plot(freq, mm_33, label='Mueller')
+#pylab.plot(mm_dir[:,0],mm_dir[:,16], label='Direct')
 pylab.ylim(-1.5,1.5)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency')
