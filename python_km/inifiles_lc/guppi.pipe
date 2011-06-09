@@ -81,7 +81,6 @@ rf_scans = ()
 rf_IFs = ()
 
 rf_channel_width = 0.
-#or 256/4
 rf_n_bins_combined = 16
 rf_mean_instead_median = False
 
