@@ -197,10 +197,6 @@ class info_array(sp.ndarray) :
         if isinstance(out, info_array) :
             out.info = self.info
         return out
-    
-    def __deepcopy__(self, copy):
-        """Not implemented, raises an exception."""
-        raise NotImeplementedError("Deep copy won't work.")
 
 class info_memmap(sp.memmap) :
     """A standard numpy memmap object with a dictionary for holding extra info.

@@ -64,10 +64,10 @@ class Beam(object) :
         # allowcate memory for the output.
         out = algebra.zeros_like(alg_ob)
         # Figure out the pixel sizes (in real degrees).
-        dfreq = alg_ob.info['freq_delta']
-        dra = alg_ob.info['ra_delta']
+        dfreq = abs(alg_ob.info['freq_delta'])
+        dra = abs(alg_ob.info['ra_delta'])
         dra /= sp.cos(alg_ob.info['dec_centre']*sp.pi/180)
-        ddec = alg_ob.info['dec_delta']
+        ddec = abs(alg_ob.info['dec_delta'])
         # Figure out the convolution mode.
         if wrap :
             mode = 'wrap'

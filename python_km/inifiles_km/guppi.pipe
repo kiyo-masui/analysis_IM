@@ -30,10 +30,10 @@ prefix = ''
 map_prefix = '' + field + '_' + '41-73' + '_'
 
 pipe_modules = []
-pipe_processes = 12
+pipe_processes = 10
 
 from time_stream import flag_data
-pipe_modules.append(flag_data.FlagData)
+#pipe_modules.append(flag_data.FlagData)
 fd_input_root = data_dir
 fd_file_middles = file_middles
 fd_input_end = '.fits'
@@ -47,11 +47,11 @@ fd_perform_hanning = False
 fd_rotate = True
 fd_cal_scale = True
 fd_sigma_thres = 6
-badness_thres = 0.1
-time_cut = 40
+fd_badness_thres = 0.1
+fd_time_cut = 40
 
 from time_stream import rebin_freq
-pipe_modules.append(rebin_freq.RebinFreq)
+#pipe_modules.append(rebin_freq.RebinFreq)
 rf_input_root = fd_output_root
 rf_file_middles = file_middles
 rf_input_end = '.fits'
@@ -65,7 +65,7 @@ rf_n_bins_combined = 16
 rf_mean_instead_median = False
 
 from time_stream import calibrate
-pipe_modules.append(calibrate.Calibrate)
+#pipe_modules.append(calibrate.Calibrate)
 cl_input_root = rf_output_root
 cl_file_middles = file_middles
 cl_input_end = '.fits'
@@ -77,7 +77,7 @@ cl_IFs = ()
 cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
 
 from time_stream import rotate_pol
-pipe_modules.append(rotate_pol.RotatePol)
+#pipe_modules.append(rotate_pol.RotatePol)
 rp_input_root = cl_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
