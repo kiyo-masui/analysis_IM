@@ -359,7 +359,6 @@ class NewSlices(object) :
         # few different numbers of modes to subtract.  This is computationally
         # expensive.
         vals, modes1, modes2 = get_freq_svd_modes(self.fore_corr, 
-                                                  self.fore_norms, 
                                                   params['modes'])
         self.vals = vals
         self.modes1 = modes1
@@ -382,11 +381,11 @@ class NewSlices(object) :
         plot_svd(self.vals)
 
 
-def get_freq_svd_modes(corr, norms, n) :
+def get_freq_svd_modes(corr, n) :
     """Same as get freq eigenmodes, but treats left and right maps
     separatly with an SVD.
     """
-    U, s, V = linalg.svd(corr[:,:,0]*norms)
+    U, s, V = linalg.svd(corr[:,:,0])
     V = V.T
     hs = list(s)
     hs.sort()
@@ -411,7 +410,7 @@ def plot_svd(vals) :
     print 'Largest eigenvalues/n : ', 
     print sp.sort(vals/n)[-10:]
 
-def rebin_core_freq_lag(corr, norms, freq) :
+def rebin_core_freq_lag(corr, freq) :
     #TODO
     pass
 
