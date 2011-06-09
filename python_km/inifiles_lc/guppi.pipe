@@ -5,24 +5,51 @@ import os
 from core import dir_data
 import scipy as sp
 
-
 field = '15hr'
-#file_middles = tuple(dir_data.get_data_files(range(41,42), '15hr', 
+file_middles = tuple(dir_data.get_data_files(range(41,74), '15hr', 
+                                             type='guppi'))
+
+print '57_wigglez15hrst_ralongmap_54-57' in file_middles
+
+
+good_scans = []
+for middle_string in file_middles:
+    rlong_index = middle_string.find('ralongmap')
+    underscore_index = middle_string.find('_', rlong_index)
+    dash_index = middle_string.find('-', underscore_index)
+    first_scan = int(middle_string[underscore_index+1:dash_index])
+    final_scan = int(middle_string[dash_index+1:])
+    if ((final_scan - first_scan) > 5):
+        good_scans.append(middle_string)
+file_middles = tuple(good_scans)
+
+print '57_wigglez15hrst_ralongmap_54-57' in file_middles
+
+
+#file_middles = tuple(dir_data.get_data_files(range(41,74), '15hr', 
 #                                             type='guppi'))
-#file_middles = tuple(dir_data.get_data_files(range(51,52), '15hr', 
+middles_a = tuple(dir_data.get_data_files(range(41,47), '15hr', 
+                                             type='guppi'))
+middles_b = tuple(dir_data.get_data_files(range(47,53), '15hr', 
+                                             type='guppi'))
+middles_c = tuple(dir_data.get_data_files(range(53,60), '15hr', 
+                                             type='guppi'))
+middles_d = tuple(dir_data.get_data_files(range(60,74), '15hr', 
+                                             type='guppi'))
+#file_middles = tuple(dir_data.get_data_files(range(41,49), '15hr', 
 #                                             type='guppi'))
 #file_middles = tuple(dir_data.get_data_files([40], '15hr', 
 #                                             type='guppi'))
-file_middles = ('41_wigglez15hrst_ralongmap_34-41',)
+#file_middles = ('42_wigglez15hrst_ralongmap_142-149',)
 #file_middles = ('44_wigglez15hrst_ralongmap_297-304',)
 
 base_dir = os.getenv('GBT10B_OUT')
 data_dir = os.getenv('GBT10B_KM') + '/guppi_data/'
 prefix = ''
-map_prefix = 'med_' + field + '_41_'
+map_prefix = '' + field + '_' + '41-73' + '_'
 
 pipe_modules = []
-pipe_processes = 5
+pipe_processes = 10
 
 from time_stream import flag_data
 pipe_modules.append(flag_data.FlagData)
@@ -35,7 +62,6 @@ fd_scans = ()
 fd_IFs = ()
 
 # No Hanning.  Guppi's filters take care of it.
-fd_rotate = True
 fd_perform_hanning = False
 fd_cal_scale = True
 fd_sigma_thres = 6
@@ -44,8 +70,8 @@ fd_time_cut = 40
 #fd_sigma_thres = 5
 #fd_pol_thres = 5
 
-#from time_stream import rebin_freq
-#pipe_modules.append(rebin_freq.RebinFreq)
+from time_stream import rebin_freq
+pipe_modules.append(rebin_freq.RebinFreq)
 rf_input_root = fd_output_root
 rf_file_middles = file_middles
 rf_input_end = '.fits'
@@ -55,11 +81,12 @@ rf_scans = ()
 rf_IFs = ()
 
 rf_channel_width = 0.
-rf_n_bins_combined = 64
+#or 256/4
+rf_n_bins_combined = 16
 rf_mean_instead_median = False
 
-#from time_stream import calibrate
-#pipe_modules.append(calibrate.Calibrate)
+from time_stream import calibrate
+pipe_modules.append(calibrate.Calibrate)
 cl_input_root = rf_output_root
 cl_file_middles = file_middles
 cl_input_end = '.fits'
@@ -68,10 +95,10 @@ cl_output_end = '.fits'
 cl_scans = ()
 cl_IFs = ()
 
-cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
+cl_cal_temperature_files = (os.getenv('GBT10B_KM') + 'kevin_cal/cal_21.fits',)
 
-#from time_stream import rotate_pol
-#pipe_modules.append(rotate_pol.RotatePol)
+from time_stream import rotate_pol
+pipe_modules.append(rotate_pol.RotatePol)
 rp_input_root = cl_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
@@ -81,49 +108,35 @@ rp_scans = ()
 rp_IFs = ()
 
 rp_new_pols = (1,)
-rp_average_cals = False
+rp_average_cals = True
 
-#from time_stream import combine_cal
-#pipe_modules.append(combine_cal.CombineCal)
-cc_input_root = rp_output_root
-cc_file_middles = file_middles
-cc_input_end = '.fits'
-cc_output_root = base_dir + 'combined/' + prefix
-cc_output_end = '.fits'
-cc_scans = ()
-cc_IFs = ()
-
-cc_subtract_time_mean = False
-cc_average_cal_states = True
-
-#from map import dirty_map
-#pipe_modules.append(dirty_map.DirtyMapMaker)
-dm_input_root = cc_output_root
+from map import dirty_map
+pipe_modules.append(dirty_map.DirtyMapMaker)
+dm_input_root = rp_output_root
 dm_file_middles = file_middles
 dm_input_end = '.fits'
 dm_output_root = base_dir + 'maps/' + map_prefix
 dm_scans = ()
 dm_IFs = (0,)
 
-dm_field_centre = (218., 2.0)
-#dm_map_shape = (66, 36)
-#dm_map_shape = (20, 10)
+#Centre is 217.9,2. for 15hr
+#Centre is 325.,0. for 22hr
+dm_field_centre = (217.9, 2.0)
 dm_map_shape = (64, 32)
 dm_pixel_spacing = .075
-#dm_pixel_spacing = .03
 dm_noise_model = 'disjoint_scans'
 dm_polarizations = ('I',)
 dm_noise_parameters_input_root = 'None'
 
-#from map import clean_map
-#pipe_modules.append(clean_map.CleanMapMaker)
+from map import clean_map
+pipe_modules.append(clean_map.CleanMapMaker)
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
 cm_polarizations = ('I',)
 
-#from time_stream import subtract_map_data
-#pipe_modules.append(subtract_map_data.Subtract)
-sm_input_root = cc_output_root
+from time_stream import subtract_map_data
+pipe_modules.append(subtract_map_data.Subtract)
+sm_input_root = rp_output_root
 sm_file_middles = file_middles
 sm_input_end = '.fits'
 sm_output_root = base_dir + 'map_subtracted/'
@@ -135,10 +148,11 @@ sm_pols = ()
 sm_map_file = base_dir + 'maps/' + map_prefix + 'clean_map_I.npy'
 sm_solve_for_gain = True
 sm_gain_output_end = '_gain.pickle'
+sm_interpolation = 'linear'
 
-#from time_stream import reflag
-#pipe_modules.append(reflag.ReFlag)
-sf_input_root = cc_output_root
+from time_stream import reflag
+pipe_modules.append(reflag.ReFlag)
+sf_input_root = rp_output_root
 sf_file_middles = file_middles
 sf_input_end = '.fits'
 sf_output_root = base_dir + 'reflagged/'
@@ -146,12 +160,12 @@ sf_output_end = '.fits'
 sf_scans = ()
 sf_IFs = ()
 
-sf_thres = 3.0
+sf_thres = 5.0
 sf_subtracted_input_root = sm_output_root
 sf_subtracted_output_root = base_dir + 'reflag_sub/'
 
-#from noise import measure_noise
-#pipe_modules.append(measure_noise.Measure)
+from noise import measure_noise
+pipe_modules.append(measure_noise.Measure)
 mn_input_root = sf_subtracted_input_root
 mn_file_middles = file_middles
 mn_input_end = '.fits'
@@ -159,31 +173,63 @@ mn_output_root = base_dir + 'noise_measurments/'
 
 mn_model = "scan_var"
 
-if False :
-  from map import dirty_map
-  pipe_modules.append(dirty_map.DirtyMapMaker)
-  dm_input_root = cc_output_root
-  dm_file_middles = file_middles
-  dm_input_end = '.fits'
-  dm_output_root = base_dir + 'maps/' + "sec_" + map_prefix
-  dm_scans = ()
-  dm_IFs = (0,)
+#### Make sub map A ####
 
-  dm_field_centre = (217.8, 2.0)
-  #dm_map_shape = (66, 36)
-  #dm_map_shape = (20, 10)
-  dm_map_shape = (64, 32)
-  dm_pixel_spacing = .075
-  #dm_pixel_spacing = .03
-  dm_noise_model = 'disjoint_scans'
-  dm_polarizations = ('I',)
-  dm_noise_parameters_input_root = mn_output_root
+from map import dirty_map
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
+dmA_file_middles = middles_a
+dmA_input_root = sf_output_root
+dmA_output_root = base_dir + 'maps/' + "sec_A_" + map_prefix
 
-  from map import clean_map
-  pipe_modules.append(clean_map.CleanMapMaker)
-  cm_input_root = dm_output_root
-  cm_output_root = cm_input_root
-  cm_polarizations = ('I',)
+dmA_noise_parameters_input_root = mn_output_root
 
+from map import clean_map
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+cmA_input_root = dmA_output_root
+cmA_output_root = dmA_output_root
 
+#### Make sub map B ####
+
+from map import dirty_map
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+dmB_file_middles = middles_b
+dmB_input_root = sf_output_root
+dmB_output_root = base_dir + 'maps/' + "sec_B_" + map_prefix
+
+dmB_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+cmB_input_root = dmB_output_root
+cmB_output_root = dmB_output_root
+
+#### Make sub map C ####
+
+from map import dirty_map
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
+dmC_file_middles = middles_c
+dmC_input_root = sf_output_root
+dmC_output_root = base_dir + 'maps/' + "sec_C_" + map_prefix
+
+dmC_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+cmC_input_root = dmC_output_root
+cmC_output_root = dmC_output_root
+
+#### Make sub map D ####
+
+from map import dirty_map
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+dmD_file_middles = middles_d
+dmD_input_root = sf_output_root
+dmD_output_root = base_dir + 'maps/' + "sec_D_" + map_prefix
+
+dmD_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
+cmD_input_root = dmD_output_root
+cmD_output_root = dmD_output_root
 
