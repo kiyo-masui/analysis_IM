@@ -82,36 +82,53 @@ class MapPair(object) :
         self.Map1=b.apply(self.Map1)
         # Reduce noise to factorizable.
         
-        
         # This block of code needs to be split off into a function and applied
         # twice (so we are sure to do the same thing to each).
-        Noise1[Noise1<1.e-30]=1.e-30
-        Noise1=1./Noise1
-        Noise1=b.apply(Noise1,cval=1.e30)
+        Noise1[Noise1<1.e-30] = 1.e-30
+        Noise1 = 1./Noise1
+        Noise1 = b.apply(Noise1, cval=1.e30)
+        Noise1 = 1./Noise1
+        Noise1[Noise1<1.e-20] = 0
 
-        Noise1=ma.array(Noise1)
-        Noise1f=sp.mean(Noise1,0)
-        Noise1[Noise1>1.e20]=ma.masked
-        Noise1=Noise1/Noise1f[None,:,:]
-        Noise1=sp.mean(sp.mean(Noise1,1),1)[:,None,None]*Noise1f[None,:,:]
-        Noise1=(1/Noise1).filled(0)
-
-        Noise2[Noise2<1.e-30]=1.e-30
-        Noise2=1/Noise2
-        Noise2=b.apply(Noise2,cval=1.e30)
-        Noise2=ma.array(Noise2)
-        Noise2f=sp.mean(Noise2,0)
-        Noise2[Noise2>1.e20]=ma.masked
-        Noise2=Noise2/Noise2f[None,:,:]
-        Noise2=sp.mean(sp.mean(Noise2,1),1)[:,None,None]*Noise2f[None,:,:]
-        Noise2=(1/Noise2).filled(0)
-
-        self.Noise_inv1 = Noise1
-        self.Noise_inv2 = Noise2
+        Noise2[Noise2<1.e-30] = 1.e-30
+        Noise2 = 1/Noise2
+        Noise2 = b.apply(Noise2, cval=1.e30)
+        Noise2 = 1./Noise2
+        Noise2[Noise2<1.e-20] = 0
+        
+        self.Noise_inv1 = algebra.as_alg_like(Noise1, self.Noise_inv1)
+        self.Noise_inv2 = algebra.as_alg_like(Noise2, self.Noise_inv2)
 
     def make_noise_factorizable(self) :
-        # TODO.
-        pass
+        """Convert noise weights such that the factor into a function a
+        frequecy times a function of pixel by taking means over the origional
+        weights.
+        """
+        
+        def make_factorizable(Noise) :
+            # Take the reciprical.
+            Noise[Noise<1.e-30] = 1.e-30
+            Noise = 1./Noise
+            # Get the freqency averaged noise per pixel.  Propagate mask in any
+            # frequency to all frequencies.
+            Noise_fmean = sp.mean(Noise, 0)
+            Noise_fmean = ma.array(Noise_fmean)
+            Noise_fmean[Noise_fmean>1.e20] = ma.masked
+            # Get the pixel averaged noise in each frequency.
+            Noise = ma.array(Noise)
+            Noise[Noise>1.e20] = ma.masked
+            Noise /= Noise_fmean
+            Noise_pmean = ma.mean(ma.mean(Noise, 1), 1)
+            # Combine.
+            Noise = Noise_pmean[:,None,None] * Noise_fmean[None,:,:]
+            Noise = (1./Noise).filled(0)
+
+            return Noise
+
+        Noise_inv1 = make_factorizable(self.Noise_inv1)
+        Noise_inv2 = make_factorizable(self.Noise_inv2)
+        self.Noise_inv1 = algebra.as_alg_like(Noise_inv1, self.Noise_inv1)
+        self.Noise_inv2 = algebra.as_alg_like(Noise_inv2, self.Noise_inv2)
 
     def subtract_weighted_mean(self) :
         """Subtracts the weighted mean from each frequency slice."""
@@ -192,6 +209,7 @@ class MapPair(object) :
             algebra.save(fname2, outmap)
 
         # TODO: Noise needs to be Get rid of ignored frequencies.
+        # TODO: Zero out any pixels with 0 weight.
 
 
 
@@ -219,14 +237,6 @@ class MapPair(object) :
         Noise1 = self.Noise_inv1
         Noise2 = self.Noise_inv2
 
-        # Set up correlation function.
-        if not lags :
-            # Assume the pixel width in real degrees is the dec spacing.
-            wid = abs(map1.info['dec_delta'])
-            # Choose lags at fixed grid distance.
-            lags = sp.array([0.0, 1.0, sp.sqrt(2.0), 2.0, sp.sqrt(5.0),
-                             sp.sqrt(8.0), 3.0, sp.sqrt(10.0)])
-            lags = (lags + 0.01)*wid
         freq1 = self.freq
         freq2 = self.freq
 
@@ -311,7 +321,7 @@ class NewSlices(object) :
             
             # XXX For now make the noise a copy of the maps: loads faster.  Just
             # for testing.
-            Noise_inv1 = algebra.make_vect(algebra.load(map_file))
+            Noise_inv1 = abs(algebra.make_vect(algebra.load(map_file)))
 
             # Un comment these eventually.
             #Noise_inv1 = algebra.make_mat(algebra.open_memmap(noise_file,
@@ -328,7 +338,7 @@ class NewSlices(object) :
             print "Loading noise."
             # XXX For now make the noise a copy of the maps: loads faster.  Just
             # for testing.
-            Noise_inv2 = algebra.make_vect(algebra.load(map_file))
+            Noise_inv2 = abs(algebra.make_vect(algebra.load(map_file)))
             
             #Noise_inv2 = algebra.make_mat(algebra.open_memmap(noise_file,
             #                                                  mode='r'))
@@ -338,6 +348,7 @@ class NewSlices(object) :
             raise ce.FileParameterTypeError('For now can only process one'
                                             ' or two files.')
         freq = sp.array(params['freq'], dtype=int)
+        lags = sp.array(params['lags'])
         # Create pair of maps.
         Pair = MapPair(Map1, Map2, Noise_inv1, Noise_inv2, freq)
         # Hold a reference in self.
@@ -349,7 +360,8 @@ class NewSlices(object) :
         if params['sub_weighted_mean'] :
             Pair.subtract_weighted_mean()
         # Correlate the maps.
-        self.fore_corr = Pair.correlate(params['lags'])
+
+        self.fore_corr = Pair.correlate(lags)
         self.fore_Pair = copy.deepcopy(Pair)
 
         # Subtract Foregrounds.
@@ -368,7 +380,7 @@ class NewSlices(object) :
             return
         # Correlate the cleaned maps.
         # Here we could calculate the power spectrum instead eventually.
-        corr = Pair.correlate(params['lags'])
+        corr = Pair.correlate(lags)
         self.corr = corr
 
         if params["make_plots"] :
@@ -411,6 +423,9 @@ def plot_svd(vals) :
 def rebin_core_freq_lag(corr, freq) :
     #TODO
     pass
+
+
+
 
 
 
@@ -597,13 +612,6 @@ class FreqSlices(object) :
         print sp.sum(Noise1 < 0), sp.sum(Noise2 < 0)
         # Set up correlation function.
         lags = sp.array(params['lags'])
-        if len(lags)==0 :
-            # Assume the pixel width in real degrees is the dec spacing.
-            wid = abs(map1.info['dec_delta'])
-            # Choose lags at fixed grid distance.
-            lags = sp.array([0.0, 1.0, sp.sqrt(2.0), 2.0, sp.sqrt(5.0),
-                             sp.sqrt(8.0), 3.0, sp.sqrt(10.0)])
-            lags = (lags + 0.01)*wid
         freq1 = freq
         freq2 = freq
 

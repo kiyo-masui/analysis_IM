@@ -1507,15 +1507,28 @@ def zeros_like(obj) :
     as the passed object."""
 
     out = sp.zeros_like(obj)
+    return as_alg_like(out, obj)
 
+def as_alg_like(array, obj):
+    """Cast an array as an algebra object similar to the passed object.
+    
+    Parameters
+    ----------
+    array : numpy array
+        Array to be cast
+    obj : alg_object
+        Algebra object from which propertise should be copied.
+    """
+    
+    out = array
+    out = info_array(out)
+    out.info = dict(obj.info)
     if isinstance(obj, vect) :
         out = make_vect(out)
-        out.info = dict(obj.info)
     elif isinstance(obj, mat) :
-        out = info_array(out)
-        out.info = dict(obj.info)
         out = make_mat(out)
     else :
-        raise TypeError("Expected an algebra mat or vect.")
+        raise TypeError("Expected `obj` to be an algebra mat or vect.")
     
     return out
+
