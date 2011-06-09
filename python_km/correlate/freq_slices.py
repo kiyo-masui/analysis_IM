@@ -212,8 +212,6 @@ class MapPair(object) :
         -------
         corr : array
             Normalized such that the 0 lag, f1=f2 compenents are unity.
-        norms : array
-            The normalization coefficients to put `corr` back in to Kelvin.
         """
 
         Map1 = self.Map1
