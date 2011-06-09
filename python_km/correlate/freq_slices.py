@@ -279,13 +279,8 @@ class MapPair(object) :
                     corr[if1,jf2,klag] += sp.sum(dprod.flatten()[mask])
                     counts[if1,jf2,klag] += sp.sum(wprod.flatten()[mask])
         corr /= counts
-        norms = corr[:,:,0].diagonal()
-        if sp.any(norms<0) and not subflag :
-            raise RunTimeError("Something went horribly wrong")
-        norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
-        corr /= norms[:,:,sp.newaxis]
         
-        return corr, norms
+        return corr
 
 
 class NewSlices(object) :
@@ -356,7 +351,7 @@ class NewSlices(object) :
         if params['sub_weighted_mean'] :
             Pair.subtract_weighted_mean()
         # Correlate the maps.
-        self.fore_corr, self.fore_norms = Pair.correlate(params['lags'])
+        self.fore_corr = Pair.correlate(params['lags'])
         self.fore_Pair = copy.deepcopy(Pair)
 
         # Subtract Foregrounds.
@@ -376,9 +371,8 @@ class NewSlices(object) :
             return
         # Correlate the cleaned maps.
         # Here we could calculate the power spectrum instead eventually.
-        corr, norms = Pair.correlate(params['lags'])
+        corr = Pair.correlate(params['lags'])
         self.corr = corr
-        self.norms = norms
 
         if params["make_plots"] :
             self.make_plots()
