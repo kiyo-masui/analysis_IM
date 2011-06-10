@@ -197,10 +197,6 @@ class info_array(sp.ndarray) :
         if isinstance(out, info_array) :
             out.info = self.info
         return out
-    
-    def __deepcopy__(self, copy):
-        """Not implemented, raises an exception."""
-        raise NotImeplementedError("Deep copy won't work.")
 
 class info_memmap(sp.memmap) :
     """A standard numpy memmap object with a dictionary for holding extra info.
@@ -559,7 +555,13 @@ class alg_object(object) :
     """Base class for all vectors and matricies.
     
     This is not an actual class by itself, just defines some methods common to
-    both `mat` objects and `vect` objects."""
+    both `mat` objects and `vect` objects.
+    """
+
+    def __array_finalize__(self, obj) :
+        self.info_base.__array_finalize__(self, obj)
+        if (not obj is None) and (self.shape != obj.shape) :
+            self.__class__ = self.info_base
     
     def set_axis_info(self, axis_name, centre, delta) :
         """Set meta data for calculating values of an axis.
@@ -639,9 +641,10 @@ class alg_object(object) :
 
         Parameters
         ----------
-        axis_name : str
+        axis_name : str or int
             Name of the axis to be calculated.  `axis_name` must occur in the
-            `axes` attribute.
+            `axes` attribute.  If an int is passed, than it is convered to a
+            string by indexing the `axes` attribute.
 
         Returns
         -------
@@ -655,14 +658,135 @@ class alg_object(object) :
         copy_axis_info
         """
         
+        if isinstance(axis_name, int) :
+            axis_name = self.axes[axis_name]
         len = self.shape[self.axes.index(axis_name)]
         return (self.info[axis_name + '_delta']*(sp.arange(len) - len//2) 
                 + self.info[axis_name + '_centre'])
 
-    def __array_finalize__(self, obj) :
-        self.info_base.__array_finalize__(self, obj)
-        if (not obj is None) and (self.shape != obj.shape) :
-            self.__class__ = self.info_base
+    def slice_interpolate_weights(self, axes, coord, kind='linear') :
+        """Get the interpolation weights for a subset of the dimensions.
+
+        This method gets the interpolation weights for interpolating the
+        alg_object is some subset of it's dimensions.  This provides the
+        freedom in the uninterpolated dimensions to either slice or otherwise
+        index the arry.
+
+        Parameters
+        ----------
+        axes : int or sequency of ints (length N)
+            Over which axes to interpolate.
+        coord : float or sequence of floats (length N)
+            The coordinate location to interpolate at.
+        kind : string
+            The interpolation algorithm.  Options are: 'linear'.
+
+        Returns
+        -------
+        points : array of ints shape (M x N)
+            The indices for the N `axes` at the M interpolation data points
+            that are used.
+        weights : array of floats length M
+            Weights for the interpolations data points.
+        """
+
+        if not hasattr(axes, '__iter__') :
+            axes = (axes,)
+        if not hasattr(coord, '__iter__') :
+            coord = (coord,)
+        n = len(axes)
+        if n != len(coord) :
+            message = "axes and coord parameters must be same length."
+            raise ValueError(message)
+        if kind in ('linear',) :
+            # Any interpolation scheme that only depends on data points
+            # directly surrounding. There are 2^n of them.
+            m = 2**n
+            points = sp.empty((m, n), dtype=int)
+            weights = sp.empty((m,), dtype=float)
+            # Find the indices of the surrounding points, as well as the 
+            single_inds = sp.empty((n, 2), dtype=int)
+            normalized_distance = sp.empty((n, 2), dtype=float)
+            for ii in range(n) :
+                axis_ind = axes[ii]
+                value = coord[ii]
+                # The spacing between points of the axis we are considering.
+                delta = abs(self.info[self.axes[axis_ind] + "_delta"])
+                # For each axis, find the indicies that surround the
+                # interpolation location.
+                axis = self.get_axis(axis_ind)
+                if value > max(axis) or value < min(axis) :
+                    message = ("Interpolation coordinate outside of "
+                               "interpolation range.  axis: " + str(axis_ind)
+                               + ", coord: " + str(value) + ", range: "
+                               + str((min(axis), max(axis))))
+                    raise ValueError(message)
+                distances = abs(axis - value)
+                min_ind = distances.argmin()
+                single_inds[ii, 0] = min_ind
+                normalized_distance[ii, 0] = distances[min_ind]/delta
+                distances[min_ind] = distances.max() + 1
+                min_ind = distances.argmin()
+                single_inds[ii, 1] = min_ind
+                normalized_distance[ii, 1] = distances[min_ind]/delta
+            # Now that we have all the distances, figure out all the weights.
+            for ii in range(m) :
+                index = []
+                temp_ii = ii
+                weight = 1.0
+                for jj in range(n) :
+                    points[ii, jj] = single_inds[jj, temp_ii%2]
+                    weight *= (1.0 - normalized_distance[jj, temp_ii%2])
+                    temp_ii = temp_ii//2
+                weights[ii] = weight
+            return points, weights
+        else :
+            message = "Unsuported interpolation algorithm: " + kind
+            raise ValueError(message)
+        
+    def slice_interpolate(self, axes, coord, kind='linear') :
+        """Interpolate along a subset of dimensions.
+
+        This method interpolate the array object along some subset of it's
+        dimensions.  The array is sliced long the uninterpolated dimensions.
+
+        Parameters
+        ----------
+        axes : int or sequency of ints (length N)
+            Over which axes to interpolate.
+        coord : float or sequence of floats (length N)
+            The coordinate location to interpolate at.
+        kind : string
+            The interpolation algorithm.  Options are: 'linear'.
+        
+        Returns
+        -------
+        slice : numpy array
+            The array has a shape corresponding to the uninterpolated
+            dimensions of `self`.  That is it has dimensions the same as `self`
+            along dimension included in `axes` which are interpolated.
+        """
+        
+        if not hasattr(axes, '__iter__') :
+            axes = (axes,)
+        if not hasattr(coord, '__iter__') :
+            coord = (coord,)
+        n = len(axes)
+        if n != len(coord) :
+            message = "axes and coord parameters must be same length."
+            raise ValueError(message)
+        # Get the contributing points and thier wiehgts.
+        points, weights = self.slice_interpolate_weights(axes, coord, kind)
+        # Sum up the points
+        q = points.shape[0]
+        out = 0.0
+        for ii in range(q) :
+            index = [slice(None)] * self.ndim
+            for jj, axis in enumerate(axes) :
+                index[axis] = points[ii, jj]
+            index = tuple(index)
+            out += weights[ii] * self[index]
+        return out
 
 
 #### Vector class definitions ####
@@ -1383,15 +1507,28 @@ def zeros_like(obj) :
     as the passed object."""
 
     out = sp.zeros_like(obj)
+    return as_alg_like(out, obj)
 
+def as_alg_like(array, obj):
+    """Cast an array as an algebra object similar to the passed object.
+    
+    Parameters
+    ----------
+    array : numpy array
+        Array to be cast
+    obj : alg_object
+        Algebra object from which propertise should be copied.
+    """
+    
+    out = array
+    out = info_array(out)
+    out.info = dict(obj.info)
     if isinstance(obj, vect) :
         out = make_vect(out)
-        out.info = dict(obj.info)
     elif isinstance(obj, mat) :
-        out = info_array(out)
-        out.info = dict(obj.info)
         out = make_mat(out)
     else :
-        raise TypeError("Expected an algebra mat or vect.")
+        raise TypeError("Expected `obj` to be an algebra mat or vect.")
     
     return out
+

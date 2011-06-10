@@ -1035,9 +1035,8 @@ if __name__ == '__main__' :
     import sys
     if len(sys.argv) == 2 :
         Converter(str(sys.argv[1])).execute()
-    elif len(sys.argv) == 3:
-        if sys.argv[1] == str("auto") :
-            DataManager(str(sys.argv[2])).execute()
+    elif len(sys.argv) == 3 and sys.argv[1] == str("auto") :
+        DataManager(str(sys.argv[2])).execute()
     elif len(sys.argv) == 1:
         Converter().execute()
     else :

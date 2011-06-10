@@ -50,8 +50,19 @@ def get_data_files(session_list, field, type=None) :
                     # Chop off extension and append to list to be returned.
                     root = file_name.split('.')[0]
                     out_files.append(root)
+    
+    # Remove files that don't hae exactly 8 scans in them.
+    good_scans = []
+    for middle_string in out_files:
+        rlong_index = middle_string.find('ralongmap')
+        underscore_index = middle_string.find('_', rlong_index)
+        dash_index = middle_string.find('-', underscore_index)
+        first_scan = int(middle_string[underscore_index+1:dash_index])
+        final_scan = int(middle_string[dash_index+1:])
+        if ((final_scan - first_scan) == 7):
+            good_scans.append(middle_string)
 
-    return out_files
+    return good_scans
 
 def get_cal_files(session_list,calibrator,type=None) :
     """Gets a list of the cal file names for each session and calibrator

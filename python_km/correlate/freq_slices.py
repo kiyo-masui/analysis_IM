@@ -15,6 +15,7 @@ import kiyopy.utils
 import kiyopy.custom_exceptions as ce
 from core import utils, algebra
 import map.tools
+from map import beam
 
 params_init = {
                # IO:
@@ -28,9 +29,470 @@ params_init = {
                'freq' : (),
                # Angular lags at which to calculate the correlation.  Upper
                # edge bins in degrees.
-               'lags' : (0.1, 0.2)
+               'lags' : (0.1, 0.2),
+               'convolve' : False,
+               'sub_weighted_mean' : False,
+               'modes' : 10,
+               'first_pass_only' : False,
+               'make_plots' : False,
+               'factorizable_noise' : False
                }
 prefix = 'fs_'
+
+class MapPair(object) :
+    """Pair of maps that are processed together and cross correlated.
+
+    Parameters
+    ----------
+    Map1
+    Map2
+    Noise_inv1
+    Noise_inv2
+    freq
+    """
+
+    def __init__(self, Map1, Map2, Noise_inv1, Noise_inv2, freq) :
+        
+        # Give infinite noise to unconsidered frequencies (This doesn't affect
+        # anything but the output maps).
+        n = Noise_inv1.shape[0]
+        for ii in range(n) :
+            if not ii in freq :
+                Noise_inv1[ii,...] = 0
+                Noise_inv2[ii,...] = 0
+
+        # Set attributes.
+        self.Map1 = Map1
+        self.Map2 = Map2
+        self.Noise_inv1 = Noise_inv1
+        self.Noise_inv2 = Noise_inv2
+        self.freq = freq
+
+    def degrade_resolution(self) :
+        """Convolves the maps down to the lowest resolution.
+
+        Also convolves the noise, making sure to deweight pixels near the edge
+        as well.  Converts noise to factorizable form by averaging.
+        """
+        Noise1 = self.Noise_inv1
+        Noise2 = self.Noise_inv2
+
+        # Get the beam data.
+        gfreq=self.Map1.get_axis("freq")
+        beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792, 
+                 0.281176247549, 0.270856788455, 0.26745856078, 
+                 0.258910010848, 0.249188429031])
+        freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
+                             dtype=float)
+        freq_data *= 1.0e6
+        beam_diff=sp.sqrt(max(1.1*beam_data)**2-(beam_data)**2)
+        b = beam.GaussianBeam(beam_diff,freq_data)
+        # Convolve to a common resolution.
+        self.Map2=b.apply(self.Map2)
+        self.Map1=b.apply(self.Map1)
+        # Reduce noise to factorizable.
+        
+        # This block of code needs to be split off into a function and applied
+        # twice (so we are sure to do the same thing to each).
+        Noise1[Noise1<1.e-30] = 1.e-30
+        Noise1 = 1./Noise1
+        Noise1 = b.apply(Noise1, cval=1.e30)
+        Noise1 = 1./Noise1
+        Noise1[Noise1<1.e-20] = 0
+
+        Noise2[Noise2<1.e-30] = 1.e-30
+        Noise2 = 1/Noise2
+        Noise2 = b.apply(Noise2, cval=1.e30)
+        Noise2 = 1./Noise2
+        Noise2[Noise2<1.e-20] = 0
+        
+        self.Noise_inv1 = algebra.as_alg_like(Noise1, self.Noise_inv1)
+        self.Noise_inv2 = algebra.as_alg_like(Noise2, self.Noise_inv2)
+
+    def make_noise_factorizable(self) :
+        """Convert noise weights such that the factor into a function a
+        frequecy times a function of pixel by taking means over the origional
+        weights.
+        """
+        
+        def make_factorizable(Noise) :
+            # Take the reciprical.
+            Noise[Noise<1.e-30] = 1.e-30
+            Noise = 1./Noise
+            Noise = ma.array(Noise)
+            # Get the freqency averaged noise per pixel.  Propagate mask in any
+            # frequency to all frequencies.
+            for ii in range(Noise.shape[0]) :
+                if sp.all(Noise[ii,...]>1.e20):
+                    Noise[ii,...] = ma.masked
+            Noise_fmean = ma.mean(Noise, 0)
+            Noise_fmean[Noise_fmean>1.e20] = ma.masked
+            # Get the pixel averaged noise in each frequency.
+            Noise[Noise>1.e20] = ma.masked
+            Noise /= Noise_fmean
+            Noise_pmean = ma.mean(ma.mean(Noise, 1), 1)
+            # Combine.
+            Noise = Noise_pmean[:,None,None] * Noise_fmean[None,:,:]
+            Noise = (1./Noise).filled(0)
+
+            return Noise
+
+        Noise_inv1 = make_factorizable(self.Noise_inv1)
+        Noise_inv2 = make_factorizable(self.Noise_inv2)
+        self.Noise_inv1 = algebra.as_alg_like(Noise_inv1, self.Noise_inv1)
+        self.Noise_inv2 = algebra.as_alg_like(Noise_inv2, self.Noise_inv2)
+
+    def subtract_weighted_mean(self) :
+        """Subtracts the weighted mean from each frequency slice."""
+        means1 = sp.sum(sp.sum(self.Noise_inv1*self.Map1, -1), -1)
+        means1 /= sp.sum(sp.sum(self.Noise_inv1, -1), -1)
+        means1.shape += (1, 1)
+        self.Map1 -= means1
+        means2 = sp.sum(sp.sum(self.Noise_inv2*self.Map2, -1), -1)
+        means2 /= sp.sum(sp.sum(self.Noise_inv2, -1), -1)
+        means2.shape += (1, 1)
+        self.Map2 -= means2
+
+        # Zero out all the infinit noise pixels (0 weight).
+        self.Map1[self.Noise_inv1<1.e-20] = 0
+        self.Map2[self.Noise_inv2<1.e-20] = 0
+
+    def subtract_frequency_modes(self, modes1, modes2=None, fname1=None, 
+                                 fname2=None) :
+        """Subtract frequency mode from the map.
+
+        Parameters
+        ---------
+        modes1 : list of 1D arrays.
+            Arrays must be the same length as self.freq.  Modes to subtract out
+            of the map one.
+        modes2 : list of 1D arrays.
+            Modes to subtract out of map 2.  If `None` set to `modes1`.
+        fname1 : string
+            File name to save the mode amplitude maps too for map1.  If None,
+            don't save.
+        fname2 : string
+            File name to save the mode amplitude maps too for map2.  If None,
+            don't save.
+        """
+
+        if modes2 == None :
+            modes2 = modes1
+
+        Map1 = self.Map1
+        Map2 = self.Map2
+        freq = self.freq
+        
+        # First map.
+        if fname1 :
+            outmap = sp.empty((len(modes1),)+Map1.shape[1:])
+            outmap = algebra.make_vect(outmap,axis_names=('freq', 'ra', 'dec'))
+            outmap.copy_axis_info(Map1)
+        for ira in range(Map1.shape[1]) :
+            for jdec in range(Map1.shape[2]) :
+                # if sp.any(Map1.data.mask[ira,jdec,freq]) :
+                #    continue
+                # else :
+                for i,v in enumerate(modes1) :
+                    # v.shape = freq.shape
+                    v = v.reshape(freq.shape)
+                    # amp = sp.sum(v*Map1.data[ira,jdec,freq])
+                    amp = sp.dot(v, Map1[freq,ira,jdec])
+                    Map1[freq,ira,jdec] -= amp*v
+                    if fname1 :
+                        outmap[i,ira,jdec] = amp
+        if fname1 :
+            algebra.save(fname1, outmap)
+        
+        # Second map.
+        if fname2 :
+            outmap = sp.empty((len(modes1),)+Map1.shape[1:])
+            outmap = algebra.make_vect(outmap,axis_names=('freq', 'ra', 'dec'))
+            outmap.copy_axis_info(Map2)
+        for ira in range(Map2.shape[1]) :
+            for jdec in range(Map2.shape[2]) :
+                # if sp.any(Map1.data.mask[ira,jdec,freq]) :
+                #    continue
+                # else :
+                for v in modes1 :
+                    # v.shape = freq.shape
+                    v = v.reshape(freq.shape)
+                    amp = sp.dot(v, Map2[freq,ira,jdec])
+                    Map2[freq,ira,jdec] -= amp*v
+                    if fname2 :
+                        outmap[i,ira,jdec] = amp
+        if fname2 :
+            algebra.save(fname2, outmap)
+
+
+
+    def correlate(self, lags=()) :
+        """Calculate the cross correlation function of the maps.
+
+        The cross correlation function is a funciton of f1, f2 and angular lag.
+        
+        The angular lag bins are passed, all pairs of frequencies are
+        calculated.
+
+        Parameters
+        ----------
+        lags : array like
+            Angular lags bins (upper side bin edges).
+
+        Returns
+        -------
+        corr : array
+            Normalized such that the 0 lag, f1=f2 compenents are unity.
+        """
+
+        Map1 = self.Map1
+        Map2 = self.Map2
+        Noise1 = self.Noise_inv1
+        Noise2 = self.Noise_inv2
+
+        freq1 = self.freq
+        freq2 = self.freq
+
+        f1 = Map1.get_axis('freq')
+        f2 = Map2.get_axis('freq')
+        r1 = Map1.get_axis('ra')
+        r2 = Map2.get_axis('ra')
+        d1 = Map1.get_axis('dec')
+        d2 = Map2.get_axis('dec')
+
+        map1 = Map1[freq1,:,:]
+        map2 = Map2[freq2,:,:]
+        noise1 = Noise1[freq1,:,:]
+        noise2 = Noise2[freq2,:,:]
+
+        # Noise weight
+        map1 *= noise1
+        map2 *= noise2
+
+        nlags = len(lags)
+        nf = len(freq1)
+        corr = sp.zeros((nf, nf, nlags), dtype=float)
+        counts = sp.zeros(corr.shape, dtype=float)
+        # Noting that if DEC != 0, then a degree of RA is less than a degree.
+        ra_fact = (sp.cos(sp.pi*Map1.info['dec_centre'] / 180.0)
+                   * Map1.info['ra_delta'])
+        #dec_fact = Map1.info['dec_delta']
+
+        # Calculate the pairwise lags.
+        dra = (r1[:,None] - r2[None,:]) * ra_fact
+        ddec = d1[:,None] - d2[None,:]
+        lag = dra[:,None,:,None]**2 + ddec[None,:,None,:]**2
+        lag = sp.sqrt(lag)
+        # Bin this up.
+        lag_inds = sp.digitize(lag.flatten(), lags)
+        print "Starting Correlation."
+        for if1 in range(len(freq1)) :
+            for jf2 in range(len(freq2)) :
+                # Calculate the pairwise products.
+                data1 = map1[if1,:,:]
+                data2 = map2[jf2,:,:]
+                weights1 = noise1[if1,:,:]
+                weights2 = noise2[jf2,:,:]
+                dprod = data1[...,None,None] * data2[None,None,...]
+                wprod = weights1[...,None,None] * weights2[None,None,...]
+                for klag in range(nlags) :
+                    mask = lag_inds == klag
+                    corr[if1,jf2,klag] += sp.sum(dprod.flatten()[mask])
+                    counts[if1,jf2,klag] += sp.sum(wprod.flatten()[mask])
+        corr /= counts
+
+        # Should probably return counts as well, since this can be used as
+        # noise weight.
+        return corr
+
+
+class NewSlices(object) :
+    """Pipeline module that scripts together the cross correlation of maps.
+    """
+ 
+    def __init__(self, parameter_file_or_dict=None) :
+        # Read in the parameters.
+        self.params = parse_ini.parse(parameter_file_or_dict, params_init, 
+                                 prefix=prefix)
+
+    def execute(self) :
+        params = self.params
+        # Write parameter file.
+        kiyopy.utils.mkparents(params['output_root'])
+        parse_ini.write_params(params, params['output_root'] + 'params.ini',
+                               prefix=prefix)
+        # Get the map data from file as well as the noise inverse.  The Noise
+        # data is huge matrix, but for now we are just using the diagonal.
+        if len(params['file_middles']) == 1 :
+            fn = params['file_middles'][0]
+            params['file_middles'] = (fn, fn)
+        if len(params['file_middles']) == 2 :
+            map_file = (params['input_root'] + params['file_middles'][0] + 
+                         params['input_end_map'])
+            noise_file = (params['input_root'] + params['file_middles'][0] + 
+                         params['input_end_noise'])
+            Map1 = algebra.make_vect(algebra.load(map_file))
+            print "Loading noise."
+            
+            # XXX For now make the noise a copy of the maps: loads faster.  Just
+            # for testing.
+            Noise_inv1 = abs(algebra.make_vect(algebra.load(map_file)))
+
+            # Un comment these eventually.
+            #Noise_inv1 = algebra.make_mat(algebra.open_memmap(noise_file,
+            #                                                  mode='r'))
+            #Noise_inv1 = Noise_inv1.mat_diag()
+            #print "Done."
+            
+            map_file = (params['input_root'] + params['file_middles'][1] + 
+                         params['input_end_map'])
+            noise_file = (params['input_root'] + params['file_middles'][1] + 
+                         params['input_end_noise'])
+            
+            Map2 = algebra.make_vect(algebra.load(map_file))
+            print "Loading noise."
+            # XXX For now make the noise a copy of the maps: loads faster.  Just
+            # for testing.
+            Noise_inv2 = abs(algebra.make_vect(algebra.load(map_file)))
+            
+            #Noise_inv2 = algebra.make_mat(algebra.open_memmap(noise_file,
+            #                                                  mode='r'))
+            #Noise_inv2 = Noise_inv2.mat_diag()
+            #print "Done."
+        else :
+            raise ce.FileParameterTypeError('For now can only process one'
+                                            ' or two files.')
+        freq = sp.array(params['freq'], dtype=int)
+        lags = sp.array(params['lags'])
+        # Create pair of maps.
+        Pair = MapPair(Map1, Map2, Noise_inv1, Noise_inv2, freq)
+        # Hold a reference in self.
+        self.Pair = Pair
+        if params["convolve"] :
+            Pair.degrade_resolution()
+        if params['factorizable_noise'] :
+            Pair.make_noise_factorizable()
+        if params['sub_weighted_mean'] :
+            Pair.subtract_weighted_mean()
+        # Correlate the maps.
+
+        self.fore_corr = Pair.correlate(lags)
+        self.fore_Pair = copy.deepcopy(Pair)
+
+        # Subtract Foregrounds.
+        # TODO: Provide a list of integers for params["modes"] so we can try a
+        # few different numbers of modes to subtract.  This is computationally
+        # expensive.
+        vals, modes1, modes2 = get_freq_svd_modes(self.fore_corr, 
+                                                  params['modes'])
+        self.vals = vals
+        self.modes1 = modes1
+        self.modes2 = modes2
+        # TODO: Add option to save the mode maps.
+        Pair.subtract_frequency_modes(modes1, modes2)
+        if params['first_pass_only'] :
+            self.Pair = Pair
+            return
+        # Correlate the cleaned maps.
+        # Here we could calculate the power spectrum instead eventually.
+        corr = Pair.correlate(lags)
+        self.corr = corr
+
+        if params["make_plots"] :
+            self.make_plots()
+            
+    def make_plots(self) :
+        plt.figure()
+        plot_svd(self.vals)
+
+
+def get_freq_svd_modes(corr, n) :
+    """Same as get freq eigenmodes, but treats left and right maps
+    separatly with an SVD.
+    """
+    U, s, V = linalg.svd(corr[:,:,0])
+    V = V.T
+    hs = list(s)
+    hs.sort()
+    Lvectors = []
+    Rvectors = []
+    for ii in range(n) :
+        ind, = sp.where(abs(s) == hs[-ii-1])
+        if len(ind) > 1 :
+            raise NotImplementedError('2 eigenvalues bitwise equal.')
+        Lvectors.append(U[:,ind[0]])
+        Rvectors.append(V[:,ind[0]])
+    
+    return s, Lvectors, Rvectors
+
+def plot_svd(vals) :
+    """Plots the svd values and prints out some statistics."""
+        
+    n = len(vals)
+    plt.semilogy(abs(sp.sort(-vals/n)), marker='o', 
+                 linestyle='None')
+    print 'Mean noise: ', sp.sum(vals)/n
+    print 'Largest eigenvalues/n : ', 
+    print sp.sort(vals/n)[-10:]
+
+def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20) :
+    """Collapses frequency pair correlation function to frequency lag.
+    
+    Basically this constructs the 2D correlation function.
+
+    This function takes in a 3D corvariance matrix which is a function of
+    frequency and frequency prime and returns the same matrix but as a function
+    of frequency - frequency prime (2D).
+    """
+    
+    if freq2 is None :
+        freq2 = freq1
+    # Default is equal weights.
+    if weights is None :
+        weights = sp.zeros_like(corr) + 1.0
+    corr *= weights
+    
+    nf1 = corr.shape[0]
+    nf2 = corr.shape[1]
+    nlags = corr.shape[2]
+    # Frequency bin size.
+    df = min(abs(sp.diff(freq1)))
+    # Frequency bin upper edges.
+    fbins = sp.arange(1, nfbins+1)*df
+    # Allowcate memory for outputs.
+    out_corr = sp.zeros((nfbins, nlags))
+    out_weights = sp.zeros((nfbins, nlags))
+    
+    # Loop over all frequency pairs and bin by lag.
+    for ii in range(nf1) :
+        for jj in range(nf2) :
+            f_lag = abs(freq1[ii] - freq2[jj])
+            bin_ind = sp.digitize([f_lag], fbins)[0]
+            out_corr[bin_ind,:] += corr[ii,jj,:]
+            out_weights[bin_ind,:] += weights[ii,jj,:]
+    # Normalize dealing with 0 weight points explicitly.
+    bad_inds = out_weights < 1.0e-20
+    out_weights[bad_inds] = 1.0
+    out_corr/=out_weights
+    out_weights[bad_inds] = 0.0
+
+    return out_corr, out_weights
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class FreqSlices(object) :
     
@@ -45,22 +507,10 @@ class FreqSlices(object) :
         kiyopy.utils.mkparents(params['output_root'])
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
                                prefix=prefix)
+        # Get the map data from file.
         if len(params['file_middles']) == 1 :
             fn = params['file_middles'][0]
             params['file_middles'] = (fn, fn)
-        # Get the map data from file.
-        #if len(params['file_middles']) == 1 :
-        #    map_file = (params['input_root'] + params['file_middles'][0] + 
-        #                 params['input_end_map'])
-        #    noise_file = (params['input_root'] + params['file_middles'][0] + 
-        #                 params['input_end_noise'])
-        #    Map1 = algebra.load(map_file)
-        #    print "Loading noise."
-        #    Noise1 = algebra.make_mat(algebra.open_memmap(noise_file, mode='r'))
-        #    Noise1 = Noise1.mat_diag()
-        #    print "Done."
-        #    Map2 = copy.deepcopy(Map1)
-        #    Noise2 = copy.deepcopy(Noise1)
         if len(params['file_middles']) == 2 :
             map_file = (params['input_root'] + params['file_middles'][0] + 
                          params['input_end_map'])
@@ -83,9 +533,75 @@ class FreqSlices(object) :
         else :
             raise ce.FileParameterTypeError('For now can only process one'
                                             ' or two files.')
+        print Map1.size
+        print sp.sum(Map1 < 0), sp.sum(Map2 < 0)
+        print sp.sum(Noise1 < 0), sp.sum(Noise2 < 0)
+        print sp.sum(Noise1 == 0), sp.sum(Noise2 == 0)
+        freq = sp.array(params['freq'], dtype=int)
+        # Convolving down to a common resolution and reducing to factorized
+        # noise.
+        if params["convolve"] :
+            # Get the beam data.
+            gfreq=Map1.get_axis("freq")
+            fwhm = utils.get_beam(gfreq)
+            fwhm[:12]=fwhm[13]
+            beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792, 
+                     0.281176247549, 0.270856788455, 0.26745856078, 
+                     0.258910010848, 0.249188429031])
+            freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
+                                 dtype=float)
+            freq_data *= 1.0e6
+            beam_diff=sp.sqrt(max(1.1*beam_data)**2-(beam_data)**2)
+            b = beam.GaussianBeam(beam_diff,freq_data)
+            # Convolve to a common resolution.
+            print "convolving"
+            Map2=b.apply(Map2)
+            Map1=b.apply(Map1)
+            # Reduce noise to factorizable.
+            Noise1[Noise1<1.e-30]=1.e-30
+            Noise1=1/Noise1
+            Noise1=b.apply(Noise1,cval=1.e30)
+            Noise1_m=ma.array(Noise1)
+            Noise1f=sp.mean(Noise1_m,0)
+            Noise1_m[Noise1_m>1.e20]=ma.masked
+            Noise1_m=Noise1_m/Noise1f[None,:,:]
+            Noise1_m=(sp.mean(sp.mean(Noise1_m,1),1)[:,None,None] 
+                      * Noise1f[None,:,:])
+            Noise1_m=(1/Noise1_m).filled(0)
+            Noise1[...] = Noise1_m
+
+            
+            Noise2[Noise2<1.e-30]=1.e-30
+            Noise2=1/Noise2
+            Noise2=b.apply(Noise2,cval=1.e30)
+            Noise2_m=ma.array(Noise2)
+            Noise2f=sp.mean(Noise2_m,0)
+            Noise2_m[Noise2_m>1.e20]=ma.masked
+            Noise2_m=Noise2_m/Noise2f[None,:,:]
+            Noise2_m=(sp.mean(sp.mean(Noise2_m,1),1)[:,None,None]
+                      * Noise2f[None,:,:])
+            Noise2_m=(1/Noise2_m).filled(0)
+            Noise2[...] = Noise2_m
+        # Subtracting the frequency weighted mean from each slice.
+        print sp.sum(Map1 < 0), sp.sum(Map2 < 0)
+        print sp.sum(Noise1 < 0), sp.sum(Noise2 < 0)
+        if params['sub_weighted_mean'] :
+            means1 = sp.sum(sp.sum(Noise1*Map1, -1), -1)
+            print means1
+            means1 /= sp.sum(sp.sum(Noise1, -1), -1)
+            print means1
+            means1.shape += (1, 1)
+            Map1 -= means1
+            means2 = sp.sum(sp.sum(Noise2*Map2, -1), -1)
+            print means2
+            means2 /= sp.sum(sp.sum(Noise2, -1), -1)
+            print means2
+            means2.shape += (1, 1)
+            Map2 -= means2
+        print sp.sum(Map1 < 0), sp.sum(Map2 < 0)
+        print sp.sum(Noise1 < 0), sp.sum(Noise2 < 0)
         # If any eigenmodes have been marked for subtraction, subtract them
         # out.
-        freq = sp.array(params['freq'], dtype=int)
         subflag = False
         if (hasattr(self, 'freq_Lsvd_modes') and 
             hasattr(self, 'freq_Rsvd_modes')) :
@@ -101,22 +617,35 @@ class FreqSlices(object) :
             Rmodes = self.freq_eig_modes
             subflag = True
         if subflag :
+            outmap = sp.empty((len(Lmodes),)+Map1.shape[1:])
+            outmap = algebra.make_vect(outmap,axis_names=('freq', 'ra', 'dec'))
+            outmap.copy_axis_info(Map1)
             for ira in range(Map1.shape[1]) :
                 for jdec in range(Map1.shape[2]) :
                     # if sp.any(Map1.data.mask[ira,jdec,freq]) :
                     #    continue
                     # else :
-                    for v in Lmodes :
+                    for i,v in enumerate(Lmodes) :
                         # v.shape = freq.shape
                         v = v.reshape(freq.shape)
                         # amp = sp.sum(v*Map1.data[ira,jdec,freq])
                         amp = sp.dot(v, Map1[freq,ira,jdec])
                         Map1[freq,ira,jdec] -= amp*v
-                        map_out = (params['output_root'] + params['file_middles'][0] + 
+                        outmap[i,ira,jdec] = sp.sum(amp)
+            map_out = (params['output_root'] + params['file_middles'][0] + 
                                    '_cleaned' + params['input_end_map'])
+            noise_out = (params['output_root'] + params['file_middles'][0] + 
+                       '_cleaned' + params['input_end_noise'])
+            map_out_modes = (params['output_root'] + params['file_middles'][0] + 
+                                   '_Lmodes' + params['input_end_map'])
             # fits_map.write(Map1, map_out)
             algebra.save(map_out, Map1)
+            algebra.save(noise_out, Noise1)
+            algebra.save(map_out_modes, outmap)
             
+            outmap = sp.empty((len(Rmodes),)+Map1.shape[1:])
+            outmap = algebra.make_vect(outmap,axis_names=('freq', 'ra', 'dec'))
+            outmap.copy_axis_info(Map2)
             for ira in range(Map2.shape[1]) :
                 for jdec in range(Map2.shape[2]) :
                     # if sp.any(Map1.data.mask[ira,jdec,freq]) :
@@ -125,40 +654,24 @@ class FreqSlices(object) :
                     for v in Lmodes :
                         # v.shape = freq.shape
                         v = v.reshape(freq.shape)
-                        # amp = sp.sum(v*Map1.data[ira,jdec,freq])
                         amp = sp.dot(v, Map2[freq,ira,jdec])
                         Map2[freq,ira,jdec] -= amp*v
-                        map_out = (params['output_root'] + params['file_middles'][1] + 
-                                   '_cleaned' + params['input_end_map'])
+                        outmap[i,ira,jdec] = sp.sum(amp)
+            map_out = (params['output_root'] + params['file_middles'][1] + 
+                       '_cleaned' + params['input_end_map'])
+            noise_out = (params['output_root'] + params['file_middles'][1] + 
+                       '_cleaned' + params['input_end_noise'])
+            map_out_modes = (params['output_root'] + params['file_middles'][0] + 
+                                   '_Rmodes' + params['input_end_map'])
             # fits_map.write(Map2, map_out)
             algebra.save(map_out, Map2)
+            algebra.save(noise_out, Noise2)
+            algebra.save(map_out_modes, outmap)
 
-        # Inverse noise weight the data.
-        #if (not sp.alltrue(Map1.data.mask == Noise1.data.mask) 
-        #    or not sp.alltrue(Map2.data.mask == Noise2.data.mask)) :
-        #    raise ce.DataError('Expected Map and Noise to have the same mask.')
-        # Deweight noisy pixels by 1/(C_s+C_n).  Assume var(map)-mean(N) ~ C_s.
-        #var_f = (ma.var(Map1.data.reshape((Map1.dims[0]*Map1.dims[1],
-        #                                 Map1.dims[2])), 0) 
-        #         - ma.mean(Noise1.data.reshape((Map1.dims[0]*Map1.dims[1],
-        #                                      Map1.dims[2])), 0))
-        #Noise1.data += var_f
-        #var_f = (ma.var(Map2.data.reshape((Map2.dims[0]*Map2.dims[1],
-        #                                 Map2.dims[2])), 0) 
-        #         - ma.mean(Noise2.data.reshape((Map2.dims[0]*Map2.dims[1],
-        #                                      Map2.dims[2])), 0))
-        #Noise2.data += var_f
-        #map1.calc_axes()
-        #Map2.calc_axes()
+        print sp.sum(Map1 < 0), sp.sum(Map2 < 0)
+        print sp.sum(Noise1 < 0), sp.sum(Noise2 < 0)
         # Set up correlation function.
         lags = sp.array(params['lags'])
-        if len(lags)==0 :
-            # Assume the pixel width in real degrees is the dec spacing.
-            wid = abs(map1.info['dec_delta'])
-            # Choose lags at fixed grid distance.
-            lags = sp.array([0.0, 1.0, sp.sqrt(2.0), 2.0, sp.sqrt(5.0),
-                             sp.sqrt(8.0), 3.0, sp.sqrt(10.0)])
-            lags = (lags + 0.01)*wid
         freq1 = freq
         freq2 = freq
 
@@ -183,41 +696,31 @@ class FreqSlices(object) :
         corr = sp.zeros((nf, nf, nlags), dtype=float)
         counts = sp.zeros(corr.shape, dtype=float)
         # Noting that if DEC != 0, then a degree of RA is less than a degree.
-        ra_fact = sp.cos(sp.pi*Map1.info['dec_centre'] / 180.0) * Map1.info['ra_delta']
+        ra_fact = (sp.cos(sp.pi*Map1.info['dec_centre'] / 180.0)
+                   * Map1.info['ra_delta'])
         #dec_fact = Map1.info['dec_delta']
 
-        # Double loop over all three coordinates. Using only a 2 space indent
-        # because this loop is 6 deep.
+        # Calculate the pairwise lags.
+        dra = (r1[:,None] - r2[None,:]) * ra_fact
+        ddec = d1[:,None] - d2[None,:]
+        lag = dra[:,None,:,None]**2 + ddec[None,:,None,:]**2
+        lag = sp.sqrt(lag)
+        # Bin this up.
+        lag_inds = sp.digitize(lag.flatten(), lags)
         print "Starting Correlation."
-        for ira1 in range(map1.shape[1]) :
-            for ira2 in range(map2.shape[1]) :
-                for jdec1 in range(map1.shape[2]) :
-                    # This loop must start at zero to get all pairs.
-                    for jdec2 in range(map2.shape[2]) :
-                        # any instead of all, making correlation <= 1.
-                        #if (sp.any(map1.mask[ira1,jdec1,:]) or 
-                        #    sp.any(map2.mask[ira2,jdec2,:])) :
-                        #continue
-                        # Figure out the lag then which bin it falls into.
-                        dra = (r2[ira2] - r1[ira1])* ra_fact
-                        ddec = (d2[jdec2] - d1[jdec1])
-                        lag = sp.sqrt(dra**2 + ddec**2)
-                        lag_ind = 0
-                        for this_lag_ind, this_lag_bin in enumerate(lags) :
-                            if lag > this_lag_bin :
-                                lag_ind = this_lag_ind + 1
-                            else :
-                                break
-                        # Take the outer product accross frequencies.
-                        if lag_ind < nlags :
-                            data1 = map1[:,ira1,jdec1]
-                            data2 = map2[:,ira2,jdec2]
-                            n1 = noise1[:,ira1,jdec1] 
-                            n2 = noise2[:,ira2,jdec2] 
-                            this_corr = (data1[:,sp.newaxis] * data2[sp.newaxis,:])
-                            this_weight = n1[:,sp.newaxis] * n2[sp.newaxis,:]
-                            corr[:,:,lag_ind] += this_corr
-                            counts[:,:,lag_ind] += this_weight
+        for if1 in range(len(freq1)) :
+            for jf2 in range(len(freq2)) :
+                # Calculate the pairwise products.
+                data1 = map1[if1,:,:]
+                data2 = map2[jf2,:,:]
+                weights1 = noise1[if1,:,:]
+                weights2 = noise2[jf2,:,:]
+                dprod = data1[...,None,None] * data2[None,None,...]
+                wprod = weights1[...,None,None] * weights2[None,None,...]
+                for klag in range(nlags) :
+                    mask = lag_inds == klag
+                    corr[if1,jf2,klag] += sp.sum(dprod.flatten()[mask])
+                    counts[if1,jf2,klag] += sp.sum(wprod.flatten()[mask])
         corr /= counts
         norms = corr[:,:,0].diagonal()
         if sp.any(norms<0) and not subflag :
@@ -357,26 +860,30 @@ class FreqSlices(object) :
         """Plots the eigen values and prints out some statistics."""
         
         n = len(self.freq_inds)
-        plt.semilogy(abs(sp.sort(self.freq_svd_values/n)), marker='o', 
+        plt.semilogy(abs(sp.sort(-self.freq_svd_values/n)), marker='o', 
                      linestyle='None')
         print 'Mean noise: ', sp.sum(self.freq_svd_values)/n
         print 'Largest eigenvalues/n : ', 
         print sp.sort(self.freq_svd_values/n)[-10:]
 
 def plot_contour(self, norms=False, lag_inds=(0)) :
+    """Used as a method of FreqSlices.  A function instead for debugging."""
     
     lag_inds = list(lag_inds)
     # Set up binning.    
     nf = len(self.freq_inds)
     #freq_diffs = sp.sort(self.allfreq - min(self.allfreq))
-    n_bins = 12
-    factor = 2.0
-    start = 2.1e6
+    n_bins = 20
+    factor = 1.5
+    #start = 2.1e6
     freq_diffs = sp.empty(n_bins)
-    freq_diffs[0] = 0.5
-    freq_diffs[1] = start
-    for ii in range(2,n_bins) :
+    freq_diffs[0] = 0.0001
+    freq_diffs[1] = 2.5*200.0/256
+    freq_diffs[2] = 4.5*200.0/256
+    freq_diffs[3] = 6.5*200.0/256
+    for ii in range(4,n_bins) :
        freq_diffs[ii] = factor*freq_diffs[ii-1]
+    freq_diffs *= 1e6
     n_diffs = len(freq_diffs)
     # Allowcate memory.
     corrf = sp.zeros((n_diffs, len(lag_inds)))
@@ -416,11 +923,12 @@ def plot_contour(self, norms=False, lag_inds=(0)) :
 
 def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
                    plot_old=False) :
+    """Used as a method of FreqSlices.  A function instead for debugging."""
     
     lag_inds = list(lag_inds)
     # Set up binning.    
     nf = len(self.freq_inds)
-    freq_diffs = sp.arange(0.1e6, 100e6, 2e6)
+    freq_diffs = sp.arange(0.1e6, 100e6, 200.0/256*1e6)
     n_diffs = len(freq_diffs)
     # Allowcate memory.
     corrf = sp.zeros((n_diffs, len(lag_inds)))
@@ -445,13 +953,14 @@ def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
             countsf[d_ind] +=1
     corrf /= countsf[:, sp.newaxis]
     # Now collapse to 1 axis:
+    # Cosmology dependant conersion to MPc.
     a_fact = 34.0
     f_fact = 4.5
-    nbins = 8
+    nbins = 10
     lags = sp.empty(nbins)
-    lags[0] = 6.0
-    lags[1] = 10.0
-    for ii in range(2, nbins) :
+    lags[0] = 2.0
+    lags[1] = 4.0
+    for ii in range(1, nbins) :
         lags[ii] = 1.5*lags[ii-1]
     R = self.lags[lag_inds]
     R = (a_fact*R[:, sp.newaxis])**2
@@ -508,12 +1017,16 @@ def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
         self.old_errors = errors
     elin = 2
     msize = 6
-    f = plt.errorbar(lags[pdat-errors[0,:]>0], pdat[pdat-errors[0,:]>0],
-                     errors[:,pdat-errors[0,:]>0], linestyle='None', marker='o', 
-                     color='b', elinewidth=elin, markersize=msize)
-    f = plt.errorbar(lags[pdat+errors[1,:]<0], -pdat[pdat+errors[1,:]<0],
-                     errors[:,pdat+errors[1,:]<0], linestyle='None', marker='o', 
-                     color='r', elinewidth=elin, markersize=msize)
+    inds = pdat-errors[0,:]>0
+    if sp.any(inds) :
+        f = plt.errorbar(lags[inds], pdat[inds],
+                         errors[:,inds], linestyle='None', marker='o', 
+                         color='b', elinewidth=elin, markersize=msize)
+    inds = pdat+errors[1,:]<0
+    if sp.any(inds) :
+        f = plt.errorbar(lags[inds], -pdat[inds], errors[:,inds], 
+                         linestyle='None', marker='o', color='r', 
+                         elinewidth=elin, markersize=msize)
     inds = sp.logical_and(pdat-errors[0,:]<=0, pdat > 0)
     if sp.any(inds) :
         vals = pdat[inds] + 2*errors[1, inds]
@@ -544,14 +1057,18 @@ def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
         mfc = 'w'
         pdat = self.old_pdat
         errors = self.old_errors
-        f = plt.errorbar(lags[pdat-errors[0,:]>0], pdat[pdat-errors[0,:]>0],
-                         errors[:,pdat-errors[0,:]>0], linestyle='None', 
-                         marker='o', color='b', elinewidth=elin, mfc=mfc, 
-                         markersize=msize)
-        f = plt.errorbar(lags[pdat+errors[1,:]<0], -pdat[pdat+errors[1,:]<0],
-                         errors[:,pdat+errors[1,:]<0], linestyle='None',
-                         marker='o', color='r', elinewidth=elin, mfc=mfc,
-                         markersize=msize)
+        inds = pdat-errors[0,:]>0
+        if sp.any(inds) :
+            f = plt.errorbar(lags[inds], pdat[inds],
+                             errors[:,inds], linestyle='None', 
+                             marker='o', color='b', elinewidth=elin, mfc=mfc, 
+                             markersize=msize)
+        inds = pdat+errors[1,:]<0
+        if sp.any(inds) :
+            f = plt.errorbar(lags[inds], -pdat[inds],
+                             errors[:,inds], linestyle='None',
+                             marker='o', color='r', elinewidth=elin, mfc=mfc,
+                             markersize=msize)
         inds = sp.logical_and(pdat-errors[0,:]<=0, pdat > 0)
         if sp.any(inds) :
             vals = pdat[inds] + 2*errors[1, inds]
@@ -570,115 +1087,9 @@ def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
                              es, linestyle='None', marker='None', 
                              color='r', lolims=True, elinewidth=elin,
                              markersize=msize, mfc=mfc)
-    plt.axis([4, 100, 0.01, 200.0])
+    plt.axis([1.5, 100, 0.01, 500.0])
     plt.xlabel('lag (Mpc/h)')
     plt.ylabel('correlation (mK)')
-
-def degrade_corr_res(self, beam=0.4) :
-    """Brings all freqencies to the same resolution in correlation."""
-
-    # XXX: Try this instead of inteegrating, us the analytic factors for if the
-    # intrinsic cerrelation funciton is a delta.
-    if self.params['lags'] != () or self.corr.shape[-1] != len(self.lags):
-        raise ValueError("Expeceted automatically generated lags.")
-    wid = self.lags[1]/1.01
-    real_lags = (self.lags/wid - 0.01)*wid
-    lag_weights = sp.array([1.0, 4.0, 4.0, 4.0, 8.0, 4.0, 4.0, 8.0])*wid**2
-    # Array of the square gid distances of each of the lags.
-    #sq_ind_lag = sp.array([0, 1, 2, 4, 5, 8, 9, 10])
-    sig = (beam/2.355)**2
-    sig1 = sig - (utils.get_beam(self.freq1)/2.355)**2
-    sig2 = sig - (utils.get_beam(self.freq2)/2.355)**2
-    if min(sig1) < 0 or min(sig2) < 0 :
-        raise ValueError("Final beam must be bigger than lowest resolution.")
-    n1 = len(self.freq1)
-    n2 = len(self.freq2)
-    new_corr = sp.zeros((n1,n2,1))
-    corr = self.corr*self.norms[:,:,sp.newaxis]
-
-    for ii in range(n1) :
-        for jj in range(n2) :
-            s1 = sig1[ii]
-            s2 = sig2[jj]
-            window = sp.exp(-real_lags**2/(2*(s1+s2)))/(2*sp.pi*(s1+s2))
-            new_corr[ii,jj,0] = sp.sum(window*lag_weights*corr[ii,jj,:])
-            norm = sp.sum(window*lag_weights)
-            new_corr[ii,jj,0] /= norm
-    corr = new_corr
-    norms = corr[:,:,0].diagonal()
-    norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
-    corr /= norms[:,:,sp.newaxis]
-    self.norms = norms
-    self.corr = corr
-
-def fake_degrade_corr_res(self, beam=0.4) :
-    """Brings all frequencies to the same resolution by scaling the 0 lag
-    correation as if it was a delta function."""
-
-    sig = (beam/2.355)**2
-    sig1 = (utils.get_beam(self.freq1)/2.355)**2
-    sig2 = (utils.get_beam(self.freq2)/2.355)**2
-    if min(sig1) < 0 or min(sig2) < 0 :
-        raise ValueError("Final beam must be bigger than lowest resolution.")
-    n1 = len(self.freq1)
-    n2 = len(self.freq2)
-    new_corr = sp.zeros((n1,n2,1))
-    corr = self.corr*self.norms[:,:,sp.newaxis]
-
-    for ii in range(n1) :
-        for jj in range(n2) :
-            s1 = sig1[ii]
-            s2 = sig2[jj]
-            new_corr[ii,jj,0] = corr[ii,jj,0]*(s1+s2)/(2*sig)
-
-    corr = new_corr
-    norms = corr[:,:,0].diagonal()
-    norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
-    corr /= norms[:,:,sp.newaxis]
-    self.norms = norms
-    self.corr = corr
-
-def subtract_svd_modes_corr(self) :
-    """Removes svd modes from corr (as opposed to the map)."""
-
-    corr = self.corr*self.norms[:,:,sp.newaxis]
-    for ii in range(len(self.freq_Lsvd_modes)) :
-        corr = corr - (self.freq_svd_values[ii] 
-                       * self.freq_Lsvd_modes[ii][:,sp.newaxis,sp.newaxis]
-                       * self.freq_Rsvd_modes[ii][sp.newaxis,:,sp.newaxis])
-    norms = corr[:,:,0].diagonal()
-    norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
-    corr /= norms[:,:,sp.newaxis]
-    self.norms = norms
-    self.corr = corr
-
-def generate_fake_corr(self) :
-    """generate a fake correlation matrix."""
-
-    if self.params['lags'] != () :
-        raise ValueError("Expeceted automatically genreated lags.")
-    wid = self.lags[1]/1.01
-    real_lags = (self.lags/wid - 0.01)*wid
-    sig1 = (utils.get_beam(self.freq1)/2.355)**2
-    sig2 = (utils.get_beam(self.freq2)/2.355)**2
-    if min(sig1) < 0 or min(sig2) < 0 :
-        raise ValueError("Final beam must be bigger than lowest resolution.")
-    n1 = len(self.freq1)
-    n2 = len(self.freq2)
-    n_lags = len(real_lags)
-    new_corr = sp.zeros((n1,n2,n_lags))
-
-    for ii in range(n1) :
-        for jj in range(n2) :
-            s1 = sig1[ii]
-            s2 = sig2[jj]
-            window = sp.exp(-real_lags**2/(2*(s1+s2)))/(2*sp.pi*(s1+s2))
-            new_corr[ii,jj,:] = window
-    norms = new_corr[:,:,0].diagonal()
-    norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
-    new_corr /= norms[:,:,sp.newaxis]
-    self.norms *= norms
-    self.corr = new_corr
 
 
 # For running this module from the command line
