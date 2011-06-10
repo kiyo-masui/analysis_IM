@@ -34,7 +34,8 @@ params_init = {
                'sub_weighted_mean' : False,
                'modes' : 10,
                'first_pass_only' : False,
-               'make_plots' : False
+               'make_plots' : False,
+               'factorizable_noise' : False
                }
 prefix = 'fs_'
 
@@ -51,6 +52,16 @@ class MapPair(object) :
     """
 
     def __init__(self, Map1, Map2, Noise_inv1, Noise_inv2, freq) :
+        
+        # Give infinite noise to unconsidered frequencies (This doesn't affect
+        # anything but the output maps).
+        n = Noise_inv1.shape[0]
+        for ii in range(n) :
+            if not ii in freq :
+                Noise_inv1[ii,...] = 0
+                Noise_inv2[ii,...] = 0
+
+        # Set attributes.
         self.Map1 = Map1
         self.Map2 = Map2
         self.Noise_inv1 = Noise_inv1
@@ -80,27 +91,56 @@ class MapPair(object) :
         self.Map2=b.apply(self.Map2)
         self.Map1=b.apply(self.Map1)
         # Reduce noise to factorizable.
-        Noise1[Noise1<1.e-30]=1.e-30
-        Noise1=1/Noise1
-        Noise1=b.apply(Noise1,cval=1.e30)
-        Noise1=ma.array(Noise1)
-        Noise1f=sp.mean(Noise1,0)
-        Noise1[Noise1>1.e20]=ma.masked
-        Noise1=Noise1/Noise1f[None,:,:]
-        Noise1=sp.mean(sp.mean(Noise1,1),1)[:,None,None]*Noise1f[None,:,:]
-        Noise1=(1/Noise1).filled(0)
+        
+        # This block of code needs to be split off into a function and applied
+        # twice (so we are sure to do the same thing to each).
+        Noise1[Noise1<1.e-30] = 1.e-30
+        Noise1 = 1./Noise1
+        Noise1 = b.apply(Noise1, cval=1.e30)
+        Noise1 = 1./Noise1
+        Noise1[Noise1<1.e-20] = 0
 
-        Noise2=1/sp.minimum(1.e-30,Noise2)
-        Noise2=b.apply(Noise2,cval=1.e30)
-        Noise2=ma.array(Noise2)
-        Noise2f=sp.mean(Noise2,0)
-        Noise2[Noise2>1.e20]=ma.masked
-        Noise2=Noise2/Noise2f[None,:,:]
-        Noise2=sp.mean(sp.mean(Noise2,1),1)[:,None,None]*Noise2f[None,:,:]
-        Noise2=(1/Noise2).filled(0)
+        Noise2[Noise2<1.e-30] = 1.e-30
+        Noise2 = 1/Noise2
+        Noise2 = b.apply(Noise2, cval=1.e30)
+        Noise2 = 1./Noise2
+        Noise2[Noise2<1.e-20] = 0
+        
+        self.Noise_inv1 = algebra.as_alg_like(Noise1, self.Noise_inv1)
+        self.Noise_inv2 = algebra.as_alg_like(Noise2, self.Noise_inv2)
 
-        self.Noise_inv1 = Noise1
-        self.Noise_inv2 = Noise2
+    def make_noise_factorizable(self) :
+        """Convert noise weights such that the factor into a function a
+        frequecy times a function of pixel by taking means over the origional
+        weights.
+        """
+        
+        def make_factorizable(Noise) :
+            # Take the reciprical.
+            Noise[Noise<1.e-30] = 1.e-30
+            Noise = 1./Noise
+            Noise = ma.array(Noise)
+            # Get the freqency averaged noise per pixel.  Propagate mask in any
+            # frequency to all frequencies.
+            for ii in range(Noise.shape[0]) :
+                if sp.all(Noise[ii,...]>1.e20):
+                    Noise[ii,...] = ma.masked
+            Noise_fmean = ma.mean(Noise, 0)
+            Noise_fmean[Noise_fmean>1.e20] = ma.masked
+            # Get the pixel averaged noise in each frequency.
+            Noise[Noise>1.e20] = ma.masked
+            Noise /= Noise_fmean
+            Noise_pmean = ma.mean(ma.mean(Noise, 1), 1)
+            # Combine.
+            Noise = Noise_pmean[:,None,None] * Noise_fmean[None,:,:]
+            Noise = (1./Noise).filled(0)
+
+            return Noise
+
+        Noise_inv1 = make_factorizable(self.Noise_inv1)
+        Noise_inv2 = make_factorizable(self.Noise_inv2)
+        self.Noise_inv1 = algebra.as_alg_like(Noise_inv1, self.Noise_inv1)
+        self.Noise_inv2 = algebra.as_alg_like(Noise_inv2, self.Noise_inv2)
 
     def subtract_weighted_mean(self) :
         """Subtracts the weighted mean from each frequency slice."""
@@ -112,6 +152,10 @@ class MapPair(object) :
         means2 /= sp.sum(sp.sum(self.Noise_inv2, -1), -1)
         means2.shape += (1, 1)
         self.Map2 -= means2
+
+        # Zero out all the infinit noise pixels (0 weight).
+        self.Map1[self.Noise_inv1<1.e-20] = 0
+        self.Map2[self.Noise_inv2<1.e-20] = 0
 
     def subtract_frequency_modes(self, modes1, modes2=None, fname1=None, 
                                  fname2=None) :
@@ -180,6 +224,8 @@ class MapPair(object) :
         if fname2 :
             algebra.save(fname2, outmap)
 
+
+
     def correlate(self, lags=()) :
         """Calculate the cross correlation function of the maps.
 
@@ -197,23 +243,15 @@ class MapPair(object) :
         -------
         corr : array
             Normalized such that the 0 lag, f1=f2 compenents are unity.
-        norms : array
-            The normalization coefficients to put `corr` back in to Kelvin.
         """
 
         Map1 = self.Map1
         Map2 = self.Map2
+        Noise1 = self.Noise_inv1
+        Noise2 = self.Noise_inv2
 
-        # Set up correlation function.
-        if not lags :
-            # Assume the pixel width in real degrees is the dec spacing.
-            wid = abs(map1.info['dec_delta'])
-            # Choose lags at fixed grid distance.
-            lags = sp.array([0.0, 1.0, sp.sqrt(2.0), 2.0, sp.sqrt(5.0),
-                             sp.sqrt(8.0), 3.0, sp.sqrt(10.0)])
-            lags = (lags + 0.01)*wid
-        freq1 = freq
-        freq2 = freq
+        freq1 = self.freq
+        freq2 = self.freq
 
         f1 = Map1.get_axis('freq')
         f2 = Map2.get_axis('freq')
@@ -262,13 +300,10 @@ class MapPair(object) :
                     corr[if1,jf2,klag] += sp.sum(dprod.flatten()[mask])
                     counts[if1,jf2,klag] += sp.sum(wprod.flatten()[mask])
         corr /= counts
-        norms = corr[:,:,0].diagonal()
-        if sp.any(norms<0) and not subflag :
-            raise RunTimeError("Something went horribly wrong")
-        norms = sp.sqrt(norms[:,sp.newaxis]*norms[sp.newaxis,:])
-        corr /= norms[:,:,sp.newaxis]
-        
-        return corr, norms
+
+        # Should probably return counts as well, since this can be used as
+        # noise weight.
+        return corr
 
 
 class NewSlices(object) :
@@ -298,41 +333,58 @@ class NewSlices(object) :
                          params['input_end_noise'])
             Map1 = algebra.make_vect(algebra.load(map_file))
             print "Loading noise."
-            Noise_inv1 = algebra.make_mat(algebra.open_memmap(noise_file,
-                                                              mode='r'))
-            Noise_inv1 = Noise_inv1.mat_diag()
-            print "Done."
+            
+            # XXX For now make the noise a copy of the maps: loads faster.  Just
+            # for testing.
+            Noise_inv1 = abs(algebra.make_vect(algebra.load(map_file)))
+
+            # Un comment these eventually.
+            #Noise_inv1 = algebra.make_mat(algebra.open_memmap(noise_file,
+            #                                                  mode='r'))
+            #Noise_inv1 = Noise_inv1.mat_diag()
+            #print "Done."
+            
             map_file = (params['input_root'] + params['file_middles'][1] + 
                          params['input_end_map'])
             noise_file = (params['input_root'] + params['file_middles'][1] + 
                          params['input_end_noise'])
+            
             Map2 = algebra.make_vect(algebra.load(map_file))
             print "Loading noise."
-            Noise_inv2 = algebra.make_mat(algebra.open_memmap(noise_file,
-                                                              mode='r'))
-            Noise_inv2 = Noise_inv2.mat_diag()
-            print "Done."
+            # XXX For now make the noise a copy of the maps: loads faster.  Just
+            # for testing.
+            Noise_inv2 = abs(algebra.make_vect(algebra.load(map_file)))
+            
+            #Noise_inv2 = algebra.make_mat(algebra.open_memmap(noise_file,
+            #                                                  mode='r'))
+            #Noise_inv2 = Noise_inv2.mat_diag()
+            #print "Done."
         else :
             raise ce.FileParameterTypeError('For now can only process one'
                                             ' or two files.')
         freq = sp.array(params['freq'], dtype=int)
+        lags = sp.array(params['lags'])
         # Create pair of maps.
         Pair = MapPair(Map1, Map2, Noise_inv1, Noise_inv2, freq)
         # Hold a reference in self.
         self.Pair = Pair
         if params["convolve"] :
             Pair.degrade_resolution()
+        if params['factorizable_noise'] :
+            Pair.make_noise_factorizable()
         if params['sub_weighted_mean'] :
-            Pair.sub_weighted_mean()
+            Pair.subtract_weighted_mean()
         # Correlate the maps.
-        self.fore_corr, self.fore_norms = Pair.correlate(lags)
+
+        self.fore_corr = Pair.correlate(lags)
         self.fore_Pair = copy.deepcopy(Pair)
 
         # Subtract Foregrounds.
         # TODO: Provide a list of integers for params["modes"] so we can try a
         # few different numbers of modes to subtract.  This is computationally
         # expensive.
-        vals, modes1, modes2 = get_freq_svd_modes(corr, norms, params['modes'])
+        vals, modes1, modes2 = get_freq_svd_modes(self.fore_corr, 
+                                                  params['modes'])
         self.vals = vals
         self.modes1 = modes1
         self.modes2 = modes2
@@ -343,23 +395,22 @@ class NewSlices(object) :
             return
         # Correlate the cleaned maps.
         # Here we could calculate the power spectrum instead eventually.
-        corr, norms = Pair.correlate(lags)
+        corr = Pair.correlate(lags)
         self.corr = corr
-        self.norms = norms
 
         if params["make_plots"] :
-            make_plots()
+            self.make_plots()
             
-        def make_plots(self) :
-            plt.figure()
-            plot_svd(self.vals)
+    def make_plots(self) :
+        plt.figure()
+        plot_svd(self.vals)
 
 
-def get_freq_svd_modes(corr, norms, n) :
+def get_freq_svd_modes(corr, n) :
     """Same as get freq eigenmodes, but treats left and right maps
     separatly with an SVD.
     """
-    U, s, V = linalg.svd(corr[:,:,0]*norms)
+    U, s, V = linalg.svd(corr[:,:,0])
     V = V.T
     hs = list(s)
     hs.sort()
@@ -383,6 +434,58 @@ def plot_svd(vals) :
     print 'Mean noise: ', sp.sum(vals)/n
     print 'Largest eigenvalues/n : ', 
     print sp.sort(vals/n)[-10:]
+
+def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20) :
+    """Collapses frequency pair correlation function to frequency lag.
+    
+    Basically this constructs the 2D correlation function.
+
+    This function takes in a 3D corvariance matrix which is a function of
+    frequency and frequency prime and returns the same matrix but as a function
+    of frequency - frequency prime (2D).
+    """
+    
+    if freq2 is None :
+        freq2 = freq1
+    # Default is equal weights.
+    if weights is None :
+        weights = sp.zeros_like(corr) + 1.0
+    corr *= weights
+    
+    nf1 = corr.shape[0]
+    nf2 = corr.shape[1]
+    nlags = corr.shape[2]
+    # Frequency bin size.
+    df = min(abs(sp.diff(freq1)))
+    # Frequency bin upper edges.
+    fbins = sp.arange(1, nfbins+1)*df
+    # Allowcate memory for outputs.
+    out_corr = sp.zeros((nfbins, nlags))
+    out_weights = sp.zeros((nfbins, nlags))
+    
+    # Loop over all frequency pairs and bin by lag.
+    for ii in range(nf1) :
+        for jj in range(nf2) :
+            f_lag = abs(freq1[ii] - freq2[jj])
+            bin_ind = sp.digitize([f_lag], fbins)[0]
+            out_corr[bin_ind,:] += corr[ii,jj,:]
+            out_weights[bin_ind,:] += weights[ii,jj,:]
+    # Normalize dealing with 0 weight points explicitly.
+    bad_inds = out_weights < 1.0e-20
+    out_weights[bad_inds] = 1.0
+    out_corr/=out_weights
+    out_weights[bad_inds] = 0.0
+
+    return out_corr, out_weights
+
+
+
+
+
+
+
+
+
 
 
 
@@ -430,6 +533,10 @@ class FreqSlices(object) :
         else :
             raise ce.FileParameterTypeError('For now can only process one'
                                             ' or two files.')
+        print Map1.size
+        print sp.sum(Map1 < 0), sp.sum(Map2 < 0)
+        print sp.sum(Noise1 < 0), sp.sum(Noise2 < 0)
+        print sp.sum(Noise1 == 0), sp.sum(Noise2 == 0)
         freq = sp.array(params['freq'], dtype=int)
         # Convolving down to a common resolution and reducing to factorized
         # noise.
@@ -458,30 +565,41 @@ class FreqSlices(object) :
             Noise1f=sp.mean(Noise1_m,0)
             Noise1_m[Noise1_m>1.e20]=ma.masked
             Noise1_m=Noise1_m/Noise1f[None,:,:]
-            Noise1_m=sp.mean(sp.mean(Noise1_m,1),1)[:,None,None]*Noise1f[None,:,:]
+            Noise1_m=(sp.mean(sp.mean(Noise1_m,1),1)[:,None,None] 
+                      * Noise1f[None,:,:])
             Noise1_m=(1/Noise1_m).filled(0)
             Noise1[...] = Noise1_m
 
-
-            Noise2=1/sp.minimum(1.e-30,Noise2)
+            
+            Noise2[Noise2<1.e-30]=1.e-30
+            Noise2=1/Noise2
             Noise2=b.apply(Noise2,cval=1.e30)
             Noise2_m=ma.array(Noise2)
             Noise2f=sp.mean(Noise2_m,0)
             Noise2_m[Noise2_m>1.e20]=ma.masked
             Noise2_m=Noise2_m/Noise2f[None,:,:]
-            Noise2_m=sp.mean(sp.mean(Noise2_m,1),1)[:,None,None]*Noise2f[None,:,:]
+            Noise2_m=(sp.mean(sp.mean(Noise2_m,1),1)[:,None,None]
+                      * Noise2f[None,:,:])
             Noise2_m=(1/Noise2_m).filled(0)
             Noise2[...] = Noise2_m
         # Subtracting the frequency weighted mean from each slice.
+        print sp.sum(Map1 < 0), sp.sum(Map2 < 0)
+        print sp.sum(Noise1 < 0), sp.sum(Noise2 < 0)
         if params['sub_weighted_mean'] :
             means1 = sp.sum(sp.sum(Noise1*Map1, -1), -1)
+            print means1
             means1 /= sp.sum(sp.sum(Noise1, -1), -1)
+            print means1
             means1.shape += (1, 1)
             Map1 -= means1
             means2 = sp.sum(sp.sum(Noise2*Map2, -1), -1)
+            print means2
             means2 /= sp.sum(sp.sum(Noise2, -1), -1)
+            print means2
             means2.shape += (1, 1)
             Map2 -= means2
+        print sp.sum(Map1 < 0), sp.sum(Map2 < 0)
+        print sp.sum(Noise1 < 0), sp.sum(Noise2 < 0)
         # If any eigenmodes have been marked for subtraction, subtract them
         # out.
         subflag = False
@@ -550,15 +668,10 @@ class FreqSlices(object) :
             algebra.save(noise_out, Noise2)
             algebra.save(map_out_modes, outmap)
 
+        print sp.sum(Map1 < 0), sp.sum(Map2 < 0)
+        print sp.sum(Noise1 < 0), sp.sum(Noise2 < 0)
         # Set up correlation function.
         lags = sp.array(params['lags'])
-        if len(lags)==0 :
-            # Assume the pixel width in real degrees is the dec spacing.
-            wid = abs(map1.info['dec_delta'])
-            # Choose lags at fixed grid distance.
-            lags = sp.array([0.0, 1.0, sp.sqrt(2.0), 2.0, sp.sqrt(5.0),
-                             sp.sqrt(8.0), 3.0, sp.sqrt(10.0)])
-            lags = (lags + 0.01)*wid
         freq1 = freq
         freq2 = freq
 

@@ -197,10 +197,6 @@ class info_array(sp.ndarray) :
         if isinstance(out, info_array) :
             out.info = self.info
         return out
-    
-    def __deepcopy__(self, copy):
-        """Not implemented, raises an exception."""
-        raise NotImeplementedError("Deep copy won't work.")
 
 class info_memmap(sp.memmap) :
     """A standard numpy memmap object with a dictionary for holding extra info.
@@ -1511,15 +1507,28 @@ def zeros_like(obj) :
     as the passed object."""
 
     out = sp.zeros_like(obj)
+    return as_alg_like(out, obj)
 
+def as_alg_like(array, obj):
+    """Cast an array as an algebra object similar to the passed object.
+    
+    Parameters
+    ----------
+    array : numpy array
+        Array to be cast
+    obj : alg_object
+        Algebra object from which propertise should be copied.
+    """
+    
+    out = array
+    out = info_array(out)
+    out.info = dict(obj.info)
     if isinstance(obj, vect) :
         out = make_vect(out)
-        out.info = dict(obj.info)
     elif isinstance(obj, mat) :
-        out = info_array(out)
-        out.info = dict(obj.info)
         out = make_mat(out)
     else :
-        raise TypeError("Expected an algebra mat or vect.")
+        raise TypeError("Expected `obj` to be an algebra mat or vect.")
     
     return out
+
