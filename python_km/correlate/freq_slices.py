@@ -300,7 +300,9 @@ class MapPair(object) :
                     corr[if1,jf2,klag] += sp.sum(dprod.flatten()[mask])
                     counts[if1,jf2,klag] += sp.sum(wprod.flatten()[mask])
         corr /= counts
-        
+
+        # Should probably return counts as well, since this can be used as
+        # noise weight.
         return corr
 
 
@@ -433,11 +435,54 @@ def plot_svd(vals) :
     print 'Largest eigenvalues/n : ', 
     print sp.sort(vals/n)[-10:]
 
-def rebin_core_freq_lag(corr, freq) :
-    """
-    """
+def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20) :
+    """Collapses frequency pair correlation function to frequency lag.
+    
+    Basically this constructs the 2D correlation function.
 
-    pass
+    This function takes in a 3D corvariance matrix which is a function of
+    frequency and frequency prime and returns the same matrix but as a function
+    of frequency - frequency prime (2D).
+    """
+    
+    if freq2 is None :
+        freq2 = freq1
+    # Default is equal weights.
+    if weights is None :
+        weights = sp.zeros_like(corr) + 1.0
+    corr *= weights
+    
+    nf1 = corr.shape[0]
+    nf2 = corr.shape[1]
+    nlags = corr.shape[2]
+    # Frequency bin size.
+    df = min(abs(sp.diff(freq1)))
+    # Frequency bin upper edges.
+    fbins = sp.arange(1, nfbins+1)*df
+    # Allowcate memory for outputs.
+    out_corr = sp.zeros((nfbins, nlags))
+    out_weights = sp.zeros((nfbins, nlags))
+    
+    # Loop over all frequency pairs and bin by lag.
+    for ii in range(nf1) :
+        for jj in range(nf2) :
+            f_lag = abs(freq1[ii] - freq2[jj])
+            bin_ind = sp.digitize([f_lag], fbins)[0]
+            out_corr[bin_ind,:] += corr[ii,jj,:]
+            out_weights[bin_ind,:] += weights[ii,jj,:]
+    # Normalize dealing with 0 weight points explicitly.
+    bad_inds = out_weights < 1.0e-20
+    out_weights[bad_inds] = 1.0
+    out_corr/=out_weights
+    out_weights[bad_inds] = 0.0
+
+    return out_corr, out_weights
+
+
+
+
+
+
 
 
 
