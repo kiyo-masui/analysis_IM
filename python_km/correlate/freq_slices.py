@@ -52,6 +52,16 @@ class MapPair(object) :
     """
 
     def __init__(self, Map1, Map2, Noise_inv1, Noise_inv2, freq) :
+        
+        # Give infinite noise to unconsidered frequencies (This doesn't affect
+        # anything but the output maps).
+        n = Noise_inv1.shape[0]
+        for ii in range(n) :
+            if not ii in freq :
+                Noise_inv1[ii,...] = 0
+                Noise_inv2[ii,...] = 0
+
+        # Set attributes.
         self.Map1 = Map1
         self.Map2 = Map2
         self.Noise_inv1 = Noise_inv1
@@ -109,13 +119,15 @@ class MapPair(object) :
             # Take the reciprical.
             Noise[Noise<1.e-30] = 1.e-30
             Noise = 1./Noise
+            Noise = ma.array(Noise)
             # Get the freqency averaged noise per pixel.  Propagate mask in any
             # frequency to all frequencies.
-            Noise_fmean = sp.mean(Noise, 0)
-            Noise_fmean = ma.array(Noise_fmean)
+            for ii in range(Noise.shape[0]) :
+                if sp.all(Noise[ii,...]>1.e20):
+                    Noise[ii,...] = ma.masked
+            Noise_fmean = ma.mean(Noise, 0)
             Noise_fmean[Noise_fmean>1.e20] = ma.masked
             # Get the pixel averaged noise in each frequency.
-            Noise = ma.array(Noise)
             Noise[Noise>1.e20] = ma.masked
             Noise /= Noise_fmean
             Noise_pmean = ma.mean(ma.mean(Noise, 1), 1)
@@ -140,6 +152,10 @@ class MapPair(object) :
         means2 /= sp.sum(sp.sum(self.Noise_inv2, -1), -1)
         means2.shape += (1, 1)
         self.Map2 -= means2
+
+        # Zero out all the infinit noise pixels (0 weight).
+        self.Map1[self.Noise_inv1<1.e-20] = 0
+        self.Map2[self.Noise_inv2<1.e-20] = 0
 
     def subtract_frequency_modes(self, modes1, modes2=None, fname1=None, 
                                  fname2=None) :
@@ -207,9 +223,6 @@ class MapPair(object) :
                         outmap[i,ira,jdec] = amp
         if fname2 :
             algebra.save(fname2, outmap)
-
-        # TODO: Noise needs to be Get rid of ignored frequencies.
-        # TODO: Zero out any pixels with 0 weight.
 
 
 
@@ -421,7 +434,9 @@ def plot_svd(vals) :
     print sp.sort(vals/n)[-10:]
 
 def rebin_core_freq_lag(corr, freq) :
-    #TODO
+    """
+    """
+
     pass
 
 
