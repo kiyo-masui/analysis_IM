@@ -336,13 +336,13 @@ class NewSlices(object) :
             
             # XXX For now make the noise a copy of the maps: loads faster.  Just
             # for testing.
-            Noise_inv1 = abs(algebra.make_vect(algebra.load(map_file)))
+            #Noise_inv1 = abs(algebra.make_vect(algebra.load(map_file)))
 
             # Un comment these eventually.
-            #Noise_inv1 = algebra.make_mat(algebra.open_memmap(noise_file,
-            #                                                  mode='r'))
-            #Noise_inv1 = Noise_inv1.mat_diag()
-            #print "Done."
+            Noise_inv1 = algebra.make_mat(algebra.open_memmap(noise_file,
+                                                              mode='r'))
+            Noise_inv1 = Noise_inv1.mat_diag()
+            print "Done."
             
             map_file = (params['input_root'] + params['file_middles'][1] + 
                          params['input_end_map'])
@@ -353,12 +353,12 @@ class NewSlices(object) :
             print "Loading noise."
             # XXX For now make the noise a copy of the maps: loads faster.  Just
             # for testing.
-            Noise_inv2 = abs(algebra.make_vect(algebra.load(map_file)))
+            #Noise_inv2 = abs(algebra.make_vect(algebra.load(map_file)))
             
-            #Noise_inv2 = algebra.make_mat(algebra.open_memmap(noise_file,
-            #                                                  mode='r'))
-            #Noise_inv2 = Noise_inv2.mat_diag()
-            #print "Done."
+            Noise_inv2 = algebra.make_mat(algebra.open_memmap(noise_file,
+                                                              mode='r'))
+            Noise_inv2 = Noise_inv2.mat_diag()
+            print "Done."
         else :
             raise ce.FileParameterTypeError('For now can only process one'
                                             ' or two files.')
