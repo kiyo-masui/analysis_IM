@@ -487,7 +487,7 @@ class RedshiftCorrelation(object):
         kvec = fftutil.rfftfreqn(rfv._n, spacing / (2*math.pi))
         mu2arr = kvec[...,0]**2 / (kvec**2).sum(axis=3)
         mu2arr.flat[0] = 0.0
-        #del kvec
+        del kvec
 
         df = vf0
 
@@ -495,7 +495,7 @@ class RedshiftCorrelation(object):
         vf = np.fft.irfftn(mu2arr * np.fft.rfftn(vf0))
 
         #return (df, vf, rfv, kvec)
-        return (df, vf, rfv)
+        return (df, vf) #, rfv)
 
 
     def realisation(self, thetax, thetay, z1, z2, numx, numy, numz):
@@ -563,7 +563,7 @@ class RedshiftCorrelation(object):
             acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2)
 
         
-        return acube, rsf
+        return acube #, rsf
 
         
         
