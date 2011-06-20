@@ -232,6 +232,17 @@ cdef class LogInterpolater(Interpolater):
         return exp(Interpolater.value_cdef(self, log(x)))
 
 
+    def __call__(self, x):
+        """Returns the value of the function at x. """
+        if isinstance(x, np.ndarray):
+            x = np.log(x)
+            r = np.empty_like(x)
+            for index, xv in np.ndenumerate(x):
+                r[index] = self.value_cdef(xv)
+            return np.exp(r)
+        
+        return self.value_cdef(x)
+
 
 
 

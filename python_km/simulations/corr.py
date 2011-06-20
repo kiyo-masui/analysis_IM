@@ -1,4 +1,5 @@
 import scipy
+import scipy.ndimage
 import numpy as np
 import math
 from os.path import dirname, join, exists
@@ -6,6 +7,12 @@ from scipy.integrate import quad
 
 import cubicspline as cs
 from cosmology import Cosmology
+
+import astro.units as units
+from gaussianfield import RandomField
+import fftutil
+
+import pdb
 
 _feedback = False
 
@@ -146,7 +153,18 @@ class RedshiftCorrelation(object):
         rc._load_cache(fname)
 
         return rc
-    
+
+
+    def powerspectrum_karray(self, karray):
+        """Assume k0 is line of sight"""
+
+        kpar2 = karray[...,0]**2
+        k2 = (karray**2).sum(axis=3)
+        k = k2**0.5
+        mu2 = kpar2 / k2
+
+        return (self.ps_dd(k) + 2*mu2 * self.ps_dv(k) + mu2**2 * self.ps_vv(k))
+        
 
 
     def correlation_flatsky(self, pi, sigma, z1 = None, z2 = None):
@@ -377,7 +395,7 @@ class RedshiftCorrelation(object):
         bias : array_like
             The bias at `z`.
         """
-        return self.bias
+        return self.bias * np.ones_like(z)
 
 
     def growth_factor(self, z):
@@ -424,7 +442,7 @@ class RedshiftCorrelation(object):
         growth_rate : array_like
             The growth factor at `z`.
         """
-        return 1.0
+        return 1.0 * np.ones_like(z)
 
     def prefactor(self, z):
         r"""An arbitrary scaling multiplying on each perturbation.
@@ -444,7 +462,139 @@ class RedshiftCorrelation(object):
             The prefactor at `z`.
         """
         
-        return 1.0
+        return 1.0 * np.ones_like(z)
+
+
+    def realisation_dv(self, d, n):
+
+        if not self._vv_only:
+            raise Exception("Doesn't work for independent fields, I need to think a bit more first.")
+        
+        def psv(karray):
+            """Assume k0 is line of sight"""
+            k = (karray**2).sum(axis=3)**0.5
+            return self.ps_vv(k)
+
+        # Generate an underlying random field realisation of the
+        # matter distribution.
+        rfv = RandomField(npix = n, wsize = d)
+        rfv.powerspectrum = psv
+
+        vf0 = rfv.getfield()
+
+        # Construct an array of \mu^2 for each Fourier mode.
+        spacing = rfv._w / rfv._n
+        kvec = fftutil.rfftfreqn(rfv._n, spacing / (2*math.pi))
+        mu2arr = kvec[...,0]**2 / (kvec**2).sum(axis=3)
+        mu2arr.flat[0] = 0.0
+        #del kvec
+
+        df = vf0
+
+        # Construct the line of sight velocity field.
+        vf = np.fft.irfftn(mu2arr * np.fft.rfftn(vf0))
+
+        #return (df, vf, rfv, kvec)
+        return (df, vf, rfv)
+
+
+    def realisation(self, thetax, thetay, z1, z2, numx, numy, numz):
+
+        ### Generate a 3D realspace cube containing the angular box we
+        ### are simulating. Ensure that the 
+        d2 = self.cosmology.proper_distance(z2)
+        c1 = self.cosmology.comoving_distance(z1)
+        c2 = self.cosmology.comoving_distance(z2)
+
+        # Make cube pixelisation finer, such that angular cube with
+        # have sufficient resolution on the closest face.
+        d = np.array([c2-c1, thetax * d2 * units.degree, thetay * d2 * units.degree])
+        n = np.array([numz, int(c2 / c1 * numx), int(c2 / c1 * numy)])
+
+        # Enlarge cube size by 1 in each dimension, so raytraced cube
+        # sits exactly within the gridded points.
+        d = d * (n+1) / n
+        n = n + 1
+
+        cube = self.realisation_dv(d, n)
+
+
+        # Construct an array of the redshifts on each slice of the cube.
+        comoving_inv = inverse_approx(self.cosmology.comoving_distance, z1, z2)
+        da = np.linspace(c1, c2, n[0], endpoint=True)
+        za = comoving_inv(da)
+
+        # Calculate the bias and growth factors for each slice of the cube.
+        bz = self.bias_z(za)
+        fz = self.growth_rate(za)
+        Dz = self.growth_factor(za) / self.growth_factor(self.ps_redshift)
+        pz = self.prefactor(za)
+
+        # Construct the observable and velocity fields.
+        df = cube[0] * bz[:,np.newaxis,np.newaxis]
+        vf =  cube[1] * fz[:,np.newaxis,np.newaxis]
+
+        # Construct the redshift space cube.
+        rsf = (Dz * pz)[:,np.newaxis,np.newaxis] * (df + vf)
+
+        # Find the distances that correspond to a regular redshift spacing
+        za = np.linspace(z1, z2, numz, endpoint = False)
+        da = self.cosmology.proper_distance(za)
+        xa = self.cosmology.comoving_distance(za)
+
+        # Construct the angular offsets into cube
+        tx = np.linspace(-thetax / 2, thetax / 2, numx) * units.degree
+        ty = np.linspace(-thetay / 2, thetay / 2, numy) * units.degree
+
+        tgridx, tgridy = np.meshgrid(tx, ty)
+        tgrid2 = np.zeros((3, numx, numy))
+        acube = np.zeros((numz, numx, numy))
+
+        # pdb.set_trace()
+        # Iterate over reshift slices, constructing the coordinates
+        # and interpolating into the 3d cube.
+        for i in range(numz):
+            zi = (xa[i] - c1) / (c2-c1) * numz
+            tgrid2[0,:,:] = zi
+            tgrid2[1,:,:] = (tgridx * da[i])  / d[1] * numx + 0.5*n[1]
+            tgrid2[2,:,:] = (tgridy * da[i])  / d[2] * numy + 0.5*n[2]
+
+            #if(zi > numz - 2):
+            acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2)
+
+        
+        return acube, rsf
+
+        
+        
+    
+
+
+def inverse_approx(f, x1, x2):
+    r"""Generate the inverse function on the interval x1 to x2.
+
+    Periodically sample a function and use interpolation to construct
+    its inverse. Function must be monotonic on the given interval.
+
+    Parameters
+    ----------
+    f : callable
+        The function to invert, must accept a single argument.
+    x1, x2 : scalar
+        The lower and upper bounds of the interval on which to
+        construct the inverse.
+
+    Returns
+    -------
+    inv : cubicspline.Interpolater
+        A callable function holding the inverse.
+    """
+
+    xa = np.linspace(x1, x2, 1000)
+    fa = f(xa)
+
+    return cs.Interpolater(fa, xa)
+    
 
         
 
