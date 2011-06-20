@@ -5,9 +5,49 @@ import corr
 import cubicspline as cs
 import ps_estimation
 
-ps = cs.LogInterpolater.fromfile("data/ps.dat")
+import pdb
 
-cr = corr.RedshiftCorrelation(ps_vv = ps)
+
+def bincov(cov, bins = None):
+    l = cov.shape[0]
+    xr = np.arange(l)
+
+    bins = xr if bins == None else bins
+
+    rows, cols = np.meshgrid(xr, xr)
+    dist = rows - cols
+
+    df1 = dist.flat[np.where(dist.flat >= 0)]
+    cf1 = cov.flat[np.where(dist.flat >= 0)]
+
+    ds1 = df1[np.argsort(df1)]
+    cs1 = cf1[np.argsort(df1)]
+
+    dg1 = np.digitize(ds1, bins)
+
+    pdb.set_trace()
+
+    rind = np.insert(np.where(dg1[1:] - dg1[:-1]), 0, -1) + 1
+
+    nr = rind[1:] - rind[:-1]
+
+    csim = np.insert(np.cumsum(cs1), 0, 0.0)
+
+    tbin = csim[rind[1:]] - csim[rind[:-1]]
+
+    return tbin / nr
+
+c1 = cs.LogInterpolater.fromfile("data/ps.dat")
+kstar = 2.0
+ps = lambda k: np.exp(-0.5 * k**2 / kstar**2) * c1(k)
+
+c2 = cs.LogInterpolater.fromfile("data/ps_z1.5.dat")
+kstar = 0.5
+ps2 = lambda k: np.exp(-0.5 * k**2 / kstar**2) * c2(k)
+
+
+
+cr = corr.RedshiftCorrelation(ps_vv = ps2)
 
 
 #rf = cr.realisation(1.0, 1.0, 1.95, 2.0, 256, 256, 256)
@@ -30,7 +70,11 @@ cr = corr.RedshiftCorrelation(ps_vv = ps)
 #tpm, kparm, kperpm = ps_estimation.ps_azimuth(mi, width=[64.0, 64.0, 64.0], kmodes = True)
 
 
-rf, rcube = cr.realisation(3.0, 3.0, 0.6, 1.1, 128, 128, 128)
+rf = cr.realisation(32.0, 32.0, 0.5, 1.0, 128, 128, 256)
+
+lag0 = np.cov(rf.reshape((256, 128*128)))
+
+bc = bincov(lag0)
 
 
 

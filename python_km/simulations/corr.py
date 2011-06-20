@@ -560,7 +560,7 @@ class RedshiftCorrelation(object):
             tgrid2[2,:,:] = (tgridy * da[i])  / d[2] * numy + 0.5*n[2]
 
             #if(zi > numz - 2):
-            acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2)
+            acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=1)
 
         
         return acube #, rsf
