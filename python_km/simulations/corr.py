@@ -516,6 +516,8 @@ class RedshiftCorrelation(object):
         d = d * (n+1) / n
         n = n + 1
 
+        print "Generating cube: %f x %f x %f Mpc^3" % (d[0], d[1], d[2])
+
         cube = self.realisation_dv(d, n)
 
 

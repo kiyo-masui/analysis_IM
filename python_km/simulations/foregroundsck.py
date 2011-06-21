@@ -110,7 +110,7 @@ class ForegroundSCK(ForegroundMap):
 
         return self._cf_int(tarray)
             
-            
+
         
 
 class Synchrotron(ForegroundSCK):

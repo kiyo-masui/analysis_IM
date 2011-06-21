@@ -25,7 +25,7 @@ def bincov(cov, bins = None):
 
     dg1 = np.digitize(ds1, bins)
 
-    pdb.set_trace()
+    #pdb.set_trace()
 
     rind = np.insert(np.where(dg1[1:] - dg1[:-1]), 0, -1) + 1
 
@@ -52,9 +52,9 @@ cr = corr.RedshiftCorrelation(ps_vv = ps2)
 
 #rf = cr.realisation(1.0, 1.0, 1.95, 2.0, 256, 256, 256)
 
-#cb = cr.realisation_dv([256.0, 64.0, 64.0], [128, 128, 128])
+cb = cr.realisation_dv([1024.0, 1024.0, 1024.0], [128, 128, 128])
 
-#df = cb[0]
+df = cb[0]
 #vf = cb[1]
 
 #rfv = cb[2]
@@ -63,7 +63,7 @@ cr = corr.RedshiftCorrelation(ps_vv = ps2)
 
 #tf = df + vf
 
-#tp, kpar, kperp = ps_estimation.ps_azimuth(df, width=[64.0, 64.0, 64.0], kmodes = True)
+tp, kpar, kperp = ps_estimation.ps_azimuth(df, width=[64.0, 64.0, 64.0], kmodes = True)
 #kvec = np.rollaxis(np.array(np.meshgrid(kpar, kperp)), 0, 3)
 #pst = ps((kvec**2).sum(axis=2)**0.5)
 #mi = np.fft.irfftn(rfv._kweight* 2**0.5)
@@ -71,6 +71,9 @@ cr = corr.RedshiftCorrelation(ps_vv = ps2)
 
 
 rf = cr.realisation(32.0, 32.0, 0.5, 1.0, 128, 128, 256)
+
+psnw, kpar, kperp = ps_estimation.ps_azimuth(rf, window = False)
+psww, kpar, kperp = ps_estimation.ps_azimuth(rf, window = True)
 
 lag0 = np.cov(rf.reshape((256, 128*128)))
 

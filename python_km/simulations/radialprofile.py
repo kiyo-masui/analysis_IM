@@ -21,7 +21,7 @@ def azimuthalAverage(image, center=None, bw = 3):
     r = np.hypot(x - center[0], y - center[1])
 
     # Get sorted radii
-    maxr = np.array([center[0], image.shape[0] - center[0], center[1], image.shape[1] - center[1]]).min()
+    maxr = np.array([image.shape[0] - center[0], image.shape[1] - center[1]]).min()
 
     ind = np.argsort(r.flat)
     r_sorted = r.flat[ind]
