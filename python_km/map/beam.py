@@ -16,7 +16,7 @@ class Beam(object) :
     whethar they be imperical or functional.
     """
     
-    def apply(self, alg_ob, wrap=False, right_apply=False) :
+    def apply(self, alg_ob, wrap=False, cval=0, right_apply=False) :
         """Apply the beam, as a linear operator, to vector or matrix.
 
         This operation is equivalent to matrix multiplication by the beam
@@ -79,10 +79,10 @@ class Beam(object) :
             # How wide the kernal has to be.
             width = self.kernal_size(freq)
             # Make sure the dimensions are an odd number of pixels.
-            nkx = width//dra
+            nkx = width//abs(dra)
             if nkx%2 == 0 :
                 nkx += 1
-            nky = width//ddec
+            nky = width//abs(ddec)
             if nky%2 == 0 :
                 nky += 1
             # Calculate kernal lags.
@@ -92,13 +92,14 @@ class Beam(object) :
             # Make gaussian beam profile.
             kernal = dra*ddec*self.beam_function(lags_sq, freq, 
                                                  squared_delta=True)
+#            print kernal.shape, dra, nkx
             if isinstance(alg_ob, algebra.vect) :
                 if alg_ob.axes != ('freq', 'ra', 'dec') :
                     raise ce.DataError("Vector axis names must be exactly "
                                        "('freq', 'ra', 'dec')")
                 # Do the convolution.
                 convolve(alg_ob[ii, ...], kernal, out[ii], mode=mode,
-                         cval=0)
+                         cval=cval)
             elif isinstance(alg_ob, algebra.mat) :
                 # If applying from the left, loop over columns and convolve
                 # over rows.  If applying from the right, do the oposite.
@@ -121,7 +122,7 @@ class Beam(object) :
                     sub_out = sub_out[ii, ...]
                     # Do the convolution.
                     convolve(sub_mat, kernal, sub_out, mode=mode,
-                             cval=0)
+                             cval=cval)
         return out
     
     def angular_transform(self, frequency) :
@@ -375,6 +376,6 @@ class GaussianBeam(Beam) :
             `width` was given in degrees on initialization of this class.
         """
 
-        # For gaussian, 5 sigma taper is good enough.
-        return 10.0*self._sigma(frequency)
+        # For gaussian, 3 sigma taper is good enough.
+        return 6.0*self._sigma(frequency)
 
