@@ -498,7 +498,23 @@ class RedshiftCorrelation(object):
         return (df, vf) #, rfv)
 
 
-    def realisation(self, thetax, thetay, z1, z2, numx, numy, numz):
+    def mean(self, z):
+        r"""Mean value of the field at a given redshift.
+
+        Parameters
+        ----------
+        z : array_like
+            redshift to calculate at.
+
+        Returns
+        -------
+        mean : array_like
+            the mean value of the field at each redshift.
+        """
+        return np.ones_like(z) * 0.0
+    
+
+    def realisation(self, z1, z2, thetax, thetay, numz, numx, numy):
 
         ### Generate a 3D realspace cube containing the angular box we
         ### are simulating. Ensure that the 
@@ -527,13 +543,14 @@ class RedshiftCorrelation(object):
         za = comoving_inv(da)
 
         # Calculate the bias and growth factors for each slice of the cube.
+        mz = self.mean(za)
         bz = self.bias_z(za)
         fz = self.growth_rate(za)
         Dz = self.growth_factor(za) / self.growth_factor(self.ps_redshift)
         pz = self.prefactor(za)
 
         # Construct the observable and velocity fields.
-        df = cube[0] * bz[:,np.newaxis,np.newaxis]
+        df = cube[0] * bz[:,np.newaxis,np.newaxis] + mz[:,np.newaxis,np.newaxis]
         vf =  cube[1] * fz[:,np.newaxis,np.newaxis]
 
         # Construct the redshift space cube.
@@ -562,7 +579,7 @@ class RedshiftCorrelation(object):
             tgrid2[2,:,:] = (tgridy * da[i])  / d[2] * numy + 0.5*n[2]
 
             #if(zi > numz - 2):
-            acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=1)
+            acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=2)
 
         
         return acube #, rsf

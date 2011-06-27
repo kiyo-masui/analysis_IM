@@ -1,4 +1,5 @@
 
+import numpy as np
 
 from corr import RedshiftCorrelation
 
@@ -28,6 +29,9 @@ class Corr21cm(RedshiftCorrelation):
 
         return (0.3 * ((self.cosmology.omega_m + self.cosmology.omega_l * (1+z)**-3) / 0.29)**-0.5
                 * ((1.0 + z) / 2.5)**0.5 * (self.omega_HI(z) / 1e-3))
+
+    def mean(self, z):
+        return self.T_b(z)
 
     def omega_HI(self, z):
         return 1e-3
@@ -121,4 +125,4 @@ class Corr21cm(RedshiftCorrelation):
     def bias_z(self, z):
         r"""It's unclear what the bias should be. Using 1 for the moment. """
 
-        return 1.0
+        return np.ones_like(z) * 1.0

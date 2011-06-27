@@ -1,12 +1,18 @@
 import numpy as np
 
 import corr
+import corr21cm
 
 import cubicspline as cs
 import ps_estimation
 
 import pdb
 
+import core.algebra as algebra
+
+import map.beam as beam
+
+import units
 
 def bincov(cov, bins = None):
     l = cov.shape[0]
@@ -37,24 +43,33 @@ def bincov(cov, bins = None):
 
     return tbin / nr
 
-c1 = cs.LogInterpolater.fromfile("data/ps.dat")
+thetax = 32.0
+thetay = 32.0
+nx = 128
+ny = 128
+
+f1 = 850
+f2 = 650
+nf = 256
+
+z1 = units.nu21 / f1
+z2 = units.nu21 / f2
+
+c1 = cs.LogInterpolater.fromfile("data/ps_z1.5.dat")
 kstar = 2.0
 ps = lambda k: np.exp(-0.5 * k**2 / kstar**2) * c1(k)
 
-c2 = cs.LogInterpolater.fromfile("data/ps_z1.5.dat")
-kstar = 0.5
-ps2 = lambda k: np.exp(-0.5 * k**2 / kstar**2) * c2(k)
 
 
-
-cr = corr.RedshiftCorrelation(ps_vv = ps2)
+cr = corr.RedshiftCorrelation(ps_vv = ps, redshift = 1.5)
+#cr = corr21cm.Corr21cm(ps_vv = ps, redshift = 1.5)
 
 
 #rf = cr.realisation(1.0, 1.0, 1.95, 2.0, 256, 256, 256)
 
-cb = cr.realisation_dv([1024.0, 1024.0, 1024.0], [128, 128, 128])
+#cb = cr.realisation_dv([1024.0, 1024.0, 1024.0], [128, 128, 128])
 
-df = cb[0]
+#df = cb[0]
 #vf = cb[1]
 
 #rfv = cb[2]
@@ -63,14 +78,14 @@ df = cb[0]
 
 #tf = df + vf
 
-tp, kpar, kperp = ps_estimation.ps_azimuth(df, width=[64.0, 64.0, 64.0], kmodes = True)
+#tp, kpar, kperp = ps_estimation.ps_azimuth(df, width=[64.0, 64.0, 64.0], kmodes = True)
 #kvec = np.rollaxis(np.array(np.meshgrid(kpar, kperp)), 0, 3)
 #pst = ps((kvec**2).sum(axis=2)**0.5)
 #mi = np.fft.irfftn(rfv._kweight* 2**0.5)
 #tpm, kparm, kperpm = ps_estimation.ps_azimuth(mi, width=[64.0, 64.0, 64.0], kmodes = True)
 
 
-rf = cr.realisation(32.0, 32.0, 0.5, 1.0, 128, 128, 256)
+rf = cr.realisation(z1, z2, thetax, thetay, nf, nx, ny)[::-1,...]
 
 psnw, kpar, kperp = ps_estimation.ps_azimuth(rf, window = False)
 psww, kpar, kperp = ps_estimation.ps_azimuth(rf, window = True)
@@ -78,6 +93,22 @@ psww, kpar, kperp = ps_estimation.ps_azimuth(rf, window = True)
 lag0 = np.cov(rf.reshape((256, 128*128)))
 
 bc = bincov(lag0)
+
+a = algebra.make_vect(rf, axis_names = ('freq', 'ra', 'dec'))
+
+a.set_axis_info('freq', (f1+f2)/2.0, (f1-f2)/nf)
+a.set_axis_info('ra', 0.0, thetax / nx)
+a.set_axis_info('dec', 0.0, thetay / ny)
+
+b = beam.GaussianBeam(width = [0.25, 0.25*f2/f1], freq = [f2, f1])
+
+ab = b.apply(a)
+
+
+
+
+
+
 
 
 
