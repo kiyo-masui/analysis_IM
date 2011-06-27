@@ -61,8 +61,8 @@ ps = lambda k: np.exp(-0.5 * k**2 / kstar**2) * c1(k)
 
 
 
-cr = corr.RedshiftCorrelation(ps_vv = ps, redshift = 1.5)
-#cr = corr21cm.Corr21cm(ps_vv = ps, redshift = 1.5)
+#cr = corr.RedshiftCorrelation(ps_vv = ps, redshift = 1.5)
+cr = corr21cm.Corr21cm(ps_vv = ps, redshift = 1.5)
 
 
 #rf = cr.realisation(1.0, 1.0, 1.95, 2.0, 256, 256, 256)

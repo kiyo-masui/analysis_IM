@@ -2,7 +2,7 @@
 import numpy as np
 
 from corr import RedshiftCorrelation
-
+import cubicspline as cs
 
 class Corr21cm(RedshiftCorrelation):
     r"""Correlation function of HI brightness temperature fluctuations.
@@ -11,6 +11,19 @@ class Corr21cm(RedshiftCorrelation):
     growth rate.
 
     """
+
+    def __init__(self, ps = None, redshift = 0.0):
+        if ps == None:
+            from os.path import join, dirname
+            psfile = join(dirname(__file__),"data/ps_z1.5.dat")
+            redshift = 1.5
+
+            kstar = 1.0
+            c1 = cs.LogInterpolater.fromfile(psfile)
+            ps = lambda k: np.exp(-0.5 * k**2 / kstar**2) * c1(k)
+
+        RedshiftCorrelation.__init__(self, ps_vv = ps, redshift = redshift)
+        
 
     def T_b(self, z):
         r"""Mean 21cm brightness temperature at a given redshift.
@@ -54,7 +67,7 @@ class Corr21cm(RedshiftCorrelation):
         return 1e-3
 
     def prefactor(self, z):
-        return self.T_b(z) * self.x_h(z)
+        return self.T_b(z)
 
 
     def growth_factor(self, z):

@@ -550,11 +550,11 @@ class RedshiftCorrelation(object):
         pz = self.prefactor(za)
 
         # Construct the observable and velocity fields.
-        df = cube[0] * bz[:,np.newaxis,np.newaxis] + mz[:,np.newaxis,np.newaxis]
+        df = cube[0] * bz[:,np.newaxis,np.newaxis]
         vf =  cube[1] * fz[:,np.newaxis,np.newaxis]
 
         # Construct the redshift space cube.
-        rsf = (Dz * pz)[:,np.newaxis,np.newaxis] * (df + vf)
+        rsf = ((Dz * pz)[:,np.newaxis,np.newaxis] * (df + vf)) + mz[:,np.newaxis,np.newaxis]
 
         # Find the distances that correspond to a regular redshift spacing
         za = np.linspace(z1, z2, numz, endpoint = False)
