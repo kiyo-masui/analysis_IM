@@ -666,6 +666,28 @@ def plot_svd(vals) :
     print 'Largest eigenvalues/n : ', 
     print sp.sort(vals/n)[-10:]
 
+def normalize_corr(corr):
+    """Return the normalized 3D correlation along the diagonal. 
+    [3D meaning f,f_prime,lag]."""
+    # Get dimensions.
+    fs,f_primes,lags = corr.shape
+    corr_norm = sp.zeros((fs,f_primes,lags))
+    # Each angular lag is separate.
+    for lag in range(0, lags):
+        # At each pixel, get the geometric mean of the 2 freqs along the
+        # diagonal [ie. at C[f,f,lag] and C[f_prime,f_prime,lag]). Divide
+        # the pixel by that value to make it normalized.
+        for f in range(0, fs):
+            print lag,
+            print f
+            for f_prime in range(0, f_primes):
+                value = corr[f,f,lag] * corr[f_prime,f_prime,lag]
+                factor = sp.sqrt(value)
+                corr_norm[f,f_prime,lag] = corr[f,f_prime,lag] / factor
+    return corr_norm
+        
+    
+
 def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20) :
     """Collapses frequency pair correlation function to frequency lag.
     
@@ -699,11 +721,13 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20) :
     
     # Loop over all frequency pairs and bin by lag.
     for ii in range(nf1) :
+        print ii
         for jj in range(nf2) :
             f_lag = abs(freq1[ii] - freq2[jj])
             bin_ind = sp.digitize([f_lag], fbins)[0]
-            out_corr[bin_ind,:] += corr[ii,jj,:]
-            out_weights[bin_ind,:] += weights[ii,jj,:]
+            if bin_ind < nfbins:
+                out_corr[bin_ind,:] += corr[ii,jj,:]
+                out_weights[bin_ind,:] += weights[ii,jj,:]
     # Normalize dealing with 0 weight points explicitly.
     bad_inds = out_weights < 1.0e-20
     out_weights[bad_inds] = 1.0
