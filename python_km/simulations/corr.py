@@ -2,17 +2,15 @@ import scipy
 import scipy.ndimage
 import numpy as np
 import math
+
 from os.path import dirname, join, exists
 from scipy.integrate import quad
 
 import cubicspline as cs
 from cosmology import Cosmology
 
-import astro.units as units
+from simulations import gaussianfield, fftutil, units
 from gaussianfield import RandomField
-import fftutil
-
-import pdb
 
 _feedback = False
 
