@@ -1,8 +1,8 @@
 
 import numpy as np
 
-from corr import RedshiftCorrelation
-import cubicspline as cs
+from simulations.corr import RedshiftCorrelation
+import simulations.cubicspline as cs
 
 class Corr21cm(RedshiftCorrelation):
     r"""Correlation function of HI brightness temperature fluctuations.

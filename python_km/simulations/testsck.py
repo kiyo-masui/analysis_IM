@@ -1,6 +1,6 @@
 
 
-import foregroundsck
+from simulations import foregroundsck
 
 s = foregroundsck.Synchrotron()
 sf = s.getfield()

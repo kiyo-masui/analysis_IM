@@ -9,8 +9,7 @@ from matplotlib import rc
 rc('font',**{'family':'serif','serif':['Palatino']})
 rc('text', usetex=True)
 
-import lofar
-import pointsource
+from simulations import lofar, pointsource
 
 cm = matplotlib.cm.hot
 
