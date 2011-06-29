@@ -331,7 +331,7 @@ class info_memmap(sp.memmap) :
 
     def __deepcopy__(self, copy) :
         """Not implemented, raises an exception."""
-        raise NotImeplementedError("Deep copy w on't work.")
+        raise NotImeplementedError("Deep copy won't work.")
 
 def assert_info(array) :
     """Check if passed array is an info_array or info_memmap.
@@ -741,7 +741,7 @@ class alg_object(object) :
                 weights[ii] = weight
             return points, weights
         else :
-            message = "Unsuported interpolation algorithm: " + kind
+            message = "Unsupported interpolation algorithm: " + kind
             raise ValueError(message)
         
     def slice_interpolate(self, axes, coord, kind='linear') :
@@ -803,7 +803,7 @@ class vect(alg_object) :
     The vector representation of the array is the flattend array.
 
     One of the features that `vect`s implement is named axes.  This allows
-    maps to carry axis information with them, amonge other things.  For
+    maps to carry axis information with them, among other things.  For
     `vect`s axis names must be unique (This is not true of `mat`s).
 
     Parameters
@@ -832,7 +832,7 @@ class vect(alg_object) :
     general return an `info_array` or `info_memmap` as appropriate (except
     explicit assignment to vect.shape).
 
-    The `axes` attribute is acctually stored in the `info_array`'s info
+    The `axes` attribute is actually stored in the `info_array`'s info
     dictionary.  This is just an implimentation detail.
     """
 
@@ -874,16 +874,16 @@ class vect(alg_object) :
             raise AttributeError("Attribute " + name + " not found.")
 
     def flat_view(self) :
-        """Returns a view of the vector that has been flattend.
+        """Returns a view of the vector that has been flattened.
 
         The view will be cast as a scipy.ndarray and its shape will be
         (self.size, ).  It is a view, so writing to it will write back to the
-        origional vector object.
+        original vector object.
 
         Returns
         -------
         flat_view : np.ndarray
-            A veiw of `self` as an ndarray, flattened to 1D.
+            A view of `self` as an ndarray, flattened to 1D.
         """
         
         flat = self.view(sp.ndarray)
@@ -914,14 +914,14 @@ vect_memmap = _vect_class_factory(info_memmap)
 vect_memmap.__name__ = 'vect_memmap'
 
 def make_vect(array, axis_names=None) :
-    """Do what ever it takes to make an vect out of an array.
+    """Do whatever it takes to make a vect out of an array.
     
     Convert any class that can be converted to a vect (array, info_array,
     memmap, info_memmap) to the appropriate vect object (vect_array,
     vect_memmap).
 
-    This convieiance function just simplifies the constructor heirarchy.  
-    Normally to get an vect out of an array, you would need to construct an
+    This convenience function just simplifies the constructor hierarchy.  
+    Normally to get a vect out of an array, you would need to construct an
     intermediate info_array object.  This bypasses that step.
     
     Parameters
@@ -957,21 +957,21 @@ class mat(alg_object) :
     """Multidimentional array interpreted as a matrix.
     
     This class gets most of its functionality from the numpy ndarray class.
-    In addition it provides support for orgainizing it's data as a vector.
+    In addition it provides support for organizing it's data as a vector.
     This class comes in two flavours: `mat_array` and `mat_memmap`
     depending on whether the array is stored in memory or on disk.  The raw
     `mat` class is not a valid class by itself.
 
-    To make the assotiation between a multidimentional array and a matrix,
+    To make the association between a multidimentional array and a matrix,
     each axis of the array must be identified as varying over either the
-    rows or colums of a matrix.  For instance the shape of the array could
+    rows or columns of a matrix.  For instance the shape of the array could
     be (3, 5, 7).  We could identify the first axis as a row axis and the
-    second two as column axis in which case the matrix would have 3 rows
+    second two as column axes in which case the matrix would have 3 rows
     and 35 colums.  We generally make the rows axes left of the columns and
     many algorithms assume this.  It is also possible for an axis to be
     identified as both a row and a column, in which case the matrix is
-    block diagonal over that axis.  Generally the block diagonal axes are
-    the left most.
+    block diagonal over that axis.  Generally, the block diagonal axes are
+    the leftmost.
 
     Like `vect`s, mats have named axes, however 2 axes may have the same
     name as long as one is identified as a row axis and the other as a col
@@ -1015,13 +1015,13 @@ class mat(alg_object) :
     general return an `info_array` or `info_memmap` as appropriate (except
     explicit assignment to mat.shape).
 
-    The `axes`, `rows` and `cols` attributes are acctually stored in the 
-    `info_array`'s info dictionary.  This is just an implimentation detail.
+    The `axes`, `rows` and `cols` attributes are actually stored in the 
+    `info_array`'s info dictionary.  This is just an implementation detail.
 
     See Also
     --------
     vect_array, vect_memmap : Vector classes.
-    make_mat : Funciton that casts any array as a matrix.
+    make_mat : Function that casts any array as a matrix.
     info_array, info_memmap : Base classes that handle meta data.
     """
 
@@ -1507,6 +1507,13 @@ def zeros_like(obj) :
     as the passed object."""
 
     out = sp.zeros_like(obj)
+    return as_alg_like(out, obj)
+
+def ones_like(obj) :
+    """Create a new algebra object full of zeros but otherwise the same 
+    as the passed object."""
+
+    out = sp.ones_like(obj)
     return as_alg_like(out, obj)
 
 def as_alg_like(array, obj):
