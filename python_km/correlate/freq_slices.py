@@ -710,7 +710,8 @@ def normalize_corr(corr):
         
     
 
-def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20) :
+def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
+                        return_fbins=False) :
     """Collapses frequency pair correlation function to frequency lag.
     
     Basically this constructs the 2D correlation function.
@@ -755,8 +756,66 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20) :
     out_weights[bad_inds] = 1.0
     out_corr/=out_weights
     out_weights[bad_inds] = 0.0
+    
+    if return_fbins:
+        return out_corr, out_weights, fbins
+    else:
+        return out_corr, out_weights
 
-    return out_corr, out_weights
+def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
+    """Takes a 2D correlation function and collapses to a 1D correlation
+    function.
+    
+    f_lags in Hz, a_lags in degrees.  This is important.
+    """
+
+    if corr.ndims != 2:
+        msg = "Must start with a 2D correlation function."
+        raise ValueError(msg)
+    if len(freq) != corr.shape[0] or len(lags) != corr.shape[1] :
+        msg = ("corr.shape must be (len(f_lags), len(a_lags)).  Passed: "
+               + repr(corr.shape) + " vs (" + repr(len(f_lags)) + ", "
+               + repr(len(a_lags)) + ").")
+        raise ValueError(msg)
+    if weights is None:
+        weights = sp.ones_like(corr)
+    # Hard code conversion factors to MPc/h for now.
+    a_fact = 34.0 # Mpc/h per degree at 800MHz.
+    f_fact = 4.5 # Mpc/h per MHz at 800MHz.
+    # Hard code lags in MPc/h.
+    nbins = 10
+    lags = sp.empty(nbins)
+    lags[0] = 2.0
+    lags[1] = 4.0
+    for ii in range(1, nbins) :
+        lags[ii] = 1.5*lags[ii-1]
+    # Calculate the total 1D lags.
+    R = a_lags[lag_inds]
+    R = (a_fact*R[sp.newaxis, :])**2
+    R = R + (f_fact*f_lags[:, sp.newaxis]/1.0e6)**2
+    R = sp.sqrt(R)
+    # Initialize memory for outputs.
+    out_corr = sp.zeros(nbins)
+    out_weights = sp.zeros(nbins)
+    # Rebin.
+    bin_inds = sp.digitize(R, lags)
+    for ii in range(nbins):
+        out_corr[ii] += sp.sum(corr[bin_inds==ii])
+        out_weights[ii] += sp.sum(weights[bin_inds==ii])
+    # Normalize.
+    bad_inds = out_weights < 1.0e-20
+    out_weights[bad_inds] = 1.0
+    out_corr/=out_weights
+    out_weights[bad_inds] = 0.0
+
+    return out_corr, out_weights, lags
+
+
+
+
+
+
+
 
 
 
