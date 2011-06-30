@@ -52,15 +52,21 @@ def rebin(Data, width, mean=False, by_nbins=False) :
             raise ValueError("Invalid number of bins to average")
         # Get new axis parameters.
         new_cdelt = width*Data.field['CDELT1']
-        nbins = int(sp.ceil(Data.dims[-1]/width))
+        nbins = int(sp.ceil(float(Data.dims[-1])/width))
         new_centre = nbins//2 + 1
         Data.calc_freq()
         Data.field['CRVAL1'] = Data.freq[int((new_centre+0.5)*width)]
-        # Allowcate memory for Data array.
-        new_data = ma.empty(Data.dims[:3] + (nbins,))
-        # Loop over new bins and rebin.
-        for ii in xrange(nbins) :
-            new_data[:,:,:,ii] = method(Data.data[:,:,:,ii*width:(ii+1)*width],
+        # Case where evenly divisable (much more efficient).
+        if Data.dims[-1] % width == 0:
+            new_data = Data.data
+            new_data.shape = Data.data.shape[:-1] + (nbins, width)
+            new_data = method(new_data, -1)
+        else :
+            # Allowcate memory for Data array.
+            new_data = ma.empty(Data.dims[:3] + (nbins,))
+            # Loop over new bins and rebin.
+            for ii in xrange(nbins) :
+                new_data[:,:,:,ii] = method(Data.data[:,:,:,ii*width:(ii+1)*width],
                                         3)
         Data.set_data(new_data)
     else :
