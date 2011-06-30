@@ -720,7 +720,7 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
     frequency and frequency prime and returns the same matrix but as a function
     of frequency - frequency prime (2D).
 
-    freq1 is the actualy freq values not the indeces [700mh not 0,1,2...]
+    freq1 is the actualy freq values not the indeces [700MHz not 0,1,2...]
     for weights see counts in correlate.
     """
     
@@ -737,7 +737,7 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
     # Frequency bin size.
     df = min(abs(sp.diff(freq1)))
     # Frequency bin upper edges.
-    fbins = sp.arange(1, nfbins+1)*df
+    fbins = (sp.arange(nfbins) + 0.5)*df
     # Allowcate memory for outputs.
     out_corr = sp.zeros((nfbins, nlags))
     out_weights = sp.zeros((nfbins, nlags))
@@ -758,7 +758,7 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
     out_weights[bad_inds] = 0.0
     
     if return_fbins:
-        return out_corr, out_weights, fbins
+        return out_corr, out_weights, fbins - df*0.5
     else:
         return out_corr, out_weights
 
@@ -769,10 +769,10 @@ def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
     f_lags in Hz, a_lags in degrees.  This is important.
     """
 
-    if corr.ndims != 2:
+    if corr.ndim != 2:
         msg = "Must start with a 2D correlation function."
         raise ValueError(msg)
-    if len(freq) != corr.shape[0] or len(lags) != corr.shape[1] :
+    if len(f_lags) != corr.shape[0] or len(a_lags) != corr.shape[1] :
         msg = ("corr.shape must be (len(f_lags), len(a_lags)).  Passed: "
                + repr(corr.shape) + " vs (" + repr(len(f_lags)) + ", "
                + repr(len(a_lags)) + ").")
@@ -787,10 +787,10 @@ def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
     lags = sp.empty(nbins)
     lags[0] = 2.0
     lags[1] = 4.0
-    for ii in range(1, nbins) :
+    for ii in range(2, nbins) :
         lags[ii] = 1.5*lags[ii-1]
     # Calculate the total 1D lags.
-    R = a_lags[lag_inds]
+    R = a_lags
     R = (a_fact*R[sp.newaxis, :])**2
     R = R + (f_fact*f_lags[:, sp.newaxis]/1.0e6)**2
     R = sp.sqrt(R)
@@ -798,10 +798,13 @@ def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
     out_corr = sp.zeros(nbins)
     out_weights = sp.zeros(nbins)
     # Rebin.
-    bin_inds = sp.digitize(R, lags)
-    for ii in range(nbins):
-        out_corr[ii] += sp.sum(corr[bin_inds==ii])
-        out_weights[ii] += sp.sum(weights[bin_inds==ii])
+    for jj in range(R.shape[0]) :
+        bin_inds = sp.digitize(R[jj,:], lags)
+        print R[jj,:]
+        print bin_inds
+        for ii in range(nbins):
+            out_corr[ii] += sp.sum(corr[jj,bin_inds==ii])
+            out_weights[ii] += sp.sum(weights[jj,bin_inds==ii])
     # Normalize.
     bad_inds = out_weights < 1.0e-20
     out_weights[bad_inds] = 1.0
