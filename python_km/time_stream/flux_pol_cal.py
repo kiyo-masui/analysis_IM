@@ -34,8 +34,15 @@ class Calibrate(base_single.BaseSingle) :
                                         feedback)
 #        print self.params
         # Read in the mueler matrix file.
-       	mueler_file_name = self.params['mueler_file']+'41_flux_mueller_matrix_calc.txt'
-       	self.mueler = mueller(mueler_file_name)
+#        i = self.file_ind
+#        file_middle = self.params['file_middles'][i]
+#        sess_num = file_middle.split('_')[0]
+#        sess_num = int(sess_num)
+#        print sess_num
+#        mueler_file_name = self.params['mueler_file']+str(sess_num)+'_mueller_matrix_from_params.txt'
+#        self.mueler
+#        mueler_file_name = self.params['mueler_file']+'41_mueller_matrix_from_params.txt'
+#        self.mueler = mueller(mueler_file_name)
     
     # This function tells BaseSingle what science to do.  Data is a
     # core.data_block.DataBlock object.  It holds all the data for a single
@@ -54,8 +61,9 @@ class Calibrate(base_single.BaseSingle) :
         file_middle = self.params['file_middles'][i]
         sess_num = file_middle.split('_')[0]
         sess_num = int(sess_num)
-       	print sess_num
-        mueler_file_name = self.params['mueler_file']+str(sess_num)+'_flux_mueller_matrix_calc.txt'
+        print sess_num
+        mueler_file_name = self.params['mueler_file']+str(sess_num)+'_mueller_matrix_from_params.txt'
+        self.mueler = mueller(mueler_file_name)
         calibrate_pol(Data, self.mueler)
        	Data.add_history('Flux calibrated and Corrected for polarization leakage.', 
                	         ('Mueller matrix file: ' + self.params['mueler_file'],))
@@ -68,7 +76,7 @@ class Calibrate(base_single.BaseSingle) :
         pl.ylim(-20,130)
         pl.xlabel("Frequency (MHz)")
         pl.ylabel("Sample Data")
-        title0 = str(Data.field['SCAN'])+'_caloff_pol_'
+        title0 = str(Data.field['SCAN'])+'_caloff_pol_params_'
         pl.savefig(title0+'Comparison_Test_for_3C286.png')
         pl.clf()
 
@@ -108,6 +116,7 @@ def mueller(mueler_file_name) :
         m_total[3,2,i] = mp[i,15]
         m_total[3,3,i] = mp[i,16]
         M_total = sp.mat(m_total[:,:,i])
+#        M_total = M_total.I
 #        print M_total
         for j in range(0,4):
             for k in range(0,4):
