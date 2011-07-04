@@ -14,6 +14,8 @@ from kiyopy import parse_ini
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
 from core import utils, algebra
+from core import handythread as ht
+import itertools
 import map.tools
 from map import beam
 
@@ -226,7 +228,7 @@ class MapPair(object) :
 
 
 
-    def correlate(self, lags=()) :
+    def correlate(self, lags=(), threading=False):
         """Calculate the cross correlation function of the maps.
 
         The cross correlation function is a funciton of f1, f2 and angular lag.
@@ -286,8 +288,12 @@ class MapPair(object) :
         # Bin this up.
         lag_inds = sp.digitize(lag.flatten(), lags)
         print "Starting Correlation."
-        for if1 in range(len(freq1)) :
-            for jf2 in range(len(freq2)) :
+        # Threading is inserted here as a trial; if it works,
+        # TODO: use compute() for non-threaded calculation using for loop
+        # Threading becomes IO bound on chime at CPU~200%, reasonable speed up
+        if threading: 
+            def compute(n):
+                (if1, jf2) = n
                 # Calculate the pairwise products.
                 data1 = map1[if1,:,:]
                 data2 = map2[jf2,:,:]
@@ -299,6 +305,26 @@ class MapPair(object) :
                     mask = lag_inds == klag
                     corr[if1,jf2,klag] += sp.sum(dprod.flatten()[mask])
                     counts[if1,jf2,klag] += sp.sum(wprod.flatten()[mask])
+                print if1, jf2, counts[if1, jf2,:] # TODO: REMOVE ME
+
+            ht.foreach(compute, itertools.product(range(len(freq1)),
+                                                  range(len(freq2))))
+        else:
+            for if1 in range(len(freq1)) :
+                for jf2 in range(len(freq2)) :
+                    # Calculate the pairwise products.
+                    data1 = map1[if1,:,:]
+                    data2 = map2[jf2,:,:]
+                    weights1 = noise1[if1,:,:]
+                    weights2 = noise2[jf2,:,:]
+                    dprod = data1[...,None,None] * data2[None,None,...]
+                    wprod = weights1[...,None,None] * weights2[None,None,...]
+                    for klag in range(nlags) :
+                        mask = lag_inds == klag
+                        corr[if1,jf2,klag] += sp.sum(dprod.flatten()[mask])
+                        counts[if1,jf2,klag] += sp.sum(wprod.flatten()[mask])
+                    print if1, jf2, counts[if1, jf2,:] # TODO: REMOVE ME
+
         corr /= counts
 
         # Should probably return counts as well, since this can be used as

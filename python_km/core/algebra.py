@@ -64,8 +64,19 @@ import scipy as sp
 import numpy.lib.format as npfor
 from numpy.lib.utils import safe_eval
 
-import kiyopy.custom_exceptions as ce
 
+# TODO:
+# when submitted as batch on Sunnyvale, the PYTHONPATH seems to get clobbered
+# on the compute nodes. For now, just add these as-needed, but need better
+# solution
+try:
+    import kiyopy.custom_exceptions as ce
+except ImportError:
+    import sys, site
+    print "Your python path does not contain kiyopy (clobbered?)"
+    site.addsitedir('/home/eswitzer/local/lib/')
+    site.addsitedir('/home/eswitzer/local/lib/python2.6/site-packages/')
+    import kiyopy.custom_exceptions as ce
 
 # ---- Slight modification to the NPY format. ---------------------------------
 
