@@ -51,8 +51,8 @@ map_prefix = '' + field + '_' + '41-73' + '_'
 pipe_modules = []
 pipe_processes = 10
 
-from time_stream import flag_data
-pipe_modules.append(flag_data.FlagData)
+#from time_stream import flag_data
+#pipe_modules.append(flag_data.FlagData)
 fd_input_root = data_dir
 fd_file_middles = file_middles
 fd_input_end = '.fits'
