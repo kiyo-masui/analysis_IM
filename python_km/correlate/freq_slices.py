@@ -631,7 +631,7 @@ def get_corr_and_std_3D(corr_list):
     the 3D correlation. corr_list is a list of 3D correlation matrices
     of length > 0.'''
     # Get average.
-    corr_sum = corr_list[0]
+    corr_sum = copy.deepcopy(corr_list[0])
     for ii in range(1, len(corr_list)):
         corr_sum += corr_list[ii]
     corr_avg = corr_sum/float(len(corr_list))

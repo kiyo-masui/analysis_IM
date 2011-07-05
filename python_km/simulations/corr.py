@@ -563,7 +563,7 @@ class RedshiftCorrelation(object):
         tx = np.linspace(-thetax / 2, thetax / 2, numx) * units.degree
         ty = np.linspace(-thetay / 2, thetay / 2, numy) * units.degree
 
-        tgridx, tgridy = np.meshgrid(tx, ty)
+        tgridy, tgridx = np.meshgrid(ty, tx)
         tgrid2 = np.zeros((3, numx, numy))
         acube = np.zeros((numz, numx, numy))
 
