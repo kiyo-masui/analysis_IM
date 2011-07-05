@@ -43,7 +43,8 @@ params_init = {
                'modes' : 10,
                'first_pass_only' : False,
                'make_plots' : False,
-               'factorizable_noise' : False
+               'factorizable_noise' : False,
+               'no_weights' : False
                }
 prefix = 'fs_'
 
@@ -438,14 +439,23 @@ class NewSlices(object) :
                 map_file = (params['input_root'] + 
                     params['file_middles'][ii] + params['input_end_map'])
                 print "Loading map %d of %d." %(ii+1, num_maps)
-                Maps.append(algebra.make_vect(algebra.load(map_file)))
-                noise_file = (params['input_root'] + 
-                    params['file_middles'][ii] + params['input_end_noise'])
-                print "Loading noise %d of %d." %(ii+1, num_maps)
-#                Noise_invs.append(abs(algebra.make_vect(algebra.load(map_file))))
-                Noise_inv = algebra.make_mat(algebra.open_memmap(noise_file,
-                                                                  mode='r'))
-                Noise_inv = Noise_inv.mat_diag()
+                Map = algebra.make_vect(algebra.load(map_file))
+                Maps.append(Map)
+                if not params["no_weights"] :
+                    noise_file = (params['input_root'] + 
+                        params['file_middles'][ii] + params['input_end_noise'])
+                    print "Loading noise %d of %d." %(ii+1, num_maps)
+    #                Noise_invs.append(abs(algebra.make_vect(algebra.load(map_file))))
+                    Noise_inv = algebra.make_mat(algebra.open_memmap(noise_file,
+                                                                      mode='r'))
+                    Noise_inv = Noise_inv.mat_diag()
+                else :
+                    Noise_inv = algebra.ones_like(Map)
+                    #Noise_inv[...] += (100 + 
+                    #    ii*sp.arange(Noise_inv.shape[0])[:,None,None])
+                    #Noise_inv[...] += (100 +
+                    #    ii*sp.arange(Noise_inv.shape[1])[None,:,None])
+
                 Noise_invs.append(Noise_inv)
             Pairs = []
             # Make pairs with deepcopies to not make mutability mistakes. 
@@ -665,7 +675,7 @@ def get_corr_and_std_3D(corr_list):
 
 def get_freq_svd_modes(corr, n) :
     """Same as get freq eigenmodes, but treats left and right maps
-    separatly with an SVD.counts
+    separatly with an SVD.
     """
     U, s, V = linalg.svd(corr[:,:,0])
     V = V.T
@@ -681,6 +691,18 @@ def get_freq_svd_modes(corr, n) :
         Rvectors.append(V[:,ind[0]])
     
     return s, Lvectors, Rvectors
+
+def subtract_modes_corr(corr, n) :
+    """Similar to get_freq_svd_modes, but the modes are subtracted and from the
+    correlation and the cleaned correlation is returned."""
+
+    corr = copy.deepcopy(corr)
+
+    s, Lvectors, Rvectors = get_freq_svd_modes(corr, n)
+    for ii in range(n) :
+        corr -= s[ii] * Lvectors[ii][:,None,None] * Rvectors[ii][None,:,None]
+
+    return corr
 
 def plot_svd(vals) :
     """Plots the svd values and prints out some statistics."""
@@ -714,7 +736,8 @@ def normalize_corr(corr):
         
     
 
-def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20) :
+def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
+                        return_fbins=False) :
     """Collapses frequency pair correlation function to frequency lag.
     
     Basically this constructs the 2D correlation function.
@@ -723,7 +746,7 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20) :
     frequency and frequency prime and returns the same matrix but as a function
     of frequency - frequency prime (2D).
 
-    freq1 is the actualy freq values not the indeces [700mh not 0,1,2...]
+    freq1 is the actualy freq values not the indeces [700MHz not 0,1,2...]
     for weights see counts in correlate.
     """
     
@@ -740,7 +763,7 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20) :
     # Frequency bin size.
     df = min(abs(sp.diff(freq1)))
     # Frequency bin upper edges.
-    fbins = sp.arange(1, nfbins+1)*df
+    fbins = (sp.arange(nfbins) + 0.5)*df
     # Allowcate memory for outputs.
     out_corr = sp.zeros((nfbins, nlags))
     out_weights = sp.zeros((nfbins, nlags))
@@ -759,10 +782,62 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20) :
     out_weights[bad_inds] = 1.0
     out_corr/=out_weights
     out_weights[bad_inds] = 0.0
+    
+    if return_fbins:
+        return out_corr, out_weights, fbins - df*0.5
+    else:
+        return out_corr, out_weights
 
-    return out_corr, out_weights
+def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
+    """Takes a 2D correlation function and collapses to a 1D correlation
+    function.
+    
+    f_lags in Hz, a_lags in degrees.  This is important.
+    """
 
+    if corr.ndim != 2:
+        msg = "Must start with a 2D correlation function."
+        raise ValueError(msg)
+    if len(f_lags) != corr.shape[0] or len(a_lags) != corr.shape[1] :
+        msg = ("corr.shape must be (len(f_lags), len(a_lags)).  Passed: "
+               + repr(corr.shape) + " vs (" + repr(len(f_lags)) + ", "
+               + repr(len(a_lags)) + ").")
+        raise ValueError(msg)
+    if weights is None:
+        weights = sp.ones_like(corr)
+    # Hard code conversion factors to MPc/h for now.
+    a_fact = 34.0 # Mpc/h per degree at 800MHz.
+    f_fact = 4.5 # Mpc/h per MHz at 800MHz.
+    # Hard code lags in MPc/h.
+    nbins = 10
+    lags = sp.empty(nbins)
+    lags[0] = 2.0
+    lags[1] = 4.0
+    for ii in range(2, nbins) :
+        lags[ii] = 1.5*lags[ii-1]
+    # Calculate the total 1D lags.
+    R = a_lags
+    R = (a_fact*R[sp.newaxis, :])**2
+    R = R + (f_fact*f_lags[:, sp.newaxis]/1.0e6)**2
+    R = sp.sqrt(R)
+    # Initialize memory for outputs.
+    out_corr = sp.zeros(nbins)
+    out_weights = sp.zeros(nbins)
+    # Rebin.
+    for jj in range(R.shape[0]) :
+        bin_inds = sp.digitize(R[jj,:], lags)
+        print R[jj,:]
+        print bin_inds
+        for ii in range(nbins):
+            out_corr[ii] += sp.sum(corr[jj,bin_inds==ii])
+            out_weights[ii] += sp.sum(weights[jj,bin_inds==ii])
+    # Normalize.
+    bad_inds = out_weights < 1.0e-20
+    out_weights[bad_inds] = 1.0
+    out_corr/=out_weights
+    out_weights[bad_inds] = 0.0
 
+    return out_corr, out_weights, lags
 
 
 

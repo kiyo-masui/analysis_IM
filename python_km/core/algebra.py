@@ -1520,6 +1520,13 @@ def zeros_like(obj) :
     out = sp.zeros_like(obj)
     return as_alg_like(out, obj)
 
+def ones_like(obj) :
+    """Create a new algebra object full of zeros but otherwise the same 
+    as the passed object."""
+
+    out = sp.ones_like(obj)
+    return as_alg_like(out, obj)
+
 def as_alg_like(array, obj):
     """Cast an array as an algebra object similar to the passed object.
     
