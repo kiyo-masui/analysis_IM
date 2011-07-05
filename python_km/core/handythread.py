@@ -3,7 +3,7 @@ import time
 import threading
 from itertools import izip, count
 
-def foreach(f,l,threads=3,return_=False):
+def foreach(f, l, threads=3, return_=False):
     """
     Apply f to each element of l, in parallel
     """

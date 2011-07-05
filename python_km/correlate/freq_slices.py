@@ -381,8 +381,8 @@ class MapPair(object) :
             ht.foreach(compute, itertools.product(range(len(freq1)),
                                                   range(len(freq2))))
         else:
-            for if1 in range(len(freq1)) :
-                for jf2 in range(len(freq2)) :
+            for if1 in range(len(freq1)):
+                for jf2 in range(len(freq2)):
                     # Calculate the pairwise products.
                     data1 = map1[if1,:,:]
                     data2 = map2[jf2,:,:]
@@ -398,8 +398,6 @@ class MapPair(object) :
 
         corr /= counts
 
-        # Should probably return counts as well, since this can be used as
-        # noise weight.
         return corr, counts
 
 
