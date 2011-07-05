@@ -178,7 +178,7 @@ def wigglez_correlation(init_filename):
     if params['subtract_mean']:
         cross_pair.subtract_weighted_mean()
 
-    corr = cross_pair.correlate(params['lags'], threading=params['threading'])
+    (corr, counts) = cross_pair.correlate(params['lags'], threading=params['threading'])
 
     corr_shelve = shelve.open(params['output_shelve_file'])
     corr_shelve["corr"] = corr
@@ -313,9 +313,10 @@ if __name__ == '__main__':
         initfilename = str(sys.argv[1])
         wigglez_correlation(initfilename)
     else:
-        print 'Maximum one argument, a parameter file name.'
-
-    #coloraxis_a = np.linspace(-2., 2., 100, endpoint=True)
-    #plot_crosscorr("opt_x_radio_mapA_noconv_sep.shelve",
-    #               "stupid.png", title="ok", collapse=False,
-    #               coloraxis=coloraxis_a )
+        #print 'Maximum one argument, a parameter file name.'
+        print "no arguments given, just doing some user-specified nonsense \
+               instead"
+        coloraxis_a = np.linspace(-2., 2., 100, endpoint=True)
+        plot_crosscorr("opt_x_radio_mapA_noconv_sep.shelve",
+                       "stupid.png", title="ok", collapse=True,
+                       coloraxis=coloraxis_a )
