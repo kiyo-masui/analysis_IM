@@ -178,7 +178,8 @@ def wigglez_correlation(init_filename):
     if params['subtract_mean']:
         cross_pair.subtract_weighted_mean()
 
-    (corr, counts) = cross_pair.correlate(params['lags'], threading=params['threading'])
+    (corr, counts) = cross_pair.correlate(params['lags'],
+                            threading=params['threading'])
 
     corr_shelve = shelve.open(params['output_shelve_file'])
     corr_shelve["corr"] = corr
