@@ -316,7 +316,7 @@ if __name__ == '__main__':
         #print 'Maximum one argument, a parameter file name.'
         print "no arguments given, just doing some user-specified nonsense \
                instead"
-        coloraxis_a = np.linspace(-2., 2., 100, endpoint=True)
-        plot_crosscorr("opt_x_radio_mapA_noconv_sep.shelve",
-                       "stupid.png", title="ok", collapse=True,
+        coloraxis_a = np.linspace(-0.2, 0.2, 100, endpoint=True)
+        plot_crosscorr("data/opt_x_radio_mapArand097_noconv_sep.shelve",
+                       "stupid.png", title="ok", collapse=False,
                        coloraxis=coloraxis_a )
