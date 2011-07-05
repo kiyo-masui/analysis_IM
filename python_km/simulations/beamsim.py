@@ -10,7 +10,7 @@ import units
 thetax = 5.0
 thetay = 3.0
 nx = 128
-ny = 128
+ny = 64
 
 f1 = 850
 f2 = 650
@@ -34,8 +34,8 @@ a.set_axis_info('freq', (f1+f2)/2.0, (f1-f2)/nf)
 a.set_axis_info('ra', 0.0, thetax / nx)
 a.set_axis_info('dec', 0.0, thetay / ny)
 
-b = beam.GaussianBeam(width = [1.0, 1.0*f2/f1], freq = [f2, f1])
-ab = b.apply(a)
+b = beam.GaussianBeam(width = [0.2, 0.2*f2/f1], freq = [f2, f1])
+#ab = b.apply(a)
 
 
 

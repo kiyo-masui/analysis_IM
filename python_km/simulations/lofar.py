@@ -63,7 +63,7 @@ class LofarGDSE(Map3d):
         A = ((1.0*self.A_amp) / numz) + A * (self.A_std / A.sum(axis = 2).std())
         beta = self.beta_mean + beta * (self.beta_std / beta.std())
 
-        freq = self.freq_pixels
+        freq = self.nu_pixels / self.nu_0
 
         Tb = np.zeros(self._num_array())
 

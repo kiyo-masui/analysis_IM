@@ -14,7 +14,11 @@ from gaussianfield import RandomField
 
 _feedback = False
 
-ps = cs.LogInterpolater.fromfile( join(dirname(__file__),"data/ps.dat")).value
+import sphbessel
+
+from Chebyshev import chebyshev_vec
+#from Patterson import Integrate_Patterson
+#ps = cs.LogInterpolater.fromfile( join(dirname(__file__),"data/ps.dat")).value
 
 
 
@@ -153,15 +157,49 @@ class RedshiftCorrelation(object):
         return rc
 
 
-    def powerspectrum_karray(self, karray):
-        """Assume k0 is line of sight"""
+    def powerspectrum(self, kpar, kperp, z1 = None, z2 = None):
+        r"""A vectorized routine for calculating the redshift space powerspectrum.
 
-        kpar2 = karray[...,0]**2
-        k2 = (karray**2).sum(axis=3)
+        Parameters
+        ----------
+        kpar : array_like
+            The parallel component of the k-vector.
+        kperp : array_like
+            The perpendicular component of the k-vector.
+        z1, z2 : array_like, optional
+            The redshifts of the wavevectors to correlate. If either
+            is None, use the default redshift `ps_redshift`.
+
+        Returns
+        -------
+        ps : array_like
+            The redshift space power spectrum at the given k-vector and redshift.
+        """
+        if z1 == None:
+            z1 = self.ps_redshift
+        if z2 == None:
+            z2 = self.ps_redshift
+        
+        b1 = self.bias_z(z1)
+        b2 = self.bias_z(z2)
+        f1 = self.growth_rate(z1)
+        f2 = self.growth_rate(z2)
+        D1 = self.growth_factor(z1) / self.growth_factor(self.ps_redshift)
+        D2 = self.growth_factor(z2) / self.growth_factor(self.ps_redshift)
+        pf1 = self.prefactor(z1)
+        pf2 = self.prefactor(z2)
+        
+        k2 = kpar**2 + kperp**2
         k = k2**0.5
-        mu2 = kpar2 / k2
+        mu2 = kpar**2 / k2
 
-        return (self.ps_dd(k) + 2*mu2 * self.ps_dv(k) + mu2**2 * self.ps_vv(k))
+        if self._vv_only:
+            ps = self.ps_vv(k) * (b1 + mu2 * f1) * (b2 + mu2 * f2)
+        else:
+            ps = (b1*b2*self.ps_dd(k) + 2*mu2 * self.ps_dv(k) * (f1*b2 + f2*b1) + mu2**2 * f1*f2 * self.ps_vv(k))
+        
+
+        return D1*D2*pf1*pf2*ps
         
 
 
@@ -563,7 +601,8 @@ class RedshiftCorrelation(object):
         tx = np.linspace(-thetax / 2, thetax / 2, numx) * units.degree
         ty = np.linspace(-thetay / 2, thetay / 2, numy) * units.degree
 
-        tgridx, tgridy = np.meshgrid(tx, ty)
+        #tgridx, tgridy = np.meshgrid(tx, ty)
+        tgridy, tgridx = np.meshgrid(ty, tx)
         tgrid2 = np.zeros((3, numx, numy))
         acube = np.zeros((numz, numx, numy))
 
@@ -582,7 +621,48 @@ class RedshiftCorrelation(object):
         
         return acube #, rsf
 
+
+    def angular_ps(self, l, z1, z2):
+
+        if not self._vv_only:
+            raise Exception("Only works for vv_only at the moment.")
+
+        b1 = self.bias_z(z1)
+        b2 = self.bias_z(z2)
+        f1 = self.growth_rate(z1)
+        f2 = self.growth_rate(z2)
+        D1 = self.growth_factor(z1) / self.growth_factor(self.ps_redshift)
+        D2 = self.growth_factor(z2) / self.growth_factor(self.ps_redshift)
+        pf1 = self.prefactor(z1)
+        pf2 = self.prefactor(z2)
+
+        x1 = self.cosmology.comoving_distance(z1)
+        x2 = self.cosmology.comoving_distance(z2)
+
+        def _int_lin(k):
+            #return (k**2 * self.ps_vv(k) * (b1 * sphbessel.jl(l, k*x1) - f1 * sphbessel.jl_d2(l, k*x1)) *
+            #        (b2 * sphbessel.jl(l, k*x2) - f2 * sphbessel.jl_d2(l, k*x2)))
+            return (k**2 * self.ps_vv(k) * b1 * b2 * sphbessel.jl(l, k*x1) * sphbessel.jl(l, k*x2))
+
+        def _int_log(lk):
+            k = np.exp(lk)
+            return k*_int_lin(k)
+
         
+        def _integrator(f, a, b):
+            return chebyshev_vec(f, a, b, epsrel = 1e-9, epsabs=1e-14)[0]
+        #full_output=(0 if _feedback else 1))[0]
+
+        mink = 1e-6 * l / max(x1, x2)
+        cutk = 1e1 * l / max(x1, x2)
+        maxk = 1e3 * l / min(x1, x2)
+        cl = (_integrator(_int_log, np.log(mink), np.log(cutk) ) + 
+              _integrator(_int_lin, cutk, maxk))
+
+        cl = cl * D1 * D2 * pf1 * pf2 * (2 / np.pi)
+
+        return cl
+
         
     
 
@@ -611,13 +691,7 @@ def inverse_approx(f, x1, x2):
     fa = f(xa)
 
     return cs.Interpolater(fa, xa)
-    
 
-        
-
-@np.vectorize
-def _jl(l, x):
-    return scipy.special.sph_jn(l, x)[0][l]
 
 @np.vectorize
 def _pl(l, x):
@@ -625,13 +699,13 @@ def _pl(l, x):
 
 def _integrand_linear(k, r, l, psfunc):
 
-    return 1.0 / (2*math.pi**2) * k**2 * _jl(l, k*r) * psfunc(k)
+    return 1.0 / (2*math.pi**2) * k**2 * sphbessel.jl(l, k*r) * psfunc(k)
 
 def _integrand_log(lk, r, l, psfunc):
     
     k = np.exp(lk)
-
-    return 1.0 / (2*math.pi**2) * k**3 * _jl(l, k*r) * psfunc(k)
+    return k * _integrand_linear(k, r, l, psfunc)
+    #return 1.0 / (2*math.pi**2) * k**3 * sphbessel.jl(l, k*r) * psfunc(k)
 
 
 def _integrand_offset(k, *args):
@@ -651,12 +725,13 @@ def _integrand_taper(k, *args):
 def _integrate(r, l, psfunc):
 
     def _int(f, a, b, args=()):
-        return quad(f, a, b, args=args, limit=1000, epsrel = 1e-7, 
-                    full_output=(0 if _feedback else 1))[0]
-
-    mink = 1e-6
+        #return quad(f, a, b, args=args, limit=1000, epsrel = 1e-7, 
+        #            full_output=(0 if _feedback else 1))[0]
+        #return Integrate_Patterson(f, a, b, eps = 1e-7, abs=1e-10, args=args)[0]
+        return chebyshev_vec(f, a, b, epsrel = 1e-7, epsabs=1e-9, args=args)[0]
+    mink = 1e-4
     maxk = 1e3
-    cutk = 1e2
+    cutk = 5e1
     d = math.pi / r
 
     argv = (r, l, psfunc)
