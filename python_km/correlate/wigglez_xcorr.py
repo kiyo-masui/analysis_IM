@@ -1,6 +1,12 @@
 '''
 wigglez_xcorr: cross correlate GBT with WiggleZ data
 '''
+# TODO: for some reason, PYTHONPATH is clobbered on the compute nodes; it has
+# the local directory as ::, but this never seems to make it to the sys.path,
+# so add it explicitly. Should contact admin.?
+import sys, site
+site.addsitedir('./')
+
 import numpy as np
 import scipy as sp
 from core import algebra
@@ -178,7 +184,8 @@ def wigglez_correlation(init_filename):
     if params['subtract_mean']:
         cross_pair.subtract_weighted_mean()
 
-    (corr, counts) = cross_pair.correlate(params['lags'], threading=params['threading'])
+    (corr, counts) = cross_pair.correlate(params['lags'],
+                            threading=params['threading'])
 
     corr_shelve = shelve.open(params['output_shelve_file'])
     corr_shelve["corr"] = corr
@@ -316,7 +323,7 @@ if __name__ == '__main__':
         #print 'Maximum one argument, a parameter file name.'
         print "no arguments given, just doing some user-specified nonsense \
                instead"
-        coloraxis_a = np.linspace(-2., 2., 100, endpoint=True)
-        plot_crosscorr("opt_x_radio_mapA_noconv_sep.shelve",
-                       "stupid.png", title="ok", collapse=True,
+        coloraxis_a = np.linspace(-0.2, 0.2, 100, endpoint=True)
+        plot_crosscorr("data/opt_x_radio_mapArand097_noconv_sep.shelve",
+                       "stupid.png", title="ok", collapse=False,
                        coloraxis=coloraxis_a )

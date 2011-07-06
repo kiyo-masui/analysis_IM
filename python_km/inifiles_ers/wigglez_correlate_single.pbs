@@ -1,0 +1,10 @@
+#!/bin/csh 
+#PBS -l nodes=1:ppn=3
+#PBS -q workq
+#PBS -r n
+#PBS -l walltime=48:00:00
+#PBS -N wigglez_realoptical
+cd $PBS_O_WORKDIR
+echo $PYTHONPATH
+cd ..
+python correlate/wigglez_xcorr.py inifiles_ers/wigglez_correlate.ini 
