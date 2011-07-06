@@ -376,7 +376,7 @@ class MapPair(object) :
                     mask = lag_inds == klag
                     corr[if1,jf2,klag] += sp.sum(dprod.flatten()[mask])
                     counts[if1,jf2,klag] += sp.sum(wprod.flatten()[mask])
-                print if1, jf2, counts[if1, jf2,:] # TODO: REMOVE ME
+                print if1, jf2, #counts[if1, jf2,:] # TODO: REMOVE ME
 
             ht.foreach(compute, itertools.product(range(len(freq1)),
                                                   range(len(freq2))))
@@ -394,7 +394,7 @@ class MapPair(object) :
                         mask = lag_inds == klag
                         corr[if1,jf2,klag] += sp.sum(dprod.flatten()[mask])
                         counts[if1,jf2,klag] += sp.sum(wprod.flatten()[mask])
-                    print if1, jf2, counts[if1, jf2,:] # TODO: REMOVE ME
+                    print if1, jf2, #counts[if1, jf2,:] # TODO: REMOVE ME
 
         corr /= counts
 
