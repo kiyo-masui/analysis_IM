@@ -1,6 +1,12 @@
 '''
 wigglez_xcorr: cross correlate GBT with WiggleZ data
 '''
+# TODO: for some reason, PYTHONPATH is clobbered on the compute nodes; it has
+# the local directory as ::, but this never seems to make it to the sys.path,
+# so add it explicitly. Should contact admin.?
+import sys, site
+site.addsitedir('./')
+
 import numpy as np
 import scipy as sp
 from core import algebra

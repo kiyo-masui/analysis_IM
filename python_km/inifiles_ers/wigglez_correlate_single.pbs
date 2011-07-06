@@ -5,5 +5,6 @@
 #PBS -l walltime=48:00:00
 #PBS -N wigglez_realoptical
 cd $PBS_O_WORKDIR
+echo $PYTHONPATH
 cd ..
-python wigglez_xcorr.py wigglez_correlate.ini 
+python correlate/wigglez_xcorr.py inifiles_ers/wigglez_correlate.ini 
