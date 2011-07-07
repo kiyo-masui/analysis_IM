@@ -9,7 +9,6 @@ from core import handythread as ht
 import multiprocessing
 import subprocess
 
-
 # run1:
 # node: sunnyvale
 # selection function: not separable, 1000 catalogs
@@ -131,14 +130,39 @@ def make_shelve_names(batch_param, random=True):
     else:
         return rootdir+'/'+basename+basename_suffix
 
+def tuple_list_to_dict(list_in):
+    dict_out = {}
+    for listitem in list_in:
+        dict_out[repr(listitem[0])] = listitem[1]
+    return dict_out
 
 def compare_corr(batchlist1, batchlist2):
-    randlist1 = make_shelve_names(batchlist1)
-    randlist2 = make_shelve_names(batchlist1)
-    superlist = randlist1 if (len(randlist1) > len(randlist2)) else randlist2
+    randdict1 = tuple_list_to_dict(make_shelve_names(batchlist1))
+    randdict2 = tuple_list_to_dict(make_shelve_names(batchlist2))
 
-    for (index, filetmp) in superlist: 
-        print index
+    randindices = set(batchlist1["randnum"]).union(set(batchlist2["randnum"]))
+
+    for randindex in randindices:
+        try:
+            file1 = randdict1[repr(randindex)]
+        except KeyError:
+            #print "dataset 1 does not have index "+repr(randindex)
+            file1 = None
+
+        try:
+            file2 = randdict2[repr(randindex)]
+        except KeyError:
+            #print "dataset 2 does not have index "+repr(randindex)
+            file2 = None
+
+        if file1 and file2:
+            print file1, file2
+            corr1_shelve = shelve.open(file1)
+            corr2_shelve = shelve.open(file2)
+            corr1 = corr1_shelve["corr"]
+            corr2 = corr1_shelve["corr"]
+            print np.max(corr1), np.max(corr2), np.max(corr1-corr2)
+
 
 def wrap_make_corr(runitem):
     print runitem
@@ -161,40 +185,63 @@ def process_batch_correlations(filename, batch_param):
     for item in results:
         product["rand"+repr(item["index"])] = item
 
-process_batch_correlations("run1_correlations.shelve", batch1_param)
-process_batch_correlations("run2_correlations.shelve", batch2_param)
-sys.exit()
-#------------------------------------------------------------------------------
+    product.close()
 
-shelve_signal = product[signal]
-signalcorr = shelve_signal["pdat"]
-coloraxis_a = np.linspace(-0.2, 0.2, 100, endpoint=True)
 
-plot_corr(shelve_signal, "plots/signal_xcorr.png", "Wigglez x GBT map A",
-          coloraxis=coloraxis_a)
+def wrap_plot_corr(runitem):
+    print runitem
+    (shelve_entry, filename, title, coloraxis) = runitem
+    plot_corr(shelve_entry, filename, title, coloraxis=coloraxis)
 
-print "number of random catalogs to stack: "+repr(len(randlist))
-rancats = np.zeros((len(randlist), 10))
-index = 0
-for randfile in randlist:
-    print randfile
-    basename = randfile.split("/")
-    basename = basename[-1]
-    basename = basename.split(".")
-    basename = basename[0]
-    basename = basename.split("_")
-    basename = basename[3]
-    shelve_entry = product[randfile]
-    plot_corr(shelve_entry, "plots/"+basename+".png", basename, coloraxis=coloraxis_a)
-    rancats[index, :] = shelve_entry["pdat"] 
-    ranaxis = shelve_entry["sep_lags"]
-    index += 1
 
-ranstd = np.std(rancats, axis=0)
-ranmean = np.mean(rancats, axis=0)
+def plot_batch_correlations(filename, batch_param):
+    product = shelve.open(filename)
 
-print "average binned correlation function and signal \n" + "-" * 80
-for (lag, cdat, cdaterr, sig) in zip(shelve_signal["sep_lags"], ranmean, ranstd, signalcorr):
-    print lag, cdat, cdaterr, sig
+    signal = make_shelve_names(batch_param, random=False)
+    shelve_signal = product["signal"]
+    signalcorr = shelve_signal["pdat"]
+    coloraxis_a = np.linspace(-0.2, 0.2, 100, endpoint=True)
+    plot_corr(shelve_signal, "plots/signal_xcorr.png", "Wigglez x GBT map A",
+              coloraxis=coloraxis_a)
 
-product.close()
+    randlist = make_shelve_names(batch_param)
+    print "number of random catalogs to stack: "+repr(len(randlist))
+    rancats = np.zeros((len(randlist), 10))
+    index = 0
+    for (run_num, run_file) in randlist:
+        print run_file
+        randbasename = batch_param["randbasename"]
+        shelve_entry = product["rand"+repr(run_num)]
+        #plot_corr(shelve_entry, "plots/"+randbasename+".png", randbasename, coloraxis=coloraxis_a)
+        rancats[index, :] = shelve_entry["pdat"] 
+        ranaxis = shelve_entry["sep_lags"]
+        index += 1
+
+    # pooled plotting 
+    runlist = []
+    for (run_num, run_file) in randlist:
+        shelve_entry = product["rand"+repr(run_num)]
+        runlist.append((shelve_entry,
+                        "plots/"+randbasename+repr(run_num)+".png", 
+                        randbasename+repr(run_num), 
+                        coloraxis_a))
+
+    count = multiprocessing.cpu_count()
+    pool = multiprocessing.Pool(processes=count)
+    pool.map(wrap_plot_corr, runlist)
+
+    ranstd = np.std(rancats, axis=0)
+    ranmean = np.mean(rancats, axis=0)
+
+    print "average binned correlation function and signal \n" + "-" * 80
+    for (lag, cdat, cdaterr, sig) in zip(shelve_signal["sep_lags"], ranmean, ranstd, signalcorr):
+        print lag, cdat, cdaterr, sig
+
+    product.close()
+
+
+#process_batch_correlations("run1_correlations.shelve", batch1_param)
+#process_batch_correlations("run2_correlations.shelve", batch2_param)
+#compare_corr(batch1_param, batch2_param)
+#plot_batch_correlations("run1_correlations.shelve", batch1_param)
+plot_batch_correlations("run2_correlations.shelve", batch2_param)
