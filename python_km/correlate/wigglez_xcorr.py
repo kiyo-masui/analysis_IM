@@ -324,6 +324,6 @@ if __name__ == '__main__':
         print "no arguments given, just doing some user-specified nonsense \
                instead"
         coloraxis_a = np.linspace(-0.2, 0.2, 100, endpoint=True)
-        plot_crosscorr("data/opt_x_radio_mapArand097_noconv_sep.shelve",
-                       "stupid.png", title="ok", collapse=False,
+        plot_crosscorr("data/opt_x_radio_mapA_noconv_sep.shelve",
+                       "signal_xcorr.png", title="opt_x_radio_mapA_noconv", collapse=True,
                        coloraxis=coloraxis_a )

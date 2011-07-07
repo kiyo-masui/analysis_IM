@@ -263,9 +263,13 @@ class CorrelationPlot(object) :
                                                  nbins, norms=norms, 
                                                  cross_power=cross_power)
 
-        self.execute_plot_collapsed(sep_lags, pdat, pdatb)
+        self.execute_plot_collapsed(filename, sep_lags, pdat, pdatb, save_old=save_old,
+                                    plot_old=plot_old, cross_power=cross_power,
+                                    title=title)
 
-    def execute_plot_collapsed(self, sep_lags, pdat, pdatb):
+    def execute_plot_collapsed(self, filename, sep_lags, pdat, pdatb, save_old=False,
+                               plot_old=False, cross_power=False, title=None):
+        nbins = len(sep_lags)
         pdatb_mean = sp.mean(pdatb, -1)
         pdatb_sig = sp.std(pdatb, -1)
         a = plt.figure()
