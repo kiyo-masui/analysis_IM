@@ -6,6 +6,9 @@ import matplotlib
 matplotlib.use('Agg')
 from correlate import correlation_plots as cp
 from core import handythread as ht
+import multiprocessing
+import subprocess
+
 
 # run1:
 # node: sunnyvale
@@ -38,7 +41,7 @@ batch2_param = {
     "basename_suffix": "_noconv.shelve"
     }
 
-def make_corr(filename, printcorr=False):
+def make_corr(filename, printcorr=False, index=None):
     """wrap the plot correlation class which reads correlation object shelve
     files"""
     output = {}
@@ -79,6 +82,7 @@ def make_corr(filename, printcorr=False):
     output["sep_lags"] = sep_lags
     output["pdat"] = pdat
     output["pdatb"] = pdatb
+    output["index"] = index
 
     return output
 
@@ -127,22 +131,38 @@ def make_shelve_names(batch_param, random=True):
     else:
         return rootdir+'/'+basename+basename_suffix
 
+
+def compare_corr(batchlist1, batchlist2):
+    randlist1 = make_shelve_names(batchlist1)
+    randlist2 = make_shelve_names(batchlist1)
+    superlist = randlist1 if (len(randlist1) > len(randlist2)) else randlist2
+
+    for (index, filetmp) in superlist: 
+        print index
+
+def wrap_make_corr(runitem):
+    print runitem
+    (run_num, run_file) = runitem
+    return make_corr(run_file, index=run_num)
+
+
 def process_batch_correlations(filename, batch_param):
     product = shelve.open(filename)
 
     signal = make_shelve_names(batch_param, random=False)
     product["signal"] = make_corr(signal)
 
-    def compute( runitem ):
-        print runitem
-        (run_num, run_file) = runitem
-        product[run_num] = make_corr(run_file)
-
+    count = multiprocessing.cpu_count()
+    pool = multiprocessing.Pool(processes=count)
     randlist = make_shelve_names(batch_param)
-    ht.foreach(compute, randlist, threads=6)
+    results = pool.map(wrap_make_corr, randlist)
+    # TODO: repack as a dictionary, wasteful ... better to write to dict
+    # directly  
+    for item in results:
+        product["rand"+repr(item["index"])] = item
 
 process_batch_correlations("run1_correlations.shelve", batch1_param)
-#process_batch_correlations("run1_correlations.shelve", batch2_param)
+process_batch_correlations("run2_correlations.shelve", batch2_param)
 sys.exit()
 #------------------------------------------------------------------------------
 
