@@ -50,7 +50,7 @@ class MuellerGen(object) :
 
     def residuals(self, p,errors, f,freq_val):
 #        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*2 #2 is the approx KpJy number
-        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*(-0.000484307905+2.28315426*freq_val[f]) # Added linear fit for Jansky to Kelvin conversion.
+        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*(2.28315426-0.000484307905*freq_val[f]) # Added linear fit for Jansky to Kelvin conversion.
         PAsrc = 33.0*sp.pi/180.0
         Psrc = 0.07 # The fraction is about 7% for 3C286 at high frequencies, but not as stable at our frequencies.  
         Qsrc = Isrc*Psrc*sp.cos(2*PAsrc)
