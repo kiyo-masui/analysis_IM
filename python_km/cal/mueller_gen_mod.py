@@ -50,7 +50,8 @@ class MuellerGen(object) :
 #       ch = 0
         ch = ((p[5]+45)%180-45)*sp.pi/180
         flux = p[6] #This is a variable for accounting for the difference in flux.
-        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*2
+#        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*2
+        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*(-0.000484307905+2.28315426*freq_val[f]) # Added linear fit for Jansky to Kelvin conversion.
         PAsrc = 33.0*sp.pi/180.0
         Psrc = 0.07
         Qsrc = Isrc*Psrc*sp.cos(2*PAsrc)
