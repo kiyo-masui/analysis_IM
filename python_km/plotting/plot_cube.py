@@ -47,11 +47,23 @@ def plot_single(plotitem):
     plt.savefig(filename, dpi=100)
     plt.clf()
 
-def make_cube_movie(filename, tagname, colorbar_title, fileprefix):
+def make_cube_movie(filename, tagname, colorbar_title, fileprefix,
+                    sigmarange=3.):
     cube = algebra.make_vect(algebra.load(filename))
     cube_min = np.min(cube)
     cube_max = np.max(cube)
-    coloraxis = np.linspace(cube_min, cube_max, 100, endpoint=True)
+    cube_mean = np.mean(cube)
+    cube_std = np.std(cube)
+    try:
+        len(sigmarange)
+        coloraxis = np.linspace(sigmarange[0], sigmarange[1], 500, endpoint=True)
+    except TypeError:
+        if (sigmarange > 0.):
+            coloraxis = np.linspace(cube_mean-sigmarange*cube_std,
+                                    cube_mean+sigmarange*cube_std, 
+                                    500, endpoint=True)
+        else:
+            coloraxis = np.linspace(cube_min, cube_max, 500, endpoint=True)
 
     nfreq = cube.shape[0]
     print nfreq, cube_min, cube_max
@@ -74,16 +86,72 @@ def make_cube_movie(filename, tagname, colorbar_title, fileprefix):
     command = ('ffmpeg','-y','-i','movies/'+tagname+'%03d.png',tagname+'.mp4') 
     subprocess.check_call(command)
 
-root_selection = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_wiggleZ/"
-make_cube_movie(root_selection+"reg15separable.npy", 
+root_directory = "/mnt/raid-project/gmrt/kiyo/wiggleZ/corr/"
+make_cube_movie(root_directory+"sec_B_15hr_41-69_cleaned_clean_map_I_with_A.npy", 
+                "sec_B_15hr_41-69_cleaned_clean_map_I_with_A", 
+                "Temperature", "movies/sec_B_15hr_41-69_cleaned_clean_map_I_with_A",
+                sigmarange=[-0.001, 0.001])
+make_cube_movie(root_directory+"sec_A_15hr_41-69_cleaned_clean_map_I_with_B.npy", 
+                "sec_A_15hr_41-69_cleaned_clean_map_I_with_B", 
+                "Temperature", "movies/sec_A_15hr_41-69_cleaned_clean_map_I_with_B",
+                sigmarange=[-0.001, 0.001])
+sys.exit()
+
+root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/combined_maps/"
+make_cube_movie(root_directory+"combined_41-69_cleaned_product.npy", 
+                "combined_41-69_cleaned_product", 
+                "Temperature", "movies/combined_41-69_cleaned_product",
+                sigmarange=20.)
+make_cube_movie(root_directory+"combined_41-69_cleaned_clean.npy", 
+                "combined_41-69_cleaned_clean", 
+                "Temperature", "movies/combined_41-69_cleaned_clean",
+                sigmarange=[-0.01, 0.01])
+make_cube_movie(root_directory+"combined_41-69_cleaned_noise_inv.npy", 
+                "combined_41-69_cleaned_noise_inv", 
+                "Covariance", "movies/combined_41-69_cleaned_noise_inv",
+                sigmarange=-1)
+sys.exit()
+
+root_directory = "/mnt/raid-project/gmrt/kiyo/wiggleZ/corr/"
+make_cube_movie(root_directory+"sec_A_15hr_41-69_cleaned_clean_map_I.npy", 
+                "sec_A_15hr_41-69_cleaned_clean_map_I", 
+                "Temperature", "movies/sec_A_15hr_41-69_cleaned_clean_map_I",
+                sigmarange=[-0.01, 0.01])
+make_cube_movie(root_directory+"sec_A_15hr_41-69_cleaned_noise_inv_I.npy", 
+                "sec_A_15hr_41-69_cleaned_noise_inv_I", 
+                "Covariance", "movies/sec_A_15hr_41-69_cleaned_noise_inv_I",
+                sigmarange=-1)
+make_cube_movie(root_directory+"sec_B_15hr_41-69_cleaned_clean_map_I.npy", 
+                "sec_B_15hr_41-69_cleaned_clean_map_I", 
+                "Temperature", "movies/sec_B_15hr_41-69_cleaned_clean_map_I",
+                sigmarange=[-0.01, 0.01])
+make_cube_movie(root_directory+"sec_B_15hr_41-69_cleaned_noise_inv_I.npy", 
+                "sec_B_15hr_41-69_cleaned_noise_inv_I", 
+                "Covariance", "movies/sec_B_15hr_41-69_cleaned_noise_inv_I",
+                sigmarange=-1)
+sys.exit()
+
+root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/combined_maps/"
+make_cube_movie(root_directory+"combined_41-73_cleaned_clean.npy", 
+                "combined_41-73_cleaned_clean", 
+                "Temperature", "movies/combined_41-73_cleaned_clean",
+                sigmarange=4.)
+make_cube_movie(root_directory+"combined_41-73_cleaned_noise_inv.npy", 
+                "combined_41-73_cleaned_noise_inv", 
+                "Covariance", "movies/combined_41-73_cleaned_noise_inv",
+                sigmarange=-1)
+sys.exit()
+
+root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_wiggleZ/"
+make_cube_movie(root_directory+"reg15separable.npy", 
                 "15hr_Wigglez_separable_selection", 
                 "# galaxies/pixel", "movies/15hr_Wigglez_separable_selection")
-root_selection = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_wiggleZ/"
-make_cube_movie(root_selection+"reg15selection.npy", 
+root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_wiggleZ/"
+make_cube_movie(root_directory+"reg15selection.npy", 
                 "15hr_Wigglez_selection", 
                 "# galaxies/pixel", "movies/15hr_Wigglez_selection")
 
-root_selection = "/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test/"
+root_directory = "/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test/"
 maplist = ["sec_A_15hr_41-73_cleaned_clean_map_I_with_B",
         "sec_A_15hr_41-73_cleaned_clean_map_I_with_C",
         "sec_A_15hr_41-73_cleaned_clean_map_I_with_D",
@@ -110,10 +178,10 @@ covlist = ["sec_A_15hr_41-73_cleaned_noise_inv_I_with_B",
         "sec_D_15hr_41-73_cleaned_noise_inv_I_with_C"]
 
 for tagname in maplist:
-    make_cube_movie(root_selection+tagname+".npy",
+    make_cube_movie(root_directory+tagname+".npy",
                 tagname, "Temperature", "movies/"+tagname)
 for tagname in covlist:
-    make_cube_movie(root_selection+tagname+".npy",
+    make_cube_movie(root_directory+tagname+".npy",
                 tagname, "Covariance", "movies/"+tagname)
 
 #command = ('mencoder mf://*.png -mf type=png:w=800:h=600:fps=25 -ovc lavc -lavcopts vcodec=mpeg4 -oac copy -of mpeg1video -o output.mpg')

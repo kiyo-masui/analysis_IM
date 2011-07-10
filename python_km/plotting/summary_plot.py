@@ -40,6 +40,19 @@ batch2_param = {
     "basename_suffix": "_noconv.shelve"
     }
 
+# run3:
+# node: sunnyvale
+# selection function: separable, 1000 catalogs
+# radio map: A cleaned with D
+# threading turned on
+batch3_param = {
+    "randnum": range(100),
+    "rootdir": "/mnt/raid-project/gmrt/eswitzer/wiggleZ/batch_runs/data_run3",
+    "basename": "opt_x_radio_mapA",
+    "randbasename": "opt_x_radio_mapArand",
+    "basename_suffix": "_noconv_sep.shelve"
+    }
+
 def make_corr(filename, printcorr=False, index=None):
     """wrap the plot correlation class which reads correlation object shelve
     files"""
@@ -160,8 +173,13 @@ def compare_corr(batchlist1, batchlist2):
             corr1_shelve = shelve.open(file1)
             corr2_shelve = shelve.open(file2)
             corr1 = corr1_shelve["corr"]
-            corr2 = corr1_shelve["corr"]
+            corr2 = corr2_shelve["corr"]
+            run_params1 = corr1_shelve["params"]
+            run_params2 = corr2_shelve["params"]
+            print "-"*80
             print np.max(corr1), np.max(corr2), np.max(corr1-corr2)
+            print run_params1
+            print run_params2
 
 
 def wrap_make_corr(runitem):
@@ -242,6 +260,10 @@ def plot_batch_correlations(filename, batch_param):
 
 #process_batch_correlations("run1_correlations.shelve", batch1_param)
 #process_batch_correlations("run2_correlations.shelve", batch2_param)
+#process_batch_correlations("run3_correlations.shelve", batch3_param)
+#compare_corr(batch2_param, batch3_param)
 #compare_corr(batch1_param, batch2_param)
+
 #plot_batch_correlations("run1_correlations.shelve", batch1_param)
-plot_batch_correlations("run2_correlations.shelve", batch2_param)
+#plot_batch_correlations("run2_correlations.shelve", batch2_param)
+plot_batch_correlations("run3_correlations.shelve", batch3_param)
