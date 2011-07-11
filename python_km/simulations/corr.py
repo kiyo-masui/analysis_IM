@@ -17,6 +17,7 @@ _feedback = False
 import sphbessel
 
 from Chebyshev import chebyshev_vec
+
 #from Patterson import Integrate_Patterson
 #ps = cs.LogInterpolater.fromfile( join(dirname(__file__),"data/ps.dat")).value
 
@@ -234,7 +235,6 @@ class RedshiftCorrelation(object):
         is provided assume the second point is at the same redshift as
         the first.
         """
-
 
         r = (pi**2 + sigma**2)**0.5
 
@@ -606,7 +606,6 @@ class RedshiftCorrelation(object):
         tgrid2 = np.zeros((3, numx, numy))
         acube = np.zeros((numz, numx, numy))
 
-        # pdb.set_trace()
         # Iterate over reshift slices, constructing the coordinates
         # and interpolating into the 3d cube.
         for i in range(numz):
@@ -640,9 +639,9 @@ class RedshiftCorrelation(object):
         x2 = self.cosmology.comoving_distance(z2)
 
         def _int_lin(k):
-            #return (k**2 * self.ps_vv(k) * (b1 * sphbessel.jl(l, k*x1) - f1 * sphbessel.jl_d2(l, k*x1)) *
-            #        (b2 * sphbessel.jl(l, k*x2) - f2 * sphbessel.jl_d2(l, k*x2)))
-            return (k**2 * self.ps_vv(k) * b1 * b2 * sphbessel.jl(l, k*x1) * sphbessel.jl(l, k*x2))
+            return (k**2 * self.ps_vv(k) * (b1 * sphbessel.jl(l, k*x1) - f1 * sphbessel.jl_d2(l, k*x1)) *
+                    (b2 * sphbessel.jl(l, k*x2) - f2 * sphbessel.jl_d2(l, k*x2)))
+#return (k**2 * self.ps_vv(k) * b1 * b2 * sphbessel.jl(l, k*x1) * sphbessel.jl(l, k*x2))
 
         def _int_log(lk):
             k = np.exp(lk)
