@@ -42,55 +42,52 @@ old_twoway = {
     'multiply_cov': [-1., -1.]
 }
 
-def combine_maps(param_dict):
-    root_data = param_dict["root_data"]
-    maplist = param_dict["maplist"]
-    covlist = param_dict["covlist"]
 
-    try: 
-        multiply_cov = param_dict["multiply_cov"]
-        print "using user-specified covariance multipliers"+repr(multiply_cov)
-    except:
-        multiply_cov = [1.]*len(covlist)
-    mul_cov_list = zip(covlist, multiply_cov) 
+def combine_maps(param_dict):
+    """combines a list of maps as a weighted mean using a specified list of
+    inverse covariance weights
+    """
+    covlist = param_dict["covlist"]
+    try:
+        mul_cov_list = zip(covlist, param_dict["multiply_cov"])
+        print "using user-specified covariance multipliers" + \
+               repr(param_dict["multiply_cov"])
+    except KeyError:
+        mul_cov_list = zip(covlist, [1.] * len(covlist))
     print mul_cov_list
 
     maps = []
-    for tagname in maplist:
-        filename = root_data+tagname+".npy"
-        print "loading "+filename
-        maps.append(algebra.make_vect(algebra.load(filename)))
+    for tagname in param_dict["maplist"]:
+        maps.append(algebra.make_vect(
+                    algebra.load(param_dict["root_data"] + tagname + ".npy")))
 
     weights = []
     for cov_entry in mul_cov_list:
-        (tagname, multiplier) = cov_entry 
-        filename = root_data+tagname+".npy"
-        print "loading " + filename
+        (tagname, multiplier) = cov_entry
         print "multiplier " + repr(multiplier)
 
         # zero out any messy stuff
-        raw_weight = algebra.make_vect(algebra.load(filename))
+        raw_weight = algebra.make_vect(algebra.load(
+                                param_dict["root_data"] + tagname + ".npy"))
+
         raw_weight *= multiplier
         raw_weight[raw_weight < 1.e-20] = 0.
-        nan_array = np.isnan(raw_weight)
-        raw_weight[nan_array] = 0.
-        inf_array = np.isinf(raw_weight)
-        raw_weight[inf_array] = 0.
+        raw_weight[np.isnan(raw_weight)] = 0.
+        raw_weight[np.isinf(raw_weight)] = 0.
         weights.append(raw_weight)
 
-    num_maps = len(maps)
     prodmap = []
-    for mapind in range(0, num_maps):
-        prodmap.append(maps[mapind]*weights[mapind])
+    for mapind in range(0, len(maps)):
+        prodmap.append(maps[mapind] * weights[mapind])
 
-    for mapind in range(1, num_maps):
+    for mapind in range(1, len(maps)):
         prodmap[0] += prodmap[mapind]
         weights[0] += weights[mapind]
 
     wxc.compressed_array_summary(weights[0], "weight map")
     wxc.compressed_array_summary(prodmap[0], "product map")
 
-    newmap = prodmap[0]/weights[0]
+    newmap = prodmap[0] / weights[0]
 
     newweights = weights[0]
     newweights[newweights < 1.e-20] = 0.
@@ -107,7 +104,7 @@ def combine_maps(param_dict):
     return (newmap, newweights, prodmap[0])
 
 if __name__ == '__main__':
-    (map, weights, prodmap) = combine_maps(fourway_split) 
-    algebra.save("combined_41-73_cleaned_clean_test.npy", map)
-    algebra.save("combined_41-73_cleaned_noise_inv_test.npy", weights)
-    algebra.save("combined_41-73_cleaned_product_test.npy", prodmap)
+    (map_out, weights_out, prodmap_out) = combine_maps(fourway_split)
+    algebra.save("combined_41-73_cleaned_clean_test.npy", map_out)
+    algebra.save("combined_41-73_cleaned_noise_inv_test.npy", weights_out)
+    algebra.save("combined_41-73_cleaned_product_test.npy", prodmap_out)
