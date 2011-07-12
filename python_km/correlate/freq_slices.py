@@ -5,7 +5,7 @@
 import copy
 import multiprocessing
 import time
-import os.path as path
+import os
 import cPickle
 import random as rn
 
@@ -33,6 +33,10 @@ params_init = {
                'input_end_map' : "_map.fits",
                'input_end_noise' : "_noise.fits",
                'output_root' : "./testoutput",
+               # Options of saving.
+               'save_maps' : False,
+               'save_noises' : False,
+               'save_modes' : False,
                # What frequencies to correlate:
                'freq' : (),
                # Angular lags at which to calculate the correlation.  Upper
@@ -85,6 +89,8 @@ class MapPair(object) :
         self.vals = 0
         self.modes1 = 0
         self.modes2 = 0
+        self.L_modes = 0
+        self.R_modes = 0
         # For multiprocessing function since this can't be passed in.
         self.lags = 0
         # For saving, to keep track of each mapname.
@@ -215,11 +221,11 @@ class MapPair(object) :
         self.Map1[self.Noise_inv1<1.e-20] = 0
         self.Map2[self.Noise_inv2<1.e-20] = 0
 
-    def subtract_frequency_modes(self, modes1, modes2=None, fname1=None, 
-                                 fname2=None) :
-        """Subtract frequency mode from the map. fnames will have the
-        output root added to the beginning. !!!DOES NOT SAVE MODES NOW, 
-        SAVES THE MAPS AFTER SUBRACTION.
+    def subtract_frequency_modes(self, modes1, modes2=None) :
+        """Subtract frequency mode from the map. This does not save anything
+        anymore. The outmaps (L and R modes) that were saved before are now
+        stored as a variable in the class and the saving of everything (maps,
+        noise_invs, and modes) is done later in it's own function.
 
         Parameters
         ---------
@@ -228,12 +234,6 @@ class MapPair(object) :
             of the map one.
         modes2 : list of 1D arrays.
             Modes to subtract out of map 2.  If `None` set to `modes1`.
-        fname1 : string
-            File name to save the mode amplitude maps too for map1.  If None,
-            don't save.
-        fname2 : string
-            File name to save the mode amplitude maps too for map2.  If None,
-            don't save.
         """
 
         if modes2 == None :
@@ -243,16 +243,10 @@ class MapPair(object) :
         Map2 = self.Map2
         freq = self.freq
 
-        if not (fname1 is None):
-            other_mapname1 = self.Map2_code
-        if not (fname2 is None):
-            other_mapname2 = self.Map1_code
-        
         # First map.
-        if fname1 :
-            outmap = sp.empty((len(modes1),)+Map1.shape[1:])
-            outmap = algebra.make_vect(outmap,axis_names=('freq', 'ra', 'dec'))
-            outmap.copy_axis_info(Map1)
+        outmap_L = sp.empty((len(modes1),)+Map1.shape[1:])
+        outmap_L = algebra.make_vect(outmap_L,axis_names=('freq', 'ra', 'dec'))
+        outmap_L.copy_axis_info(Map1)
         for ira in range(Map1.shape[1]) :
             for jdec in range(Map1.shape[2]) :
                 # if sp.any(Map1.data.mask[ira,jdec,freq]) :
@@ -264,20 +258,19 @@ class MapPair(object) :
                     # amp = sp.sum(v*Map1.data[ira,jdec,freq])
                     amp = sp.dot(v, Map1[freq,ira,jdec])
                     Map1[freq,ira,jdec] -= amp*v
-                    if fname1 :
-                        outmap[i,ira,jdec] = amp
-        if fname1 :
-            save_file = self.params['output_root'] + fname1 + \
-                            "_cleaned_clean_map_I_with_" + \
-                            other_mapname1 + ".npy"
-            #algebra.save(fname1, outmap)
-            algebra.save(save_file, Map1) # outmap)
+                    outmap_L[i,ira,jdec] = amp
+        self.L_modes = outmap_L
+#        if fname1 :
+#            save_file = self.params['output_root'] + fname1 + \
+#                            "_cleaned_clean_map_I_with_" + \
+#                            other_mapname1 + ".npy"
+#            #algebra.save(fname1, outmap)
+#            algebra.save(save_file, Map1) # outmap)
         
         # Second map.
-        if fname2 :
-            outmap = sp.empty((len(modes1),)+Map1.shape[1:])
-            outmap = algebra.make_vect(outmap,axis_names=('freq', 'ra', 'dec'))
-            outmap.copy_axis_info(Map2)
+        outmap_R = sp.empty((len(modes1),)+Map1.shape[1:])
+        outmap_R = algebra.make_vect(outmap_R,axis_names=('freq', 'ra', 'dec'))
+        outmap_R.copy_axis_info(Map2)
         for ira in range(Map2.shape[1]) :
             for jdec in range(Map2.shape[2]) :
                 # if sp.any(Map1.data.mask[ira,jdec,freq]) :
@@ -288,14 +281,14 @@ class MapPair(object) :
                     v = v.reshape(freq.shape)
                     amp = sp.dot(v, Map2[freq,ira,jdec])
                     Map2[freq,ira,jdec] -= amp*v
-                    if fname2 :
-                        outmap[i,ira,jdec] = amp
-        if fname2 :
-            save_file = self.params['output_root'] + fname2 + \
-                            "_cleaned_clean_map_I_with_" + \
-                            other_mapname2 + ".npy"
-            #algebra.save(fname1, outmap)
-            algebra.save(save_file, Map2) # outmap)
+                    outmap_R[i,ira,jdec] = amp
+        self.R_modes = outmap_R
+#        if fname2 :
+#            save_file = self.params['output_root'] + fname2 + \
+#                            "_cleaned_clean_map_I_with_" + \
+#                            other_mapname2 + ".npy"
+#            #algebra.save(fname1, outmap)
+#            algebra.save(save_file, Map2) # outmap)
 
 
     def correlate(self, lags=(), threading=False):
@@ -504,7 +497,7 @@ class NewSlices(object) :
         for ii in range(0, num_map_pairs):
 #            fore_muliproc(Pair)
             p = multiprocessing.Process(target=multiproc,
-                                        args=([Pairs[ii], ii, False]))
+                        args=([Pairs[ii], params['output_root'], ii, False]))
             processes_list.append(p)
             p.start()
             #print(parent_conn.recv())
@@ -516,7 +509,8 @@ class NewSlices(object) :
         # just to be safe
         time.sleep(1)
         print "Loading Map Pairs back into program [a min or so wait]"
-        file_name = "Map_Pair_for_freq_slices_fore_corr_"
+        file_name = params['output_root']
+        file_name += "Map_Pair_for_freq_slices_fore_corr_"
         for count in range(0, num_map_pairs):
 #        while path.exists(file_name+str(count)+".pkl"):
             print "Loading correlation for Pair %d" %(count)
@@ -549,12 +543,16 @@ class NewSlices(object) :
  #       self.modes1 = modes1
  #       self.modes2 = modes2
 
-        # TODO: Add option to save the mode maps.
 #        for Pair in Pairs:
-        for ii in range(0, len(Pairs)):
-            
+        for ii in range(0, len(Pairs)):            
             Pairs[ii].subtract_frequency_modes(Pairs[ii].modes1, 
-                Pairs[ii].modes2, Pairs[ii].Map1_name, Pairs[ii].Map2_name)
+                Pairs[ii].modes2)
+        
+        # Save cleaned clean maps, cleaned noises, and modes.
+        save_data(self, params['save_maps'], params['save_noises'],
+            params['save_modes'])
+
+        # Finish if this was just first pass.
         if params['first_pass_only'] :
             self.Pairs = Pairs
             return
@@ -573,7 +571,7 @@ class NewSlices(object) :
         processes_list = []
         for ii in range(0, num_map_pairs):
             p = multiprocessing.Process(target=multiproc,
-                                        args=([Pairs[ii], ii, True]))
+                        args=([Pairs[ii], params['output_root'], ii, True]))
             processes_list.append(p)
             p.start()
 
@@ -583,7 +581,8 @@ class NewSlices(object) :
         # just to be safe
         time.sleep(1)
         print "Loading Map Pairs back into program [a min or so wait]"
-        file_name = "Map_Pair_for_freq_slices_corr_"
+        file_name = params['output_root']
+        file_name += "Map_Pair_for_freq_slices_corr_"
         for count in range(0, num_map_pairs):
             print "Loading correlation for Pair %d" %(count)
             f = open(file_name+str(count)+".pkl", "r")
@@ -610,25 +609,30 @@ class NewSlices(object) :
         plot_svd(self.vals)
         plt.show()
 
-def multiproc(Pair, pair_number, final):
-    """Do the correlation for a MapPair Pair. Pair is then saved
+def multiproc(Pair, save_dir, pair_number, final):
+    """Do the correlation for a MapPair Pair. The correlation is then saved
     to a numbered file corresponding to pair_number. This is done since
     this function gets multiprocessed and must have a common information
     ground somewhere. If final is false, the fore correlation is being done.
     If final is True, the final correlation is being done. final is used
-    to save Pair to the appropriate file."""
+    to save Pair to the appropriate file. save_dir is the diectory for 
+    these to be saved."""
     print "I am starting."
 #    print Pair.lags
 #    print type(Pair.lags)
 #    fore_core, fore_counts = Pair.correlate(Pair.lags)
 #    Pair.shout(44)
     control_correlation(Pair, Pair.lags, final)
+    file_name = save_dir
+    # Make sure folder is there.
+    if not os.path.isdir(file_name):
+        os.mkdir(file_name)
     if final:
-        file_name = "Map_Pair_for_freq_slices_corr_" + \
+        file_name += "Map_Pair_for_freq_slices_corr_" + \
                         str(pair_number) + ".pkl"
         to_save = Pair.corr
     else:
-        file_name = "Map_Pair_for_freq_slices_fore_corr_" + \
+        file_name += "Map_Pair_for_freq_slices_fore_corr_" + \
                         str(pair_number) + ".pkl"
         to_save = Pair.fore_corr
     f = open(file_name, "w")
@@ -836,6 +840,41 @@ def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
     out_weights[bad_inds] = 0.0
 
     return out_corr, out_weights, lags
+
+def save_data(F, save_maps=False, save_noises=False, save_modes=False):
+    '''Saves the cleaned data and modes to the output directory specified
+    in the parameters of the configuration file. F is the New_Slices object
+    which contains ALL the data.'''
+    # Get the output directory and filenames.
+    out_root = F.params['output_root']
+    # Make sure folder is there.
+    if not os.path.isdir(out_root):
+        os.mkdir(out_root)
+    for Pair in F.Pairs:
+        Map1_savename = out_root + Pair.Map1_name + \
+            "_cleaned_clean_map_I_with_" + Pair.Map2_code + ".npy"
+        Map2_savename = out_root + Pair.Map2_name + \
+            "_cleaned_clean_map_I_with_" + Pair.Map1_code + ".npy"
+        Noise_inv1_savename = out_root + Pair.Map1_name + \
+            "_cleaned_noise_inv_I_with_" + Pair.Map2_code + ".npy"
+        Noise_inv2_savename = out_root + Pair.Map2_name + \
+            "_cleaned_noise_inv_I_with_" + Pair.Map1_code + ".npy"
+        L_modes_savename = out_root + Pair.Map1_name + \
+            "_modes_clean_map_I_with_" + Pair.Map2_code + ".npy"
+        R_modes_savename = out_root + Pair.Map2_name + \
+            "_modes_clean_map_I_with_" + Pair.Map1_code + ".npy"
+        # Save data.
+        if save_maps:
+            algebra.save(Map1_savename, Pair.Map1)
+            algebra.save(Map2_savename, Pair.Map2)
+        if save_noises:
+            algebra.save(Noise_inv1_savename, Pair.Noise_inv1)
+            algebra.save(Noise_inv2_savename, Pair.Noise_inv2)
+        if save_modes:
+            algebra.save(L_modes_savename, Pair.L_modes)
+            algebra.save(R_modes_savename, Pair.R_modes)
+
+
 
 
 
