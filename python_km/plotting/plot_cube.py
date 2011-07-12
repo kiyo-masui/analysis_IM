@@ -66,6 +66,17 @@ def make_cube_movie(filename, tag, colorbar_title, fileprefix,
                '%03d.png', tag + '.mp4'))
 
 
+root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/combined_maps/"
+make_cube_movie(root_directory + "combined_41-73_cleaned_clean_test.npy",
+                "combined_41-73_cleaned_clean_test",
+                "Temperature", "movies/combined_41-73_cleaned_clean_test",
+                sigmarange=4.)
+make_cube_movie(root_directory + "combined_41-73_cleaned_noise_inv_test.npy",
+                "combined_41-73_cleaned_noise_inv_test",
+                "Covariance", "movies/combined_41-73_cleaned_noise_inv_test",
+                sigmarange=-1)
+sys.exit()
+
 root_directory = "/mnt/raid-project/gmrt/kiyo/wiggleZ/corr/"
 make_cube_movie(root_directory + \
                 "sec_B_15hr_41-69_cleaned_clean_map_I_with_A.npy",
@@ -112,17 +123,6 @@ make_cube_movie(root_directory + "sec_B_15hr_41-69_cleaned_clean_map_I.npy",
 make_cube_movie(root_directory + "sec_B_15hr_41-69_cleaned_noise_inv_I.npy",
                 "sec_B_15hr_41-69_cleaned_noise_inv_I",
                 "Covariance", "movies/sec_B_15hr_41-69_cleaned_noise_inv_I",
-                sigmarange=-1)
-sys.exit()
-
-root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/combined_maps/"
-make_cube_movie(root_directory + "combined_41-73_cleaned_clean.npy",
-                "combined_41-73_cleaned_clean",
-                "Temperature", "movies/combined_41-73_cleaned_clean",
-                sigmarange=4.)
-make_cube_movie(root_directory + "combined_41-73_cleaned_noise_inv.npy",
-                "combined_41-73_cleaned_noise_inv",
-                "Covariance", "movies/combined_41-73_cleaned_noise_inv",
                 sigmarange=-1)
 sys.exit()
 

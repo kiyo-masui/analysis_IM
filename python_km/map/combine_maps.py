@@ -4,6 +4,34 @@ from core import algebra
 from correlate import wigglez_xcorr as wxc
 
 fourway_split = {
+    'root_data': "/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test1/",
+    'maplist': ["sec_A_15hr_41-73_cleaned_clean_map_I_with_B",
+               "sec_A_15hr_41-73_cleaned_clean_map_I_with_C",
+               "sec_A_15hr_41-73_cleaned_clean_map_I_with_D",
+               "sec_B_15hr_41-73_cleaned_clean_map_I_with_A",
+               "sec_B_15hr_41-73_cleaned_clean_map_I_with_C",
+               "sec_B_15hr_41-73_cleaned_clean_map_I_with_D",
+               "sec_C_15hr_41-73_cleaned_clean_map_I_with_A",
+               "sec_C_15hr_41-73_cleaned_clean_map_I_with_B",
+               "sec_C_15hr_41-73_cleaned_clean_map_I_with_D",
+               "sec_D_15hr_41-73_cleaned_clean_map_I_with_A",
+               "sec_D_15hr_41-73_cleaned_clean_map_I_with_B",
+               "sec_D_15hr_41-73_cleaned_clean_map_I_with_C"],
+    'covlist': ["sec_A_15hr_41-73_cleaned_noise_inv_I_with_B",
+               "sec_A_15hr_41-73_cleaned_noise_inv_I_with_C",
+               "sec_A_15hr_41-73_cleaned_noise_inv_I_with_D",
+               "sec_B_15hr_41-73_cleaned_noise_inv_I_with_A",
+               "sec_B_15hr_41-73_cleaned_noise_inv_I_with_C",
+               "sec_B_15hr_41-73_cleaned_noise_inv_I_with_D",
+               "sec_C_15hr_41-73_cleaned_noise_inv_I_with_A",
+               "sec_C_15hr_41-73_cleaned_noise_inv_I_with_B",
+               "sec_C_15hr_41-73_cleaned_noise_inv_I_with_D",
+               "sec_D_15hr_41-73_cleaned_noise_inv_I_with_A",
+               "sec_D_15hr_41-73_cleaned_noise_inv_I_with_B",
+               "sec_D_15hr_41-73_cleaned_noise_inv_I_with_C"]
+}
+
+fourway_split_0 = {
     'root_data': "/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test/",
     'maplist': ["sec_A_15hr_41-73_cleaned_clean_map_I_with_B",
                "sec_A_15hr_41-73_cleaned_clean_map_I_with_C",
