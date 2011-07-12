@@ -11,15 +11,18 @@ from correlate import correlation_plots as cp
 import multiprocessing
 rootdir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/batch_runs/"
 
-# run1:
-# node: sunnyvale
-# selection function: not separable, 1000 catalogs
-# radio map: A cleaned with D
-# threading turned off
-# notes: job did not complete because of 48 hour limit
-# errors: filename has _sep even though separability was not assumed
-# errors: THESE MAPS ONLY HAD 2 MODES REMOVED
-# TODO: fix filenames for this run or just throw it out
+# note that notes are purely human-readable and the keys do not mean anything
+run1_notes = {
+    "runname": "run1",
+    "machine": "sunnyvale",
+    "selection_function": "not separable, 1000 catalogs",
+    "radio_map": "A cleaned with D",
+    "threading": "off",
+    "error_1": "job did not complete because of 48-hour limit",
+    "error_2": "filename has _sep even though separability was not assumed",
+    "error_3": "THESE MAPS ONLY HAD 2 MODES REMOVED",
+    "todo": "file filenames"
+    }
 batch1_param = {
     "path": rootdir + "data_run1",
     "rand:list": {"prefix": "opt_x_radio_mapArand",
@@ -29,16 +32,19 @@ batch1_param = {
                               60, 61, 62, 63, 64, 97, 98, 99],
                   "indexfmt": "%03d",
                   "id_prefix": "rand"},
-    "signal:file": "opt_x_radio_mapA_noconv_sep"
+    "signal:file": "opt_x_radio_mapA_noconv_sep",
+    "notes": run1_notes
     }
 
-# run2:
-# node: sunnyvale
-# selection function: no separable, 1000 catalogs
-# radio map: A cleaned with D
-# threading turned on
-# errors: THESE MAPS ONLY HAD 2 MODES REMOVED
-# notes: should be same as run1, but all 100 rand. catalogs finished
+run2_notes = {
+    "runname": "run1",
+    "machine": "sunnyvale",
+    "selection_function": "not separable, 1000 catalogs",
+    "radio_map": "A cleaned with D",
+    "threading": "on",
+    "note": "should be same as run1, but all 100 rand. catalogs finished",
+    "error": "THESE MAPS ONLY HAD 2 MODES REMOVED",
+    }
 batch2_param = {
     "path": rootdir + "data_run2",
     "rand:list": {"prefix": "opt_x_radio_mapArand",
@@ -46,15 +52,18 @@ batch2_param = {
                   "indices": range(100),
                   "indexfmt": "%03d",
                   "id_prefix": "rand"},
-    "signal:file": "opt_x_radio_mapA_noconv"
+    "signal:file": "opt_x_radio_mapA_noconv",
+    "notes": run2_notes
     }
 
-# run3:
-# node: sunnyvale
-# selection function: separable, 1000 catalogs
-# radio map: A cleaned with D
-# errors: THESE MAPS ONLY HAD 2 MODES REMOVED
-# threading turned on
+run3_notes = {
+    "runname": "run3",
+    "machine": "sunnyvale",
+    "selection_function": "separable, 1000 catalogs",
+    "radio_map": "A cleaned with D",
+    "threading": "on",
+    "error": "THESE MAPS ONLY HAD 2 MODES REMOVED",
+    }
 batch3_param = {
     "path": rootdir + "data_run3",
     "rand:list": {"prefix": "opt_x_radio_mapArand",
@@ -62,15 +71,18 @@ batch3_param = {
                   "indices": range(100),
                   "indexfmt": "%03d",
                   "id_prefix": "rand"},
-    "signal:file": "opt_x_radio_mapA_noconv_sep"
+    "signal:file": "opt_x_radio_mapA_noconv_sep",
+    "notes": run3_notes
     }
 
-# run4:
-# node: sunnyvale
-# selection function: separable, 1000 catalogs
-# radio map: weighted average of ABCD
-# errors: THESE MAPS ONLY HAD 2 MODES REMOVED
-# threading turned on
+run4_notes = {
+    "runname": "run4",
+    "machine": "sunnyvale",
+    "selection_function": "separable, 1000 catalogs",
+    "radio_map": "weighted average of ABCD",
+    "threading": "on",
+    "error": "THESE MAPS ONLY HAD 2 MODES REMOVED",
+    }
 batch4_param = {
     "path": rootdir + "data_run4",
     "rand:list": {"prefix": "opt_x_radio_combined_rand",
@@ -79,15 +91,17 @@ batch4_param = {
                   "indexfmt": "%03d",
                   "id_prefix": "rand"},
     "signal:file": "opt_x_radio_combined_noconv_sep",
-    "selxcorr:file": "optsel_x_radio_combined_noconv_sep"
+    "notes": run4_notes
     }
 
-# run5:
-# node: sunnyvale
-# selection function: separable, 1000 catalogs
-# radio map: sec A of Kiyo's old 2-way split (signal seen)
-# threading turned on
-# NOTE: this run also includes xcorr with selection function
+run5_notes = {
+    "runname": "run5",
+    "machine": "sunnyvale",
+    "selection_function": "separable, 1000 catalogs",
+    "radio_map": "sec A of Kiyo's old 2-way split (signal seen)",
+    "threading": "on",
+    "note": "this run also includes xcorr with selection function",
+    }
 truncated = range(100)
 truncated.remove(2)
 batch5_param = {
@@ -98,7 +112,8 @@ batch5_param = {
                   "indexfmt": "%03d",
                   "id_prefix": "rand"},
     "signal:file": "opt_x_radio_combined_noconv_sep",
-    "selxcorr:file": "optsel_x_radio_combined_noconv_sep"
+    "selxcorr:file": "optsel_x_radio_combined_noconv_sep",
+    "notes": run5_notes
     }
 
 
@@ -334,6 +349,16 @@ def plot_batch_correlations(filename, batch_param, dir_prefix="plots/",
         print "making the directory: " + dir_prefix
         os.makedirs(d)
 
+    # write out the notes if they exist
+    try:
+        outlog = open(dir_prefix + "notes.txt", 'w')
+        notes = batch_param["notes"]
+        for key in notes:
+            outlog.write(key + ": " + notes[key] + "\n")
+        outlog.write("\n")
+    except KeyError:
+        print "This batch did not have any notes"
+
     # pooled plotting
     # TODO: save a .txt file with the run params along with each plot
     runlist = []
@@ -352,11 +377,11 @@ def plot_batch_correlations(filename, batch_param, dir_prefix="plots/",
 
 
 if __name__ == '__main__':
-    process_batch_correlations("run1_correlations.shelve", batch1_param)
-    process_batch_correlations("run2_correlations.shelve", batch2_param)
-    process_batch_correlations("run3_correlations.shelve", batch3_param)
-    process_batch_correlations("run4_correlations.shelve", batch4_param)
-    process_batch_correlations("run5_correlations.shelve", batch5_param)
+    #process_batch_correlations("run1_correlations.shelve", batch1_param)
+    #process_batch_correlations("run2_correlations.shelve", batch2_param)
+    #process_batch_correlations("run3_correlations.shelve", batch3_param)
+    #process_batch_correlations("run4_correlations.shelve", batch4_param)
+    #process_batch_correlations("run5_correlations.shelve", batch5_param)
 
     #print compare_corr(batch2_param, batch3_param)
     #print compare_corr(batch1_param, batch2_param)
@@ -367,14 +392,14 @@ if __name__ == '__main__':
     #                        dir_prefix="plots/run2/")
     #plot_batch_correlations("run3_correlations.shelve", batch3_param,
     #                        dir_prefix="plots/run3/")
-    plot_batch_correlations("run4_correlations.shelve", batch4_param,
-                            dir_prefix="plots/run4/")
+    #plot_batch_correlations("run4_correlations.shelve", batch4_param,
+    #                        dir_prefix="plots/run4/")
     plot_batch_correlations("run5_correlations.shelve", batch5_param,
                             dir_prefix="plots/run5/",
                             color_range=[-0.04, 0.04])
 
-    batch_correlations_statistics("run1_correlations.shelve", batch1_param)
-    batch_correlations_statistics("run2_correlations.shelve", batch2_param)
-    batch_correlations_statistics("run3_correlations.shelve", batch3_param)
-    batch_correlations_statistics("run4_correlations.shelve", batch4_param)
-    batch_correlations_statistics("run5_correlations.shelve", batch5_param)
+    #batch_correlations_statistics("run1_correlations.shelve", batch1_param)
+    #batch_correlations_statistics("run2_correlations.shelve", batch2_param)
+    #batch_correlations_statistics("run3_correlations.shelve", batch3_param)
+    #batch_correlations_statistics("run4_correlations.shelve", batch4_param)
+    #batch_correlations_statistics("run5_correlations.shelve", batch5_param)
