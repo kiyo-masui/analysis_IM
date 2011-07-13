@@ -16,12 +16,29 @@ dbltype = np.int
 ctypedef np.float64_t dbltype_t
 
 
+def _int_fromfile(cls, file, colspec = None):
+        """Perform Interpolation from given file. 
+
+        Load up the file and generate an Interpolater.
+        
+        colspec - 2 element list of columns to interpolate
+        """
+        if colspec == None:
+            colspec = [0,1]
+
+        if len(colspec) != 2:
+            print cls, file, colspec
+            raise InterpolationException("Can only use two columns.")
+
+        d1 = np.loadtxt(file, usecols = colspec)
+        return cls(d1)
+
 class InterpolationException(Exception):
     """Exceptions in the Interpolation module. """
     pass
 
 
-cdef class Interpolater:
+cdef class Interpolater(object):
     """A class to interpolate data sets.
 
     This class performs cubic spline interpolation. See
@@ -32,20 +49,9 @@ cdef class Interpolater:
     cdef np.ndarray __data_
     cdef np.ndarray __y2_
 
-    @classmethod
-    def fromfile(cls, file, colspec = (0,1)):
-        """Perform Interpolation from given file. 
 
-        Load up the file and generate an Interpolater.
-        
-        colspec - 2 element list of columns to interpolate
-        """
-
-        if len(colspec) != 2:
-            raise InterpolationException("Can only use two columns.")
-
-        d1 = np.loadtxt(file, usecols = colspec)
-        return cls(d1)
+    fromfile = classmethod(_int_fromfile)
+    
     
     def __init__(self, data1, data2 = None):
         """Constructor to initialise from data. 
@@ -241,7 +247,7 @@ cdef class LogInterpolater(Interpolater):
                 r[index] = self.value_cdef(xv)
             return np.exp(r)
         
-        return self.value_cdef(x)
+        return np.exp(self.value_cdef(np.log(x)))
 
 
 

@@ -12,17 +12,18 @@ class Corr21cm(RedshiftCorrelation):
 
     """
 
-    def __init__(self, ps = None, redshift = 0.0):
+    def __init__(self, ps = None, redshift = 0.0, **kwargs):
         if ps == None:
             from os.path import join, dirname
             psfile = join(dirname(__file__),"data/ps_z1.5.dat")
             redshift = 1.5
 
-            kstar = 1.0
+            kstar = 50.0
             c1 = cs.LogInterpolater.fromfile(psfile)
             ps = lambda k: np.exp(-0.5 * k**2 / kstar**2) * c1(k)
 
         RedshiftCorrelation.__init__(self, ps_vv = ps, redshift = redshift)
+        #self._load_cache("data/corr_z1.5.dat")
         
 
     def T_b(self, z):
