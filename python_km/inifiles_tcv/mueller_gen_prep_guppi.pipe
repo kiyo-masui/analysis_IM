@@ -6,7 +6,9 @@ from core import dir_data
 
 import scipy as sp
 
-file_middles = tuple(dir_data.get_cal_files(range(66,69),'286',type='guppi'))
+#file_middles = tuple(dir_data.get_cal_files(range(66,69),'286',type='guppi'))
+file_middles = tuple(dir_data.get_cal_files(range(66,69),'48',type='guppi'))
+
 #file_middles = ('41_3C286_onoff_6-7','41_3C286_onoff_8-9','41_3C286_onoff_124-125','41_3C286_onoff_126-127','42_3C286_onoff_10-11','42_3C286_onoff_12-13','42_3C286_onoff_328-329','42_3C286_onoff_330-331', '43_3C286_onoff_156-157', '43_3C286_onoff_158-159', '43_3C286_onoff_6-7', '43_3C286_onoff_8-9', '44_3C286_onoff_13-14', '44_3C286_onoff_15-16', '44_3C286_onoff_363-364', '44_3C286_onoff_365-366', '44_3C286_onoff_367-368', '44_3C286_onoff_369-370', '45_3C286_onoff_138-139', '45_3C286_onoff_140-141', '45_3C286_onoff_6-7', '45_3C286_onoff_8-9')
 
 pipe_modules = []
@@ -18,9 +20,9 @@ kiyo_dir = os.getenv('GBT10B_KM')
 prefix = ''
 IFs = ()
 
-#from time_stream import flag_data
+from time_stream import flag_data
 # Comment this line to skip this step when running python pipeline/manager
-#pipe_modules.append(flag_data.FlagData)
+pipe_modules.append(flag_data.FlagData)
 fd_input_root = kiyo_dir + 'guppi_data/'
 fd_file_middles = file_middles
 fd_input_end = '.fits'
@@ -41,9 +43,9 @@ fd_time_cut = 40
 #fd_derivative_cuts = 5
 #fd_derivative_width = 1
 
-#from time_stream import rebin_freq
+from time_stream import rebin_freq
 # Comment this line to skip this step when running python pipeline/manager
-#pipe_modules.append(rebin_freq.RebinFreq)
+pipe_modules.append(rebin_freq.RebinFreq)
 rf_input_root = fd_output_root
 rf_file_middles = file_middles
 rf_input_end = '.fits'
@@ -57,9 +59,9 @@ rf_n_bins_combined = 16
 rf_mean_instead_median = False
 
  
-#from time_stream import rotate_pol 
+from time_stream import rotate_pol 
 # Comment this line to skip this step in pipline.
-#pipe_modules.append(rotate_pol.RotatePol)
+pipe_modules.append(rotate_pol.RotatePol)
 rp_input_root = rf_output_root 
 rp_file_middles = file_middles 
 rp_input_end = '.fits' 
@@ -82,6 +84,7 @@ tc_scans = ()
 tc_IFs = ()
 
 tc_mueler_file = base_dir + 'mueller_params/'
+#tc_mueler_file = ''
 
 #from time_stream import pol_cal
 # Comment this line to skip this step in pipline.

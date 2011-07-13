@@ -33,7 +33,7 @@ class Calibrate(base_single.BaseSingle) :
        	base_single.BaseSingle.__init__(self, parameter_file_or_dict,
                                         feedback)
 #        print self.params
-        # Read in the mueler matrix file.
+        # Read in the mueler matrix file. Moved to action
 #        i = self.file_ind
 #        file_middle = self.params['file_middles'][i]
 #        sess_num = file_middle.split('_')[0]
@@ -41,7 +41,7 @@ class Calibrate(base_single.BaseSingle) :
 #        print sess_num
 #        mueler_file_name = self.params['mueler_file']+str(sess_num)+'_mueller_matrix_from_params.txt'
 #        self.mueler
-#        mueler_file_name = self.params['mueler_file']+'41_mueller_matrix_from_params.txt'
+#        mueler_file_name = self.params['mueler_file']+'67_mueller_matrix_from_jones.txt'
 #        self.mueler = mueller(mueler_file_name)
     
     # This function tells BaseSingle what science to do.  Data is a
@@ -49,36 +49,36 @@ class Calibrate(base_single.BaseSingle) :
     # scan and a single IF.  BaseSingle knows how to loop over all of these.
     # More on DataBlock objects in the calibrate function below.
     def action(self, Data) :
-#        Data.calc_freq()
-#        frequency = Data.freq/1000000
-#        pl.plot(frequency,Data.data[0,0,0,:],label='I-init')
-#        pl.plot(frequency,Data.data[0,1,0,:],label='Q-init')
-#        pl.plot(frequency,Data.data[0,2,0,:],label='U-init')
-#        pl.plot(frequency,Data.data[0,3,0,:],label='V-init')
+        Data.calc_freq()
+        frequency = Data.freq/1000000
+        pl.plot(frequency,Data.data[0,0,0,:],label='I-init')
+        pl.plot(frequency,Data.data[0,1,0,:],label='Q-init')
+        pl.plot(frequency,Data.data[0,2,0,:],label='U-init')
+        pl.plot(frequency,Data.data[0,3,0,:],label='V-init')
 
         # Main Action
         i = self.file_ind
         file_middle = self.params['file_middles'][i]
         sess_num = file_middle.split('_')[0]
         sess_num = int(sess_num)
-        print sess_num
+#        print sess_num
         mueler_file_name = self.params['mueler_file']+str(sess_num)+'_mueller_matrix_from_params.txt'
         self.mueler = mueller(mueler_file_name)
         calibrate_pol(Data, self.mueler)
        	Data.add_history('Flux calibrated and Corrected for polarization leakage.', 
                	         ('Mueller matrix file: ' + self.params['mueler_file'],))
         
-#        pl.plot(frequency,Data.data[0,0,0,:],label='I-mod')
-#        pl.plot(frequency,Data.data[0,1,0,:],label='Q-mod')
-#        pl.plot(frequency,Data.data[0,2,0,:],label='U-mod')
-#        pl.plot(frequency,Data.data[0,3,0,:],label='V-mod')
-#        pl.legend()
-#        pl.ylim(-20,130)
-#        pl.xlabel("Frequency (MHz)")
-#        pl.ylabel("Sample Data")
-#        title0 = str(Data.field['SCAN'])+'_caloff_pol_params_'
-#        pl.savefig(title0+'Comparison_Test_for_3C286.png')
-#        pl.clf()
+        pl.plot(frequency,Data.data[0,0,0,:],label='I-mod')
+        pl.plot(frequency,Data.data[0,1,0,:],label='Q-mod')
+        pl.plot(frequency,Data.data[0,2,0,:],label='U-mod')
+        pl.plot(frequency,Data.data[0,3,0,:],label='V-mod')
+        pl.legend()
+        pl.ylim(-20,130)
+        pl.xlabel("Frequency (MHz)")
+        pl.ylabel("Sample Data")
+        title0 = str(Data.field['SCAN'])+'_caloff_pol_params_'
+        pl.savefig(title0+'Comparison_Test_for_3C48.png')
+        pl.clf()
 
        	return Data
 
