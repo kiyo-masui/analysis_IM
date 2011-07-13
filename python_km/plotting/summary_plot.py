@@ -116,6 +116,25 @@ batch5_param = {
     "notes": run5_notes
     }
 
+run6_notes = {
+    "runname": "run6",
+    "machine": "sunnyvale",
+    "selection_function": "separable, 1000 catalogs",
+    "radio_map": "weighted average of ABCD, 15 modes removed",
+    "threading": "on",
+    }
+batch6_param = {
+    "path": rootdir + "data_run6",
+    "rand:list": {"prefix": "opt_x_radio_combined_rand",
+                  "suffix": "_noconv_sep",
+                  "indices": range(100),
+                  "indexfmt": "%03d",
+                  "id_prefix": "rand"},
+    "signal:file": "opt_x_radio_combined_noconv_sep",
+    "selxcorr:file": "optsel_x_radio_combined_noconv_sep",
+    "notes": run6_notes
+    }
+
 
 def make_corr(filename, verbose=False, identifier=None):
     """wrap the plot correlation class which reads correlation object shelve
@@ -382,6 +401,7 @@ if __name__ == '__main__':
     #process_batch_correlations("run3_correlations.shelve", batch3_param)
     #process_batch_correlations("run4_correlations.shelve", batch4_param)
     #process_batch_correlations("run5_correlations.shelve", batch5_param)
+    process_batch_correlations("run6_correlations.shelve", batch6_param)
 
     #print compare_corr(batch2_param, batch3_param)
     #print compare_corr(batch1_param, batch2_param)
@@ -394,8 +414,11 @@ if __name__ == '__main__':
     #                        dir_prefix="plots/run3/")
     #plot_batch_correlations("run4_correlations.shelve", batch4_param,
     #                        dir_prefix="plots/run4/")
-    plot_batch_correlations("run5_correlations.shelve", batch5_param,
-                            dir_prefix="plots/run5/",
+    #plot_batch_correlations("run5_correlations.shelve", batch5_param,
+    #                        dir_prefix="plots/run5/",
+    #                        color_range=[-0.04, 0.04])
+    plot_batch_correlations("run6_correlations.shelve", batch6_param,
+                            dir_prefix="plots/run6/",
                             color_range=[-0.04, 0.04])
 
     #batch_correlations_statistics("run1_correlations.shelve", batch1_param)
@@ -403,3 +426,4 @@ if __name__ == '__main__':
     #batch_correlations_statistics("run3_correlations.shelve", batch3_param)
     #batch_correlations_statistics("run4_correlations.shelve", batch4_param)
     #batch_correlations_statistics("run5_correlations.shelve", batch5_param)
+    batch_correlations_statistics("run6_correlations.shelve", batch6_param)
