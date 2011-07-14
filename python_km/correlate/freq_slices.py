@@ -550,8 +550,8 @@ class NewSlices(object) :
                 svd_info = (vals, modes1, modes2)
                 svd_info_list.append(svd_info)
                 n_modes = params['modes']
-                Pair.modes1 = modes1[:,n_modes]
-                Pair.modes2 = modes2[:,n_modes]
+                Pair.modes1 = modes1[:n_modes]
+                Pair.modes2 = modes2[:n_modes]
             self.svd_info_list = svd_info_list
             self.Pairs = Pairs
             if params['save_svd_info']:
@@ -565,8 +565,8 @@ class NewSlices(object) :
                 Pairs[i].all_modes1 = svd_info[1]
                 Pairs[i].all_modes2 = svd_info[2]
                 n_modes = params['modes']
-                Pairs[i].modes1 = svd_info[1][:,n_modes]
-                Pairs[i].modes2 = svd_info[2][:,n_modes]
+                Pairs[i].modes1 = svd_info[1][:n_modes]
+                Pairs[i].modes2 = svd_info[2][:n_modes]
             self.Pairs = Pairs
 
         # Back to normal.
