@@ -38,6 +38,7 @@ params_init = {
                'save_maps' : False,
                'save_noises' : False,
                'save_modes' : False,
+               'pickle_slices' : False,
                # What frequencies to correlate:
                'freq' : (),
                # Angular lags at which to calculate the correlation.  Upper
@@ -46,7 +47,14 @@ params_init = {
                'convolve' : False,
                'sub_weighted_mean' : False,
                'modes' : 10,
+               # How long to run the program.
                'first_pass_only' : False,
+               'skip_fore_corr': False,
+               # saving and svd file used when wanting to skip fore corr.
+               'save_svd_info' : False,
+               # Saving and loading svd stuff occurs to the same file but
+               # never at the same time.
+               'svd_file' : '', # Must be a cPickle file
                'make_plots' : False,
                'factorizable_noise' : False,
                'no_weights' : False
@@ -499,69 +507,91 @@ class NewSlices(object) :
             for Pair in Pairs:
                 Pair.subtract_weighted_mean()
 
-        # Correlate the maps.
-        # Should not return anything, fore_corr should be saved in MapPair.
-# Before multiprocessing.
-#        self.fore_Pairs = []
-#        for Pair in Pairs:
-#            fore_corr, fore_counts = Pair.correlate(lags)
-#            Pair.fore_corr = fore_corr
-#            Pair.fore_counts = fore_counts
-#            self.fore_Pairs.append(copy.deepcopy(Pair))
-#        return
-# After :
-        fore_Pairs = []
-        processes_list = []
-#        for Pair in Pairs:
-        for ii in range(0, num_map_pairs):
-#            fore_muliproc(Pair)
-            p = multiprocessing.Process(target=multiproc,
+        self.Pairs = Pairs
+        # Since correlating takes so long, if you already have the svds
+        # you can skip this first correlation [since that's all it's really
+        # for and it is the same no matter how many modes you want].
+        # Note: MapPairs will not have anything saved in 'fore_corr' if you
+        # skip this correlation.
+        if not params['skip_fore_corr']:
+            # Correlate the maps.
+            fore_Pairs = []
+            processes_list = []
+#            for Pair in Pairs:
+            for ii in range(0, num_map_pairs):
+#                fore_muliproc(Pair)
+                p = multiprocessing.Process(target=multiproc,
                         args=([Pairs[ii], params['output_root'], ii, False]))
-            processes_list.append(p)
-            p.start()
-            #print(parent_conn.recv())
+                processes_list.append(p)
+                p.start()
+                #print(parent_conn.recv())
 
-#        while p.is_alive():
-        while True in [p.is_alive() for p in processes_list]:
-            print "processing"
-            time.sleep(5)
-        # just to be safe
-        time.sleep(1)
-        print "Loading Map Pairs back into program [a min or so wait]"
-        file_name = params['output_root']
-        file_name += "Map_Pair_for_freq_slices_fore_corr_"
-        for count in range(0, num_map_pairs):
-#        while path.exists(file_name+str(count)+".pkl"):
-            print "Loading correlation for Pair %d" %(count)
-            f = open(file_name+str(count)+".pkl", "r")
-            Pairs[count].fore_corr = cPickle.load(f)
-            fore_Pairs.append(Pairs[count])
-            f.close()
-        self.fore_Pairs = copy.deepcopy(fore_Pairs)
-        # To have fore_corr in self.Pairs, too, to not need
-        # self.fore_Pairs later.
-        self.Pairs = copy.deepcopy(fore_Pairs)
-        print "gung ho!"
-
-
+#            while p.is_alive():
+            while True in [p.is_alive() for p in processes_list]:
+                print "processing"
+                time.sleep(5)
+            # just to be safe
+            time.sleep(1)
+            print "Loading Map Pairs back into program [a min or so wait]"
+            file_name = params['output_root']
+            file_name += "Map_Pair_for_freq_slices_fore_corr_"
+            for count in range(0, num_map_pairs):
+#            while path.exists(file_name+str(count)+".pkl"):
+                print "Loading correlation for Pair %d" %(count)
+                f = open(file_name+str(count)+".pkl", "r")
+                Pairs[count].fore_corr = cPickle.load(f)
+                fore_Pairs.append(Pairs[count])
+                f.close()
+            self.fore_Pairs = copy.deepcopy(fore_Pairs)
+            # To have fore_corr in self.Pairs, too, to not need
+            # self.fore_Pairs later.
+            self.Pairs = copy.deepcopy(fore_Pairs)
+            print "gung ho!"
                 
-        Pairs = self.Pairs
-        # Subtract Foregrounds.
-        # TODO: Provide a list of integers for params["modes"] so we can try a
-        # few different numbers of modes to subtract.  This is computationally
-        # expensive.
-        for Pair in Pairs:
-            # Since these values are different for diff maps,
-            # can there be a 'final' one? [Like an average?]
-            vals, modes1, modes2 = get_freq_svd_modes(Pair.fore_corr, 
-                                                  params['modes'])
-            Pair.vals = vals
-            Pair.modes1 = modes1
-            Pair.modes2 = modes2
- #       self.vals = vals
- #       self.modes1 = modes1
- #       self.modes2 = modes2
+            Pairs = self.Pairs
+            # Get foregrounds.
+            # TODO: Provide a list of integers for params["modes"] so we can try a
+            # few different numbers of modes to subtract.  This is computationally
+            # expensive.
+            svd_info_list = []
+            for Pair in Pairs:
+                # Since these values are different for diff maps,
+                # can there be a 'final' one? [Like an average?]
+#                vals, modes1, modes2 = get_freq_svd_modes(Pair.fore_corr, 
+#                                                  params['modes'])
+#                Pair.vals = vals
+#                Pair.modes1 = modes1
+#                Pair.modes2 = modes2
+                vals, modes1, modes2 = get_freq_svd_modes(Pair.fore_corr,
+                                                   len(freq))
+                Pair.vals = vals
+                Pair.all_modes1 = modes1
+                Pair.all_modes2 = modes2
+                svd_info = (vals, modes1, modes2)
+                svd_info_list.append(svd_info)
+                n_modes = params['modes']
+                Pair.modes1 = modes1[:n_modes]
+                Pair.modes2 = modes2[:n_modes]
+            self.svd_info_list = svd_info_list
+            self.Pairs = Pairs
+            if params['save_svd_info']:
+                save_svd_info(self.svd_info_list, params['svd_file'])
+        else: # First correlation and svd has been skipped.
+            self.svd_info_list = load_svd_info(params['svd_file'])
+            # Set the svd info to the Pairs.
+            for i in range(0, len(Pairs)):
+                svd_info = self.svd_info_list[i]
+                Pairs[i].vals = svd_info[0]
+                Pairs[i].all_modes1 = svd_info[1]
+                Pairs[i].all_modes2 = svd_info[2]
+                n_modes = params['modes']
+                Pairs[i].modes1 = svd_info[1][:n_modes]
+                Pairs[i].modes2 = svd_info[2][:n_modes]
+            self.Pairs = Pairs
 
+        # Back to normal.
+
+        # Subtract foregrounds.
 #        for Pair in Pairs:
         for ii in range(0, len(Pairs)):            
             Pairs[ii].subtract_frequency_modes(Pairs[ii].modes1, 
@@ -621,6 +651,10 @@ class NewSlices(object) :
         if params["make_plots"] :
             print "Plots not supported for multiple pairs."
  #           self.make_plots()
+
+        if params['pickle_slices']:
+            pickle_slices(self)
+
         return
             
     def make_plots(self) :
@@ -893,8 +927,28 @@ def save_data(F, save_maps=False, save_noises=False, save_modes=False):
             algebra.save(L_modes_savename, Pair.L_modes)
             algebra.save(R_modes_savename, Pair.R_modes)
 
+def save_svd_info(svd_info_list, svd_file):
+    """cPickle the svd_info_list to file with name svd_file.
+    svd_file should be the full pathname."""
+    f = open(svd_file,'w')
+    cPickle.dump(svd_info_list,f)
+    f.close()
 
+def load_svd_info(svd_file):
+    """Return svd_info_list saved in file with name svd_file.
+    svd_file should be the full pathname."""
+    f = open(svd_file,'r')
+    svd_info_list = cPickle.load(f)
+    f.close()
+    return svd_info_list
 
+def pickle_slices(F):
+    """Pickle F to the output directory from the ini file.F is the 
+    New_Slices object which contains ALL the data."""
+    pickle_file = F.params['output_root'] + 'New_Slices_object.pkl'
+    f = open(pickle_file, 'w')
+    cPickle.dump(F,f)
+    f.close()
 
 
 
