@@ -8,6 +8,7 @@ import time
 import os
 import cPickle
 import random as rn
+import time
 
 import scipy as sp
 import numpy.ma as ma
@@ -299,7 +300,7 @@ class MapPair(object) :
 #            algebra.save(save_file, Map2) # outmap)
 
 
-    def correlate(self, lags=(), threading=False):
+    def correlate(self, lags=(), speedup=False):
         """Calculate the cross correlation function of the maps.
 
         The cross correlation function is a funciton of f1, f2 and angular lag.
@@ -358,32 +359,50 @@ class MapPair(object) :
         lag = sp.sqrt(lag)
         # Bin this up.
         lag_inds = sp.digitize(lag.flatten(), lags)
-        print "Starting Correlation."
 
-        # Threading is inserted here as a trial; if it works,
-        # TODO: use compute() for non-threaded calculation using for loop
-        # Threading becomes IO bound on chime at CPU~200%, reasonable speed up
-        if threading: 
-            def compute(n):
-                (if1, jf2) = n
-                # Calculate the pairwise products.
-                data1 = map1[if1,:,:]
-                data2 = map2[jf2,:,:]
-                weights1 = noise1[if1,:,:]
-                weights2 = noise2[jf2,:,:]
-                dprod = data1[...,None,None] * data2[None,None,...]
-                wprod = weights1[...,None,None] * weights2[None,None,...]
-                for klag in range(nlags) :
-                    mask = lag_inds == klag
-                    corr[if1,jf2,klag] += sp.sum(dprod.flatten()[mask])
-                    counts[if1,jf2,klag] += sp.sum(wprod.flatten()[mask])
-                print if1, jf2 #, counts[if1, jf2,:] # TODO: REMOVE ME
+        if speedup: 
+            print "Starting Correlation (sparse version)"
+            (nr1, nd1) = (len(r1), len(d1))
+            (nr2, nd2) = (len(r2), len(d2))
+            (r1ind, d1ind) = (sp.arange(nr1), sp.arange(nd1))
+            (r2ind, d2ind) = (sp.arange(nr2), sp.arange(nd2))
+            r1 = r1ind.repeat(nr2*nd1*nd2)
+            r2 = sp.tile(r2ind.repeat(nd2), (1,nr1*nd1)).flatten()
+            d1 = sp.tile(d1ind.repeat(nr2*nd2), (1,nr1)).flatten()
+            d2 = sp.tile(d2ind, (1,nr1*nr2*nd1)).flatten()
 
-            ht.foreach(compute, itertools.product(range(len(freq1)),
-                                                  range(len(freq2))))
-        else:
+            # precalculate the pair indices for a given lag
+            # could also imagine calculating the map slices here
+            # but 
+            posmaskdict = {}
+            for klag in range(nlags):
+                mask = lag_inds == klag
+                posmaskdict[repr(klag)] = (r1[mask], r2[mask], d1[mask], d2[mask])
+
             for if1 in range(len(freq1)):
                 for jf2 in range(len(freq2)):
+                    start = time.time()
+
+                    data1 = map1[if1,:,:]
+                    data2 = map2[jf2,:,:]
+                    weights1 = noise1[if1,:,:]
+                    weights2 = noise2[jf2,:,:]
+
+                    for klag in range(nlags) :
+                        # cached, but written out:
+                        #dprod = data1[r1[mask],d1[mask]]*data2[r2[mask],d2[mask]]
+                        #wprod = weights1[r1[mask],d1[mask]]*weights2[r2[mask],d2[mask]]
+                        (r1m, r2m, d1m, d2m) = posmaskdict[repr(klag)]
+                        dprod = data1[r1m, d1m]*data2[r2m, d2m]
+                        wprod = weights1[r1m, d1m]*weights2[r2m, d2m]
+                        corr[if1,jf2,klag] += sp.sum(dprod)
+                        counts[if1,jf2,klag] += sp.sum(wprod)
+                    print if1, jf2, (time.time() - start), counts[if1, jf2,:] # TODO: REMOVE ME
+        else:
+            print "Starting Correlation (full version)"
+            for if1 in range(len(freq1)):
+                for jf2 in range(len(freq2)):
+                    start = time.time()
                     # Calculate the pairwise products.
                     data1 = map1[if1,:,:]
                     data2 = map2[jf2,:,:]
@@ -395,7 +414,7 @@ class MapPair(object) :
                         mask = lag_inds == klag
                         corr[if1,jf2,klag] += sp.sum(dprod.flatten()[mask])
                         counts[if1,jf2,klag] += sp.sum(wprod.flatten()[mask])
-                    print if1, jf2 #, counts[if1, jf2,:] # TODO: REMOVE ME
+                    print if1, jf2, (time.time() - start), counts[if1, jf2,:] # TODO: REMOVE ME
 
         corr /= counts
 

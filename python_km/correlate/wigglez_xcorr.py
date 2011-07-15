@@ -38,7 +38,7 @@ params_default = {
       'output_shelve_file': 'test.shelve',
       'convolve': False,
       'subtract_mean': True,
-      'threading': False
+      'speedup': False
       }
 prefix = 'fs_'
 
@@ -185,7 +185,7 @@ def wigglez_correlation(init_filename):
         cross_pair.subtract_weighted_mean()
 
     (corr, counts) = cross_pair.correlate(params['lags'],
-                            threading=params['threading'])
+                            speedup=params['speedup'])
 
     corr_shelve = shelve.open(params['output_shelve_file'])
     corr_shelve["corr"] = corr
@@ -324,6 +324,6 @@ if __name__ == '__main__':
         print "no arguments given, just doing some user-specified nonsense \
                instead"
         coloraxis_a = np.linspace(-0.2, 0.2, 100, endpoint=True)
-        plot_crosscorr("data/opt_x_radio_mapArand097_noconv_sep.shelve",
-                       "stupid.png", title="ok", collapse=False,
+        plot_crosscorr("data/opt_x_radio_mapA_noconv_sep.shelve",
+                       "signal_xcorr.png", title="opt_x_radio_mapA_noconv", collapse=True,
                        coloraxis=coloraxis_a )

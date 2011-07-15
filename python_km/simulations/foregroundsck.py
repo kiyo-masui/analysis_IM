@@ -38,11 +38,16 @@ class ForegroundSCK(ForegroundMap):
 
     _cf_int = None
 
-    def angular_powerspectrum(self, larray):
-        psarray =  self.A*(1e-6*(larray**2).sum(axis = 2))**(-self.beta / 2.0)
-        psarray[0,0] = 0.0
+    def angular_ps(self, larray):
+        psarray =  self.A*(1e-3*larray)**(-self.beta)
+
+        if isinstance(larray, np.ndarray):
+            psarray[np.where(larray == 0)] = 0.0
 
         return psarray
+
+    def angular_powerspectrum(self, larray):
+        return self.angular_ps((larray**2).sum(axis=2)**0.5)
 
     def frequency_covariance(self, nu1, nu2):
         return (self.frequency_variance(nu1) * self.frequency_variance(nu2))**0.5 * self.frequency_correlation(nu1, nu2)
@@ -102,7 +107,7 @@ class ForegroundSCK(ForegroundMap):
                 larr = np.arange(nmin,nmax+1).astype(np.float64)
                 pl = lpn(nmax, np.cos(theta))[0][nmin:]
                 
-                return ((2*larr+1.0)*pl*self.angular_powerspectrum(larr)).sum() / (4*np.pi)
+                return ((2*larr+1.0)*pl*self.angular_ps(larr)).sum() / (4*np.pi)
 
             tarr = np.linspace(0, np.pi, 1000)
             cfarr = cf(tarr)

@@ -73,8 +73,8 @@ class Map3d(object):
 
     nu_num = 128
 
-    nu_lower = 120.0
-    nu_upper = 325.0
+    nu_lower = 500.0
+    nu_upper = 900.0
 
     @classmethod
     def like_map(cls, mapobj, *args, **kwargs):
@@ -108,4 +108,6 @@ class Map3d(object):
 
     @property
     def nu_pixels(self):
-        return ((np.arange(self.nu_num) + 0.5) * ((self.nu_upper - self.nu_lower) / self.nu_num))
+        return (self.nu_lower + (np.arange(self.nu_num) + 0.5) * ((self.nu_upper - self.nu_lower) / self.nu_num))
+
+
