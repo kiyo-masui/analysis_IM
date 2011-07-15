@@ -136,6 +136,26 @@ batch6_param = {
     "notes": run6_notes
     }
 
+run7_notes = {
+    "runname": "run7",
+    "machine": "sunnyvale",
+    "selection_function": "separable, 1000 catalogs",
+    "radio_map": "weighted average of ABCD, 15 modes removed",
+    "speedup": "on",
+    "notes": "should match run6 exactly, but with new correlate()"
+    }
+batch7_param = {
+    "path": rootdir + "data_run7",
+    "rand:list": {"prefix": "opt_x_radio_combined_rand",
+                  "suffix": "_noconv_sep",
+                  "indices": range(100),
+                  "indexfmt": "%03d",
+                  "id_prefix": "rand"},
+    "signal:file": "opt_x_radio_combined_noconv_sep",
+    "selxcorr:file": "optsel_x_radio_combined_noconv_sep",
+    "notes": run7_notes
+    }
+
 
 def make_corr(filename, verbose=False, identifier=None):
     """wrap the plot correlation class which reads correlation object shelve
@@ -282,6 +302,7 @@ def compare_corr(batchlist_a, batchlist_b, print_params=False):
 
     common_ids = set(filedict_a.keys()).union(set(filedict_b.keys()))
 
+    difflist = []
     for ident in common_ids:
         try:
             file_a = filedict_a[ident]
@@ -295,9 +316,10 @@ def compare_corr(batchlist_a, batchlist_b, print_params=False):
             #print "dataset 2 does not have index " + ident
             file_b = None
 
-        difflist = []
         if file_a and file_b:
-            difference = compare_corr_one(file_a, file_b, print_params=print_params)
+            difference = compare_corr_one(file_a + ".shelve", 
+                                          file_b + ".shelve",
+                                          print_params=print_params)
             difflist.append((difference, file_a, file_b))
 
     return difflist
@@ -406,19 +428,19 @@ def plot_batch_correlations(filename, batch_param, dir_prefix="plots/",
 
 
 if __name__ == '__main__':
-    compare_corr_one("opt_x_radio_mapA_noconv_fast.shelve", 
-                     "opt_x_radio_mapA_noconv_fastest.shelve", print_params=False)
-    sys.exit()
+    #compare_corr_one("opt_x_radio_mapA_noconv_fast.shelve", 
+    #                 "opt_x_radio_mapA_noconv_fastest.shelve", print_params=False)
 
     #process_batch_correlations("run1_correlations.shelve", batch1_param)
     #process_batch_correlations("run2_correlations.shelve", batch2_param)
     #process_batch_correlations("run3_correlations.shelve", batch3_param)
     #process_batch_correlations("run4_correlations.shelve", batch4_param)
     #process_batch_correlations("run5_correlations.shelve", batch5_param)
-    process_batch_correlations("run6_correlations.shelve", batch6_param)
+    #process_batch_correlations("run6_correlations.shelve", batch6_param)
 
     #print compare_corr(batch2_param, batch3_param)
     #print compare_corr(batch1_param, batch2_param)
+    print compare_corr(batch6_param, batch7_param)
 
     #plot_batch_correlations("run1_correlations.shelve", batch1_param,
     #                        dir_prefix="plots/run1b/")
@@ -431,13 +453,13 @@ if __name__ == '__main__':
     #plot_batch_correlations("run5_correlations.shelve", batch5_param,
     #                        dir_prefix="plots/run5/",
     #                        color_range=[-0.04, 0.04])
-    plot_batch_correlations("run6_correlations.shelve", batch6_param,
-                            dir_prefix="plots/run6/",
-                            color_range=[-0.04, 0.04])
+    #plot_batch_correlations("run6_correlations.shelve", batch6_param,
+    #                        dir_prefix="plots/run6/",
+    #                        color_range=[-0.04, 0.04])
 
     #batch_correlations_statistics("run1_correlations.shelve", batch1_param)
     #batch_correlations_statistics("run2_correlations.shelve", batch2_param)
     #batch_correlations_statistics("run3_correlations.shelve", batch3_param)
     #batch_correlations_statistics("run4_correlations.shelve", batch4_param)
     #batch_correlations_statistics("run5_correlations.shelve", batch5_param)
-    batch_correlations_statistics("run6_correlations.shelve", batch6_param)
+    #batch_correlations_statistics("run6_correlations.shelve", batch6_param)
