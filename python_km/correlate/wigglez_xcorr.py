@@ -38,7 +38,7 @@ params_default = {
       'output_shelve_file': 'test.shelve',
       'convolve': False,
       'subtract_mean': True,
-      'threading': False
+      'speedup': False
       }
 prefix = 'fs_'
 
@@ -185,7 +185,7 @@ def wigglez_correlation(init_filename):
         cross_pair.subtract_weighted_mean()
 
     (corr, counts) = cross_pair.correlate(params['lags'],
-                            threading=params['threading'])
+                            speedup=params['speedup'])
 
     corr_shelve = shelve.open(params['output_shelve_file'])
     corr_shelve["corr"] = corr
