@@ -37,6 +37,7 @@ params_init = {
                'save_maps' : False,
                'save_noises' : False,
                'save_modes' : False,
+               'pickle_slices' : False,
                # What frequencies to correlate:
                'freq' : (),
                # Angular lags at which to calculate the correlation.  Upper
@@ -631,6 +632,10 @@ class NewSlices(object) :
         if params["make_plots"] :
             print "Plots not supported for multiple pairs."
  #           self.make_plots()
+
+        if params['pickle_slices']:
+            pickle_slices(self)
+
         return
             
     def make_plots(self) :
@@ -917,6 +922,15 @@ def load_svd_info(svd_file):
     svd_info_list = cPickle.load(f)
     f.close()
     return svd_info_list
+
+def pickle_slices(F):
+    """Pickle F to the output directory from the ini file.F is the 
+    New_Slices object which contains ALL the data."""
+    pickle_file = F.params['output_root'] + 'New_Slices_object.pkl'
+    f = open(pickle_file, 'w')
+    cPickle.dump(F,f)
+    f.close()
+
 
 
 
