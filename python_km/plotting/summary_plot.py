@@ -1,6 +1,7 @@
 """Make summary plots of the binned correlation functions for large sets of
 random catalogs """
 import os
+import sys
 import string
 import shelve
 import numpy as np
@@ -250,6 +251,30 @@ def tuple_list_to_dict(list_in):
     return dict_out
 
 
+def compare_corr_one(file_a, file_b, print_params=False):
+    corr_a_shelve = shelve.open(file_a)
+    corr_b_shelve = shelve.open(file_b)
+    corr_a = corr_a_shelve["corr"]
+    corr_b = corr_b_shelve["corr"]
+
+    delta = np.max(corr_a - corr_b)
+    #print corr_a - corr_b
+    difference = False
+    if (delta != 0.):
+        difference = True
+        print "-" * 80
+        print "comparing " + file_a, file_b
+        print np.max(corr_a), np.max(corr_b), np.max(corr_a - corr_b)
+        if print_params:
+            run_params_a = corr_a_shelve["params"]
+            run_params_b = corr_b_shelve["params"]
+            print run_params_a
+            print run_params_b
+    else:
+        print "comparing " + file_a, file_b
+
+    return difference
+
 def compare_corr(batchlist_a, batchlist_b, print_params=False):
     """Compare two sets of correlation function runs"""
     filedict_a = tuple_list_to_dict(make_shelve_names(batchlist_a))
@@ -270,27 +295,12 @@ def compare_corr(batchlist_a, batchlist_b, print_params=False):
             #print "dataset 2 does not have index " + ident
             file_b = None
 
-        difference = False
+        difflist = []
         if file_a and file_b:
-            corr_a_shelve = shelve.open(file_a)
-            corr_b_shelve = shelve.open(file_b)
-            corr_a = corr_a_shelve["corr"]
-            corr_b = corr_b_shelve["corr"]
-            delta = np.max(corr_a - corr_b)
-            if (delta != 0.):
-                difference = True
-                print "-" * 80
-                print "comparing " + file_a, file_b
-                print np.max(corr_a), np.max(corr_b), np.max(corr_a - corr_b)
-                if print_params:
-                    run_params_a = corr_a_shelve["params"]
-                    run_params_b = corr_b_shelve["params"]
-                    print run_params_a
-                    print run_params_b
-            else:
-                print "comparing " + file_a, file_b
+            difference = compare_corr_one(file_a, file_b, print_params=print_params)
+            difflist.append((difference, file_a, file_b))
 
-    return difference
+    return difflist
 
 
 def wrap_make_corr(runitem):
@@ -396,6 +406,10 @@ def plot_batch_correlations(filename, batch_param, dir_prefix="plots/",
 
 
 if __name__ == '__main__':
+    compare_corr_one("opt_x_radio_mapA_noconv_fast.shelve", 
+                     "opt_x_radio_mapA_noconv_fastest.shelve", print_params=False)
+    sys.exit()
+
     #process_batch_correlations("run1_correlations.shelve", batch1_param)
     #process_batch_correlations("run2_correlations.shelve", batch2_param)
     #process_batch_correlations("run3_correlations.shelve", batch3_param)
