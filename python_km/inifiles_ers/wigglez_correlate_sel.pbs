@@ -1,5 +1,5 @@
 #!/bin/csh 
-#PBS -l nodes=1:ppn=3
+#PBS -l nodes=1:ppn=1
 #PBS -q workq
 #PBS -r n
 #PBS -l walltime=48:00:00
