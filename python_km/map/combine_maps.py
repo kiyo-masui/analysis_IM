@@ -59,6 +59,18 @@ fourway_split_0 = {
                "sec_D_15hr_41-73_cleaned_noise_inv_I_with_C"]
 }
 
+cleanmaps_fourway = {
+    'root_data': "/mnt/raid-project/gmrt/kiyo/wiggleZ/maps/",
+    'maplist': ["sec_A_15hr_41-73_clean_map_I",
+                "sec_B_15hr_41-73_clean_map_I",
+                "sec_C_15hr_41-73_clean_map_I",
+                "sec_D_15hr_41-73_clean_map_I"],
+    "covlist": ["sec_A_15hr_41-73_noise_inv_I",
+                "sec_B_15hr_41-73_noise_inv_I",
+                "sec_C_15hr_41-73_noise_inv_I",
+                "sec_D_15hr_41-73_noise_inv_I"]
+}
+
 # TODO: Sec B N^-1 is erroneous so we use Sec A N^-1
 # TODO: Sec A N^-1 is inverted
 old_twoway = {
@@ -71,9 +83,10 @@ old_twoway = {
 }
 
 
-def combine_maps(param_dict):
+def combine_maps(param_dict, fullcov=False):
     """combines a list of maps as a weighted mean using a specified list of
     inverse covariance weights
+    fullcov indicates that it is not just the diagonal and should be squashed
     """
     covlist = param_dict["covlist"]
     try:
@@ -94,10 +107,17 @@ def combine_maps(param_dict):
         (tagname, multiplier) = cov_entry
         print "multiplier " + repr(multiplier)
 
-        # zero out any messy stuff
-        raw_weight = algebra.make_vect(algebra.load(
+        if fullcov:
+            raw_weight = algebra.make_mat(
+                            algebra.open_memmap(param_dict["root_data"] + \
+                                                tagname + ".npy", mode='r'))
+            raw_weight = raw_weight.mat_diag()
+        else:
+            raw_weight = algebra.make_vect(algebra.load(
                                 param_dict["root_data"] + tagname + ".npy"))
 
+
+        # zero out any messy stuff
         raw_weight *= multiplier
         raw_weight[raw_weight < 1.e-20] = 0.
         raw_weight[np.isnan(raw_weight)] = 0.
@@ -132,7 +152,12 @@ def combine_maps(param_dict):
     return (newmap, newweights, prodmap[0])
 
 if __name__ == '__main__':
-    (map_out, weights_out, prodmap_out) = combine_maps(fourway_split)
-    algebra.save("combined_41-73_cleaned_clean_test.npy", map_out)
-    algebra.save("combined_41-73_cleaned_noise_inv_test.npy", weights_out)
-    algebra.save("combined_41-73_cleaned_product_test.npy", prodmap_out)
+    #(map_out, weights_out, prodmap_out) = combine_maps(fourway_split)
+    #algebra.save("combined_41-73_cleaned_clean_test.npy", map_out)
+    #algebra.save("combined_41-73_cleaned_noise_inv_test.npy", weights_out)
+    #algebra.save("combined_41-73_cleaned_product_test.npy", prodmap_out)
+    (map_out, weights_out, prodmap_out) = combine_maps(cleanmaps_fourway,
+                                                       fullcov=True)
+    algebra.save("combined_41-73_clean_test.npy", map_out)
+    algebra.save("combined_41-73_noise_inv_test.npy", weights_out)
+    algebra.save("combined_41-73_product_test.npy", prodmap_out)
