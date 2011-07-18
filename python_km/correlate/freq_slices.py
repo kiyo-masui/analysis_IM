@@ -930,6 +930,11 @@ def save_data(F, save_maps=False, save_noises=False, save_modes=False):
 def save_svd_info(svd_info_list, svd_file):
     """cPickle the svd_info_list to file with name svd_file.
     svd_file should be the full pathname."""
+    # Check saving folder exists.
+    pickle_out_root = os.path.dirname(svd_file)
+    if not os.path.isdir(pickle_out_root):
+        os.mkdir(pickle_out_root)
+    # Save.
     f = open(svd_file,'w')
     cPickle.dump(svd_info_list,f)
     f.close()
@@ -945,7 +950,12 @@ def load_svd_info(svd_file):
 def pickle_slices(F):
     """Pickle F to the output directory from the ini file.F is the 
     New_Slices object which contains ALL the data."""
-    pickle_file = F.params['output_root'] + 'New_Slices_object.pkl'
+    # Check folder exists.
+    out_root = F.params['output_root']
+    if not os.path.isdir(out_root):
+        os.mkdir(out_root)
+    # Save.
+    pickle_file = out_root + 'New_Slices_object.pkl'
     f = open(pickle_file, 'w')
     cPickle.dump(F,f)
     f.close()
