@@ -703,9 +703,9 @@ def control_correlation(Pair, lags, final):
     .fore_counts."""
      
     if final:
-        Pair.corr, Pair.counts = Pair.correlate(lags)
+        Pair.corr, Pair.counts = Pair.correlate(lags, speedup=True)
     else:
-        Pair.fore_corr, Pair.fore_counts = Pair.correlate(lags)
+        Pair.fore_corr, Pair.fore_counts = Pair.correlate(lags, speedup=True)
 
 def get_corr_and_std_3D(corr_list):
     '''Return the average correlation and the std for each point in
@@ -1575,11 +1575,11 @@ def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
 if __name__ == '__main__' :
     import sys
     if len(sys.argv) == 2 :
-        FreqSlices(str(sys.argv[1])).execute()
+        NewSlices(str(sys.argv[1])).execute()
     elif len(sys.argv) > 2:
         print 'Maximum one argument, a parameter file name.'
     else :
-        FreqSlices().execute()
+        NewSlices().execute()
         
 
 
