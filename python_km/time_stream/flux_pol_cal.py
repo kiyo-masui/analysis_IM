@@ -41,8 +41,8 @@ class Calibrate(base_single.BaseSingle) :
 #        print sess_num
 #        mueler_file_name = self.params['mueler_file']+str(sess_num)+'_mueller_matrix_from_params.txt'
 #        self.mueler
-#        mueler_file_name = self.params['mueler_file']+'67_mueller_matrix_from_jones.txt'
-#        self.mueler = mueller(mueler_file_name)
+        mueler_file_name = self.params['mueler_file']+'67_mueller_matrix_from_jones.txt'
+        self.mueler = mueller(mueler_file_name)
     
     # This function tells BaseSingle what science to do.  Data is a
     # core.data_block.DataBlock object.  It holds all the data for a single
@@ -57,13 +57,13 @@ class Calibrate(base_single.BaseSingle) :
         pl.plot(frequency,Data.data[0,3,0,:],label='V-init')
 
         # Main Action
-        i = self.file_ind
-        file_middle = self.params['file_middles'][i]
-        sess_num = file_middle.split('_')[0]
-        sess_num = int(sess_num)
+#        i = self.file_ind
+#        file_middle = self.params['file_middles'][i]
+#        sess_num = file_middle.split('_')[0]
+#        sess_num = int(sess_num)
 #        print sess_num
-        mueler_file_name = self.params['mueler_file']+str(sess_num)+'_mueller_matrix_from_params.txt'
-        self.mueler = mueller(mueler_file_name)
+#        mueler_file_name = self.params['mueler_file']+str(sess_num)+'_mueller_matrix_from_params.txt'
+#        self.mueler = mueller(mueler_file_name)
         calibrate_pol(Data, self.mueler)
        	Data.add_history('Flux calibrated and Corrected for polarization leakage.', 
                	         ('Mueller matrix file: ' + self.params['mueler_file'],))
