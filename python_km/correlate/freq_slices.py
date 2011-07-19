@@ -539,7 +539,9 @@ class NewSlices(object) :
 #            while path.exists(file_name+str(count)+".pkl"):
                 print "Loading correlation for Pair %d" %(count)
                 f = open(file_name+str(count)+".pkl", "r")
-                Pairs[count].fore_corr = cPickle.load(f)
+                correlate_results = cPickle.load(f)
+                Pairs[count].fore_corr = correlate_results[0]
+                Pairs[count].fore_counts = correlate_results[1]
                 fore_Pairs.append(Pairs[count])
                 f.close()
             self.fore_Pairs = copy.deepcopy(fore_Pairs)
@@ -635,7 +637,9 @@ class NewSlices(object) :
         for count in range(0, num_map_pairs):
             print "Loading correlation for Pair %d" %(count)
             f = open(file_name+str(count)+".pkl", "r")
-            Pairs[count].corr = cPickle.load(f)
+            correlate_results = cPickle.load(f)
+            Pairs[count].corr = correlate_results[0]
+            Pairs[count].counts = correlate_results[1]
             temp_Pair_list.append(Pairs[count])
             f.close()
         self.Pairs = copy.deepcopy(temp_Pair_list)
@@ -683,11 +687,11 @@ def multiproc(Pair, save_dir, pair_number, final):
     if final:
         file_name += "Map_Pair_for_freq_slices_corr_" + \
                         str(pair_number) + ".pkl"
-        to_save = Pair.corr
+        to_save = (Pair.corr, Pair.counts)
     else:
         file_name += "Map_Pair_for_freq_slices_fore_corr_" + \
                         str(pair_number) + ".pkl"
-        to_save = Pair.fore_corr
+        to_save = (Pair.fore_corr, Pair.fore_counts) 
     f = open(file_name, "w")
     print "Writing to: ",
     print file_name
