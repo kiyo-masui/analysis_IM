@@ -189,6 +189,7 @@ def wigglez_correlation(init_filename):
 
     corr_shelve = shelve.open(params['output_shelve_file'])
     corr_shelve["corr"] = corr
+    corr_shelve["counts"] = counts
     corr_shelve["freq_axis"] = map_radio.get_axis('freq')
     corr_shelve["params"] = params
     corr_shelve.close()

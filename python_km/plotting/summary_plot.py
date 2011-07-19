@@ -437,10 +437,11 @@ if __name__ == '__main__':
     #process_batch_correlations("run4_correlations.shelve", batch4_param)
     #process_batch_correlations("run5_correlations.shelve", batch5_param)
     #process_batch_correlations("run6_correlations.shelve", batch6_param)
+    #process_batch_correlations("run7_correlations.shelve", batch7_param)
 
     #print compare_corr(batch2_param, batch3_param)
     #print compare_corr(batch1_param, batch2_param)
-    print compare_corr(batch6_param, batch7_param)
+    #print compare_corr(batch6_param, batch7_param)
 
     #plot_batch_correlations("run1_correlations.shelve", batch1_param,
     #                        dir_prefix="plots/run1b/")
@@ -456,6 +457,9 @@ if __name__ == '__main__':
     #plot_batch_correlations("run6_correlations.shelve", batch6_param,
     #                        dir_prefix="plots/run6/",
     #                        color_range=[-0.04, 0.04])
+    plot_batch_correlations("run7_correlations.shelve", batch7_param,
+                            dir_prefix="plots/run7/",
+                            color_range=[-0.04, 0.04])
 
     #batch_correlations_statistics("run1_correlations.shelve", batch1_param)
     #batch_correlations_statistics("run2_correlations.shelve", batch2_param)
@@ -463,3 +467,4 @@ if __name__ == '__main__':
     #batch_correlations_statistics("run4_correlations.shelve", batch4_param)
     #batch_correlations_statistics("run5_correlations.shelve", batch5_param)
     #batch_correlations_statistics("run6_correlations.shelve", batch6_param)
+    #batch_correlations_statistics("run7_correlations.shelve", batch7_param)
