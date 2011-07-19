@@ -415,8 +415,12 @@ class MapPair(object) :
                         corr[if1,jf2,klag] += sp.sum(dprod.flatten()[mask])
                         counts[if1,jf2,klag] += sp.sum(wprod.flatten()[mask])
                     print if1, jf2, (time.time() - start), counts[if1, jf2,:] # TODO: REMOVE ME
-
+        
+        mask = counts < 1e-20
+        counts[mask] = 1
         corr /= counts
+        corr[mask] = 0
+        counts[mask] = 0
 
         return corr, counts
 
@@ -813,7 +817,7 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
         freq2 = freq1
     # Default is equal weights.
     if weights is None :
-        weights = sp.zeros_like(corr) + 1.0
+        weights = sp.ones_like(corr)
     corr *= weights
     
     nf1 = corr.shape[0]
@@ -829,7 +833,6 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
     
     # Loop over all frequency pairs and bin by lag.
     for ii in range(nf1) :
-        print ii
         for jj in range(nf2) :
             f_lag = abs(freq1[ii] - freq2[jj])
             bin_ind = sp.digitize([f_lag], fbins)[0]
@@ -839,7 +842,7 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
     # Normalize dealing with 0 weight points explicitly.
     bad_inds = out_weights < 1.0e-20
     out_weights[bad_inds] = 1.0
-    out_corr/=out_weights
+    out_corr /= out_weights
     out_weights[bad_inds] = 0.0
     
     if return_fbins:
@@ -864,6 +867,7 @@ def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
         raise ValueError(msg)
     if weights is None:
         weights = sp.ones_like(corr)
+    corr *= weights
     # Hard code conversion factors to MPc/h for now.
     a_fact = 34.0 # Mpc/h per degree at 800MHz.
     f_fact = 4.5 # Mpc/h per MHz at 800MHz.
@@ -885,8 +889,6 @@ def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
     # Rebin.
     for jj in range(R.shape[0]) :
         bin_inds = sp.digitize(R[jj,:], lags)
-        print R[jj,:]
-        print bin_inds
         for ii in range(nbins):
             out_corr[ii] += sp.sum(corr[jj,bin_inds==ii])
             out_weights[ii] += sp.sum(weights[jj,bin_inds==ii])
