@@ -164,6 +164,28 @@ batch7_param = {
     "notes": run7_notes
     }
 
+run8_notes = {
+    "runname": "mode_xcorr_run1",
+    "machine": "sunnyvale",
+    "selection_function": "separable, 1000 catalogs",
+    "radio_map": "weighted average of ABCD, 0-25 modes removed",
+    "speedup": "on"
+    }
+batch8_param = {
+    "path": rootdir + "mode_xcorr_run1",
+    "mode:list": {"prefix": "opt_x_radio_combined_mode",
+                  "suffix": "_noconv_sep",
+                  "indices": range(26),
+                  "indexfmt": "%d",
+                  "id_prefix": "mode"},
+    "nullmode:list": {"prefix": "opt_x_radio_combined_nullmode",
+                  "suffix": "_noconv_sep",
+                  "indices": range(26),
+                  "indexfmt": "%d",
+                  "id_prefix": "nullmode"},
+    "notes": run8_notes
+    }
+
 
 def make_corr_old(filename, verbose=False, identifier=None):
     """wrap the plot correlation class which reads correlation object shelve
@@ -227,6 +249,7 @@ def make_corr(filename, verbose=False, identifier=None):
     try:
         corr_counts = corr_shelve["counts"]
     except KeyError:
+        print "WARNING: unable to find counts weighting for correlation"
         corr_counts = None
 
     if identifier:
@@ -249,12 +272,13 @@ def make_corr(filename, verbose=False, identifier=None):
     frange = run_params["freq"]
     realrange = corr_shelve["freq_axis"]
     corr_2D = fs.rebin_corr_freq_lag(corr, realrange[list(frange)],
-                                     weights=corr_counts, return_fbins=True)
+                                     weights=corr_counts, return_fbins=True, nfbins=200)
     corr_1D = fs.collapse_correlation_1D(corr_2D[0], corr_2D[2], lags, weights=corr_2D[1])
 
     output["run_params"] = run_params
     output["lags"] = run_params["lags"]
     output["corr"] = corr
+    output["corr_counts"] = corr_counts
     output["freq"] = run_params["freq"]
     output["freq_axis"] = corr_shelve["freq_axis"]
     output["corr1D"] = corr_1D[0]
@@ -288,11 +312,9 @@ def plot_corr(shelve_entry, filename, title, coloraxis=None):
                                  shelve_entry["corr1D"],
                                  cross_power=True, title=title)
 
-    # TODO set this contoure plotter back up
-    #plobj.plot_contour(filename + "_contour.png",
-    #                    lag_inds=range(len(run_params["lags"])),
-    #                    cross_power=True, title=title,
-    #                    coloraxis=coloraxis)
+    plot_contour(filename + "_contour.png", shelve_entry["corr2D_fbins"],
+                 shelve_entry["lags"], shelve_entry["corr2D"],
+                 cross_power=True, title=title, coloraxis=coloraxis)
 
 
 def plot_corr_old(shelve_entry, filename, title, coloraxis=None):
@@ -382,6 +404,7 @@ def compare_corr_one(file_a, file_b, print_params=False):
 
     return difference
 
+
 def compare_corr(batchlist_a, batchlist_b, print_params=False):
     """Compare two sets of correlation function runs"""
     filedict_a = tuple_list_to_dict(make_shelve_names(batchlist_a))
@@ -466,8 +489,9 @@ def batch_correlations_statistics(filename, batch_param, randtoken="rand"):
 
     ranstd = np.std(rancats, axis=0)
     ranmean = np.mean(rancats, axis=0)
-    rancov = numpy.cov(rancats)
-    plot_covariance(rancov, "bin-bin_cov.png")
+    rancov = np.corrcoef(rancats, rowvar=0)
+    plot_covariance(rancov, "bin-bin_cov.png",
+                    axis_labels = shelve_entry["corr1D_lags"])
     print "average binned correlation function and signal \n" + "-" * 80
     output_package = zip(shelve_signal["corr1D_lags"], ranmean,
                                          ranstd, shelve_signal["corr1D"])
@@ -554,26 +578,69 @@ def plot_batch_correlations(filename, batch_param, dir_prefix="plots/",
 
 
 # TODO: label lag axes better 
-def plot_covariance(matrix_in, filename, mask_lower=True):
+def plot_covariance(matrix_in, filename, axis_labels = [], mask_lower=False):
     if mask_lower:
         mask =  np.tri(matrix_in.shape[0], k=-1)
         matrix_in = np.ma.array(matrix_in, mask=mask) # mask out the lower triangle
-    fig = lpt.figure()
+    fig = plt.figure()
     ax1 = fig.add_subplot(111)
     cmap = cm.get_cmap('jet', 10) 
     cmap.set_bad('w') 
-    ax1.imshow(matrix_in, interpolation="nearest", cmap=cmap)
-    ax1.grid(True)
+    cax = ax1.imshow(matrix_in, interpolation="nearest", cmap=cmap)
+    plt.xlabel("lag (Mpc/h)")
+    plt.ylabel("lag (Mpc/h)")
+    if (len(axis_labels) > 0):
+        print axis_labels
+        ax1.set_xticks(range(len(axis_labels)))
+        ax1.set_yticks(range(len(axis_labels)))
+        ax1.set_xticklabels(axis_labels.astype(np.integer))
+        ax1.set_yticklabels(axis_labels.astype(np.integer))
+    #ax1.grid(True)
+    c = fig.colorbar(cax)
+    c.ax.set_ylabel("correlation")
+    plt.savefig(filename)
+
+
+def plot_contour(filename, fbins, lags, corr2D,
+                 cross_power=True, title=None, coloraxis=[]):
+    a = plt.figure()
+
+    if cross_power:
+        corr2D = corr2D * 1.e3
+    else:
+        corr2D = sp.sign(corr2D) * sp.sqrt(abs(corr2D)) * 1e3
+
+    #a.set_figwidth(a.get_figwidth() / 3.0)
+    if len(coloraxis) > 0:
+        f = plt.contourf(lags, (fbins) / 1e6, corr2D, coloraxis)
+    else:
+        f = plt.contourf(lags, (fbins) / 1e6, corr2D)
+
+    f.ax.set_xscale('log')
+    f.ax.set_yscale('log')
+
+    plt.axis('scaled')
+    plt.xlim((0.05, 0.9))
+    plt.ylim((0.8, 100))
+    plt.xlabel("angular lag, $\sigma$ (degrees, 34$\cdotp$Mpc/h)")
+    plt.ylabel("frequency lag, $\pi$ (MHz, 4.5$\cdotp$Mpc/h)")
+    plt.title(title)
+    #c = plt.colorbar(f, ticks=coloraxis)
+    c = plt.colorbar(f)
+
+    c.ax.set_ylabel("correlation (mK)")
     plt.savefig(filename)
 
 
 # TODO implement error option
 def plot_collapsed(filename, sep_lags, corr1D, errors=None, save_old=False,
-                               plot_old=False, cross_power=True, title=None):
+                   plot_old=False, cross_power=True, title=None,
+                   ylog=False):
     nbins = len(sep_lags)
     a = plt.figure()
     ax = plt.gca()
-    ax.set_yscale("log")
+    if ylog:
+        ax.set_yscale("log")
     ax.set_xscale("log")
     elin = 2
     msize = 6
@@ -585,14 +652,18 @@ def plot_collapsed(filename, sep_lags, corr1D, errors=None, save_old=False,
 
     plt.plot(sep_lags, corr1D, linestyle='None', marker='o',
                          color='b', markersize=msize) 
-    plt.plot(sep_lags, -corr1D, linestyle='None', marker='o',
-                         color='r', markersize=msize) 
+    if ylog:
+        plt.plot(sep_lags, -corr1D, linestyle='None', marker='o',
+                             color='r', markersize=msize) 
 
     # model
     t_lags = sp.arange(0.1, 100, 0.1)
     r0 = 5.5
     rb = 7.0
-    t = (sp.sqrt(((rb + t_lags) / r0)**(-1.8)))
+    t = sp.sqrt(((rb + t_lags) / r0)**(-1.8))
+    if cross_power:
+        t *= t 
+
     t = t * 0.15 / t[0]
     f = plt.plot(t_lags, t, marker='None', color='k', linestyle='-')
 
@@ -600,6 +671,9 @@ def plot_collapsed(filename, sep_lags, corr1D, errors=None, save_old=False,
         plt.axis([1.5, 100, 0.0001, 10.])
     else:
         plt.axis([1.5, 100, 0.01, 500.0])
+    
+    if not ylog:
+        plt.axis([1.5, 100, -0.05, 0.12])
 
     plt.xlabel('lag (Mpc/h)')
     plt.ylabel('correlation (mK)')
@@ -619,6 +693,7 @@ if __name__ == '__main__':
     #process_batch_correlations("run7_correlations.shelve", batch7_param)
     #process_batch_correlations("run5_correlations_newcorr.shelve", batch5_param)
     #process_batch_correlations("run7_correlations_newcorr.shelve", batch7_param)
+    process_batch_correlations("run8_correlations_modes.shelve", batch8_param)
 
     #print compare_corr(batch2_param, batch3_param)
     #print compare_corr(batch1_param, batch2_param)
@@ -643,7 +718,10 @@ if __name__ == '__main__':
     #                        color_range=[-0.04, 0.04])
     #plot_batch_correlations("run7_correlations_newcorr.shelve", batch7_param,
     #                        dir_prefix="plots/run7n/",
-    #                        color_range=[-0.04, 0.04])
+    #                        color_range=[-10, 10])
+    plot_batch_correlations("run8_correlations_modes.shelve", batch8_param,
+                            dir_prefix="plots/run8/",
+                            color_range=[-10, 10])
 
     #batch_correlations_statistics("run1_correlations.shelve", batch1_param)
     #batch_correlations_statistics("run2_correlations.shelve", batch2_param)
@@ -653,4 +731,4 @@ if __name__ == '__main__':
     #batch_correlations_statistics("run6_correlations.shelve", batch6_param)
     #batch_correlations_statistics("run7_correlations.shelve", batch7_param)
     #batch_correlations_statistics("run5_correlations_newcorr.shelve", batch5_param)
-    batch_correlations_statistics("run7_correlations_newcorr.shelve", batch7_param)
+    #batch_correlations_statistics("run7_correlations_newcorr.shelve", batch7_param)
