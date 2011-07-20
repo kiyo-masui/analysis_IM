@@ -20,9 +20,9 @@ import shelve
 from map import beam
 # TODO: this seemed to be necessary on the Sunnyvale compute nodes because it
 # was clobbing the python path?
-#import sys, site
-#site.addsitedir('/home/eswitzer/local/lib/')
-#site.addsitedir('/home/eswitzer/local/lib/python2.6/site-packages/')
+import sys, site
+site.addsitedir('/home/eswitzer/local/lib/')
+site.addsitedir('/home/eswitzer/local/lib/python2.6/site-packages/')
 
 # TODO: delete /mnt/raid-project/gmrt/eswitzer/wiggleZ/maps/sec_A_15hr_41-73_clean_map_I.npy
 
