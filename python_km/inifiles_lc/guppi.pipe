@@ -1,5 +1,17 @@
 # Pipeline file for guppi data.
 
+
+
+
+
+
+
+######## HAVE GBT10B_TCV SET IN BASH FILE ############
+
+### FLUX CAL ONLY WORKS UP TIL 78 RIGHT NOW #########
+
+
+
 import os
 
 from core import dir_data
@@ -45,6 +57,8 @@ middles_d = tuple(dir_data.get_data_files(range(60,74), '15hr',
 
 base_dir = os.getenv('GBT10B_OUT')
 data_dir = os.getenv('GBT10B_KM') + '/guppi_data/'
+tcv_dir = os.getenv('GBT10B_TCV')
+
 prefix = ''
 map_prefix = '' + field + '_' + '41-73' + '_'
 
@@ -109,9 +123,42 @@ rp_IFs = ()
 rp_new_pols = (1,)
 rp_average_cals = True
 
+##### FLUX CAL #####
+
+from time_stream import flux_pol_cal
+pipe_modules.append(flux_pol_cal.Calibrate)
+tc_input_root = rp_output_root
+tc_file_middles = file_middles
+tc_input_end = '.fits'
+tc_output_root = base_dir + 'flux_pol_cal/'
+tc_output_end = '.fits'
+tc_scans = ()
+tc_IFs = ()
+
+tc_mueler_file = tcv_dir + 'mueller_params/'
+
+from time_stream import combine_cal
+# Comment this line to skip this step in pipeline
+pipe_modules.append(combine_cal.CombineCal)
+cc_input_root =tc_output_root
+cc_file_middles = file_middles
+cc_input_end = '.fits'
+cc_output_root = base_dir + 'combined/'
+cc_output_end = '.fits'
+cc_scans = ()
+cc_IFs = ()
+
+cc_subtract_time_mean = False
+cc_average_cal_states = True
+#c_weights = (0.5, 0.5)
+#cc_weights = (0.0, 1.0)
+
+#### END FLUX CAL #####
+
 from map import dirty_map
 pipe_modules.append(dirty_map.DirtyMapMaker)
-dm_input_root = rp_output_root
+#dm_input_root = rp_output_root
+dm_input_root = cc_output_root
 dm_file_middles = file_middles
 dm_input_end = '.fits'
 dm_output_root = base_dir + 'maps/' + map_prefix
