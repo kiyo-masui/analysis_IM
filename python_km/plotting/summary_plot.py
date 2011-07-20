@@ -9,6 +9,7 @@ import scipy as sp
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 from correlate import correlation_plots as cp
 from correlate import freq_slices as fs
 import multiprocessing
@@ -461,16 +462,18 @@ def batch_correlations_statistics(filename, batch_param, randtoken="rand"):
 
     # TODO: have it be smarter about this rather than assume "signal" exists
     shelve_signal = master["signal"]
+    master.close()
 
     ranstd = np.std(rancats, axis=0)
     ranmean = np.mean(rancats, axis=0)
+    rancov = numpy.cov(rancats)
+    plot_covariance(rancov, "bin-bin_cov.png")
     print "average binned correlation function and signal \n" + "-" * 80
     output_package = zip(shelve_signal["corr1D_lags"], ranmean,
                                          ranstd, shelve_signal["corr1D"])
     for (lag, cdat, cdaterr, sig) in output_package:
         print lag, cdat, cdaterr, sig
 
-    master.close()
     return output_package
 
 
@@ -549,6 +552,21 @@ def plot_batch_correlations(filename, batch_param, dir_prefix="plots/",
 
     master.close()
 
+
+# TODO: label lag axes better 
+def plot_covariance(matrix_in, filename, mask_lower=True):
+    if mask_lower:
+        mask =  np.tri(matrix_in.shape[0], k=-1)
+        matrix_in = np.ma.array(matrix_in, mask=mask) # mask out the lower triangle
+    fig = lpt.figure()
+    ax1 = fig.add_subplot(111)
+    cmap = cm.get_cmap('jet', 10) 
+    cmap.set_bad('w') 
+    ax1.imshow(matrix_in, interpolation="nearest", cmap=cmap)
+    ax1.grid(True)
+    plt.savefig(filename)
+
+
 # TODO implement error option
 def plot_collapsed(filename, sep_lags, corr1D, errors=None, save_old=False,
                                plot_old=False, cross_power=True, title=None):
@@ -599,7 +617,7 @@ if __name__ == '__main__':
     #process_batch_correlations("run5_correlations.shelve", batch5_param)
     #process_batch_correlations("run6_correlations.shelve", batch6_param)
     #process_batch_correlations("run7_correlations.shelve", batch7_param)
-    process_batch_correlations("run5_correlations_newcorr.shelve", batch5_param)
+    #process_batch_correlations("run5_correlations_newcorr.shelve", batch5_param)
     #process_batch_correlations("run7_correlations_newcorr.shelve", batch7_param)
 
     #print compare_corr(batch2_param, batch3_param)
@@ -634,5 +652,5 @@ if __name__ == '__main__':
     #batch_correlations_statistics("run5_correlations.shelve", batch5_param)
     #batch_correlations_statistics("run6_correlations.shelve", batch6_param)
     #batch_correlations_statistics("run7_correlations.shelve", batch7_param)
-    batch_correlations_statistics("run5_correlations_newcorr.shelve", batch5_param)
-    #batch_correlations_statistics("run7_correlations_newcorr.shelve", batch7_param)
+    #batch_correlations_statistics("run5_correlations_newcorr.shelve", batch5_param)
+    batch_correlations_statistics("run7_correlations_newcorr.shelve", batch7_param)
