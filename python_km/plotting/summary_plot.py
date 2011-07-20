@@ -8,11 +8,18 @@ import numpy as np
 import scipy as sp
 import matplotlib
 matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 from correlate import correlation_plots as cp
+from correlate import freq_slices as fs
 import multiprocessing
-rootdir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/batch_runs/"
+# TODO: strip out _old binning code functions
+# TODO: convert batch params into ini files
+# TODO: make sure all methods here used counts/weights as-saved
+# TODO: new methods are fast enough that no need to partition binning plotting,
+# and statistics; still use multiprocessing
 
 # note that notes are purely human-readable and the keys do not mean anything
+rootdir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/batch_runs/"
 run1_notes = {
     "runname": "run1",
     "machine": "sunnyvale",
@@ -152,12 +159,12 @@ batch7_param = {
                   "indexfmt": "%03d",
                   "id_prefix": "rand"},
     "signal:file": "opt_x_radio_combined_noconv_sep",
-    "selxcorr:file": "optsel_x_radio_combined_noconv_sep",
+    #"selxcorr:file": "optsel_x_radio_combined_noconv_sep",
     "notes": run7_notes
     }
 
 
-def make_corr(filename, verbose=False, identifier=None):
+def make_corr_old(filename, verbose=False, identifier=None):
     """wrap the plot correlation class which reads correlation object shelve
     files"""
     output = {}
@@ -207,8 +214,87 @@ def make_corr(filename, verbose=False, identifier=None):
 
     return output
 
+def make_corr(filename, verbose=False, identifier=None):
+    """wrap the plot correlation class which reads correlation object shelve
+    files; uses new binning methods in freq-slices"""
+    output = {}
+    corr_shelve = shelve.open(filename + ".shelve")
+
+    corr = corr_shelve["corr"]
+    run_params = corr_shelve["params"]
+
+    try:
+        corr_counts = corr_shelve["counts"]
+    except KeyError:
+        corr_counts = None
+
+    if identifier:
+        print "binning the correlation function in: " + filename + \
+              ".shelve" + " with id=" + identifier
+    else:
+        print "binning the correlation function in: " + filename + \
+              ".shelve"
+
+    if verbose:
+        for key in run_params:
+            print key + ": " + repr(run_params[key])
+        #np.set_printoptions(threshold=np.nan)
+        #print corr_shelve["corr"]
+
+    corr[np.isnan(corr)] = 0.
+    corr[np.isinf(corr)] = 0.
+
+    lags = sp.array(run_params["lags"])
+    frange = run_params["freq"]
+    realrange = corr_shelve["freq_axis"]
+    corr_2D = fs.rebin_corr_freq_lag(corr, realrange[list(frange)],
+                                     weights=corr_counts, return_fbins=True)
+    corr_1D = fs.collapse_correlation_1D(corr_2D[0], corr_2D[2], lags, weights=corr_2D[1])
+
+    output["run_params"] = run_params
+    output["lags"] = run_params["lags"]
+    output["corr"] = corr
+    output["freq"] = run_params["freq"]
+    output["freq_axis"] = corr_shelve["freq_axis"]
+    output["corr1D"] = corr_1D[0]
+    output["corr1D_weights"] = corr_1D[1]
+    output["corr1D_lags"] = corr_1D[2]
+    output["corr2D"] = corr_2D[0]
+    output["corr2D_weights"] = corr_2D[1]
+    output["corr2D_fbins"] = corr_2D[2]
+    if identifier:
+        output["identifier"] = identifier
+
+    return output
+
 
 def plot_corr(shelve_entry, filename, title, coloraxis=None):
+    """make plots for a single correlation function (internal)"""
+
+    print "plotting " + filename
+    outlog = open(filename + ".txt", 'w')
+    run_params = shelve_entry["run_params"]
+    outlog.write("run parameters \n" + "-" * 80 + "\n")
+    for key in run_params:
+        outlog.write(key + ": " + repr(run_params[key]) + "\n")
+    outlog.write("\n")
+
+    outlog.write("binned correlation function \n" + "-" * 80 + "\n")
+    for (lag, cdat) in zip(shelve_entry["corr1D_lags"], shelve_entry["corr1D"]):
+        outlog.write(repr(lag) + repr(cdat) + "\n")
+
+    plot_collapsed(filename + ".png", shelve_entry["corr1D_lags"],
+                                 shelve_entry["corr1D"],
+                                 cross_power=True, title=title)
+
+    # TODO set this contoure plotter back up
+    #plobj.plot_contour(filename + "_contour.png",
+    #                    lag_inds=range(len(run_params["lags"])),
+    #                    cross_power=True, title=title,
+    #                    coloraxis=coloraxis)
+
+
+def plot_corr_old(shelve_entry, filename, title, coloraxis=None):
     """make plots for a single correlation function (internal)"""
 
     print "plotting " + filename
@@ -369,6 +455,43 @@ def batch_correlations_statistics(filename, batch_param, randtoken="rand"):
     for (run_id, run_file) in randlist:
         print run_file
         shelve_entry = master[run_id]
+        rancats[index, :] = shelve_entry["corr1D"]
+        #ranaxis = shelve_entry["sep_lags"]
+        index += 1
+
+    # TODO: have it be smarter about this rather than assume "signal" exists
+    shelve_signal = master["signal"]
+
+    ranstd = np.std(rancats, axis=0)
+    ranmean = np.mean(rancats, axis=0)
+    print "average binned correlation function and signal \n" + "-" * 80
+    output_package = zip(shelve_signal["corr1D_lags"], ranmean,
+                                         ranstd, shelve_signal["corr1D"])
+    for (lag, cdat, cdaterr, sig) in output_package:
+        print lag, cdat, cdaterr, sig
+
+    master.close()
+    return output_package
+
+
+def batch_correlations_statistics_old(filename, batch_param, randtoken="rand"):
+    """bin a large batch of correlation functions"""
+    master = shelve.open(filename)
+    filelist = make_shelve_names(batch_param)
+
+    # make a sublist of calculated correlations for just the random trials
+    randlist = []
+    for item in filelist:
+        if string.find(item[0], randtoken) != -1:
+            randlist.append(item)
+
+    print "number of random catalogs to stack: " + repr(len(randlist))
+    # TODO remove 10 magic number and have it figure this out instead
+    rancats = np.zeros((len(randlist), 10))
+    index = 0
+    for (run_id, run_file) in randlist:
+        print run_file
+        shelve_entry = master[run_id]
         rancats[index, :] = shelve_entry["pdat"]
         #ranaxis = shelve_entry["sep_lags"]
         index += 1
@@ -426,6 +549,44 @@ def plot_batch_correlations(filename, batch_param, dir_prefix="plots/",
 
     master.close()
 
+# TODO implement error option
+def plot_collapsed(filename, sep_lags, corr1D, errors=None, save_old=False,
+                               plot_old=False, cross_power=True, title=None):
+    nbins = len(sep_lags)
+    a = plt.figure()
+    ax = plt.gca()
+    ax.set_yscale("log")
+    ax.set_xscale("log")
+    elin = 2
+    msize = 6
+
+    if cross_power:
+        corr1D *= 1e3
+    else:
+        corr1D = sp.sign(corrf) * sp.sqrt(abs(corrf)) * 1e3
+
+    plt.plot(sep_lags, corr1D, linestyle='None', marker='o',
+                         color='b', markersize=msize) 
+    plt.plot(sep_lags, -corr1D, linestyle='None', marker='o',
+                         color='r', markersize=msize) 
+
+    # model
+    t_lags = sp.arange(0.1, 100, 0.1)
+    r0 = 5.5
+    rb = 7.0
+    t = (sp.sqrt(((rb + t_lags) / r0)**(-1.8)))
+    t = t * 0.15 / t[0]
+    f = plt.plot(t_lags, t, marker='None', color='k', linestyle='-')
+
+    if cross_power:
+        plt.axis([1.5, 100, 0.0001, 10.])
+    else:
+        plt.axis([1.5, 100, 0.01, 500.0])
+
+    plt.xlabel('lag (Mpc/h)')
+    plt.ylabel('correlation (mK)')
+    plt.title(title)
+    plt.savefig(filename)
 
 if __name__ == '__main__':
     #compare_corr_one("opt_x_radio_mapA_noconv_fast.shelve", 
@@ -438,6 +599,8 @@ if __name__ == '__main__':
     #process_batch_correlations("run5_correlations.shelve", batch5_param)
     #process_batch_correlations("run6_correlations.shelve", batch6_param)
     #process_batch_correlations("run7_correlations.shelve", batch7_param)
+    process_batch_correlations("run5_correlations_newcorr.shelve", batch5_param)
+    #process_batch_correlations("run7_correlations_newcorr.shelve", batch7_param)
 
     #print compare_corr(batch2_param, batch3_param)
     #print compare_corr(batch1_param, batch2_param)
@@ -457,9 +620,12 @@ if __name__ == '__main__':
     #plot_batch_correlations("run6_correlations.shelve", batch6_param,
     #                        dir_prefix="plots/run6/",
     #                        color_range=[-0.04, 0.04])
-    plot_batch_correlations("run7_correlations.shelve", batch7_param,
-                            dir_prefix="plots/run7/",
-                            color_range=[-0.04, 0.04])
+    #plot_batch_correlations("run7_correlations.shelve", batch7_param,
+    #                        dir_prefix="plots/run7/",
+    #                        color_range=[-0.04, 0.04])
+    #plot_batch_correlations("run7_correlations_newcorr.shelve", batch7_param,
+    #                        dir_prefix="plots/run7n/",
+    #                        color_range=[-0.04, 0.04])
 
     #batch_correlations_statistics("run1_correlations.shelve", batch1_param)
     #batch_correlations_statistics("run2_correlations.shelve", batch2_param)
@@ -468,3 +634,5 @@ if __name__ == '__main__':
     #batch_correlations_statistics("run5_correlations.shelve", batch5_param)
     #batch_correlations_statistics("run6_correlations.shelve", batch6_param)
     #batch_correlations_statistics("run7_correlations.shelve", batch7_param)
+    batch_correlations_statistics("run5_correlations_newcorr.shelve", batch5_param)
+    #batch_correlations_statistics("run7_correlations_newcorr.shelve", batch7_param)
