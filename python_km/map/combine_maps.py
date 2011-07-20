@@ -1,63 +1,9 @@
 """make weighted average of data cubes"""
 import numpy as np
+import sys
 from core import algebra
 from correlate import wigglez_xcorr as wxc
 
-fourway_split = {
-    'root_data': "/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test1/",
-    'maplist': ["sec_A_15hr_41-73_cleaned_clean_map_I_with_B",
-               "sec_A_15hr_41-73_cleaned_clean_map_I_with_C",
-               "sec_A_15hr_41-73_cleaned_clean_map_I_with_D",
-               "sec_B_15hr_41-73_cleaned_clean_map_I_with_A",
-               "sec_B_15hr_41-73_cleaned_clean_map_I_with_C",
-               "sec_B_15hr_41-73_cleaned_clean_map_I_with_D",
-               "sec_C_15hr_41-73_cleaned_clean_map_I_with_A",
-               "sec_C_15hr_41-73_cleaned_clean_map_I_with_B",
-               "sec_C_15hr_41-73_cleaned_clean_map_I_with_D",
-               "sec_D_15hr_41-73_cleaned_clean_map_I_with_A",
-               "sec_D_15hr_41-73_cleaned_clean_map_I_with_B",
-               "sec_D_15hr_41-73_cleaned_clean_map_I_with_C"],
-    'covlist': ["sec_A_15hr_41-73_cleaned_noise_inv_I_with_B",
-               "sec_A_15hr_41-73_cleaned_noise_inv_I_with_C",
-               "sec_A_15hr_41-73_cleaned_noise_inv_I_with_D",
-               "sec_B_15hr_41-73_cleaned_noise_inv_I_with_A",
-               "sec_B_15hr_41-73_cleaned_noise_inv_I_with_C",
-               "sec_B_15hr_41-73_cleaned_noise_inv_I_with_D",
-               "sec_C_15hr_41-73_cleaned_noise_inv_I_with_A",
-               "sec_C_15hr_41-73_cleaned_noise_inv_I_with_B",
-               "sec_C_15hr_41-73_cleaned_noise_inv_I_with_D",
-               "sec_D_15hr_41-73_cleaned_noise_inv_I_with_A",
-               "sec_D_15hr_41-73_cleaned_noise_inv_I_with_B",
-               "sec_D_15hr_41-73_cleaned_noise_inv_I_with_C"]
-}
-
-fourway_split_0 = {
-    'root_data': "/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test/",
-    'maplist': ["sec_A_15hr_41-73_cleaned_clean_map_I_with_B",
-               "sec_A_15hr_41-73_cleaned_clean_map_I_with_C",
-               "sec_A_15hr_41-73_cleaned_clean_map_I_with_D",
-               "sec_B_15hr_41-73_cleaned_clean_map_I_with_A",
-               "sec_B_15hr_41-73_cleaned_clean_map_I_with_C",
-               "sec_B_15hr_41-73_cleaned_clean_map_I_with_D",
-               "sec_C_15hr_41-73_cleaned_clean_map_I_with_A",
-               "sec_C_15hr_41-73_cleaned_clean_map_I_with_B",
-               "sec_C_15hr_41-73_cleaned_clean_map_I_with_D",
-               "sec_D_15hr_41-73_cleaned_clean_map_I_with_A",
-               "sec_D_15hr_41-73_cleaned_clean_map_I_with_B",
-               "sec_D_15hr_41-73_cleaned_clean_map_I_with_C"],
-    'covlist': ["sec_A_15hr_41-73_cleaned_noise_inv_I_with_B",
-               "sec_A_15hr_41-73_cleaned_noise_inv_I_with_C",
-               "sec_A_15hr_41-73_cleaned_noise_inv_I_with_D",
-               "sec_B_15hr_41-73_cleaned_noise_inv_I_with_A",
-               "sec_B_15hr_41-73_cleaned_noise_inv_I_with_C",
-               "sec_B_15hr_41-73_cleaned_noise_inv_I_with_D",
-               "sec_C_15hr_41-73_cleaned_noise_inv_I_with_A",
-               "sec_C_15hr_41-73_cleaned_noise_inv_I_with_B",
-               "sec_C_15hr_41-73_cleaned_noise_inv_I_with_D",
-               "sec_D_15hr_41-73_cleaned_noise_inv_I_with_A",
-               "sec_D_15hr_41-73_cleaned_noise_inv_I_with_B",
-               "sec_D_15hr_41-73_cleaned_noise_inv_I_with_C"]
-}
 
 cleanmaps_fourway = {
     'root_data': "/mnt/raid-project/gmrt/kiyo/wiggleZ/maps/",
@@ -83,11 +29,31 @@ old_twoway = {
 }
 
 
-def combine_maps(param_dict, fullcov=False):
+# /mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test1/
+# /mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test/
+def make_fourway_list(root_dir, 
+                      map_middle = "_15hr_41-73_cleaned_clean_map_I_with_", 
+                      cov_middle = "_15hr_41-73_cleaned_noise_inv_I_with_"):
+
+    pairs = [('A', 'B'), ('A', 'C'), ('A', 'D'),
+             ('B', 'A'), ('B', 'C'), ('B', 'D'),
+             ('C', 'A'), ('C', 'B'), ('C', 'D'),
+             ('D', 'A'), ('D', 'B'), ('D', 'C')]
+
+    fourway_split = {
+        'root_data': root_dir,
+        'maplist': ["sec_"+ p1 + map_middle + p2 for (p1, p2) in pairs],
+        'covlist': ["sec_"+ p1 + cov_middle + p2 for (p1, p2) in pairs]
+    }
+
+    return fourway_split
+
+def combine_maps(param_dict, fullcov=False, verbose=False):
     """combines a list of maps as a weighted mean using a specified list of
     inverse covariance weights
     fullcov indicates that it is not just the diagonal and should be squashed
     """
+    print param_dict
     covlist = param_dict["covlist"]
     try:
         mul_cov_list = zip(covlist, param_dict["multiply_cov"])
@@ -95,17 +61,19 @@ def combine_maps(param_dict, fullcov=False):
                repr(param_dict["multiply_cov"])
     except KeyError:
         mul_cov_list = zip(covlist, [1.] * len(covlist))
-    print mul_cov_list
 
     maps = []
     for tagname in param_dict["maplist"]:
+        if verbose:
+            print tagname
         maps.append(algebra.make_vect(
                     algebra.load(param_dict["root_data"] + tagname + ".npy")))
 
     weights = []
     for cov_entry in mul_cov_list:
+        if verbose:
+            print cov_entry
         (tagname, multiplier) = cov_entry
-        print "multiplier " + repr(multiplier)
 
         if fullcov:
             raw_weight = algebra.make_mat(
@@ -151,13 +119,42 @@ def combine_maps(param_dict, fullcov=False):
 
     return (newmap, newweights, prodmap[0])
 
+def make_individual():
+    fourway_split = make_fourway_list('/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test1/')
+    (map_out, weights_out, prodmap_out) = combine_maps(fourway_split)
+    algebra.save("combined_41-73_cleaned_clean_test.npy", map_out)
+    algebra.save("combined_41-73_cleaned_noise_inv_test.npy", weights_out)
+    algebra.save("combined_41-73_cleaned_product_test.npy", prodmap_out)
+    #(map_out, weights_out, prodmap_out) = combine_maps(cleanmaps_fourway,
+    #                                                   fullcov=True)
+    #algebra.save("combined_41-73_clean_test.npy", map_out)
+    #algebra.save("combined_41-73_noise_inv_test.npy", weights_out)
+    #algebra.save("combined_41-73_product_test.npy", prodmap_out)
+
+def make_modetest_combined():
+    """combine output maps from a mode subtraction test"""
+    modedir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest/"
+    outdir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest_combined_maps/"
+    dirprefix = "73_ABCD_all_"
+    dirsuffix = "_modes_real2map/"
+    for run_index in range(26):
+        fullpath = modedir + dirprefix + repr(run_index) + dirsuffix
+        print fullpath
+        fourway_split = make_fourway_list(fullpath)
+        (map_out, weights_out, prodmap_out) = combine_maps(fourway_split)
+
+        filename = outdir + "combined_41-73_cleaned_clean_" + \
+                   repr(run_index) + ".npy"
+        algebra.save(filename, map_out)
+
+        filename = outdir + "combined_41-73_cleaned_noise_inv_" + \
+                   repr(run_index) + ".npy"
+        algebra.save(filename, weights_out)
+
+        filename = outdir + "combined_41-73_cleaned_product_" + \
+                   repr(run_index) + ".npy"
+        algebra.save(filename, prodmap_out)
+
+
 if __name__ == '__main__':
-    #(map_out, weights_out, prodmap_out) = combine_maps(fourway_split)
-    #algebra.save("combined_41-73_cleaned_clean_test.npy", map_out)
-    #algebra.save("combined_41-73_cleaned_noise_inv_test.npy", weights_out)
-    #algebra.save("combined_41-73_cleaned_product_test.npy", prodmap_out)
-    (map_out, weights_out, prodmap_out) = combine_maps(cleanmaps_fourway,
-                                                       fullcov=True)
-    algebra.save("combined_41-73_clean_test.npy", map_out)
-    algebra.save("combined_41-73_noise_inv_test.npy", weights_out)
-    algebra.save("combined_41-73_product_test.npy", prodmap_out)
+    make_modetest_combined()
