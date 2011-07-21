@@ -309,7 +309,7 @@ class MapPair(object) :
     def correlate(self, lags=(), speedup=False):
         """Calculate the cross correlation function of the maps.
 
-        The cross correlation function is a funciton of f1, f2 and angular lag.
+        The cross correlation function is a function of f1, f2 and angular lag.
         
         The angular lag bins are passed, all pairs of frequencies are
         calculated.

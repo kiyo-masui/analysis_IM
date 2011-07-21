@@ -111,8 +111,8 @@ def wigglez_correlation(init_filename):
                              params['optical_selection_file']
 
     map_radio = algebra.make_vect(algebra.load(radio_file))
-    # TODO: why are the N^-1 matrices negative?
-    noiseinv_radio = np.abs(algebra.make_vect(algebra.load(noiseinv_file)))
+    #noiseinv_radio = np.abs(algebra.make_vect(algebra.load(noiseinv_file)))
+    noiseinv_radio = algebra.make_vect(algebra.load(noiseinv_file))
     map_opt = algebra.make_vect(algebra.load(optical_file))
     map_nbar = algebra.make_vect(algebra.load(optical_selection_file))
 
@@ -156,7 +156,7 @@ def wigglez_correlation(init_filename):
         compressed_array_summary(map_nbar, "nbar after convolution")
 
     # convert to delta-overdensity
-    map_opt = map_opt / map_nbar - 1
+    map_opt = map_opt / map_nbar - 1.
     #compressed_array_summary(map_opt, "opt after conversion to delta")
 
     # set the NaNs and infs to zero in data and weights
