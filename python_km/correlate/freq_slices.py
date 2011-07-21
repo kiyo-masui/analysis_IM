@@ -16,6 +16,13 @@ from numpy import linalg
 from numpy import random
 import matplotlib.pyplot as plt
 
+# TODO: this seemed to be necessary on the Sunnyvale compute nodes because it
+# was clobbing the python path?
+import sys, site
+site.addsitedir('./')
+site.addsitedir('/home/eswitzer/local/lib/')
+site.addsitedir('/home/eswitzer/local/lib/python2.6/site-packages/')
+
 from kiyopy import parse_ini
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
@@ -24,7 +31,6 @@ from core import handythread as ht
 import itertools
 import map.tools
 from map import beam
-
 
 params_init = {
                # IO:
@@ -303,7 +309,7 @@ class MapPair(object) :
     def correlate(self, lags=(), speedup=False):
         """Calculate the cross correlation function of the maps.
 
-        The cross correlation function is a funciton of f1, f2 and angular lag.
+        The cross correlation function is a function of f1, f2 and angular lag.
         
         The angular lag bins are passed, all pairs of frequencies are
         calculated.

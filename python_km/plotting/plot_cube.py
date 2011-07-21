@@ -2,6 +2,7 @@
 import subprocess
 import sys
 import numpy as np
+import numpy.ma as ma
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -31,11 +32,13 @@ def plot_single(plotitem):
 
 
 def make_cube_movie(filename, tag, colorbar_title, fileprefix,
-                    sigmarange=3.):
+                    sigmarange=3., ignore=None):
     """Make a stack of spatial slice maps and animate them"""
     cube = algebra.make_vect(algebra.load(filename))
-    cube_mean = np.mean(cube)
-    cube_std = np.std(cube)
+    if ignore:
+        cube[cube == ignore] = ma.masked
+    cube_mean = ma.mean(cube)
+    cube_std = ma.std(cube)
     try:
         len(sigmarange)
         coloraxis = np.linspace(sigmarange[0], sigmarange[1],
@@ -66,6 +69,20 @@ def make_cube_movie(filename, tag, colorbar_title, fileprefix,
     subprocess.check_call(('ffmpeg', '-y', '-i', cube_root + tag +\
                '%03d.png', tag + '.mp4'))
 
+
+
+root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/noise_model/"
+make_cube_movie(root_directory + "completeness_model_41-73_15modes.npy",
+                "completeness_model_41-73_15modes",
+                "Completeness", cube_root + "completeness_model_41-73_15modes",
+                sigmarange=5., ignore=-1.)
+sys.exit()
+root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/noise_model/"
+make_cube_movie(root_directory + "noise_model_41-73_15modes.npy",
+                "noise_model_41-73_15modes",
+                "Temperature", cube_root + "noise_model_41-73_15modes",
+                sigmarange=5., ignore=-1.)
+sys.exit()
 
 root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/combined_maps/"
 make_cube_movie(root_directory + "combined_41-73_clean_test.npy",
