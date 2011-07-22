@@ -20,9 +20,9 @@ import shelve
 from map import beam
 # TODO: this seemed to be necessary on the Sunnyvale compute nodes because it
 # was clobbing the python path?
-#import sys, site
-#site.addsitedir('/home/eswitzer/local/lib/')
-#site.addsitedir('/home/eswitzer/local/lib/python2.6/site-packages/')
+import sys, site
+site.addsitedir('/home/eswitzer/local/lib/')
+site.addsitedir('/home/eswitzer/local/lib/python2.6/site-packages/')
 
 # TODO: delete /mnt/raid-project/gmrt/eswitzer/wiggleZ/maps/sec_A_15hr_41-73_clean_map_I.npy
 
@@ -111,8 +111,8 @@ def wigglez_correlation(init_filename):
                              params['optical_selection_file']
 
     map_radio = algebra.make_vect(algebra.load(radio_file))
-    # TODO: why are the N^-1 matrices negative?
-    noiseinv_radio = np.abs(algebra.make_vect(algebra.load(noiseinv_file)))
+    #noiseinv_radio = np.abs(algebra.make_vect(algebra.load(noiseinv_file)))
+    noiseinv_radio = algebra.make_vect(algebra.load(noiseinv_file))
     map_opt = algebra.make_vect(algebra.load(optical_file))
     map_nbar = algebra.make_vect(algebra.load(optical_selection_file))
 
@@ -156,7 +156,7 @@ def wigglez_correlation(init_filename):
         compressed_array_summary(map_nbar, "nbar after convolution")
 
     # convert to delta-overdensity
-    map_opt = map_opt / map_nbar - 1
+    map_opt = map_opt / map_nbar - 1.
     #compressed_array_summary(map_opt, "opt after conversion to delta")
 
     # set the NaNs and infs to zero in data and weights
@@ -189,6 +189,7 @@ def wigglez_correlation(init_filename):
 
     corr_shelve = shelve.open(params['output_shelve_file'])
     corr_shelve["corr"] = corr
+    corr_shelve["counts"] = counts
     corr_shelve["freq_axis"] = map_radio.get_axis('freq')
     corr_shelve["params"] = params
     corr_shelve.close()
