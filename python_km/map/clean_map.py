@@ -13,7 +13,8 @@ import kiyopy.custom_exceptions as ce
 
 params_init = {'input_root' : './',
                'polarizations' : ('I',),
-               'output_root' : './'
+               'output_root' : './',
+               'save_noise_diag' : False
                }
 prefix = 'cm_'
 
@@ -33,6 +34,7 @@ class CleanMapMaker(object) :
         kiyopy.utils.mkparents(params['output_root'])
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
                                prefix='mm_')
+        save_noise_diag = params['save_noise_diag']
         in_root = params['input_root']
         all_out_fname_list = []
         all_in_fname_list = []
@@ -58,6 +60,9 @@ class CleanMapMaker(object) :
             clean_map = algebra.info_array(sp.zeros(dirty_map.shape))
             clean_map.info = dict(dirty_map.info)
             clean_map = algebra.make_vect(clean_map)
+            # If needed, initialize a map for the noise diagonal.
+            if save_noise_diag :
+                noise_diag = algebra.zeros_like(clean_map)
             # Two cases for the noise.  If its the same shape as the map then
             # the noise is diagonal.  Otherwise, it should be block diagonal in
             # frequency.
@@ -74,6 +79,8 @@ class CleanMapMaker(object) :
                 # Make the clean map.
                 clean_map[good_data] = (dirty_map[good_data] 
                                         / noise_inv_memory[good_data])
+                if save_noise_diag :
+                    noise_diag[good_data] = 1/noise_inv_memory[good_data]
             elif noise_inv.ndim == 5 :
                 if noise_inv.axes != ('freq', 'ra', 'dec', 'ra', 'dec') :
                     raise ce.DataError("Expeced noise matrix to have axes "
@@ -128,6 +135,22 @@ class CleanMapMaker(object) :
                     # Fill the clean array.
                     map.shape = (shape[1], shape[2])
                     clean_map[ii, ...] = map
+                    if save_noise_diag :
+                        # Using C = R Lambda R^T 
+                        # where Lambda = diag(1/noise_inv_diag).
+                        temp_noise_diag = 1/noise_inv_diag
+                        temp_noise_diag[bad_modes] = 0
+                        # Multiply R by the diagonal eigenvalue matrix.
+                        # Broadcasting does equivalent of mult by diag matrix.
+                        temp_mat = Rot*temp_noise_diag
+                        # Multiply by R^T, but only calculate the diagonal
+                        # elements.
+                        for jj in range(shape[1]*shape[2]) :
+                            temp_noise_diag[jj] = sp.dot(temp_mat[jj,:], 
+                                                         Rot[jj,:])
+                        temp_noise_diag.shape = (shape[1], shape[2])
+                        noise_diag[ii, ...] = temp_noise_diag
+                    # Return workspace memory to origional shape.
                     noise_inv_freq.shape = (shape[1], shape[2],
                                             shape[1], shape[2])
                     if self.feedback > 1:
@@ -144,6 +167,13 @@ class CleanMapMaker(object) :
             algebra.save(out_fname, clean_map)
             all_out_fname_list.append(
                 kiyopy.utils.abbreviate_file_path(out_fname))
+            if save_noise_diag :
+                noise_diag_fname = (params['output_root'] + 'noise_diag_'
+                                    + pol_str + '.npy')
+                algebra.save(noise_diag_fname, noise_diag)
+                all_out_fname_list.append(
+                    kiyopy.utils.abbreviate_file_path(noise_diag_fname))
+
         # Finally update the history object.
         history = hist.read(in_root + 'history.hist')
         history.add('Read map and noise files:', all_in_fname_list)
