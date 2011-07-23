@@ -7,6 +7,7 @@ from correlate import wigglez_xcorr as wxc
 
 cleanmaps_fourway = {
     'root_data': "/mnt/raid-project/gmrt/kiyo/wiggleZ/maps/",
+    'root_cov': "/mnt/raid-project/gmrt/kiyo/wiggleZ/maps/",
     'maplist': ["sec_A_15hr_41-73_clean_map_I",
                 "sec_B_15hr_41-73_clean_map_I",
                 "sec_C_15hr_41-73_clean_map_I",
@@ -21,6 +22,7 @@ cleanmaps_fourway = {
 # TODO: Sec A N^-1 is inverted
 old_twoway = {
     'root_data': "/mnt/raid-project/gmrt/kiyo/wiggleZ/corr/",
+    'root_cov': "/mnt/raid-project/gmrt/kiyo/wiggleZ/corr/",
     'maplist': ["sec_A_15hr_41-69_cleaned_clean_map_I",
               "sec_B_15hr_41-69_cleaned_clean_map_I"],
     'covlist': ["sec_A_15hr_41-69_cleaned_noise_inv_I",
@@ -31,7 +33,7 @@ old_twoway = {
 
 # /mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test1/
 # /mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test/
-def make_fourway_list(root_dir, 
+def make_fourway_list(root_data, root_cov, 
                       map_middle = "_15hr_41-73_cleaned_clean_map_I_with_", 
                       cov_middle = "_15hr_41-73_cleaned_noise_inv_I_with_"):
 
@@ -41,12 +43,14 @@ def make_fourway_list(root_dir,
              ('D', 'A'), ('D', 'B'), ('D', 'C')]
 
     fourway_split = {
-        'root_data': root_dir,
+        'root_data': root_data,
+        'root_cov': root_cov,
         'maplist': ["sec_"+ p1 + map_middle + p2 for (p1, p2) in pairs],
         'covlist': ["sec_"+ p1 + cov_middle + p2 for (p1, p2) in pairs]
     }
 
     return fourway_split
+
 
 def combine_maps(param_dict, fullcov=False, verbose=False):
     """combines a list of maps as a weighted mean using a specified list of
@@ -77,13 +81,12 @@ def combine_maps(param_dict, fullcov=False, verbose=False):
 
         if fullcov:
             raw_weight = algebra.make_mat(
-                            algebra.open_memmap(param_dict["root_data"] + \
+                            algebra.open_memmap(param_dict["root_cov"] + \
                                                 tagname + ".npy", mode='r'))
             raw_weight = raw_weight.mat_diag()
         else:
             raw_weight = algebra.make_vect(algebra.load(
-                                param_dict["root_data"] + tagname + ".npy"))
-
+                                param_dict["root_cov"] + tagname + ".npy"))
 
         # zero out any messy stuff
         raw_weight *= multiplier
@@ -100,8 +103,8 @@ def combine_maps(param_dict, fullcov=False, verbose=False):
         prodmap[0] += prodmap[mapind]
         weights[0] += weights[mapind]
 
-    wxc.compressed_array_summary(weights[0], "weight map")
-    wxc.compressed_array_summary(prodmap[0], "product map")
+    algebra.compressed_array_summary(weights[0], "weight map")
+    algebra.compressed_array_summary(prodmap[0], "product map")
 
     newmap = prodmap[0] / weights[0]
 
@@ -114,13 +117,15 @@ def combine_maps(param_dict, fullcov=False, verbose=False):
     inf_array = np.isinf(newmap)
     newmap[inf_array] = 0.
     newweights[inf_array] = 0.
-    wxc.compressed_array_summary(newmap, "new map")
-    wxc.compressed_array_summary(newweights, "final weight map")
+    algebra.compressed_array_summary(newmap, "new map")
+    algebra.compressed_array_summary(newweights, "final weight map")
 
     return (newmap, newweights, prodmap[0])
 
+
 def make_individual():
-    fourway_split = make_fourway_list('/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test1/')
+    fourway_split = make_fourway_list('/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test1/',
+                                      '/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test1/')
     (map_out, weights_out, prodmap_out) = combine_maps(fourway_split)
     algebra.save("combined_41-73_cleaned_clean_test.npy", map_out)
     algebra.save("combined_41-73_cleaned_noise_inv_test.npy", weights_out)
@@ -131,16 +136,19 @@ def make_individual():
     #algebra.save("combined_41-73_noise_inv_test.npy", weights_out)
     #algebra.save("combined_41-73_product_test.npy", prodmap_out)
 
+
 def make_modetest_combined():
     """combine output maps from a mode subtraction test"""
     modedir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest/"
     outdir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest_combined_maps/"
     dirprefix = "73_ABCD_all_"
-    dirsuffix = "_modes_real2map/"
+    data_dirsuffix = "_modes_real3map/"
+    cov_dirsuffix = "_modes_real3map/"
     for run_index in range(26):
-        fullpath = modedir + dirprefix + repr(run_index) + dirsuffix
-        print fullpath
-        fourway_split = make_fourway_list(fullpath)
+        fullpath_data = modedir + dirprefix + repr(run_index) + data_dirsuffix
+        fullpath_cov = modedir + dirprefix + repr(run_index) + cov_dirsuffix
+        print fullpath_data, fullpath_cov
+        fourway_split = make_fourway_list(fullpath_data, fullpath_cov)
         (map_out, weights_out, prodmap_out) = combine_maps(fourway_split)
 
         filename = outdir + "combined_41-73_cleaned_clean_" + \
@@ -156,5 +164,32 @@ def make_modetest_combined():
         algebra.save(filename, prodmap_out)
 
 
+def make_modetest_combined_sim():
+    """combine output simulated maps from a mode subtraction test"""
+    modedir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest/"
+    outdir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest_combined_maps/"
+    dirprefix = "73_ABCD_all_"
+    data_dirsuffix = "_modes_sim3map/"
+    cov_dirsuffix = "_modes_real3map/"
+    for run_index in range(26):
+        fullpath_data = modedir + dirprefix + repr(run_index) + data_dirsuffix
+        fullpath_cov = modedir + dirprefix + repr(run_index) + cov_dirsuffix
+        print fullpath_data, fullpath_cov
+        fourway_split = make_fourway_list(fullpath_data, fullpath_cov)
+        (map_out, weights_out, prodmap_out) = combine_maps(fourway_split)
+
+        filename = outdir + "combined_sim_41-73_cleaned_clean_" + \
+                   repr(run_index) + ".npy"
+        algebra.save(filename, map_out)
+
+        filename = outdir + "combined_sim_41-73_cleaned_noise_inv_" + \
+                   repr(run_index) + ".npy"
+        algebra.save(filename, weights_out)
+
+        filename = outdir + "combined_sim_41-73_cleaned_product_" + \
+                   repr(run_index) + ".npy"
+        algebra.save(filename, prodmap_out)
+
+
 if __name__ == '__main__':
-    make_modetest_combined()
+    make_modetest_combined_sim()
