@@ -1,5 +1,5 @@
 '''
-wigglez_xcorr: autocorrelate WiggleZ data
+wigglez_corr: WiggleZ x WiggleZ 
 '''
 # TODO: for some reason, PYTHONPATH is clobbered on the compute nodes; it has
 # the local directory as ::, but this never seems to make it to the sys.path,
@@ -121,12 +121,6 @@ def wigglez_correlation(init_filename):
     compressed_array_summary(map_opt2, "opt map 2 as loaded")
     compressed_array_summary(map_nbar2, "nbar map 2 as loaded")
 
-    # These not needed at all since we don't have radio noises anymore?
-#    noiseinv_radio[noiseinv_radio < 1.e-20] = 0.
-#    nan_array = np.isnan(noiseinv_radio)
-#    noiseinv_radio[nan_array] = 0.
-#    inf_array = np.isinf(noiseinv_radio)
-#    noiseinv_radio[inf_array] = 0.
 
     if params['convolve']:
         beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792,
@@ -206,131 +200,10 @@ def wigglez_correlation(init_filename):
     corr_shelve = shelve.open(params['output_shelve_file'])
     corr_shelve["corr"] = corr
     corr_shelve["counts"] = counts
-    # map_opt has freq_axis, too? It seems like it should.
-#    corr_shelve["freq_axis"] = map_radio.get_axis('freq')
     corr_shelve["freq_axis"] = map_opt1.get_axis('freq')
     corr_shelve["params"] = params
     corr_shelve.close()
 
-
-# TODO: move this into the plot correlation class and make the plotting class
-# more of a correlation object data class
-def plot_crosscorr(filename, outputname, collapse=False, printcorr=False,
-                   title=None, coloraxis=None):
-    """wrap the plot correlation class which reads correlation object shelve
-    files"""
-    print title + " to " + outputname + " from " + filename
-    corr_shelve = shelve.open(filename)
-    corr = corr_shelve["corr"]
-    run_params = corr_shelve["params"]
-
-    print "run parameters \n" + "-" * 80
-    for key in run_params:
-        print key + ": " + repr(run_params[key])
-
-    if printcorr:
-        np.set_printoptions(threshold=np.nan)
-        print corr_shelve["corr"]
-
-    corr[np.isnan(corr)] = 0.
-    corr[np.isinf(corr)] = 0.
-
-    plot_object = cp.CorrelationPlot(run_params["lags"], corr,
-                                     run_params["freq"],
-                                     corr_shelve["freq_axis"])
-
-    if collapse:
-        plot_object.plot_collapsed(outputname, norms=False,
-                                   lag_inds=range(len(run_params["lags"])),
-                                   cross_power=True, title=title)
-
-    else:
-        plot_object.plot_contour(outputname, norms=False,
-                                 lag_inds=range(len(run_params["lags"])),
-                                 cross_power=True, title=title,
-                                 coloraxis=coloraxis)
-
-    corr_shelve.close()
-
-
-# TODO: make plots in a more automated way
-def make_plots():
-    """Driver to make a lot of plots (not production code)
-    """
-    coloraxis_a = np.linspace(-0.03, 0.03, 100, endpoint=True)
-    #coloraxis_a = np.around(coloraxis_a * 1000.) / 1000.
-    print "using color A axis " + repr(coloraxis_a)
-    coloraxis_b = np.linspace(-0.2, 0.2, 100, endpoint=True)
-    #coloraxis_b = np.around(coloraxis_b * 1000.) / 1000.
-    print "using color B axis " + repr(coloraxis_b)
-
-    plot_crosscorr("radio_opt_xcorr_mapA.shelve",
-                   "opt_x_radio_mapA_noconv_sparse.png", collapse=False,
-                   title="GBT_A x WiggleZ, not PSF convolved, sparse selection",
-                   coloraxis=coloraxis_a)
-    plot_crosscorr("radio_opt_xcorr_mapA.shelve",
-                   "opt_x_radio_mapA_noconv_sparse_coll.png", collapse=True,
-                   title="GBT_A x WiggleZ, not PSF convolved, sparse selection")
-    plot_crosscorr("radio_opt_xcorr_mapB.shelve",
-                   "opt_x_radio_mapB_noconv_sparse.png", collapse=False,
-                   title="GBT_B x WiggleZ, not PSF convolved, sparse selection",
-                   coloraxis=coloraxis_b)
-    plot_crosscorr("radio_opt_xcorr_mapB.shelve",
-                   "opt_x_radio_mapB_noconv_sparse_coll.png", collapse=True,
-                   title="GBT_B x WiggleZ, not PSF convolved, sparse selection")
-
-    plot_crosscorr("opt_x_radio_mapA_noconv_sep.shelve",
-                   "opt_x_radio_mapA_noconv_sep.png", collapse=False,
-                   title="GBT_A x WiggleZ, not PSF convolved, \
-                          separable selection",
-                   coloraxis=coloraxis_a)
-    plot_crosscorr("opt_x_radio_mapA_noconv_sep.shelve",
-                   "opt_x_radio_mapA_noconv_sep_coll.png", collapse=True,
-                   title="GBT_A x WiggleZ, not PSF convolved, \
-                          separable selection")
-    plot_crosscorr("opt_x_radio_mapB_noconv_sep.shelve",
-                   "opt_x_radio_mapB_noconv_sep.png", collapse=False,
-                   title="GBT_B x WiggleZ, not PSF convolved, \
-                          separable selection",
-                   coloraxis=coloraxis_b)
-    plot_crosscorr("opt_x_radio_mapB_noconv_sep.shelve",
-                   "opt_x_radio_mapB_noconv_sep_coll.png", collapse=True,
-                   title="GBT_B x WiggleZ, not PSF convolved, \
-                          separable selection")
-
-    plot_crosscorr("opt_x_radio_mapAnull_noconv_sep.shelve",
-                   "opt_x_radio_mapAnull_noconv_sep.png", collapse=False,
-                   title="GBT_A x WiggleZ_random, not PSF convolved, \
-                          separable selection",
-                   coloraxis=coloraxis_a)
-    plot_crosscorr("opt_x_radio_mapAnull_noconv_sep.shelve",
-                   "opt_x_radio_mapAnull_noconv_sep_coll.png", collapse=True,
-                   title="GBT_A x WiggleZ_random, not PSF convolved, \
-                          separable selection")
-    plot_crosscorr("opt_x_radio_mapBnull_noconv_sep.shelve",
-                   "opt_x_radio_mapBnull_noconv_sep.png", collapse=False,
-                   title="GBT_B x WiggleZ_random, not PSF convolved, \
-                          separable selection",
-                   coloraxis=coloraxis_b)
-    plot_crosscorr("opt_x_radio_mapBnull_noconv_sep.shelve",
-                   "opt_x_radio_mapBnull_noconv_sep_coll.png", collapse=True,
-                   title="GBT_B x WiggleZ_random, not PSF convolved, \
-                          separable selection")
-
-    plot_crosscorr("opt_x_radio_mapA_conv_sep.shelve",
-                   "opt_x_radio_mapA_conv_sep.png", collapse=False,
-                   title="GBT_A x WiggleZ, PSF convolve, separable selection",
-                   coloraxis=coloraxis_a)
-    plot_crosscorr("opt_x_radio_mapA_conv_sep.shelve",
-                   "opt_x_radio_mapA_conv_sep_coll.png", collapse=True,
-                   title="GBT_A x WiggleZ, PSF convolve, separable selection")
-    plot_crosscorr("opt_x_radio_mapB_conv_sep.shelve",
-                   "opt_x_radio_mapB_conv_sep.png", collapse=False,
-                   title="GBT_B x WiggleZ, PSF convolve, separable selection",
-                   coloraxis=coloraxis_b)
-    plot_crosscorr("opt_x_radio_mapB_conv_sep.shelve",
-                   "opt_x_radio_mapB_conv_sep_coll.png", collapse=True,
-                   title="GBT_B x WiggleZ, PSF convolve, separable selection")
 
 # For running this module from the command line
 if __name__ == '__main__':
@@ -339,10 +212,4 @@ if __name__ == '__main__':
         initfilename = str(sys.argv[1])
         wigglez_correlation(initfilename)
     else:
-        #print 'Maximum one argument, a parameter file name.'
-        print "no arguments given, just doing some user-specified nonsense \
-               instead"
-        coloraxis_a = np.linspace(-0.2, 0.2, 100, endpoint=True)
-        plot_crosscorr("data/opt_x_radio_mapA_noconv_sep.shelve",
-                       "signal_xcorr.png", title="opt_x_radio_mapA_noconv", collapse=True,
-                       coloraxis=coloraxis_a )
+        print 'Maximum one argument, a parameter file name.'
