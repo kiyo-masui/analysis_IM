@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from correlate import correlation_plots as cp
 from correlate import freq_slices as fs
+from core import bootstrap
 import multiprocessing
 # TODO: strip out _old binning code functions
 # TODO: convert batch params into ini files
@@ -186,22 +187,121 @@ batch8_param = {
     "notes": run8_notes
     }
 
+run9_notes = {
+    "runname": "test_69old_vs_69new",
+    "machine": "prawn",
+    "selection_function": "separable, 1000 catalogs",
+    "radio_map": "new and old treatments up to session 69",
+    "speedup": "on"
+    }
+batch9_param = {
+    "path": rootdir + "test_69old_vs_69new",
+    "reallyoldway:file": "opt_x_radio_69old_kiyo_noconv_sep",
+    "oldway:file": "opt_x_radio_69old_noconv_sep",
+    "newway:file": "opt_x_radio_69_noconv_sep",
+    "notes": run9_notes
+    }
+
+run10_notes = {
+    "runname": "run10",
+    "machine": "sunnyvale",
+    "selection_function": "separable, 1000 catalogs",
+    "radio_map": "weighted average of ABCD, 15 modes removed",
+    "speedup": "on",
+    "notes": "should match run7 but using counts as corr bin weights"
+    }
+batch10_param = {
+    "path": rootdir + "xcorr_15modes",
+    "rand:list": {"prefix": "opt_x_radio_combined_rand",
+                  "suffix": "_noconv_sep",
+                  "indices": range(100),
+                  "indexfmt": "%03d",
+                  "id_prefix": "rand"},
+    "signal:file": "opt_x_radio_combined_noconv_sep",
+    "notes": run10_notes
+    }
+
+run11_notes = {
+    "runname": "run11",
+    "machine": "sunnyvale",
+    "selection_function": "separable, 1000 catalogs",
+    "radio_map": "weighted average of ABCD, 15 modes removed",
+    "speedup": "on",
+    "convolution": "on",
+    "notes": "same as 10, but with convolution of the optical overdensity"
+    }
+batch11_param = {
+    "path": rootdir + "xcorr_withconv",
+    "rand:list": {"prefix": "opt_x_radio_combined_rand",
+                  "suffix": "_conv_sep",
+                  "indices": range(100),
+                  "indexfmt": "%03d",
+                  "id_prefix": "rand"},
+    "signal:file": "opt_x_radio_combined_conv_sep",
+    "notes": run11_notes
+    }
+
+run12_notes = {
+    "runname": "run12",
+    "machine": "sunnyvale",
+    "selection_function": "separable, 1000 catalogs",
+    "radio_map": "weighted average of ABCD, 15 modes removed",
+    "speedup": "on",
+    "meansubtract": "off",
+    "notes": "same as 10, but without subtracting means"
+    }
+batch12_param = {
+    "path": rootdir + "xcorr_nomean",
+    "rand:list": {"prefix": "opt_x_radio_combined_rand",
+                  "suffix": "_noconv_nomean_sep",
+                  "indices": range(100),
+                  "indexfmt": "%03d",
+                  "id_prefix": "rand"},
+    "signal:file": "opt_x_radio_combined_noconv_nomean_sep",
+    "notes": run12_notes
+    }
+
+# /mnt/raid-project/gmrt/eswitzer/wiggleZ/batch_runs/xcorr_15modes_12split/opt_x_radio_15CD_noconv_sep.shelve
+run13_notes = {
+    "runname": "xcorr_15modes_12split",
+    "machine": "prawn",
+    "selection_function": "separable, 1000 catalogs",
+    "radio_map": "12 ABCD maps",
+    "speedup": "on"
+    }
+batch13_param = {
+    "path": rootdir + "xcorr_15modes_12split",
+    "xcorr15mAB:file": "opt_x_radio_15AB_noconv_sep",
+    "xcorr15mAC:file": "opt_x_radio_15AC_noconv_sep",
+    "xcorr15mAD:file": "opt_x_radio_15AD_noconv_sep",
+    "xcorr15mBA:file": "opt_x_radio_15BA_noconv_sep",
+    "xcorr15mBC:file": "opt_x_radio_15BC_noconv_sep",
+    "xcorr15mBD:file": "opt_x_radio_15BD_noconv_sep",
+    "xcorr15mCA:file": "opt_x_radio_15CA_noconv_sep",
+    "xcorr15mCB:file": "opt_x_radio_15CB_noconv_sep",
+    "xcorr15mCD:file": "opt_x_radio_15CD_noconv_sep",
+    "xcorr15mDA:file": "opt_x_radio_15DA_noconv_sep",
+    "xcorr15mDB:file": "opt_x_radio_15DB_noconv_sep",
+    "xcorr15mDC:file": "opt_x_radio_15DC_noconv_sep",
+    "notes": run13_notes
+    }
+
 
 def make_corr_old(filename, verbose=False, identifier=None):
     """wrap the plot correlation class which reads correlation object shelve
     files"""
-    output = {}
-    corr_shelve = shelve.open(filename + ".shelve")
-
-    corr = corr_shelve["corr"]
-    run_params = corr_shelve["params"]
-
     if identifier:
         print "binning the correlation function in: " + filename + \
               ".shelve" + " with id=" + identifier
     else:
         print "binning the correlation function in: " + filename + \
               ".shelve"
+
+    output = {}
+    corr_shelve = shelve.open(filename + ".shelve")
+
+    corr = corr_shelve["corr"]
+    run_params = corr_shelve["params"]
 
     if verbose:
         for key in run_params:
@@ -635,7 +735,7 @@ def plot_contour(filename, fbins, lags, corr2D,
 # TODO implement error option
 def plot_collapsed(filename, sep_lags, corr1D, errors=None, save_old=False,
                    plot_old=False, cross_power=True, title=None,
-                   ylog=False):
+                   ylog=True):
     nbins = len(sep_lags)
     a = plt.figure()
     ax = plt.gca()
@@ -693,7 +793,12 @@ if __name__ == '__main__':
     #process_batch_correlations("run7_correlations.shelve", batch7_param)
     #process_batch_correlations("run5_correlations_newcorr.shelve", batch5_param)
     #process_batch_correlations("run7_correlations_newcorr.shelve", batch7_param)
-    process_batch_correlations("run8_correlations_modes.shelve", batch8_param)
+    #process_batch_correlations("run8_correlations_modes.shelve", batch8_param)
+    #process_batch_correlations("run9_correlations_modes.shelve", batch9_param)
+    #process_batch_correlations("run10_correlations_modes.shelve", batch10_param)
+    #process_batch_correlations("run11_correlations_modes.shelve", batch11_param)
+    #process_batch_correlations("run12_correlations_modes.shelve", batch12_param)
+    process_batch_correlations("run13_correlations.shelve", batch13_param)
 
     #print compare_corr(batch2_param, batch3_param)
     #print compare_corr(batch1_param, batch2_param)
@@ -719,8 +824,23 @@ if __name__ == '__main__':
     #plot_batch_correlations("run7_correlations_newcorr.shelve", batch7_param,
     #                        dir_prefix="plots/run7n/",
     #                        color_range=[-10, 10])
-    plot_batch_correlations("run8_correlations_modes.shelve", batch8_param,
-                            dir_prefix="plots/run8/",
+    #plot_batch_correlations("run8_correlations_modes.shelve", batch8_param,
+    #                        dir_prefix="plots/run8/",
+    #                        color_range=[-10, 10])
+    #plot_batch_correlations("run9_correlations_modes.shelve", batch9_param,
+    #                        dir_prefix="plots/run9/",
+    #                        color_range=[-10, 10])
+    #plot_batch_correlations("run10_correlations_modes.shelve", batch10_param,
+    #                        dir_prefix="plots/run10/",
+    #                        color_range=[-10, 10])
+    #plot_batch_correlations("run11_correlations_modes.shelve", batch11_param,
+    #                        dir_prefix="plots/run11/",
+    #                        color_range=[-10, 10])
+    #plot_batch_correlations("run12_correlations_modes.shelve", batch12_param,
+    #                        dir_prefix="plots/run12/",
+    #                        color_range=[-10, 10])
+    plot_batch_correlations("run13_correlations.shelve", batch13_param,
+                            dir_prefix="plots/run13/",
                             color_range=[-10, 10])
 
     #batch_correlations_statistics("run1_correlations.shelve", batch1_param)
@@ -732,3 +852,7 @@ if __name__ == '__main__':
     #batch_correlations_statistics("run7_correlations.shelve", batch7_param)
     #batch_correlations_statistics("run5_correlations_newcorr.shelve", batch5_param)
     #batch_correlations_statistics("run7_correlations_newcorr.shelve", batch7_param)
+    #batch_correlations_statistics("run10_correlations_modes.shelve", batch10_param)
+    #batch_correlations_statistics("run11_correlations_modes.shelve", batch11_param)
+    #batch_correlations_statistics("run12_correlations_modes.shelve", batch12_param)
+

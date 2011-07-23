@@ -61,9 +61,10 @@ import warnings
 from functools import wraps
 
 import scipy as sp
+import numpy as np
 import numpy.lib.format as npfor
 from numpy.lib.utils import safe_eval
-
+import operator
 
 # TODO:
 # when submitted as batch on Sunnyvale, the PYTHONPATH seems to get clobbered
@@ -1550,3 +1551,53 @@ def as_alg_like(array, obj):
     
     return out
 
+
+def array_summary(array, testname, axes, meetall=False, identify_entries=True):
+    """helper function for summarizing arrays
+    meetall: prints those entries for which all values in the slice meet the
+    criteria (normal behavior is print all entries where _any_ value in the
+    slice meets the criteria
+    identify_entries: prints entries meeting the criteria
+    """
+    total_matching = array.sum()
+    if total_matching != 0:
+        print testname + "s:"
+        match_count = np.apply_over_axes(np.sum, array, axes)
+        print match_count.flatten()
+        if identify_entries:
+            if meetall:
+                arrayshape = array.shape
+                subarray_size = reduce(operator.mul,
+                                       [arrayshape[i] for i in axes])
+                print "with all " + testname + "s: " + \
+                      repr(np.where(match_count.flatten() == subarray_size))
+            else:
+                print "has " + testname + ": " + \
+                      repr(np.where(match_count.flatten() != 0))
+
+            print "total " + testname + "s: " + repr(total_matching)
+
+        print "-" * 80
+    else:
+        print "There are no " + testname + " entries"
+
+
+def compressed_array_summary(array, name, axes=[1, 2], extras=False):
+    """print various summaries of arrays compressed along specified axes"""
+
+    print "-" * 80
+    print "array property summary for " + name + ":"
+    array_summary(np.isnan(array), "nan", axes)
+    array_summary(np.isinf(array), "inf", axes)
+    array_summary((array == 0.), "zero", axes, meetall=True)
+    array_summary((array < 0.), "negative", axes, identify_entries=False)
+
+    if extras:
+        sum_nu = np.apply_over_axes(np.sum, array, axes)
+        min_nu = np.apply_over_axes(np.min, array, axes)
+        max_nu = np.apply_over_axes(np.max, array, axes)
+        print sum_nu.flatten()
+        print min_nu.flatten()
+        print max_nu.flatten()
+
+    print ""
