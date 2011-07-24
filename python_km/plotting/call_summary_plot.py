@@ -290,6 +290,28 @@ batch14_param = {
     "notes": run14_notes
     }
 
+# /mnt/raid-project/gmrt/eswitzer/wiggleZ/batch_runs/simmodeloss_x_optsim/simmodeloss_x_optsim_0.shelve
+run15_notes = {
+    "runname": "run15",
+    "machine": "sunnyvale",
+    "selection_function": "separable, 1000 catalogs",
+    "speedup": "on",
+    "meansubtract": "on",
+    "notes1": "mode loss test relevant for cross-correlation",
+    "notes2": "sim map with N modes removed x sim map with zero modes removed",
+    "notes3": "use radio noise as weight on mode-removed side",
+    "notes4": "use nbar weight on signal side"
+    }
+batch15_param = {
+    "path": rootdir + "simmodeloss_x_optsim",
+    "mode:list": {"prefix": "simmodeloss_x_optsim_",
+                  "suffix": "",
+                  "indices": range(0,26),
+                  "indexfmt": "%d",
+                  "id_prefix": "mode"},
+    "notes": run15_notes
+    }
+
 if __name__ == '__main__':
     #splt.process_batch_correlations("run1_correlations.shelve", batch1_param)
     #splt.process_batch_correlations("run2_correlations.shelve", batch2_param)
@@ -306,7 +328,8 @@ if __name__ == '__main__':
     #splt.process_batch_correlations("run11_correlations_modes.shelve", batch11_param)
     #splt.process_batch_correlations("run12_correlations_modes.shelve", batch12_param)
     #splt.process_batch_correlations("run13_correlations.shelve", batch13_param)
-    splt.process_batch_correlations("run14_correlations.shelve", batch14_param)
+    #splt.process_batch_correlations("run14_correlations.shelve", batch14_param)
+    splt.process_batch_correlations("run15_correlations.shelve", batch15_param)
 
     #print splt.compare_corr(batch2_param, batch3_param)
     #print splt.compare_corr(batch1_param, batch2_param)
@@ -353,6 +376,9 @@ if __name__ == '__main__':
     #splt.plot_batch_correlations("run14_correlations.shelve", batch14_param,
     #                        dir_prefix="plots/run14/",
     #                        color_range=[-10, 10])
+    splt.plot_batch_correlations("run15_correlations.shelve", batch15_param,
+                            dir_prefix="plots/run15/",
+                            color_range=[-10, 10])
 
     #splt.batch_correlations_statistics("run1_correlations.shelve", batch1_param)
     #splt.batch_correlations_statistics("run2_correlations.shelve", batch2_param)

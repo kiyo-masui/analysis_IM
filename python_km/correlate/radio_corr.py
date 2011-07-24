@@ -93,7 +93,7 @@ def radio_correlation(init_filename):
     algebra.compressed_array_summary(noiseinv_radio2[freqlist, :, :],
                     "radio map 2 N^-1 as entering the correlation function")
 
-    cross_pair = fs.MapPair(map_radio1, map_radio2, 
+    cross_pair = fs.MapPair(map_radio1, map_radio2,
                             noiseinv_radio1, noiseinv_radio2,
                             freqlist)
 
@@ -106,7 +106,7 @@ def radio_correlation(init_filename):
     corr_shelve = shelve.open(params['output_shelve_file'])
     corr_shelve["corr"] = corr
     corr_shelve["counts"] = counts
-    corr_shelve["freq_axis"] = map_radio.get_axis('freq')
+    corr_shelve["freq_axis"] = map_radio1.get_axis('freq')
     corr_shelve["params"] = params
     corr_shelve.close()
 
