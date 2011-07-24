@@ -1,9 +1,8 @@
 #!/bin/bash
 for a in $(seq 0 25); do
     b=$(printf %d ${a})
-    echo $b	
+    echo $b
     sed -e "s/MODEINDEX/$b/g" sim_xloss_correlate.template > sim_xloss_correlate_mode$b.ini
-	cd ..
- 	nohup python correlate/radio_corr.py inifiles_ers/sim_xloss_correlate_mode$b.ini >& sim_xloss_correlate_mode$b.log &
-	cd inifiles_ers
+    sed -e "s/MODEINDEX/$b/g" sim_xloss_correlate_pbs.template > sim_xloss_correlate_mode$b.pbs
+    qsub sim_xloss_correlate_mode$b.pbs
 done

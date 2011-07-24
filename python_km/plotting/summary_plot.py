@@ -286,6 +286,30 @@ batch13_param = {
     "notes": run13_notes
     }
 
+run14_notes = {
+    "runname": "run14",
+    "machine": "sunnyvale",
+    "selection_function": "separable, 1000 catalogs",
+    "speedup": "on",
+    "meansubtract": "on",
+    "notes": "optical autocorr, DD, DR, RR"
+    }
+batch14_param = {
+    "path": rootdir + "opt_auto_corr",
+    "rand:list": {"prefix": "opt_x_opt_rand",
+                  "suffix": "_noconv_sep",
+                  "indices": range(100),
+                  "indexfmt": "%03d",
+                  "id_prefix": "RR"},
+    "DR:list": {"prefix": "opt_x_opt_DR",
+                  "suffix": "_noconv_sep",
+                  "indices": range(100),
+                  "indexfmt": "%03d",
+                  "id_prefix": "RR"},
+    "signal:file": "opt_x_opt_noconv_sep",
+    "notes": run14_notes
+    }
+
 
 def make_corr_old(filename, verbose=False, identifier=None):
     """wrap the plot correlation class which reads correlation object shelve
@@ -798,7 +822,8 @@ if __name__ == '__main__':
     #process_batch_correlations("run10_correlations_modes.shelve", batch10_param)
     #process_batch_correlations("run11_correlations_modes.shelve", batch11_param)
     #process_batch_correlations("run12_correlations_modes.shelve", batch12_param)
-    process_batch_correlations("run13_correlations.shelve", batch13_param)
+    #process_batch_correlations("run13_correlations.shelve", batch13_param)
+    process_batch_correlations("run14_correlations.shelve", batch14_param)
 
     #print compare_corr(batch2_param, batch3_param)
     #print compare_corr(batch1_param, batch2_param)
@@ -839,8 +864,11 @@ if __name__ == '__main__':
     #plot_batch_correlations("run12_correlations_modes.shelve", batch12_param,
     #                        dir_prefix="plots/run12/",
     #                        color_range=[-10, 10])
-    plot_batch_correlations("run13_correlations.shelve", batch13_param,
-                            dir_prefix="plots/run13/",
+    #plot_batch_correlations("run13_correlations.shelve", batch13_param,
+    #                        dir_prefix="plots/run13/",
+    #                        color_range=[-10, 10])
+    plot_batch_correlations("run14_correlations.shelve", batch14_param,
+                            dir_prefix="plots/run14/",
                             color_range=[-10, 10])
 
     #batch_correlations_statistics("run1_correlations.shelve", batch1_param)
