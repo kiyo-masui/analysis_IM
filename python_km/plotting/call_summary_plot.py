@@ -1,4 +1,5 @@
 from plotting import summary_plot as splt
+from simulations import corr21cm
 
 # note that notes are purely human-readable and the keys do not mean anything
 rootdir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/batch_runs/"
@@ -334,17 +335,24 @@ prefix = 'fs_'
 
 
 if __name__ == '__main__':
+    # find the mean brightness used in simulations
+    corrobj = corr21cm.Corr21cm()
+    T_b_sim = corrobj.T_b(1420./800.-1)
+
     #splt.repair_shelve_files(batch15_param, "sim_xloss_correlate_mode",
     #                         params_default, prefix)
     #print splt.compare_corr(batch6_param, batch7_param)
 
-    splt.process_batch_correlations(batch15_param, multiplier=1e-6)
+    splt.process_batch_correlations(batch10_param)
+    splt.process_batch_correlations(batch15_param, multiplier=1./T_b_sim*1.e-3)
 
-
+    splt.plot_batch_correlations(batch10_param,
+                            dir_prefix="plots/run10/",
+                            color_range=[-10, 10], cross_power=True)
     splt.plot_batch_correlations(batch15_param,
                             dir_prefix="plots/run15/",
-                            color_range=[-10, 10], cross_power=False)
+                            color_range=[-10, 10], cross_power=True)
 
     #splt.batch_correlations_statistics(batch14_param, randtoken="DR")
 
-    splt.batch_compensation_function(batch15_param)
+    #splt.batch_compensation_function(batch15_param)

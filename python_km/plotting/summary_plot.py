@@ -122,7 +122,7 @@ def make_shelve_names(batch_param, multiplier=1.):
             ident = token[0]
             if (entry_type == "file"):
                 fullpath = batch_param["path"] + "/" + batch_param[item]
-                filelist.append((ident, fullpath))
+                filelist.append((ident, fullpath, multiplier))
             if (entry_type == "list"):
                 list_param = batch_param[item]
                 for index in list_param["indices"]:
@@ -425,7 +425,7 @@ def plot_contour(filename, fbins, lags, corr2D,
 # TODO implement error option
 def plot_collapsed(filename, sep_lags, corr1D, errors=None, save_old=False,
                    plot_old=False, cross_power=True, title=None,
-                   ylog=True):
+                   ylog=False):
     nbins = len(sep_lags)
     a = plt.figure()
     ax = plt.gca()
@@ -458,11 +458,11 @@ def plot_collapsed(filename, sep_lags, corr1D, errors=None, save_old=False,
     f = plt.plot(t_lags, t, marker='None', color='k', linestyle='-')
 
     if cross_power:
-        plt.axis([1.5, 100, 0.01, 500.0])
-        #plt.axis([1.5, 100, 0.0001, 10.])
+        #plt.axis([1.5, 100, 0.01, 500.0])
+        plt.axis([1.5, 100, 0.0001, 10.])
     else:
-        plt.axis([1.5, 100, 0.01, 500.0])
-        #plt.axis([1.5, 100, 0.0001, 10.])
+        #plt.axis([1.5, 100, 0.01, 500.0])
+        plt.axis([1.5, 100, 0.0001, 10.])
 
     if not ylog:
         plt.axis([1.5, 100, -0.05, 0.12])
