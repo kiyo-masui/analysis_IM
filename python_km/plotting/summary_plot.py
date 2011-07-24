@@ -55,13 +55,16 @@ def make_corr(filename, verbose=False, identifier=None):
     frange = run_params["freq"]
     realrange = corr_shelve["freq_axis"]
     corr_2D = fs.rebin_corr_freq_lag(corr, realrange[list(frange)],
-                                     weights=corr_counts, return_fbins=True, nfbins=200)
-    corr_1D = fs.collapse_correlation_1D(corr_2D[0], corr_2D[2], lags, weights=corr_2D[1])
+                                     weights=corr_counts, return_fbins=True,
+                                     nfbins=200)
+    corr_1D = fs.collapse_correlation_1D(corr_2D[0], corr_2D[2], lags,
+                                         weights=corr_2D[1])
 
     output["run_params"] = run_params
     output["lags"] = run_params["lags"]
-    output["corr"] = corr
-    output["corr_counts"] = corr_counts
+    # uncomment these only if you need them in the shelve file; makes it huge
+    #output["corr"] = corr
+    #output["corr_counts"] = corr_counts
     output["freq"] = run_params["freq"]
     output["freq_axis"] = corr_shelve["freq_axis"]
     output["corr1D"] = corr_1D[0]
@@ -88,7 +91,8 @@ def plot_corr(shelve_entry, filename, title, coloraxis=None):
     outlog.write("\n")
 
     outlog.write("binned correlation function \n" + "-" * 80 + "\n")
-    for (lag, cdat) in zip(shelve_entry["corr1D_lags"], shelve_entry["corr1D"]):
+    for (lag, cdat) in zip(shelve_entry["corr1D_lags"],
+                           shelve_entry["corr1D"]):
         outlog.write(repr(lag) + repr(cdat) + "\n")
 
     plot_collapsed(filename + ".png", shelve_entry["corr1D_lags"],
@@ -368,10 +372,10 @@ def plot_collapsed(filename, sep_lags, corr1D, errors=None, save_old=False,
         corr1D = sp.sign(corrf) * sp.sqrt(abs(corrf)) * 1e3
 
     plt.plot(sep_lags, corr1D, linestyle='None', marker='o',
-                         color='b', markersize=msize) 
+                         color='b', markersize=msize)
     if ylog:
         plt.plot(sep_lags, -corr1D, linestyle='None', marker='o',
-                             color='r', markersize=msize) 
+                             color='r', markersize=msize)
 
     # model
     t_lags = sp.arange(0.1, 100, 0.1)
@@ -379,7 +383,7 @@ def plot_collapsed(filename, sep_lags, corr1D, errors=None, save_old=False,
     rb = 7.0
     t = sp.sqrt(((rb + t_lags) / r0)**(-1.8))
     if cross_power:
-        t *= t 
+        t *= t
 
     t = t * 0.15 / t[0]
     f = plt.plot(t_lags, t, marker='None', color='k', linestyle='-')
@@ -388,7 +392,7 @@ def plot_collapsed(filename, sep_lags, corr1D, errors=None, save_old=False,
         plt.axis([1.5, 100, 0.0001, 10.])
     else:
         plt.axis([1.5, 100, 0.01, 500.0])
-    
+
     if not ylog:
         plt.axis([1.5, 100, -0.05, 0.12])
 

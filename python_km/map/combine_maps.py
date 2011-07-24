@@ -3,6 +3,7 @@ import numpy as np
 import sys
 from core import algebra
 from correlate import wigglez_xcorr as wxc
+import copy
 
 
 cleanmaps_fourway = {
@@ -33,8 +34,8 @@ old_twoway = {
 
 # /mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test1/
 # /mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test/
-def make_fourway_list(root_data, root_cov, 
-                      map_middle = "_15hr_41-73_cleaned_clean_map_I_with_", 
+def make_fourway_list(root_data, root_cov,
+                      map_middle = "_15hr_41-73_cleaned_clean_map_I_with_",
                       cov_middle = "_15hr_41-73_cleaned_noise_inv_I_with_"):
 
     pairs = [('A', 'B'), ('A', 'C'), ('A', 'D'),
@@ -191,5 +192,33 @@ def make_modetest_combined_sim():
         algebra.save(filename, prodmap_out)
 
 
+def add_sim_radio():
+    """script: go through a list of simulations and add those to a selected map
+    """
+    root_file = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/"
+    radio_file = root_file + "modetest_combined_maps/combined_41-73_cleaned_clean_15.npy"
+    root_sim = "/mnt/raid-project/gmrt/calinliv/wiggleZ/simulations/test100/"
+    root_out = root_file + "simulations_plus_data/"
+    radio_data = algebra.make_vect(algebra.load(radio_file))
+
+    for simindex in range(1,101):
+        simname = root_sim + "simulated_signal_map_" + \
+                  repr(simindex)+"_with_beam.npy"
+        filename = root_out + "simulated_signal_plusdata_map_" + \
+                   repr(simindex)+"_with_beam.npy"
+        simoutname = root_out + "simulated_signal_map_" + \
+                   repr(simindex)+"_with_beam.npy"
+
+        sim_data = algebra.make_vect(algebra.load(simname))
+        sim_data /= 1000.
+        outmap = copy.deepcopy(radio_data)
+        outmap += sim_data
+
+        algebra.save(filename, outmap)
+        algebra.save(simoutname, sim_data)
+
+        print filename
+
 if __name__ == '__main__':
-    make_modetest_combined_sim()
+    #make_modetest_combined_sim()
+    add_sim_radio()

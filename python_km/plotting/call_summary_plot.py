@@ -1,3 +1,5 @@
+from plotting import summary_plot as splt
+
 # note that notes are purely human-readable and the keys do not mean anything
 rootdir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/batch_runs/"
 run1_notes = {
@@ -283,89 +285,88 @@ batch14_param = {
                   "suffix": "_noconv_sep",
                   "indices": range(100),
                   "indexfmt": "%03d",
-                  "id_prefix": "RR"},
+                  "id_prefix": "DR"},
     "signal:file": "opt_x_opt_noconv_sep",
     "notes": run14_notes
     }
 
 if __name__ == '__main__':
-    #compare_corr_one("opt_x_radio_mapA_noconv_fast.shelve", 
-    #                 "opt_x_radio_mapA_noconv_fastest.shelve", print_params=False)
+    #splt.process_batch_correlations("run1_correlations.shelve", batch1_param)
+    #splt.process_batch_correlations("run2_correlations.shelve", batch2_param)
+    #splt.process_batch_correlations("run3_correlations.shelve", batch3_param)
+    #splt.process_batch_correlations("run4_correlations.shelve", batch4_param)
+    #splt.process_batch_correlations("run5_correlations.shelve", batch5_param)
+    #splt.process_batch_correlations("run6_correlations.shelve", batch6_param)
+    #splt.process_batch_correlations("run7_correlations.shelve", batch7_param)
+    #splt.process_batch_correlations("run5_correlations_newcorr.shelve", batch5_param)
+    #splt.process_batch_correlations("run7_correlations_newcorr.shelve", batch7_param)
+    #splt.process_batch_correlations("run8_correlations_modes.shelve", batch8_param)
+    #splt.process_batch_correlations("run9_correlations_modes.shelve", batch9_param)
+    #splt.process_batch_correlations("run10_correlations_modes.shelve", batch10_param)
+    #splt.process_batch_correlations("run11_correlations_modes.shelve", batch11_param)
+    #splt.process_batch_correlations("run12_correlations_modes.shelve", batch12_param)
+    #splt.process_batch_correlations("run13_correlations.shelve", batch13_param)
+    splt.process_batch_correlations("run14_correlations.shelve", batch14_param)
 
-    #process_batch_correlations("run1_correlations.shelve", batch1_param)
-    #process_batch_correlations("run2_correlations.shelve", batch2_param)
-    #process_batch_correlations("run3_correlations.shelve", batch3_param)
-    #process_batch_correlations("run4_correlations.shelve", batch4_param)
-    #process_batch_correlations("run5_correlations.shelve", batch5_param)
-    #process_batch_correlations("run6_correlations.shelve", batch6_param)
-    #process_batch_correlations("run7_correlations.shelve", batch7_param)
-    #process_batch_correlations("run5_correlations_newcorr.shelve", batch5_param)
-    #process_batch_correlations("run7_correlations_newcorr.shelve", batch7_param)
-    #process_batch_correlations("run8_correlations_modes.shelve", batch8_param)
-    #process_batch_correlations("run9_correlations_modes.shelve", batch9_param)
-    #process_batch_correlations("run10_correlations_modes.shelve", batch10_param)
-    #process_batch_correlations("run11_correlations_modes.shelve", batch11_param)
-    #process_batch_correlations("run12_correlations_modes.shelve", batch12_param)
-    #process_batch_correlations("run13_correlations.shelve", batch13_param)
-    process_batch_correlations("run14_correlations.shelve", batch14_param)
+    #print splt.compare_corr(batch2_param, batch3_param)
+    #print splt.compare_corr(batch1_param, batch2_param)
+    #print splt.compare_corr(batch6_param, batch7_param)
 
-    #print compare_corr(batch2_param, batch3_param)
-    #print compare_corr(batch1_param, batch2_param)
-    #print compare_corr(batch6_param, batch7_param)
-
-    #plot_batch_correlations("run1_correlations.shelve", batch1_param,
+    #splt.plot_batch_correlations("run1_correlations.shelve", batch1_param,
     #                        dir_prefix="plots/run1b/")
-    #plot_batch_correlations("run2_correlations.shelve", batch2_param,
+    #splt.plot_batch_correlations("run2_correlations.shelve", batch2_param,
     #                        dir_prefix="plots/run2/")
-    #plot_batch_correlations("run3_correlations.shelve", batch3_param,
+    #splt.plot_batch_correlations("run3_correlations.shelve", batch3_param,
     #                        dir_prefix="plots/run3/")
-    #plot_batch_correlations("run4_correlations.shelve", batch4_param,
+    #splt.plot_batch_correlations("run4_correlations.shelve", batch4_param,
     #                        dir_prefix="plots/run4/")
-    #plot_batch_correlations("run5_correlations.shelve", batch5_param,
+    #splt.plot_batch_correlations("run5_correlations.shelve", batch5_param,
     #                        dir_prefix="plots/run5/",
     #                        color_range=[-0.04, 0.04])
-    #plot_batch_correlations("run6_correlations.shelve", batch6_param,
+    #splt.plot_batch_correlations("run6_correlations.shelve", batch6_param,
     #                        dir_prefix="plots/run6/",
     #                        color_range=[-0.04, 0.04])
-    #plot_batch_correlations("run7_correlations.shelve", batch7_param,
+    #splt.plot_batch_correlations("run7_correlations.shelve", batch7_param,
     #                        dir_prefix="plots/run7/",
     #                        color_range=[-0.04, 0.04])
-    #plot_batch_correlations("run7_correlations_newcorr.shelve", batch7_param,
+    #splt.plot_batch_correlations("run7_correlations_newcorr.shelve", batch7_param,
     #                        dir_prefix="plots/run7n/",
     #                        color_range=[-10, 10])
-    #plot_batch_correlations("run8_correlations_modes.shelve", batch8_param,
+    #splt.plot_batch_correlations("run8_correlations_modes.shelve", batch8_param,
     #                        dir_prefix="plots/run8/",
     #                        color_range=[-10, 10])
-    #plot_batch_correlations("run9_correlations_modes.shelve", batch9_param,
+    #splt.plot_batch_correlations("run9_correlations_modes.shelve", batch9_param,
     #                        dir_prefix="plots/run9/",
     #                        color_range=[-10, 10])
-    #plot_batch_correlations("run10_correlations_modes.shelve", batch10_param,
+    #splt.plot_batch_correlations("run10_correlations_modes.shelve", batch10_param,
     #                        dir_prefix="plots/run10/",
     #                        color_range=[-10, 10])
-    #plot_batch_correlations("run11_correlations_modes.shelve", batch11_param,
+    #splt.plot_batch_correlations("run11_correlations_modes.shelve", batch11_param,
     #                        dir_prefix="plots/run11/",
     #                        color_range=[-10, 10])
-    #plot_batch_correlations("run12_correlations_modes.shelve", batch12_param,
+    #splt.plot_batch_correlations("run12_correlations_modes.shelve", batch12_param,
     #                        dir_prefix="plots/run12/",
     #                        color_range=[-10, 10])
-    #plot_batch_correlations("run13_correlations.shelve", batch13_param,
+    #splt.plot_batch_correlations("run13_correlations.shelve", batch13_param,
     #                        dir_prefix="plots/run13/",
     #                        color_range=[-10, 10])
-    plot_batch_correlations("run14_correlations.shelve", batch14_param,
-                            dir_prefix="plots/run14/",
-                            color_range=[-10, 10])
+    #splt.plot_batch_correlations("run14_correlations.shelve", batch14_param,
+    #                        dir_prefix="plots/run14/",
+    #                        color_range=[-10, 10])
 
-    #batch_correlations_statistics("run1_correlations.shelve", batch1_param)
-    #batch_correlations_statistics("run2_correlations.shelve", batch2_param)
-    #batch_correlations_statistics("run3_correlations.shelve", batch3_param)
-    #batch_correlations_statistics("run4_correlations.shelve", batch4_param)
-    #batch_correlations_statistics("run5_correlations.shelve", batch5_param)
-    #batch_correlations_statistics("run6_correlations.shelve", batch6_param)
-    #batch_correlations_statistics("run7_correlations.shelve", batch7_param)
-    #batch_correlations_statistics("run5_correlations_newcorr.shelve", batch5_param)
-    #batch_correlations_statistics("run7_correlations_newcorr.shelve", batch7_param)
-    #batch_correlations_statistics("run10_correlations_modes.shelve", batch10_param)
-    #batch_correlations_statistics("run11_correlations_modes.shelve", batch11_param)
-    #batch_correlations_statistics("run12_correlations_modes.shelve", batch12_param)
-
-
+    #splt.batch_correlations_statistics("run1_correlations.shelve", batch1_param)
+    #splt.batch_correlations_statistics("run2_correlations.shelve", batch2_param)
+    #splt.batch_correlations_statistics("run3_correlations.shelve", batch3_param)
+    #splt.batch_correlations_statistics("run4_correlations.shelve", batch4_param)
+    #splt.batch_correlations_statistics("run5_correlations.shelve", batch5_param)
+    #splt.batch_correlations_statistics("run6_correlations.shelve", batch6_param)
+    #splt.batch_correlations_statistics("run7_correlations.shelve", batch7_param)
+    #splt.batch_correlations_statistics("run5_correlations_newcorr.shelve", batch5_param)
+    #splt.batch_correlations_statistics("run7_correlations_newcorr.shelve", batch7_param)
+    #splt.batch_correlations_statistics("run10_correlations_modes.shelve", batch10_param)
+    #splt.batch_correlations_statistics("run11_correlations_modes.shelve", batch11_param)
+    #splt.batch_correlations_statistics("run12_correlations_modes.shelve", batch12_param)
+    splt.batch_correlations_statistics("run14_correlations.shelve",
+                                        batch14_param, randtoken="RR")
+    splt.batch_correlations_statistics("run14_correlations.shelve",
+                                        batch14_param, randtoken="DR")
