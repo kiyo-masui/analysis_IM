@@ -312,7 +312,31 @@ batch15_param = {
     "notes": run15_notes
     }
 
+
+# use this for repairing files
+params_default = {
+      'radio_noiseroot1': '/mnt/raid-project/gmrt/kiyo/wiggleZ/corr/',
+      'radio_noiseroot2': '/mnt/raid-project/gmrt/kiyo/wiggleZ/corr/',
+      'radio_root1': '/mnt/raid-project/gmrt/kiyo/wiggleZ/corr/',
+      'radio_root2': '/mnt/raid-project/gmrt/kiyo/wiggleZ/corr/',
+      'radio_data_file1': 'sec_A_15hr_41-69_cleaned_clean_map_I.npy',
+      'radio_noiseinv_file1': 'sec_A_15hr_41-69_cleaned_noise_inv_I.npy',
+      'radio_data_file2': 'sec_A_15hr_41-69_cleaned_clean_map_I.npy',
+      'radio_noiseinv_file2': 'sec_A_15hr_41-69_cleaned_noise_inv_I.npy',
+      'freq': (),
+      'lags': (),
+      'output_shelve_file': 'test.shelve',
+      'convolve': False,
+      'subtract_mean': True,
+      'speedup': False
+      }
+prefix = 'fs_'
+
+
 if __name__ == '__main__':
+    #splt.repair_shelve_files(batch15_param, "sim_xloss_correlate_mode",
+    #                         params_default, prefix)
+
     #splt.process_batch_correlations("run1_correlations.shelve", batch1_param)
     #splt.process_batch_correlations("run2_correlations.shelve", batch2_param)
     #splt.process_batch_correlations("run3_correlations.shelve", batch3_param)
@@ -329,7 +353,8 @@ if __name__ == '__main__':
     #splt.process_batch_correlations("run12_correlations_modes.shelve", batch12_param)
     #splt.process_batch_correlations("run13_correlations.shelve", batch13_param)
     #splt.process_batch_correlations("run14_correlations.shelve", batch14_param)
-    splt.process_batch_correlations("run15_correlations.shelve", batch15_param)
+    #splt.process_batch_correlations("run15_correlations.shelve", batch15_param,
+    #                                multiplier=1e-6)
 
     #print splt.compare_corr(batch2_param, batch3_param)
     #print splt.compare_corr(batch1_param, batch2_param)
@@ -376,9 +401,9 @@ if __name__ == '__main__':
     #splt.plot_batch_correlations("run14_correlations.shelve", batch14_param,
     #                        dir_prefix="plots/run14/",
     #                        color_range=[-10, 10])
-    splt.plot_batch_correlations("run15_correlations.shelve", batch15_param,
-                            dir_prefix="plots/run15/",
-                            color_range=[-10, 10])
+    #splt.plot_batch_correlations("run15_correlations.shelve", batch15_param,
+    #                        dir_prefix="plots/run15/",
+    #                        color_range=[-10, 10], cross_power=False)
 
     #splt.batch_correlations_statistics("run1_correlations.shelve", batch1_param)
     #splt.batch_correlations_statistics("run2_correlations.shelve", batch2_param)
@@ -392,7 +417,9 @@ if __name__ == '__main__':
     #splt.batch_correlations_statistics("run10_correlations_modes.shelve", batch10_param)
     #splt.batch_correlations_statistics("run11_correlations_modes.shelve", batch11_param)
     #splt.batch_correlations_statistics("run12_correlations_modes.shelve", batch12_param)
-    splt.batch_correlations_statistics("run14_correlations.shelve",
-                                        batch14_param, randtoken="RR")
-    splt.batch_correlations_statistics("run14_correlations.shelve",
-                                        batch14_param, randtoken="DR")
+    #splt.batch_correlations_statistics("run14_correlations.shelve",
+    #                                    batch14_param, randtoken="RR")
+    #splt.batch_correlations_statistics("run14_correlations.shelve",
+    #                                    batch14_param, randtoken="DR")
+
+    splt.batch_compensation_function("run15_correlations.shelve", batch15_param)
