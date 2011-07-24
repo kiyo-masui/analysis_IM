@@ -191,7 +191,7 @@ def compare_corr(batchlist_a, batchlist_b, print_params=False):
             file_b = None
 
         if file_a and file_b:
-            difference = compare_corr_one(file_a + ".shelve", 
+            difference = compare_corr_one(file_a + ".shelve",
                                           file_b + ".shelve",
                                           print_params=print_params)
             difflist.append((difference, file_a, file_b))
@@ -205,9 +205,9 @@ def wrap_make_corr(runitem):
     return make_corr(run_file, identifier=run_id, multiplier=multiplier)
 
 
-def process_batch_correlations(filename, batch_param, multiplier=1.):
+def process_batch_correlations(batch_param, multiplier=1.):
     """Process a batch of correlation functions"""
-    product = shelve.open(filename)
+    product = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
     filelist = make_shelve_names(batch_param, multiplier=multiplier)
 
     pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
@@ -296,9 +296,9 @@ def fancy_vector(vector, format_string):
     return output
 
 
-def batch_compensation_function(filename, batch_param, modetoken="mode"):
+def batch_compensation_function(batch_param, modetoken="mode"):
     """find the impact of filtering on a run of correlation functions"""
-    master = shelve.open(filename)
+    master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
     filelist = make_shelve_names(batch_param)
     # TODO remove 10 magic number and have it figure this out instead
     nlags = 10
@@ -329,10 +329,10 @@ def batch_compensation_function(filename, batch_param, modetoken="mode"):
         modeloss = compmode[:, lagindex]
         print int(lag), fancy_vector(modeloss, '%5.2g')
 
-def plot_batch_correlations(filename, batch_param, dir_prefix="plots/",
+def plot_batch_correlations(batch_param, dir_prefix="plots/",
                             color_range=[-0.2, 0.2], cross_power=True):
     """bin a large batch of correlation functions"""
-    master = shelve.open(filename)
+    master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
     filelist = make_shelve_names(batch_param)
     coloraxis = np.linspace(color_range[0], color_range[1], 100, endpoint=True)
 
