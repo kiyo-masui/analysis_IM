@@ -332,6 +332,87 @@ batch16_param = {
     "notes": run16_notes
     }
 
+run17_notes = {
+    "runname": "run17",
+    "machine": "sunnyvale",
+    "speedup": "on",
+    "notes1": "correlate slices mode loss run",
+    }
+batch17_param = {
+    "path": rootdir + "corr_slices_mode_loss_sims",
+    "loss0:list": {"prefix": "modeloss_",
+                  "suffix": "_0",
+                  "indices": range(0,26),
+                  "indexfmt": "%d",
+                  "id_prefix": "loss0_"},
+    "loss1:list": {"prefix": "modeloss_",
+                  "suffix": "_1",
+                  "indices": range(0,26),
+                  "indexfmt": "%d",
+                  "id_prefix": "loss1_"},
+    "loss2:list": {"prefix": "modeloss_",
+                  "suffix": "_2",
+                  "indices": range(0,26),
+                  "indexfmt": "%d",
+                  "id_prefix": "loss2_"},
+    "loss3:list": {"prefix": "modeloss_",
+                  "suffix": "_3",
+                  "indices": range(0,26),
+                  "indexfmt": "%d",
+                  "id_prefix": "loss3_"},
+    "loss4:list": {"prefix": "modeloss_",
+                  "suffix": "_4",
+                  "indices": range(0,26),
+                  "indexfmt": "%d",
+                  "id_prefix": "loss4_"},
+    "loss5:list": {"prefix": "modeloss_",
+                  "suffix": "_5",
+                  "indices": range(0,26),
+                  "indexfmt": "%d",
+                  "id_prefix": "loss5_"},
+    "notes": run17_notes
+    }
+
+run18_notes = {
+    "runname": "run18",
+    "machine": "sunnyvale",
+    "speedup": "on",
+    "notes1": "correlate slices mode loss run",
+    }
+batch18_param = {
+    "path": rootdir + "corr_slices_mode_loss_maps",
+    "loss0:list": {"prefix": "modeloss_",
+                  "suffix": "_0",
+                  "indices": range(0,26),
+                  "indexfmt": "%d",
+                  "id_prefix": "loss0_"},
+    "loss1:list": {"prefix": "modeloss_",
+                  "suffix": "_1",
+                  "indices": range(0,26),
+                  "indexfmt": "%d",
+                  "id_prefix": "loss1_"},
+    "loss2:list": {"prefix": "modeloss_",
+                  "suffix": "_2",
+                  "indices": range(0,26),
+                  "indexfmt": "%d",
+                  "id_prefix": "loss2_"},
+    "loss3:list": {"prefix": "modeloss_",
+                  "suffix": "_3",
+                  "indices": range(0,26),
+                  "indexfmt": "%d",
+                  "id_prefix": "loss3_"},
+    "loss4:list": {"prefix": "modeloss_",
+                  "suffix": "_4",
+                  "indices": range(0,26),
+                  "indexfmt": "%d",
+                  "id_prefix": "loss4_"},
+    "loss5:list": {"prefix": "modeloss_",
+                  "suffix": "_5",
+                  "indices": range(0,26),
+                  "indexfmt": "%d",
+                  "id_prefix": "loss5_"},
+    "notes": run18_notes
+    }
 
 # use this for repairing files
 params_default = {
@@ -368,6 +449,8 @@ if __name__ == '__main__':
     #splt.process_batch_correlations(batch10_param)
     #splt.process_batch_correlations(batch15_param, multiplier=1./T_b_sim*1.e-3)
     #splt.process_batch_correlations(batch16_param, multiplier=1.e-6)
+    #splt.process_batch_correlations(batch17_param, multiplier=1.e-6)
+    #splt.process_batch_correlations(batch18_param)
 
     #splt.plot_batch_correlations(batch10_param,
     #                        dir_prefix="plots/run10/",
@@ -375,12 +458,20 @@ if __name__ == '__main__':
     #splt.plot_batch_correlations(batch15_param,
     #                        dir_prefix="plots/run15/",
     #                        color_range=[-10, 10], cross_power=True)
-    splt.plot_batch_correlations(batch16_param,
-                            dir_prefix="plots/run16/",
-                            color_range=[-10, 10], cross_power=False)
+    #splt.plot_batch_correlations(batch16_param,
+    #                        dir_prefix="plots/run16/",
+    #                        color_range=[-10, 10], cross_power=False)
+    #splt.plot_batch_correlations(batch17_param,
+    #                        dir_prefix="plots/run17/",
+    #                        color_range=[-10, 10], cross_power=False)
+    #splt.plot_batch_correlations(batch18_param,
+    #                        dir_prefix="plots/run18/",
+    #                        color_range=[-10, 10], cross_power=False)
 
     #splt.batch_correlations_statistics(batch14_param, randtoken="RR")
-    splt.batch_correlations_statistics(batch16_param, randtoken="rand",
-                                       include_signal=False)
+    #splt.batch_correlations_statistics(batch16_param, randtoken="rand",
+    #                                   include_signal=False)
+
+    splt.average_collapsed_loss(batch18_param, dir_prefix="plots/run18/")
 
     #splt.batch_compensation_function(batch15_param)

@@ -247,6 +247,40 @@ def wrap_plot_corr(runitem):
               coloraxis=coloraxis, cross_power=cross_power)
 
 
+def average_collapsed_loss(batch_param, dir_prefix="plots/"):
+    master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
+    filelist = make_shelve_names(batch_param)
+    n_modes = 26
+    n_pairs = 6
+    n_lags = 10
+
+    accumulator = np.zeros((n_modes, n_pairs, n_lags))
+    mean_accumulator = np.zeros((n_modes, n_lags))
+    stdev_accumulator = np.zeros((n_modes, n_lags))
+    for mode_number in range(0, n_modes):
+        for pair in range(0, n_pairs):
+            print mode_number, pair
+            identifier = "loss" + repr(pair) + "_" + repr(mode_number)
+            entry = master[identifier]
+            accumulator[mode_number, pair, :] = entry["corr1D"]
+
+        mean_accumulator[mode_number,:] = np.mean(accumulator[mode_number,:,:], axis=0)
+        stdev_accumulator[mode_number,:] = np.std(accumulator[mode_number,:,:], axis=0)
+        #mean_accumulator[mode_number,:] = np.mean(np.sqrt(accumulator[mode_number,:,:]), axis=0)
+        #stdev_accumulator[mode_number,:] = np.std(np.sqrt(accumulator[mode_number,:,:]), axis=0)
+        #mean_accumulator[mode_number,:] *= mean_accumulator[mode_number,:]
+        #stdev_accumulator[mode_number,:] *= stdev_accumulator[mode_number,:]
+
+        filename = dir_prefix + "modeloss_avg_" + repr(mode_number)
+        title = "auto-power with " + repr(mode_number) + " modes removed"
+        plot_collapsed(filename + ".png", entry["corr1D_lags"],
+                                 mean_accumulator[mode_number,:],
+                                 cross_power=False, title=title,
+                                 errors = stdev_accumulator[mode_number,:])
+
+
+    return (mean_accumulator, stdev_accumulator)
+
 def batch_correlations_statistics(batch_param, randtoken="rand",
                                   include_signal=True):
     """bin a large batch of correlation functions"""
@@ -430,8 +464,7 @@ def plot_contour(filename, fbins, lags, corr2D,
     plt.savefig(filename)
 
 
-# TODO implement error option
-def plot_collapsed(filename, sep_lags, corr1D, errors=None, save_old=False,
+def plot_collapsed(filename, sep_lags, corr1D, errors=[], save_old=False,
                    plot_old=False, cross_power=True, title=None,
                    ylog=False):
     nbins = len(sep_lags)
@@ -444,15 +477,26 @@ def plot_collapsed(filename, sep_lags, corr1D, errors=None, save_old=False,
     msize = 6
 
     if cross_power:
-        corr1Dplt = corr1D*1e3
+        corr1Dplt = corr1D*1.e3
+        correrr = errors*1.e3
     else:
         corr1Dplt = sp.sign(corr1D) * sp.sqrt(abs(corr1D)) * 1e3
+        correrr = sp.sqrt(errors)*1.e3  # TODO: make this more rigorous
 
-    plt.plot(sep_lags, corr1Dplt, linestyle='None', marker='o',
-                         color='b', markersize=msize)
+    if (len(errors) > 0):
+        plt.errorbar(sep_lags, corr1Dplt, yerr=correrr, fmt='--o', color='b',
+                     markersize=msize)
+    else:
+        plt.plot(sep_lags, corr1Dplt, linestyle='None', marker='o',
+                             color='b', markersize=msize)
+
     if ylog:
-        plt.plot(sep_lags, -corr1Dplt, linestyle='None', marker='o',
-                             color='r', markersize=msize)
+        if (len(errors) > 0):
+            plt.errorbar(sep_lags, -corr1Dplt, yerr=correrr, fmt='--o',
+                        color='r', markersize=msize)
+        else:
+            plt.plot(sep_lags, -corr1Dplt, linestyle='None', marker='o',
+                                 color='r', markersize=msize)
 
     # model
     t_lags = sp.arange(0.1, 100, 0.1)
