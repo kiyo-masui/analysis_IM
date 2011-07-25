@@ -313,6 +313,25 @@ batch15_param = {
     "notes": run15_notes
     }
 
+# /mnt/raid-project/gmrt/eswitzer/wiggleZ/batch_runs/sim_x_sim/simxsim_96.shelve
+run16_notes = {
+    "runname": "run16",
+    "machine": "sunnyvale",
+    "speedup": "on",
+    "meansubtract": "on",
+    "notes1": "cross-correlation of the sims with themselves",
+    "notes2": "this uses radio N^-1 for both sim1, sim2; simulate autocorr"
+    }
+batch16_param = {
+    "path": rootdir + "sim_x_sim",
+    "rand:list": {"prefix": "simxsim_",
+                  "suffix": "",
+                  "indices": range(1,101),
+                  "indexfmt": "%d",
+                  "id_prefix": "rand"},
+    "notes": run16_notes
+    }
+
 
 # use this for repairing files
 params_default = {
@@ -341,18 +360,27 @@ if __name__ == '__main__':
 
     #splt.repair_shelve_files(batch15_param, "sim_xloss_correlate_mode",
     #                         params_default, prefix)
+    #splt.repair_shelve_files(batch16_param, "sim_auto_correlate_rand",
+    #                         params_default, prefix)
+
     #print splt.compare_corr(batch6_param, batch7_param)
 
-    splt.process_batch_correlations(batch10_param)
-    splt.process_batch_correlations(batch15_param, multiplier=1./T_b_sim*1.e-3)
+    #splt.process_batch_correlations(batch10_param)
+    #splt.process_batch_correlations(batch15_param, multiplier=1./T_b_sim*1.e-3)
+    #splt.process_batch_correlations(batch16_param, multiplier=1.e-6)
 
-    splt.plot_batch_correlations(batch10_param,
-                            dir_prefix="plots/run10/",
-                            color_range=[-10, 10], cross_power=True)
-    splt.plot_batch_correlations(batch15_param,
-                            dir_prefix="plots/run15/",
-                            color_range=[-10, 10], cross_power=True)
+    #splt.plot_batch_correlations(batch10_param,
+    #                        dir_prefix="plots/run10/",
+    #                        color_range=[-10, 10], cross_power=True)
+    #splt.plot_batch_correlations(batch15_param,
+    #                        dir_prefix="plots/run15/",
+    #                        color_range=[-10, 10], cross_power=True)
+    splt.plot_batch_correlations(batch16_param,
+                            dir_prefix="plots/run16/",
+                            color_range=[-10, 10], cross_power=False)
 
-    #splt.batch_correlations_statistics(batch14_param, randtoken="DR")
+    #splt.batch_correlations_statistics(batch14_param, randtoken="RR")
+    splt.batch_correlations_statistics(batch16_param, randtoken="rand",
+                                       include_signal=False)
 
     #splt.batch_compensation_function(batch15_param)

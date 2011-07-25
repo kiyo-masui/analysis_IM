@@ -850,7 +850,7 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
     out_weights[bad_inds] = 1.0
     out_corr /= out_weights
     out_weights[bad_inds] = 0.0
-    
+
     if return_fbins:
         return out_corr, out_weights, fbins - df*0.5
     else:
@@ -859,7 +859,7 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
 def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
     """Takes a 2D correlation function and collapses to a 1D correlation
     function.
-    
+
     f_lags in Hz, a_lags in degrees.  This is important.
     """
 
@@ -960,7 +960,7 @@ def load_svd_info(svd_file):
     return svd_info_list
 
 def pickle_slices(F):
-    """Pickle F to the output directory from the ini file.F is the 
+    """Pickle F to the output directory from the ini file.F is the
     New_Slices object which contains ALL the data."""
     # Check folder exists.
     out_root = F.params['output_root']
@@ -986,10 +986,10 @@ def pickle_slices(F):
 
 
 class FreqSlices(object) :
-    
+
     def __init__(self, parameter_file_or_dict=None) :
         # Read in the parameters.
-        self.params = parse_ini.parse(parameter_file_or_dict, params_init, 
+        self.params = parse_ini.parse(parameter_file_or_dict, params_init,
                                  prefix=prefix)
 
     def execute(self) :
@@ -1003,18 +1003,18 @@ class FreqSlices(object) :
             fn = params['file_middles'][0]
             params['file_middles'] = (fn, fn)
         if len(params['file_middles']) == 2 :
-            map_file = (params['input_root'] + params['file_middles'][0] + 
+            map_file = (params['input_root'] + params['file_middles'][0] +
                          params['input_end_map'])
-            noise_file = (params['input_root'] + params['file_middles'][0] + 
+            noise_file = (params['input_root'] + params['file_middles'][0] +
                          params['input_end_noise'])
             Map1 = algebra.make_vect(algebra.load(map_file))
             print "Loading noise."
             Noise1 = algebra.make_mat(algebra.open_memmap(noise_file, mode='r'))
             Noise1 = Noise1.mat_diag()
             print "Done."
-            map_file = (params['input_root'] + params['file_middles'][1] + 
+            map_file = (params['input_root'] + params['file_middles'][1] +
                          params['input_end_map'])
-            noise_file = (params['input_root'] + params['file_middles'][1] + 
+            noise_file = (params['input_root'] + params['file_middles'][1] +
                          params['input_end_noise'])
             Map2 = algebra.make_vect(algebra.load(map_file))
             print "Loading noise."

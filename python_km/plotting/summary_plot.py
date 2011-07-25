@@ -222,7 +222,7 @@ def process_batch_correlations(batch_param, multiplier=1.):
 def repair_shelve_files(batch_param, ini_prefix, params_default, param_prefix):
     """Add missing information to shelves"""
     filelist = make_shelve_names(batch_param)
-    for (index, filename) in filelist:
+    for (index, filename, multiplier) in filelist:
         print "repairing: " + filename
         directory = "/".join(filename.split("/")[0:-1]) + "/"
         run_index = re.findall(r'\d+', index)[0]
@@ -247,9 +247,10 @@ def wrap_plot_corr(runitem):
               coloraxis=coloraxis, cross_power=cross_power)
 
 
-def batch_correlations_statistics(filename, batch_param, randtoken="rand"):
+def batch_correlations_statistics(batch_param, randtoken="rand",
+                                  include_signal=True):
     """bin a large batch of correlation functions"""
-    master = shelve.open(filename)
+    master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
     filelist = make_shelve_names(batch_param)
 
     # make a sublist of calculated correlations for just the random trials
@@ -266,11 +267,12 @@ def batch_correlations_statistics(filename, batch_param, randtoken="rand"):
         print run_file
         shelve_entry = master[run_id]
         rancats[index, :] = shelve_entry["corr1D"]
-        #ranaxis = shelve_entry["corr1D_lags"]
+        ranaxis = shelve_entry["corr1D_lags"]
         index += 1
 
-    # TODO: have it be smarter about this rather than assume "signal" exists
-    shelve_signal = master["signal"]
+    if include_signal:
+        shelve_signal = master["signal"]
+
     master.close()
 
     ranstd = np.std(rancats, axis=0)
@@ -278,11 +280,17 @@ def batch_correlations_statistics(filename, batch_param, randtoken="rand"):
     rancov = np.corrcoef(rancats, rowvar=0)
     plot_covariance(rancov, "bin-bin_cov.png",
                     axis_labels = shelve_entry["corr1D_lags"])
+
     print "average binned correlation function and signal \n" + "-" * 80
-    output_package = zip(shelve_signal["corr1D_lags"], ranmean,
-                                         ranstd, shelve_signal["corr1D"])
-    for (lag, cdat, cdaterr, sig) in output_package:
-        print lag, cdat, cdaterr, sig
+    if include_signal:
+        output_package = zip(shelve_signal["corr1D_lags"], ranmean,
+                                             ranstd, shelve_signal["corr1D"])
+        for (lag, cdat, cdaterr, sig) in output_package:
+            print lag, cdat, cdaterr, sig
+    else:
+        output_package = zip(ranaxis, ranmean, ranstd)
+        for (lag, cdat, cdaterr) in output_package:
+            print lag, cdat, cdaterr
 
     return output_package
 
@@ -465,7 +473,7 @@ def plot_collapsed(filename, sep_lags, corr1D, errors=None, save_old=False,
         plt.axis([1.5, 100, 0.0001, 10.])
 
     if not ylog:
-        plt.axis([1.5, 100, -0.05, 0.12])
+        plt.axis([1.5, 100, -0.05, 0.25])
 
     plt.xlabel('lag (Mpc/h)')
     plt.ylabel('correlation (mK)')

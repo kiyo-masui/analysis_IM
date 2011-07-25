@@ -4,6 +4,11 @@ import sys
 from core import algebra
 from correlate import wigglez_xcorr as wxc
 import copy
+import shelve
+# ugly odds and ends that are needed to read the pkl file
+import cPickle
+from correlate.freq_slices import *
+import multiprocessing
 
 
 cleanmaps_fourway = {
@@ -219,6 +224,65 @@ def add_sim_radio():
 
         print filename
 
+
+def wrap_repackage_pickle(runitem):
+    (pklfile, shelvefile) = runitem
+    repackage_pickle_as_shelve(pklfile, shelvefile)
+
+
+def repackage_pickle_as_shelve(pklfile, shelvefile):
+    """Take pickled output from Liviu's code and combine the data from various
+    sources into a common shelve file. [script, not production]
+    """
+    print pklfile
+    f = open(pklfile, "r")
+    F = cPickle.load(f)
+    f.close()
+
+    # Setting axis info after pickling.
+    map_file = F.params["input_root"] + "sec_A_15hr_41-73_clean_map_I.npy"
+    exMap = algebra.make_vect(algebra.load(map_file))
+    for Pair in F.Pairs:
+        Pair.Map1.info = exMap.info
+        Pair.Map2.info = exMap.info
+        Pair.Noise_inv1.info = exMap.info
+        Pair.Noise_inv2.info = exMap.info
+
+    for corrindex in range(6):
+        shelvename = shelvefile + "_" + repr(corrindex) + ".shelve"
+        corr_shelve = shelve.open(shelvename)
+        print shelvename
+        corr_shelve["corr"] = F.Pairs[corrindex].corr
+        corr_shelve["counts"] = F.Pairs[corrindex].counts
+        corr_shelve["freq_axis"] = F.Pairs[corrindex].Map1.get_axis('freq')
+        corr_shelve["params"] = F.params
+        corr_shelve.close()
+
+
+def reprocess_batch_pickle():
+    root_dir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest/"
+    out_dir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/batch_runs/"
+
+    runlist_maps = []
+    runlist_sims = []
+    for modeindex in range(26):
+        sim_dir = "73_ABCD_all_" + repr(modeindex) + "_modes_sim3map/"
+        map_dir = "73_ABCD_all_" + repr(modeindex) + "_modes_real3map/"
+
+        runlist_maps.append((root_dir + map_dir + "New_Slices_object.pkl",
+                                   out_dir + "corr_slices_mode_loss_maps/" +
+                                   "modeloss_"+repr(modeindex)))
+        runlist_sims.append((root_dir + sim_dir + "New_Slices_object.pkl",
+                                   out_dir + "corr_slices_mode_loss_sims/" +
+                                   "modeloss_"+repr(modeindex)))
+
+    count = multiprocessing.cpu_count()
+    pool = multiprocessing.Pool(processes=count)
+    pool.map(wrap_repackage_pickle, runlist_maps)
+    pool.map(wrap_repackage_pickle, runlist_sims)
+
+
 if __name__ == '__main__':
     #make_modetest_combined_sim()
-    add_sim_radio()
+    #add_sim_radio()
+    reprocess_batch_pickle()
