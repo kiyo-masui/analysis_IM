@@ -802,13 +802,13 @@ def normalize_corr(corr):
                 factor = sp.sqrt(value)
                 corr_norm[f,f_prime,lag] = corr[f,f_prime,lag] / factor
     return corr_norm
-        
-    
+
+
 
 def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
                         return_fbins=False) :
     """Collapses frequency pair correlation function to frequency lag.
-    
+
     Basically this constructs the 2D correlation function.
 
     This function takes in a 3D corvariance matrix which is a function of
@@ -818,14 +818,14 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
     freq1 is the actualy freq values not the indeces [700MHz not 0,1,2...]
     for weights see counts in correlate.
     """
-    
+
     if freq2 is None :
         freq2 = freq1
     # Default is equal weights.
     if weights is None :
         weights = sp.ones_like(corr)
-    corr *= weights
-    
+    corr = corr*weights
+
     nf1 = corr.shape[0]
     nf2 = corr.shape[1]
     nlags = corr.shape[2]
@@ -836,7 +836,7 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
     # Allowcate memory for outputs.
     out_corr = sp.zeros((nfbins, nlags))
     out_weights = sp.zeros((nfbins, nlags))
-    
+
     # Loop over all frequency pairs and bin by lag.
     for ii in range(nf1) :
         for jj in range(nf2) :
@@ -850,7 +850,7 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
     out_weights[bad_inds] = 1.0
     out_corr /= out_weights
     out_weights[bad_inds] = 0.0
-    
+
     if return_fbins:
         return out_corr, out_weights, fbins - df*0.5
     else:
@@ -859,7 +859,7 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
 def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
     """Takes a 2D correlation function and collapses to a 1D correlation
     function.
-    
+
     f_lags in Hz, a_lags in degrees.  This is important.
     """
 
@@ -873,7 +873,7 @@ def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
         raise ValueError(msg)
     if weights is None:
         weights = sp.ones_like(corr)
-    corr *= weights
+    corr = corr*weights
     # Hard code conversion factors to MPc/h for now.
     a_fact = 34.0 # Mpc/h per degree at 800MHz.
     f_fact = 4.5 # Mpc/h per MHz at 800MHz.
@@ -960,7 +960,7 @@ def load_svd_info(svd_file):
     return svd_info_list
 
 def pickle_slices(F):
-    """Pickle F to the output directory from the ini file.F is the 
+    """Pickle F to the output directory from the ini file.F is the
     New_Slices object which contains ALL the data."""
     # Check folder exists.
     out_root = F.params['output_root']
@@ -986,10 +986,10 @@ def pickle_slices(F):
 
 
 class FreqSlices(object) :
-    
+
     def __init__(self, parameter_file_or_dict=None) :
         # Read in the parameters.
-        self.params = parse_ini.parse(parameter_file_or_dict, params_init, 
+        self.params = parse_ini.parse(parameter_file_or_dict, params_init,
                                  prefix=prefix)
 
     def execute(self) :
@@ -1003,18 +1003,18 @@ class FreqSlices(object) :
             fn = params['file_middles'][0]
             params['file_middles'] = (fn, fn)
         if len(params['file_middles']) == 2 :
-            map_file = (params['input_root'] + params['file_middles'][0] + 
+            map_file = (params['input_root'] + params['file_middles'][0] +
                          params['input_end_map'])
-            noise_file = (params['input_root'] + params['file_middles'][0] + 
+            noise_file = (params['input_root'] + params['file_middles'][0] +
                          params['input_end_noise'])
             Map1 = algebra.make_vect(algebra.load(map_file))
             print "Loading noise."
             Noise1 = algebra.make_mat(algebra.open_memmap(noise_file, mode='r'))
             Noise1 = Noise1.mat_diag()
             print "Done."
-            map_file = (params['input_root'] + params['file_middles'][1] + 
+            map_file = (params['input_root'] + params['file_middles'][1] +
                          params['input_end_map'])
-            noise_file = (params['input_root'] + params['file_middles'][1] + 
+            noise_file = (params['input_root'] + params['file_middles'][1] +
                          params['input_end_noise'])
             Map2 = algebra.make_vect(algebra.load(map_file))
             print "Loading noise."
@@ -1415,9 +1415,9 @@ def plot_contour(self, norms=False, lag_inds=(0)) :
 def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
                    plot_old=False) :
     """Used as a method of FreqSlices.  A function instead for debugging."""
-    
+
     lag_inds = list(lag_inds)
-    # Set up binning.    
+    # Set up binning.
     nf = len(self.freq_inds)
     freq_diffs = sp.arange(0.1e6, 100e6, 200.0/256*1e6)
     n_diffs = len(freq_diffs)
@@ -1427,7 +1427,7 @@ def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
     for ii in range(nf) :
         for jj in range(nf) :
             if norms :
-                thiscorr = (self.corr[ii,jj,lag_inds] * 
+                thiscorr = (self.corr[ii,jj,lag_inds] *
                             self.norms[ii,jj,sp.newaxis])
             else :
                 thiscorr = self.corr[ii,jj,lag_inds]

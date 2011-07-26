@@ -10,9 +10,9 @@ fs_optical_root2 = eswitzer_base_dir + 'binned_wiggleZ/'
 fs_optical_selection_file1 = 'reg15separable.npy'
 fs_optical_data_file1 = 'reg15data.npy'
 fs_optical_selection_file2 = 'reg15separable.npy'
-fs_optical_data_file2 = 'reg15data.npy'
+fs_optical_data_file2 = 'reg15randRANDINDEX.npy'
 
-fs_output_shelve_file = 'opt_x_opt_noconv_sep.shelve'
+fs_output_shelve_file = 'opt_x_opt_DRRANDINDEX_noconv_sep.shelve'
 fs_convolve = False
 fs_speedup = True
 fs_subtract_mean = True
