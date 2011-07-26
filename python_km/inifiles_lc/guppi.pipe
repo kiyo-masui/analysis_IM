@@ -42,7 +42,7 @@ prefix = ''
 map_prefix = '' + field + '_' + '41-73' + '_'
 
 pipe_modules = []
-pipe_processes = 20
+pipe_processes = 24
 
 #from time_stream import flag_data
 #pipe_modules.append(flag_data.FlagData)
@@ -76,7 +76,7 @@ rf_n_bins_combined = 16
 rf_mean_instead_median = False
 
 from time_stream import calibrate
-pipe_modules.append(calibrate.Calibrate)
+#pipe_modules.append(calibrate.Calibrate)
 #cl_input_root = rf_output_root
 cl_input_root = kiyo_dir + 'rebinned/' + prefix
 cl_file_middles = file_middles
@@ -91,7 +91,7 @@ cl_cal_temperature_files = (os.getenv('GBT10B_KM') + 'kevin_cal/cal_21.fits',)
 # Flux cal needs pols in IQUV.
 from time_stream import rotate_pol
 # Comment this line to skip this step in pipline.
-pipe_modules.append(rotate_pol.RotatePol)
+#pipe_modules.append(rotate_pol.RotatePol)
 rp_input_root = cl_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
@@ -106,7 +106,7 @@ rp_average_cals = False
 ##### FLUX CAL #####
 
 from time_stream import flux_pol_cal
-pipe_modules.append(flux_pol_cal.Calibrate)
+#pipe_modules.append(flux_pol_cal.Calibrate)
 tc_input_root = rp_output_root
 tc_file_middles = file_middles
 tc_input_end = '.fits'
@@ -121,7 +121,7 @@ tc_mueler_file = tcv_dir + 'mueller_params/'
 
 # After flux cal, use only one pol, I.
 from time_stream import rotate_pol
-pipe_modules.append((rotate_pol.RotatePol, ('rp2_', 'rp_')))
+#pipe_modules.append((rotate_pol.RotatePol, ('rp2_', 'rp_')))
 rp2_input_root = tc_output_root
 rp2_file_middles = file_middles
 rp2_input_end = '.fits'
@@ -134,7 +134,7 @@ rp2_new_pols = (1,)
 rp2_average_cals = True
 
 from map import dirty_map
-pipe_modules.append(dirty_map.DirtyMapMaker)
+#pipe_modules.append(dirty_map.DirtyMapMaker)
 #dm_input_root = rp_output_root
 dm_input_root = rp2_output_root
 dm_file_middles = file_middles
@@ -153,13 +153,13 @@ dm_polarizations = ('I',)
 dm_noise_parameters_input_root = 'None'
 
 from map import clean_map
-pipe_modules.append(clean_map.CleanMapMaker)
+#pipe_modules.append(clean_map.CleanMapMaker)
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
 cm_polarizations = ('I',)
 
 from time_stream import subtract_map_data
-pipe_modules.append(subtract_map_data.Subtract)
+#pipe_modules.append(subtract_map_data.Subtract)
 sm_input_root = rp_output_root
 sm_file_middles = file_middles
 sm_input_end = '.fits'
@@ -175,7 +175,7 @@ sm_gain_output_end = '_gain.pickle'
 sm_interpolation = 'linear'
 
 from time_stream import reflag
-pipe_modules.append(reflag.ReFlag)
+#pipe_modules.append(reflag.ReFlag)
 sf_input_root = rp_output_root
 sf_file_middles = file_middles
 sf_input_end = '.fits'
@@ -189,7 +189,7 @@ sf_subtracted_input_root = sm_output_root
 sf_subtracted_output_root = base_dir + 'reflag_sub/'
 
 from noise import measure_noise
-pipe_modules.append(measure_noise.Measure)
+#pipe_modules.append(measure_noise.Measure)
 mn_input_root = sf_subtracted_input_root
 mn_file_middles = file_middles
 mn_input_end = '.fits'
@@ -200,7 +200,7 @@ mn_model = "scan_var"
 #### Make sub map A ####
 
 from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
 dmA_file_middles = middles_a
 dmA_input_root = sf_output_root
 dmA_output_root = base_dir + 'maps/' + "sec_A_" + map_prefix
@@ -208,7 +208,7 @@ dmA_output_root = base_dir + 'maps/' + "sec_A_" + map_prefix
 dmA_noise_parameters_input_root = mn_output_root
 
 from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
 cmA_input_root = dmA_output_root
 cmA_output_root = dmA_output_root
 cmA_save_noise_diag = True
@@ -216,7 +216,7 @@ cmA_save_noise_diag = True
 #### Make sub map B ####
 
 from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
 dmB_file_middles = middles_b
 dmB_input_root = sf_output_root
 dmB_output_root = base_dir + 'maps/' + "sec_B_" + map_prefix
@@ -224,7 +224,7 @@ dmB_output_root = base_dir + 'maps/' + "sec_B_" + map_prefix
 dmB_noise_parameters_input_root = mn_output_root
 
 from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
 cmB_input_root = dmB_output_root
 cmB_output_root = dmB_output_root
 cmB_save_noise_diag = True
@@ -232,7 +232,7 @@ cmB_save_noise_diag = True
 #### Make sub map C ####
 
 from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
 dmC_file_middles = middles_c
 dmC_input_root = sf_output_root
 dmC_output_root = base_dir + 'maps/' + "sec_C_" + map_prefix
@@ -240,7 +240,7 @@ dmC_output_root = base_dir + 'maps/' + "sec_C_" + map_prefix
 dmC_noise_parameters_input_root = mn_output_root
 
 from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
 cmC_input_root = dmC_output_root
 cmC_output_root = dmC_output_root
 cmC_save_noise_diag = True
@@ -248,7 +248,7 @@ cmC_save_noise_diag = True
 #### Make sub map D ####
 
 from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 dmD_file_middles = middles_d
 dmD_input_root = sf_output_root
 dmD_output_root = base_dir + 'maps/' + "sec_D_" + map_prefix
@@ -256,7 +256,7 @@ dmD_output_root = base_dir + 'maps/' + "sec_D_" + map_prefix
 dmD_noise_parameters_input_root = mn_output_root
 
 from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
 cmD_input_root = dmD_output_root
 cmD_output_root = dmD_output_root
 cmD_save_noise_diag = True
