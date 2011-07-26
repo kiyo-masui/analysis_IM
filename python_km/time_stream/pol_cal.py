@@ -42,16 +42,16 @@ class Calibrate(base_single.BaseSingle) :
     # More on DataBlock objects in the calibrate function below.
     def action(self, Data) :
         #setting parameters
-        # Data.calc_freq()
-        # frequency = Data.freq/1000000
-        # Center_freq = int(Data.field['CRVAL1']/1000000)
+#        Data.calc_freq()
+#        frequency = Data.freq/1000000
+        #Center_freq = int(Data.field['CRVAL1']/1000000)
 
         # Generating pre-mod plots
-        # pl.plot(frequency,Data.data[0,0,1,:])
-        # pl.plot(frequency,Data.data[0,1,1,:])
-        # pl.plot(frequency,Data.data[0,2,1,:])
-        # pl.plot(frequency,Data.data[0,3,1,:])
-        # Swapped self.params['file_middles'] for  str(Data.field['SCAN'])
+#        pl.plot(frequency,Data.data[0,0,0,:])
+#        pl.plot(frequency,Data.data[0,1,0,:])
+#        pl.plot(frequency,Data.data[0,2,0,:])
+#        pl.plot(frequency,Data.data[0,3,0,:])
+        #Swapped self.params['file_middles'] for  str(Data.field['SCAN'])
 
         # Main Action
        	calibrate_pol(Data, self.mueler)
@@ -59,17 +59,17 @@ class Calibrate(base_single.BaseSingle) :
                	         ('Mueler matrix file: ' + self.params['mueler_file'],))
 
         # Generaing post-mod plots
-        # pl.plot(frequency,Data.data[0,0,1,:]) 
-        # pl.plot(frequency,Data.data[0,1,1,:]) 
-        # pl.plot(frequency,Data.data[0,2,1,:]) 
-        # pl.plot(frequency,Data.data[0,3,1,:]) 
-        # pl.legend(("I-init","Q-init","U-init","V-init",'I-mod','Q-mod','U-mod','V-mod')) 
-        # pl.xlabel("Freqency (MHz)") 
-        # pl.ylabel("Polarization")
-        # title0 = str(Data.field['SCAN'])+'_'+str(Center_freq)+"_caloff_pol"
-        # pl.suptitle(title0) 
-        # pl.savefig("//mnt/raid-project/gmrt/tcv/pol_cal/"+title0+".ps")
-        # pl.clf() 
+#        pl.plot(frequency,Data.data[0,0,0,:]) 
+#        pl.plot(frequency,Data.data[0,1,0,:]) 
+#        pl.plot(frequency,Data.data[0,2,0,:]) 
+#        pl.plot(frequency,Data.data[0,3,0,:]) 
+#        pl.legend(("I-init","Q-init","U-init","V-init",'I-mod','Q-mod','U-mod','V-mod')) 
+#        pl.xlabel("Freqency (MHz)") 
+#        pl.ylabel("Polarization")
+#        title0 = str(Data.field['SCAN'])+'_'+"_caloff_pol"
+        #pl.suptitle(title0) 
+#        pl.savefig(title0+"_comparison_test_for_3C286.png")
+#        pl.clf() 
 
        	return Data
 
@@ -142,10 +142,10 @@ def mueller() :
         for j in range(0,4):
             for k in range(0,4):
                 m_total[j,k,i] = M_total[j,k]
-#     np.savetxt('mueller_matrix_first_row.txt', m_total[:,0,:], delimiter=' ')
-#     np.savetxt('mueller_matrix_second_row.txt', m_total[:,1,:], delimiter=' ')
-#     np.savetxt('mueller_matrix_third_row.txt', m_total[:,2,:], delimiter=' ')
-#     np.savetxt('mueller_matrix_fourth_row.txt', m_total[:,3,:], delimiter=' ') 
+     np.savetxt('mueller_matrix_first_row.txt', m_total[:,0,:], delimiter=' ')
+     np.savetxt('mueller_matrix_second_row.txt', m_total[:,1,:], delimiter=' ')
+     np.savetxt('mueller_matrix_third_row.txt', m_total[:,2,:], delimiter=' ')
+     np.savetxt('mueller_matrix_fourth_row.txt', m_total[:,3,:], delimiter=' ') 
      return m_total
 
 def calibrate_pol(Data, m_total) :
@@ -228,12 +228,13 @@ def calibrate_pol(Data, m_total) :
 #                  raise ce.DataError('The frequency outside viable window') 
 
      # Tells which mueller matrix to use. Assumes at least 1 MHz bins.
-               frequency = int(Data.freq[freq]/1000000) 
+               frequency = int(Data.freq[freq]/1000) 
                freq_limit=len(m_total[0,0,:])
-               if freq_limit == 200:
-                   bin = 900-frequency
-               elif freq_limit == 260:
-                   bin = 929-frequency
+               bin = int((900000-frequency)*freq_limit/200000)
+#               if freq_limit == 200:
+#                   bin = 900-frequency
+#               elif freq_limit == 260:
+#                   bin = 929-frequency
 #               print bin
     # Converts files into matrix format 
                STOKES = Data.data[time_index,:,cal_index,freq]       

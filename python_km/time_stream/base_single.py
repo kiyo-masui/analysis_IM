@@ -132,6 +132,8 @@ class BaseSingle(object) :
         """Process on file from the list to be processed based on the passed
         index.
         """
+	
+	self.file_ind = file_ind
         params = self.params
         file_middle = params['file_middles'][file_ind]
         input_fname = (params['input_root'] + file_middle +

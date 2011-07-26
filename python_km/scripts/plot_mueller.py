@@ -2,7 +2,7 @@ import pylab
 from numpy import *
 import scipy as sp
 
-prefix = '41-51_mod'
+prefix = '66-68'
 
 mueller_params = loadtxt('mueller_params_calc.txt')
 m_err = loadtxt('mueller_params_error.txt')
@@ -14,9 +14,11 @@ alpha = mueller_params[:,2]
 psi = mueller_params[:,3]
 phi = mueller_params[:,4]
 epsilon = mueller_params[:,5]
-Q = mueller_params[:,6]
-U = mueller_params[:,7]
-chi = mueller_params[:,8]
+chi = mueller_params[:,6]
+flux = mueller_params[:,7]
+#Q = mueller_params[:,6]
+#U = mueller_params[:,7]
+#chi = mueller_params[:,8]
 #Q = sp.zeros(size)
 #for ii in range(0,size):
 #    Q[ii] = abs(mueller_params[ii,6])
@@ -50,7 +52,7 @@ pylab.plot(freq, deltaG,label='deltaG')
 pylab.scatter(freq,deltaG,label='deltaG values')
 deltaG_ave = mean(deltaG)
 #pylab.axhline(y=deltaG_ave,color='y',label='mean_deltaG')
-pylab.ylim(-1,1)
+pylab.ylim(-0.5,0.5)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency')
 pylab.legend()
@@ -132,37 +134,47 @@ pylab.legend()
 pylab.savefig('mueller_params_chi_'+prefix+'.png')
 pylab.clf()
 
+#Flux plot
+pylab.plot(freq,flux,label='generated')
+pylab.scatter(freq,flux,label='data points')
+pylab.xlim(freq[-1],freq[0])
+pylab.xlabel('frequency')
+pylab.ylabel('flux')
+pylab.legend()
+pylab.savefig('mueller_params_flux_'+prefix+'.png')
+pylab.clf()
+
 # Q, U plots
-pylab.plot(freq, Q,label='Q_generated')
+#pylab.plot(freq, Q,label='Q_generated')
 #pylab.errorbar(freq,Q,m_err[:,6],label='Q_generated')
-pylab.scatter(freq,Q,color='b',label='Q_gen data points')
-pylab.plot(freq, U,label='U_generated')
-pylab.scatter(freq,U,color='g',label='U_gen data points')
+#pylab.scatter(freq,Q,color='b',label='Q_gen data points')
+#pylab.plot(freq, U,label='U_generated')
+#pylab.scatter(freq,U,color='g',label='U_gen data points')
 #pylab.errorbar(freq,U,m_err[:,7],label='U_generated')
 #pylab.errorbar(heiles_params[:,0],heiles_params[:,6],heiles_error[:,6],label='Q_heiles')
 #pylab.errorbar(heiles_params[:,0],heiles_params[:,7],heiles_error[:,7],label='U_heiles')
-Q_ave = mean(Q)
+#Q_ave = mean(Q)
 #pylab.axhline(y=Q_ave,color='y',label='mean_Q')
-U_ave = mean(U)
+#U_ave = mean(U)
 #pylab.axhline(y=U_ave,color='m',label='mean_U')
-pylab.xlim(freq[-1],freq[0])
-pylab.ylim(0,0.1) 
-pylab.legend()
-pylab.xlabel('frequency')
-pylab.ylabel('fra:ctional polarization')
-pylab.savefig('mueller_params_Q_U_'+prefix+'.png')
-pylab.clf()
+#pylab.xlim(freq[-1],freq[0])
+#pylab.ylim(0,0.1) 
+#pylab.legend()
+#pylab.xlabel('frequency')
+#pylab.ylabel('fractional polarization')
+#pylab.savefig('mueller_params_Q_U_'+prefix+'.png')
+#pylab.clf()
 
-ratio = sp.zeros(size)
-for ii in range(0,size):
-    ratio[ii] = abs(mueller_params[ii,6]/mueller_params[ii,7])
+#ratio = sp.zeros(size)
+#for ii in range(0,size):
+#    ratio[ii] = abs(mueller_params[ii,6]/mueller_params[ii,7])
 
 #Plot Ratio of Q/U (should be a constant)
-pylab.plot(freq, ratio)
-pylab.ylim([0,5])
-pylab.xlim(freq[-1],freq[0])
-pylab.xlabel('frequency')
-pylab.ylabel('ratio of Q/U')
-pylab.savefig('mueller_params_ratio_'+prefix+'.png')
-pylab.clf()
+#pylab.plot(freq, ratio)
+#pylab.ylim([0,5])
+#pylab.xlim(freq[-1],freq[0])
+#pylab.xlabel('frequency')
+#pylab.ylabel('ratio of Q/U')
+#pylab.savefig('mueller_params_ratio_'+prefix+'.png')
+#pylab.clf()
 
