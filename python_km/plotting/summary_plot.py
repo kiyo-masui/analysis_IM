@@ -1,6 +1,7 @@
 """Make summary plots of the binned correlation functions for large sets of
 random catalogs """
 import os
+import copy
 import re
 import sys
 import string
@@ -17,15 +18,19 @@ from core import bootstrap
 from core import algebra
 import multiprocessing
 from kiyopy import parse_ini
-# TODO: convert batch params into ini files
+# TODO: convert batch params into ini files; move multiplier and cross-power to
+# batch param
 # TODO: make sure all methods here used counts/weights as-saved
 # TODO: new methods are fast enough that no need to partition binning plotting,
 # and statistics; still use multiprocessing
 
 
-def make_corr(filename, verbose=False, identifier=None, multiplier=1.):
+def make_corr(filename, verbose=False, identifier=None, cross_power=False,
+              multiplier=1.):
     """wrap the plot correlation class which reads correlation object shelve
-    files; uses new binning methods in freq-slices"""
+    files; uses new binning methods in freq-slices. Note that correlations are
+    converted into units of mK.
+    """
     output = {}
     corr_shelve = shelve.open(filename + ".shelve")
 
@@ -63,8 +68,16 @@ def make_corr(filename, verbose=False, identifier=None, multiplier=1.):
     corr_2D = fs.rebin_corr_freq_lag(corr, realrange[list(frange)],
                                      weights=corr_counts, return_fbins=True,
                                      nfbins=200)
+
     corr_1D = fs.collapse_correlation_1D(corr_2D[0], corr_2D[2], lags,
                                          weights=corr_2D[1])
+
+    if cross_power:
+        correlation_1D = corr_1D[0] * 1.e3
+        correlation_2D = corr_2D[0] * 1.e3
+    else:
+        correlation_1D = sp.sign(corr_1D[0]) * sp.sqrt(abs(corr_1D[0])) * 1e3
+        correlation_2D = sp.sign(corr_2D[0]) * sp.sqrt(abs(corr_2D[0])) * 1e3
 
     output["run_params"] = run_params
     output["lags"] = run_params["lags"]
@@ -73,10 +86,10 @@ def make_corr(filename, verbose=False, identifier=None, multiplier=1.):
     #output["corr_counts"] = corr_counts
     output["freq"] = run_params["freq"]
     output["freq_axis"] = corr_shelve["freq_axis"]
-    output["corr1D"] = corr_1D[0]
+    output["corr1D"] = correlation_1D
     output["corr1D_weights"] = corr_1D[1]
     output["corr1D_lags"] = corr_1D[2]
-    output["corr2D"] = corr_2D[0]
+    output["corr2D"] = correlation_2D
     output["corr2D_weights"] = corr_2D[1]
     output["corr2D_fbins"] = corr_2D[2]
     if identifier:
@@ -89,30 +102,27 @@ def plot_corr(shelve_entry, filename, title, coloraxis=None, cross_power=True):
     """make plots for a single correlation function (internal)"""
 
     print "plotting " + filename
-    outlog = open(filename + ".txt", 'w')
+    outlog = open(filename + ".log", 'w')
     run_params = shelve_entry["run_params"]
     outlog.write("run parameters \n" + "-" * 80 + "\n")
     for key in run_params:
         outlog.write(key + ": " + repr(run_params[key]) + "\n")
     outlog.write("\n")
 
-    outlog.write("binned correlation function \n" + "-" * 80 + "\n")
-    for (lag, cdat) in zip(shelve_entry["corr1D_lags"],
-                           shelve_entry["corr1D"]):
-        outlog.write(repr(lag) + repr(cdat) + "\n")
-
-    plot_collapsed(filename + ".png", shelve_entry["corr1D_lags"],
+    plot_collapsed(filename, shelve_entry["corr1D_lags"],
                                  shelve_entry["corr1D"],
                                  cross_power=cross_power, title=title)
 
+    print shelve_entry["corr2D"]
+
     plot_contour(filename + "_contour.png", shelve_entry["corr2D_fbins"],
                  shelve_entry["lags"], shelve_entry["corr2D"],
-                 cross_power=cross_power, title=title, coloraxis=coloraxis)
+                 title=title, coloraxis=coloraxis)
 
 
-def make_shelve_names(batch_param, multiplier=1.):
+def make_shelve_names(batch_param, multiplier=1., cross_power=False):
     """assemble a list of shelve file names containing the correlation function
-    information; lump a multiplier in with each file
+    information; lump a multiplier and cross-power flag in with each file
     """
     filelist = []
     for item in batch_param:
@@ -122,7 +132,7 @@ def make_shelve_names(batch_param, multiplier=1.):
             ident = token[0]
             if (entry_type == "file"):
                 fullpath = batch_param["path"] + "/" + batch_param[item]
-                filelist.append((ident, fullpath, multiplier))
+                filelist.append((ident, fullpath, multiplier, cross_power))
             if (entry_type == "list"):
                 list_param = batch_param[item]
                 for index in list_param["indices"]:
@@ -131,7 +141,7 @@ def make_shelve_names(batch_param, multiplier=1.):
                     fullpath += list_param["prefix"] + indexstr
                     fullpath += list_param["suffix"]
                     listid = list_param["id_prefix"] + indexstr
-                    filelist.append((listid, fullpath, multiplier))
+                    filelist.append((listid, fullpath, multiplier, cross_power))
 
     return filelist
 
@@ -201,14 +211,16 @@ def compare_corr(batchlist_a, batchlist_b, print_params=False):
 
 def wrap_make_corr(runitem):
     """wrapper to the make correlation function for the process pool"""
-    (run_id, run_file, multiplier) = runitem
-    return make_corr(run_file, identifier=run_id, multiplier=multiplier)
+    (run_id, run_file, multiplier, cross_power) = runitem
+    return make_corr(run_file, identifier=run_id, multiplier=multiplier,
+                     cross_power=cross_power)
 
 
-def process_batch_correlations(batch_param, multiplier=1.):
+def process_batch_correlations(batch_param, multiplier=1., cross_power=False):
     """Process a batch of correlation functions"""
     product = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
-    filelist = make_shelve_names(batch_param, multiplier=multiplier)
+    filelist = make_shelve_names(batch_param, multiplier=multiplier,
+                                 cross_power=cross_power)
 
     pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
     results = pool.map(wrap_make_corr, filelist)
@@ -222,7 +234,7 @@ def process_batch_correlations(batch_param, multiplier=1.):
 def repair_shelve_files(batch_param, ini_prefix, params_default, param_prefix):
     """Add missing information to shelves"""
     filelist = make_shelve_names(batch_param)
-    for (index, filename, multiplier) in filelist:
+    for (index, filename, multiplier, cross_power) in filelist:
         print "repairing: " + filename
         directory = "/".join(filename.split("/")[0:-1]) + "/"
         run_index = re.findall(r'\d+', index)[0]
@@ -264,16 +276,14 @@ def average_collapsed_loss(batch_param, dir_prefix="plots/"):
             entry = master[identifier]
             accumulator[mode_number, pair, :] = entry["corr1D"]
 
-        mean_accumulator[mode_number,:] = np.mean(accumulator[mode_number,:,:], axis=0)
-        stdev_accumulator[mode_number,:] = np.std(accumulator[mode_number,:,:], axis=0)
-        #mean_accumulator[mode_number,:] = np.mean(np.sqrt(accumulator[mode_number,:,:]), axis=0)
-        #stdev_accumulator[mode_number,:] = np.std(np.sqrt(accumulator[mode_number,:,:]), axis=0)
-        #mean_accumulator[mode_number,:] *= mean_accumulator[mode_number,:]
-        #stdev_accumulator[mode_number,:] *= stdev_accumulator[mode_number,:]
+        mean_accumulator[mode_number,:] = np.mean(accumulator[mode_number,:,:],
+                                                  axis=0)
+        stdev_accumulator[mode_number,:] = np.std(accumulator[mode_number,:,:],
+                                                  axis=0, ddof=1)
 
         filename = dir_prefix + "modeloss_avg_" + repr(mode_number)
         title = "auto-power with " + repr(mode_number) + " modes removed"
-        plot_collapsed(filename + ".png", entry["corr1D_lags"],
+        plot_collapsed(filename, entry["corr1D_lags"],
                                  mean_accumulator[mode_number,:],
                                  cross_power=False, title=title,
                                  errors = stdev_accumulator[mode_number,:])
@@ -297,7 +307,7 @@ def batch_correlations_statistics(batch_param, randtoken="rand",
     # TODO remove 10 magic number and have it figure this out instead
     rancats = np.zeros((len(randlist), 10))
     index = 0
-    for (run_id, run_file, multiplier) in randlist:
+    for (run_id, run_file, multiplier, cross_power) in randlist:
         print run_file
         shelve_entry = master[run_id]
         rancats[index, :] = shelve_entry["corr1D"]
@@ -354,7 +364,7 @@ def batch_compensation_function(batch_param, modetoken="mode"):
     print "number of mode subtraction runs: " + repr(len(modelist))
     modecats = np.zeros((len(modelist), nlags))
     index = 0
-    for (run_id, run_file, multiplier) in modelist:
+    for (run_id, run_file, multiplier, cross_power) in modelist:
         print run_file
         shelve_entry = master[run_id]
         modecats[index, :] = shelve_entry["corr1D"]
@@ -394,9 +404,8 @@ def plot_batch_correlations(batch_param, dir_prefix="plots/",
         print "This batch did not have any notes"
 
     # pooled plotting
-    # TODO: save a .txt file with the run params along with each plot
     runlist = []
-    for (run_id, run_file, multiplier) in filelist:
+    for (run_id, run_file, multiplier, cross_power) in filelist:
         shelve_entry = master[run_id]
         run_tag = run_file.split('/')
         run_tag = run_tag[-1]
@@ -434,13 +443,8 @@ def plot_covariance(matrix_in, filename, axis_labels = [], mask_lower=False):
 
 
 def plot_contour(filename, fbins, lags, corr2D,
-                 cross_power=True, title=None, coloraxis=[]):
+                 title=None, coloraxis=[]):
     a = plt.figure()
-
-    if cross_power:
-        corr2D = corr2D * 1.e3
-    else:
-        corr2D = sp.sign(corr2D) * sp.sqrt(abs(corr2D)) * 1e3
 
     #a.set_figwidth(a.get_figwidth() / 3.0)
     if len(coloraxis) > 0:
@@ -476,27 +480,32 @@ def plot_collapsed(filename, sep_lags, corr1D, errors=[], save_old=False,
     elin = 2
     msize = 6
 
-    if cross_power:
-        corr1Dplt = corr1D*1.e3
-        correrr = errors*1.e3
-    else:
-        corr1Dplt = sp.sign(corr1D) * sp.sqrt(abs(corr1D)) * 1e3
-        correrr = sp.sqrt(errors)*1.e3  # TODO: make this more rigorous
-
     if (len(errors) > 0):
-        plt.errorbar(sep_lags, corr1Dplt, yerr=correrr, fmt='--o', color='b',
-                     markersize=msize)
+        plt.errorbar(sep_lags, corr1D, yerr=errors, fmt='o', color='b',
+                     markersize=msize, capsize=6, elinewidth=3)
     else:
-        plt.plot(sep_lags, corr1Dplt, linestyle='None', marker='o',
+        plt.plot(sep_lags, corr1D, linestyle='None', marker='o',
                              color='b', markersize=msize)
 
     if ylog:
         if (len(errors) > 0):
-            plt.errorbar(sep_lags, -corr1Dplt, yerr=correrr, fmt='--o',
-                        color='r', markersize=msize)
+            plt.errorbar(sep_lags, -corr1D, yerr=errors, fmt='o',
+                        color='r', markersize=msize, capsize=6, elinewidth=3)
         else:
-            plt.plot(sep_lags, -corr1Dplt, linestyle='None', marker='o',
+            plt.plot(sep_lags, -corr1D, linestyle='None', marker='o',
                                  color='r', markersize=msize)
+
+    # write out to a file
+    txtfile = open(filename + ".dat", 'w')
+    datalen = len(corr1D)
+    if (len(errors) > 0):
+        for writeitem in zip(sep_lags, corr1D, errors):
+            txtfile.write("%5.3g %5.3g %5.3g\n" % writeitem)
+    else:
+        for writeitem in zip(sep_lags, corr1D):
+            txtfile.write("%5.3g %5.3g\n" % writeitem)
+
+    txtfile.close()
 
     # model
     t_lags = sp.arange(0.1, 100, 0.1)
@@ -509,12 +518,8 @@ def plot_collapsed(filename, sep_lags, corr1D, errors=[], save_old=False,
     t = t * 0.15 / t[0]
     f = plt.plot(t_lags, t, marker='None', color='k', linestyle='-')
 
-    if cross_power:
-        #plt.axis([1.5, 100, 0.01, 500.0])
-        plt.axis([1.5, 100, 0.0001, 10.])
-    else:
-        #plt.axis([1.5, 100, 0.01, 500.0])
-        plt.axis([1.5, 100, 0.0001, 10.])
+    #plt.axis([1.5, 100, 0.01, 500.0])
+    plt.axis([1.5, 100, 0.0001, 10.])
 
     if not ylog:
         plt.axis([1.5, 100, -0.05, 0.25])
@@ -522,5 +527,5 @@ def plot_collapsed(filename, sep_lags, corr1D, errors=[], save_old=False,
     plt.xlabel('lag (Mpc/h)')
     plt.ylabel('correlation (mK)')
     plt.title(title)
-    plt.savefig(filename)
+    plt.savefig(filename + ".png")
 

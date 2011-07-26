@@ -414,6 +414,25 @@ batch18_param = {
     "notes": run18_notes
     }
 
+# /mnt/raid-project/gmrt/eswitzer/wiggleZ/batch_runs/dataplussim_x_optsim/radioplussim_x_optsim_98.shelve
+run19_notes = {
+    "runname": "run19",
+    "machine": "sunnyvale",
+    "speedup": "on",
+    "meansubtract": "on",
+    "notes1": "cross-correlation of (real map (15 modes removed) + sim) x sim",
+    "notes2": "this uses radio N^-1 for sim1, nbar for sim2; simulate xcorr"
+    }
+batch19_param = {
+    "path": rootdir + "dataplussim_x_optsim",
+    "rand:list": {"prefix": "radioplussim_x_optsim_",
+                  "suffix": "",
+                  "indices": range(1,101),
+                  "indexfmt": "%d",
+                  "id_prefix": "rand"},
+    "notes": run19_notes
+    }
+
 # use this for repairing files
 params_default = {
       'radio_noiseroot1': '/mnt/raid-project/gmrt/kiyo/wiggleZ/corr/',
@@ -446,32 +465,40 @@ if __name__ == '__main__':
 
     #print splt.compare_corr(batch6_param, batch7_param)
 
-    #splt.process_batch_correlations(batch10_param)
-    #splt.process_batch_correlations(batch15_param, multiplier=1./T_b_sim*1.e-3)
-    #splt.process_batch_correlations(batch16_param, multiplier=1.e-6)
-    #splt.process_batch_correlations(batch17_param, multiplier=1.e-6)
-    #splt.process_batch_correlations(batch18_param)
+    splt.process_batch_correlations(batch10_param, cross_power=True)
+    # TODO: treat 15 and 16 the same
+    splt.process_batch_correlations(batch15_param,
+                    multiplier=1./T_b_sim*1.e-3, cross_power=True)
+    splt.process_batch_correlations(batch16_param, multiplier=1.e-6)
+    splt.process_batch_correlations(batch17_param, multiplier=1.e-6)
+    splt.process_batch_correlations(batch18_param)
+    splt.process_batch_correlations(batch19_param, multiplier=1./(T_b_sim/1.e3),
+                                    cross_power=True)
 
-    #splt.plot_batch_correlations(batch10_param,
-    #                        dir_prefix="plots/run10/",
-    #                        color_range=[-10, 10], cross_power=True)
-    #splt.plot_batch_correlations(batch15_param,
-    #                        dir_prefix="plots/run15/",
-    #                        color_range=[-10, 10], cross_power=True)
-    #splt.plot_batch_correlations(batch16_param,
-    #                        dir_prefix="plots/run16/",
-    #                        color_range=[-10, 10], cross_power=False)
-    #splt.plot_batch_correlations(batch17_param,
-    #                        dir_prefix="plots/run17/",
-    #                        color_range=[-10, 10], cross_power=False)
-    #splt.plot_batch_correlations(batch18_param,
-    #                        dir_prefix="plots/run18/",
-    #                        color_range=[-10, 10], cross_power=False)
+    splt.plot_batch_correlations(batch10_param,
+                            dir_prefix="plots/run10/",
+                            color_range=[-0.04, 0.04], cross_power=True)
+    splt.plot_batch_correlations(batch15_param,
+                            dir_prefix="plots/run15/",
+                            color_range=[-0.04, 0.04], cross_power=True)
+    splt.plot_batch_correlations(batch16_param,
+                            dir_prefix="plots/run16/",
+                            color_range=[-0.04, 0.04], cross_power=False)
+    splt.plot_batch_correlations(batch17_param,
+                            dir_prefix="plots/run17/",
+                            color_range=[-0.04, 0.04], cross_power=False)
+    splt.plot_batch_correlations(batch18_param,
+                            dir_prefix="plots/run18/",
+                            color_range=[-0.04, 0.04], cross_power=False)
+    splt.plot_batch_correlations(batch19_param,
+                            dir_prefix="plots/run19/",
+                            color_range=[-0.04, 0.04], cross_power=True)
 
     #splt.batch_correlations_statistics(batch14_param, randtoken="RR")
     #splt.batch_correlations_statistics(batch16_param, randtoken="rand",
     #                                   include_signal=False)
 
+    splt.average_collapsed_loss(batch17_param, dir_prefix="plots/run17/")
     splt.average_collapsed_loss(batch18_param, dir_prefix="plots/run18/")
 
     #splt.batch_compensation_function(batch15_param)
