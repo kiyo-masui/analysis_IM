@@ -19,7 +19,7 @@ base_dir = os.getenv('GBT10B_OUT')
 #raw_data_dir = os.getenv('GBT10B_DATA')
 kiyo_dir = os.getenv('GBT10B_KM')
 prefix = ''
-map_prefix = prefix + field + '_49-56_flux_pol_cal'
+map_prefix = prefix + field + '_49-56_B_flux_pol_cal'
 IFs = ()
 
 
@@ -37,9 +37,9 @@ ha_scans = ()
 # the only IF's saved to the following fits files).
 ha_IFs = IFs
 
-from time_stream import flag_data
+#from time_stream import flag_data
 # Comment this line to skip this step when running python pipeline/manager
-pipe_modules.append(flag_data.FlagData)
+#pipe_modules.append(flag_data.FlagData)
 #fd_input_root = ha_output_root
 fd_input_root = kiyo_dir + '/guppi_data/'
 fd_file_middles = file_middles
@@ -68,7 +68,7 @@ rf_scans = ()
 rf_IFs = ()
 
 rf_channel_width = 0.
-rf_n_bins_combined = 64
+rf_n_bins_combined = 16
 rf_mean_instead_median = False
 
 from time_stream import rotate_pol
