@@ -5,6 +5,10 @@ import numpy as np
 import unittest
 import time
 import sys
+import shelve
+import random
+import multiprocessing
+import copy
 from core import algebra
 from optparse import OptionParser
 # TODO: make better parameter passing for catalog binning
@@ -86,8 +90,8 @@ def histogram3d(sample, xedges, yedges, zedges):
     return count_cube
 
 
-def bin_catalog_data(filename, freq_axis, ra_axis,
-                     dec_axis, skip_header=None, verbose=True):
+def bin_catalog_data(catalog, freq_axis, ra_axis,
+                     dec_axis, verbose=False):
     """
     bin catalog data onto a grid in RA, Dec, and frequency
     This currently assumes that all of the axes are uniformly spaced
@@ -95,23 +99,12 @@ def bin_catalog_data(filename, freq_axis, ra_axis,
     # TODO: move this to a constants file
     nu_21cm_MHz = 1420.40575177
 
-    # read the WiggleZ catalog and convert redshift axis to frequency
-    ndtype = [('RA', float), ('Dec', float), ('z', float),
-              ('r-mag', float), ('ijack', int)]
-    # TODO: numpy seems to be an old version that does not have the skip_header
-    # argument here! skiprows is identical
-    output = np.genfromtxt(filename, dtype=ndtype, skiprows=skip_header)
-
-    if verbose:
-        print filename + ": " + repr(output.dtype.names) + \
-              ", n_records = " + repr(output.size)
-
-    catalog_frequencies = nu_21cm_MHz * 1.e6 / (1 + output['z'])
-    num_catalog = output.size
+    catalog_frequencies = nu_21cm_MHz * 1.e6 / (1 + catalog['z'])
+    num_catalog = catalog.size
     sample = np.zeros((num_catalog, 3))
     sample[:, 0] = catalog_frequencies
-    sample[:, 1] = output['RA']
-    sample[:, 2] = output['Dec']
+    sample[:, 1] = catalog['RA']
+    sample[:, 2] = catalog['Dec']
 
     freq_edges = find_edges(freq_axis)
     ra_edges = find_edges(ra_axis)
@@ -131,8 +124,25 @@ def bin_catalog_data(filename, freq_axis, ra_axis,
     #                                    bins=[freq_edges,
     #                                          ra_edges, dec_edges])
     #print edges
-
     return count_cube
+
+
+def bin_catalog_file(filename, freq_axis, ra_axis,
+                     dec_axis, skip_header=None, verbose=True):
+
+    # read the WiggleZ catalog and convert redshift axis to frequency
+    ndtype = [('RA', float), ('Dec', float), ('z', float),
+              ('r-mag', float), ('ijack', int)]
+    # TODO: numpy seems to be an old version that does not have the skip_header
+    # argument here! skiprows is identical
+    output = np.genfromtxt(filename, dtype=ndtype, skiprows=skip_header)
+
+    if verbose:
+        print filename + ": " + repr(output.dtype.names) + \
+              ", n_records = " + repr(output.size)
+
+    return bin_catalog_data(output, freq_axis, ra_axis, dec_axis,
+                            verbose=verbose)
 
 
 def bin_wigglez(filename=None):
@@ -160,7 +170,7 @@ def bin_wigglez(filename=None):
     ra_axis = template_map.get_axis('ra')
     dec_axis = template_map.get_axis('dec')
 
-    realmap_binning = bin_catalog_data(root_data + "reg15data.dat", freq_axis,
+    realmap_binning = bin_catalog_file(root_data + "reg15data.dat", freq_axis,
                                           ra_axis, dec_axis, skip_header=1)
     map_wigglez = algebra.make_vect(realmap_binning,
                                     axis_names=('freq', 'ra', 'dec'))
@@ -170,7 +180,7 @@ def bin_wigglez(filename=None):
     selection_function = np.zeros(template_map.shape)
     for i in range(n_random):
         wfile = root_data + "reg15rand" + str(i).zfill(3) + ".dat"
-        random_binning = bin_catalog_data(wfile, freq_axis, ra_axis,
+        random_binning = bin_catalog_file(wfile, freq_axis, ra_axis,
                                              dec_axis, skip_header=1)
         selection_function += random_binning
         if i < n_to_save:
@@ -203,6 +213,124 @@ def bin_wigglez(filename=None):
                                               axis_names=('freq', 'ra', 'dec'))
     map_wigglez_separable.copy_axis_info(template_map)
     algebra.save(binned_data + "reg15separable.npy", map_wigglez_separable)
+
+
+def template_map_axes(filename=None):
+    if filename is None:
+        root_template = '/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test/'
+        filename = root_template + \
+                   'sec_A_15hr_41-73_cleaned_clean_map_I_with_B.npy'
+
+    template_map = algebra.make_vect(algebra.load(filename))
+    freq_axis = template_map.get_axis('freq')
+    ra_axis = template_map.get_axis('ra')
+    dec_axis = template_map.get_axis('dec')
+    return (freq_axis, ra_axis, dec_axis, template_map.shape, template_map)
+
+
+def wrap_bin_catalog_data(entry):
+    (ranindex, rancat, freq_axis, ra_axis, dec_axis) = entry
+    #print ranindex
+    return bin_catalog_data(rancat, freq_axis, ra_axis, dec_axis)
+
+
+def randomize_catalog_redshifts(catalog):
+    """
+    re-draw the redshifts of a catalog from N(z) according to observation
+    priority -- from Chris Blake
+    """
+    num_catalog = catalog.size
+    nzilookupfile = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/wiggleZ_catalogs/"
+    nzilookupfile += "nzpri_reg15_tzuchingcats.dat"
+    ndtype = [('CDF', float), ("z0", float), ("z1", float), ("z2", float),
+              ("z3", float),  ("z4", float), ("z5", float)]
+    nzilookup = np.genfromtxt(nzilookupfile, dtype=ndtype, skiprows=1)
+
+    # find the priority zones of each random source
+    whpriority = [np.where(catalog["sec"] == ipri)[0] for ipri in range(1,7)]
+    numpriority = [(index, entry.size) for (index, entry)
+                    in zip(range(1,7), whpriority)]
+    randsample = [(index, np.random.random_sample(ssize)) for (index, ssize) in numpriority]
+    randz = [np.interp(draw, nzilookup["CDF"], nzilookup["z"+repr(index-1)])
+                    for (index, draw) in randsample]
+    for zone in range(0,6):
+        catalog["z"][whpriority[zone]] = randz[zone]
+
+    #print catalog["z"]
+    #sys.exit()
+
+    return catalog
+
+def estimate_selection_function():
+    """Estimate the selection function using random draws in C. Blake N(z)
+    PDFs
+    """
+    root_catalogs = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/wiggleZ_catalogs/"
+    n_rand_cats = 1000
+    chunking_size = 10  # break the averaging into pooled multiprocess jobs
+    num_chunks = 10
+
+    randlist = [(repr(index), (root_catalogs + "reg15rand%03d.dat" % index))
+                for index in range(0, n_rand_cats)]
+
+    # read the WiggleZ catalog and convert redshift axis to frequency
+    ndtype = [('RA', float), ('Dec', float), ('z', float),
+              ('r-mag', float), ('ijack', int), ('sec', int)]
+    #randdata = {}
+    randdata = shelve.open("randcatdata.shelve")
+    #for entry in randlist:
+    #    print "loading: " + entry[1]
+    #    randdata[entry[0]] = np.genfromtxt(entry[1], dtype=ndtype, skiprows=1)
+    #randdata.close()
+
+    (freq_axis, ra_axis, dec_axis, template_shape, template_map) = template_map_axes()
+
+    runlistA = []
+    runlistB = []
+    selection_function = np.zeros(template_shape)
+    selection_functionA = np.zeros(template_shape)
+    selection_functionB = np.zeros(template_shape)
+    for iternum in range(0, num_chunks):
+        for count in range(0, chunking_size):
+            ranA = random.randint(0, n_rand_cats-1)
+            ranB = random.randint(0, n_rand_cats-1)
+            # TODO: do we need deep copy here, or paranoid?
+            rancatA = randomize_catalog_redshifts(
+                            copy.deepcopy(randdata[repr(ranA)]))
+            rancatB = randomize_catalog_redshifts(
+                            copy.deepcopy(randdata[repr(ranB)]))
+            # INSERT REDSHIFT RANDOMIZER HERE
+            runlistA.append((ranA, rancatA, freq_axis, ra_axis, dec_axis))
+            runlistB.append((ranB, rancatB, freq_axis, ra_axis, dec_axis))
+
+        chunk_selection_functionA = np.zeros(template_shape)
+        chunk_selection_functionB = np.zeros(template_shape)
+
+        pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+        resultsA = pool.map(wrap_bin_catalog_data, runlistA)
+        resultsB = pool.map(wrap_bin_catalog_data, runlistB)
+        for resultitem in resultsA:
+            chunk_selection_functionA += resultitem
+        for resultitem in resultsB:
+            chunk_selection_functionB += resultitem
+        chunk_selection_functionA /= float(len(resultsA))
+        chunk_selection_functionB /= float(len(resultsB))
+
+        selection_functionA += chunk_selection_functionA
+        selection_functionB += chunk_selection_functionB
+
+        print np.std((selection_functionA-selection_functionB)/float(iternum+1)), \
+              np.mean(selection_functionA)/float(iternum+1), \
+              np.mean(selection_functionB)/float(iternum+1)
+
+    selection_function = (selection_functionA +
+                          selection_functionB)/2./float(num_chunks)
+    print np.mean(selection_function)
+
+    map_wigglez_selection = algebra.make_vect(selection_function,
+                                              axis_names=('freq', 'ra', 'dec'))
+    map_wigglez_selection.copy_axis_info(template_map)
+    algebra.save("reg15selection_est.npy", map_wigglez_selection)
 
 
 class CatalogGriddingTest(unittest.TestCase):
@@ -295,4 +423,5 @@ if __name__ == '__main__':
         del sys.argv[1:]  # unittest would try to interpret these
         unittest.main()
     else:
-        bin_wigglez()
+        estimate_selection_function()
+        #bin_wigglez()

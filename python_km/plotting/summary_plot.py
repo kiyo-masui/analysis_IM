@@ -76,6 +76,7 @@ def make_corr(filename, verbose=False, identifier=None, cross_power=False,
         correlation_1D = corr_1D[0] * 1.e3
         correlation_2D = corr_2D[0] * 1.e3
     else:
+        print "Taking the signed square root"
         correlation_1D = sp.sign(corr_1D[0]) * sp.sqrt(abs(corr_1D[0])) * 1e3
         correlation_2D = sp.sign(corr_2D[0]) * sp.sqrt(abs(corr_2D[0])) * 1e3
 
@@ -216,9 +217,13 @@ def wrap_make_corr(runitem):
                      cross_power=cross_power)
 
 
-def process_batch_correlations(batch_param, multiplier=1., cross_power=False):
+def process_batch_correlations(batch_param, multiplier=1., cross_power=False,
+                               filename=None):
     """Process a batch of correlation functions"""
-    product = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
+    if filename:
+        master = shelve.open(filename)
+    else:
+        master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
     filelist = make_shelve_names(batch_param, multiplier=multiplier,
                                  cross_power=cross_power)
 
@@ -226,9 +231,9 @@ def process_batch_correlations(batch_param, multiplier=1., cross_power=False):
     results = pool.map(wrap_make_corr, filelist)
     # TODO: can pool write this dictionary instead?
     for item in results:
-        product[item["identifier"]] = item
+        master[item["identifier"]] = item
 
-    product.close()
+    master.close()
 
 
 def repair_shelve_files(batch_param, ini_prefix, params_default, param_prefix):
@@ -259,8 +264,11 @@ def wrap_plot_corr(runitem):
               coloraxis=coloraxis, cross_power=cross_power)
 
 
-def average_collapsed_loss(batch_param, dir_prefix="plots/"):
-    master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
+def average_collapsed_loss(batch_param, dir_prefix="plots/", filename=None):
+    if filename:
+        master = shelve.open(filename)
+    else:
+        master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
     filelist = make_shelve_names(batch_param)
     n_modes = 26
     n_pairs = 6
@@ -292,9 +300,12 @@ def average_collapsed_loss(batch_param, dir_prefix="plots/"):
     return (mean_accumulator, stdev_accumulator)
 
 def batch_correlations_statistics(batch_param, randtoken="rand",
-                                  include_signal=True):
+                                  include_signal=True, filename=None):
     """bin a large batch of correlation functions"""
-    master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
+    if filename:
+        master = shelve.open(filename)
+    else:
+        master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
     filelist = make_shelve_names(batch_param)
 
     # make a sublist of calculated correlations for just the random trials
@@ -348,9 +359,13 @@ def fancy_vector(vector, format_string):
     return output
 
 
-def batch_compensation_function(batch_param, modetoken="mode"):
+def batch_compensation_function(batch_param, modetoken="mode", filename=None):
     """find the impact of filtering on a run of correlation functions"""
-    master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
+    if filename:
+        master = shelve.open(filename)
+    else:
+        master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
+
     filelist = make_shelve_names(batch_param)
     # TODO remove 10 magic number and have it figure this out instead
     nlags = 10
@@ -382,9 +397,13 @@ def batch_compensation_function(batch_param, modetoken="mode"):
         print int(lag), fancy_vector(modeloss, '%5.2g')
 
 def plot_batch_correlations(batch_param, dir_prefix="plots/",
-                            color_range=[-0.2, 0.2], cross_power=True):
+                            color_range=[-0.2, 0.2], cross_power=True,
+                            filename=None):
     """bin a large batch of correlation functions"""
-    master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
+    if filename:
+        master = shelve.open(filename)
+    else:
+        master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
     filelist = make_shelve_names(batch_param)
     coloraxis = np.linspace(color_range[0], color_range[1], 100, endpoint=True)
 
