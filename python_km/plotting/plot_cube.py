@@ -71,9 +71,14 @@ def make_cube_movie(filename, tag, colorbar_title, fileprefix,
 
 
 
+make_cube_movie("delta_selection.npy",
+                "delta_selection",
+                "Difference in selection", cube_root + "delta_selection")
+sys.exit()
 make_cube_movie("reg15selection_est.npy",
                 "reg15selection_est",
-                "Full selection", cube_root + "reg15selection_est")
+                "Full selection", cube_root + "reg15selection_est",
+                sigmarange=None)
 sys.exit()
 
 root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/noise_model/"

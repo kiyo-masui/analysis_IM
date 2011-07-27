@@ -354,9 +354,7 @@ class MapPair(object) :
         corr = sp.zeros((nf, nf, nlags), dtype=float)
         counts = sp.zeros(corr.shape, dtype=float)
         # Noting that if DEC != 0, then a degree of RA is less than a degree.
-        ra_fact = (sp.cos(sp.pi*Map1.info['dec_centre'] / 180.0)
-                   * Map1.info['ra_delta'])
-        #dec_fact = Map1.info['dec_delta']
+        ra_fact = sp.cos(sp.pi*Map1.info['dec_centre'] / 180.0)
 
         # Calculate the pairwise lags.
         dra = (r1[:,None] - r2[None,:]) * ra_fact
@@ -366,7 +364,7 @@ class MapPair(object) :
         # Bin this up.
         lag_inds = sp.digitize(lag.flatten(), lags)
 
-        if speedup: 
+        if speedup:
             print "Starting Correlation (sparse version)"
             (nr1, nd1) = (len(r1), len(d1))
             (nr2, nd2) = (len(r2), len(d2))
@@ -379,10 +377,9 @@ class MapPair(object) :
 
             # precalculate the pair indices for a given lag
             # could also imagine calculating the map slices here
-            # but 
             posmaskdict = {}
             for klag in range(nlags):
-                mask = lag_inds == klag
+                mask = (lag_inds == klag)
                 posmaskdict[repr(klag)] = (r1[mask], r2[mask], d1[mask], d2[mask])
 
             for if1 in range(len(freq1)):
@@ -403,7 +400,7 @@ class MapPair(object) :
                         wprod = weights1[r1m, d1m]*weights2[r2m, d2m]
                         corr[if1,jf2,klag] += sp.sum(dprod)
                         counts[if1,jf2,klag] += sp.sum(wprod)
-                    print if1, jf2, (time.time() - start), counts[if1, jf2,:] # TODO: REMOVE ME
+                    print if1, jf2, (time.time() - start), counts[if1, jf2,:]
         else:
             print "Starting Correlation (full version)"
             for if1 in range(len(freq1)):
@@ -417,12 +414,12 @@ class MapPair(object) :
                     dprod = data1[...,None,None] * data2[None,None,...]
                     wprod = weights1[...,None,None] * weights2[None,None,...]
                     for klag in range(nlags) :
-                        mask = lag_inds == klag
+                        mask = (lag_inds == klag)
                         corr[if1,jf2,klag] += sp.sum(dprod.flatten()[mask])
                         counts[if1,jf2,klag] += sp.sum(wprod.flatten()[mask])
-                    print if1, jf2, (time.time() - start), counts[if1, jf2,:] # TODO: REMOVE ME
-        
-        mask = counts < 1e-20
+                    print if1, jf2, (time.time() - start), counts[if1, jf2,:]
+
+        mask = (counts < 1e-20)
         counts[mask] = 1
         corr /= counts
         corr[mask] = 0
@@ -850,6 +847,7 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
     out_weights[bad_inds] = 1.0
     out_corr /= out_weights
     out_weights[bad_inds] = 0.0
+    out_corr[bad_inds] = 0.0
 
     if return_fbins:
         return out_corr, out_weights, fbins - df*0.5

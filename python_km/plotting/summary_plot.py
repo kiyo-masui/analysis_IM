@@ -63,13 +63,17 @@ def make_corr(filename, verbose=False, identifier=None, cross_power=False,
     corr[np.isinf(corr)] = 0.
 
     lags = sp.array(run_params["lags"])
+    real_lags = lags.copy()
+    real_lags[0] = 0
+    real_lags[1:] -= sp.diff(lags)/2.0
+
     frange = run_params["freq"]
     realrange = corr_shelve["freq_axis"]
     corr_2D = fs.rebin_corr_freq_lag(corr, realrange[list(frange)],
                                      weights=corr_counts, return_fbins=True,
                                      nfbins=200)
 
-    corr_1D = fs.collapse_correlation_1D(corr_2D[0], corr_2D[2], lags,
+    corr_1D = fs.collapse_correlation_1D(corr_2D[0], corr_2D[2], real_lags,
                                          weights=corr_2D[1])
 
     if cross_power:
@@ -82,6 +86,7 @@ def make_corr(filename, verbose=False, identifier=None, cross_power=False,
 
     output["run_params"] = run_params
     output["lags"] = run_params["lags"]
+    output["real_lags"] = real_lags
     # uncomment these only if you need them in the shelve file; makes it huge
     #output["corr"] = corr
     #output["corr_counts"] = corr_counts
@@ -117,7 +122,7 @@ def plot_corr(shelve_entry, filename, title, coloraxis=None, cross_power=True):
     print shelve_entry["corr2D"]
 
     plot_contour(filename + "_contour.png", shelve_entry["corr2D_fbins"],
-                 shelve_entry["lags"], shelve_entry["corr2D"],
+                 shelve_entry["real_lags"], shelve_entry["corr2D"],
                  title=title, coloraxis=coloraxis)
 
 
@@ -487,6 +492,8 @@ def plot_contour(filename, fbins, lags, corr2D,
     plt.savefig(filename)
 
 
+# TODO: sep_lags are right bin, but make horizontal errors (or similar)
+# which represent the full bin
 def plot_collapsed(filename, sep_lags, corr1D, errors=[], save_old=False,
                    plot_old=False, cross_power=True, title=None,
                    ylog=False):
