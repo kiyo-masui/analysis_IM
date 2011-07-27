@@ -268,7 +268,7 @@ def estimate_selection_function():
     root_catalogs = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/wiggleZ_catalogs/"
     n_rand_cats = 1000
     chunking_size = 10  # break the averaging into pooled multiprocess jobs
-    num_chunks = 10
+    num_chunks = 9000
 
     randlist = [(repr(index), (root_catalogs + "reg15rand%03d.dat" % index))
                 for index in range(0, n_rand_cats)]
@@ -285,21 +285,18 @@ def estimate_selection_function():
 
     (freq_axis, ra_axis, dec_axis, template_shape, template_map) = template_map_axes()
 
-    runlistA = []
-    runlistB = []
     selection_function = np.zeros(template_shape)
     selection_functionA = np.zeros(template_shape)
     selection_functionB = np.zeros(template_shape)
     for iternum in range(0, num_chunks):
+        runlistA = []
+        runlistB = []
         for count in range(0, chunking_size):
             ranA = random.randint(0, n_rand_cats-1)
             ranB = random.randint(0, n_rand_cats-1)
             # TODO: do we need deep copy here, or paranoid?
-            rancatA = randomize_catalog_redshifts(
-                            copy.deepcopy(randdata[repr(ranA)]))
-            rancatB = randomize_catalog_redshifts(
-                            copy.deepcopy(randdata[repr(ranB)]))
-            # INSERT REDSHIFT RANDOMIZER HERE
+            rancatA = randomize_catalog_redshifts(copy.deepcopy(randdata[repr(ranA)]))
+            rancatB = randomize_catalog_redshifts(copy.deepcopy(randdata[repr(ranB)]))
             runlistA.append((ranA, rancatA, freq_axis, ra_axis, dec_axis))
             runlistB.append((ranB, rancatB, freq_axis, ra_axis, dec_axis))
 
@@ -330,6 +327,7 @@ def estimate_selection_function():
     map_wigglez_selection = algebra.make_vect(selection_function,
                                               axis_names=('freq', 'ra', 'dec'))
     map_wigglez_selection.copy_axis_info(template_map)
+    print np.min(map_wigglez_selection), np.max(map_wigglez_selection)
     algebra.save("reg15selection_est.npy", map_wigglez_selection)
 
 
