@@ -457,6 +457,7 @@ if __name__ == '__main__':
     # find the mean brightness used in simulations
     corrobj = corr21cm.Corr21cm()
     T_b_sim = corrobj.T_b(1420./800.-1)
+    print T_b_sim
 
     #splt.repair_shelve_files(batch15_param, "sim_xloss_correlate_mode",
     #                         params_default, prefix)
@@ -465,40 +466,51 @@ if __name__ == '__main__':
 
     #print splt.compare_corr(batch6_param, batch7_param)
 
-    splt.process_batch_correlations(batch10_param, cross_power=True)
-    # TODO: treat 15 and 16 the same
-    splt.process_batch_correlations(batch15_param,
-                    multiplier=1./T_b_sim*1.e-3, cross_power=True)
-    splt.process_batch_correlations(batch16_param, multiplier=1.e-6)
-    splt.process_batch_correlations(batch17_param, multiplier=1.e-6)
-    splt.process_batch_correlations(batch18_param)
-    splt.process_batch_correlations(batch19_param, multiplier=1./(T_b_sim/1.e3),
-                                    cross_power=True)
+    #splt.process_batch_correlations(batch10_param, cross_power=True)
+    #splt.process_batch_correlations(batch15_param,
+    #                multiplier=1./T_b_sim*1.e-3, cross_power=True)
+    #splt.process_batch_correlations(batch16_param,
+    #                                multiplier=1./T_b_sim*1.e-3,
+    #                                cross_power=True,
+    #                                filename="simweight_test.shelve")
+    #splt.process_batch_correlations(batch16_param, multiplier=1.e-6)
+    #splt.process_batch_correlations(batch17_param, multiplier=1.e-6)
+    #splt.process_batch_correlations(batch18_param)
+    #splt.process_batch_correlations(batch19_param, multiplier=1./(T_b_sim/1.e3),
+    #                                cross_power=True)
+    splt.process_batch_correlations(batch19_param, multiplier=1./(T_b_sim**2.),
+                                    cross_power=False, filename="simdd.shelve")
 
-    splt.plot_batch_correlations(batch10_param,
-                            dir_prefix="plots/run10/",
-                            color_range=[-0.04, 0.04], cross_power=True)
-    splt.plot_batch_correlations(batch15_param,
-                            dir_prefix="plots/run15/",
-                            color_range=[-0.04, 0.04], cross_power=True)
-    splt.plot_batch_correlations(batch16_param,
-                            dir_prefix="plots/run16/",
-                            color_range=[-0.04, 0.04], cross_power=False)
-    splt.plot_batch_correlations(batch17_param,
-                            dir_prefix="plots/run17/",
-                            color_range=[-0.04, 0.04], cross_power=False)
-    splt.plot_batch_correlations(batch18_param,
-                            dir_prefix="plots/run18/",
-                            color_range=[-0.04, 0.04], cross_power=False)
-    splt.plot_batch_correlations(batch19_param,
-                            dir_prefix="plots/run19/",
-                            color_range=[-0.04, 0.04], cross_power=True)
+    #splt.plot_batch_correlations(batch10_param,
+    #                        dir_prefix="plots/run10/",
+    #                        color_range=[-0.04, 0.04], cross_power=True)
+    #splt.plot_batch_correlations(batch15_param,
+    #                        dir_prefix="plots/run15/",
+    #                        color_range=[-0.04, 0.04], cross_power=True)
+    #splt.plot_batch_correlations(batch16_param,
+    #                        dir_prefix="plots/run16/",
+    #                        color_range=[-0.04, 0.04], cross_power=False)
+    #splt.plot_batch_correlations(batch17_param,
+    #                        dir_prefix="plots/run17/",
+    #                        color_range=[-0.04, 0.04], cross_power=False)
+    #splt.plot_batch_correlations(batch18_param,
+    #                        dir_prefix="plots/run18/",
+    #                        color_range=[-0.04, 0.04], cross_power=False)
+    #splt.plot_batch_correlations(batch19_param,
+    #                        dir_prefix="plots/run19/",
+    #                        color_range=[-0.04, 0.04], cross_power=True)
 
+    #splt.batch_correlations_statistics(batch10_param, randtoken="rand")
     #splt.batch_correlations_statistics(batch14_param, randtoken="RR")
     #splt.batch_correlations_statistics(batch16_param, randtoken="rand",
     #                                   include_signal=False)
+    #splt.batch_correlations_statistics(batch19_param, randtoken="rand",
+    #                                   include_signal=False)
+    splt.batch_correlations_statistics(batch19_param, randtoken="rand",
+                                       include_signal=False,
+                                       filename="simdd.shelve")
 
-    splt.average_collapsed_loss(batch17_param, dir_prefix="plots/run17/")
-    splt.average_collapsed_loss(batch18_param, dir_prefix="plots/run18/")
+    #splt.average_collapsed_loss(batch17_param, dir_prefix="plots/run17/")
+    #splt.average_collapsed_loss(batch18_param, dir_prefix="plots/run18/")
 
     #splt.batch_compensation_function(batch15_param)
