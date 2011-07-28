@@ -16,9 +16,9 @@ fs_radio_noiseinv_file1 = 'combined_sim_41-73_cleaned_noise_inv_15.npy'
 fs_radio_data_file2 = 'simulated_signal_map_RANDINDEX_with_beam.npy'
 fs_radio_noiseinv_file2 = 'reg15selection_est.npy'
 
-fs_output_shelve_file = scratch_dir + 'radioplussim_x_optsim_RANDINDEX_est.shelve'
+fs_output_shelve_file = scratch_dir + 'radioplussim_x_optsim_RANDINDEX_est_nomean.shelve'
 fs_speedup = True
-fs_subtract_mean = True
+fs_subtract_mean = False
 
 fs_freq = range(256)
 fs_freq.remove(6)
