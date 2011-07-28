@@ -80,7 +80,7 @@ class MapPair(object) :
     """
 
     def __init__(self, Map1, Map2, Noise_inv1, Noise_inv2, freq) :
-        
+
         # Give infinite noise to unconsidered frequencies (This doesn't affect
         # anything but the output maps).
         n = Noise_inv1.shape[0]
@@ -158,8 +158,8 @@ class MapPair(object) :
 
         # Get the beam data.
         gfreq=self.Map1.get_axis("freq")
-        beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792, 
-                 0.281176247549, 0.270856788455, 0.26745856078, 
+        beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792,
+                 0.281176247549, 0.270856788455, 0.26745856078,
                  0.258910010848, 0.249188429031])
         freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
                              dtype=float)
@@ -170,7 +170,7 @@ class MapPair(object) :
         self.Map2=b.apply(self.Map2)
         self.Map1=b.apply(self.Map1)
         # Reduce noise to factorizable.
-        
+
         # This block of code needs to be split off into a function and applied
         # twice (so we are sure to do the same thing to each).
         Noise1[Noise1<1.e-30] = 1.e-30
@@ -184,7 +184,7 @@ class MapPair(object) :
         Noise2 = b.apply(Noise2, cval=1.e30)
         Noise2 = 1./Noise2
         Noise2[Noise2<1.e-20] = 0
-        
+
         self.Noise_inv1 = algebra.as_alg_like(Noise1, self.Noise_inv1)
         self.Noise_inv2 = algebra.as_alg_like(Noise2, self.Noise_inv2)
 
@@ -193,7 +193,7 @@ class MapPair(object) :
         frequecy times a function of pixel by taking means over the origional
         weights.
         """
-        
+
         def make_factorizable(Noise) :
             # Take the reciprical.
             Noise[Noise<1.e-30] = 1.e-30
@@ -281,7 +281,7 @@ class MapPair(object) :
 #                            other_mapname1 + ".npy"
 #            #algebra.save(fname1, outmap)
 #            algebra.save(save_file, Map1) # outmap)
-        
+
         # Second map.
         outmap_R = sp.empty((len(modes1),)+Map1.shape[1:])
         outmap_R = algebra.make_vect(outmap_R,axis_names=('freq', 'ra', 'dec'))
@@ -310,7 +310,7 @@ class MapPair(object) :
         """Calculate the cross correlation function of the maps.
 
         The cross correlation function is a function of f1, f2 and angular lag.
-        
+
         The angular lag bins are passed, all pairs of frequencies are
         calculated.
 
@@ -433,10 +433,10 @@ class NewSlices(object) :
     Now: params, Pair, fore_corr, corr, fore_Pair, vals, modes1, modes2.
     Want: Pairs, corr_final, core_std.
     """
- 
+
     def __init__(self, parameter_file_or_dict=None) :
         # Read in the parameters.
-        self.params = parse_ini.parse(parameter_file_or_dict, params_init, 
+        self.params = parse_ini.parse(parameter_file_or_dict, params_init,
                                  prefix=prefix)
 
     def execute(self) :
@@ -461,13 +461,13 @@ class NewSlices(object) :
             Noise_invs = []
             # Load all maps and noises once.
             for ii in range(0, num_maps):
-                map_file = (params['input_root'] + 
+                map_file = (params['input_root'] +
                     params['file_middles'][ii] + params['input_end_map'])
                 print "Loading map %d of %d." %(ii+1, num_maps)
                 Map = algebra.make_vect(algebra.load(map_file))
                 Maps.append(Map)
                 if not params["no_weights"] :
-                    noise_file = (params['input_root'] + 
+                    noise_file = (params['input_root'] +
                         params['file_middles'][ii] + params['input_end_noise'])
                     print "Loading noise %d of %d." %(ii+1, num_maps)
     #                Noise_invs.append(abs(algebra.make_vect(algebra.load(map_file))))
@@ -476,14 +476,14 @@ class NewSlices(object) :
                     Noise_inv = Noise_inv.mat_diag()
                 else :
                     Noise_inv = algebra.ones_like(Map)
-                    #Noise_inv[...] += (100 + 
+                    #Noise_inv[...] += (100 +
                     #    ii*sp.arange(Noise_inv.shape[0])[:,None,None])
                     #Noise_inv[...] += (100 +
                     #    ii*sp.arange(Noise_inv.shape[1])[None,:,None])
 
                 Noise_invs.append(Noise_inv)
             Pairs = []
-            # Make pairs with deepcopies to not make mutability mistakes. 
+            # Make pairs with deepcopies to not make mutability mistakes.
             for ii in range(0, num_maps):
                 for jj in range(0, num_maps):
                     if (jj > ii):
@@ -556,7 +556,7 @@ class NewSlices(object) :
             # self.fore_Pairs later.
             self.Pairs = copy.deepcopy(fore_Pairs)
             print "gung ho!"
-                
+
             Pairs = self.Pairs
             # Get foregrounds.
             # TODO: Provide a list of integers for params["modes"] so we can try a
@@ -566,7 +566,7 @@ class NewSlices(object) :
             for Pair in Pairs:
                 # Since these values are different for diff maps,
                 # can there be a 'final' one? [Like an average?]
-#                vals, modes1, modes2 = get_freq_svd_modes(Pair.fore_corr, 
+#                vals, modes1, modes2 = get_freq_svd_modes(Pair.fore_corr,
 #                                                  params['modes'])
 #                Pair.vals = vals
 #                Pair.modes1 = modes1
@@ -602,10 +602,10 @@ class NewSlices(object) :
 
         # Subtract foregrounds.
 #        for Pair in Pairs:
-        for ii in range(0, len(Pairs)):            
-            Pairs[ii].subtract_frequency_modes(Pairs[ii].modes1, 
+        for ii in range(0, len(Pairs)):
+            Pairs[ii].subtract_frequency_modes(Pairs[ii].modes1,
                 Pairs[ii].modes2)
-        
+
         # Save cleaned clean maps, cleaned noises, and modes.
         save_data(self, params['save_maps'], params['save_noises'],
             params['save_modes'])
@@ -651,7 +651,7 @@ class NewSlices(object) :
             f.close()
         self.Pairs = copy.deepcopy(temp_Pair_list)
         print "gung ho!"
-        
+
 
         # Get the average correlation and its standard deviation.
         corr_list = []
@@ -667,7 +667,7 @@ class NewSlices(object) :
             pickle_slices(self)
 
         return
-            
+
     def make_plots(self) :
         plt.figure()
         plot_svd(self.vals)
@@ -679,7 +679,7 @@ def multiproc(Pair, save_dir, pair_number, final):
     this function gets multiprocessed and must have a common information
     ground somewhere. If final is false, the fore correlation is being done.
     If final is True, the final correlation is being done. final is used
-    to save Pair to the appropriate file. save_dir is the diectory for 
+    to save Pair to the appropriate file. save_dir is the diectory for
     these to be saved."""
     print "I am starting."
 #    print Pair.lags
@@ -698,7 +698,7 @@ def multiproc(Pair, save_dir, pair_number, final):
     else:
         file_name += "Map_Pair_for_freq_slices_fore_corr_" + \
                         str(pair_number) + ".pkl"
-        to_save = (Pair.fore_corr, Pair.fore_counts) 
+        to_save = (Pair.fore_corr, Pair.fore_counts)
     f = open(file_name, "w")
     print "Writing to: ",
     print file_name
@@ -712,7 +712,7 @@ def control_correlation(Pair, lags, final):
     Save the return values of correlate(lags) in self.corr and .counts
     if final is True. Else, save return values in self.fore_corr and
     .fore_counts."""
-     
+
     if final:
         Pair.corr, Pair.counts = Pair.correlate(lags, speedup=True)
     else:
@@ -755,7 +755,7 @@ def get_freq_svd_modes(corr, n) :
             raise NotImplementedError('2 eigenvalues bitwise equal.')
         Lvectors.append(U[:,ind[0]])
         Rvectors.append(V[:,ind[0]])
-    
+
     return s, Lvectors, Rvectors
 
 def subtract_modes_corr(corr, n) :
@@ -772,16 +772,16 @@ def subtract_modes_corr(corr, n) :
 
 def plot_svd(vals) :
     """Plots the svd values and prints out some statistics."""
-        
+
     n = len(vals)
-    plt.semilogy(abs(sp.sort(-vals/n)), marker='o', 
+    plt.semilogy(abs(sp.sort(-vals/n)), marker='o',
                  linestyle='None')
     print 'Mean noise: ', sp.sum(vals)/n
-    print 'Largest eigenvalues/n : ', 
+    print 'Largest eigenvalues/n : ',
     print sp.sort(vals/n)[-10:]
 
 def normalize_corr(corr):
-    """Return the normalized 3D correlation along the diagonal. 
+    """Return the normalized 3D correlation along the diagonal.
     [3D meaning f,f_prime,lag]."""
     # Get dimensions.
     fs,f_primes,lags = corr.shape

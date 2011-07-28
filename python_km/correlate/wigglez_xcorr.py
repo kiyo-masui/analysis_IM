@@ -10,10 +10,9 @@ site.addsitedir('./')
 import numpy as np
 import scipy as sp
 from core import algebra
-import matplotlib
-matplotlib.use('Agg')
+#import matplotlib
+#matplotlib.use('Agg')
 from correlate import freq_slices as fs
-import correlate.correlation_plots as cp
 from kiyopy import parse_ini
 import shelve
 from map import beam

@@ -3,8 +3,8 @@
 #PBS -q workq
 #PBS -r n
 #PBS -l walltime=48:00:00
-#PBS -N wigglez_autorealoptical
+#PBS -N dataplussim_x_optsim_RANDINDEX
 cd $PBS_O_WORKDIR
 echo $PYTHONPATH
 cd ..
-python correlate/wigglez_corr.py inifiles_ers/wigglez_correlate_fast.ini
+python correlate/radio_corr.py inifiles_ers/added_sim_xcorr_randRANDINDEX.ini 
