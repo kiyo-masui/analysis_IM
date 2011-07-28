@@ -24,7 +24,7 @@ fs_input_end_noise = '_noise_inv_I.npy'
 fs_modes = MODEINDEX
 
 pkl_output_root = eswitzer_base_dir + 'modetest/73_ABCD_all_modes_realmap/'
-output_root = eswitzer_base_dir + 'modetest/73_ABCD_all_%d_modes_sim4map/' % (fs_modes)
+output_root = eswitzer_base_dir + 'modetest/73_ABCD_all_%d_modes_sim_maponly/' % (fs_modes)
 fs_output_root = output_root
 
 fs_skip_fore_corr = True

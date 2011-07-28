@@ -433,6 +433,24 @@ batch19_param = {
     "notes": run19_notes
     }
 
+# /mnt/raid-project/gmrt/eswitzer/wiggleZ/batch_runs/new_corr_test/opt_x_radio_combined_noconv_sep.shelve
+run20_notes = {
+    "runname": "new_corr_test",
+    "machine": "prawn",
+    "selection_function": "separable, 1000 catalogs",
+    "radio_map": "combined 15 modes removed",
+    "speedup": "on",
+    "notes": "this is a test of the new correlation function"
+    }
+batch20_param = {
+    "path": rootdir + "new_corr_test",
+    "xcorr:file": "opt_x_radio_combined_noconv_sep",
+    "radio:file": "radio_x_radio",
+    "sim:file": "sim_x_sim",
+    "notes": run20_notes
+    }
+
+
 # use this for repairing files
 params_default = {
       'radio_noiseroot1': '/mnt/raid-project/gmrt/kiyo/wiggleZ/corr/',
@@ -478,8 +496,9 @@ if __name__ == '__main__':
     #splt.process_batch_correlations(batch18_param)
     #splt.process_batch_correlations(batch19_param, multiplier=1./(T_b_sim/1.e3),
     #                                cross_power=True)
-    splt.process_batch_correlations(batch19_param, multiplier=1./(T_b_sim**2.),
-                                    cross_power=False, filename="simdd.shelve")
+    #splt.process_batch_correlations(batch19_param, multiplier=1./(T_b_sim**2.),
+    #                                cross_power=False, filename="simdd.shelve")
+    splt.process_batch_correlations(batch20_param, cross_power=True)
 
     #splt.plot_batch_correlations(batch10_param,
     #                        dir_prefix="plots/run10/",
@@ -499,6 +518,9 @@ if __name__ == '__main__':
     #splt.plot_batch_correlations(batch19_param,
     #                        dir_prefix="plots/run19/",
     #                        color_range=[-0.04, 0.04], cross_power=True)
+    splt.plot_batch_correlations(batch20_param,
+                            dir_prefix="plots/run20/",
+                            color_range=[-0.04, 0.04], cross_power=True)
 
     #splt.batch_correlations_statistics(batch10_param, randtoken="rand")
     #splt.batch_correlations_statistics(batch14_param, randtoken="RR")
@@ -506,9 +528,9 @@ if __name__ == '__main__':
     #                                   include_signal=False)
     #splt.batch_correlations_statistics(batch19_param, randtoken="rand",
     #                                   include_signal=False)
-    splt.batch_correlations_statistics(batch19_param, randtoken="rand",
-                                       include_signal=False,
-                                       filename="simdd.shelve")
+    #splt.batch_correlations_statistics(batch19_param, randtoken="rand",
+    #                                   include_signal=False,
+    #                                   filename="simdd.shelve")
 
     #splt.average_collapsed_loss(batch17_param, dir_prefix="plots/run17/")
     #splt.average_collapsed_loss(batch18_param, dir_prefix="plots/run18/")

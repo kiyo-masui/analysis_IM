@@ -6,9 +6,9 @@ for a in $(seq 0 10); do
     echo $b
     sed -e "s/MODEINDEX/$b/g" correlate_slices.template > correlate_slices_mode$b.ini
     sed -e "s/MODEINDEX/$b/g" correlate_slices_pbs.template > correlate_slices_mode$b.pbs
-    qsub correlate_slices_mode$b.pbs
+    #qsub correlate_slices_mode$b.pbs
 
     sed -e "s/MODEINDEX/$b/g" correlate_slices_signalloss.template > correlate_slices_signalloss_mode$b.ini
     sed -e "s/MODEINDEX/$b/g" correlate_slices_signalloss_pbs.template > correlate_slices_signalloss_mode$b.pbs
-    qsub correlate_slices_signalloss_mode$b.pbs
+    #qsub correlate_slices_signalloss_mode$b.pbs
 done
