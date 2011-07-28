@@ -450,6 +450,43 @@ batch20_param = {
     "notes": run20_notes
     }
 
+run21_notes = {
+    "runname": "run21",
+    "machine": "scinet",
+    "speedup": "on",
+    "meansubtract": "on",
+    "notes1": "this has the wigglez xcorr measurement with the new corr function",
+    "notes2": "it also has the 100 random optical xcorr and 100 signal sims"
+    }
+batch21_param = {
+    "path": rootdir + "xcorr_newcorr",
+    "signal:file": "opt_x_radio_combined_noconv_sep",
+    "rand:list": {"prefix": "opt_x_radio_combined_rand",
+                  "suffix": "_noconv_sep",
+                  "indices": range(100),
+                  "indexfmt": "%03d",
+                  "id_prefix": "rand"},
+    "notes": run21_notes
+    }
+
+run22_notes = {
+    "runname": "run22",
+    "machine": "scinet",
+    "speedup": "on",
+    "meansubtract": "on",
+    "notes1": "cross-correlation of (real map (15 modes removed) + sim) x sim",
+    "notes2": "this uses radio N^-1 for sim1, nbar for sim2; simulate xcorr"
+    }
+batch22_param = {
+    "path": rootdir + "xcorr_newcorr",
+    "randsim:list": {"prefix": "radioplussim_x_optsim_",
+                  "suffix": "",
+                  "indices": range(1,101),
+                  "indexfmt": "%d",
+                  "id_prefix": "rand"},
+    "notes": run22_notes
+    }
+
 
 # use this for repairing files
 params_default = {
@@ -498,7 +535,9 @@ if __name__ == '__main__':
     #                                cross_power=True)
     #splt.process_batch_correlations(batch19_param, multiplier=1./(T_b_sim**2.),
     #                                cross_power=False, filename="simdd.shelve")
-    splt.process_batch_correlations(batch20_param, cross_power=True)
+    #splt.process_batch_correlations(batch20_param, cross_power=True)
+    splt.process_batch_correlations(batch22_param, cross_power=True,
+                                    multiplier=1./(T_b_sim/1.e3))
 
     #splt.plot_batch_correlations(batch10_param,
     #                        dir_prefix="plots/run10/",
@@ -518,8 +557,14 @@ if __name__ == '__main__':
     #splt.plot_batch_correlations(batch19_param,
     #                        dir_prefix="plots/run19/",
     #                        color_range=[-0.04, 0.04], cross_power=True)
-    splt.plot_batch_correlations(batch20_param,
-                            dir_prefix="plots/run20/",
+    #splt.plot_batch_correlations(batch20_param,
+    #                        dir_prefix="plots/run20/",
+    #                        color_range=[-0.04, 0.04], cross_power=True)
+    #splt.plot_batch_correlations(batch21_param,
+    #                        dir_prefix="plots/run21/",
+    #                        color_range=[-0.04, 0.04], cross_power=True)
+    splt.plot_batch_correlations(batch21_param,
+                            dir_prefix="plots/run22/",
                             color_range=[-0.04, 0.04], cross_power=True)
 
     #splt.batch_correlations_statistics(batch10_param, randtoken="rand")
@@ -531,6 +576,9 @@ if __name__ == '__main__':
     #splt.batch_correlations_statistics(batch19_param, randtoken="rand",
     #                                   include_signal=False,
     #                                   filename="simdd.shelve")
+    #splt.batch_correlations_statistics(batch21_param, randtoken="rand")
+    splt.batch_correlations_statistics(batch22_param, randtoken="rand",
+                                       include_signal=False)
 
     #splt.average_collapsed_loss(batch17_param, dir_prefix="plots/run17/")
     #splt.average_collapsed_loss(batch18_param, dir_prefix="plots/run18/")

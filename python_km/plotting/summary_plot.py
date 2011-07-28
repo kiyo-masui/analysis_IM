@@ -119,8 +119,6 @@ def plot_corr(shelve_entry, filename, title, coloraxis=None, cross_power=True):
                                  shelve_entry["corr1D"],
                                  cross_power=cross_power, title=title)
 
-    print shelve_entry["corr2D"]
-
     plot_contour(filename + "_contour.png", shelve_entry["corr2D_fbins"],
                  shelve_entry["real_lags"], shelve_entry["corr2D"],
                  title=title, coloraxis=coloraxis)
@@ -326,6 +324,7 @@ def batch_correlations_statistics(batch_param, randtoken="rand",
     for (run_id, run_file, multiplier, cross_power) in randlist:
         print run_file
         shelve_entry = master[run_id]
+        lag_axis = shelve_entry["corr1D_lags"]
         rancats[index, :] = shelve_entry["corr1D"]
         ranaxis = shelve_entry["corr1D_lags"]
         index += 1
@@ -339,7 +338,7 @@ def batch_correlations_statistics(batch_param, randtoken="rand",
     ranmean = np.mean(rancats, axis=0)
     rancov = np.corrcoef(rancats, rowvar=0)
     plot_covariance(rancov, "bin-bin_cov.png",
-                    axis_labels = shelve_entry["corr1D_lags"])
+                    axis_labels = lag_axis)
 
     print "average binned correlation function and signal \n" + "-" * 80
     if include_signal:
