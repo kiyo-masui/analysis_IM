@@ -3,6 +3,6 @@ for a in $(seq 1 100); do
     b=$(printf %d ${a})
     echo $b
     sed -e "s/RANDINDEX/$b/g" added_sim_xcorr.template > added_sim_xcorr_rand$b.ini
-    sed -e "s/RANDINDEX/$b/g" added_sim_xcorr_pbs.template > added_sim_xcorr_rand$b.pbs
-    qsub added_sim_xcorr_rand$b.pbs
+    #sed -e "s/RANDINDEX/$b/g" added_sim_xcorr_pbs.template > added_sim_xcorr_rand$b.pbs
+    #qsub added_sim_xcorr_rand$b.pbs
 done

@@ -2,11 +2,13 @@ import os
 import scipy as sp
 
 base_dir = os.getenv('GBT10B_OUT')
-eswitzer_base_dir = '/mnt/raid-project/gmrt/eswitzer/wiggleZ/' 
+#eswitzer_base_dir = '/mnt/raid-project/gmrt/eswitzer/wiggleZ/' 
+eswitzer_base_dir = '/home/eswitzer/data/eswitzer/' 
+scratch_dir = '/scratch/eswitzer/analysis_IM/'
 
 fs_radio_root1 = eswitzer_base_dir + 'simulations_plus_data/'
 fs_radio_root2 = eswitzer_base_dir + 'simulations_plus_data/'
-fs_radio_noiseroot1 = eswitzer_base_dir + 'modetest_combined_maps/'
+fs_radio_noiseroot1 = eswitzer_base_dir + 'modetest_combined_maps_0_50/'
 fs_radio_noiseroot2 = eswitzer_base_dir + 'binned_wiggleZ/'
 
 fs_radio_data_file1 = 'simulated_signal_plusdata_map_RANDINDEX_with_beam.npy'
@@ -14,7 +16,7 @@ fs_radio_noiseinv_file1 = 'combined_sim_41-73_cleaned_noise_inv_15.npy'
 fs_radio_data_file2 = 'simulated_signal_map_RANDINDEX_with_beam.npy'
 fs_radio_noiseinv_file2 = 'reg15separable.npy'
 
-fs_output_shelve_file = 'radioplussim_x_optsim_RANDINDEX.shelve'
+fs_output_shelve_file = scratch_dir + 'radioplussim_x_optsim_RANDINDEX.shelve'
 fs_speedup = True
 fs_subtract_mean = True
 
@@ -47,5 +49,5 @@ fs_freq.remove(254)
 fs_freq.remove(255)
 fs_freq = tuple(fs_freq)
 # Angular lags
-fs_lags = tuple(sp.arange(0.002, 1.0, 0.12))
+fs_lags = tuple(sp.arange(0.002, 2.0, 0.12))
 
