@@ -63,24 +63,30 @@ def make_corr(filename, verbose=False, identifier=None, cross_power=False,
     corr[np.isinf(corr)] = 0.
 
     lags = sp.array(run_params["lags"])
+    real_lags = lags.copy()
+    real_lags[0] = 0
+    real_lags[1:] -= sp.diff(lags)/2.0
+
     frange = run_params["freq"]
     realrange = corr_shelve["freq_axis"]
     corr_2D = fs.rebin_corr_freq_lag(corr, realrange[list(frange)],
                                      weights=corr_counts, return_fbins=True,
                                      nfbins=200)
 
-    corr_1D = fs.collapse_correlation_1D(corr_2D[0], corr_2D[2], lags,
+    corr_1D = fs.collapse_correlation_1D(corr_2D[0], corr_2D[2], real_lags,
                                          weights=corr_2D[1])
 
     if cross_power:
         correlation_1D = corr_1D[0] * 1.e3
         correlation_2D = corr_2D[0] * 1.e3
     else:
+        print "Taking the signed square root"
         correlation_1D = sp.sign(corr_1D[0]) * sp.sqrt(abs(corr_1D[0])) * 1e3
         correlation_2D = sp.sign(corr_2D[0]) * sp.sqrt(abs(corr_2D[0])) * 1e3
 
     output["run_params"] = run_params
     output["lags"] = run_params["lags"]
+    output["real_lags"] = real_lags
     # uncomment these only if you need them in the shelve file; makes it huge
     #output["corr"] = corr
     #output["corr_counts"] = corr_counts
@@ -116,7 +122,7 @@ def plot_corr(shelve_entry, filename, title, coloraxis=None, cross_power=True):
     print shelve_entry["corr2D"]
 
     plot_contour(filename + "_contour.png", shelve_entry["corr2D_fbins"],
-                 shelve_entry["lags"], shelve_entry["corr2D"],
+                 shelve_entry["real_lags"], shelve_entry["corr2D"],
                  title=title, coloraxis=coloraxis)
 
 
@@ -216,9 +222,13 @@ def wrap_make_corr(runitem):
                      cross_power=cross_power)
 
 
-def process_batch_correlations(batch_param, multiplier=1., cross_power=False):
+def process_batch_correlations(batch_param, multiplier=1., cross_power=False,
+                               filename=None):
     """Process a batch of correlation functions"""
-    product = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
+    if filename:
+        master = shelve.open(filename)
+    else:
+        master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
     filelist = make_shelve_names(batch_param, multiplier=multiplier,
                                  cross_power=cross_power)
 
@@ -226,9 +236,9 @@ def process_batch_correlations(batch_param, multiplier=1., cross_power=False):
     results = pool.map(wrap_make_corr, filelist)
     # TODO: can pool write this dictionary instead?
     for item in results:
-        product[item["identifier"]] = item
+        master[item["identifier"]] = item
 
-    product.close()
+    master.close()
 
 
 def repair_shelve_files(batch_param, ini_prefix, params_default, param_prefix):
@@ -259,8 +269,11 @@ def wrap_plot_corr(runitem):
               coloraxis=coloraxis, cross_power=cross_power)
 
 
-def average_collapsed_loss(batch_param, dir_prefix="plots/"):
-    master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
+def average_collapsed_loss(batch_param, dir_prefix="plots/", filename=None):
+    if filename:
+        master = shelve.open(filename)
+    else:
+        master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
     filelist = make_shelve_names(batch_param)
     n_modes = 26
     n_pairs = 6
@@ -292,9 +305,12 @@ def average_collapsed_loss(batch_param, dir_prefix="plots/"):
     return (mean_accumulator, stdev_accumulator)
 
 def batch_correlations_statistics(batch_param, randtoken="rand",
-                                  include_signal=True):
+                                  include_signal=True, filename=None):
     """bin a large batch of correlation functions"""
-    master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
+    if filename:
+        master = shelve.open(filename)
+    else:
+        master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
     filelist = make_shelve_names(batch_param)
 
     # make a sublist of calculated correlations for just the random trials
@@ -348,9 +364,13 @@ def fancy_vector(vector, format_string):
     return output
 
 
-def batch_compensation_function(batch_param, modetoken="mode"):
+def batch_compensation_function(batch_param, modetoken="mode", filename=None):
     """find the impact of filtering on a run of correlation functions"""
-    master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
+    if filename:
+        master = shelve.open(filename)
+    else:
+        master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
+
     filelist = make_shelve_names(batch_param)
     # TODO remove 10 magic number and have it figure this out instead
     nlags = 10
@@ -382,9 +402,13 @@ def batch_compensation_function(batch_param, modetoken="mode"):
         print int(lag), fancy_vector(modeloss, '%5.2g')
 
 def plot_batch_correlations(batch_param, dir_prefix="plots/",
-                            color_range=[-0.2, 0.2], cross_power=True):
+                            color_range=[-0.2, 0.2], cross_power=True,
+                            filename=None):
     """bin a large batch of correlation functions"""
-    master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
+    if filename:
+        master = shelve.open(filename)
+    else:
+        master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
     filelist = make_shelve_names(batch_param)
     coloraxis = np.linspace(color_range[0], color_range[1], 100, endpoint=True)
 
@@ -468,6 +492,8 @@ def plot_contour(filename, fbins, lags, corr2D,
     plt.savefig(filename)
 
 
+# TODO: sep_lags are right bin, but make horizontal errors (or similar)
+# which represent the full bin
 def plot_collapsed(filename, sep_lags, corr1D, errors=[], save_old=False,
                    plot_old=False, cross_power=True, title=None,
                    ylog=False):
