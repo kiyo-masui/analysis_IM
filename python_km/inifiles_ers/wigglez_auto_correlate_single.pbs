@@ -7,4 +7,4 @@
 cd $PBS_O_WORKDIR
 echo $PYTHONPATH
 cd ..
-python correlate/wigglez_corr.py inifiles_ers/wigglez_auto_correlate.ini
+python correlate/wigglez_corr.py inifiles_ers/wigglez_correlate_fast.ini
