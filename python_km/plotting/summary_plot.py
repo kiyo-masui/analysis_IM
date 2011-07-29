@@ -267,6 +267,29 @@ def wrap_plot_corr(runitem):
               coloraxis=coloraxis, cross_power=cross_power)
 
 
+def process_pairs(batch_param, prefix="pair", filename=None):
+    if filename:
+        master = shelve.open(filename)
+    else:
+        master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
+    n_pairs = 6
+    n_lags = 10
+
+    accumulator = np.zeros((n_pairs, n_lags))
+    mean_accumulator = np.zeros((n_lags))
+    stdev_accumulator = np.zeros((n_lags))
+    for pair in range(0, n_pairs):
+        identifier = prefix + repr(pair)
+        entry = master[identifier]
+        accumulator[pair, :] = entry["corr1D"]
+        print entry["corr1D"]
+    mean_accumulator = np.mean(accumulator[:,:], axis=0)
+    stdev_accumulator = np.std(accumulator[:,:], axis=0, ddof=1)
+
+    for writeitem in zip(entry["corr1D_lags"], mean_accumulator,
+                                               stdev_accumulator):
+        print "%5.3g %5.3g %5.3g" % writeitem
+
 def average_collapsed_loss(batch_param, dir_prefix="plots/", filename=None):
     if filename:
         master = shelve.open(filename)

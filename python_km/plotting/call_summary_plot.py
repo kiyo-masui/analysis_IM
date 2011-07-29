@@ -487,6 +487,21 @@ batch22_param = {
     "notes": run22_notes
     }
 
+run23_notes = {
+    "runname": "run23",
+    "machine": "prawn",
+    "speedup": "on",
+    "notes": "autocorrelation with repaired correlation function; for proposal"
+    }
+batch23_param = {
+    "path": rootdir + "new_autocorr_test",
+    "pair:list": {"prefix": "radio_autocorr_15_modes_",
+                  "suffix": "",
+                  "indices": range(0,6),
+                  "indexfmt": "%d",
+                  "id_prefix": "pair"},
+    "notes": run23_notes
+    }
 
 # use this for repairing files
 params_default = {
@@ -536,8 +551,11 @@ if __name__ == '__main__':
     #splt.process_batch_correlations(batch19_param, multiplier=1./(T_b_sim**2.),
     #                                cross_power=False, filename="simdd.shelve")
     #splt.process_batch_correlations(batch20_param, cross_power=True)
-    splt.process_batch_correlations(batch22_param, cross_power=True,
-                                    multiplier=1./(T_b_sim/1.e3))
+    #splt.process_batch_correlations(batch22_param, cross_power=True,
+    #                                multiplier=1./(T_b_sim/1.e3))
+    #splt.process_batch_correlations(batch22_param, multiplier=1./(T_b_sim**2.),
+    #                                cross_power=False, filename="simdd.shelve")
+    #splt.process_batch_correlations(batch23_param, cross_power=False)
 
     #splt.plot_batch_correlations(batch10_param,
     #                        dir_prefix="plots/run10/",
@@ -563,9 +581,14 @@ if __name__ == '__main__':
     #splt.plot_batch_correlations(batch21_param,
     #                        dir_prefix="plots/run21/",
     #                        color_range=[-0.04, 0.04], cross_power=True)
-    splt.plot_batch_correlations(batch21_param,
-                            dir_prefix="plots/run22/",
-                            color_range=[-0.04, 0.04], cross_power=True)
+    #splt.plot_batch_correlations(batch22_param,
+    #                        dir_prefix="plots/run22/",
+    #                        color_range=[-0.04, 0.04], cross_power=True)
+    #splt.plot_batch_correlations(batch23_param,
+    #                        dir_prefix="plots/run23/",
+    #                        color_range=[-0.04, 0.04], cross_power=True)
+
+    splt.process_pairs(batch23_param, prefix="pair")
 
     #splt.batch_correlations_statistics(batch10_param, randtoken="rand")
     #splt.batch_correlations_statistics(batch14_param, randtoken="RR")
@@ -577,8 +600,11 @@ if __name__ == '__main__':
     #                                   include_signal=False,
     #                                   filename="simdd.shelve")
     #splt.batch_correlations_statistics(batch21_param, randtoken="rand")
-    splt.batch_correlations_statistics(batch22_param, randtoken="rand",
-                                       include_signal=False)
+    #splt.batch_correlations_statistics(batch22_param, randtoken="rand",
+    #                                   include_signal=False)
+    #splt.batch_correlations_statistics(batch22_param, randtoken="rand",
+    #                                   include_signal=False,
+    #                                   filename="simdd.shelve")
 
     #splt.average_collapsed_loss(batch17_param, dir_prefix="plots/run17/")
     #splt.average_collapsed_loss(batch18_param, dir_prefix="plots/run18/")
