@@ -901,8 +901,15 @@ def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
     out_weights[bad_inds] = 1.0
     out_corr/=out_weights
     out_weights[bad_inds] = 0.0
+    # Make real lags to be returned.
+    x_left = sp.empty(nbins)
+    x_left[0] = 0
+    x_left[1:] = lags[:-1]
+    x_right = lags
+    x_centre = (x_right + x_left)/2.0
+    
 
-    return out_corr, out_weights, lags
+    return out_corr, out_weights, (x_left, x_centre, x_right)
 
 def save_data(F, save_maps=False, save_noises=False, save_modes=False):
     '''Saves the cleaned data and modes to the output directory specified
