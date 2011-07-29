@@ -147,7 +147,7 @@ class MapPair(object) :
             print "Maps can only be names by sections A,B,C or D."
             raise
 
-    def degrade_resolution(self) :
+    def degrade_resolution(self, fake_width=1.) :
         """Convolves the maps down to the lowest resolution.
 
         Also convolves the noise, making sure to deweight pixels near the edge
@@ -164,7 +164,9 @@ class MapPair(object) :
         freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
                              dtype=float)
         freq_data *= 1.0e6
-        beam_diff=sp.sqrt(max(1.1*beam_data)**2-(beam_data)**2)
+#        beam_diff=sp.sqrt(max(1.1*beam_data)**2-(beam_data)**2)
+        beam_diff = sp.zeros(len(beam_data))
+        beam_diff[:] = fake_width
         b = beam.GaussianBeam(beam_diff,freq_data)
         # Convolve to a common resolution.
         self.Map2=b.apply(self.Map2)
@@ -506,7 +508,7 @@ class NewSlices(object) :
 
         if params["convolve"] :
             for Pair in Pairs:
-                Pair.degrade_resolution()
+                Pair.degrade_resolution(0.5)
         if params['factorizable_noise'] :
             for Pair in Pairs:
                 Pair.make_noise_factorizable()
@@ -609,6 +611,10 @@ class NewSlices(object) :
         # Save cleaned clean maps, cleaned noises, and modes.
         save_data(self, params['save_maps'], params['save_noises'],
             params['save_modes'])
+
+        if params["convolve"] :
+            for Pair in Pairs:
+                Pair.degrade_resolution(0.1)
 
         # Finish if this was just first pass.
         if params['first_pass_only'] :
