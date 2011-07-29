@@ -119,8 +119,6 @@ def plot_corr(shelve_entry, filename, title, coloraxis=None, cross_power=True):
                                  shelve_entry["corr1D"],
                                  cross_power=cross_power, title=title)
 
-    print shelve_entry["corr2D"]
-
     plot_contour(filename + "_contour.png", shelve_entry["corr2D_fbins"],
                  shelve_entry["real_lags"], shelve_entry["corr2D"],
                  title=title, coloraxis=coloraxis)
@@ -269,6 +267,32 @@ def wrap_plot_corr(runitem):
               coloraxis=coloraxis, cross_power=cross_power)
 
 
+def process_pairs(batch_param, prefix="pair", filename=None):
+    if filename:
+        master = shelve.open(filename)
+    else:
+        master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
+    n_pairs = 6
+    n_lags = 15
+
+    accumulator = np.zeros((n_pairs, n_lags))
+    mean_accumulator = np.zeros((n_lags))
+    stdev_accumulator = np.zeros((n_lags))
+    for pair in range(0, n_pairs):
+        identifier = prefix + repr(pair)
+        entry = master[identifier]
+        accumulator[pair, :] = entry["corr1D"]
+        print entry["corr1D"]
+    mean_accumulator = np.mean(accumulator[:,:], axis=0)
+    stdev_accumulator = np.std(accumulator[:,:], axis=0, ddof=1)
+
+    lags_left = entry["corr1D_lags"][0]
+    lags_centre = entry["corr1D_lags"][1]
+    lags_right = entry["corr1D_lags"][2]
+    for writeitem in zip(lags_left, lags_centre, lags_right,
+                         mean_accumulator, stdev_accumulator):
+        print "%5.3g %5.3g %5.3g" % writeitem
+
 def average_collapsed_loss(batch_param, dir_prefix="plots/", filename=None):
     if filename:
         master = shelve.open(filename)
@@ -277,7 +301,7 @@ def average_collapsed_loss(batch_param, dir_prefix="plots/", filename=None):
     filelist = make_shelve_names(batch_param)
     n_modes = 26
     n_pairs = 6
-    n_lags = 10
+    n_lags = 15
 
     accumulator = np.zeros((n_modes, n_pairs, n_lags))
     mean_accumulator = np.zeros((n_modes, n_lags))
@@ -320,14 +344,14 @@ def batch_correlations_statistics(batch_param, randtoken="rand",
             randlist.append(item)
 
     print "number of random catalogs to stack: " + repr(len(randlist))
-    # TODO remove 10 magic number and have it figure this out instead
-    rancats = np.zeros((len(randlist), 10))
+    # TODO remove 15 magic number and have it figure this out instead
+    rancats = np.zeros((len(randlist), 15))
     index = 0
     for (run_id, run_file, multiplier, cross_power) in randlist:
         print run_file
         shelve_entry = master[run_id]
+        lag_axis = shelve_entry["corr1D_lags"][1]
         rancats[index, :] = shelve_entry["corr1D"]
-        ranaxis = shelve_entry["corr1D_lags"]
         index += 1
 
     if include_signal:
@@ -339,18 +363,23 @@ def batch_correlations_statistics(batch_param, randtoken="rand",
     ranmean = np.mean(rancats, axis=0)
     rancov = np.corrcoef(rancats, rowvar=0)
     plot_covariance(rancov, "bin-bin_cov.png",
-                    axis_labels = shelve_entry["corr1D_lags"])
+                    axis_labels = lag_axis)
 
     print "average binned correlation function and signal \n" + "-" * 80
+    lags_left = shelve_entry["corr1D_lags"][0]
+    lags_centre = shelve_entry["corr1D_lags"][1]
+    lags_right = shelve_entry["corr1D_lags"][2]
     if include_signal:
-        output_package = zip(shelve_signal["corr1D_lags"], ranmean,
+        output_package = zip(lags_left, lags_centre, lags_right, ranmean,
                                              ranstd, shelve_signal["corr1D"])
-        for (lag, cdat, cdaterr, sig) in output_package:
-            print lag, cdat, cdaterr, sig
+        for (lagl, lagc, lagr, cdat, cdaterr, sig) in output_package:
+            print lagl, lagc, lagr, cdat, cdaterr, sig
     else:
-        output_package = zip(ranaxis, ranmean, ranstd)
-        for (lag, cdat, cdaterr) in output_package:
-            print lag, cdat, cdaterr
+        output_package = zip(lags_left, lags_centre, lags_right, ranmean,
+                                             ranstd)
+        output_package = zip(lag_axis, ranmean, ranstd)
+        for (lagl, lagc, lagr, cdat, cdaterr) in output_package:
+            print lagl, lagc, lagr, cdat, cdaterr
 
     return output_package
 
@@ -372,8 +401,8 @@ def batch_compensation_function(batch_param, modetoken="mode", filename=None):
         master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
 
     filelist = make_shelve_names(batch_param)
-    # TODO remove 10 magic number and have it figure this out instead
-    nlags = 10
+    # TODO remove 15 magic number and have it figure this out instead
+    nlags = 15
 
     # make a sublist of calculated correlations for just the random trials
     modelist = []
@@ -388,7 +417,7 @@ def batch_compensation_function(batch_param, modetoken="mode", filename=None):
         print run_file
         shelve_entry = master[run_id]
         modecats[index, :] = shelve_entry["corr1D"]
-        modeaxis = shelve_entry["corr1D_lags"]
+        modeaxis = shelve_entry["corr1D_lags"][1]
         index += 1
 
     compmode = np.zeros((len(modelist), nlags))
@@ -497,7 +526,10 @@ def plot_contour(filename, fbins, lags, corr2D,
 def plot_collapsed(filename, sep_lags, corr1D, errors=[], save_old=False,
                    plot_old=False, cross_power=True, title=None,
                    ylog=False):
-    nbins = len(sep_lags)
+    lags_left = sep_lags[0]
+    lags_centre = sep_lags[1]
+    lags_right = sep_lags[2]
+    nbins = len(lags_centre)
     a = plt.figure()
     ax = plt.gca()
     if ylog:
@@ -507,29 +539,29 @@ def plot_collapsed(filename, sep_lags, corr1D, errors=[], save_old=False,
     msize = 6
 
     if (len(errors) > 0):
-        plt.errorbar(sep_lags, corr1D, yerr=errors, fmt='o', color='b',
+        plt.errorbar(lags_centre, corr1D, yerr=errors, fmt='o', color='b',
                      markersize=msize, capsize=6, elinewidth=3)
     else:
-        plt.plot(sep_lags, corr1D, linestyle='None', marker='o',
+        plt.plot(lags_centre, corr1D, linestyle='None', marker='o',
                              color='b', markersize=msize)
 
     if ylog:
         if (len(errors) > 0):
-            plt.errorbar(sep_lags, -corr1D, yerr=errors, fmt='o',
+            plt.errorbar(lags_centre, -corr1D, yerr=errors, fmt='o',
                         color='r', markersize=msize, capsize=6, elinewidth=3)
         else:
-            plt.plot(sep_lags, -corr1D, linestyle='None', marker='o',
+            plt.plot(lags_centre, -corr1D, linestyle='None', marker='o',
                                  color='r', markersize=msize)
 
     # write out to a file
     txtfile = open(filename + ".dat", 'w')
     datalen = len(corr1D)
     if (len(errors) > 0):
-        for writeitem in zip(sep_lags, corr1D, errors):
-            txtfile.write("%5.3g %5.3g %5.3g\n" % writeitem)
+        for writeitem in zip(lags_left, lags_centre, lags_right, corr1D, errors):
+            txtfile.write("%5.3g %5.3g %5.3g %5.3g %5.3g\n" % writeitem)
     else:
-        for writeitem in zip(sep_lags, corr1D):
-            txtfile.write("%5.3g %5.3g\n" % writeitem)
+        for writeitem in zip(lags_left, lags_centre, lags_right, corr1D):
+            txtfile.write("%5.3g %5.3g %5.3g %5.3g\n" % writeitem)
 
     txtfile.close()
 

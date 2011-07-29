@@ -143,14 +143,14 @@ def make_individual():
     #algebra.save("combined_41-73_product_test.npy", prodmap_out)
 
 
-def make_modetest_combined():
+def make_modetest_combined_map():
     """combine output maps from a mode subtraction test"""
     modedir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest/"
-    outdir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest_combined_maps/"
+    outdir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest_combined_maps_0_50/"
     dirprefix = "73_ABCD_all_"
-    data_dirsuffix = "_modes_real3map/"
-    cov_dirsuffix = "_modes_real3map/"
-    for run_index in range(26):
+    data_dirsuffix = "_modes_real_maponly/"
+    cov_dirsuffix = "_modes_real_maponly/"
+    for run_index in range(0,55,5):
         fullpath_data = modedir + dirprefix + repr(run_index) + data_dirsuffix
         fullpath_cov = modedir + dirprefix + repr(run_index) + cov_dirsuffix
         print fullpath_data, fullpath_cov
@@ -173,11 +173,11 @@ def make_modetest_combined():
 def make_modetest_combined_sim():
     """combine output simulated maps from a mode subtraction test"""
     modedir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest/"
-    outdir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest_combined_maps/"
+    outdir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest_combined_maps_0_50/"
     dirprefix = "73_ABCD_all_"
-    data_dirsuffix = "_modes_sim3map/"
-    cov_dirsuffix = "_modes_real3map/"
-    for run_index in range(26):
+    data_dirsuffix = "_modes_sim_maponly/"
+    cov_dirsuffix = "_modes_real_maponly/"
+    for run_index in range(0,55,5):
         fullpath_data = modedir + dirprefix + repr(run_index) + data_dirsuffix
         fullpath_cov = modedir + dirprefix + repr(run_index) + cov_dirsuffix
         print fullpath_data, fullpath_cov
@@ -283,6 +283,9 @@ def reprocess_batch_pickle():
 
 
 if __name__ == '__main__':
+    repackage_pickle_as_shelve("/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/73_ABCD_all_15_modes_realmap_ra_fixed/New_Slices_object.pkl",
+                               "/mnt/raid-project/gmrt/eswitzer/wiggleZ/batch_runs/new_autocorr_test/radio_autocorr_15_modes")
+    #make_modetest_combined_map()
     #make_modetest_combined_sim()
     #add_sim_radio()
-    reprocess_batch_pickle()
+    #reprocess_batch_pickle()
