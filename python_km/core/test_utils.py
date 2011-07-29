@@ -3,6 +3,7 @@
 import unittest
 
 import scipy as sp
+from numpy import random
 
 import utils
 
@@ -75,5 +76,36 @@ class TestPolInt2String(unittest.TestCase):
         self.assertEqual(utils.polint2str(-4), 'LR')
         self.assertRaises(ValueError, utils.polint2str, 7)
 
+class TestAmpFit(unittest.TestCase):
+
+    def test_uncorrelated_noscatter(self):
+        data = sp.arange(10, dtype=float)
+        theory = data/2.0
+        C = sp.identity(10)
+        a, s = utils.ampfit(data, C, theory)
+        self.assertAlmostEqual(a, 2)
+
+    def test_uncorrelated_noscatter_error(self):
+        data = sp.arange(10, dtype=float) + 1.0
+        amp = 5.0
+        theory = data/amp
+        C = sp.diag((sp.arange(10, dtype=float) + 1.0)**2)
+        a, s = utils.ampfit(data, C, theory)
+        self.assertAlmostEqual(a, amp)
+        self.assertAlmostEqual(s/a, 1.0/sp.sqrt(10))
+
+    def test_uncorrelated_scatter_error(self):
+        n = 1000
+        data = sp.arange(n, dtype=float) + 1.0
+        amp = 5.0
+        theory = data/amp
+        C = sp.diag((sp.arange(n, dtype=float) + 1.0)**2)
+        data += random.normal(size=n)*data
+        a, s = utils.ampfit(data, C, theory)
+        self.assertTrue(sp.allclose(a, amp, rtol=5.0/sp.sqrt(n), atol=0))
+        # Expect the next line to fail 1/100 trials.
+        self.assertFalse(sp.allclose(a, amp, rtol=0.01/sp.sqrt(n), atol=0))
+        self.assertAlmostEqual(s, amp/sp.sqrt(1000))
+        
 if __name__ == '__main__' :
     unittest.main()
