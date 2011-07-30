@@ -70,6 +70,32 @@ def make_cube_movie(filename, tag, colorbar_title, fileprefix,
                '%03d.png', tag + '.mp4'))
 
 
+root_directory = "/mnt/raid-project/gmrt/calinliv/wiggleZ/simulations/test100/"
+make_cube_movie(root_directory + "simulated_signal_map_1.npy",
+                "simulated_signal_map_1",
+                "Temperature", cube_root + "simulated_signal_map_1",
+                sigmarange=[-1.,1.])
+root_directory = "/mnt/raid-project/gmrt/calinliv/wiggleZ/simulations/test100/"
+make_cube_movie(root_directory + "simulated_signal_map_1_with_beam.npy",
+                "simulated_signal_map_1_with_beam",
+                "Temperature", cube_root + "simulated_signal_map_1_with_beam",
+                sigmarange=[-1.,1.])
+root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest/73_ABCD_all_0_modes_sim_maponly_NOCONV/"
+make_cube_movie(root_directory + "sec_A_15hr_41-73_cleaned_clean_map_I_with_B.npy",
+                "sec_A_15hr_41-73_cleaned_clean_map_I_with_B_noconv",
+                "Temperature", cube_root + "sec_A_15hr_41-73_cleaned_clean_map_I_with_B_noconv",
+                sigmarange=[-1.,1.])
+root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest/73_ABCD_all_0_modes_sim_maponly/"
+make_cube_movie(root_directory + "sec_A_15hr_41-73_cleaned_clean_map_I_with_B.npy",
+                "sec_A_15hr_41-73_cleaned_clean_map_I_with_B",
+                "Temperature", cube_root + "sec_A_15hr_41-73_cleaned_clean_map_I_with_B",
+                sigmarange=[-1.,1.])
+root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest_combined_maps_0_50/"
+make_cube_movie(root_directory + "combined_sim_41-73_cleaned_clean_0.npy",
+                "combined_sim_41-73_cleaned_clean_0",
+                "Temperature", cube_root + "combined_sim_41-73_cleaned_clean_0",
+                sigmarange=[-1.,1.])
+sys.exit()
 
 make_cube_movie("delta_selection.npy",
                 "delta_selection",

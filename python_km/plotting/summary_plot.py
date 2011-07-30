@@ -377,7 +377,6 @@ def batch_correlations_statistics(batch_param, randtoken="rand",
     else:
         output_package = zip(lags_left, lags_centre, lags_right, ranmean,
                                              ranstd)
-        output_package = zip(lag_axis, ranmean, ranstd)
         for (lagl, lagc, lagr, cdat, cdaterr) in output_package:
             print lagl, lagc, lagr, cdat, cdaterr
 

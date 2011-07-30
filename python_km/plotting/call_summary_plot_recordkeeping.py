@@ -456,7 +456,7 @@ run21_notes = {
     "speedup": "on",
     "meansubtract": "on",
     "notes1": "this has the wigglez xcorr measurement with the new corr function",
-    "notes2": "it also has the 100 random optical xcorr and 100 signal sims"
+    "notes2": "it also has the 100 random optical xcorr"
     }
 batch21_param = {
     "path": rootdir + "xcorr_newcorr",
