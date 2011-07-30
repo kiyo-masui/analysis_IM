@@ -6,6 +6,7 @@ import re
 import sys
 import string
 import shelve
+import cPickle
 import numpy as np
 import scipy as sp
 import matplotlib
@@ -14,7 +15,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from correlate import correlation_plots as cp
 from correlate import freq_slices as fs
-from core import bootstrap
+#from core import bootstrap
 from core import algebra
 import multiprocessing
 from kiyopy import parse_ini
@@ -102,6 +103,104 @@ def make_corr(filename, verbose=False, identifier=None, cross_power=False,
         output["identifier"] = identifier
 
     return output
+
+def make_autocorr(filename, thousand_multiplier=True, multiplier=1.):
+    """Save as above but for autocorrs in New_Slices pickle objects.
+    filename is the full path to the file and should inlude the .pkl ending.
+    wrap the plot correlation class which reads correlation object shelve
+    files; uses new binning methods in freq-slices. Note that correlations are
+    converted into units of mK.
+    """
+    output = {}
+    # Load the New_Slices_object.pkl
+    f = open(filename, "r")
+    F = cPickle.load(f)
+    f.close()
+
+    # Setting axis info after pickling. Make sure to use a map with the proper
+    # info set.
+    map_file = "/mnt/raid-project/gmrt/calinliv/wiggleZ/maps/" + \
+                   "sec_A_15hr_41-73_clean_map_I.npy"
+    exMap = algebra.make_vect(algebra.load(map_file))
+    for Pair in F.Pairs:
+        Pair.Map1.info = exMap.info
+        Pair.Map2.info = exMap.info
+        Pair.Noise_inv1.info = exMap.info
+        Pair.Noise_inv2.info = exMap.info
+
+    # 3D->2D->1D
+    corr_2D_list = []
+    corr_1D_list = []
+    for i in range(0, len(F.Pairs)):
+        # The corr to use.
+        corr = F.Pairs[i].corr
+        if (multiplier != 1.):
+            print "WARNING: using a multiplier of: " + repr(multiplier)
+        corr *= multiplier
+        # The lags used
+        lags = sp.array(F.params['lags'])
+        real_lags = copy.deepcopy(lags)
+        real_lags[0] = 0
+        real_lags[1:] -= sp.diff(lags)/2.0
+        # The range selected in ini file.
+        frange = F.params['freq']
+        # The corresponding real frequencies for that range.
+        realrange = [F.Pairs[i].Map1.get_axis('freq')[f] for f in frange]
+        # The 2D correlation.
+        corr_2D = fs.rebin_corr_freq_lag(corr, realrange, nfbins=200,
+                             weights=F.Pairs[i].counts, return_fbins=True)
+        corr_2D_list.append(corr_2D[0])
+        # The 1D correlation.
+        corr_1D = fs.collapse_correlation_1D(corr_2D[0], corr_2D[2], 
+                                             real_lags, corr_2D[1])
+        corr_1D_list.append(copy.deepcopy(corr_1D[0]))
+        # The values for x_left, x_centre, x_right.
+        x_axis = corr_1D[2]
+
+    # Put the 1D correlations into a matrix to be averaged easily.
+    matrix_1D = []
+    for corr_1D in corr_1D_list:
+        matrix_1D.append(corr_1D.tolist())
+
+    matrix_1D = sp.array(matrix_1D)
+
+    # Get the average 1D corr and it's sample variance.
+    vals=[]
+    std=[]
+    for i in range(0, matrix_1D.shape[1]):
+        # Get the sqrt to get mK.
+        vals.append(sp.mean(sp.sign(matrix_1D[:,i])*sp.sqrt(abs(matrix_1D[:,i]))))
+        std.append(sp.std(sp.sign(matrix_1D[:,i])*sp.sqrt(abs(matrix_1D[:,i]))))
+
+    vals = sp.array(vals)
+    std = sp.array(std)
+
+    # Go from K to mK if True. If data is already in mK, then make it False.
+    if thousand_multiplier:
+        vals *= 1000.
+        std *= 1000.
+
+    # Build output dictionary.
+    output["run_params"] = F.params
+    output["lags"] = F.params["lags"]
+    output["real_lags"] = real_lags
+    # uncomment these only if you need them in the shelve file; makes it huge
+    #output["corr"] = corr # Not supported for 6 pairs
+    #output["corr_counts"] = corr_counts # not supported for 6 pairs.
+    output["freq"] = F.params["freq"]
+    output["freq_axis"] = F.Pairs[0].Map1.get_axis('freq')
+    output["corr1D"] = vals
+    output["corr1D_std"] = std
+#    output["corr1D_weights"] = corr_1D[1]
+#    output["corr1D_lags"] = corr_1D[2] #This is now the x-axis 
+    output["x_axis"] = x_axis
+#    output["corr2D"] = correlation_2D # There are 6 of these now so it's weird.
+#    output["corr2D_weights"] = corr_2D[1] # Same as above.
+    output["corr2D_fbins"] = corr_2D[2] # Ok. Bins are the same for each pair.
+
+    return output
+
+
 
 
 def plot_corr(shelve_entry, filename, title, coloraxis=None, cross_power=True):
