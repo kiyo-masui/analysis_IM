@@ -193,7 +193,7 @@ from map import clean_map
 pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
 cmC_input_root = dmC_output_root
 cmC_output_root = dmC_output_root + "test_"
-cmD_save_noise_diag = True
+cmC_save_noise_diag = True
 
 #### Make sub map D ####
 

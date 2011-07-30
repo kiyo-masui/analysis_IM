@@ -4,6 +4,7 @@ import time
 
 import scipy as sp
 from scipy.interpolate import interp1d
+from scipy import linalg
 import ephem
 
 def elaz2radec_lst(el, az, lst, lat = 38.43312) :
@@ -183,3 +184,41 @@ def polint2str(pol_int) :
     else :
         raise ValueError("Polarization integer must be in range(-8, 5) and "
                          "nonzero")
+
+def ampfit(data, covariance, theory):
+    """Fits the amplitude of the theory curve to the data.
+
+    Finds `amp` such that `amp`*`theory` is the best fit to `data`.
+
+    Returns
+    -------
+    amp : float
+        Fitted amplitude.
+    errir : float
+        Error on fitted amplitude.
+    """
+    
+    data = sp.asarray(data)
+    covariance = sp.asarray(covariance)
+    theory = sp.asarray(theory)
+    # Sanity check inputs.
+    if len(data.shape) != 1:
+        raise ValueError("`data` must be a 1D vector.")
+    n = len(data)
+    if data.shape != theory.shape:
+        raise ValueError("`theory` must be the same shape as `data`.")
+    if covariance.shape != (n,n):
+        msg = "`covariance` must be a square matrix compatible with data."
+        raise ValueError(msg)
+    # Linear fit for the amplitude.  Formulas July 24, 2011 of Kiyo's notebook.
+    covariance_inverse = linalg.inv(covariance)
+    weighted_data = sp.dot(covariance_inverse, data)
+    amp = sp.dot(theory, weighted_data)
+    normalization = sp.dot(covariance_inverse, theory)
+    normalization = sp.dot(theory, normalization)
+    amp /= normalization
+    # Calculate the Error.
+    error = sp.sqrt(1/normalization)
+
+    return amp, error
+
