@@ -6,7 +6,6 @@ import re
 import sys
 import string
 import shelve
-import cPickle
 import numpy as np
 import scipy as sp
 import matplotlib
@@ -19,6 +18,7 @@ from correlate import freq_slices as fs
 from core import algebra
 import multiprocessing
 from kiyopy import parse_ini
+import cPickle
 # TODO: convert batch params into ini files; move multiplier and cross-power to
 # batch param
 # TODO: make sure all methods here used counts/weights as-saved
@@ -104,8 +104,8 @@ def make_corr(filename, verbose=False, identifier=None, cross_power=False,
 
     return output
 
-def make_autocorr(filename, thousand_multiplier=True, multiplier=1.):
-    """Save as above but for autocorrs in New_Slices pickle objects.
+def make_autocorr(filename, identifier=None, thousand_multiplier=True, multiplier=1.):
+    """Same as above but for autocorrs in NewSlices pickle objects.
     filename is the full path to the file and should inlude the .pkl ending.
     wrap the plot correlation class which reads correlation object shelve
     files; uses new binning methods in freq-slices. Note that correlations are
@@ -114,6 +114,7 @@ def make_autocorr(filename, thousand_multiplier=True, multiplier=1.):
     output = {}
     # Load the New_Slices_object.pkl
     f = open(filename, "r")
+    print filename
     F = cPickle.load(f)
     f.close()
 
@@ -197,6 +198,9 @@ def make_autocorr(filename, thousand_multiplier=True, multiplier=1.):
 #    output["corr2D"] = correlation_2D # There are 6 of these now so it's weird.
 #    output["corr2D_weights"] = corr_2D[1] # Same as above.
     output["corr2D_fbins"] = corr_2D[2] # Ok. Bins are the same for each pair.
+
+    if identifier:
+        return (identifier, output)
 
     return output
 
@@ -458,8 +462,9 @@ def batch_correlations_statistics(batch_param, randtoken="rand",
 
     ranstd = np.std(rancats, axis=0)
     ranmean = np.mean(rancats, axis=0)
-    rancov = np.corrcoef(rancats, rowvar=0)
-    plot_covariance(rancov, "bin-bin_cov.png",
+    rancorr = np.corrcoef(rancats, rowvar=0)
+    rancov = np.cov(rancats, rowvar=0)
+    plot_covariance(rancorr, "bin-bin_cov.png",
                     axis_labels = lag_axis)
 
     #print "average binned correlation function and signal \n" + "-" * 80
@@ -468,12 +473,12 @@ def batch_correlations_statistics(batch_param, randtoken="rand",
     lags_right = shelve_entry["corr1D_lags"][2]
     if include_signal:
         output_package = (lags_left, lags_centre, lags_right, ranmean,
-                                             ranstd, shelve_signal["corr1D"])
+                                             ranstd, rancov, shelve_signal["corr1D"])
         #for (lagl, lagc, lagr, cdat, cdaterr, sig) in output_package:
         #    print lagl, lagc, lagr, cdat, cdaterr, sig
     else:
         output_package = (lags_left, lags_centre, lags_right, ranmean,
-                                             ranstd)
+                                             ranstd, rancov)
         #for (lagl, lagc, lagr, cdat, cdaterr) in output_package:
         #    print lagl, lagc, lagr, cdat, cdaterr
 
