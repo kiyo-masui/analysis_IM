@@ -264,7 +264,7 @@ def windowed_power(data1, window1, data2=None, window2=None) :
     This function calculates the best estimate for the cross power of
     real_data1 and real_data2 given data1 = window1*real_data1 and 
     data2 = window2*real_data2.  The most common case will be when the windows
-    are simply masks: arrays of 0s and 1s, but the function should work fien
+    are simply masks: arrays of 0s and 1s, but the function should work fine
     for more general windows.
     """
 

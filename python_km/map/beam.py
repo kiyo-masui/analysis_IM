@@ -294,7 +294,7 @@ class GaussianBeam(Beam) :
             dr_sqr = delta_r**2
         # Calculate the profile.
         profile = sp.exp(-dr_sqr/(2*sig**2))
-        profile *= 1/(2*sp.pi*sig**2)
+        profile *= 1.0/(2*sp.pi*sig**2)
         return profile
     
     def angular_transform(self, frequency) :

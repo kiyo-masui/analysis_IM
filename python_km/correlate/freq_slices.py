@@ -169,7 +169,6 @@ class MapPair(object) :
         # Convolve to a common resolution.
         self.Map2=b.apply(self.Map2)
         self.Map1=b.apply(self.Map1)
-        # Reduce noise to factorizable.
 
         # This block of code needs to be split off into a function and applied
         # twice (so we are sure to do the same thing to each).
