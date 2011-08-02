@@ -2,7 +2,7 @@
 
 import scipy as sp
 import numpy.ma as ma
-import pylab as pl
+#import pylab as pl
 import numpy as np
 
 import kiyopy.custom_exceptions as ce
