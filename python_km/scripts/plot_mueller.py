@@ -16,6 +16,7 @@ phi = mueller_params[:,4]
 epsilon = mueller_params[:,5]
 chi = mueller_params[:,6]
 flux = mueller_params[:,7]
+beta = mueller_params[:,8]
 #Q = mueller_params[:,6]
 #U = mueller_params[:,7]
 #chi = mueller_params[:,8]
@@ -143,6 +144,17 @@ pylab.ylabel('flux')
 pylab.legend()
 pylab.savefig('mueller_params_flux_'+prefix+'.png')
 pylab.clf()
+
+#Beta plot 
+pylab.plot(freq,beta,label='generated')
+pylab.scatter(freq,beta,label='data points')
+pylab.xlim(freq[-1],freq[0])
+pylab.xlabel('frequency') 
+pylab.ylabel('beta') 
+pylab.legend() 
+pylab.savefig('mueller_params_beta_'+prefix+'.png')
+pylab.clf() 
+
 
 # Q, U plots
 #pylab.plot(freq, Q,label='Q_generated')

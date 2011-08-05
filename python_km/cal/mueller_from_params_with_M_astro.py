@@ -72,9 +72,9 @@ for i in range(0,freq_limit):
     m_tot[i,15] = M_total[3,2]
     m_tot[i,16] = M_total[3,3]
         
-prefix = '56'
+prefix = '84'
 #path = '$GBT10B_OUT/mueller_params/'
-suffix = '_mueller_matrix_from_params.txt'
+suffix = '_mueller_matrix_from_params_Mastro.txt'
 filename = prefix+suffix
 np.savetxt(filename, m_tot[:,:], delimiter=' ')
 

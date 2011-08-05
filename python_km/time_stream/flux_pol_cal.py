@@ -41,7 +41,7 @@ class Calibrate(base_single.BaseSingle) :
 #        print sess_num
 #        mueler_file_name = self.params['mueler_file']+str(sess_num)+'_mueller_matrix_from_params.txt'
 #        self.mueler
-#        mueler_file_name = self.params['mueler_file']+'67_mueller_matrix_from_jones.txt'
+#        mueler_file_name = self.params['mueler_file']+'67_mueller_matrix_from_params_Mastro.txt'
 #        self.mueler = mueller(mueler_file_name)
     
     # This function tells BaseSingle what science to do.  Data is a
@@ -76,8 +76,8 @@ class Calibrate(base_single.BaseSingle) :
 #        pl.ylim(-20,130)
 #        pl.xlabel("Frequency (MHz)")
 #        pl.ylabel("Sample Data")
-#        title0 = str(Data.field['SCAN'])+'_caloff_pol_params_'
-#        pl.savefig(title0+'Comparison_Test_for_3C48.png')
+#        title0 = str(Data.field['SCAN'])+'_caloff_pol_params_Mastro_'
+#        pl.savefig(title0+'Comparison_Test_for_3C286.png')
 #        pl.clf()
 
        	return Data
