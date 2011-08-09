@@ -6,7 +6,6 @@ import re
 import sys
 import string
 import shelve
-import cPickle
 import numpy as np
 import scipy as sp
 import matplotlib
@@ -19,6 +18,7 @@ from correlate import freq_slices as fs
 from core import algebra
 import multiprocessing
 from kiyopy import parse_ini
+import cPickle
 # TODO: convert batch params into ini files; move multiplier and cross-power to
 # batch param
 # TODO: make sure all methods here used counts/weights as-saved
@@ -104,8 +104,8 @@ def make_corr(filename, verbose=False, identifier=None, cross_power=False,
 
     return output
 
-def make_autocorr(filename, thousand_multiplier=True, multiplier=1.):
-    """Save as above but for autocorrs in New_Slices pickle objects.
+def make_autocorr(filename, identifier=None, thousand_multiplier=True, multiplier=1.):
+    """Same as above but for autocorrs in NewSlices pickle objects.
     filename is the full path to the file and should inlude the .pkl ending.
     wrap the plot correlation class which reads correlation object shelve
     files; uses new binning methods in freq-slices. Note that correlations are
@@ -114,6 +114,7 @@ def make_autocorr(filename, thousand_multiplier=True, multiplier=1.):
     output = {}
     # Load the New_Slices_object.pkl
     f = open(filename, "r")
+    print filename
     F = cPickle.load(f)
     f.close()
 
@@ -151,7 +152,7 @@ def make_autocorr(filename, thousand_multiplier=True, multiplier=1.):
                              weights=F.Pairs[i].counts, return_fbins=True)
         corr_2D_list.append(corr_2D[0])
         # The 1D correlation.
-        corr_1D = fs.collapse_correlation_1D(corr_2D[0], corr_2D[2], 
+        corr_1D = fs.collapse_correlation_1D(corr_2D[0], corr_2D[2],
                                              real_lags, corr_2D[1])
         corr_1D_list.append(copy.deepcopy(corr_1D[0]))
         # The values for x_left, x_centre, x_right.
@@ -192,15 +193,16 @@ def make_autocorr(filename, thousand_multiplier=True, multiplier=1.):
     output["corr1D"] = vals
     output["corr1D_std"] = std
 #    output["corr1D_weights"] = corr_1D[1]
-#    output["corr1D_lags"] = corr_1D[2] #This is now the x-axis 
+#    output["corr1D_lags"] = corr_1D[2] #This is now the x-axis
     output["x_axis"] = x_axis
 #    output["corr2D"] = correlation_2D # There are 6 of these now so it's weird.
 #    output["corr2D_weights"] = corr_2D[1] # Same as above.
     output["corr2D_fbins"] = corr_2D[2] # Ok. Bins are the same for each pair.
 
+    if identifier:
+        return (identifier, output)
+
     return output
-
-
 
 
 def plot_corr(shelve_entry, filename, title, coloraxis=None, cross_power=True):
@@ -460,25 +462,25 @@ def batch_correlations_statistics(batch_param, randtoken="rand",
 
     ranstd = np.std(rancats, axis=0)
     ranmean = np.mean(rancats, axis=0)
-    rancov = np.corrcoef(rancats, rowvar=0)
-    plot_covariance(rancov, "bin-bin_cov.png",
+    rancorr = np.corrcoef(rancats, rowvar=0)
+    rancov = np.cov(rancats, rowvar=0)
+    plot_covariance(rancorr, "bin-bin_cov.png",
                     axis_labels = lag_axis)
 
-    print "average binned correlation function and signal \n" + "-" * 80
+    #print "average binned correlation function and signal \n" + "-" * 80
     lags_left = shelve_entry["corr1D_lags"][0]
     lags_centre = shelve_entry["corr1D_lags"][1]
     lags_right = shelve_entry["corr1D_lags"][2]
     if include_signal:
-        output_package = zip(lags_left, lags_centre, lags_right, ranmean,
-                                             ranstd, shelve_signal["corr1D"])
-        for (lagl, lagc, lagr, cdat, cdaterr, sig) in output_package:
-            print lagl, lagc, lagr, cdat, cdaterr, sig
+        output_package = (lags_left, lags_centre, lags_right, ranmean,
+                                             ranstd, rancov, shelve_signal["corr1D"])
+        #for (lagl, lagc, lagr, cdat, cdaterr, sig) in output_package:
+        #    print lagl, lagc, lagr, cdat, cdaterr, sig
     else:
-        output_package = zip(lags_left, lags_centre, lags_right, ranmean,
-                                             ranstd)
-        output_package = zip(lag_axis, ranmean, ranstd)
-        for (lagl, lagc, lagr, cdat, cdaterr) in output_package:
-            print lagl, lagc, lagr, cdat, cdaterr
+        output_package = (lags_left, lags_centre, lags_right, ranmean,
+                                             ranstd, rancov)
+        #for (lagl, lagc, lagr, cdat, cdaterr) in output_package:
+        #    print lagl, lagc, lagr, cdat, cdaterr
 
     return output_package
 
@@ -528,6 +530,8 @@ def batch_compensation_function(batch_param, modetoken="mode", filename=None):
         lag = modeaxis[lagindex]
         modeloss = compmode[:, lagindex]
         print int(lag), fancy_vector(modeloss, '%5.2g')
+
+    return compmode
 
 def plot_batch_correlations(batch_param, dir_prefix="plots/",
                             color_range=[-0.2, 0.2], cross_power=True,
@@ -665,7 +669,7 @@ def plot_collapsed(filename, sep_lags, corr1D, errors=[], save_old=False,
     txtfile.close()
 
     # model
-    t_lags = sp.arange(0.1, 100, 0.1)
+    t_lags = sp.arange(0.1, 300, 0.1)
     r0 = 5.5
     rb = 7.0
     t = sp.sqrt(((rb + t_lags) / r0)**(-1.8))
@@ -676,10 +680,10 @@ def plot_collapsed(filename, sep_lags, corr1D, errors=[], save_old=False,
     f = plt.plot(t_lags, t, marker='None', color='k', linestyle='-')
 
     #plt.axis([1.5, 100, 0.01, 500.0])
-    plt.axis([1.5, 100, 0.0001, 10.])
+    plt.axis([0.5, 300, 0.0001, 10.])
 
     if not ylog:
-        plt.axis([1.5, 100, -0.05, 0.25])
+        plt.axis([0.5, 300, -0.05, 0.25])
 
     plt.xlabel('lag (Mpc/h)')
     plt.ylabel('correlation (mK)')
