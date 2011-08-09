@@ -14,7 +14,7 @@ from time_stream import rotate_pol
 from time_stream import hanning
 from core import data_block, fitsGBT
 
-test_file = 'testfile_GBTfits.fits'
+test_file = 'testdata/testfile_GBTfits.fits'
 
 class TestFlagData(unittest.TestCase) :
 

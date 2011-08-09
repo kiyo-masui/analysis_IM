@@ -9,7 +9,7 @@ import kiyopy.custom_exceptions as ce
 from time_stream import combine_cal, rebin_freq, hanning
 from core import data_block, fitsGBT
 
-test_file = 'testfile_GBTfits.fits'
+test_file = 'testdata/testfile_GBTfits.fits'
 
 class TestCombineCal(unittest.TestCase) :
     

@@ -12,7 +12,7 @@ import rebin_freq
 import core.data_block
 import core.fitsGBT
 
-test_file = 'testfile_GBTfits.fits'
+test_file = 'testdata/testfile_GBTfits.fits'
 
 class TestFunctions(unittest.TestCase) :
     """Since these operations actually changes the data, these are only sanity

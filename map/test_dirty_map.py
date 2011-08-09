@@ -153,6 +153,7 @@ class TestRuns(unittest.TestCase) :
         self.pars = { "dm_output_root" : "./testoutput_",
                       'dm_file_middles' : ("testfile_GBTfits",),
                       'dm_input_end' : ".fits",
+                      'dm_input_root' : "testdata/",
                       'dm_scans' : (),
                       'dm_IFs' : (0,),
                       'dm_field_centre' : (325.0, 0.0),

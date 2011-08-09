@@ -12,7 +12,7 @@ import reflag
 import rotate_pol
 import combine_cal
 
-test_file = 'testfile_GBTfits.fits'
+test_file = 'testdata/testfile_GBTfits.fits'
 
 class TestFlag(unittest.TestCase) :
         

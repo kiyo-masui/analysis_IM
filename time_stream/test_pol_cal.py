@@ -11,7 +11,7 @@ from core import fits_map, fitsGBT
 import pol_cal
 import rotate_pol
 
-test_file = 'testfile_GBTfits.fits'
+test_file = 'testdata/testfile_GBTfits.fits'
 test_mueler_file = 'mueller_params_calc.txt'
 n_pointings = 10 # Known property of test_file.  Per scan.
 

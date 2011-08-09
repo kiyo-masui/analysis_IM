@@ -11,7 +11,7 @@ import kiyopy.custom_exceptions as ce
 import stitch_windows_crude as swc
 from core import data_block, fitsGBT
 
-test_file = 'testfile_GBTfits.fits'
+test_file = 'testdata/testfile_GBTfits.fits'
 
 class TestStitchWindowsCrude(unittest.TestCase) :
 

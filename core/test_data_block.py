@@ -15,7 +15,7 @@ ncal = 2
 nfreq = 10
 dims = (ntimes, npol, ncal, nfreq)
 
-test_fits_file_name = 'testfile_GBTfits.fits'
+test_fits_file_name = 'testdata/testfile_GBTfits.fits'
 
 def standard_data_test(utest_case) :
     """Encapsulates a few tests on TestDB.data.

@@ -9,7 +9,7 @@ import kiyopy.custom_exceptions as ce
 from time_stream import rotate_pol
 from core import data_block, fitsGBT
 
-test_file = 'testfile_GBTfits.fits'
+test_file = 'testdata/testfile_GBTfits.fits'
 
 class TestRotate(unittest.TestCase) :
     

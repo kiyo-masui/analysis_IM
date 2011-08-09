@@ -13,7 +13,7 @@ import subtract_map_data as smd
 import rotate_pol
 
 
-test_file = 'testfile_GBTfits.fits'
+test_file = 'testdata/testfile_GBTfits.fits'
 n_pointings = 10 # Known property of test_file.  Per scan.
 
 class TestSubMap(unittest.TestCase) :

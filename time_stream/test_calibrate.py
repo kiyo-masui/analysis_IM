@@ -11,7 +11,7 @@ import kiyopy.custom_exceptions as ce
 from core import fitsGBT, data_block
 import calibrate, rebin_freq
 
-test_filename = 'testfile_GBTfits.fits'
+test_filename = 'testdata/testfile_GBTfits.fits'
 
 class TestMultipyFunction(unittest.TestCase) :
     

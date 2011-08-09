@@ -11,7 +11,7 @@ import noise_power as np
 from core import fitsGBT
 import kiyopy.custom_exceptions as ce
 
-testfile = "testfile_GBTfits.fits"
+testfile = "testdata/testfile_GBTfits.fits"
 
 class TestWindowedPower(unittest.TestCase) :
 

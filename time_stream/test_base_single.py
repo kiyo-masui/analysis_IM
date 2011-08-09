@@ -18,7 +18,7 @@ class ExampleProcessor(base_single.BaseSingle) :
 
 
 input_parameters = {
-          'nt_input_root' : './testfile_GBTfits',
+          'nt_input_root' : './testdata/testfile_GBTfits',
           'nt_file_middles' : ("",),
           'nt_input_end' : ".fits",
           'nt_output_root' : "./temp_test_",

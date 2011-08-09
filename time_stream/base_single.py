@@ -28,7 +28,7 @@ from core import fitsGBT
 # Parameters relevant for all modules that inherit from this one.
 base_params = {
                # IO:
-               'input_root' : './',
+               'input_root' : './testdata/',
                # The unique part of every fname
                'file_middles' : ("testfile_GBTfits",),
                'input_end' : ".fits",
