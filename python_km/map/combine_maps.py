@@ -283,7 +283,9 @@ def reprocess_batch_pickle():
 
 
 if __name__ == '__main__':
+    repackage_pickle_as_shelve("/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/73_ABCD_all_15_modes_realmap_ra_fixed/New_Slices_object.pkl",
+                               "/mnt/raid-project/gmrt/eswitzer/wiggleZ/batch_runs/new_autocorr_test/radio_autocorr_15_modes")
     #make_modetest_combined_map()
-    make_modetest_combined_sim()
+    #make_modetest_combined_sim()
     #add_sim_radio()
     #reprocess_batch_pickle()

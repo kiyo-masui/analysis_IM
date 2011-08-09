@@ -147,7 +147,7 @@ class MapPair(object) :
             print "Maps can only be names by sections A,B,C or D."
             raise
 
-    def degrade_resolution(self) :
+    def degrade_resolution(self):# , fake_width=1.) :
         """Convolves the maps down to the lowest resolution.
 
         Also convolves the noise, making sure to deweight pixels near the edge
@@ -165,6 +165,8 @@ class MapPair(object) :
                              dtype=float)
         freq_data *= 1.0e6
         beam_diff=sp.sqrt(max(1.1*beam_data)**2-(beam_data)**2)
+#remove  beam_diff = sp.zeros(len(beam_data))
+#        beam_diff[:] = fake_width
         b = beam.GaussianBeam(beam_diff,freq_data)
         # Convolve to a common resolution.
         self.Map2=b.apply(self.Map2)
@@ -505,7 +507,7 @@ class NewSlices(object) :
 
         if params["convolve"] :
             for Pair in Pairs:
-                Pair.degrade_resolution()
+                Pair.degrade_resolution()#0.5)
         if params['factorizable_noise'] :
             for Pair in Pairs:
                 Pair.make_noise_factorizable()
@@ -608,6 +610,11 @@ class NewSlices(object) :
         # Save cleaned clean maps, cleaned noises, and modes.
         save_data(self, params['save_maps'], params['save_noises'],
             params['save_modes'])
+
+## REMOVE
+#        if params["convolve"] :
+#            for Pair in Pairs:
+#                Pair.degrade_resolution(0.1)
 
         # Finish if this was just first pass.
         if params['first_pass_only'] :
@@ -875,7 +882,7 @@ def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
     a_fact = 34.0 # Mpc/h per degree at 800MHz.
     f_fact = 4.5 # Mpc/h per MHz at 800MHz.
     # Hard code lags in MPc/h.
-    nbins = 10
+    nbins = 15
     lags = sp.empty(nbins)
     lags[0] = 2.0
     lags[1] = 4.0
@@ -900,8 +907,15 @@ def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
     out_weights[bad_inds] = 1.0
     out_corr/=out_weights
     out_weights[bad_inds] = 0.0
+    # Make real lags to be returned.
+    x_left = sp.empty(nbins)
+    x_left[0] = 0
+    x_left[1:] = lags[:-1]
+    x_right = lags
+    x_centre = (x_right + x_left)/2.0
+    
 
-    return out_corr, out_weights, lags
+    return out_corr, out_weights, (x_left, x_centre, x_right)
 
 def save_data(F, save_maps=False, save_noises=False, save_modes=False):
     '''Saves the cleaned data and modes to the output directory specified
