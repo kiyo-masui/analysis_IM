@@ -1,0 +1,10 @@
+#!/bin/csh 
+#PBS -l nodes=1:ppn=1
+#PBS -q workq
+#PBS -r n
+#PBS -l walltime=48:00:00
+#PBS -N dataplussim_x_optsim_RANDINDEX
+cd $PBS_O_WORKDIR
+echo $PYTHONPATH
+cd ..
+python correlate/radio_corr.py inifiles_ers/added_sim_xcorr_randRANDINDEX.ini 

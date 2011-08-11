@@ -24,12 +24,12 @@ def tofile(fname, data) :
         File name to which to write the array.
     array : array like
         Data to write to file.
-    
+
     See Also
     --------
     np.savetxt : Only works for < 2D arrays.
     """
-   
+
     if array.ndim != 3 :
         raise ValueError("Array must be 3D.")
     # Write the array to disk
@@ -44,7 +44,7 @@ def tofile(fname, data) :
 
             # The formatting string indicates that I'm writing out
             # the values in left-justified columns 7 characters in width
-            # with 2 decimal places.  
+            # with 2 decimal places.
             np.savetxt(outfile, data_slice)
 
             # Writing out a break to indicate different slices...
@@ -67,8 +67,3 @@ if __name__ == "__main__" :
     else :
         print ("Usage : python alg2txt.py [input file] or"
                " python alg2txt.py diag [input file]")
-
-
-
-
-

@@ -1,0 +1,8 @@
+#!/bin/bash
+for a in $(seq 0 25); do
+    b=$(printf %d ${a})
+    echo $b
+    sed -e "s/MODEINDEX/$b/g" wigglez_correlate_nullmodes.template > wigglez_correlate_nullmode$b.ini
+    sed -e "s/MODEINDEX/$b/g" wigglez_correlate_nullmodes_pbs.template > wigglez_correlate_nullmode$b.pbs
+    qsub wigglez_correlate_nullmode$b.pbs
+done

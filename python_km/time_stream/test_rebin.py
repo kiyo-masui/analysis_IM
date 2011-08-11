@@ -77,7 +77,7 @@ class TestFunctions(unittest.TestCase) :
         self.Data.calc_freq()
         self.assertTrue(sp.allclose(new_freq, self.Data.freq, atol=abs(delta)))
 
-    def test_by_number_data(self) :
+    def test_by_number_data_odd(self) :
         wbins = 9
         # Set data = f.
         self.Data.calc_freq()
@@ -94,8 +94,19 @@ class TestFunctions(unittest.TestCase) :
         self.assertTrue(sp.allclose(self.Data.data[:,:,:,-1], 
             self.Data.freq[-1], abs(self.Data.field['CDELT1'])))
 
-
-
+    def test_by_number_data_even(self) :
+        wbins = 8
+        # Set data = f.
+        self.Data.calc_freq()
+        self.Data.data[...] = self.Data.freq
+        delta =  self.Data.field['CDELT1']        
+        # Rebin.
+        rebin_freq.rebin(self.Data, wbins, by_nbins=True)
+        self.Data.verify()
+        # Except for the last bin, Data should still be freq.
+        self.Data.calc_freq()
+        self.assertTrue(sp.allclose(self.Data.data[:,:,:,:], 
+                                    self.Data.freq[:], abs(delta)))
 
     def tearDown(self) :
         del self.Data

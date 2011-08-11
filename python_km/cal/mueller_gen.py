@@ -25,7 +25,7 @@ params_init = {
                "IFs" : (),
                "Guppi_test" : False,
                }
-prefix = 'mg_'
+prefix = 'tc_'
 
 
 class MuellerGen(object) :
@@ -40,15 +40,15 @@ class MuellerGen(object) :
 
     def peval(self,p):
         dG = p[0]
-        al = 90*sp.pi/180 # Note that this parameter is set based on observed results with chi = 0.
-#        al = ((p[1]+180)%360-180)*sp.pi/180
+#        al = 90*sp.pi/180 # Note that this parameter is set based on observed results with chi = 0.
+        al = ((p[1]+180)%360-180)*sp.pi/180
         ps = ((p[2]+180)%360-180)*sp.pi/180
         ph = ((p[3]+180)%360-180)*sp.pi/180
         ep = p[4]
         Q = p[5]
         U = p[6]
-        ch = 0
-#        ch = ((p[7]+45)%180-45)*sp.pi/180
+#       ch = 0
+        ch = ((p[7]+45)%180-45)*sp.pi/180
         theta = self.theta
         t = self.function
         for i in range(0,len(t)-1,3):
@@ -73,23 +73,30 @@ class MuellerGen(object) :
         self.file_num = len(params['file_middles']) # getting a variable for number of calibrator files being used
 
 # Need to remove count for calibrator files that are not the right size.
+        session_nums = sp.zeros(self.file_num)
+        c = 0
         for file_middle in params['file_middles'] :
             input_fname = (params['input_root'] + file_middle + 
                            params['input_end'])
             Reader = core.fitsGBT.Reader(input_fname)
             n_scans = len(Reader.scan_set)
+            Len_set = Reader.read(0,0,force_tuple=True)
+            session_nums[c] = file_middle.split('_')[0]
+            for Data in Len_set :
+                freq_num = Data.dims[3]
             if guppi_result == True : 
                 if n_scans != 2 :
                     self.file_num -=1
             elif guppi_result == False :
                 if n_scans != 4 :
                     self.file_num -=1
+            c+=1
 
 # Need to know the general frequency binning (going to assume that it's 200 for guppi, 260 for spectrometer, aka 1 MHz binning)
-        if guppi_result == True :
-            freq_num = 200 
+#        if guppi_result == True :
+#            freq_num = 200 
         if guppi_result == False :
-            freq_num = 260    
+#            freq_num = 260    
             self.file_num *= 2 #because there are two sets of scans per file for spectrometer, need to double the number of values
 
 
@@ -207,18 +214,18 @@ class MuellerGen(object) :
         #Note that error can be used to weight the equations if not all set to one.
 
         p_val_out = sp.zeros((freq_len, 9))
-        p_err_out = sp.zeros((freq_len, 9))
+#        p_err_out = sp.zeros((freq_len, 9))
      
         for f in range(0,freq_len):   
-            plsq = leastsq(self.residuals,p0,args=(d,error,f),full_output=1, maxfev=100000,factor =1)
+            plsq = leastsq(self.residuals,p0,args=(d,error,f),full_output=0, maxfev=5000,factor =1)
             pval = plsq[0] # this is the 1-d array of results
-            perr = plsq[1] # this is a 2d array representing the estimated covariance of the results.
+#            perr = plsq[1] # this is a 2d array representing the estimated covariance of the results.
 
 #want to adjust results if angles not in limits
-#            pval[1]=(pval[1]+180)%360-180
+            pval[1]=(pval[1]+180)%360-180
             pval[2]=(pval[2]+180)%360-180
             pval[3]=(pval[3]+180)%360-180
-#            pval[7]=(pval[7]+180)%360-180
+            pval[7]=(pval[7]+180)%360-180
 
             p_val_out[f,0] = freq_val[f]
             p_val_out[f,1] = pval[0]
@@ -242,7 +249,7 @@ class MuellerGen(object) :
 #            p_err_out[f,8] = perr[7,7]
 
         np.savetxt('mueller_params_calc.txt', p_val_out, delimiter = ' ')
-        np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')
+#        np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')
 
 #If this file is run from the command line, execute the main function.
 if __name__ == "__main__":

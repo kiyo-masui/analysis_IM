@@ -12,37 +12,54 @@ filename2 = filename1.split('.')[0]
 array = al.load(filename1)
 array = al.make_vect(array)
 
+#print array
 #   creates a 3D array with indices (freq, ra, dec)
 
-ra = array.get_axis('ra')
-dec = array.get_axis('dec')
+ras = array.get_axis('ra')
+decs = array.get_axis('dec')
 freqs = array.get_axis('freq')
 freqs = freqs/1e6
 
 
 for slice, freq in enumerate(freqs):
    nancut = (array[slice] < 10e10) & ( array[slice] != NaN )
-#   print nancut
-#   print image_cube[slice][nancut].std()
-#   print median(image_cube[slice][nancut])
    cut = ( array[slice] > 3.0*array[slice][nancut].std() ) 
    array[slice][cut] = 3.0*array[slice][nancut].std()
    cut = ( array[slice] < -3.0*array[slice][nancut].std() ) 
    array[slice][cut] = -3.0*array[slice][nancut].std()
 
 #   Need to rotate array[slice] because axes were flipped
-#   print array[0]
    new_array = scipy.transpose(array[slice])
-#   print new_array
-#   medianv = median(array[slice][nancut])
-#   for element in image_cube[slice][cut]:
-#      print element
+   medianv = median(array[slice][nancut])
+
 #   Alternate plotting command to set temperature limits
-   pylab.imshow(new_array, interpolation='gaussian', vmin=-0.7, vmax=0.7, extent=(ra.max(),ra.min(),dec.min(),dec.max()), origin='lower')
-#   pylab.xlabel('Dec')
-#   pylab.ylabel('RA')
-#   pylab.imshow(new_array, interpolation='gaussian', extent=(ra.max(),ra.min(),dec.min(),dec.max()), origin='lower')
+#   pylab.imshow(new_array, cmap='hot', vmin=-0.006, vmax=0.006, extent=(ras.max(),ras.min(),decs.min(),decs.max()), origin='lower')
+   pylab.imshow(new_array, interpolation='gaussian', cmap='hot', extent=(ras.max(),ras.min(),decs.min(),decs.max()), origin='lower')
    pylab.colorbar() #For some reason this isn't working, fixed...
    pylab.savefig(filename2+str(freq)[:3]+'.png')
 #   pylab.savefig('v_'+filename2+str(freq)[:3]+'.png')
    pylab.clf()
+
+#for slice, dec in enumerate(decs):
+#   print slice
+#   print dec
+#   nancut = (array[:,:,slice] < 10e10) & ( array[:,:,slice] != NaN )
+#   cut = ( array[:,:,slice] > 3.0*array[:,:,slice][nancut].std() )
+#   array[:,:,slice][cut] = 3.0*array[:,:,slice][nancut].std()
+#   cut = ( array[:,:,slice] < -3.0*array[:,:,slice][nancut].std() )
+#   array[:,:,slice][cut] = -3.0*array[:,:,slice][nancut].std()
+
+#   print array[:,:,slice]
+#   Need to rotate array[slice] because axes were flipped
+#   new_array = scipy.transpose(array[:,:,slice])
+#   medianv = median(array[slice][nancut])
+ 
+#   Alternate plotting command to set temperature limits
+#   pylab.imshow(array[:,:,slice], aspect = 0.02, interpolation='gaussian', vmin=-0.2, vmax=0.2, extent=(ras.max(),ras.min(),freqs.min(),freqs.max()), origin='lower')
+#   pylab.imshow(array[:,:,slice], interpolation='gaussian', extent=(freqs.max(),freqs.min(),ras.min(),ras.max()), origin='lower')
+#   pylab.colorbar() #For some reason this isn't working, fixed...
+#   pylab.savefig(filename2+str(dec)[:3]+'.png')
+#   pylab.savefig('v_'+filename2+str(freq)[:3]+'.png')
+#   pylab.clf()
+
+
