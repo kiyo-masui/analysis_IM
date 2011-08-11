@@ -15,7 +15,7 @@ import numpy as np
 #--------------------------------------------------------------------
 Chebyshev_xi_List = []
 Chebyshev_wi_List = []
-Chebyshev_pmax=16
+Chebyshev_pmax=18
 
 
 #--------------------------------------------------------------------
@@ -104,7 +104,39 @@ def create_Chebyshev_weights(p) :
             
     return 0
         
-        
+def pregen_Chebyshev_weights(p):
+    import svlist
+    import os
+    from os.path import join, dirname, exists
+
+    create_Chebyshev_weights(p)
+
+    chebdir = join(dirname(__file__), ".chebyshev")
+    if not exists(chebdir):
+        os.mkdir(chebdir)
+
+    svlist.save_ndarray_list(join(chebdir, "xi_list.npz"), Chebyshev_xi_List)
+    svlist.save_ndarray_list(join(chebdir, "wi_list.npz"), Chebyshev_wi_List)
+
+
+def load_Chebyshev_weights():
+    global Chebyshev_xi_List, Chebyshev_wi_List
+    
+    import svlist
+    import os
+    from os.path import join, dirname, exists
+
+    chebdir = join(dirname(__file__), ".chebyshev")
+    if exists(chebdir):
+        xl = svlist.load_ndarray_list(join(chebdir, "xi_list.npz"))
+        wl = svlist.load_ndarray_list(join(chebdir, "wi_list.npz"))
+
+        if len(xl) != len(wl):
+            raise Exception("Chebyshev cache is strange.")
+
+        Chebyshev_xi_List = xl
+        Chebyshev_wi_List = wl
+
 #--------------------------------------------------------------------
 #
 # compute integral
@@ -366,3 +398,6 @@ def chebyshev_vec(f, a, b, epsrel = 1e-6, epsabs = 1e-16, args =()) :
     return vars[0]*r, neval, 1
 
 
+
+
+load_Chebyshev_weights()

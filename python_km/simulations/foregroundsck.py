@@ -38,7 +38,7 @@ class ForegroundSCK(ForegroundMap):
 
     _cf_int = None
 
-    def angular_ps(self, larray):
+    def angular_powerspectrum(self, larray):
         psarray =  self.A*(1e-3*larray)**(-self.beta)
 
         if isinstance(larray, np.ndarray):
