@@ -1,17 +1,11 @@
 # Pipeline file for guppi data.
 
 
-
-
-### TAKE OUT THE FLUX POL CAL FOR 22 HR STUFF NOW ####
-#### 						######
-
+## Flux pol cal is taken out right now ##
 
 ######## HAVE GBT10B_TCV SET IN BASH FILE ############
 
 ### FLUX CAL ONLY WORKS UP TIL 78 RIGHT NOW #########
-
-### map_prefix for tabitha is ...flux_pol_cal. why? ####
 
 
 import os
@@ -88,6 +82,10 @@ cl_IFs = ()
 
 cl_cal_temperature_files = (os.getenv('GBT10B_KM') + 'kevin_cal/cal_21.fits',)
 
+##### FLUX CAL #####
+# If want to run flux cal, then uncomment rp_ and tc_
+# and make rp2_input_root = tc_output_root instead of cl_output_root
+
 # Flux cal needs pols in IQUV.
 from time_stream import rotate_pol
 # Comment this line to skip this step in pipline.
@@ -102,8 +100,6 @@ rp_IFs = ()
 
 rp_new_pols = (1,2,3,4)
 rp_average_cals = False
-
-##### FLUX CAL #####
 
 from time_stream import flux_pol_cal
 #pipe_modules.append(flux_pol_cal.Calibrate)
@@ -122,8 +118,8 @@ tc_mueler_file = tcv_dir + 'mueller_params/'
 # After flux cal, use only one pol, I.
 from time_stream import rotate_pol
 #pipe_modules.append((rotate_pol.RotatePol, ('rp2_', 'rp_')))
-## NOTE: sm_ uses the output root of this module
-## make sure to change there, too if this changes.
+## NOTE: dm_, sm_, and sf_ uses the output root of this module
+## make sure to change there if need arises.
 #rp2_input_root = tc_output_root
 rp2_input_root = cl_output_root
 rp2_file_middles = file_middles
