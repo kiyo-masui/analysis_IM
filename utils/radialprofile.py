@@ -1,22 +1,38 @@
-import numpy as np
+"""Calculate the radial average of a 2-d image. Code stolen from:
 
-import pdb
+http://www.astrobetter.com/wiki/tiki-index.php?page=python_radial_profiles
+
+and modified to crudely have a controllable bin width.
+"""
+
+import numpy as np
 
 def azimuthalAverage(image, center=None, bw = 3):
     """
     Calculate the azimuthally averaged radial profile.
+    
+    Parameters
+    ----------
+    image : np.ndarray
+        The 2D image.
+    center : array_like, optional
+        The [x,y] pixel coordinates used as the center. The default is
+        None, which then uses the center of the image (including
+        fractional pixels).
 
-    image - The 2D image
-    center - The [x,y] pixel coordinates used as the center. The default is 
-             None, which then uses the center of the image (including 
-             fractional pixels).
+    Returns
+    -------
+    bl : np.ndarray
+        The lower limit of the bin radius.
+    radial_prof : np.ndarray
+        The radial averaged profile.
     
     """
     # Calculate the indices from the image
     y, x = np.indices(image.shape)
 
     if not center:
-        center = np.array([(x.max()-x.min())/2.0, (x.max()-x.min())/2.0])
+        center = np.array([(x.max()-x.min())/2.0, (y.max()-y.min())/2.0])
 
     r = np.hypot(x - center[0], y - center[1])
 

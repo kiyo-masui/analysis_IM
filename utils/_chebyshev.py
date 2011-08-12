@@ -105,7 +105,7 @@ def create_Chebyshev_weights(p) :
     return 0
         
 def pregen_Chebyshev_weights(p):
-    import svlist
+    import nputil
     import os
     from os.path import join, dirname, exists
 
@@ -115,21 +115,21 @@ def pregen_Chebyshev_weights(p):
     if not exists(chebdir):
         os.mkdir(chebdir)
 
-    svlist.save_ndarray_list(join(chebdir, "xi_list.npz"), Chebyshev_xi_List)
-    svlist.save_ndarray_list(join(chebdir, "wi_list.npz"), Chebyshev_wi_List)
+    nputil.save_ndarray_list(join(chebdir, "xi_list.npz"), Chebyshev_xi_List)
+    nputil.save_ndarray_list(join(chebdir, "wi_list.npz"), Chebyshev_wi_List)
 
 
 def load_Chebyshev_weights():
     global Chebyshev_xi_List, Chebyshev_wi_List
     
-    import svlist
+    import nputil
     import os
     from os.path import join, dirname, exists
 
     chebdir = join(dirname(__file__), ".chebyshev")
     if exists(chebdir):
-        xl = svlist.load_ndarray_list(join(chebdir, "xi_list.npz"))
-        wl = svlist.load_ndarray_list(join(chebdir, "wi_list.npz"))
+        xl = nputil.load_ndarray_list(join(chebdir, "xi_list.npz"))
+        wl = nputil.load_ndarray_list(join(chebdir, "wi_list.npz"))
 
         if len(xl) != len(wl):
             raise Exception("Chebyshev cache is strange.")
