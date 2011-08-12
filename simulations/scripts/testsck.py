@@ -1,4 +1,4 @@
-
+## Test SCK foreground generation
 
 from simulations import foregroundsck
 

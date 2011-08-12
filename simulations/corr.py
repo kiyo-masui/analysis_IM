@@ -5,10 +5,10 @@ import math
 
 from os.path import dirname, join, exists
 
-from utils import sphbessel, integrate, cosmology, units, fftutil
+from utils import sphbessel, integrate, units, fftutil
 from utils import cubicspline as cs
 
-from cosmology import Cosmology
+from utils.cosmology import Cosmology
 from gaussianfield import RandomField
 
 #ps = cs.LogInterpolater.fromfile( join(dirname(__file__),"data/ps.dat")).value
@@ -744,7 +744,7 @@ class RedshiftCorrelation(object):
     
 
     def angular_powerspectrum_flat(self, la, za1, za2):
-        r"""The angular powerspectrum C_l(z1, z2).
+        r"""The angular powerspectrum C_l(z1, z2) in a flat-sky limit.
 
         Parameters
         ----------

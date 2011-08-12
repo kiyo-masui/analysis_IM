@@ -1,3 +1,5 @@
+## Test point source generation
+
 import numpy as np
 from simulations import pointsource
 

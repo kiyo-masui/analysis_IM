@@ -1,3 +1,5 @@
+## Test Foreground simulation via Lofar or SCK methods
+
 
 import numpy as np
 
@@ -5,12 +7,9 @@ from simulations import foregroundsck, lofar
 
 tf = foregroundsck.Synchrotron()
 
-#f1 = tf.getfield()
-
 freq = tf.nu_pixels
 
 cv = tf.frequency_covariance(*np.meshgrid(freq, freq))
-#nm, aff = tf.getfield()
 
 f1 = tf.getfield()
 

@@ -49,8 +49,8 @@ class ForegroundSCK(ForegroundMap):
 
         return psarray
 
-    def angular_powerspectrum(self, larray):
-        return self.angular_ps((larray**2).sum(axis=2)**0.5)
+    #def angular_powerspectrum(self, larray):
+    #    return self.angular_ps((larray**2).sum(axis=2)**0.5)
 
     def frequency_covariance(self, nu1, nu2):
         return (self.frequency_variance(nu1) * self.frequency_variance(nu2))**0.5 * self.frequency_correlation(nu1, nu2)
