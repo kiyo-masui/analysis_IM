@@ -1,11 +1,13 @@
 import numpy as np
 
+from core import algebra
+from map import beam
+
+from utils import units
+
 import corr21cm
 
-import core.algebra as algebra
-import map.beam as beam
 
-import units
 
 thetax = 5.0
 thetay = 3.0

@@ -8,8 +8,8 @@ References
 .. [1] http://arxiv.org/abs/0804.1130
 """
 import numpy as np
-from gaussianfield import RandomField
 
+from gaussianfield import RandomField
 from maps import *
 
 

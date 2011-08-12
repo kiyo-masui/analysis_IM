@@ -1,10 +1,8 @@
 
 import numpy as np
-
 import math
 
-import units
-import fftutil
+from utils import fftutil, units
 
 from maps import *
 
@@ -171,8 +169,10 @@ class Cmb(RandomFieldA2):
     r"""Simulate a patch of the CMB."""
 
     def __init__(self, psfile = None, cambnorm = True):
-        from interpolation.cubicspline import LogInterpolater
         """ Initialise the CMB field class. """
+
+        from utils.cubicspline import LogInterpolater
+                
         if(psfile == None):
             from os.path import dirname, join
             psfile = join(dirname(__file__), 'ps_cmb2.dat')

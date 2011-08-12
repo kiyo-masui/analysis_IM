@@ -1,18 +1,14 @@
 import numpy as np
 
-import corr
-import corr21cm
+from core import algebra
+from map import beam
+from simulations import corr, corr21cm, ps_estimation
 
-import cubicspline as cs
-import ps_estimation
+from utils import cubicspline as cs
+from utils import units
 
-import pdb
 
-import core.algebra as algebra
 
-import map.beam as beam
-
-import units
 
 def bincov(cov, bins = None):
     l = cov.shape[0]

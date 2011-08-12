@@ -1,11 +1,11 @@
 
 import numpy as np
 
-from simulations.corr import RedshiftCorrelation
+from corr import RedshiftCorrelation
 from simulations.maps import Map3d
 
-import simulations.cubicspline as cs
-from simulations import units
+from utils import cubicspline as cs
+from utils import units
 
 
 

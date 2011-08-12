@@ -1,5 +1,6 @@
 import numpy as np
-import corr21cm
+
+from simulations import corr21cm
 
 c = corr21cm.Corr21cm.from_file_matterps(fname="data/corr0.dat")
 

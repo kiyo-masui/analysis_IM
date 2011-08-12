@@ -4,27 +4,16 @@ import numpy as np
 import math
 
 from os.path import dirname, join, exists
-from scipy.integrate import quad
 
-from simulations import cubicspline as cs
+from utils import sphbessel, integrate, cosmology, units, fftutil
+from utils import cubicspline as cs
 
-from simulations import gaussianfield, fftutil, units, cosmology
-from gaussianfield import RandomField
 from cosmology import Cosmology
+from gaussianfield import RandomField
 
-from simulations import sphbessel, Chebyshev
-
-from Chebyshev import chebyshev_vec
-
-from romberg import romberg
-
-from Patterson import Integrate_Patterson
 #ps = cs.LogInterpolater.fromfile( join(dirname(__file__),"data/ps.dat")).value
 
 _feedback = False
-
-
-
 
 
 

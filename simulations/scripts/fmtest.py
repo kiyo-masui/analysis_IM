@@ -1,8 +1,7 @@
 
-import foregroundsck
 import numpy as np
 
-import lofar
+from simulations import foregroundsck, lofar
 
 tf = foregroundsck.Synchrotron()
 

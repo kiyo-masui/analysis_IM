@@ -1,6 +1,6 @@
 import numpy as np
 
-import units
+from utils import units
 
 
 class Map2d(object):

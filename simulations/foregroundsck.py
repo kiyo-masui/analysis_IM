@@ -15,9 +15,12 @@ References
 
 import numpy as np
 
+from utils import cubicspline as cs
+
 from foregroundmap import *
 
-import cubicspline as cs
+
+
 
 class ForegroundSCK(ForegroundMap):
     r"""Base class for SCK style foregrounds.

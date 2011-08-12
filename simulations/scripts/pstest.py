@@ -1,5 +1,5 @@
 import numpy as np
-import pointsource
+from simulations import pointsource
 
 import time
 

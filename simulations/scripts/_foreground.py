@@ -2,9 +2,11 @@
 
 import numpy as np
 
-import cubicspline as cs
+from utils import cubicspline as cs
+
 
 dmfunc = np.vectorize(cs.Interpolater.fromfile('data/dmcorr.dat').value)
+
 
 def c_syn(l, nu_1, nu_2):
 
