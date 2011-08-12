@@ -3,7 +3,8 @@
 
 
 
-
+### TAKE OUT THE FLUX POL CAL FOR 22 HR STUFF NOW ####
+#### 						######
 
 
 ######## HAVE GBT10B_TCV SET IN BASH FILE ############
@@ -42,10 +43,10 @@ prefix = ''
 map_prefix = '' + field + '_' + '41-84' + '_'
 
 pipe_modules = []
-pipe_processes = 24
+pipe_processes = 10
 
 from time_stream import flag_data
-pipe_modules.append(flag_data.FlagData)
+#pipe_modules.append(flag_data.FlagData)
 fd_input_root = data_dir
 fd_file_middles = file_middles
 fd_input_end = '.fits'
@@ -62,7 +63,7 @@ fd_badness_thres = 0.1
 fd_time_cut = 40
 
 from time_stream import rebin_freq
-pipe_modules.append(rebin_freq.RebinFreq)
+#pipe_modules.append(rebin_freq.RebinFreq)
 rf_input_root = fd_output_root
 rf_file_middles = file_middles
 rf_input_end = '.fits'
@@ -76,7 +77,7 @@ rf_n_bins_combined = 16
 rf_mean_instead_median = False
 
 from time_stream import calibrate
-pipe_modules.append(calibrate.Calibrate)
+#pipe_modules.append(calibrate.Calibrate)
 cl_input_root = rf_output_root
 cl_file_middles = file_middles
 cl_input_end = '.fits'
@@ -90,7 +91,7 @@ cl_cal_temperature_files = (os.getenv('GBT10B_KM') + 'kevin_cal/cal_21.fits',)
 # Flux cal needs pols in IQUV.
 from time_stream import rotate_pol
 # Comment this line to skip this step in pipline.
-pipe_modules.append(rotate_pol.RotatePol)
+#pipe_modules.append(rotate_pol.RotatePol)
 rp_input_root = cl_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
@@ -105,7 +106,7 @@ rp_average_cals = False
 ##### FLUX CAL #####
 
 from time_stream import flux_pol_cal
-pipe_modules.append(flux_pol_cal.Calibrate)
+#pipe_modules.append(flux_pol_cal.Calibrate)
 tc_input_root = rp_output_root
 tc_file_middles = file_middles
 tc_input_end = '.fits'
@@ -120,8 +121,11 @@ tc_mueler_file = tcv_dir + 'mueller_params/'
 
 # After flux cal, use only one pol, I.
 from time_stream import rotate_pol
-pipe_modules.append((rotate_pol.RotatePol, ('rp2_', 'rp_')))
-rp2_input_root = tc_output_root
+#pipe_modules.append((rotate_pol.RotatePol, ('rp2_', 'rp_')))
+## NOTE: sm_ uses the output root of this module
+## make sure to change there, too if this changes.
+#rp2_input_root = tc_output_root
+rp2_input_root = cl_output_root
 rp2_file_middles = file_middles
 rp2_input_end = '.fits'
 rp2_output_root = base_dir + 'pol_selected/' + prefix
@@ -133,7 +137,7 @@ rp2_new_pols = (1,)
 rp2_average_cals = True
 
 from map import dirty_map
-pipe_modules.append(dirty_map.DirtyMapMaker)
+#pipe_modules.append(dirty_map.DirtyMapMaker)
 #dm_input_root = rp_output_root
 dm_input_root = rp2_output_root
 dm_file_middles = file_middles
@@ -152,14 +156,14 @@ dm_polarizations = ('I',)
 dm_noise_parameters_input_root = 'None'
 
 from map import clean_map
-pipe_modules.append(clean_map.CleanMapMaker)
+#pipe_modules.append(clean_map.CleanMapMaker)
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
 cm_polarizations = ('I',)
 
 from time_stream import subtract_map_data
-pipe_modules.append(subtract_map_data.Subtract)
-sm_input_root = rp_output_root
+#pipe_modules.append(subtract_map_data.Subtract)
+sm_input_root = rp2_output_root
 sm_file_middles = file_middles
 sm_input_end = '.fits'
 sm_output_root = base_dir + 'map_subtracted/'
@@ -174,8 +178,8 @@ sm_gain_output_end = '_gain.pickle'
 sm_interpolation = 'linear'
 
 from time_stream import reflag
-pipe_modules.append(reflag.ReFlag)
-sf_input_root = rp_output_root
+#pipe_modules.append(reflag.ReFlag)
+sf_input_root = rp2_output_root
 sf_file_middles = file_middles
 sf_input_end = '.fits'
 sf_output_root = base_dir + 'reflagged/'
@@ -188,7 +192,7 @@ sf_subtracted_input_root = sm_output_root
 sf_subtracted_output_root = base_dir + 'reflag_sub/'
 
 from noise import measure_noise
-pipe_modules.append(measure_noise.Measure)
+#pipe_modules.append(measure_noise.Measure)
 mn_input_root = sf_subtracted_input_root
 mn_file_middles = file_middles
 mn_input_end = '.fits'
