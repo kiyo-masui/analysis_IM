@@ -6,19 +6,22 @@ import math
 from os.path import dirname, join, exists
 from scipy.integrate import quad
 
-import cubicspline as cs
+from simulations import cubicspline as cs
+
+from simulations import gaussianfield, fftutil, units, cosmology
+from gaussianfield import RandomField
 from cosmology import Cosmology
 
-from simulations import gaussianfield, fftutil, units
-from gaussianfield import RandomField
-
-_feedback = False
-
-import sphbessel
+from simulations import sphbessel, Chebyshev
 
 from Chebyshev import chebyshev_vec
-#from Patterson import Integrate_Patterson
+
+from romberg import romberg
+
+from Patterson import Integrate_Patterson
 #ps = cs.LogInterpolater.fromfile( join(dirname(__file__),"data/ps.dat")).value
+
+_feedback = False
 
 
 
@@ -203,7 +206,7 @@ class RedshiftCorrelation(object):
         
 
 
-    def correlation_flatsky(self, pi, sigma, z1 = None, z2 = None):
+    def redshiftspace_correlation(self, pi, sigma, z1 = None, z2 = None):
         """The correlation function in the flat-sky approximation.
         
         This is a vectorized function. The inputs `pi` and `sigma`
@@ -234,7 +237,6 @@ class RedshiftCorrelation(object):
         is provided assume the second point is at the same redshift as
         the first.
         """
-
 
         r = (pi**2 + sigma**2)**0.5
 
@@ -306,8 +308,7 @@ class RedshiftCorrelation(object):
 
 
 
-    def correlation_angular(self, theta, z1, z2):
-
+    def angular_correlation(self, theta, z1, z2):
         r"""Angular correlation function (in a flat-sky approximation).
 
         Parameters
@@ -501,8 +502,11 @@ class RedshiftCorrelation(object):
         return 1.0 * np.ones_like(z)
 
 
-    def realisation_dv(self, d, n):
-
+    def _realisation_dv(self, d, n):
+        """Generate the density and line of sight velocity fields in a
+        3d cube.
+        """
+        
         if not self._vv_only:
             raise Exception("Doesn't work for independent fields, I need to think a bit more first.")
         
@@ -550,8 +554,36 @@ class RedshiftCorrelation(object):
         return np.ones_like(z) * 0.0
     
 
-    def realisation(self, z1, z2, thetax, thetay, numz, numx, numy):
+    def realisation(self, z1, z2, thetax, thetay, numz, numx, numy, zspace = True):
+        r"""Simulate a redshift-space volume.
 
+        Generates a 3D (angle-angle-redshift) volume from the given
+        power spectrum. Currently only works with simply biased power
+        spectra (i.e. vv_only). This routine uses a flat sky
+        approximation, and so becomes in accurate when a large volume
+        of the sky is simulated.
+
+        Parameters
+        ----------
+        z1, z2 : scalar
+            Lower and upper redshifts of the box.
+        thetax, thetay : scalar
+            The angular size (in degrees) of the box.
+        numz : integer
+            The number of bins in redshift.
+        numx, numy : integer
+            The number of angular pixels along each side.
+        zspace : boolean, optional
+            If True (default) redshift bins are equally spaced in
+            redshift. Otherwise space equally in the scale factor
+            (useful for generating an equal range in frequency).
+
+        Returns
+        -------
+        cube : np.ndarray
+            The volume cube.
+
+        """
         ### Generate a 3D realspace cube containing the angular box we
         ### are simulating. Ensure that the 
         d2 = self.cosmology.proper_distance(z2)
@@ -570,7 +602,7 @@ class RedshiftCorrelation(object):
 
         print "Generating cube: %f x %f x %f Mpc^3" % (d[0], d[1], d[2])
 
-        cube = self.realisation_dv(d, n)
+        cube = self._realisation_dv(d, n)
 
 
         # Construct an array of the redshifts on each slice of the cube.
@@ -586,14 +618,19 @@ class RedshiftCorrelation(object):
         pz = self.prefactor(za)
 
         # Construct the observable and velocity fields.
-        df = cube[0] * bz[:,np.newaxis,np.newaxis]
-        vf =  cube[1] * fz[:,np.newaxis,np.newaxis]
+        df = cube[0] * (Dz * pz * bz)[:,np.newaxis,np.newaxis]
+        vf = cube[1] * (Dz * pz * fz)[:,np.newaxis,np.newaxis]
 
         # Construct the redshift space cube.
-        rsf = ((Dz * pz)[:,np.newaxis,np.newaxis] * (df + vf)) + mz[:,np.newaxis,np.newaxis]
+        rsf = (df + vf) + mz[:,np.newaxis,np.newaxis]
 
-        # Find the distances that correspond to a regular redshift spacing
-        za = np.linspace(z1, z2, numz, endpoint = False)
+        # Find the distances that correspond to a regular redshift
+        # spacing (or regular spacing in a).
+        if zspace:
+            za = np.linspace(z1, z2, numz, endpoint = False)
+        else:
+            za = 1.0 / np.linspace(1.0 / (1+z2), 1.0 / (1+z1), numz, endpoint = False)[::-1] - 1.0
+            
         da = self.cosmology.proper_distance(za)
         xa = self.cosmology.comoving_distance(za)
 
@@ -606,7 +643,6 @@ class RedshiftCorrelation(object):
         tgrid2 = np.zeros((3, numx, numy))
         acube = np.zeros((numz, numx, numy))
 
-        # pdb.set_trace()
         # Iterate over reshift slices, constructing the coordinates
         # and interpolating into the 3d cube.
         for i in range(numz):
@@ -622,49 +658,166 @@ class RedshiftCorrelation(object):
         return acube #, rsf
 
 
-    def angular_ps(self, l, z1, z2):
+    def angular_powerspectrum(self, la, za1, za2):
+        r"""The angular powerspectrum C_l(z1, z2).
 
-        if not self._vv_only:
-            raise Exception("Only works for vv_only at the moment.")
+        Parameters
+        ----------
+        l : array_like
+            The multipole moments to return at.
+        z1, z2 : array_like
+            The redshift slices to correlate.
 
-        b1 = self.bias_z(z1)
-        b2 = self.bias_z(z2)
-        f1 = self.growth_rate(z1)
-        f2 = self.growth_rate(z2)
-        D1 = self.growth_factor(z1) / self.growth_factor(self.ps_redshift)
-        D2 = self.growth_factor(z2) / self.growth_factor(self.ps_redshift)
-        pf1 = self.prefactor(z1)
-        pf2 = self.prefactor(z2)
+        Returns
+        -------
+        arr : array_like
+            The values of C_l(z1, z2)
+        """
 
-        x1 = self.cosmology.comoving_distance(z1)
-        x2 = self.cosmology.comoving_distance(z2)
+        def _ps_single(l, z1, z2):
+            if not self._vv_only:
+                raise Exception("Only works for vv_only at the moment.")
 
-        def _int_lin(k):
-            #return (k**2 * self.ps_vv(k) * (b1 * sphbessel.jl(l, k*x1) - f1 * sphbessel.jl_d2(l, k*x1)) *
-            #        (b2 * sphbessel.jl(l, k*x2) - f2 * sphbessel.jl_d2(l, k*x2)))
-            return (k**2 * self.ps_vv(k) * b1 * b2 * sphbessel.jl(l, k*x1) * sphbessel.jl(l, k*x2))
+            b1 = self.bias_z(z1)
+            b2 = self.bias_z(z2)
+            f1 = self.growth_rate(z1)
+            f2 = self.growth_rate(z2)
+            D1 = self.growth_factor(z1) / self.growth_factor(self.ps_redshift)
+            D2 = self.growth_factor(z2) / self.growth_factor(self.ps_redshift)
+            pf1 = self.prefactor(z1)
+            pf2 = self.prefactor(z2)
 
-        def _int_log(lk):
-            k = np.exp(lk)
-            return k*_int_lin(k)
+            x1 = self.cosmology.comoving_distance(z1)
+            x2 = self.cosmology.comoving_distance(z2)
 
-        
-        def _integrator(f, a, b):
-            return chebyshev_vec(f, a, b, epsrel = 1e-9, epsabs=1e-14)[0]
-        #full_output=(0 if _feedback else 1))[0]
+            d1 = math.pi / (x1 + x2)
 
-        mink = 1e-6 * l / max(x1, x2)
-        cutk = 1e1 * l / max(x1, x2)
-        maxk = 1e3 * l / min(x1, x2)
-        cl = (_integrator(_int_log, np.log(mink), np.log(cutk) ) + 
-              _integrator(_int_lin, cutk, maxk))
+            def _int_lin(k):
+                return (k**2 * self.ps_vv(k) * (b1 * sphbessel.jl(l, k*x1) - f1 * sphbessel.jl_d2(l, k*x1)) *
+                       (b2 * sphbessel.jl(l, k*x2) - f2 * sphbessel.jl_d2(l, k*x2)))
+                #return (k**2 * self.ps_vv(k) * b1 * b2 * sphbessel.jl(l, k*x1) * sphbessel.jl(l, k*x2))
 
-        cl = cl * D1 * D2 * pf1 * pf2 * (2 / np.pi)
+            def _int_log(lk):
+                k = np.exp(lk)
+                return k*_int_lin(k)
 
-        return cl
+            def _int_offset(k):
+                return (_int_lin(k) + 4*_int_lin(k + d1) + 6*_int_lin(k + 2*d1)
+                        + 4*_int_lin(k + 3*d1) + _int_lin(k + 4*d1)) / 16.0
 
-        
+            def _int_taper(k):
+                return (15.0*_int_lin(k) + 11.0*_int_lin(k + d1) + 
+                        5.0*_int_lin(k + 2*d1) + _int_lin(k + 3*d1)) / 16.0
+
+            def _integrator(f, a, b):
+                #return quad(f, a, b, limit=1000, epsrel = 1e-7, full_output=(0 if _feedback else 1))[0]
+                #return Integrate_Patterson(f, a, b, eps = 1e-7, abs=1e-10)[0]
+                return chebyshev_vec(f, a, b, epsrel = 1e-7, epsabs=1e-10)[0]
+                #return romberg(f, a, b, eps = 1e-6)
+            #full_output=(0 if _feedback else 1))[0]
+            mink = 1e-2 * l / (x1 + x2)
+            cutk = 2e0 * l / (x1 + x2)
+            cutk2 = 20.0  * l / (x1 + x2)
+            maxk = 1e2 * l / (x1 + x2)
+            
+            #ka = np.logspace(np.log(mink), np.log(maxk), 1000)
+
+            i1 = _integrator(_int_log, np.log(mink), np.log(cutk) )
+            #print i1
+            i2 = _integrator(_int_taper, cutk, cutk + d1)
+            #print i2
+            i3 = _integrator(_int_offset, cutk, cutk2)
+
+            i4 = _integrator(_int_offset, cutk2, maxk)
+            #print i3
+            print i1, i2, i3, i4, i1+i2+i3
+            
+            #return ka, _int_lin(ka)
+
+            #cl = (_integrator(_int_log, np.log(mink), np.log(cutk) ) + 
+            #      _integrator(_int_lin, cutk, maxk))
+
+            cl = (i1 + i2 + i3 + i4) * D1 * D2 * pf1 * pf2 * (2 / np.pi)
+
+            return cl
+
+        bobj = np.broadcast(la, za1, za2)
+
+        if not bobj.shape:
+            # Broadcast from scalars
+            return _ps_single(la, za1, za2)
+        else:
+            # Broadcast from arrays
+            cla = np.empty(bobj.shape)
+            cla.flat = [ _ps_single(l, z1, z2) for (l, z1, z2) in bobj ]
+
+            return cla
     
+
+    def angular_powerspectrum_flat(self, la, za1, za2):
+        r"""The angular powerspectrum C_l(z1, z2).
+
+        Parameters
+        ----------
+        l : array_like
+            The multipole moments to return at.
+        z1, z2 : array_like
+            The redshift slices to correlate.
+
+        Returns
+        -------
+        arr : array_like
+            The values of C_l(z1, z2)
+        """
+
+        def _ps_single(l, z1, z2):
+            
+            b1 = self.bias_z(z1)
+            b2 = self.bias_z(z2)
+            f1 = self.growth_rate(z1)
+            f2 = self.growth_rate(z2)
+            D1 = self.growth_factor(z1) / self.growth_factor(self.ps_redshift)
+            D2 = self.growth_factor(z2) / self.growth_factor(self.ps_redshift)
+            pf1 = self.prefactor(z1)
+            pf2 = self.prefactor(z2)
+
+            x1 = self.cosmology.comoving_distance(z1)
+            x2 = self.cosmology.comoving_distance(z2)
+
+            dx = x1 - x2
+            xc = 0.5*(x1 + x2)
+
+            def _int_lin(kp):
+                return np.cos(kp * dx) * self.powerspectrum(kp, l / xc, z1, z2) / (xc**2 * np.pi)
+
+            def _int_log(lkp):
+                kp = np.exp(lkp)
+                return _int_lin(kp) * kp
+
+            def _integrator(f, a, b):
+                #return quad(f, a, b, limit=1000, epsrel = 1e-7, full_output=(0 if _feedback else 1))[0]
+                #return Integrate_Patterson(f, a, b, eps = 1e-7, abs=1e-10)[0]
+                i = chebyshev_vec(f, a, b, epsrel = 1e-12, epsabs=1e-15)
+                #print i
+                return i[0]
+                #return romberg(f, a, b, eps = 1e-8)
+
+            i1 = _integrator(_int_lin, 1e-3, 5e1)
+
+            return i1
+            
+        
+        bobj = np.broadcast(la, za1, za2)
+
+        if not bobj.shape:
+            # Broadcast from scalars
+            return _ps_single(la, za1, za2)
+        else:
+            # Broadcast from arrays
+            cla = np.empty(bobj.shape)
+            cla.flat = [ _ps_single(l, z1, z2) for (l, z1, z2) in bobj ]
+
+            return cla
 
 
 def inverse_approx(f, x1, x2):
