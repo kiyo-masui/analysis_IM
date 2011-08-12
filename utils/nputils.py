@@ -1,10 +1,12 @@
+"""Utility functions to help with pure numpy stuff."""
+
 import numpy as np
 
 def save_ndarray_list(fname, la):
     """Save a list of numpy arrays to disk.
 
-    This is designed so it can be reloaded exactly by
-    `load_ndarray_list`.
+    This is designed so it can be reloaded exactly (with the exact
+    same ordering) by `load_ndarray_list`.
 
     Parameters
     ----------
@@ -28,7 +30,8 @@ def load_ndarray_list(fname):
     Returns
     -------
     la : list of np.ndarrays
-        The list of loaded numpy arrays.
+        The list of loaded numpy arrays. This should be identical tp
+        what was saved by `save_ndarray_list`.
     """
 
     d1 = np.load(fname)
