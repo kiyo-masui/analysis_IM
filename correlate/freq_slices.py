@@ -171,24 +171,13 @@ class MapPair(object) :
 
         self.Map1_name = name1
         self.Map2_name = name2
+
         # Set Map1's section.
         found1 = False
         for letter in sections:
             if ((not found1) and (letter in name1)):
                 found1 = True
                 self.Map1_code = letter
-
-#        if "A" in name1:
-#            self.Map1_code = "A"
-#        elif "B" in name1:
-#            self.Map1_code = "B"
-#        elif "C" in name1:
-#            self.Map1_code = "C"
-#        elif "D" in name1:
-#            self.Map1_code = "D"
-#        else:
-#            print "Maps can only be names by sections A,B,C or D."
-#            raise
 
         # Set Map2's section.
         found2 = False
@@ -201,18 +190,6 @@ class MapPair(object) :
             print "Maps can only be named by sections A,B,C,D,E,F,G, or H."
             raise
 
-
-#        if "A" in name2:
-#            self.Map2_code = "A"
-#        elif "B" in name2:
-#            self.Map2_code = "B"
-#        elif "C" in name2:
-#            self.Map2_code = "C"
-#        elif "D" in name2:
-#            self.Map2_code = "D"
-#        else:
-#            print "Maps can only be names by sections A,B,C or D."
-#            raise
 
     def degrade_resolution(self):
         """Convolves the maps down to the lowest resolution.
