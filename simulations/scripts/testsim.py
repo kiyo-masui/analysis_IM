@@ -14,7 +14,7 @@ cr.nu_num = 64
 cr.x_width = 10.0   # degrees
 cr.y_width = 10.0   # degrees
 cr.nu_lower = 500.0 # MHz
-cr.nu_upper = 800.0 # MHz
+cr.nu_upper = 600.0 # MHz
 
 # Generate two realisations
 f1 = cr.getfield()
