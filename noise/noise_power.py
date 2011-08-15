@@ -386,7 +386,8 @@ def make_masked_time_stream(Blocks, ntime=None) :
                     msg = "Overlapping times in Data Blocks."
                     raise ce.DataError(msg)
                 time_stream[ind, ...] = Data.data[ii, ...].filled(0.0)
-                mask[ind, ...] = sp.logical_not(Data.data.mask[ii, ...])
+                mask[ind, ...] = sp.logical_not(ma.getmaskarray(
+                                     Data.data)[ii, ...])
     return time_stream, mask, dt
 
 def windowed_power(data1, window1, data2=None, window2=None, axis=-1, out=None) :

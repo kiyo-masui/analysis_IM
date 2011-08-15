@@ -117,7 +117,7 @@ class TestAmpFit(unittest.TestCase):
         # Generate correlated matrix.
         C = random.rand(n, n) # [0, 1) 
         # Raise to high power to make values near 1 rare.
-        C = (C**10) * 0.5
+        C = (C**10) * 0.2
         C = (C + C.T)/2.0
         C += sp.identity(n)
         C *= r[:, None]/2.0
@@ -132,6 +132,27 @@ class TestAmpFit(unittest.TestCase):
         self.assertTrue(sp.allclose(a, amp, atol=5.0*s, rtol=0))
         # Expect the next line to fail 1/100 trials.
         self.assertFalse(sp.allclose(a, amp, atol=0.01*s, rtol=0))
-        
+
+class TestFloatTime(unittest.TestCase):
+
+    def test_near_epoch(self):
+        UT = "2000-01-01T00:00:54.51"
+        self.assertAlmostEqual(54.51, utils.time2float(UT))
+        self.assertEqual(utils.float2time(54.51), UT)
+
+    def test_full_circle(self):
+        seconds = 451732642.56
+        UT = utils.float2time(seconds)
+        seconds2 = utils.time2float(UT)
+        self.assertEqual(UT, utils.float2time(seconds2))
+        self.assertAlmostEqual(seconds, seconds2)
+
+    def test_full_circle_vectorized(self):
+        seconds = sp.array([[34252672.12, 623421.65], [23464.1, 644656784.56]])
+        UT = utils.float2time(seconds)
+        seconds2 = utils.time2float(UT)
+        self.assertTrue(sp.all(UT == utils.float2time(seconds2)))
+        self.assertTrue(sp.allclose(seconds, seconds2))
+
 if __name__ == '__main__' :
     unittest.main()

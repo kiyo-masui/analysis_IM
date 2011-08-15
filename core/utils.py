@@ -1,5 +1,6 @@
 """Some general utilities that are useful."""
 
+import datetime
 import time
 
 import scipy as sp
@@ -89,12 +90,54 @@ def time2float(UT) :
     """Calculates float seconds from a time string.
 
     Convert a time string in format %Y-%m-%dT%H:%M:%S.partial to a float number
-    of seconds ignaroing all posible corrections."""
+    of seconds ignoring many corrections.  Works for array inputs."""
 
-    UT_wholesec, partial_sec = UT.split('.', 1)
-    to = time.strptime(UT_wholesec, "%Y-%m-%dT%H:%M:%S")
-    return (float('0.' + partial_sec) + to.tm_sec + 60*(to.tm_min +
-            60*(to.tm_hour + 24*(to.tm_yday + 365*(to.tm_year-2000)))))
+    if not isinstance(UT, sp.ndarray) :
+        UT = sp.array([UT])
+        single_time = True
+    else:
+        single_time = False
+
+    time_array = sp.empty(UT.shape, dtype=float)
+    
+    for ii in xrange(UT.size) :
+        UT_wholesec, partial_sec = UT.flat[ii].split('.', 1)
+        to = datetime.datetime(*time.strptime(UT_wholesec,
+                                              "%Y-%m-%dT%H:%M:%S")[:6])
+        epoch_start = datetime.datetime(2000, 1, 1)
+        td = to - epoch_start
+        td_seconds = ((td.microseconds + (td.seconds + td.days * 24 * 3600) *
+                       10**6) / 10**6)
+        time_array.flat[ii] = td_seconds + float("0." + partial_sec)
+    if single_time :
+        return time_array[0]
+    else :
+        return time_array
+
+def float2time(t) :
+    """Does the reverse operation of `time2float`."""
+
+    if not isinstance(t, sp.ndarray) :
+        t = sp.array([t])
+        single_time = True
+    else:
+        single_time = False
+    
+    time_str_array = sp.empty(t.shape, dtype='S22')
+
+    for ii in range(t.size) :
+        td = datetime.timedelta(seconds=t.flat[ii])
+        epoch_start = datetime.datetime(2000, 1, 1)
+        time_obj = epoch_start + td
+        
+        time_str = time_obj.strftime("%Y-%m-%dT%H:%M:%S.%f")
+        # Truncate the fraction seconds to hundredths.
+        time_str = time_str[:22]
+        time_str_array.flat[ii] = time_str
+    if single_time :
+        return time_str_array[0]
+    else :
+        return time_str_array
 
 def mk_map_grid(centre, shape, spacing) :
     """Make a grid of coordinates in Ra and Dec.
