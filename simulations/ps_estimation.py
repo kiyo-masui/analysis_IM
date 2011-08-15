@@ -4,23 +4,22 @@ from utils import radialprofile
 
 
 def make_nd_at_ind(arr, nd, ind):
-    sl = ([np.newaxis]*ind) + slice(None) + ([np.newaxis]) * (nd - ind - 1)
+    sl = ([np.newaxis]*ind) + [slice(None)] + ([np.newaxis]) * (nd - ind - 1)
     return arr[sl]
 
 
 def blackman_nd(shape):
     
     nd = len(shape)
-    
     b = np.ones(shape)
     
     for i, l in enumerate(shape):
-        b *= make_nd_at_ind(np.blackman(l), i, nd)
+        b *= make_nd_at_ind(np.blackman(l), nd, i)
 
     return b
 
 
-def ps(arr, width = None, bw = 3, kmodes = True, window = False):
+def ps(arr, width = None, bw = 3, kmodes = True, window = True):
     """Calculate the radially average power spectrum of an nD fields.
     
     The array must have the same length (physically
@@ -53,7 +52,7 @@ def ps(arr, width = None, bw = 3, kmodes = True, window = False):
     return crossps(arr, None, width=width, bw=bw, kmodes=kmodes, window=window)
 
 
-def crossps(arr1, arr2, width = None, bw = 3, kmodes = True, window = False):
+def crossps(arr1, arr2, width = None, bw = 3, kmodes = True, window = True):
     """Calculate the radially average cross-power spectrum of a two nD fields.
     
     The arrays must be identical and have the same length (physically
@@ -85,7 +84,7 @@ def crossps(arr1, arr2, width = None, bw = 3, kmodes = True, window = False):
     """
     
     if window:
-        w = blackman_nd(img1.shape)
+        w = blackman_nd(arr1.shape)
 
         arr1 = arr1 * w
         if arr2 != None:
@@ -151,7 +150,7 @@ def ps_azimuth(img, width = None, bwperp = 3, bwpar = 3, kmodes = True, window =
                            bwpar = bwpar, kmodes = kmodes, window = window))
 
 
-def crossps_azimuth(img1, img2, width = None, bwperp = 3, bwpar = 3, kmodes = True, window = False):
+def crossps_azimuth(img1, img2, width = None, bwperp = 3, bwpar = 3, kmodes = True, window = True):
     """Calculate the 2-D azimuthally averaged cross-power spectrum of a two 3D fields.
     
     The azimuthal axis is assumed to be axis 0. Generally, this is useful when
