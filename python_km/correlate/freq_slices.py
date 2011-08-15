@@ -80,7 +80,7 @@ class MapPair(object) :
     """
 
     def __init__(self, Map1, Map2, Noise_inv1, Noise_inv2, freq) :
-        
+
         # Give infinite noise to unconsidered frequencies (This doesn't affect
         # anything but the output maps).
         n = Noise_inv1.shape[0]
@@ -147,7 +147,7 @@ class MapPair(object) :
             print "Maps can only be names by sections A,B,C or D."
             raise
 
-    def degrade_resolution(self) :
+    def degrade_resolution(self):# , fake_width=1.) :
         """Convolves the maps down to the lowest resolution.
 
         Also convolves the noise, making sure to deweight pixels near the edge
@@ -158,19 +158,20 @@ class MapPair(object) :
 
         # Get the beam data.
         gfreq=self.Map1.get_axis("freq")
-        beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792, 
-                 0.281176247549, 0.270856788455, 0.26745856078, 
+        beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792,
+                 0.281176247549, 0.270856788455, 0.26745856078,
                  0.258910010848, 0.249188429031])
         freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
                              dtype=float)
         freq_data *= 1.0e6
         beam_diff=sp.sqrt(max(1.1*beam_data)**2-(beam_data)**2)
+#remove  beam_diff = sp.zeros(len(beam_data))
+#        beam_diff[:] = fake_width
         b = beam.GaussianBeam(beam_diff,freq_data)
         # Convolve to a common resolution.
         self.Map2=b.apply(self.Map2)
         self.Map1=b.apply(self.Map1)
-        # Reduce noise to factorizable.
-        
+
         # This block of code needs to be split off into a function and applied
         # twice (so we are sure to do the same thing to each).
         Noise1[Noise1<1.e-30] = 1.e-30
@@ -184,7 +185,7 @@ class MapPair(object) :
         Noise2 = b.apply(Noise2, cval=1.e30)
         Noise2 = 1./Noise2
         Noise2[Noise2<1.e-20] = 0
-        
+
         self.Noise_inv1 = algebra.as_alg_like(Noise1, self.Noise_inv1)
         self.Noise_inv2 = algebra.as_alg_like(Noise2, self.Noise_inv2)
 
@@ -193,7 +194,7 @@ class MapPair(object) :
         frequecy times a function of pixel by taking means over the origional
         weights.
         """
-        
+
         def make_factorizable(Noise) :
             # Take the reciprical.
             Noise[Noise<1.e-30] = 1.e-30
@@ -281,7 +282,7 @@ class MapPair(object) :
 #                            other_mapname1 + ".npy"
 #            #algebra.save(fname1, outmap)
 #            algebra.save(save_file, Map1) # outmap)
-        
+
         # Second map.
         outmap_R = sp.empty((len(modes1),)+Map1.shape[1:])
         outmap_R = algebra.make_vect(outmap_R,axis_names=('freq', 'ra', 'dec'))
@@ -310,7 +311,7 @@ class MapPair(object) :
         """Calculate the cross correlation function of the maps.
 
         The cross correlation function is a function of f1, f2 and angular lag.
-        
+
         The angular lag bins are passed, all pairs of frequencies are
         calculated.
 
@@ -354,9 +355,7 @@ class MapPair(object) :
         corr = sp.zeros((nf, nf, nlags), dtype=float)
         counts = sp.zeros(corr.shape, dtype=float)
         # Noting that if DEC != 0, then a degree of RA is less than a degree.
-        ra_fact = (sp.cos(sp.pi*Map1.info['dec_centre'] / 180.0)
-                   * Map1.info['ra_delta'])
-        #dec_fact = Map1.info['dec_delta']
+        ra_fact = sp.cos(sp.pi*Map1.info['dec_centre'] / 180.0)
 
         # Calculate the pairwise lags.
         dra = (r1[:,None] - r2[None,:]) * ra_fact
@@ -366,7 +365,7 @@ class MapPair(object) :
         # Bin this up.
         lag_inds = sp.digitize(lag.flatten(), lags)
 
-        if speedup: 
+        if speedup:
             print "Starting Correlation (sparse version)"
             (nr1, nd1) = (len(r1), len(d1))
             (nr2, nd2) = (len(r2), len(d2))
@@ -379,10 +378,9 @@ class MapPair(object) :
 
             # precalculate the pair indices for a given lag
             # could also imagine calculating the map slices here
-            # but 
             posmaskdict = {}
             for klag in range(nlags):
-                mask = lag_inds == klag
+                mask = (lag_inds == klag)
                 posmaskdict[repr(klag)] = (r1[mask], r2[mask], d1[mask], d2[mask])
 
             for if1 in range(len(freq1)):
@@ -403,7 +401,7 @@ class MapPair(object) :
                         wprod = weights1[r1m, d1m]*weights2[r2m, d2m]
                         corr[if1,jf2,klag] += sp.sum(dprod)
                         counts[if1,jf2,klag] += sp.sum(wprod)
-                    print if1, jf2, (time.time() - start), counts[if1, jf2,:] # TODO: REMOVE ME
+                    print if1, jf2, (time.time() - start), counts[if1, jf2,:]
         else:
             print "Starting Correlation (full version)"
             for if1 in range(len(freq1)):
@@ -417,12 +415,12 @@ class MapPair(object) :
                     dprod = data1[...,None,None] * data2[None,None,...]
                     wprod = weights1[...,None,None] * weights2[None,None,...]
                     for klag in range(nlags) :
-                        mask = lag_inds == klag
+                        mask = (lag_inds == klag)
                         corr[if1,jf2,klag] += sp.sum(dprod.flatten()[mask])
                         counts[if1,jf2,klag] += sp.sum(wprod.flatten()[mask])
-                    print if1, jf2, (time.time() - start), counts[if1, jf2,:] # TODO: REMOVE ME
-        
-        mask = counts < 1e-20
+                    print if1, jf2, (time.time() - start), counts[if1, jf2,:]
+
+        mask = (counts < 1e-20)
         counts[mask] = 1
         corr /= counts
         corr[mask] = 0
@@ -436,10 +434,10 @@ class NewSlices(object) :
     Now: params, Pair, fore_corr, corr, fore_Pair, vals, modes1, modes2.
     Want: Pairs, corr_final, core_std.
     """
- 
+
     def __init__(self, parameter_file_or_dict=None) :
         # Read in the parameters.
-        self.params = parse_ini.parse(parameter_file_or_dict, params_init, 
+        self.params = parse_ini.parse(parameter_file_or_dict, params_init,
                                  prefix=prefix)
 
     def execute(self) :
@@ -464,13 +462,13 @@ class NewSlices(object) :
             Noise_invs = []
             # Load all maps and noises once.
             for ii in range(0, num_maps):
-                map_file = (params['input_root'] + 
+                map_file = (params['input_root'] +
                     params['file_middles'][ii] + params['input_end_map'])
                 print "Loading map %d of %d." %(ii+1, num_maps)
                 Map = algebra.make_vect(algebra.load(map_file))
                 Maps.append(Map)
                 if not params["no_weights"] :
-                    noise_file = (params['input_root'] + 
+                    noise_file = (params['input_root'] +
                         params['file_middles'][ii] + params['input_end_noise'])
                     print "Loading noise %d of %d." %(ii+1, num_maps)
     #                Noise_invs.append(abs(algebra.make_vect(algebra.load(map_file))))
@@ -479,14 +477,14 @@ class NewSlices(object) :
                     Noise_inv = Noise_inv.mat_diag()
                 else :
                     Noise_inv = algebra.ones_like(Map)
-                    #Noise_inv[...] += (100 + 
+                    #Noise_inv[...] += (100 +
                     #    ii*sp.arange(Noise_inv.shape[0])[:,None,None])
                     #Noise_inv[...] += (100 +
                     #    ii*sp.arange(Noise_inv.shape[1])[None,:,None])
 
                 Noise_invs.append(Noise_inv)
             Pairs = []
-            # Make pairs with deepcopies to not make mutability mistakes. 
+            # Make pairs with deepcopies to not make mutability mistakes.
             for ii in range(0, num_maps):
                 for jj in range(0, num_maps):
                     if (jj > ii):
@@ -509,7 +507,7 @@ class NewSlices(object) :
 
         if params["convolve"] :
             for Pair in Pairs:
-                Pair.degrade_resolution()
+                Pair.degrade_resolution()#0.5)
         if params['factorizable_noise'] :
             for Pair in Pairs:
                 Pair.make_noise_factorizable()
@@ -559,7 +557,7 @@ class NewSlices(object) :
             # self.fore_Pairs later.
             self.Pairs = copy.deepcopy(fore_Pairs)
             print "gung ho!"
-                
+
             Pairs = self.Pairs
             # Get foregrounds.
             # TODO: Provide a list of integers for params["modes"] so we can try a
@@ -569,7 +567,7 @@ class NewSlices(object) :
             for Pair in Pairs:
                 # Since these values are different for diff maps,
                 # can there be a 'final' one? [Like an average?]
-#                vals, modes1, modes2 = get_freq_svd_modes(Pair.fore_corr, 
+#                vals, modes1, modes2 = get_freq_svd_modes(Pair.fore_corr,
 #                                                  params['modes'])
 #                Pair.vals = vals
 #                Pair.modes1 = modes1
@@ -605,13 +603,18 @@ class NewSlices(object) :
 
         # Subtract foregrounds.
 #        for Pair in Pairs:
-        for ii in range(0, len(Pairs)):            
-            Pairs[ii].subtract_frequency_modes(Pairs[ii].modes1, 
+        for ii in range(0, len(Pairs)):
+            Pairs[ii].subtract_frequency_modes(Pairs[ii].modes1,
                 Pairs[ii].modes2)
-        
+
         # Save cleaned clean maps, cleaned noises, and modes.
         save_data(self, params['save_maps'], params['save_noises'],
             params['save_modes'])
+
+## REMOVE
+#        if params["convolve"] :
+#            for Pair in Pairs:
+#                Pair.degrade_resolution(0.1)
 
         # Finish if this was just first pass.
         if params['first_pass_only'] :
@@ -654,7 +657,7 @@ class NewSlices(object) :
             f.close()
         self.Pairs = copy.deepcopy(temp_Pair_list)
         print "gung ho!"
-        
+
 
         # Get the average correlation and its standard deviation.
         corr_list = []
@@ -670,7 +673,7 @@ class NewSlices(object) :
             pickle_slices(self)
 
         return
-            
+
     def make_plots(self) :
         plt.figure()
         plot_svd(self.vals)
@@ -682,7 +685,7 @@ def multiproc(Pair, save_dir, pair_number, final):
     this function gets multiprocessed and must have a common information
     ground somewhere. If final is false, the fore correlation is being done.
     If final is True, the final correlation is being done. final is used
-    to save Pair to the appropriate file. save_dir is the diectory for 
+    to save Pair to the appropriate file. save_dir is the diectory for
     these to be saved."""
     print "I am starting."
 #    print Pair.lags
@@ -701,7 +704,7 @@ def multiproc(Pair, save_dir, pair_number, final):
     else:
         file_name += "Map_Pair_for_freq_slices_fore_corr_" + \
                         str(pair_number) + ".pkl"
-        to_save = (Pair.fore_corr, Pair.fore_counts) 
+        to_save = (Pair.fore_corr, Pair.fore_counts)
     f = open(file_name, "w")
     print "Writing to: ",
     print file_name
@@ -715,7 +718,7 @@ def control_correlation(Pair, lags, final):
     Save the return values of correlate(lags) in self.corr and .counts
     if final is True. Else, save return values in self.fore_corr and
     .fore_counts."""
-     
+
     if final:
         Pair.corr, Pair.counts = Pair.correlate(lags, speedup=True)
     else:
@@ -758,7 +761,7 @@ def get_freq_svd_modes(corr, n) :
             raise NotImplementedError('2 eigenvalues bitwise equal.')
         Lvectors.append(U[:,ind[0]])
         Rvectors.append(V[:,ind[0]])
-    
+
     return s, Lvectors, Rvectors
 
 def subtract_modes_corr(corr, n) :
@@ -775,16 +778,16 @@ def subtract_modes_corr(corr, n) :
 
 def plot_svd(vals) :
     """Plots the svd values and prints out some statistics."""
-        
+
     n = len(vals)
-    plt.semilogy(abs(sp.sort(-vals/n)), marker='o', 
+    plt.semilogy(abs(sp.sort(-vals/n)), marker='o',
                  linestyle='None')
     print 'Mean noise: ', sp.sum(vals)/n
-    print 'Largest eigenvalues/n : ', 
+    print 'Largest eigenvalues/n : ',
     print sp.sort(vals/n)[-10:]
 
 def normalize_corr(corr):
-    """Return the normalized 3D correlation along the diagonal. 
+    """Return the normalized 3D correlation along the diagonal.
     [3D meaning f,f_prime,lag]."""
     # Get dimensions.
     fs,f_primes,lags = corr.shape
@@ -802,13 +805,13 @@ def normalize_corr(corr):
                 factor = sp.sqrt(value)
                 corr_norm[f,f_prime,lag] = corr[f,f_prime,lag] / factor
     return corr_norm
-        
-    
+
+
 
 def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
                         return_fbins=False) :
     """Collapses frequency pair correlation function to frequency lag.
-    
+
     Basically this constructs the 2D correlation function.
 
     This function takes in a 3D corvariance matrix which is a function of
@@ -818,14 +821,14 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
     freq1 is the actualy freq values not the indeces [700MHz not 0,1,2...]
     for weights see counts in correlate.
     """
-    
+
     if freq2 is None :
         freq2 = freq1
     # Default is equal weights.
     if weights is None :
         weights = sp.ones_like(corr)
-    corr *= weights
-    
+    corr = corr*weights
+
     nf1 = corr.shape[0]
     nf2 = corr.shape[1]
     nlags = corr.shape[2]
@@ -836,7 +839,7 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
     # Allowcate memory for outputs.
     out_corr = sp.zeros((nfbins, nlags))
     out_weights = sp.zeros((nfbins, nlags))
-    
+
     # Loop over all frequency pairs and bin by lag.
     for ii in range(nf1) :
         for jj in range(nf2) :
@@ -850,7 +853,8 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
     out_weights[bad_inds] = 1.0
     out_corr /= out_weights
     out_weights[bad_inds] = 0.0
-    
+    out_corr[bad_inds] = 0.0
+
     if return_fbins:
         return out_corr, out_weights, fbins - df*0.5
     else:
@@ -859,7 +863,7 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
 def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
     """Takes a 2D correlation function and collapses to a 1D correlation
     function.
-    
+
     f_lags in Hz, a_lags in degrees.  This is important.
     """
 
@@ -873,12 +877,12 @@ def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
         raise ValueError(msg)
     if weights is None:
         weights = sp.ones_like(corr)
-    corr *= weights
+    corr = corr*weights
     # Hard code conversion factors to MPc/h for now.
     a_fact = 34.0 # Mpc/h per degree at 800MHz.
     f_fact = 4.5 # Mpc/h per MHz at 800MHz.
     # Hard code lags in MPc/h.
-    nbins = 10
+    nbins = 15
     lags = sp.empty(nbins)
     lags[0] = 2.0
     lags[1] = 4.0
@@ -903,8 +907,15 @@ def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
     out_weights[bad_inds] = 1.0
     out_corr/=out_weights
     out_weights[bad_inds] = 0.0
+    # Make real lags to be returned.
+    x_left = sp.empty(nbins)
+    x_left[0] = 0
+    x_left[1:] = lags[:-1]
+    x_right = lags
+    x_centre = (x_right + x_left)/2.0
+    
 
-    return out_corr, out_weights, lags
+    return out_corr, out_weights, (x_left, x_centre, x_right)
 
 def save_data(F, save_maps=False, save_noises=False, save_modes=False):
     '''Saves the cleaned data and modes to the output directory specified
@@ -960,7 +971,7 @@ def load_svd_info(svd_file):
     return svd_info_list
 
 def pickle_slices(F):
-    """Pickle F to the output directory from the ini file.F is the 
+    """Pickle F to the output directory from the ini file.F is the
     New_Slices object which contains ALL the data."""
     # Check folder exists.
     out_root = F.params['output_root']
@@ -986,10 +997,10 @@ def pickle_slices(F):
 
 
 class FreqSlices(object) :
-    
+
     def __init__(self, parameter_file_or_dict=None) :
         # Read in the parameters.
-        self.params = parse_ini.parse(parameter_file_or_dict, params_init, 
+        self.params = parse_ini.parse(parameter_file_or_dict, params_init,
                                  prefix=prefix)
 
     def execute(self) :
@@ -1003,18 +1014,18 @@ class FreqSlices(object) :
             fn = params['file_middles'][0]
             params['file_middles'] = (fn, fn)
         if len(params['file_middles']) == 2 :
-            map_file = (params['input_root'] + params['file_middles'][0] + 
+            map_file = (params['input_root'] + params['file_middles'][0] +
                          params['input_end_map'])
-            noise_file = (params['input_root'] + params['file_middles'][0] + 
+            noise_file = (params['input_root'] + params['file_middles'][0] +
                          params['input_end_noise'])
             Map1 = algebra.make_vect(algebra.load(map_file))
             print "Loading noise."
             Noise1 = algebra.make_mat(algebra.open_memmap(noise_file, mode='r'))
             Noise1 = Noise1.mat_diag()
             print "Done."
-            map_file = (params['input_root'] + params['file_middles'][1] + 
+            map_file = (params['input_root'] + params['file_middles'][1] +
                          params['input_end_map'])
-            noise_file = (params['input_root'] + params['file_middles'][1] + 
+            noise_file = (params['input_root'] + params['file_middles'][1] +
                          params['input_end_noise'])
             Map2 = algebra.make_vect(algebra.load(map_file))
             print "Loading noise."
@@ -1415,9 +1426,9 @@ def plot_contour(self, norms=False, lag_inds=(0)) :
 def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
                    plot_old=False) :
     """Used as a method of FreqSlices.  A function instead for debugging."""
-    
+
     lag_inds = list(lag_inds)
-    # Set up binning.    
+    # Set up binning.
     nf = len(self.freq_inds)
     freq_diffs = sp.arange(0.1e6, 100e6, 200.0/256*1e6)
     n_diffs = len(freq_diffs)
@@ -1427,7 +1438,7 @@ def plot_collapsed(self, norms=False, lag_inds=(0), save_old=False,
     for ii in range(nf) :
         for jj in range(nf) :
             if norms :
-                thiscorr = (self.corr[ii,jj,lag_inds] * 
+                thiscorr = (self.corr[ii,jj,lag_inds] *
                             self.norms[ii,jj,sp.newaxis])
             else :
                 thiscorr = self.corr[ii,jj,lag_inds]

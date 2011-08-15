@@ -24,7 +24,7 @@ class Corr21cm(RedshiftCorrelation):
 
         RedshiftCorrelation.__init__(self, ps_vv = ps, redshift = redshift)
         #self._load_cache("data/corr_z1.5.dat")
-        
+
 
     def T_b(self, z):
         r"""Mean 21cm brightness temperature at a given redshift.
@@ -49,7 +49,7 @@ class Corr21cm(RedshiftCorrelation):
 
     def omega_HI(self, z):
         return 1e-3
-    
+
     def x_h(self, z):
         r"""Neutral hydrogen fraction at a given redshift.
 

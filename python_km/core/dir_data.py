@@ -43,7 +43,7 @@ def get_data_files(session_list, field, type=None) :
         all_files = os.listdir(_guppi_data_dir)
         for session in session_list :
             match_str = ('(%02d'%session + '_wigglez' + field + 
-                           "st_ralongmap_.*\.fits)")
+                           ".*_ralongmap_.*\.fits)")
             for file_name in all_files :
                 # See if the file matches.
                 if re.match(match_str, file_name) :
@@ -51,7 +51,7 @@ def get_data_files(session_list, field, type=None) :
                     root = file_name.split('.')[0]
                     out_files.append(root)
     
-    # Remove files that don't hae exactly 8 scans in them.
+    # Remove files that don't have exactly 8 or 10 scans in them.
     good_scans = []
     for middle_string in out_files:
         rlong_index = middle_string.find('ralongmap')
@@ -59,7 +59,8 @@ def get_data_files(session_list, field, type=None) :
         dash_index = middle_string.find('-', underscore_index)
         first_scan = int(middle_string[underscore_index+1:dash_index])
         final_scan = int(middle_string[dash_index+1:])
-        if ((final_scan - first_scan) == 7):
+        if (((final_scan - first_scan) == 7) 
+            or ((final_scan - first_scan) == 9)) :
             good_scans.append(middle_string)
 
     return good_scans

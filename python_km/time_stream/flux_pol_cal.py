@@ -2,7 +2,7 @@
 
 import scipy as sp
 import numpy.ma as ma
-import pylab as pl
+#import pylab as pl
 import numpy as np
 
 import kiyopy.custom_exceptions as ce
@@ -62,7 +62,7 @@ class Calibrate(base_single.BaseSingle) :
         sess_num = file_middle.split('_')[0]
         sess_num = int(sess_num)
 #        print sess_num
-        mueler_file_name = self.params['mueler_file']+str(sess_num)+'_mueller_matrix_from_params.txt'
+        mueler_file_name = self.params['mueler_file']+str(sess_num)+'_mueller_matrix_from_params_Mastro.txt'
         self.mueler = mueller(mueler_file_name)
         calibrate_pol(Data, self.mueler)
        	Data.add_history('Flux calibrated and Corrected for polarization leakage.', 

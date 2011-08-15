@@ -1,13 +1,14 @@
 #!/bin/bash
-for a in $(seq 0 25); do
+for a in $(seq 0 10); do
+	modenum=`echo $a*5 | bc`
     #b=$(printf %03d ${a})
-    b=$(printf %d ${a})
+    b=$(printf %d ${modenum})
     echo $b
     sed -e "s/MODEINDEX/$b/g" correlate_slices.template > correlate_slices_mode$b.ini
     sed -e "s/MODEINDEX/$b/g" correlate_slices_pbs.template > correlate_slices_mode$b.pbs
-    qsub correlate_slices_mode$b.pbs
+    #qsub correlate_slices_mode$b.pbs
 
     sed -e "s/MODEINDEX/$b/g" correlate_slices_signalloss.template > correlate_slices_signalloss_mode$b.ini
     sed -e "s/MODEINDEX/$b/g" correlate_slices_signalloss_pbs.template > correlate_slices_signalloss_mode$b.pbs
-    qsub correlate_slices_signalloss_mode$b.pbs
+    #qsub correlate_slices_signalloss_mode$b.pbs
 done
