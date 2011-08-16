@@ -17,11 +17,9 @@ import cal_scale
 from time_stream import rotate_pol
 
 class FlagData(base_single.BaseSingle) :
-    """Pipeline module that flags rfi and other forms of bad data.
+    '''Pipeline module that flags RFI and other forms of bad data.
 
-    For lots of information look at the doc-string for 
-    flag_data_aravind.apply_cuts.
-    """
+    '''
 
     prefix = 'fd_'
     params_init = {
@@ -35,14 +33,28 @@ class FlagData(base_single.BaseSingle) :
                    # flagged (recursively).
                    'sigma_thres' : 6,
                    # A Data that has more than badness_thres frequencies flagged
-                   # (as a %) will be considered bad.
+                   # (as a fraction) will be considered bad.
                    'badness_thres' : 0.1,
                    # How many times to hide around a bad time.
                    'time_cut' : 40
                    }
     feedback_title = 'New flags each data Block: '
     
-    def action(self, Data) :
+    def action(self, Data):
+        '''Prepares Data and flags RFI.
+        
+        Parameters
+        ----------
+        Data : DataBlock
+            Contains information in a usable format direct from GBT.
+
+        Returns
+        -------
+        Data : DataBlock
+            The input `Data` with RFI flagged. Will also be cal scaled and
+            rotated to XX,YY... if so chosen.
+
+        '''
         params = self.params
         # Keep track of how many pre existing flags there are for feedback
         # purposes.
@@ -72,19 +84,59 @@ class FlagData(base_single.BaseSingle) :
         return Data
 
 def apply_cuts(Data, sigma_thres=6, badness_thres=0.1, time_cut=40):
-    """Flags bad data from RFI and far outliers.
-    See flag_data for other parameters."""
+    '''Flags bad data from RFI and far outliers.
+
+    See `flag_data()` for parameter explanations and more info.
+    '''
     badness = flag_data(Data, sigma_thres, badness_thres, time_cut)
     # Can print or return badness here if you would like
     # to see if the Data had a problem in time or not.
     return
 
 def flag_data(Data, sigma_thres, badness_thres, time_cut):
-    '''Flag bad data from RFI and far outliers. See params_init dictionary
-    for sigma_thres, badness_thres. See 'flag_size' in 
-    destroy_time_with_mean_arrays for time_cut.'''
+    '''Flag bad data from RFI and far outliers.
+
+    Parameters
+    ----------
+    Data : DataBlock
+        Contains information in a usable format direct from GBT. Bad
+        frequencies will be flagged in all polarizations and cal states.
+    sigma_thres : int or float
+        Any frequency with variance > `sigma_thres` sigmas will be 
+        flagged (recursively).
+    badness_thres : float
+        A `Data` that has more than `badness_thres` frequencies flagged
+        (as a fraction) will be considered 'bad'. `0` means that everything
+        will be considered bad while `1` means nothing will be. 
+    time_cut : int
+        How many time bins (as an absolute number) to flag if `Data` has been
+        considered 'bad'. See `destroy_time_with_mean_arrays` for more 
+        infomation on this.
+
+    Returns
+    -------
+    badness : bool
+        Returns `True` iff a `Data` has been considered 'bad'.
+    
+    Notes
+    -----
+    'badness' is when more than a certain fraction of freqs has been flagged
+    from `Data`. This certain fraction comes from `badness_thres`. `Data` that
+    is 'bad' has a lot of frequencies flagged and this can because a lot of 
+    frequencies are actually bad or because there was a blip in time (maybe
+    the machine choked for a second).
+    If a `Data` gets considered 'bad' then the algorithm tries to find
+    something wrong in time (and masks those bad times) and redoes the RFI
+    flagging. If there is a significant decrease (5%) in the number of 
+    frequencies flagged, then the problem was in time and it uses the mask
+    from this second run with bad times flagged. If not, then the `Data` is
+    bad either way and it uses the mask from the first run. Increasing the
+    `time_cut` in this situation is not recommended since you lose a lot more
+    data (there are 10 times as many freq. bins as time bins in `Data`). 
+    '''
     # Flag data on a [deep]copy of Data. If too much destroyed,
     # check if localized in time. If that sucks too, then just hide freq.
+
     Data1 = copy.deepcopy(Data)
     itr = 0            # For recursion
     max_itr = 20       # For recursion
@@ -126,10 +178,35 @@ def flag_data(Data, sigma_thres, badness_thres, time_cut):
     return badness
 
 def destroy_with_variance(Data, sigma_thres=6, bad_freq_list=[]):
-    '''Mask spikes in Data using variance. Polarizations must be in
-    XX,XY,YX,YY format.
-    sigma_thres represents how sensitive the flagger is (smaller = more masking).
-    The flagged frequencies are appended to bad_freq_list.'''
+    '''Mask frequencies with high variance.
+
+    Since the signal we are looking for is much weaker than what is in `Data`,
+    any frequency that is 'too spiky' is not signal and is RFI instead. Using
+    variance as a test really makes this 'spikyness' stand out.
+
+    Parameters
+    ----------
+    Data : DataBlock
+        Contains information in a usable format direct from GBT. Bad
+        frequencies will be flagged in all polarizations and cal states.
+    sigma_thres : int or float
+        Any frequency with variance > `sigma_thres` sigmas will be 
+        flagged (recursively).
+    bad_freq_list : list of int
+        A list of bad frequencies. Since this method is called over and over,
+        this list keeps track of what has been flagged. Bad frequencies that
+        are found will be appended to this list.
+
+    Returns
+    -------
+    amount_masked : int
+        The amount of frequencies masked.
+
+    Notes
+    -----
+    Polarizations must be in XX,XY,YX,YY format.
+
+    '''
     XX_YY_0 = ma.mean(Data.data[:, 0, 0, :], 0) * ma.mean(Data.data[:, 3, 0, :], 0)
     XX_YY_1 = ma.mean(Data.data[:, 0, 1, :], 0) * ma.mean(Data.data[:, 3, 1, :], 0)
     # Get the normalized variance array for each polarization.
@@ -167,11 +244,22 @@ def destroy_with_variance(Data, sigma_thres=6, bad_freq_list=[]):
     return amount_masked
 
 def destroy_time_with_mean_arrays(Data, flag_size=40):
-    '''If there is a problem in time, the mean over all frequencies
+    '''Mask times with high means.
+    
+    If there is a problem in time, the mean over all frequencies
     will stand out greatly [>10 sigma has been seen]. Flag these bad
-    times and +- flag_size times around it. Will only be called if a Data has
-    "badness" [see determine_badness].'''
-    # Get the means over all frequencies.
+    times and +- `flag_size` times around it. Will only be called if `Data`
+    has 'badness'.
+
+    Parameters
+    ----------
+    Data : DataBlock
+        Contains information in a usable format direct from GBT. Bad
+        times will be flagged in all polarizations and cal states.
+    time_cut : int
+        How many frequency bins (as an absolute number) to flag in time.
+    '''
+    # Get the means over all frequencies. (for all pols. and cals.)
     a = ma.mean(Data.data[:, 0, 0, :], -1)
     b = ma.mean(Data.data[:, 1, 0, :], -1)
     c = ma.mean(Data.data[:, 2, 0, :], -1)

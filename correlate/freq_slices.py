@@ -960,8 +960,8 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
     weights : 3D array 
         The weights of the correlation. It is found in Pair.counts right now.
     nfbins : int
-        How far 'out' you go in lag. A higher number means a more accurate
-        result at high lag.
+        How many lag bins out you go in frequency. A higher number means a
+        more accurate result at high lag.
     return_fbins : bool
         If `True`, `fbins` is returned.
     
