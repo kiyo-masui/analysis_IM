@@ -1,18 +1,16 @@
+## Test simulations of 21cm signal
+
 import numpy as np
 
-import corr
-import corr21cm
+from core import algebra
+from map import beam
+from simulations import corr, corr21cm, ps_estimation
 
-import cubicspline as cs
-import ps_estimation
+from utils import cubicspline as cs
+from utils import units
 
-import pdb
 
-import core.algebra as algebra
 
-import map.beam as beam
-
-import units
 
 def bincov(cov, bins = None):
     l = cov.shape[0]
@@ -55,14 +53,9 @@ nf = 256
 z1 = units.nu21 / f1
 z2 = units.nu21 / f2
 
-c1 = cs.LogInterpolater.fromfile("data/ps_z1.5.dat")
-kstar = 2.0
-ps = lambda k: np.exp(-0.5 * k**2 / kstar**2) * c1(k)
-
-
 
 #cr = corr.RedshiftCorrelation(ps_vv = ps, redshift = 1.5)
-cr = corr21cm.Corr21cm(ps_vv = ps, redshift = 1.5)
+cr = corr21cm.Corr21cm()
 
 
 #rf = cr.realisation(1.0, 1.0, 1.95, 2.0, 256, 256, 256)

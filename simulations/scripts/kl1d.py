@@ -10,15 +10,16 @@ rc('text', usetex=True)
 
 import numpy as np
 
-from corr import RedshiftCorrelation
+from simulations.corr import RedshiftCorrelation
 
-import foreground
+## Import old foreground module
+import _foreground as foreground
 
 import scipy.linalg as la
 
 #import cubicspline as cs
-from cosmology import Cosmology
-from units import nu21
+from utils.cosmology import Cosmology
+from utils.units import nu21
 
 
 def tb(z):

@@ -10,9 +10,8 @@ from matplotlib import pyplot as plt
 
 import numpy as np
 
-import lofar
-
-from simulations import corr21cm, foregroundsck, units
+from simulations import corr21cm, foregroundsck, lofar
+from utils import units
 
 import scipy.linalg as la
 

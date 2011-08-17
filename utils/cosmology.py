@@ -4,9 +4,8 @@
 import math
 import numpy as np
 
-# Standard integration scheme used.
-from scipy.integrate import quad
-
+# Import integration routines
+import integrate
 
 # Package imports
 from units import *
@@ -293,9 +292,16 @@ def _intfz(f, a, b):
     # A wrapper function to allow vectorizing integrals, cuts such
     # that integrals to very high-z converge (by integrating in log z
     # instead).
+
+    def _int(f, a, b):
+        return integrate.patterson(f, a, b, epsrel = 1e-5, epsabs = 1e-10)
+        #return integrate.chebyshev(f, a, b, epsrel = 1e-5, epsabs = 1e-10)
+        #return integrate.romberg(f, a, b, epsrel = 1e-5, epsabs = 1e-10)
+        #return quad(f, a, b, epsrel = 1e-5, epsabs = 1e-10)[0]
+    
     
     cut = 1e2
     if a < cut and b > cut:
-        return quad(f, a, cut)[0] + quad(lambda lz: np.exp(lz) * f(np.exp(lz)), np.log(cut), np.log(b))[0]
+        return _int(f, a, cut) + _int(lambda lz: np.exp(lz) * f(np.exp(lz)), np.log(cut), np.log(b))
     else:
-        return quad(f, a, b)[0]
+        return _int(f, a, b)

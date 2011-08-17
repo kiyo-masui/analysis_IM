@@ -52,7 +52,10 @@ class ForegroundMap(Map3d):
     
     _weight_gen = False
 
-    def angular_powerspectrum(self, karray):
+    def angular_powerspectrum(self, l):
+        r"""The angular function A_l. Must be a vectorized function
+        taking either np.ndarrays or scalars.
+        """
         pass
 
 
@@ -80,15 +83,12 @@ class ForegroundMap(Map3d):
         self._freq_weight, self._num_corr_freq = matrix_root_manynull(ch)
 
         rf = gaussianfield.RandomFieldA2.like_map(self)
-        #rf.widthx = self.widthx
-        #rf.widthy = self.widthy
-        #rf.numx = self.numx
-        #rf.numy = self.numy
-        
-        rf.powerspectrum = self.angular_powerspectrum
+
+        ## Construct a lambda function to evalutate the array of
+        ## k-vectors.
+        rf.powerspectrum = lambda karray: self.angular_powerspectrum((karray**2).sum(axis=2)**0.5)
 
         self._ang_field = rf
-
         self._weight_gen = True
 
     def getfield(self):

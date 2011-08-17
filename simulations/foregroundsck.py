@@ -15,9 +15,12 @@ References
 
 import numpy as np
 
+from utils import cubicspline as cs
+
 from foregroundmap import *
 
-import cubicspline as cs
+
+
 
 class ForegroundSCK(ForegroundMap):
     r"""Base class for SCK style foregrounds.
@@ -38,7 +41,7 @@ class ForegroundSCK(ForegroundMap):
 
     _cf_int = None
 
-    def angular_ps(self, larray):
+    def angular_powerspectrum(self, larray):
         psarray =  self.A*(1e-3*larray)**(-self.beta)
 
         if isinstance(larray, np.ndarray):
@@ -46,8 +49,8 @@ class ForegroundSCK(ForegroundMap):
 
         return psarray
 
-    def angular_powerspectrum(self, larray):
-        return self.angular_ps((larray**2).sum(axis=2)**0.5)
+    #def angular_powerspectrum(self, larray):
+    #    return self.angular_ps((larray**2).sum(axis=2)**0.5)
 
     def frequency_covariance(self, nu1, nu2):
         return (self.frequency_variance(nu1) * self.frequency_variance(nu2))**0.5 * self.frequency_correlation(nu1, nu2)

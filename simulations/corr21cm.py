@@ -1,10 +1,15 @@
 
 import numpy as np
 
-from simulations.corr import RedshiftCorrelation
-import simulations.cubicspline as cs
+from corr import RedshiftCorrelation
+from simulations.maps import Map3d
 
-class Corr21cm(RedshiftCorrelation):
+from utils import cubicspline as cs
+from utils import units
+
+
+
+class Corr21cm(RedshiftCorrelation, Map3d):
     r"""Correlation function of HI brightness temperature fluctuations.
 
     Incorporates reasonable approximations for the growth factor and
@@ -140,3 +145,15 @@ class Corr21cm(RedshiftCorrelation):
         r"""It's unclear what the bias should be. Using 1 for the moment. """
 
         return np.ones_like(z) * 1.0
+
+
+    def getfield(self):
+        r"""Fetch a realisation of the 21cm signal.
+        """
+        z1 = units.nu21 / self.nu_upper - 1.0
+        z2 = units.nu21 / self.nu_lower - 1.0
+
+        cube = self.realisation(z1, z2, self.x_width, self.y_width, self.nu_num, self.x_num, self.y_num, zspace = False)[::-1,:,:].copy()
+
+        return cube
+        

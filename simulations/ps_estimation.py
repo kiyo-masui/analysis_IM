@@ -1,6 +1,6 @@
 import numpy as np
 
-import radialprofile
+from utils import radialprofile
 
 def ps_azimuth(img, width = None, bwperp = 3, bwpar = 3, kmodes = True, window = False):
 
