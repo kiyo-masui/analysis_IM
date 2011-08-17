@@ -46,7 +46,7 @@ class FlagData(base_single.BaseSingle) :
         Parameters
         ----------
         Data : DataBlock
-            Contains information in a usable format direct from GBT.
+            Contains information in a usable format direct from GBT. 
 
         Returns
         -------
