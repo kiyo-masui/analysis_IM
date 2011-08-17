@@ -16,15 +16,15 @@ phi = mueller_params[:,4]
 epsilon = mueller_params[:,5]
 chi = mueller_params[:,6]
 flux = mueller_params[:,7]
-beta = mueller_params[:,8]
-PA_src = mueller_params[:,9]
-P_src = mueller_params[:,10]
+#beta = mueller_params[:,8]
+#PA_src = mueller_params[:,9]
+#P_src = mueller_params[:,10]
 #chi = mueller_params[:,8]
-Q = sp.zeros(size)
-U = sp.zeros(size)
-for ii in range(0,size):
-    Q[ii] = mueller_params[ii,10]*sp.cos(2*mueller_params[ii,9]*sp.pi/180.0)
-    U[ii] = mueller_params[ii,10]*sp.sin(2*mueller_params[ii,9]*sp.pi/180.0)
+#Q = sp.zeros(size)
+#U = sp.zeros(size)
+#for ii in range(0,size):
+#    Q[ii] = mueller_params[ii,10]*sp.cos(2*mueller_params[ii,9]*sp.pi/180.0)
+#    U[ii] = mueller_params[ii,10]*sp.sin(2*mueller_params[ii,9]*sp.pi/180.0)
 #U = sp.zeros(size)
 #for ii in range(0,size):
 #    U[ii] = abs(mueller_params[ii,7])
@@ -141,6 +141,7 @@ pylab.clf()
 pylab.plot(freq,flux,label='generated')
 pylab.scatter(freq,flux,label='data points')
 pylab.xlim(freq[-1],freq[0])
+pylab.ylim(-5,5)
 pylab.xlabel('frequency')
 pylab.ylabel('flux')
 pylab.legend()
@@ -148,42 +149,42 @@ pylab.savefig('mueller_params_flux_'+prefix+'.png')
 pylab.clf()
 
 #Beta plot 
-pylab.plot(freq,beta,label='generated')
-pylab.scatter(freq,beta,label='data points')
-pylab.xlim(freq[-1],freq[0])
-pylab.xlabel('frequency') 
-pylab.ylabel('beta') 
-pylab.legend() 
-pylab.savefig('mueller_params_beta_'+prefix+'.png')
-pylab.clf() 
+#pylab.plot(freq,beta,label='generated')
+#pylab.scatter(freq,beta,label='data points')
+#pylab.xlim(freq[-1],freq[0])
+#pylab.xlabel('frequency') 
+#pylab.ylabel('beta') 
+#pylab.legend() 
+#pylab.savefig('mueller_params_beta_'+prefix+'.png')
+#pylab.clf() 
 
 #PA_src plot  
-pylab.plot(freq,PA_src,label='generated')
-pylab.scatter(freq,PA_src,label='data points')
-pylab.xlim(freq[-1],freq[0])
-pylab.xlabel('frequency')
-pylab.ylabel('PA_src')
-pylab.legend() 
-pylab.savefig('mueller_params_PA_src_'+prefix+'.png')
-pylab.clf()  
+#pylab.plot(freq,PA_src,label='generated')
+#pylab.scatter(freq,PA_src,label='data points')
+#pylab.xlim(freq[-1],freq[0])
+#pylab.xlabel('frequency')
+#pylab.ylabel('PA_src')
+#pylab.legend() 
+#pylab.savefig('mueller_params_PA_src_'+prefix+'.png')
+#pylab.clf()  
 
 #P_src plot  
-pylab.plot(freq,P_src,label='generated')
-pylab.scatter(freq,P_src,label='data points')
-pylab.xlim(freq[-1],freq[0])
-pylab.xlabel('frequency')
-pylab.ylabel('P_src')
-pylab.legend() 
-pylab.savefig('mueller_params_P_src_'+prefix+'.png')
-pylab.clf()  
+#pylab.plot(freq,P_src,label='generated')
+#pylab.scatter(freq,P_src,label='data points')
+#pylab.xlim(freq[-1],freq[0])
+#pylab.xlabel('frequency')
+#pylab.ylabel('P_src')
+#pylab.legend() 
+#pylab.savefig('mueller_params_P_src_'+prefix+'.png')
+#pylab.clf()  
 
 
 # Q, U plots
-pylab.plot(freq, Q,label='Q_generated')
+#pylab.plot(freq, Q,label='Q_generated')
 #pylab.errorbar(freq,Q,m_err[:,6],label='Q_generated')
-pylab.scatter(freq,Q,color='b',label='Q_gen data points')
-pylab.plot(freq, U,label='U_generated')
-pylab.scatter(freq,U,color='g',label='U_gen data points')
+#pylab.scatter(freq,Q,color='b',label='Q_gen data points')
+#pylab.plot(freq, U,label='U_generated')
+#pylab.scatter(freq,U,color='g',label='U_gen data points')
 #pylab.errorbar(freq,U,m_err[:,7],label='U_generated')
 #pylab.errorbar(heiles_params[:,0],heiles_params[:,6],heiles_error[:,6],label='Q_heiles')
 #pylab.errorbar(heiles_params[:,0],heiles_params[:,7],heiles_error[:,7],label='U_heiles')
@@ -191,13 +192,13 @@ pylab.scatter(freq,U,color='g',label='U_gen data points')
 #pylab.axhline(y=Q_ave,color='y',label='mean_Q')
 #U_ave = mean(U)
 #pylab.axhline(y=U_ave,color='m',label='mean_U')
-pylab.xlim(freq[-1],freq[0])
-pylab.ylim(-0.5,0.5) 
-pylab.legend()
-pylab.xlabel('frequency')
-pylab.ylabel('fractional polarization')
-pylab.savefig('mueller_params_Q_U_'+prefix+'.png')
-pylab.clf()
+#pylab.xlim(freq[-1],freq[0])
+#pylab.ylim(-0.5,0.5) 
+#pylab.legend()
+#pylab.xlabel('frequency')
+#pylab.ylabel('fractional polarization')
+#pylab.savefig('mueller_params_Q_U_'+prefix+'.png')
+#pylab.clf()
 
 #ratio = sp.zeros(size)
 #for ii in range(0,size):

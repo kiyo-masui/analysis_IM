@@ -3,7 +3,7 @@ from numpy import *
 import scipy as sp
 import sys
 
-prefix = '66-68'
+prefix = '41-42'
 
 mm_1_row = loadtxt('mueller_matrix_first_row.txt')
 mm_2_row = loadtxt('mueller_matrix_second_row.txt')
