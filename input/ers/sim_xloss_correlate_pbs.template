@@ -1,0 +1,10 @@
+#!/bin/csh 
+#PBS -l nodes=1:ppn=1
+#PBS -q workq
+#PBS -r n
+#PBS -l walltime=48:00:00
+#PBS -N sim_xlossmodeMODEINDEX
+cd $PBS_O_WORKDIR
+echo $PYTHONPATH
+cd ..
+python correlate/radio_corr.py inifiles_ers/sim_xloss_correlate_modeMODEINDEX.ini 

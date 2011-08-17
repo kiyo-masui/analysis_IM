@@ -1,3 +1,110 @@
-This repository houses code for analysing 21 cm intensity mapping data.  Right
-now there are three main bases of code: Tzu-Ching's idl code, Kevin Bandura's
-python code and Kiyoshi Masui's python code.
+This Kiyo's code for processing GBT data.  This code depends on the Kiyo's
+personal utilities package: kiyopy (available from github, user: kiyo-masui) as
+well as several external packages: scipy, numpy, ephem, pyfits.
+
+Note that for the paths to the different packages in the subdirectories to work
+out, the python interpreter should be invoked from this directory. i.e.:
+python core/test_data_block.py
+not :
+cd core
+python test_data_block.py
+
+This will make a difference for code that depends on code in a different
+directory.
+
+Ideally, any code pushed back to the github repository should be tested and
+pass the test suit (python test_*).  Also please be conscious of backward
+compatibility.
+
+
+Environment Variables:
+
+Environment variable are used in the input files so that the same input file
+can be used on different systems (and by different users) without changing the
+input file (pain in the ass if this input file is versioned!).  Currently I am
+using two environment variables which any user should set in thier .bashrc or
+.tcshrc.
+
+$GBT10B_DATA - Points to raw GBT data. Must be readable but doesn't have to be
+writable.
+$GBT10B_OUT - Points to the directory where outputs and intermediate files are
+stored.  The programs will build subdirectories in this one.  Must be writable.
+
+In addition your $PYTHONPATH variable MUST
+begin with a ':'.  The ':' is like adding a blank string
+to your python path and tells the interpreter that the current working
+directory is to be added to the path.
+
+
+Overview and Notes on Code Design :
+
+The philosophy is to have a modular pipeline where different components on this
+pipeline can be dropped in and out in any order without crashing the whole
+thing.  To that effect, the data is stored to disk after every step of the
+pipeline and it is always stored in the same format: COMPATIBLE WITH THE
+ORIGINAL GBT FITS FILES.  This should be true right up to the map making step,
+where obviously the data format changes.
+
+For example: lets say we have a steps on the pipeline, one that applies some 
+filter to the time stream data and another that flags bad data.  The pipeline 
+looks as follows.
+
+raw gbt fits data -> flags bad data -> fits data -> filter -> fits data 
+         -> map making
+
+Then, without changing any code, we also want to be able to do the following:
+raw gbt fits data -> filter -> fits data -> map making
+or:
+raw gbt fits data -> flags bad data -> fits data -> map making
+or even:
+raw gbt fits data -> map making
+
+The advantages are as follows:
+  - Can add and remove modules at will to see what effect they have.
+  - Can replace modules, make better ones and compare results trivially.
+  - Can write modules without understanding or breaking the other ones.
+  - Can independently test modules.
+  - Don't have to wait for a monolithic code to be written before we start
+    testing and evaluating algorithms.
+
+Note that with this modular set up there is no reason that a module would have
+to be written in a particular language.  However, if you do decide to use
+python for your module, I have written some infrastructure that will
+facilitate things.
+
+
+Directories :
+
+1. core - These are core utilities for reading, writing and storeing data.
+
+The DataBlock class in data_block.py:  This is the vessel for holding time
+stream data.  It holds a single IF and a single scans worth of data.  It
+contains ALL the information needed to make a valid fits file.
+
+Reader Class in fitsGBT.py:  This reads a fits file and returns DataBlocks.
+
+Writer Class in fitsGBT.py:  This takes a bunch of DataBlocks and writes them
+to a fits file.
+
+The system probably isn't air tight, but as long as you do all your IO with
+these, you should be forced to conform to the proper standards.  For examples
+of how to use these classes, take a look at the unit tests (test_*.py).
+
+2. time_stream - Any module of the analysis where both the inputs and outputs
+are time stream fits files compatible with the the raw data taken at GBT.
+
+3. inifile_km - Input files for created by Kiyo Masui for variouse modules.
+Feel free to make you own inifile_your_initials directory or to use my input
+files.
+
+4. map - where I will be putting map makers.
+
+5. pipeline - Code that strings a bunch of modules together for covieniece.
+
+
+Module Layout :
+
+To be compatible with the pipeline, a module has to have a specific layout.
+More on this to come.
+
+
