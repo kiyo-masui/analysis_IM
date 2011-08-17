@@ -1,0 +1,199 @@
+# Input file for pol_cal module.
+
+import os
+
+from core import dir_data
+
+# Here you choose which files to process.
+field = '22hr'
+dm_field_centre = (325.75, 0.0)
+#field = '1hr'
+#dm_field_centre = (12.75, 0.0)
+#field = '15hr'
+#dm_field_centre = (218.25, 2.0)
+# Sessions 2 and 4 seem to be bad.
+#file_middles = tuple(dir_data.get_data_files([1,3,5,6,7,8,9,10,11,12,13,14,15],
+#                                             field))
+#file_middles = tuple(dir_data.get_data_files([21], field))
+#file_middles = tuple(dir_data.get_data_files(range(0, 22), field))
+#file_middles = tuple(dir_data.get_data_files(range(0, 35), field))
+#file_middles = tuple(dir_data.get_data_files(range(0, 01), field))
+#                     + dir_data.get_data_files(range(0, 36), '15hr')
+#                     + dir_data.get_data_files(range(0, 36), '22hr'))
+#Here I'm grabbing the cal data.
+#file_middles = tuple(dir_data.get_cal_files(range(24, 26)))
+#file_middles = tuple(dir_data.get_data_files(range(22, 35), field))
+#Here I'm grabbing the topo data from session 40
+#file_middles = ('117-124', '125-132', '133-140', '141-148', '25-32') 
+file_middles = tuple(dir_data.get_cal_files(range(11,12),'48'))
+#file_middles = ('d3_3c48_onoff_05-08',)
+#print file_middles
+
+pipe_modules = []
+# Chime has 8 cores, but you should save a few for other people.  Use 6 max.
+pipe_processes = 6
+#pipe_processes = 6
+
+base_dir = os.getenv('GBT10B_OUT')
+raw_data_dir = os.getenv('GBT10B_DATA')
+kiyo_dir = os.getenv('GBT10B_KM')
+prefix = ''
+#This is the prefix for the session 40 data
+#prefix = '40_wigglez15hr_azel_stepping_topo_'
+IFs = ()
+
+from time_stream import hanning 
+# Comment this line to skip this step when running python pipeline/manager
+pipe_modules.append(hanning.Hanning)
+ha_input_root = raw_data_dir
+#ha_input_root = base_dir + 'data/'
+ha_file_middles = file_middles
+ha_input_end = ".raw.acs.fits"
+ha_output_root = base_dir + 'hanning/'
+ha_output_end = ".fits"
+ha_scans = ()
+# All following steps will inherit this choice by default (because these are
+# the only IF's saved to the following fits files).
+ha_IFs = IFs
+
+#from time_stream import flag_data
+# Comment this line to skip this step when running python pipeline/manager
+#pipe_modules.append(flag_data.FlagData)
+fd_input_root = ha_output_root
+fd_file_middles = file_middles
+fd_input_end = '.fits'
+fd_output_root = base_dir + 'flagged/'
+fd_output_end = '.fits'
+fd_scans = ()
+fd_IFs = ()
+
+fd_sigma_thres = 8
+fd_pol_thres = 8
+fd_pol_width = 2
+fd_flatten_pol = True
+fd_derivative_cuts = 5
+fd_derivative_width = 1
+
+from time_stream import rebin_freq
+# Comment this line to skip this step when running python pipeline/manager
+pipe_modules.append(rebin_freq.RebinFreq)
+rf_input_root = ha_output_root
+rf_file_middles = file_middles
+rf_input_end = '.fits'
+rf_output_root = base_dir + 'rebinned/'
+rf_output_end = '.fits'
+rf_scans = ()
+rf_IFs = ()
+
+rf_channel_width = 1.0
+rf_mean_instead_median = True
+
+from time_stream import stitch_windows_crude
+#Comment the following line to skip this step when running pipeline/manager
+pipe_modules.append(stitch_windows_crude.Stitch)
+sw_input_root = rf_output_root
+sw_file_middles = file_middles
+sw_input_end = '.fits'
+sw_output_root = base_dir + 'stitched/'
+sw_output_end = '.fits'
+sw_scans = ()
+sw_IFs = ()
+
+from time_stream import cal_scale
+# Comment the following line to skip this step when running pipeline/manager
+pipe_modules.append(cal_scale.CalScale)
+cs_input_root = sw_output_root
+cs_file_middles = file_middles
+cs_input_end = '.fits'
+cs_output_root = base_dir + 'cal_scaled/'
+cs_output_end = '.fits'
+cs_scans = ()
+cs_IFs = ()
+
+cs_scale_time_average = True
+cs_scale_freq_average = False
+cs_subtract_time_median = False
+cs_scale_freq_average_mod = True
+
+from time_stream import calibrate
+# Comment line below to skip this step when running pipeline/manager
+pipe_modules.append(calibrate.Calibrate)
+cl_input_root = cs_output_root
+cl_file_middles = file_middles
+cl_input_end = '.fits'
+cl_output_root = base_dir + 'calibrated/'
+cl_output_end = '.fits'
+cl_scans = ()
+cl_IFs = ()
+
+cl_cal_temperature_files = (os.getenv('GBT10B_KM') + 'kevin_cal/cal_21.fits',)
+
+#from time_stream import rotate_pol
+# Comment this line to skip this step in pipline.
+#pipe_modules.append(rotate_pol.RotatePol)
+rp_input_root = cl_output_root
+rp_file_middles = file_middles
+rp_input_end = '.fits'
+rp_output_root = base_dir + 'rotated_for_pol_cal/'
+rp_output_end = '.fits'
+rp_scans = ()
+rp_IFs = ()
+
+rp_new_pols = (1,2,3,4)
+rp_average_cals = False
+
+#from time_stream import pol_cal
+# Comment this line to skip this step in pipline.
+#pipe_modules.append(pol_cal.Calibrate)
+pc_input_root = rp_output_root
+pc_file_middles = file_middles
+pc_input_end = '.fits'
+pc_output_root = base_dir + 'pol_cal/'
+pc_output_end = '.fits'
+
+
+#from time_stream import combine_cal
+# Comment this line to skip this step in pipeline
+#pipe_modules.append(combine_cal.CombineCal)
+cc_input_root = rp_output_root
+cc_file_middles = file_middles
+cc_input_end = '.fits'
+cc_output_root = base_dir + 'combined/'
+cc_output_end = '.fits'
+cc_scans = ()
+cc_IFs = ()
+
+cc_subtract_time_mean = True
+cc_average_cal_states = True
+cc_weights = (0.5, 0.5)
+#cc_weights = (0.0, 1.0)
+
+#from map import dirty_map
+#pipe_modules.append(dirty_map.DirtyMapMaker)
+dm_input_root = cc_output_root
+dm_file_middles = file_middles
+dm_input_end = '.fits'
+dm_output_root = base_dir + 'maps/' + field + '_00-35_'
+dm_output_end = '.fits'
+dm_scans = ()
+dm_IFs = (0,)
+
+dm_map_shape = (70, 45)
+#dm_map_shape = (100, 80)
+dm_pixel_spacing = .075
+dm_noise_model = 'disjoint_scans'
+dm_polarizations = ('I','V')
+
+#from map import clean_map
+#pipe_modules.append(clean_map.CleanMapMaker)
+cm_input_root = dm_output_root
+cm_output_root = cm_input_root
+cm_polarizations = ('I','V')
+
+# Not acctually nessesary, but good do do anyway.
+del file_middles
+del base_dir
+del prefix
+del IFs
+del raw_data_dir
+             
