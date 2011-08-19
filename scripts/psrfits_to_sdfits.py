@@ -1085,12 +1085,18 @@ def check_file_matching_scan(scan, match_str) :
         s = file_name.split('.')[-2]
         # Get the scan range part.
         s = s.split('_')[-1]
-        lo, hi = s.split('-')
-        lo = int(lo)
-        hi = int(hi)
-        # See if our scan is in that range.
-        if scan >= lo and scan <= hi :
-            return file_name
+        intstrs = s.split('-')
+        if len(intstrs) == 2:
+            # File contains a range of scans.
+            lo = int(intstrs[0])
+            hi = int(intstrs[1])
+            # See if our scan is in that range.
+            if scan >= lo and scan <= hi :
+                return file_name
+        elif len(intstrs) == 1:
+            # File contains one scan.
+            if scan == int(intstrs[0]):
+                return file_name
     return None
 
 
