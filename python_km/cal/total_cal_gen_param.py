@@ -87,11 +87,11 @@ class MuellerGen(object) :
     def residuals(self, p,errors, f,freq_val):
 #        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*2 
 #        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*(2.28315426-0.000484307905*freq_val[f]) # Added linear fit for Jansky to Kelvin conversion.
-        Isrc = 19.74748409*pow((750.0/freq_val[f]),0.49899785)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C286
-#        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for  3C48
+#        Isrc = 19.74748409*pow((750.0/freq_val[f]),0.49899785)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C286
+        Isrc = 25.15445092*pow((750.0/freq_val[f]),0.75578842)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for  3C48
         PAsrc = 33.0*sp.pi/180.0 # for 3C286 
-        Psrc = 0.07 #for 3C286 
-#        Psrc = 0 #for #3C48 
+#        Psrc = 0.07 #for 3C286 
+        Psrc = 0 #for #3C48 
         Qsrc = Isrc*Psrc*sp.cos(2*PAsrc) 
         Usrc = Isrc*Psrc*sp.sin(2*PAsrc) 
         Vsrc = 0

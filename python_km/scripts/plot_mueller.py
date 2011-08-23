@@ -2,10 +2,10 @@ import pylab
 from numpy import *
 import scipy as sp
 
-prefix = '41-42'
+prefix = '67-68'
 
 mueller_params = loadtxt('mueller_params_calc.txt')
-m_err = loadtxt('mueller_params_error.txt')
+#m_err = loadtxt('mueller_params_error.txt')
 size = len(mueller_params[:,0])
 #print mueller_params[0,:] #is a set of values for highest frequency
 freq = mueller_params[:,0]
