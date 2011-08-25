@@ -956,7 +956,7 @@ class DataManager(object) :
             # from each process.
             scans = source[1]
             # File name pattern that output files should match.
-            converted_pattern  = (params["output_root"] + str(number)
+            converted_pattern  = (params["output_root"] + "%02d"%number
                             + '_' + field + '*.fits')
             if force_session :
                 scans_to_convert = scans
