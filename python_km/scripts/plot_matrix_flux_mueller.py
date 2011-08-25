@@ -2,10 +2,10 @@ import pylab
 from numpy import *
 import scipy as sp
 
-prefix = '41-42_mod'
+prefix = '87-88'
 
 #mm = loadtxt('flux_mueller_matrix_calc.txt')
-mm = loadtxt('41_mueller_matrix_from_params_Mastro.txt')
+mm = loadtxt('87_mueller_matrix_from_params.txt')
 jones = loadtxt('jones_bin1.txt')
 
 freq = mm[:,0]

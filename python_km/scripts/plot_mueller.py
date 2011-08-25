@@ -2,7 +2,7 @@ import pylab
 from numpy import *
 import scipy as sp
 
-prefix = '67-68'
+prefix = '87-88'
 
 mueller_params = loadtxt('mueller_params_calc.txt')
 #m_err = loadtxt('mueller_params_error.txt')
@@ -61,6 +61,7 @@ pylab.xlabel('frequency')
 pylab.legend()
 pylab.savefig('mueller_params_deltaG_'+prefix+'.png')
 pylab.clf()
+
 
 #epsilon plot
 pylab.plot(freq, epsilon,label='epsilon')
