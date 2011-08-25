@@ -5,6 +5,7 @@ import os
 import glob
 
 import scipy as sp
+import scipy.signal as sig
 import numpy.random as rand
 import scipy.fftpack as fft
 
@@ -13,7 +14,7 @@ import measure_noise as mn
 import noise_power
 
 class TestModule(unittest.TestCase) :
-
+    
     def test_module(self) :
         params = {"mn_output_filename" : "noise_params.shelf",
                   "mn_output_root" : "./testout_"
@@ -50,7 +51,7 @@ class TestMeasures(unittest.TestCase) :
             Data.set_field("DATE-OBS", time_strings, axis_names=('time',))
             Blocks.append(Data)
         return Blocks
-
+    
     def test_get_variance(self) :
         self.data *= sp.arange(1, nf+1)
         Blocks = self.make_blocks()
@@ -70,8 +71,8 @@ class TestMeasures(unittest.TestCase) :
         # Generate a single 1/f noise time stream (shared by all channels)
         correlated_overf = rand.normal(size=ntime)
         correlated_overf = fft.fft(correlated_overf)
-        index = 1.5
-        amp = 2.0
+        index = 1.45
+        amp = 2.3
         f_0 = 0.5 # Hz
         correlated_overf *= sp.sqrt(amp*(frequencies/f_0)**(-index))
         # Explicitly set the mean (since right now it's NaN).
@@ -82,10 +83,8 @@ class TestMeasures(unittest.TestCase) :
         Blocks = self.make_blocks()
         # Measure the 1/f and is if we get back what we put in.
         thermal, overf = mn.get_correlated_overf(Blocks, f_0)
-        print thermal, overf
-        print thermal, thermal_norm**2
         self.assertTrue(sp.allclose(thermal, thermal_norm**2, rtol=0.3))
-        self.assertTrue(sp.allclose(overf[0], amp, atol=0.3))
+        self.assertTrue(sp.allclose(overf[0], amp, atol=0.6))
         self.assertTrue(sp.allclose(overf[1], index, atol=0.3))
 
 

@@ -1,17 +1,20 @@
 """Measure the noise parameters of the data."""
 
 import shelve
+import multiprocessing as mp
 
 import scipy as sp
 import numpy.ma as ma
 
-import noise_power as np
+import noise_power as npow
 from scipy import optimize
 from kiyopy import parse_ini, utils
+import kiyopy.pickle_method
 import kiyopy.utils
+import kiyopy.custom_exceptions as ce
 import core.fitsGBT
 
-# XXX for testing.
+# XXX
 import matplotlib.pyplot as plt
 
 
@@ -20,7 +23,6 @@ params_init = {
                "input_root" : "./testdata/",
                "file_middles" : ("testfile_GBTfits",),
                "input_end" : ".fits",
-               "output_root" : "./",
                "output_filename" : "noise_parameters.shelf",
                # Algorithm.
                "model" : "variance"
@@ -41,28 +43,66 @@ class Measure(object) :
     def execute(self, nprocesses=1) :
         
         params = self.params
-        model = params["model"]
         kiyopy.utils.mkparents(params['output_root'])
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
                                prefix=prefix)
-        output_fname = params["output_root"] + params["output_filename"]
+        output_fname = params["output_filename"]
         out_db = shelve.open(output_fname)
-        # Loop over files to process.
-        for file_middle in params['file_middles'] :
-            input_fname = (params['input_root'] + file_middle +
-                           params['input_end'])
-            Reader = core.fitsGBT.Reader(input_fname, feedback=self.feedback)
-            Blocks = Reader.read()
-            if model == "variance" :
-                parameters = get_var(Blocks)
-            else :
-                raise ValueError("Invalid noise model: " + model)
-            out_db["file_middle"] = parameters
-
+        file_middles = params['file_middles']
+        n_files = len(file_middles)
+        
+        n_new = nprocesses-1  # How many new processes to spawn at once.
+        if n_new > 0:
+            # Loop over files and spawn processes to deal with them, but make 
+            # sure that only n_new processes are going at once.
+            process_list = range(n_new)
+            pipe_list = range(n_new)
+            for ii in xrange(n_files + n_new) :
+                if ii >= n_new :
+                    out_db[file_middles[ii-n_new]] = pipe_list[ii%n_new].recv()
+                    process_list[ii%n_new].join()
+                    if process_list[ii%n_new].exitcode != 0 : 
+                        raise RuntimeError("A thread failed with exit code: "
+                                        + str(process_list[ii%n_new].exitcode))
+                if ii < n_files :
+                    input_fname = (params['input_root'] + file_middles[ii] +
+                               params['input_end'])
+                    Here, Far = mp.Pipe()
+                    pipe_list[ii%n_new] = Here
+                    process_list[ii%n_new] = mp.Process(
+                        target=self.process_file, args=(input_fname, Far))
+                    process_list[ii%n_new].start()
+        else :
+            for middle in file_middles:
+                input_fname = (params['input_root'] + middle +
+                               params['input_end'])
+                out_db[middle] = self.process_file(input_fname)
         out_db.close()
         if self.feedback > 1 :
             print ("Wrote noise parameters to file: " 
                    + utils.abbreviate_file_path(output_fname))
+
+    def process_file(self, file_name, Pipe=None) :
+        
+        try :
+            model = self.params["model"]
+            Reader = core.fitsGBT.Reader(file_name, feedback=self.feedback)
+            Blocks = Reader.read()
+            if model == "variance" :
+                parameters = get_var(Blocks)
+            elif model == "correlated_overf":
+                parameters = get_correlated_overf(Blocks, 1.0)
+            else :
+                raise ValueError("Invalid noise model: " + model)
+            if Pipe:
+                Pipe.send(parameters)
+            else:
+                return parameters
+        except :
+            if Pipe:
+                Pipe.send(-1)
+            raise
+        
 
 def get_var(Blocks) :
     """Measures the variance of a set of scans."""
@@ -83,85 +123,118 @@ def get_var(Blocks) :
     
     return var
 
-def get_correlated_overf(Blocks, f_0=1.0) :
+def get_correlated_overf(Blocks, f_0=1.0, single_blocks=True) :
     """Measures noise parameters of a set of scans assuming correlated 1/f.
+
+    Fits model to full f,f' cross power spectrum matrix.  Ignores the fact that
+    the entries of this matrix are horribly correlated.
+    
+    Parameters
+    ----------
+    single_blocks : Bool
+        False seems to be finicky with deconvolution.
     """
     
-    full_data, mask, dt = np.make_masked_time_stream(Blocks)
-    n_time = full_data.shape[0]
-    # Broadcast to shape such that all pairs of channels are calculated.
-    full_data1 = full_data[:,0,0,:,None]
-    full_data2 = full_data[:,0,0,None,:]
-    mask1 = mask[:,0,0,:,None]
-    mask2 = mask[:,0,0,None,:]
-    # Frequencies for the power spectrum (Hz)
-    frequency = np.ps_freq_axis(dt, n_time)
-    n_chan = full_data.shape[-1]
-    # Loop to do only a bit of the calculation at a time.  Reduces
-    # memory use by a factor of a few.
-    power_mat = sp.empty((n_time//2, n_chan, n_chan),
-                              dtype=float)
-    for ii in xrange(n_chan):
-        # `out` argument must be a view, not a copy.
-        np.windowed_power(full_data1[:,[ii],:], mask1[:,[ii],:], full_data2,
-                       mask2, axis=0, out=(power_mat[:,ii,:])[:,None,:])
+    # ---- First measre the noise power spectrum from the data. ----
+    # Window function to be used.  This seems to be crucial.
+    window = 'hanning'
+    # TODO Instead of deconvolving, we should really be convolving the theory.
+    deconvolve = True
+    #window = None
+    # We will either treat the blocks as one long time series or treat them
+    # each singly (but fitting a global spectrum).
+    if single_blocks:
+        first_block = True
+        n_time = None
+        # n_time = 1000
+        for Data in Blocks :
+            this_power_mat, this_frequency = npow.full_power_mat([Data], 
+                                       n_time, window, deconvolve=deconvolve)
+            if first_block:
+                power_mat = sp.zeros_like(this_power_mat)
+                n_power_mats = sp.zeros(this_power_mat.shape[1:], 
+                                        dtype=sp.int32)
+                frequency = this_frequency
+                n_time = Data.dims[0]
+            # Accumulate the power spectra.  Only use ones that have no NaNs.
+            good_spectra = sp.alltrue(sp.isfinite(this_power_mat), 0)
+            power_mat[:, good_spectra] += this_power_mat[:, good_spectra]
+            n_power_mats[good_spectra] += 1
+            # Add an all true is finite stuff here.
+            first_block = False
+        power_mat /= n_power_mats
+    else :
+        power_mat, frequency = npow.full_power_mat(Blocks, window=window,
+                                                  deconvolve=deconvolve)
+    # Check that we got finite answers.  If we didn't, need to update the code.
+    if not sp.alltrue(sp.isfinite(power_mat)) :
+        msg = ("Non finite power spectrum calculated.  Offending data in "
+               "file starting with scan %d." % (Blocks[0].field['SCAN']))
+        raise ce.DataError(msg)
     # Discard the DC 0 frequency.
     frequency = frequency[1:]
     power_mat = power_mat[1:,...]
-
-    # Now that we have the power spectrum, fit the noise model to it.
-    # Make the residual function.
+    n_chan = power_mat.shape[-1]
     n_f = len(frequency)
     
-    def correlated_overf_spec(params) :
-        amp = params[-2]
-        index = params[-1]
-        chan_thermal = params[:-2] # len = n_chan.
-        power_theory = sp.zeros_like(power_mat)
-        # Add the thermal compontent to the diagonal only (channel1 =
-        # channel2).
-        chan_diag = power_theory.reshape((n_f, n_chan*n_chan))[:,::n_chan+1]
-        chan_diag += chan_thermal
-        # Add the 1/f component to all channel combinations.
-        over_f_spec = amp*(frequency/f_0)**-index
-        power_theory += over_f_spec[:,None,None]
-        return power_theory
+    # ---- Now fit to the measured spectrum. ----
+    # First fit to the thermal free correlated part (cross terms).
+    # Take mean excluding auto correlation terms.
+    correlated_part = sp.sum(sp.sum(power_mat, -1), -1)
+    for ii in xrange(n_chan) :
+        correlated_part -= power_mat[:, ii, ii]
+    correlated_part /= (n_chan - 1)*n_chan
+    # Fit power law to this.
+    def over_f_spec(params):
+        amp = params[0]
+        index = params[1]
+        return amp*(frequency/f_0)**-index
+    def correlated_part_residuals(params):
+        return (correlated_part - over_f_spec(params))/weights
+    # Initial parameter guess.
+    over_f_params = sp.zeros(2)
+    over_f_params[0] = sp.mean(correlated_part * f_0 / frequency)
+    over_f_params[1] = 1.0
+    # Initial weights.
+    weights = abs(correlated_part)
+    # Perform fit iteratively, updating the weights.
+    # XXX
+    #plt.figure()
+    #plt.loglog(frequency, correlated_part, 'b.')
+    #plt.loglog(frequency, -correlated_part, 'r.')
+    #plt.loglog(frequency, over_f_spec(over_f_params), 'g') 
+    # XXX
+    for ii in range(6) :
+        # Memory to eliminate oscillations.  Seems to be nessisary.
+        weights = 2*sp.sqrt(abs(over_f_spec(over_f_params)*weights/2))    
+        over_f_params, ier = sp.optimize.leastsq(correlated_part_residuals, 
+                                                 over_f_params)
+        # XXX
+        #plt.figure()
+        #plt.loglog(frequency, correlated_part, 'b.')
+        #plt.loglog(frequency, -correlated_part, 'r.')
+        #plt.loglog(frequency, over_f_spec(over_f_params), 'g')
+    #print over_f_params
+    #plt.show() 
+    # XXX
     
-    def get_residuals(params) :
-        # Return residuals.
-        power_theory = correlated_overf_spec(params)
-        # The windowed power spectrum really has a full covariance.  Could use
-        # that as weights...
-        residuals = (power_mat - power_theory)/weights
-        return residuals.flat
-    
-    # On first fit, use uniform errors. On each following iteration, get the
-    # errors from the best fit solution.
-    weights = 1.0
-    x = sp.ones(n_chan + 2)
-    for ii in range(3) :
-        x, ier = sp.optimize.leastsq(get_residuals, x)
-        weights = 2*correlated_overf_spec(x)
-
-    if False :
-        #p = sp.empty(n_chan+2)
-        #p[:n_chan] = 1.0 + 1.0/n_chan*sp.arange(n_chan)
-        #p[-2] = 2.0
-        #p[-1] = 1.5
-        p = x
-        plt.loglog(frequency, power_mat[:,5,5])
-        plt.loglog(frequency, correlated_overf_spec(p)[:,5,5])
-        plt.figure()
-        plt.loglog(frequency, power_mat[:,5,4])
-        plt.loglog(frequency, correlated_overf_spec(p)[:,5,4])
-        plt.show()
-        
-        
+    # Now fit to the thermal parts one channel at a time.
+    # Data we will fit to.
+    thermal_part = power_mat
+    thermal_part.shape = (n_f, n_chan*n_chan)
+    thermal_part = thermal_part[:,::n_chan+1]
+    thermal_part -= over_f_spec(over_f_params)[:,None]
+    # Do the fit.
+    # This is just a linear fit to the diagonal parts of the power matrix.    
+    thermal_params = sp.mean(thermal_part, 0)
+    for ii in xrange(3):
+        weights = 2*(over_f_spec(over_f_params)[:,None] + thermal_params)
+        thermal_params = (sp.sum(thermal_part/weights**2, 0)
+                          / sp.sum(1.0/weights**2, 0))
     # Unpack answers.
-    over_f = (x[-2], x[-1])
-    thermal = x[:-2]
-    
-    return thermal, over_f
+    over_f = (over_f_params[0], over_f_params[1], f_0)
+
+    return thermal_params, over_f
 
 
 # If this file is run from the command line, execute the main function.

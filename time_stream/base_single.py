@@ -109,7 +109,7 @@ class BaseSingle(object) :
             # due to pyfits memory leak.
             process_list = range(n_new)
             for ii in xrange(n_files + n_new) :
-                if ii > n_new :
+                if ii >= n_new :
                     process_list[ii%n_new].join()
                     if process_list[ii%n_new].exitcode != 0 : 
                         raise RuntimeError("A thread failed with exit code: "
@@ -133,7 +133,7 @@ class BaseSingle(object) :
         index.
         """
 	
-	self.file_ind = file_ind
+        self.file_ind = file_ind
         params = self.params
         file_middle = params['file_middles'][file_ind]
         input_fname = (params['input_root'] + file_middle +

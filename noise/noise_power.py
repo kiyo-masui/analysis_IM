@@ -5,6 +5,7 @@ import sys
 
 import scipy as sp
 import scipy.fftpack as fft
+import scipy.signal as sig
 import numpy.ma as ma
 import matplotlib.pyplot as plt
 
@@ -311,7 +312,7 @@ def ps_freq_axis(dt, n):
     frequency *= df
     return frequency
 
-def make_masked_time_stream(Blocks, ntime=None) :
+def make_masked_time_stream(Blocks, ntime=None, window=None) :
     """Converts Data Blocks into a single uniformly sampled time stream.
     
     Also produces the mask giving whether elements are valid entries or came
@@ -325,6 +326,9 @@ def make_masked_time_stream(Blocks, ntime=None) :
         Total number of time bins in output arrays.  If shorter than required
         extra data is truncated.  If longer, extra data is masked.  Default is
         to use exactly the number that fits all the data.
+    window : string or tuple
+        Type of window to apply to each DataBlock.  Valid options are the valid
+        arguments to scipy.signal.get_window().  By default, don't window.
 
     Returns
     -------
@@ -374,19 +378,37 @@ def make_masked_time_stream(Blocks, ntime=None) :
     # Allowcate memory for the outputs.
     time_stream = sp.zeros((ntime,) + back_shape, dtype=float)
     mask = sp.zeros((ntime,) + back_shape, dtype=sp.float32)
+    # Very important to subtract the mean out of the signal, otherwise the
+    # window coupling to the mean (0) mode will dominate everything.
+    total_sum = 0
+    total_counts = 0
+    for Data in Blocks:
+        total_sum += sp.sum(Data.data.filled(0), 0)
+        total_counts += ma.count(Data.data, 0)
+    total_mean = total_sum / total_counts
     # Loop over all times and fill in the arrays.
     for Data in Blocks :
+        # Subtract the mean calculated above.
+        Data.data -= total_mean
         # Apply an offset to the time in case the start of the Data Block
         # doesn't line up with the time array perfectly.
         offset = time[sp.argmin(abs(time - Data.time[0]))] - Data.time[0]
+        # Generate window function.
+        if window:
+            window_function = sig.get_window(window, Data.dims[0])
         for ii in range(Data.dims[0]) :
             ind = sp.argmin(abs(time - (Data.time[ii] + offset)))
             if abs(time[ind] - (Data.time[ii])) < 0.5*dt :
                 if sp.any(mask[ind, ...]) :
                     msg = "Overlapping times in Data Blocks."
                     raise ce.DataError(msg)
-                time_stream[ind, ...] = Data.data[ii, ...].filled(0.0)
-                mask[ind, ...] = sp.logical_not(ma.getmaskarray(
+                if window:
+                    window_value = window_function[ii]
+                else :
+                    window_value = 1.0
+                time_stream[ind, ...] = (window_value 
+                                         * Data.data[ii, ...].filled(0.0))
+                mask[ind, ...] = window_value * sp.logical_not(ma.getmaskarray(
                                      Data.data)[ii, ...])
     return time_stream, mask, dt
 
@@ -443,12 +465,25 @@ def windowed_power(data1, window1, data2=None, window2=None, axis=-1, out=None) 
     data_power = fft.fft(data1, axis=axis)*fft.fft(data2, axis=axis).conj()
     window_power = (fft.fft(window1, axis=axis)
                     * fft.fft(window2, axis=axis).conj())
-    true_corr = (fft.ifft(data_power, axis=axis, overwrite_x=True)
-                 / fft.ifft(window_power, axis=axis, overwrite_x=True))
-    del data_power, window_power
+    data_corr = fft.ifft(data_power, axis=axis, overwrite_x=True)
+    window_corr = fft.ifft(window_power, axis=axis, overwrite_x=True)
+    true_corr = data_corr / window_corr
+    n = data1.shape[axis]
+    # XXX
+    #plt.figure()
+    #plt.semilogy(window_power[:,0,0], '.')
+    #plt.semilogy(-window_power[:,0,0], '.r')
+    #plt.figure()
+    #plt.semilogy(window_corr[:, 0, 0])
+    #plt.semilogy(data_corr[:, 0, 0])
+    #plt.semilogy(true_corr[:, 0, 0])
+    #plt.semilogy(true_corr[:, 0, 1])
+    #plt.show()
+    #print sp.where(window_corr == 0)
+    # XXX
+    del data_power, window_power, data_corr, window_corr
     true_power = fft.fft(true_corr, axis=axis, overwrite_x=True)
     del true_corr
-    n = len(data1)
     # Truncate the power spectrum to only the unaliased and positive
     # frequencies.
     s = slice(n//2)
@@ -458,9 +493,71 @@ def windowed_power(data1, window1, data2=None, window2=None, axis=-1, out=None) 
     if not out is None :
         out[...] = true_power[indices]
     else :
-        # Copy to release memory.
+        # Copy to release extra memory.
         out = sp.copy(true_power[indices])
     return out
+
+def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True) :
+    """Calculate the full power spectrum of a data set with channel
+    correlations.
+    
+    Only one cal state and pol state assumed.
+    """
+
+    full_data, mask, dt = make_masked_time_stream(Blocks, n_time, window)
+    n_time = full_data.shape[0]
+    # Broadcast to shape such that all pairs of channels are calculated.
+    full_data1 = full_data[:,0,0,:,None]
+    full_data2 = full_data[:,0,0,None,:]
+    mask1 = mask[:,0,0,:,None]
+    mask2 = mask[:,0,0,None,:]
+    # XXX Accutally do this efficiently.
+    if not deconvolve:
+        mask1[:] = 1
+        mask2[:] = 1
+    # Frequencies for the power spectrum (Hz)
+    frequency = ps_freq_axis(dt, n_time)
+    n_chan = full_data.shape[-1]
+    # Loop to do only a bit of the calculation at a time.  Reduces
+    # memory use by a factor of a few.
+    power_mat = sp.empty((n_time//2, n_chan, n_chan),
+                              dtype=float)
+    for ii in xrange(n_chan):
+        # `out` argument must be a view, not a copy.
+        windowed_power(full_data1[:,[ii],:], mask1[:,[ii],:], full_data2,
+                       mask2, axis=0, out=(power_mat[:,ii,:])[:,None,:])
+
+    return power_mat, frequency
+
+def diag_power_mat(Blocks, n_time=None, window=None, deconvolve=True) :
+    """Calculate the full power spectrum of a data set without channel
+    correlations.
+    
+    Only one cal state and pol state assumed.
+    """
+
+    full_data, mask, dt = make_masked_time_stream(Blocks, n_time, window)
+    n_time = full_data.shape[0]
+    # Broadcast to shape such that all pairs of channels are calculated.
+    full_data1 = full_data[:,0,0,:]
+    mask1 = mask[:,0,0,:]
+    # XXX Accutally do this efficiently.
+    if not deconvolve:
+        mask1[:] = 1
+        mask2[:] = 1
+    # Frequencies for the power spectrum (Hz)
+    frequency = ps_freq_axis(dt, n_time)
+    n_chan = full_data.shape[-1]
+    # Loop to do only a bit of the calculation at a time.  Reduces
+    # memory use by a factor of a few.
+    power_mat = sp.empty((n_time//2, n_chan),
+                              dtype=float)
+    windowed_power(full_data1, mask1, axis=0, out=power_mat)
+
+    return power_mat, frequency
+
+
+
 
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":
