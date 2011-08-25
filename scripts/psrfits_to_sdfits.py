@@ -919,7 +919,7 @@ class DataManager(object) :
         # Version of session_dirs with absolute path.
         guppi_dirs = [guppi_root + dir + "/" 
                       for dir in session_dirs]
-        fits_root = params["fits_log_root"] + str(number) + "/"
+        fits_root = params["fits_log_root"] + "%02d"%number + "/"
         outroot = params["output_root"]
         print ("Processing sesson " + str(number) + ", in guppi directories "
                 + str(guppi_dirs))
