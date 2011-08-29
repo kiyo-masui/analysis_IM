@@ -682,7 +682,7 @@ class alg_object(object) :
         This method gets the interpolation weights for interpolating the
         alg_object is some subset of it's dimensions.  This provides the
         freedom in the uninterpolated dimensions to either slice or otherwise
-        index the arry.
+        index the array.
 
         Parameters
         ----------
@@ -691,7 +691,7 @@ class alg_object(object) :
         coord : float or sequence of floats (length N)
             The coordinate location to interpolate at.
         kind : string
-            The interpolation algorithm.  Options are: 'linear'.
+            The interpolation algorithm.  Options are: 'linear' or 'nearest'.
 
         Returns
         -------
@@ -743,7 +743,6 @@ class alg_object(object) :
                 normalized_distance[ii, 1] = distances[min_ind]/delta
             # Now that we have all the distances, figure out all the weights.
             for ii in range(m) :
-                index = []
                 temp_ii = ii
                 weight = 1.0
                 for jj in range(n) :
@@ -751,10 +750,28 @@ class alg_object(object) :
                     weight *= (1.0 - normalized_distance[jj, temp_ii%2])
                     temp_ii = temp_ii//2
                 weights[ii] = weight
-            return points, weights
+        elif kind == 'nearest':
+            # Only one grid point to consider and each axis is independant.
+            m = 1
+            weights = sp.ones(1, dtype=int)
+            points = sp.empty((1, n), dtype=int)
+            # Loop over the axes we are interpolating.
+            for ii in range(n):
+                axis_name = self.axes[axes[ii]]
+                axis_centre = self.info[axis_name + "_centre"]
+                axis_delta = self.info[axis_name + "_delta"]
+                index = (coord[ii] - axis_centre)/axis_delta
+                index += self.shape[axes[ii]]//2
+                if index < 0 or index > self.shape[axes[ii]] - 1:
+                    message = ("Interpolation coordinate outside of "
+                               "interpolation range.  axis: " + str(axes[ii])
+                               + ", coord: " + str(coord[ii]) + ".")
+                    raise ValueError(message)
+                points[0, ii] = round(index)
         else :
             message = "Unsupported interpolation algorithm: " + kind
             raise ValueError(message)
+        return points, weights
         
     def slice_interpolate(self, axes, coord, kind='linear') :
         """Interpolate along a subset of dimensions.
@@ -769,7 +786,7 @@ class alg_object(object) :
         coord : float or sequence of floats (length N)
             The coordinate location to interpolate at.
         kind : string
-            The interpolation algorithm.  Options are: 'linear'.
+            The interpolation algorithm.  Options are: 'linear', 'nearest'.
         
         Returns
         -------
@@ -1470,7 +1487,7 @@ def dot(arr1, arr2, check_inner_axes=True) :
     shape2 = arr2.mat_shape()
 
     if shape1[-1] != shape2[0] :
-        raise ValueError("Matrix dimensions incompatible for matrix ",
+        raise ValueError("Matrix dimensions incompatible for matrix "
                          "multiplication.")
     # Matrix-vector product case.
     if len(shape1) == 2 and len(shape2) ==1 :
@@ -1491,7 +1508,6 @@ def dot(arr1, arr2, check_inner_axes=True) :
                     raise ce.DataError("Matrix column axis names are not the "
                                        "same as vector axes names and strict "
                                        "checking has been requested.")
-
         # Figure out what the output vector is going to look like.
         out_shape = [arr1.shape[ii] for ii in range(arr1.ndim)
                      if ii in arr1.info['rows']]
@@ -1539,6 +1555,8 @@ def as_alg_like(array, obj):
         Algebra object from which propertise should be copied.
     """
     
+    if not isinstance(obj, alg_object):
+        raise TypeError("Object to mimic must be an `alg_object`.")
     out = array
     out = info_array(out)
     out.info = dict(obj.info)
@@ -1552,6 +1570,7 @@ def as_alg_like(array, obj):
     return out
 
 
+# TODO: These need scipy standard documentation.
 def array_summary(array, testname, axes, meetall=False, identify_entries=True):
     """helper function for summarizing arrays
     meetall: prints those entries for which all values in the slice meet the
@@ -1580,7 +1599,6 @@ def array_summary(array, testname, axes, meetall=False, identify_entries=True):
         print "-" * 80
     else:
         print "There are no " + testname + " entries"
-
 
 def compressed_array_summary(array, name, axes=[1, 2], extras=False):
     """print various summaries of arrays compressed along specified axes"""

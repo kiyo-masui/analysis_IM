@@ -344,12 +344,12 @@ class TestMatVectFromArray(unittest.TestCase) :
 class TestAlgUtils(unittest.TestCase) :
     
     def setUp(self) :
-        data = sp.arange(30)
+        data = sp.arange(30, dtype=float)
         data.shape = (5, 2, 3)
         self.vect = algebra.info_array(data)
         self.vect = algebra.vect_array(self.vect, 
                                        axis_names=('freq', 'a', 'b'))
-        data = sp.arange(120)
+        data = sp.arange(120, dtype=float)
         self.mat = algebra.info_array(data)
         self.mat.shape = (5, 4, 6)
         self.mat = algebra.mat_array(self.mat, row_axes=(0,1), col_axes=(0,2), 
@@ -541,7 +541,7 @@ class TestAlgUtils(unittest.TestCase) :
         self.assertTrue(sp.allclose(weights, 0.5))
         self.assertTrue(2 in points)
         self.assertTrue(3 in points)
-        # Test liear interpolations in multi D.
+        # Test linear interpolations in multi D.
         points, weights = v.slice_interpolate_weights([0, 1, 2], 
                                                       [0.5, 0.5, 1.5],
                                                       'linear')
@@ -566,6 +566,22 @@ class TestAlgUtils(unittest.TestCase) :
         out.shape = (2,)
         self.assertTrue(sp.allclose(out, v.slice_interpolate([0, 2], 
                              [3.14159, 1.4112], 'linear')))
+
+    def test_slice_interpolate_nearest(self):
+        v = self.vect
+        v.set_axis_info('freq', 2, 1)
+        v.set_axis_info('a', 1, 1)
+        v.set_axis_info('b', 1, 1)
+        points, weights = v.slice_interpolate_weights(0, 2.3, 'nearest')
+        self.assertTrue(sp.allclose(weights, 1))
+        self.assertTrue(sp.allclose(points, 2))
+        points, weights = v.slice_interpolate_weights((1, 2), (0.1, 0.9),
+                                                      'nearest')
+        self.assertTrue(sp.allclose(weights, 1))
+        self.assertTrue(sp.allclose(points, [[0, 1]]))
+        v[3, :, 1] = sp.arange(2, dtype=float)*sp.pi
+        self.assertTrue(sp.allclose(v.slice_interpolate((0, 2), (2.5, 1.1), 
+                'nearest'), sp.arange(2)*sp.pi))
 
 class TestMatUtilsSq(unittest.TestCase) :
 
