@@ -1524,7 +1524,6 @@ def dot(arr1, arr2, check_inner_axes=True) :
             out_flat[ii*block_shape[0]:(ii+1)*block_shape[0]] = \
                 sp.dot(block, arr2_flat[ii*block_shape[1]:
                                         (ii+1)*block_shape[1]])
-            
         return out_vect
     else :
         raise NotImplementedError("Matrix-matrix multiplication has not been "

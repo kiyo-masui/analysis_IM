@@ -265,3 +265,19 @@ def ampfit(data, covariance, theory):
 
     return amp, error
 
+def rebin_1D(array, reduce=4, axis=-1):
+    shape = array.shape
+    if axis < 0:
+        axis = array.ndim + axis
+    array.shape = shape[:axis] + (shape[axis]//reduce, reduce) + shape[axis+1:]
+    out = sp.zeros(shape[:axis] + (shape[axis]//reduce,) + shape[axis+1:],
+                   dtype=array.dtype)
+    for ii in range(reduce):
+        index = [slice(None),]*array.ndim
+        index[axis+1] = ii
+        index = tuple(index)
+        out += array[index]
+    out /= reduce
+    array.shape = shape
+    return out
+

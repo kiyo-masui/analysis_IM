@@ -41,6 +41,7 @@ def make_test_data():
     # Constant el.
     el = sp.zeros(nt) + 40.0
     # Scanning az.
+    # XXX no cross linking.
     az = sp.copy(dec)
     # Now make some data that has stuff that both correlates on the sky and in
     # az-el.
