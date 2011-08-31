@@ -17,6 +17,8 @@ class Corr21cm(RedshiftCorrelation, Map3d):
 
     """
 
+    add_mean = False
+
     def __init__(self, ps = None, redshift = 0.0, **kwargs):
         if ps == None:
             from os.path import join, dirname
@@ -50,7 +52,10 @@ class Corr21cm(RedshiftCorrelation, Map3d):
                 * ((1.0 + z) / 2.5)**0.5 * (self.omega_HI(z) / 1e-3))
 
     def mean(self, z):
-        return self.T_b(z)
+        if self.add_mean:
+            return self.T_b(z)
+        else:
+            return np.zeros_like(z)
 
     def omega_HI(self, z):
         return 1e-3
