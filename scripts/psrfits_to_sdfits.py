@@ -20,6 +20,7 @@ import os
 import glob
 import subprocess
 import warnings
+import time as tm
 
 import numpy.ma as ma
 import scipy as sp
@@ -57,7 +58,15 @@ params_init = {# Inputs.
                # power of 2 and less than 2048.
                "time_bins_to_average" : 1,
                # Scans to not convert.
-               "blacklist" : []
+               "blacklist" : [],
+               # Approximate amount of data to fold to find the cal phase.
+               # Each section of data this long will be folded and the cal
+               # phase independanly solved for.  In seconds.
+               # This should shorter than the time it takes for guppi and the
+               # noise cal to change relative phase significantly.  Empirically
+               # this seems to be about a minute for guppi samples of 0.001024s
+               # and cal period of 64 times this.
+               "cal_fold_time" : 30
                }
 prefix = ''
 
@@ -94,17 +103,7 @@ class Converter(object) :
             # Open the go fits file.
             scan_log_files = scan_log.field('FILEPATH')[
                 scan_log.field('SCAN')==initial_scan]
-            # Find the one that's a GO fits file.
-            found_file = False
-            for file_name in scan_log_files :
-                if 'GO' in file_name :
-                    go_file = (log_dir + "/GO" + file_name.split("GO")[1])
-                    found_file = True
-                    break
-            if not found_file :
-                raise ce.DataError("GO file not in scan log file: " + log_dir
-                                   + "/ScanLog.fits. Scan: " 
-                                   + str(initial_scan))
+            go_file = log_dir + get_filename_from_key(scan_log_files, "GO")
             go_hdu = pyfits.open(go_file)[0].header
 
             # From the go information get the source and the scan type.
@@ -112,14 +111,15 @@ class Converter(object) :
             self.proceedure = go_hdu["PROCNAME"].strip().lower()
 
             if params["combine_map_scans"] :
-                # Read the go file and figure out all the scans in the same map.
+                # Read the go file and figure out all the scans in the same
+                # map.
                 # Check the go files for all scans make sure everything is
                 # consistant.
                 self.n_scans_proc = go_hdu["PROCSIZE"]
                 # Which scan this is of the sequence (1 indexed).
                 self.initial_scan_ind = go_hdu["PROCSEQN"]
-                scans_this_file = (sp.arange(self.n_scans_proc, dtype=int) + 1 -
-                                   self.initial_scan_ind + initial_scan)
+                scans_this_file = (sp.arange(self.n_scans_proc, dtype=int) + 1 
+                                   - self.initial_scan_ind + initial_scan)
                 scans_this_file = list(scans_this_file)
 
             else :
@@ -178,8 +178,8 @@ class Converter(object) :
             out_file = (params["output_root"] + session + '_' + object + '_' +
                         self.proceedure + '_' + str_scan_range + '.fits')
             
-            # Output data is pretty large so we'd better protect the pyfits part
-            # in a process lest memory leaks kill us.
+            # Output data is pretty large so we'd better protect the 
+            # pyfits part in a process lest memory leaks kill us.
             if len(Block_list) > 0 :
                 p = mp.Process(target=out_write, args=(Block_list, out_file))
                 p.start()
@@ -202,16 +202,7 @@ class Converter(object) :
         # First find the GO fits file.
         scan_log_files = scan_log.field('FILEPATH')[
             scan_log.field('SCAN')==scan]
-        # Find the one that's a GO fits file.
-        found_file = False
-        for file_name in scan_log_files :
-            if 'GO' in file_name :
-                go_file = (log_dir + "/GO" + file_name.split("GO")[1])
-                found_file = True
-                break
-        if not found_file :
-            raise ce.DataError("GO file not in scan log file: " + log_dir
-                               + "/ScanLog.fits. Scan: " + str(scan))
+        go_file = log_dir + get_filename_from_key(scan_log_files, "GO")
         # If we are combining multiple scans from one proceedure, make sure
         # that they all came from the same one (ie that the proceedure
         # wasn't aborted).
@@ -224,34 +215,10 @@ class Converter(object) :
                 Pipe.send(-1)
                 return
 
-        # Now find the Antenna fits file.
-        found_file = False
-        for file_name in scan_log_files :
-            if 'Antenna' in file_name :
-                antenna_file = (log_dir + "/Antenna" +
-                                file_name.split("Antenna")[1])
-                found_file = True
-                break
-        if not found_file :
-            raise ce.DataError("Antenna file not in Scan Log")
-        # Open the antenna fits file.
-        antenna_hdu_list = pyfits.open(antenna_file, 'readonly')
-        ant_main = antenna_hdu_list[0].header
-        ant_header = antenna_hdu_list[2].header
-        ant_data = antenna_hdu_list[2].data
-        # Get the time of the scan midpoint in seconds since 00:00 UTC.
-        # Times in Julian Days.
-        ant_times = ant_data.field("DMJD")
-        # Times in days since midnight UTC on day of scan start. Time in this
-        # array become greater than one if scan spans midnight UTC.
-        ant_times -= (ant_times[0] - ant_times[0]%1.0)
-        # Seconds.
-        ant_times *= 24.0 * 3600.0
-        # Get the az and el out of the antenna.
-        ant_az = ant_data.field("OBSC_AZ")
-        ant_el = ant_data.field("OBSC_EL")
-        az_interp = interp.interp1d(ant_times, ant_az)
-        el_interp = interp.interp1d(ant_times, ant_el)
+        # Now get the pointing data from the antenna fits file.
+        antenna_file = (log_dir + get_filename_from_key(scan_log_files, 
+                                                        "/Antenna"))
+        az_interp, el_interp, ant_time_range = get_antenna_data(antenna_file)
         
         # Get the guppi file name.  We check all of the guppi input roots to
         # see if there is a corresponding file.
@@ -330,7 +297,7 @@ class Converter(object) :
         # fits file as a good (but scan strategy specific) check.
         if self.proceedure == 'ralongmap' :
             zenith_angle = psrdata[0]["TEL_ZEN"]
-            if not sp.allclose(90.0 - zenith_angle, ant_el, atol=0.1) :
+            if not sp.allclose(90.0 - zenith_angle, el_interp.y, atol=0.1) :
                 raise ce.DataError("Antenna el disagrees with guppi el.")
         # Occationally, the guppi integrates longer than the scan and the
         # antenna fits file won't cover the first or last few records.
@@ -343,10 +310,10 @@ class Converter(object) :
                         - sample_time*ntime/2)
             latest = (start_seconds + record_offsets[n_records-1]
                       + sample_time*ntime/2)
-            if earliest < min(ant_times) :
+            if earliest < ant_time_range[0] :
                 start_record -= 1
                 print "Discarded first record due to antenna time mismatch."
-            if latest > max(ant_times) :
+            if latest > ant_time_range[1] :
                 n_records -= 1
                 print "Discarded last record due to antenna time mismatch."
 
@@ -377,13 +344,38 @@ class Converter(object) :
         if psrheader["POL_TYPE"].strip() == 'IQUV' :
             Data.set_field('CRVAL4', [1,2,3,4], ('pol',), '1I')
         else :
-            raise ce.DataError("Unrecognized polarizations.")
-        Data.set_field('OBSERVER', psrmain['OBSERVER'], (), '32A')
+            raise ce.DataError("Unsupported polarizations.")
         if get_cal :
             Data.set_field('CAL', ['T', 'F'], ('cal',), '1A')
         else :
             Data.set_field('CAL', ['F'], ('cal',), '1A')
         Data.verify()
+        
+        # We will devided the data into params["cal_fold_time"] chunks and
+        # solve for the cal phase in each one.  Figure out how many records go
+        # in each chunk.
+        # Figure out the number of time bins in a cal period.
+        if get_cal:
+            try :
+                cal_period = 1.0/psrmain["CAL_FREQ"]
+            except ZeroDivisionError :
+                # Default value that we usually use.
+                cal_period = 0.065536
+            n_bins_cal = cal_period/sample_time
+            if n_bins_cal%1.0 > 0.00001 :
+                raise NotImplementedError("Need an integer number of "
+                                          "samples per cal period.")
+            n_bins_cal = int(round(n_bins_cal))
+            if n_bins_ave%n_bins_cal != 0 :
+                raise ValueError("You should rebin on a multiple of "
+                                 "the cal period.  Change parameter "
+                                         "time_bins_to_average.")
+            total_time = (n_records - start_record)*ntime*sample_time
+            n_divisions = total_time/params['cal_fold_time']
+            n_divisions = int(round(n_divisions))
+            n_records_div = float(n_records - start_record)/n_divisions
+            division_starts = [int(round(start_record + n_records_div*ii))
+                               for ii in range(n_divisions+1)]
 
         # Loop over the records and modify the data.
         if self.feedback > 1 :
@@ -395,59 +387,80 @@ class Converter(object) :
             if self.feedback > 1 :
                 print jj,
                 sys.stdout.flush()
+            # Do one pass through the current division of the data to find the
+            # folding offsets.
+            if get_cal and jj in division_starts :
+                div_num = division_starts.index(jj)
+                # Loop over the data and accumulate it into one array profile.
+                record_profile = sp.zeros((ntime, nfreq), dtype=float)
+                for kk in range(division_starts[div_num],
+                                division_starts[div_num+1]):
+                    record_tmp = psrdata[kk]
+                    # Data comes from telescope as wierd unsigned and signed 
+                    # ints.  Handle carefully. Only interested in stokes I.
+                    tmp_data = record_tmp["DATA"]
+                    tmp_data.shape = (ntime, npol, nfreq)
+                    # The 'I' polarization should already be correctly formated
+                    # as an uint8.
+                    tmp_data = tmp_data[:,0,:]
+                    # There are actually time intependant a frequency dependant
+                    # scalings that are ignored here.  They shouldn't affect
+                    # the shape of the profile much.
+                    record_profile += tmp_data
+                # `get_cal_mask` expects 3D data.
+                record_profile.shape = (ntime, 1, nfreq)
+                # Try to get the profile of this division.  If we fail, set the
+                # Phase info to None, which cause the phase to be solved for on
+                # a record by record basis.
+                try :
+                    cal_phase_info = get_cal_mask(record_profile, n_bins_cal)
+                except ce.DataError :
+                    cal_phase_info = None
             # Get the data field.
             data = record["DATA"]
             # Convert the Data to the proper shape and type.
             data = format_data(data, ntime, npol, nfreq)
-            # Now get the scale and offsets for the data and apply them.
-            scls = sp.array(record["DAT_SCL"], dtype=sp.float32)
-            scls.shape = (1, npol, nfreq)
-            offs = sp.array(record["DAT_OFFS"], dtype=sp.float32)
-            offs.shape = (1, npol, nfreq)
 
             if get_cal :
-                # Figure out the number of time bins in a cal period.
-                try :
-                    cal_period = 1.0/psrmain["CAL_FREQ"]
-                except ZeroDivisionError :
-                    # Default value that we usually use.
-                    cal_period = 0.065536
-                n_bins_cal = cal_period/sample_time
-                if n_bins_cal%1.0 > 0.00001 :
-                    raise NotImplementedError("Need an integer number of "
-                                              "samples per cal periode.")
-                n_bins_cal = int(round(n_bins_cal))
-                if n_bins_ave%n_bins_cal != 0 :
-                    raise ValueError("You should rebin on a multiple of "
-                                     "the cal period.  Change parameter "
-                                     "time_bins_to_average.")
-                # We can speed up the separating of the cal by rebinning in
-                # time first.
-                tmp_n_bins_ave = n_bins_ave//n_bins_cal
-                data.shape = (n_bins, tmp_n_bins_ave, n_bins_cal, npol,
-                              nfreq)
+                data = separate_cal(data, n_bins_cal, cal_phase_info)
+
+                # Down sample from the cal period to the final number of time
+                # bins.
+                data.shape = (n_bins, ntime//n_bins_cal//n_bins, npol,
+                              ncal, nfreq)
                 # Use mean not median due to discritization.
-                data = scls*sp.mean(data, 1) + offs
-                data.shape = (n_bins*n_bins_cal, npol, nfreq)
-                # Finally devided into cal on and cal off.
-                data = separate_cal(data, n_bins_cal)
+                data = sp.mean(data, 1)
             else :
                 # Just rebin in time and add a length 1 cal index.
-                data.shape = (n_bins, n_bins_ave, npol, nfreq)
+                data.shape = (n_bins, n_bins_ave, npol, ncal, nfreq)
                 data = sp.mean(data, 1)
-                data = scls*data + offs
-                data.shape = (n_bins, npol, ncal, nfreq)
+            # Now get the scale and offsets for the data and apply them.
+            scls = sp.array(record["DAT_SCL"], dtype=sp.float32)
+            scls.shape = (1, npol, 1, nfreq)
+            offs = sp.array(record["DAT_OFFS"], dtype=sp.float32)
+            offs.shape = (1, npol, 1, nfreq)
+            data = scls*data + offs
+            
             # Now figure out the timing information.
             time = start_seconds + record["OFFS_SUB"]
             time = time + (sp.arange(-n_bins/2.0 + 0.5, n_bins/2.0 + 0.5)
                            * resampled_time)
+            # Make sure that there are no time gaps between records.
+            # This is nessisary for the cal separation to be valid.
+            if jj > start_record:
+                record_time = record["OFFS_SUB"] - last_offs_sub
+                if not sp.allclose(record_time, n_bins*resampled_time):
+                    msg = "Time gaps between records"
+                    raise ce.DataError(msg)
+            last_offs_sub = record["OFFS_SUB"] 
+
             # Make sure that our pointing data covers the guppi data time
             # range within the 0.1 second accuracy.
-            if ((max(time) - max(ant_times) > 0.) or 
-                (min(time) - min(ant_times) < 0.)) :
+            if ((max(time) - ant_time_range[1] > 0.) or 
+                (min(time) - ant_time_range[0] < 0.)) :
                 message = ("Guppi data time range not covered by antenna."
                            " Antenna: file " + antenna_file + " range "
-                           + str((min(ant_times), max(ant_times)))
+                           + str((ant_time_range[0], ant_time_range[1]))
                            + " guppi: file " + guppi_file + " range "
                            + str((min(time), max(time))))
                 raise ce.DataError(message)
@@ -482,6 +495,44 @@ class Converter(object) :
             print
         # Send Data back on the pipe.
         Pipe.send(Data)
+
+# These functions not unit tested, simply made functions for convienience.
+
+def get_antenna_data(ant_filename) :
+        
+    # Open the antenna fits file.
+    antenna_hdu_list = pyfits.open(ant_filename, 'readonly')
+    ant_main = antenna_hdu_list[0].header
+    ant_header = antenna_hdu_list[2].header
+    ant_data = antenna_hdu_list[2].data
+    # Get the time of the scan midpoint in seconds since 00:00 UTC.
+    # Times in Julian Days.
+    ant_times = ant_data.field("DMJD")
+    # Times in days since midnight UTC on day of scan start. Time in this
+    # array become greater than one if scan spans midnight UTC.
+    ant_times -= (ant_times[0] - ant_times[0]%1.0)
+    # Seconds.
+    ant_times *= 24.0 * 3600.0
+    # Get the az and el out of the antenna.
+    ant_az = ant_data.field("OBSC_AZ")
+    ant_el = ant_data.field("OBSC_EL")
+    az_interp = interp.interp1d(ant_times, ant_az)
+    el_interp = interp.interp1d(ant_times, ant_el)
+    return az_interp, el_interp, (min(ant_times), max(ant_times))
+
+
+def get_filename_from_key(file_list, key) :
+    found_file = False
+    for file_name in file_list :
+        if key in file_name :
+            file = ("/" + key + file_name.split(key)[1])
+            found_file = True
+            break
+    if not found_file :
+        raise ce.DataError(key + " file not in scan log.")
+    else :
+        return file
+
 
 # Functions for the most error prone parts of the above script.  Unit testing
 # applied to these.
@@ -522,9 +573,10 @@ def get_cal_mask(data, n_bins_cal) :
     ntime = data.shape[0]
     
     if ntime%n_bins_cal != 0 :
-        raise ValueError("Number of bins in a cal period must devide the number"
-                        " of time bins in a subintegration (generally number"
-                        " of bins in a cal period should be a power of 2).")
+        msg = ("Number of bins in a cal period must devide the number"
+               " of time bins in a subintegration (generally number"
+               " of bins in a cal period should be a power of 2).")
+        raise ValueError(msg)
 
     # Fold the Stokes I data on the cal period to figure out the phase.
     # Sum over the frequencies.
@@ -583,7 +635,7 @@ def get_cal_mask(data, n_bins_cal) :
 
     return first_on, n_blank
 
-def separate_cal(data, n_bins_cal) :
+def separate_cal(data, n_bins_cal, cal_mask=None) :
     """Function separates data into cal_on and cal off.
     
     No Guarantee that data argument remains unchanged."""
@@ -591,11 +643,14 @@ def separate_cal(data, n_bins_cal) :
     # Allowcate memeory for output    
     ntime, npol, nfreq = data.shape
     n_bins_after_cal = ntime//n_bins_cal
-    out_data = sp.empty((n_bins_after_cal, npol, 2, nfreq), dtype=sp.float32)
+    out_data = sp.zeros((n_bins_after_cal, npol, 2, nfreq), dtype=sp.float32)
     
     # Get the phase offset of the cal.
     try :
-        first_on, n_blank = get_cal_mask(data, n_bins_cal)
+        if cal_mask is None:
+            first_on, n_blank = get_cal_mask(data, n_bins_cal)
+        else :
+            first_on, n_blank = cal_mask
     except ce.DataError :
         print "Discarded record due to bad profile. "
         out_data[:] = float('nan')
@@ -626,8 +681,16 @@ def separate_cal(data, n_bins_cal) :
 
         # Find cal on and cal off averages.  Always use mean not median due to
         # discretization noise.
-        out_data[:,:,0,:] = sp.mean(data[:,on_mask,:,:], 1)
-        out_data[:,:,1,:] = sp.mean(data[:,off_mask,:,:], 1)
+        # This loop is much faster than the built in numpy mean() for some
+        # reason.
+        for ii in range(n_bins_cal) :
+            if on_mask[ii]:
+                out_data[:,:,0,:] += data[:,ii,:,:]
+            elif off_mask[ii]:
+                out_data[:,:,1,:] += data[:,ii,:,:]
+        out_data[:,:,0,:] /= sp.sum(on_mask)
+        out_data[:,:,1,:] /= sp.sum(off_mask)
+
 
     return out_data
 
@@ -863,7 +926,7 @@ class DataManager(object) :
         # Version of session_dirs with absolute path.
         guppi_dirs = [guppi_root + dir + "/" 
                       for dir in session_dirs]
-        fits_root = params["fits_log_root"] + str(number) + "/"
+        fits_root = params["fits_log_root"] + "%02d"%number + "/"
         outroot = params["output_root"]
         print ("Processing sesson " + str(number) + ", in guppi directories "
                 + str(guppi_dirs))
@@ -900,7 +963,7 @@ class DataManager(object) :
             # from each process.
             scans = source[1]
             # File name pattern that output files should match.
-            converted_pattern  = (params["output_root"] + str(number)
+            converted_pattern  = (params["output_root"] + "%02d"%number
                             + '_' + field + '*.fits')
             if force_session :
                 scans_to_convert = scans
@@ -924,7 +987,8 @@ class DataManager(object) :
                 converter_params = {"guppi_input_end" : "_0001.fits",
                                     "combine_map_scans" : True,
                                     "partition_cal" : True,
-                                    "time_bins_to_average" : 128
+                                    "time_bins_to_average" : 128,
+                                    "cal_fold_time" : 30
                                     }
                 # The parameters that are acctually assigned dynamically.
                 converter_params["scans"] = tuple(scans_to_convert)
@@ -1028,12 +1092,18 @@ def check_file_matching_scan(scan, match_str) :
         s = file_name.split('.')[-2]
         # Get the scan range part.
         s = s.split('_')[-1]
-        lo, hi = s.split('-')
-        lo = int(lo)
-        hi = int(hi)
-        # See if our scan is in that range.
-        if scan >= lo and scan <= hi :
-            return file_name
+        intstrs = s.split('-')
+        if len(intstrs) == 2:
+            # File contains a range of scans.
+            lo = int(intstrs[0])
+            hi = int(intstrs[1])
+            # See if our scan is in that range.
+            if scan >= lo and scan <= hi :
+                return file_name
+        elif len(intstrs) == 1:
+            # File contains one scan.
+            if scan == int(intstrs[0]):
+                return file_name
     return None
 
 
