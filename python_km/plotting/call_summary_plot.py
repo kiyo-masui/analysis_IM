@@ -268,8 +268,6 @@ def make_corr_plots(filename):
                     autocorr_sim_low, autocorr_sim_center, autocorr_sim_high):
         print "%5.3g %5.3g %5.3g %5.3g %5.3g %5.3g" % correntry
 
-    sys.exit()
-
     # treat the autocorr and loss simulations----------------------------------
     lags = np.zeros((3, nlag))
     autocorr = np.zeros((nmode, nlag))
@@ -298,19 +296,27 @@ def make_corr_plots(filename):
     mode_compensation = autocorr_sim_avg/zero_modes[None, :]
     compensated_autocorr = autocorr/mode_compensation
     compensated_autocorr_err = autocorr_err/mode_compensation
-    print mode_compensation
 
+    print "-"*80
     for lagind in range(0, nlag):
         lag_bounds = splt.fancy_vector(lags[:,lagind], "%5.2g")
         modes = splt.fancy_vector(autocorr[:,lagind], "%5.2g")
         modes_err = splt.fancy_vector(autocorr_err[:,lagind], "%5.2g")
         print lag_bounds + modes + modes_err
 
+    print "-"*80
+    for lagind in range(0, nlag):
+        lag_bounds = splt.fancy_vector(lags[:,lagind], "%5.2g")
+        modes = splt.fancy_vector(mode_compensation[:,lagind], "%5.2g")
+        print lag_bounds + modes
+
+    print "-"*80
     for lagind in range(0, nlag):
         lag_bounds = splt.fancy_vector(lags[:,lagind], "%5.2g")
         modes = splt.fancy_vector(autocorr_sim_avg[:,lagind], "%5.2g")
         print lag_bounds + modes
 
+    print "-"*80
     for lagind in range(0, nlag):
         lag_bounds = splt.fancy_vector(lags[:,lagind], "%5.2g")
         modes = splt.fancy_vector(compensated_autocorr[:,lagind], "%5.2g")

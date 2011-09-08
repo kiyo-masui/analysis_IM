@@ -130,12 +130,22 @@ def combine_maps(param_dict, fullcov=False, verbose=False):
 
 
 def make_individual():
-    fourway_split = make_fourway_list('/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test1/',
-                                      '/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test1/')
+    fourway_split = make_fourway_list("/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/84_ABCD_all_15_modes/",
+                                      "/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/84_ABCD_all_15_modes/",
+                                      map_middle = "_22hr_41-84_cleaned_clean_map_I_with_",
+                                      cov_middle = "_22hr_41-84_cleaned_noise_inv_I_with_")
     (map_out, weights_out, prodmap_out) = combine_maps(fourway_split)
-    algebra.save("combined_41-73_cleaned_clean_test.npy", map_out)
-    algebra.save("combined_41-73_cleaned_noise_inv_test.npy", weights_out)
-    algebra.save("combined_41-73_cleaned_product_test.npy", prodmap_out)
+    algebra.save("combined_22hr_41-84_cleaned_clean.npy", map_out)
+    algebra.save("combined_22hr_41-84_cleaned_noise_inv.npy", weights_out)
+    algebra.save("combined_22hr_41-84_cleaned_product.npy", prodmap_out)
+
+    #fourway_split = make_fourway_list('/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test1/',
+    #                                  '/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test1/')
+    #(map_out, weights_out, prodmap_out) = combine_maps(fourway_split)
+    #algebra.save("combined_41-73_cleaned_clean_test.npy", map_out)
+    #algebra.save("combined_41-73_cleaned_noise_inv_test.npy", weights_out)
+    #algebra.save("combined_41-73_cleaned_product_test.npy", prodmap_out)
+
     #(map_out, weights_out, prodmap_out) = combine_maps(cleanmaps_fourway,
     #                                                   fullcov=True)
     #algebra.save("combined_41-73_clean_test.npy", map_out)
@@ -283,9 +293,10 @@ def reprocess_batch_pickle():
 
 
 if __name__ == '__main__':
-    repackage_pickle_as_shelve("/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/73_ABCD_all_15_modes_realmap_ra_fixed/New_Slices_object.pkl",
-                               "/mnt/raid-project/gmrt/eswitzer/wiggleZ/batch_runs/new_autocorr_test/radio_autocorr_15_modes")
+    #repackage_pickle_as_shelve("/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/73_ABCD_all_15_modes_realmap_ra_fixed/New_Slices_object.pkl",
+    #                           "/mnt/raid-project/gmrt/eswitzer/wiggleZ/batch_runs/new_autocorr_test/radio_autocorr_15_modes")
     #make_modetest_combined_map()
     #make_modetest_combined_sim()
     #add_sim_radio()
     #reprocess_batch_pickle()
+    make_individual()

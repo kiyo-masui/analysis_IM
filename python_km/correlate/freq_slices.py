@@ -914,7 +914,6 @@ def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
     x_left[1:] = lags[:-1]
     x_right = lags
     x_centre = (x_right + x_left)/2.0
-    
 
     return out_corr, out_weights, (x_left, x_centre, x_right)
 
