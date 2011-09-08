@@ -287,6 +287,14 @@ class TestHistory(unittest.TestCase) :
         Block2 = self.Reader.read(0, 1)
         Block1.add_history('Processed.', ('Processing detail 1',))
         Block2.add_history('Processed.', ('Processing detail 2',))
+        hist_entry = ("This is a long history entry that is much longer than "
+                      "80 characters and should cause a wrapping of the fits "
+                      "history key.")
+        hist_detail = ("We really want to check that the pyfits "
+                       "mechanisms/any supporting code that Ive written can "
+                       "properly deal with this.",)
+        Block1.add_history(hist_entry, hist_detail)
+        Block2.add_history(hist_entry, hist_detail)
         Writer = fitsGBT.Writer((Block1, Block2), 0)
         Writer.write('temp2.fits')
         newReader = fitsGBT.Reader('temp2.fits', 0)
@@ -302,11 +310,14 @@ class TestHistory(unittest.TestCase) :
         self.assertEqual(len(hist['001: Processed.']), 2)
         self.assertEqual(hist['001: Processed.'][0], 'Processing detail 1')
         self.assertEqual(hist['001: Processed.'][1], 'Processing detail 2')
-        self.assertTrue(hist.has_key('002: Written to file.'))
-        self.assertEqual(len(hist['002: Written to file.']), 1)
-        self.assertEqual(hist['002: Written to file.'][0], 'File name: ' + 
+        self.assertTrue(hist.has_key('002: ' + hist_entry))
+        self.assertEqual(len(hist['002: ' + hist_entry]), 1)
+        self.assertEqual(hist['002: ' + hist_entry][0], hist_detail[0])
+        self.assertTrue(hist.has_key('003: Written to file.'))
+        self.assertEqual(len(hist['003: Written to file.']), 1)
+        self.assertEqual(hist['003: Written to file.'][0], 'File name: ' + 
                          'temp2.fits')
-        self.assertTrue(hist.has_key('003: Read from file.'))
+        self.assertTrue(hist.has_key('004: Read from file.'))
 
 
     def tearDown(self) :
