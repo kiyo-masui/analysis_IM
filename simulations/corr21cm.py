@@ -25,7 +25,7 @@ class Corr21cm(RedshiftCorrelation, Map3d):
             psfile = join(dirname(__file__),"data/ps_z1.5.dat")
             redshift = 1.5
 
-            kstar = 50.0
+            kstar = 5.0
             c1 = cs.LogInterpolater.fromfile(psfile)
             ps = lambda k: np.exp(-0.5 * k**2 / kstar**2) * c1(k)
 
