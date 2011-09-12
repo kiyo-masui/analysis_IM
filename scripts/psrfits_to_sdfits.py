@@ -919,7 +919,7 @@ class DataManager(object) :
         # Version of session_dirs with absolute path.
         guppi_dirs = [guppi_root + dir + "/" 
                       for dir in session_dirs]
-        fits_root = params["fits_log_root"] + str(number) + "/"
+        fits_root = params["fits_log_root"] + "%02d"%number + "/"
         outroot = params["output_root"]
         print ("Processing sesson " + str(number) + ", in guppi directories "
                 + str(guppi_dirs))
@@ -956,7 +956,7 @@ class DataManager(object) :
             # from each process.
             scans = source[1]
             # File name pattern that output files should match.
-            converted_pattern  = (params["output_root"] + str(number)
+            converted_pattern  = (params["output_root"] + "%02d"%number
                             + '_' + field + '*.fits')
             if force_session :
                 scans_to_convert = scans
