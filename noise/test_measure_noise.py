@@ -31,6 +31,7 @@ class TestModule(unittest.TestCase) :
 nf = 5
 nt = 1000
 dt = 0.13
+bw = 1.0/dt/2
 nb = 5
 class TestMeasures(unittest.TestCase) :
     
@@ -60,35 +61,23 @@ class TestMeasures(unittest.TestCase) :
 
     def test_get_overf(self) :
         # Give every channel a different thermal noise floor.
-        thermal_norm = 1.0 + 1.0/nf*sp.arange(nf)
-        self.data *= thermal_norm
+        thermal_norm = 1.0 + 1.0/nf*sp.arange(nf)  # K**2/Hz
+        self.data *= sp.sqrt(thermal_norm * bw)
+        # Now make a 1/f like noise component
         ntime = self.data.shape[0]
-        # Get the fft frequencies in standard packing.
-        frequencies = sp.arange(ntime, dtype=float)
-        frequencies[ntime//2:] -= ntime
-        frequencies *= 1.0/dt/ntime
-        frequencies = abs(frequencies)
-        # Generate a single 1/f noise time stream (shared by all channels)
-        correlated_overf = rand.normal(size=ntime)
-        correlated_overf = fft.fft(correlated_overf)
-        index = 1.45
-        amp = 2.3
-        f_0 = 0.5 # Hz
-        correlated_overf *= sp.sqrt(amp*(frequencies/f_0)**(-index))
-        # Explicitly set the mean (since right now it's NaN).
-        correlated_overf[0] = 8.0
-        correlated_overf = fft.ifft(correlated_overf).real
+        index = -1.45
+        amp = 2.3  # K**2/Hz
+        f_0 = 0.5 #  Hz
+        correlated_overf = noise_power.generate_overf_noise(amp, index, f_0,
+                                                            dt, ntime)
         # Add 1/f to all channels (perfectly correlated).
         self.data += correlated_overf[:,None,None,None]
         Blocks = self.make_blocks()
         # Measure the 1/f and is if we get back what we put in.
         thermal, overf = mn.get_correlated_overf(Blocks, f_0)
-        self.assertTrue(sp.allclose(thermal, thermal_norm**2, rtol=0.3))
-        self.assertTrue(sp.allclose(overf[0], amp, atol=0.6))
-        self.assertTrue(sp.allclose(overf[1], index, atol=0.3))
-
-
-
+        self.assertTrue(sp.allclose(thermal, thermal_norm, rtol=0.15))
+        self.assertTrue(sp.allclose(overf[0], amp, rtol=0.3))
+        self.assertTrue(sp.allclose(overf[1], index, atol=0.1))
 
 if __name__ == '__main__' :
     unittest.main()

@@ -924,6 +924,7 @@ class vect(alg_object) :
         _check_axis_names(self)
         return (self.size,)
 
+
 def _vect_class_factory(base_class) :
     """Internal class factory for making a vector class that inherits from
     either info_array or info_memmap."""
@@ -1414,6 +1415,32 @@ class mat(alg_object) :
                     col_start:col_start + block_shape[1]] = mat_block
         return out_mat
 
+    def transpose(self):
+        """Transpose the matrix.
+
+        Returns an `mat` object with rows and columns exchanged.  The
+        underlying array is not modified.
+
+        Returns
+        -------
+        transposed_matrix : mat object
+            A view of `self`, with different meta data such that the matrix is
+            transposed.
+        """
+        
+        # Make a copy of the info dictionary.
+        info = dict(self.info)
+        # Make a view of self.
+        out = self.view()
+        # Replace the info dictionary (which is a reference to self.info) with
+        # the copy.
+        out.info = info
+        # Transpose the axes.
+        out.cols = self.rows
+        out.rows = self.cols
+        return out
+
+
 def _mat_class_factory(base_class) :
     """Internal class factory for making a matrix class that inherits from
     either info_array or info_memmap."""
@@ -1529,6 +1556,76 @@ def dot(arr1, arr2, check_inner_axes=True) :
         raise NotImplementedError("Matrix-matrix multiplication has not been "
                                   "Implemented yet.")
 
+def partial_dot(arr1, arr2, new_axes_location=0):
+    """Perform matrix multiplication on some subset of the axes.
+    
+    This is similar to a numpy `tensordot` but it is aware of the matrix and
+    vector nature of the inputs and returns appropriate objects.  It decides
+    which axes to 'dat' based on the axis names. It also gives you a choice of
+    where to put the new axes.
+
+    This is only implemented for a matrix x vector, where all the matrix
+    columns have names that that correspond to the vector axes.
+
+    Parameters
+    ----------
+    arr1 : alg_object (only mat implemented)
+    arr2 : alg_object (only vect implemented)
+    new_axes_location : int
+    
+    Returns
+    -------
+    out_arr : alg_object (only vect implemented)
+    """
+
+    if isinstance(arr1, mat) and isinstance(arr2, vect):
+        # Figure out which axes of the vector will be dotted.
+        vect_dot_axes = ()
+        vect_dot_shape = ()
+        for column_name in arr1.col_names():
+            if not column_name in arr2.axes:
+                msg = "All column axes must match a vector axis"
+                raise NotImplementedError(msg)
+            vect_axis_index = list(arr2.axes).index(column_name)
+            vect_dot_axes += (vect_axis_index,)
+            vect_dot_shape += (arr2.shape[vect_axis_index],)
+        if arr1.col_shape() != vect_dot_shape:
+            msg = "Axes to be dotted do not agree in length."
+            raise ValueError(msg)
+        # Figure out what the new array is going to look like.
+        new_arr_shape = ()
+        new_arr_axis_names = ()
+        for ii in range(arr2.ndim):
+            if not ii in vect_dot_axes:
+                new_arr_shape += (arr2.shape[ii],)
+                new_arr_axis_names += (arr2.axes[ii],)
+        new_arr_shape = (new_arr_shape[:new_axes_location] + arr1.row_shape()
+                         + new_arr_shape[new_axes_location:])
+        new_arr_axis_names = (new_arr_axis_names[:new_axes_location] 
+                              + arr1.row_names()
+                              + new_arr_axis_names[new_axes_location:])
+        # XXX: Probably want to make the dtype something more general
+        # considering the mat dtype.
+        out_arr = sp.empty(new_arr_shape, dtype=arr2.dtype)
+        out_arr = make_vect(out_arr, axis_names=new_arr_axis_names)
+        # Set up the arrays for the multiply.
+        n_row_axes = len(arr1.rows)
+        n_col_axes = len(arr1.cols)
+        # In many cases, the mose efficient thing to do is to iterate over the
+        # matrix rows.
+        tensordot_axes = (tuple(range(n_col_axes)), vect_dot_axes)
+        new_arr_index = [slice(None)] * out_arr.ndim
+        for mat_index in arr1.iter_row_index():
+            this_row = arr1[mat_index]
+            new_arr_entry = sp.tensordot(this_row, arr2, tensordot_axes)
+            for ii in xrange(n_row_axes):
+                new_arr_index[new_axes_location + ii] = mat_index[arr1.rows[ii]]
+            out_arr[tuple(new_arr_index)] = new_arr_entry
+    else:
+        msg = "Only matrix-vector multiplication implemented."
+        raise NotImplementedError(msg)
+    return out_arr
+
 def zeros_like(obj) :
     """Create a new algebra object full of zeros but otherwise the same 
     as the passed object."""
@@ -1592,9 +1689,7 @@ def array_summary(array, testname, axes, meetall=False, identify_entries=True):
             else:
                 print "has " + testname + ": " + \
                       repr(np.where(match_count.flatten() != 0))
-
             print "total " + testname + "s: " + repr(total_matching)
-
         print "-" * 80
     else:
         print "There are no " + testname + " entries"
@@ -1616,5 +1711,4 @@ def compressed_array_summary(array, name, axes=[1, 2], extras=False):
         print sum_nu.flatten()
         print min_nu.flatten()
         print max_nu.flatten()
-
     print ""

@@ -52,5 +52,5 @@ np_cal_weights = (1.0,1.0)
 #np_cal_weights = (1.0, -1.0)
 np_n_time_bins = 0
 np_window = "hanning"
-np_deconvolve = True
+np_deconvolve = False
 

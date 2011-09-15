@@ -431,6 +431,49 @@ class TestAlgUtils(unittest.TestCase) :
         algebra.dot(self.mat, self.vect, check_inner_axes=False)
         self.assertRaises(ce.DataError, algebra.dot, self.mat, self.vect)
 
+    def test_partial_dot_mat_vect(self):
+        self.mat.shape = (4, 6, 5)
+        self.mat.rows = (0, 1)
+        self.mat.cols = (2,)
+        self.mat.axes = ('x', 'y', 'freq')
+        new_vect = algebra.partial_dot(self.mat, self.vect, 0)
+        self.assertEqual(new_vect.shape, (4, 6, 2, 3))
+        self.assertEqual(new_vect.axes, ('x', 'y', 'a', 'b'))
+        numerical_result = sp.dot(sp.reshape(self.mat, (4*6, 5)), 
+                                  sp.reshape(self.vect, (5, 2*3)))
+        self.assertTrue(sp.allclose(numerical_result.flatten(),
+                                    new_vect.flatten()))
+
+    def test_transpose(self):
+        mat = self.mat
+        mat_info = dict(mat.info)
+        matT = mat.transpose()
+        self.assertEqual(mat.rows, matT.cols)
+        self.assertEqual(mat.mat_shape()[0], matT.mat_shape()[1])
+        self.assertEqual(mat.mat_shape()[1], matT.mat_shape()[0])
+        self.assertEqual(mat.row_shape(), matT.col_shape())
+        self.assertEqual(mat.col_names(), matT.row_names())
+        self.assertEqual(mat.row_names(), matT.col_names())
+        self.assertEqual(mat.shape, mat.shape)
+        self.assertEqual(mat.info, mat_info)
+
+    def test_transpose_partial_dot(self):
+        self.mat.shape = (5, 4, 6)
+        self.mat.cols = (1, 2)
+        self.mat.rows = (0,)
+        self.mat.axes = ('freq', 'x', 'y')
+        matT = self.mat.transpose()
+        new_vect = algebra.partial_dot(matT, self.vect, 0)
+        self.assertEqual(new_vect.shape, (4, 6, 2, 3))
+        self.assertEqual(new_vect.axes, ('x', 'y', 'a', 'b'))
+        # Reform origional matrix to get same numerical result.
+        mat = sp.reshape(self.mat, (5, 4*6))
+        mat = sp.rollaxis(mat, 1, 0)
+        numerical_result = sp.dot(mat, sp.reshape(self.vect, (5, 2*3)))
+        self.assertTrue(sp.allclose(numerical_result.flatten(),
+                                    new_vect.flatten()))
+
+
     def test_dot_mat_checks_dims(self) :
         """ Make sure that it checks that marticies have compatible dimensions 
         for matrix multiplication."""

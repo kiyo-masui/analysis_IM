@@ -1,10 +1,15 @@
 """Dirty map making module."""
 
+import math
+
 import scipy as sp
 import numpy.ma as ma
+import scipy.fftpack as fft
 
 import core.algebra as al
 import tools
+
+T_infinity = 10000.0  # Kelvin**2
 
 class Pointing(object):
     """Class represents the pointing operator."""
@@ -49,9 +54,21 @@ class Pointing(object):
         self._map = al.as_alg_like(map[...], map)
 
     def apply_to_time_axis(self, time_stream, map_out=None):
-        """Use this operator to convert a 'time' axis to a coordinate axis."""
-
-        pass
+        """Use this operator to convert a 'time' axis to a coordinate axis.
+        
+        This functions implements a fast matrix multiplication.  For input
+        `map`, the following operations should be equivalent, with the later
+        much more efficient.
+        
+        >>> a = al.partial_dot(self.get_matrix.transpose(), map)
+        >>> b = self.apply_to_time_axis(map)
+        >>> sp.allclose(a, b)
+        True
+        
+        """
+        
+        msg = "Fast multiply not implemented."
+        raise NotImplementedError(msg)
 
     def get_matrix(self):
         """Gets the matrix representation of the pointing operator."""
@@ -80,22 +97,82 @@ class Pointing(object):
         return matrix
 
 
+class Noise(object):
+    """Object that represents the noise matrix for time stream data.
+    
+    The noise matrix is represented as separate components each with different
+    symetries.  This is so the huge matrix does not have to be stored.
+    """
 
-class Noise_independant_channels(object):
+    def __init__(self, time_stream_data):
+        if len(time_stream_data.shape) != 2:
+            raise ValueError("Only 2D data suported (freq, time).")
+        self.data_shape = time_stream_data.shape
 
-    def __init__(self):
+    def initialize_diagonal(self):
+        """Create the diagonal part of the noise matrix if it doesn't exist."""
+
+        if hasattr(self, "diagonal"):
+            return
+        diagonal = sp.zeros(self.data_shape, dtype=float)
+        diagonal = al.make_mat(diagonal, axis_names=("freq", "time"), 
+                               row_axes=(0, 1), col_axes=(0, 1))
+        self.diagonal = diagonal
+
+    def initialize_allfreq(self):
+        """Create the part of the noise matrix that contributes to a
+        frequencies equally.
+        """
+
+        if hasattr(self, "allfreq"):
+            return
+        allfreq = sp.zeros((self.data_shape[1], self.data_shape[1]), 
+                           dtype=float)
+        allfreq = al.make_mat(allfreq, axis_names=("time", "time"), 
+                               row_axes=(0,), col_axes=(1,))
+        self.allfreq = allfreq
+
+
+    def add_thermal(self, thermal_levels):
+        """Add a thermal component to the noise.
+        """
+        
+        self.initialize_diagonal()
+        self.diagonal += thermal_levels[:, None]
+
+    def add_mask(self, mask_inds):
+        """Add a mask to the noise.
+        """
+        
+        self.initialize_diagonal()
+        self.diagonal[mask_inds] += T_infinity
+
+    def deweight_time_mean(self):
+        """Deweights time mean in each channel.
+        """
+        
+        self.initialize_allfreq()
+        nt = self.data_shape[1]
+        new_noise = sp.zeros((nt, nt), dtype=float)
+        new_noise += T_infinity/nt
+        new_noise.flat[::nt + 1] += 1.0
+        self.allfreq += new_noise
+
+    def deweight_time_slope(self):
+        """Deweights time slope in each channel.
+        """
+
+        raise NotImplementedError()
+    
+    def add_correlated_over_f(self, amp, index, f0):
+        """Add 1/f noise that is perfectly correlated between frequencies.
+        """
+
+        if hasattr(self, "correlated_modes"):
+            raise RuntimeError("The correlated modes already exist and would "
+                               "be overwritten.")
         pass
 
-    def apply_inverse(self):
-        pass
 
-    def transform_map_space(self, Pointing, matrix_out=None):
-        pass
-
-
-class Noise(Noise_independant_channels):
-
-    def __init__(self):
-        pass
 
 

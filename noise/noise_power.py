@@ -2,10 +2,12 @@
 
 import os
 import sys
+import math
 
 import scipy as sp
 import scipy.fftpack as fft
 import scipy.signal as sig
+import numpy.random as rand
 import numpy.ma as ma
 import matplotlib.pyplot as plt
 
@@ -39,6 +41,8 @@ params_init = {
     "deconvolve" : True
     }
 
+prefix = 'np_'
+
 class NoisePower(object) :
     """Calculates the Noise power spectrum and other noise statistics."""
   
@@ -50,6 +54,7 @@ class NoisePower(object) :
 
     def execute(self, nprocesses=1) :
         
+        # Some set up.
         params = self.params
         kiyopy.utils.mkparents(params['output_root'])
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
@@ -60,8 +65,8 @@ class NoisePower(object) :
         n_files = len(params["file_middles"])
         window = params['window']
         deconvolve = params['deconvolve']
-        first_iteration = True
         # Loop over files to process.
+        first_iteration = True
         for file_middle in params['file_middles'] :
             input_fname = (params['input_root'] + file_middle +
                            params['input_end'])
@@ -82,24 +87,30 @@ class NoisePower(object) :
                                                    * pol_weights[ii]
                                                    * cal_weights[jj])
                 Data.set_data(data_selected)
-            #full_data, mask, this_dt = make_masked_time_stream(Blocks, n_time,
-            #                                                  window="hanning")
-            power_mat, this_frequency, this_n_time, this_dt, full_mean = \
+            # Calculate the raw power spectrum.
+            power_mat, window_function, this_dt, full_mean = \
                 full_power_mat(Blocks, n_time=n_time, window=window, 
-                               deconvolve=deconvolve, return_extras=True)
+                deconvolve=deconvolve)
             # TODO: Figure out a better way to deal with this (only drop
             # affected frequencies).
             #if sp.any(sp.allclose(mask[:,0,0,:], 0.0, 0)):
             #    n_files -= 1
             #    continue
             if first_iteration :
-                n_time = this_n_time
-                frequency = this_frequency
-            elif not sp.allclose(frequency, this_frequency, rtol=0.001):
+                n_time = power_mat.shape[0]
+                dt = this_dt
+            elif not sp.allclose(dt, this_dt, rtol=0.001):
                 msg = "Files have different time samplings."
                 raise ce.DataError(msg)
-            thermal_expectation = (full_mean / sp.sqrt(this_dt) 
-                                / sp.sqrt(abs(Blocks[0].field['CDELT1'])))
+            # Format the power spectrum.
+            power_mat = prune_power(power_mat, 0)
+            power_mat = make_power_physical_units(power_mat, this_dt)
+            # TODO In the future the thermal expectation could include
+            # polarization factors (be 'I' aware) and cal factors.
+            thermal_expectation = (full_mean / sp.sqrt(this_dt)  /
+                                   sp.sqrt(abs(Blocks[0].field['CDELT1'])) /
+                                   sp.sqrt(1.0 / 2.0 / this_dt))
+                                
             if params['norm_to_thermal'] :
                 power_mat /= (thermal_expectation[:,None] 
                               * thermal_expectation[None,:])
@@ -107,168 +118,16 @@ class NoisePower(object) :
             if first_iteration :
                 self.power_mat = power_mat
                 self.thermal_expectation = thermal_expectation
-                self.frequency = frequency
             else :
                 self.power_mat += power_mat
                 self.thermal_expectation += thermal_expectation
             first_iteration = False
+        self.frequency = ps_freq_axis(dt, n_time)
         if n_files > 0 :
             self.power_mat /= n_files
             self.thermal_expectation / n_files
-
-
-
-params_init_old = {
-               # Input and output.
-               "input_root" : "./",
-               "file_middles" : ("GBTdata",),
-               "input_end" : ".raw.acs.fits",
-               "output_root" : "noisemodel",
-               "output_end" : '',
-               # Select data to process.
-               "scans" : (),
-               "IFs" : (),
-               # Algorithm
-               "calculate_power_spectrum" : False,
-               "calculate_covariance" : True,
-               "subtract_freq_average" : False,
-               "lags" : tuple(sp.arange(0.01, 61, 5.)),
-               "normalize_to_average" : False,
-               "norm_pol_weights" : ( 1., 0., 0., 1.),
-               "norm_cal_weights" : ( 1., 1.),
-               "normalize_dnudt" : True,
-               "segment_length" : 0,
-               # Polarizations and Cal States
-               "pol_weights" : ( 1., 0., 0., 1.),
-               "cal_weights" : (0., 1.),
-               # Whether to stack the results for all the files togther or to
-               # hold everything in a list.
-               "stack_files" : True
-               }
-prefix = 'np_'
-
-
-class NoisePowerOld(object) :
-    """Calculates time power spectrum and correlation function of data.
-    """
-    
-    def __init__(self, parameter_file_or_dict=None, feedback=2) :
-        # Read the parameter file, store in dictionary named parameters.
-        self.params = parse_ini.parse(parameter_file_or_dict, params_init_old, 
-                                      prefix=prefix, feedback=feedback)
-        self.feedback = feedback
-
-    def execute(self, nprocesses=1) :
-        
-        params = self.params
-        kiyopy.utils.mkparents(params['output_root'])
-        parse_ini.write_params(params, params['output_root'] + 'params.ini',
-                               prefix=prefix)
-        cal_weights = params['cal_weights']
-        pol_weights = params['pol_weights']
-        scan_len = params['segment_length']
-        
-        first_iteration = True
-        # Loop over files to process.
-        for file_middle in params['file_middles'] :
-            input_fname = (params['input_root'] + file_middle +
-                           params['input_end'])
-            # Read in the data, and loop over data blocks.
-            Reader = core.fitsGBT.Reader(input_fname)
-            Blocks = Reader.read(params['scans'], params['IFs'],
-                                 force_tuple=True)
-            # Loop over scans.
-            for Data in Blocks :
-                if (Data.dims[1] != len(pol_weights) or
-                    Data.dims[2] != len(cal_weights)) :
-                    raise ValueError("pol_wieght or cal_weight parameter "
-                                     "dimensions don' match data dimensions.")
-                if scan_len == 0 :
-                    scan_len = Data.dims[0]
-                if scan_len > Data.dims[0] :
-                    print "Warning: asked for segment length longer than scan."
-                # Get the desired combination fo polarizations and cal states.
-                data = ma.zeros((scan_len, Data.dims[-1]))
-                for ii, pol_w in enumerate(pol_weights) :
-                    for jj, cal_w in enumerate(cal_weights) :
-                        data[:scan_len] += (Data.data[:scan_len,ii,jj,:]
-                                            *pol_w*cal_w)
-                # Calculate the time axis.
-                Data.calc_time()
-                time = Data.time[:scan_len]
-                n_time = scan_len
-                dt = abs(sp.mean(sp.diff(time)))
-                tmean = ma.mean(data, 0)
-                data -= tmean
-                if params["normalize_dnudt"] :
-                    dnu = abs(Data.field["CDELT1"])
-                    data *= sp.sqrt(dnu*dt)
-                if params['normalize_to_average'] :
-                    # Get normalization for each frequency.
-                    tmp_mean = ma.mean(Data.data, 0)
-                    norm = sp.zeros((Data.dims[-1],))
-                    for ii, pol_w in enumerate(params["norm_pol_weights"]) :
-                        for jj, cal_w in enumerate(params["norm_cal_weights"]) :
-                            norm += tmp_mean[ii,jj,:] *pol_w*cal_w
-                    data /= norm
-                if params['subtract_freq_average'] :
-                    data -= ma.mean(data, 1)[:,sp.newaxis]
-                if params["calculate_covariance"] :
-                    if first_iteration :
-                        lags = params['lags']
-                        nlags = len(lags)
-                        covariance = sp.zeros(nlags, Data.dims[-1])
-                    # Loop over times to accumulate covariances
-                    for ii in range(ntime) :
-                        # Take products of data not yet considered and find
-                        # thier lag.
-                        squares = data[ii,:]*data[ii:,:]
-                        # Loop over lags.
-                        for jj in range(nlags) :
-                            if jj == 0 :
-                                (inds,) = sp.where(sp.logical_and(
-                                                   dt <= lags[jj], dt >= 0))
-                            else :
-                                (inds,) = sp.where(sp.logical_and(
-                                            dt <= lags[jj], dt > lags[jj-1]))
-                            if len(inds) > 0 :
-                                tempvar = ma.sum(squares[inds,:], 0)
-                                covariance[jj,:] += tempvar.filled(0)
-                            counts[jj,:] += squares[inds,:].count(0)
-                        # End ii loop over times
-                    # End calculate_covariance if
-                if params["calculate_power_spectrum"] :
-                    # For now just assume all the blocks are the same
-                    # length (which will be the case in practice).  This
-                    # will get more sophisticated eventually.
-                    if first_iteration :
-                        # Allowcate memory and calculate the FT time axis.
-                        power_spectrum = sp.zeros((n_time//2 + 1, 
-                                                   Data.dims[-1]))
-                        power_counts = sp.zeros(Data.dims[-1], dtype=int)
-                        ps_freqs = sp.arange(n_time//2 + 1, dtype=float)
-                        ps_freqs /= (n_time//2 + 1)*dt*2
-                    # Throw frequencies with masked data.
-                    good_freqs = ma.count_masked(data, 0)==0
-                    # Calculate power spectrum.
-                    this_power = abs(fft.fft(data, axis=0)
-                                     [range(n_time//2+1)])
-                    this_power = this_power**2/n_time
-                    power_spectrum[:, good_freqs] += this_power[:, good_freqs]
-                    power_counts[good_freqs] += 1
-                    # End power spectrum if
-                first_iteration = False
-                # End loop over files scans.
-            # End loop over files
-        # Store outputs in the class.
-        if params["calculate_covariance"] :
-            self.covariance = covariance/counts
-            self.covariance_counts = counts
-            self.lags = lags
-        if params["calculate_power_spectrum"] :
-            self.power_spectrum = power_spectrum/power_counts
-            self.power_counts = power_counts
-            self.ps_freqs = ps_freqs
+        plt.loglog(self.frequency, self.power_mat[:,10,10])
+        plt.show()
 
 def ps_freq_axis(dt, n):
     """Calculate the frequency axis for a power spectrum.
@@ -281,7 +140,7 @@ def ps_freq_axis(dt, n):
         Number of time stream data points that went into the power spectrum
         calculation.
 
-    returns
+    Returns
     -------
     frequencies : 1D array of floats.
         The frequency axis.  Has length `n`//2.
@@ -405,7 +264,7 @@ def make_masked_time_stream(Blocks, ntime=None, window=None,
     else :
         return time_stream, mask, dt
 
-def windowed_power(data1, window1, data2=None, window2=None, axis=-1, out=None) :
+def windowed_power(data1, window1, data2=None, window2=None, axis=-1) :
     """Calculates a windowed cross power spectrum.
 
     Calculates the cross power spectrum of uniformly and continuously
@@ -429,9 +288,6 @@ def windowed_power(data1, window1, data2=None, window2=None, axis=-1, out=None) 
     axis : int
         For multidimentional inputs, the axis along which to calculate the
         power spectrum.
-    out : array
-        Optional preallowcated output array for storing result.  Must be
-        compatible with return value.
 
     Returns
     -------
@@ -439,6 +295,8 @@ def windowed_power(data1, window1, data2=None, window2=None, axis=-1, out=None) 
         Cross power of the input time streams accounting for the windows.  It
         will be the same shape as the input arrays accept for the `axis` axis
         will be shortened to n//2.
+        If input data has units Kelvin, power spectrum has units Kelvin**2
+        (not Kelvin**2 / bin).
     
     Notes
     -----
@@ -454,44 +312,131 @@ def windowed_power(data1, window1, data2=None, window2=None, axis=-1, out=None) 
     if window2 is None :
         window2 = window1
     
-    # Delete variables ASAP as they are memory intensive.
-    data_power = fft.fft(data1, axis=axis)*fft.fft(data2, axis=axis).conj()
-    window_power = (fft.fft(window1, axis=axis)
-                    * fft.fft(window2, axis=axis).conj())
-    data_corr = fft.ifft(data_power, axis=axis, overwrite_x=True)
-    window_corr = fft.ifft(window_power, axis=axis, overwrite_x=True)
-    true_corr = data_corr / window_corr
-    n = data1.shape[axis]
-    # XXX
-    #plt.figure()
-    #plt.semilogy(window_power[:,0,0], '.')
-    #plt.semilogy(-window_power[:,0,0], '.r')
-    #plt.figure()
-    #plt.semilogy(window_corr[:, 0, 0])
-    #plt.semilogy(data_corr[:, 0, 0])
-    #plt.semilogy(true_corr[:, 0, 0])
-    #plt.semilogy(true_corr[:, 0, 1])
-    #plt.show()
-    #print sp.where(window_corr == 0)
-    # XXX
-    del data_power, window_power, data_corr, window_corr
-    true_power = fft.fft(true_corr, axis=axis, overwrite_x=True)
-    del true_corr
-    # Truncate the power spectrum to only the unaliased and positive
-    # frequencies.
+    data_power = calculate_power(data1, data2, axis)
+    window_power = calculate_power(window1, window2, axis)
+    true_power = deconvolve_power(data_power, window_power, axis=axis)
+    return true_power
+
+def calculate_power(data1, data2=None, axis=-1):
+    """Calculate the cross or auto power spectum.
+    
+    If input data has units Kelvin, power spectrum has units Kelvin**2 (not
+    Kelvin**2 / bin).
+    """
+
+    if data2 is None :
+        data2 = data1
+    power = fft.fft(data1, axis=axis)*fft.fft(data2, axis=axis).conj()
+    power = power / data1.shape[axis]
+    return power
+
+def prune_power(power_spectrum, axis=-1):
+    """Discard negitive frequencies from power spectrum.
+
+    Parameters
+    ----------
+    power_spectrum : array
+        A power spectrum to be pruned of negitive frequencies.
+    axis : int
+        The axis representing the frequency direction.
+
+    Returns
+    -------
+    pruned_power_spectrum : array
+        The modified power spectrum.  Similar shape as `power_spectrum` except
+        for the `axis` axis, which is reduced to n//2.
+    """
+
+    n = power_spectrum.shape[axis]
+    # Build up the slice for this axis.
     s = slice(n//2)
-    indices = [slice(sys.maxsize)] * data1.ndim
+    indices = [slice(sys.maxsize)] * power_spectrum.ndim
     indices[axis] = s
     indices = tuple(indices)
-    if not out is None :
-        out[...] = true_power[indices]
-    else :
-        # Copy to release extra memory.
-        out = sp.copy(true_power[indices])
-    return out
+    # Truncate the power spectrum to only the unaliased and positive
+    # frequencies.
+    pruned_power_spectrum = power_spectrum[indices]
+    return pruned_power_spectrum
 
-def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True,
-                   return_extras=False) :
+def make_power_physical_units(power, dt):
+    """Converts power spectrum to physical units given.
+
+    Given the time stream time step, devide by the bandwidth to put the power
+    spectrum in the most physical units.
+    """
+    
+    return power*dt*2
+
+def deconvolve_power(power_spectrum, window_power, axis=-1):
+    """Deconvolve a power spectrum with a window function."""
+    
+    data_corr = fft.ifft(power_spectrum, axis=axis)
+    window_corr = fft.ifft(window_power, axis=axis)
+    true_corr = data_corr / window_corr
+    true_power = fft.fft(true_corr, axis=axis, overwrite_x=True)
+    return true_power
+
+def convolve_power(power_spectrum, window_power, axis=-1):
+    """Convolve a power spectrum with a window function."""
+    
+    data_corr = fft.ifft(power_spectrum, axis=axis)
+    window_corr = fft.ifft(window_power, axis=axis)
+    true_corr = data_corr * window_corr
+    true_power = fft.fft(true_corr, axis=axis, overwrite_x=True)
+    return true_power
+
+def calculate_overf_correlation(amp, index, f0, dt, n_lags):
+    """Calculates the correation function for a 1/f power spectrum.
+    """
+    
+    # Cast inputs as floats as I do a bunch of division.
+    dt = float(dt)
+    f0 = float(f0)
+    index = float(index)
+    # Number of points used in calculation needs to be at least 10 times bigger
+    # than final number of point returned.  Need the frequency resolution for
+    # numerical accuracy.
+    n = 20*n_lags
+    n_return = n_lags
+    # Generate the powerspectrum.
+    power = overf_power_spectrum(amp, index, f0, dt, n)
+    # FFT it to the correlation function.
+    corr = fft.ifft(power)
+    corr = corr[:n_return].real
+    # Bump the whole thing up to the last lag is at 0 correlation (as opposed
+    # to being negitive).
+    corr -= corr[-1]
+    # To normalize, need to multiply by the bandwidth.
+    corr *= 1.0/2/dt
+    return corr
+
+def overf_power_spectrum(amp, index, f0, dt, n):
+    """Calculates the theoredical f**`index` power spectrum.
+    """
+    
+    # Get the frequencies represented in the FFT.
+    df = 1.0/dt/n
+    freq = sp.arange(n, dtype=float)
+    freq[n//2+1:] -= freq[-1] + 1
+    freq = abs(freq)*df
+    # Make the power spectrum.
+    power = amp*(freq/f0)**index
+    # Set the mean mode explicitly to 0.
+    power[0] = 0
+    return power
+
+def generate_overf_noise(amp, index, f0, dt, n):
+    """Generate noise time series with a f**`index` power spectrum."""
+
+    white_noise = rand.normal(size=n)
+    power_spectrum = overf_power_spectrum(amp, index, f0, dt, n)
+    # Power spectrum is in physical units of T**2/Hz.  Put in discrete units by
+    # multiplying by the bandwidth.
+    power_spectrum *= 1.0/2.0/dt
+    noise = fft.ifft(fft.fft(white_noise)*sp.sqrt(power_spectrum)).real
+    return noise
+
+def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True) :
     """Calculate the full power spectrum of a data set with channel
     correlations.
     
@@ -507,58 +452,31 @@ def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True,
     mask1 = mask[:,0,0,:,None]
     mask2 = mask[:,0,0,None,:]
     channel_means = channel_means[0, 0, :]
-    # XXX Accutally do this efficiently.
-    if not deconvolve:
-        mask1[:] = 1
-        mask2[:] = 1
-    # Frequencies for the power spectrum (Hz)
-    frequency = ps_freq_axis(dt, n_time)
     n_chan = full_data.shape[-1]
     # Loop to do only a bit of the calculation at a time.  Reduces
     # memory use by a factor of a few.
-    power_mat = sp.empty((n_time//2, n_chan, n_chan),
+    power_mat = sp.empty((n_time, n_chan, n_chan),
+                              dtype=float)
+    window_function = sp.empty((n_time, n_chan, n_chan),
                               dtype=float)
     for ii in xrange(n_chan):
-        # `out` argument must be a view, not a copy.
-        windowed_power(full_data1[:,[ii],:], mask1[:,[ii],:], full_data2,
-                       mask2, axis=0, out=(power_mat[:,ii,:])[:,None,:])
-    if return_extras:
-        return power_mat, frequency, n_time, dt, channel_means
-    else:
-        return power_mat, frequency
+        w = calculate_power(mask1[:,[ii],:], mask2, axis=0)
+        if deconvolve:
+            p = windowed_power(full_data1[:,[ii],:],
+                mask1[:,[ii],:], full_data2, mask2, axis=0)
+            power_mat[:,[ii],:] = p
+        else:
+            p = calculate_power(full_data1[:,[ii],:], full_data2, axis=0)
+            # Normalize from windowing.
+            power_mat[:,[ii],:] = p / sp.mean(w, 0)
+        # Normalize the window.
+        w /= sp.mean(w, 0)
+        window_function[:,[ii],:] = w
 
-def diag_power_mat(Blocks, n_time=None, window=None, deconvolve=True) :
-    """Calculate the full power spectrum of a data set without channel
-    correlations.
-    
-    Only one cal state and pol state assumed.
-    """
-
-    full_data, mask, dt = make_masked_time_stream(Blocks, n_time, window)
-    n_time = full_data.shape[0]
-    # Broadcast to shape such that all pairs of channels are calculated.
-    full_data1 = full_data[:,0,0,:]
-    mask1 = mask[:,0,0,:]
-    # XXX Accutally do this efficiently.
-    if not deconvolve:
-        mask1[:] = 1
-        mask2[:] = 1
-    # Frequencies for the power spectrum (Hz)
-    frequency = ps_freq_axis(dt, n_time)
-    n_chan = full_data.shape[-1]
-    # Loop to do only a bit of the calculation at a time.  Reduces
-    # memory use by a factor of a few.
-    power_mat = sp.empty((n_time//2, n_chan),
-                              dtype=float)
-    windowed_power(full_data1, mask1, axis=0, out=power_mat)
-
-    return power_mat, frequency
-
-
+    return power_mat, window_function, dt, channel_means
 
 
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":
     import sys
     NoisePower(str(sys.argv[1])).execute()
-

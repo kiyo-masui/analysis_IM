@@ -23,6 +23,7 @@ params_init = {
                "input_root" : "./testdata/",
                "file_middles" : ("testfile_GBTfits",),
                "input_end" : ".fits",
+               "output_root" : "./",
                "output_filename" : "noise_parameters.shelf",
                # Algorithm.
                "model" : "variance"
@@ -43,10 +44,11 @@ class Measure(object) :
     def execute(self, nprocesses=1) :
         
         params = self.params
-        kiyopy.utils.mkparents(params['output_root'])
+        kiyopy.utils.mkparents(params['output_root'] + 
+                               params['output_filename'])
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
                                prefix=prefix)
-        output_fname = params["output_filename"]
+        output_fname = params['output_root'] + params["output_filename"]
         out_db = shelve.open(output_fname)
         file_middles = params['file_middles']
         n_files = len(file_middles)
@@ -91,7 +93,7 @@ class Measure(object) :
             if model == "variance" :
                 parameters = get_var(Blocks)
             elif model == "correlated_overf":
-                parameters = get_correlated_overf(Blocks, 1.0)
+                parameters = get_correlated_overf(Blocks, 1.0, window='hanning')
             else :
                 raise ValueError("Invalid noise model: " + model)
             if Pipe:
@@ -123,7 +125,7 @@ def get_var(Blocks) :
     
     return var
 
-def get_correlated_overf(Blocks, f_0=1.0, single_blocks=True) :
+def get_correlated_overf(Blocks, f_0=1.0, window='hanning') :
     """Measures noise parameters of a set of scans assuming correlated 1/f.
 
     Fits model to full f,f' cross power spectrum matrix.  Ignores the fact that
@@ -131,46 +133,20 @@ def get_correlated_overf(Blocks, f_0=1.0, single_blocks=True) :
     
     Parameters
     ----------
-    single_blocks : Bool
-        False seems to be finicky with deconvolution.
     """
     
     # ---- First measre the noise power spectrum from the data. ----
-    # Window function to be used.  This seems to be crucial.
-    window = 'hanning'
-    # TODO Instead of deconvolving, we should really be convolving the theory.
-    deconvolve = True
-    #window = None
-    # We will either treat the blocks as one long time series or treat them
-    # each singly (but fitting a global spectrum).
-    if single_blocks:
-        first_block = True
-        n_time = None
-        # n_time = 1000
-        for Data in Blocks :
-            this_power_mat, this_frequency = npow.full_power_mat([Data], 
-                                       n_time, window, deconvolve=deconvolve)
-            if first_block:
-                power_mat = sp.zeros_like(this_power_mat)
-                n_power_mats = sp.zeros(this_power_mat.shape[1:], 
-                                        dtype=sp.int32)
-                frequency = this_frequency
-                n_time = Data.dims[0]
-            # Accumulate the power spectra.  Only use ones that have no NaNs.
-            good_spectra = sp.alltrue(sp.isfinite(this_power_mat), 0)
-            power_mat[:, good_spectra] += this_power_mat[:, good_spectra]
-            n_power_mats[good_spectra] += 1
-            # Add an all true is finite stuff here.
-            first_block = False
-        power_mat /= n_power_mats
-    else :
-        power_mat, frequency = npow.full_power_mat(Blocks, window=window,
-                                                  deconvolve=deconvolve)
+    power_mat, window_function, dt, channel_means = \
+            npow.full_power_mat(Blocks, window=window, deconvolve=False)
     # Check that we got finite answers.  If we didn't, need to update the code.
     if not sp.alltrue(sp.isfinite(power_mat)) :
         msg = ("Non finite power spectrum calculated.  Offending data in "
                "file starting with scan %d." % (Blocks[0].field['SCAN']))
         raise ce.DataError(msg)
+    n_time = power_mat.shape[0]
+    frequency = npow.ps_freq_axis(dt, n_time)
+    power_mat = npow.prune_power(power_mat, 0)
+    power_mat = npow.make_power_physical_units(power_mat, dt)
     # Discard the DC 0 frequency.
     frequency = frequency[1:]
     power_mat = power_mat[1:,...]
@@ -179,31 +155,35 @@ def get_correlated_overf(Blocks, f_0=1.0, single_blocks=True) :
     
     # ---- Now fit to the measured spectrum. ----
     # First fit to the thermal free correlated part (cross terms).
-    # Take mean excluding auto correlation terms.
+    # Take mean excluding auto correlation terms.  Also take mean of the window
+    # function so we can convolve the theory (this is valid since the
+    # convolution is linear in the window function).
     correlated_part = sp.sum(sp.sum(power_mat, -1), -1)
+    mean_window = sp.sum(sp.sum(window_function, -1), -1)
     for ii in xrange(n_chan) :
         correlated_part -= power_mat[:, ii, ii]
+        mean_window -= window_function[:, ii, ii]
     correlated_part /= (n_chan - 1)*n_chan
+    mean_window /= (n_chan - 1)*n_chan
     # Fit power law to this.
-    def over_f_spec(params):
-        amp = params[0]
-        index = params[1]
-        return amp*(frequency/f_0)**-index
+    def over_f_spec(params) :
+        spec = npow.overf_power_spectrum(params[0], params[1],
+                                                f_0, dt, n_time)
+        spec = npow.convolve_power(spec, mean_window, 0)
+        spec = npow.prune_power(spec)
+        spec = spec[1:].real
+        return spec
+
     def correlated_part_residuals(params):
         return (correlated_part - over_f_spec(params))/weights
+
     # Initial parameter guess.
     over_f_params = sp.zeros(2)
     over_f_params[0] = sp.mean(correlated_part * f_0 / frequency)
-    over_f_params[1] = 1.0
+    over_f_params[1] = -1.0
     # Initial weights.
     weights = abs(correlated_part)
     # Perform fit iteratively, updating the weights.
-    # XXX
-    #plt.figure()
-    #plt.loglog(frequency, correlated_part, 'b.')
-    #plt.loglog(frequency, -correlated_part, 'r.')
-    #plt.loglog(frequency, over_f_spec(over_f_params), 'g') 
-    # XXX
     for ii in range(6) :
         # Memory to eliminate oscillations.  Seems to be nessisary.
         weights = 2*sp.sqrt(abs(over_f_spec(over_f_params)*weights/2))    
@@ -219,19 +199,21 @@ def get_correlated_overf(Blocks, f_0=1.0, single_blocks=True) :
     # XXX
     
     # Now fit to the thermal parts one channel at a time.
-    # Data we will fit to.
+    # Subtract the correlated part out of the channel autocorrelation data.
     thermal_part = power_mat
     thermal_part.shape = (n_f, n_chan*n_chan)
     thermal_part = thermal_part[:,::n_chan+1]
     thermal_part -= over_f_spec(over_f_params)[:,None]
-    # Do the fit.
-    # This is just a linear fit to the diagonal parts of the power matrix.    
+    # Do the fit. This is just a linear fit to the diagonal parts of the power
+    # matrix.  There is no need to window the theory since for a normalized
+    # window, there is not affect on a constant (would of course affect the
+    # weight matrix, but that's too complicated).    
     thermal_params = sp.mean(thermal_part, 0)
     for ii in xrange(3):
         weights = 2*(over_f_spec(over_f_params)[:,None] + thermal_params)
         thermal_params = (sp.sum(thermal_part/weights**2, 0)
                           / sp.sum(1.0/weights**2, 0))
-    # Unpack answers.
+    # Unpack and repack answers.
     over_f = (over_f_params[0], over_f_params[1], f_0)
 
     return thermal_params, over_f
