@@ -6,7 +6,7 @@ from core import dir_data
 
 import scipy as sp
 
-file_middles = tuple(dir_data.get_cal_files(range(88,90),'48',type='guppi'))
+file_middles = tuple(dir_data.get_cal_files(range(40,91),'48',type='guppi'))
 #file_middles = tuple(dir_data.get_cal_files(range(66,69),'48',type='guppi'))
 
 #file_middles = ('41_3C286_onoff_6-7','41_3C286_onoff_8-9','41_3C286_onoff_124-125','41_3C286_onoff_126-127','42_3C286_onoff_10-11','42_3C286_onoff_12-13','42_3C286_onoff_328-329','42_3C286_onoff_330-331', '43_3C286_onoff_156-157', '43_3C286_onoff_158-159', '43_3C286_onoff_6-7', '43_3C286_onoff_8-9', '44_3C286_onoff_13-14', '44_3C286_onoff_15-16', '44_3C286_onoff_363-364', '44_3C286_onoff_365-366', '44_3C286_onoff_367-368', '44_3C286_onoff_369-370', '45_3C286_onoff_138-139', '45_3C286_onoff_140-141', '45_3C286_onoff_6-7', '45_3C286_onoff_8-9')
@@ -15,15 +15,16 @@ pipe_modules = []
 # Chime has 8 cores, but you should save a few for other people.  Use 6 max.
 pipe_processes = 6
 
-base_dir = os.getenv('GBT10B_OUT')
-kiyo_dir = os.getenv('GBT10B_KM')
+base_dir = os.getenv('GBT_OUT')
+data_dir = os.getenv('GBT_DATA')
+kiyo_dir = os.getenv('GBT_KM')
 prefix = ''
 IFs = ()
 
 from time_stream import flag_data
 # Comment this line to skip this step when running python pipeline/manager
 pipe_modules.append(flag_data.FlagData)
-fd_input_root = kiyo_dir + 'guppi_data/'
+fd_input_root = data_dir + 'GBT10B_036/'
 fd_file_middles = file_middles
 fd_input_end = '.fits'
 fd_output_root = base_dir + 'flagged/'
