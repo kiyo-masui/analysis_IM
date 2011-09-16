@@ -53,6 +53,9 @@ def get_data_files(session_list, project='GBT10B_036', field='15hr',
     >>> get_data_files([89], project='GBT10B_036', field='1hr',
                        type='ralongmap')
     ["GBT10B_036/89_wigglez1hr_centre_ralongmap_82-91", ...]
+    >>> get_data_files([72], project='GBT10B_036',field='3C48',
+                       type='onoff')
+    ["GBT10B_036/72_3C48_onoff_8-9", ...]
 
     Notes
     -----
