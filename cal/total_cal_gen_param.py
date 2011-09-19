@@ -1,5 +1,7 @@
 """Procedure to calculate the Mueller parameters for each frequency from on-off scans of a calibrator such as 3C286.
 This version generates the Mueller parameters using the Inverse Mueller matrix (so that it can be used with unpolarized source data). It has 7 independent parameters (beta is in this version, but is not used in the parameterization). It requires at least 2 sets of onoff scans (with quite different parallactic angles) to work, but I recommend trying to have 3 or 4 onoff scans to get the most accurate results.
+Run in analysis_IM: python cal/total_cal_gen_params.py input/tcv/mueller_gen_guppi.ini
+Note that the .ini file should indicate which session(s) and sourse you want to use. Script is run using data from a single source. The output is saved in a file called mueller_params_calc.txt
  """
 import os
 
@@ -91,9 +93,10 @@ class MuellerGen(object) :
 #        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*(2.28315426-0.000484307905*freq_val[f]) # Added linear fit for Jansky to Kelvin conversion.
 #        Isrc = 19.74748409*pow((750.0/freq_val[f]),0.49899785)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C286
         Isrc = 25.15445092*pow((750.0/freq_val[f]),0.75578842)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for  3C48
+#        Isrc = 4.56303633*pow((750.0/freq_val[f]),0.59237327)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C67
         PAsrc = 33.0*sp.pi/180.0 # for 3C286 
 #        Psrc = 0.07 #for 3C286 
-        Psrc = 0 #for #3C48 
+        Psrc = 0 #for #3C48,3C67 
         Qsrc = Isrc*Psrc*sp.cos(2*PAsrc) 
         Usrc = Isrc*Psrc*sp.sin(2*PAsrc) 
         Vsrc = 0
@@ -127,7 +130,7 @@ class MuellerGen(object) :
             Reader = core.fitsGBT.Reader(input_fname)
             n_scans = len(Reader.scan_set)
             Len_set = Reader.read(0,0,force_tuple=True)
-            session_nums[c] = file_middle.split('_')[0]
+#            session_nums[c] = file_middle.split('_')[0]
 #            print session_nums[c]
             for Data in Len_set :
                 freq_num = Data.dims[3] # Setting the frequency binning to match whatever it's been set to. 
