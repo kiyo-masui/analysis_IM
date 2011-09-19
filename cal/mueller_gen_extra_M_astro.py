@@ -1,5 +1,6 @@
 """
-Procedure to calculate the Mueller parameters for each frequency from on-off scans of a calibrator such as 3C286."""
+Procedure to calculate the Mueller parameters for each frequency from on-off scans of a calibrator such as 3C286.
+This version uses the Mueller Matrix in parametric form, including an extra matrix that adds the beta terms in the parameterization. Given that it solves for 8 variables it needs at least 2 significantly different parallactic angles (or 2 separate sets of onoff scans), but better with more."""
 import os
 
 from scipy.optimize import *
@@ -23,6 +24,7 @@ params_init = {
                # Select data to process.
                "scans" : (),
                "IFs" : (),
+B
                "Guppi_test" : False,
                }
 prefix = 'tc_'

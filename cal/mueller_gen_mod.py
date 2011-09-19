@@ -1,5 +1,7 @@
 """
-Procedure to calculate the Mueller parameters for each frequency from on-off scans of a calibrator such as 3C286."""
+Procedure to calculate the Mueller parameters for each frequency from on-off scans of a calibrator such as 3C286. 
+This version uses the parameterized Mueller Matrix, including flux, and has 7 independent parameters. This requires at least 2 sets of onoff scans with significantly different parallactic angles to solve. 
+"""
 import os
 
 from scipy.optimize import *

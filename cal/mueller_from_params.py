@@ -1,4 +1,4 @@
-"""Script for generating mueller matrix elements from mueller params"""
+"""Script for generating mueller matrix elements from mueller params (generated using any script), expected params are (in order): frequency, deltaG, alpha, psi, phi, epsilon, chi, and flux."""
 
 import scipy as sp
 import numpy.ma as ma

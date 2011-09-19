@@ -1,4 +1,4 @@
-"""Script for generating mueller matrix elements from mueller params"""
+"""Script for generating mueller matrix elements from mueller params generated using scripts that include the extra angle parameter. The parameters are (in order): frequency, deltaG, alpha, psi, phi, epsilon, flux and beta (the extra parameter)."""
 
 import scipy as sp
 import numpy.ma as ma
