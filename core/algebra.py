@@ -633,12 +633,16 @@ class alg_object(object) :
         set_axis_info
         get_axis
         """
-
+        
+        if isinstance(alg_obj, dict):
+            info = alg_obj
+        else:
+            info = alg_obj.info
         for axis in self.axes :
-            if axis in alg_obj.axes :
+            if axis in info["axes"] :
                 try :
-                    centre = alg_obj.info[axis + '_centre']
-                    delta = alg_obj.info[axis + '_delta']
+                    centre = info[axis + '_centre']
+                    delta = info[axis + '_delta']
                 except KeyError :
                     continue
                 self.info[axis + '_centre'] = centre
@@ -1323,7 +1327,7 @@ class mat(alg_object) :
 
         Examples
         --------
-        >>> for index in mat.iter_row_axes :
+        >>> for index in mat.iter_row_index() :
         >>>     sub_arr = mat[index]
         >>>     sub_arr.shape == mat.col_shape()
         True
@@ -1342,7 +1346,7 @@ class mat(alg_object) :
 
         Examples
         --------
-        >>> for index in mat.iter_col_axes :
+        >>> for index in mat.iter_col_index() :
         >>>     sub_arr = mat[index]
         >>>     sub_arr.shape == mat.row_shape()
         True
@@ -1561,7 +1565,7 @@ def partial_dot(arr1, arr2, new_axes_location=0):
     
     This is similar to a numpy `tensordot` but it is aware of the matrix and
     vector nature of the inputs and returns appropriate objects.  It decides
-    which axes to 'dat' based on the axis names. It also gives you a choice of
+    which axes to 'dot' based on the axis names. It also gives you a choice of
     where to put the new axes.
 
     This is only implemented for a matrix x vector, where all the matrix
@@ -1621,10 +1625,20 @@ def partial_dot(arr1, arr2, new_axes_location=0):
             for ii in xrange(n_row_axes):
                 new_arr_index[new_axes_location + ii] = mat_index[arr1.rows[ii]]
             out_arr[tuple(new_arr_index)] = new_arr_entry
+    elif isinstance(arr1, vect) and isinstance(arr2, mat):
+        return partial_dot(arr2.transpose(), arr1, new_axes_location):
     else:
-        msg = "Only matrix-vector multiplication implemented."
+        msg = ("Only matrix-vector and vector-matrix multiplication "
+               "implemented.")
         raise NotImplementedError(msg)
     return out_arr
+
+def empty_like(obj) :
+    """Create a new algebra object with uninitialized data but otherwise the
+    same as the passed object."""
+
+    out = sp.empty_like(obj)
+    return as_alg_like(out, obj)
 
 def zeros_like(obj) :
     """Create a new algebra object full of zeros but otherwise the same 

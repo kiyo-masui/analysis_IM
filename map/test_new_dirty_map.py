@@ -12,8 +12,9 @@ import core.algebra as al
 import new_dirty_map as dirty_map
 import tools
 
-nscans = 10
-nt = 50 * nscans
+nscans = 6
+nt_scan = 50
+nt = nt_scan * nscans
 nf = 10
 
 nra = 20
@@ -46,7 +47,8 @@ def make_test_data(ii=0):
     # testing.
     
     # Time data.
-    time = sp.arange(nt)*0.2 + 1.5*nscans*nt*0.2*ii + 123456.0
+    time = (sp.arange(nt_scan) + sp.arange(nscans)[:,None]*1.5*nt_scan 
+            + 2.0*nt*ii).flat[...] * 0.2 + 123456.0
     # Elevation always constant with current scan strategy.
     el = sp.zeros(nt) + (13.13 * ii) % 60
     # Make az scan back and forth, 5 degrees.
@@ -107,7 +109,6 @@ def make_test_data(ii=0):
     return map, time_stream, ra, dec, az, el, time, mask_inds
 
 
-
 class TestPointing(unittest.TestCase):
     
     def test_get_matrix(self):
@@ -130,16 +131,50 @@ class TestPointing(unittest.TestCase):
         gridded_data_fast = P.apply_to_time_axis(time_stream)
         self.assertTrue(sp.allclose(gridded_data_mult, gridded_data_fast))
 
-class TestNoiseClasses(unittest.TestCase):
+
+class TestNoiseClass(unittest.TestCase):
 
     def test_build_noise(self):
         map, time_stream, ra, dec, az, el, time, mask_inds = make_test_data()
-        Noise = dirty_map.Noise(time_stream)
+        Noise = dirty_map.Noise(time_stream, time)
         thermal_noise_levels = sp.zeros((nf)) + 0.04  # Kelvin**2
         Noise.add_thermal(thermal_noise_levels)
         Noise.add_mask(mask_inds)
         self.assertTrue(sp.alltrue(Noise.diagonal[mask_inds] > 10))
         Noise.deweight_time_mean()
+        Noise.add_correlated_over_f(0.01, -1.2, 0.1)
+        Noise.finalize()
+        #### Test that the first round of matrix inversion (using diagonal
+        # noise bits) works.
+        tmp_inv = Noise.get_diag_allfreq_inverse(2)
+        tmp_mat = sp.copy(Noise.allfreq)
+        tmp_mat.flat[::nt + 1] += Noise.diagonal[2,:]
+        tmp_eye = sp.dot(tmp_mat, tmp_inv)
+        self.assertTrue(sp.allclose(tmp_eye, sp.identity(nt)))
+        #### Test the full inverse.
+        tmp_mat = sp.zeros((nf, nt, nf, nt))
+        tmp_mat.flat[::nt*nf+1] += Noise.diagonal.flat
+        for ii in xrange(nf):
+            tmp_mat[ii,:,ii,:] += Noise.allfreq
+        # Here I assume that the only frequency noise mode is the mean mode.
+        tmp_mat += Noise.mode_noise[0,None,:,None,:]/nf
+        tmp_mat.shape = (nt*nf, nt*nf)
+        noise_inv = Noise.get_inverse()
+        noise_inv.shape = (nt*nf, nt*nf)
+        tmp_eye = sp.dot(tmp_mat, noise_inv)
+        noise_inv.shape = (nf, nt, nf, nt)
+        self.assertTrue(sp.allclose(tmp_eye, sp.identity(nt*nf)))
+        #### Test the noise weighting of the data.
+        noise_weighted_data = Noise.noise_weight_time_stream(time_stream)
+        self.assertTrue(sp.allclose(noise_weighted_data, al.dot(noise_inv,
+                                                                time_stream)))
+        #### Test making noise in map space.
+        P = dirty_map.Pointing(("ra", "dec"), (ra, dec), map, 'nearest')
+        map_noise_inv = sp.zeros((nf, nra, ndec, nf, nra, ndec), dtype=float)
+        tmp_map_noise_inv = al.partial_dot(noise_inv,
+                                           P.get_matrix().transpose())
+        tmp_map_noise_inv = al.partial_dot(P.get_matrix(), tmp_map_noise_inv)
+        print tmp_map_noise_inv.shape, tmp_map_noise_inv.axes
 
 
 

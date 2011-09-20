@@ -473,7 +473,6 @@ class TestAlgUtils(unittest.TestCase) :
         self.assertTrue(sp.allclose(numerical_result.flatten(),
                                     new_vect.flatten()))
 
-
     def test_dot_mat_checks_dims(self) :
         """ Make sure that it checks that marticies have compatible dimensions 
         for matrix multiplication."""
