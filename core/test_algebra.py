@@ -444,6 +444,17 @@ class TestAlgUtils(unittest.TestCase) :
         self.assertTrue(sp.allclose(numerical_result.flatten(),
                                     new_vect.flatten()))
 
+    def partial_dot_mat_mat(self):
+        mat1 = sp.asarray(self.mat)
+        mat1.shape = (4, 3, 2, 5)
+        mat1 = al.make_mat(mat1, ('time', 'x', 'y', 'z'), (0,), (1, 2, 3))
+        mat2 = sp.asarray(self.mat)
+        mat2.shape = (2, 3, 4, 5)
+        mat2 = al.make_mat(mat2, ('w', 'y', 'x', 'freq'), (0, 1, 2), (3,))
+        result = al.partial_dot(mat1, mat2)
+        self.assert_equal(result.axes, ('time', 'w', 'z', 'freq'))
+
+
     def test_transpose(self):
         mat = self.mat
         mat_info = dict(mat.info)
