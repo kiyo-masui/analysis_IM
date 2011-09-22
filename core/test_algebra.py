@@ -444,15 +444,27 @@ class TestAlgUtils(unittest.TestCase) :
         self.assertTrue(sp.allclose(numerical_result.flatten(),
                                     new_vect.flatten()))
 
-    def partial_dot_mat_mat(self):
+    def test_partial_dot_mat_mat(self):
         mat1 = sp.asarray(self.mat)
         mat1.shape = (4, 3, 2, 5)
-        mat1 = al.make_mat(mat1, ('time', 'x', 'y', 'z'), (0,), (1, 2, 3))
+        mat1 = algebra.make_mat(mat1, axis_names=('time', 'x', 'y', 'z'),
+                                row_axes=(0,), col_axes=(1, 2, 3))
         mat2 = sp.asarray(self.mat)
-        mat2.shape = (2, 3, 4, 5)
-        mat2 = al.make_mat(mat2, ('w', 'y', 'x', 'freq'), (0, 1, 2), (3,))
-        result = al.partial_dot(mat1, mat2)
-        self.assert_equal(result.axes, ('time', 'w', 'z', 'freq'))
+        mat2.shape = (4, 2, 3, 5)
+        mat2 = algebra.make_mat(mat2, axis_names=('w', 'y', 'x', 'freq'), 
+                                row_axes=(0, 1, 2), col_axes=(3,))
+        result = algebra.partial_dot(mat1, mat2)
+        self.assertEqual(result.axes, ('time', 'w', 'z', 'freq'))
+        self.assertEqual(result.rows, (0, 1))
+        self.assertEqual(result.cols, (2, 3))
+        self.assertEqual(result.shape, (4, 4, 5, 5))
+        right_ans = sp.tensordot(mat1, mat2, ((1, 2), (2, 1)))
+        right_ans = sp.swapaxes(right_ans, 1, 2)
+        self.assertTrue(sp.allclose(right_ans, result))
+
+    def test_partial_dot_mat_mat_block(self):
+        # Functionality not yet implemented.
+        pass
 
 
     def test_transpose(self):

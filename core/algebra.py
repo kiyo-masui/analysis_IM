@@ -1691,49 +1691,22 @@ def partial_dot(left, right):
     if not out_rows or not out_cols :
         out = make_vect(out, out_names)
     else :
-        out = make_mat(out, out_names, out_rows, out_cols)
+        out = make_mat(out, axis_names=out_names, row_axes=out_rows, 
+                       col_axes=out_cols)
     out.copy_axis_info(left)
     out.copy_axis_info(right)
-    # Initialize slicing index sets for each of the arrays.
-    full_slice = slice(None)
-    left_slice = [full_slice] * left.ndim
-    right_slice = [full_slice] * right.ndim
-    out_slice = [full_slice] * out.ndim
-    # In the sliced array, the indices to dot will be different.  Figure that
-    # out.
-    left_tensor_dot_axes = list(left_axes_to_dot)
-    for ii in range(len(left_axes_to_dot)):
-        for index in left_rows:
-            if index < left_axes_to_dot[ii]:
-                left_tensor_dot_axes[ii] -= 1
-    left_tensor_dot_axes = tuple(left_tensor_dot_axes)
-    right_tensor_dot_axes = list(right_axes_to_dot)
-    for ii in range(len(right_axes_to_dot)):
-        for index in right_axes_hanging:
-            if index < right_axes_to_dot[ii]:
-                right_tensor_dot_axes[ii] -= 1
-    right_tensor_dot_axes = tuple(right_tensor_dot_axes)
-    tensor_dot_axes = (left_tensor_dot_axes, right_tensor_dot_axes)
-    # Now iterate through the matrices and dot them together.
-    for ii in xrange(left_row_size):
-        # Figure out the indices for the left matrix and the out put.
-        tmp_ii = ii
-        for kk in xrange(len(left_rows)):
-            this_index = tmp_ii % left_row_shape[kk]
-            tmp_ii = tmp_ii // left_row_shape[kk]
-            left_slice[left_rows[kk]] = this_index
-            out_slice[kk] = this_index
-        for jj in xrange(right_axes_hanging_size):
-            # Figure out the indices for the right matrix and the out put.
-            tmp_jj = jj
-            for kk in xrange(len(right_axes_hanging)):
-                this_index = tmp_jj % right_axes_hanging_shape[kk]
-                tmp_jj = tmp_jj // right_axes_hanging_shape[kk]
-                right_slice[right_axes_hanging[kk]] = this_index
-                out_slice[len(left_rows) + kk] = this_index
-            out[tuple(out_slice)] = sp.tensordot(left[tuple(left_slice)],
-                                                  right[tuple(right_slice)],
-                                                  axes=tensor_dot_axes)
+    # Now dot the appropriate axes.
+    tmp_out = sp.tensordot(left, right, (left_axes_to_dot, right_axes_to_dot))
+    # These axes will be in the wrong order so we need to rearrange to fit into
+    # `out`.
+    axis_placement = len(left_rows)
+    right_hang_begin = len(left_rows) + len(left_axes_hanging)
+    for axis_ind in range(right_hang_begin, right_hang_begin 
+                          + len(right_axes_hanging)):
+        tmp_out = sp.rollaxis(tmp_out, axis_ind, axis_placement)
+        axis_placement += 1
+    # Copy into the out array such that every thing is stored in native order.
+    out[...] = tmp_out
     return out
 
 def empty_like(obj) :
