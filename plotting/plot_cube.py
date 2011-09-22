@@ -16,25 +16,28 @@ def plot_single(plotitem):
     (index, cube_slice, xaxis, yaxis, zaxis, \
             title, cbar_title, fileprefix) = plotitem
     print title
+    plt.figure(figsize=(7,3.3))
     cplot = plt.contourf(xaxis, yaxis, np.transpose(cube_slice), zaxis)
     plt.axis('scaled')
     plt.xlim((np.min(xaxis), np.max(xaxis)))
     plt.ylim((np.min(yaxis), np.max(yaxis)))
     plt.xlabel("RA")
     plt.ylabel("Dec")
-    plt.title(title, fontsize=10)
-    ##cbar = plt.colorbar(cplot, ticks=zaxis)
-    cbar = plt.colorbar(cplot)
+    plt.title(title, fontsize=9)
+    cticks = np.linspace(min(zaxis), max(zaxis), 7, endpoint=True)
+    cbar = plt.colorbar(cplot, ticks=cticks)
+    cbar.ax.set_yticklabels([('%3.1f' % val) for val in cticks])
+    #cbar = plt.colorbar(cplot)
     cbar.ax.set_ylabel(cbar_title)
     filename = fileprefix + str('%03d' % index) + '.png'
-    plt.savefig(filename, dpi=100)
+    plt.savefig(filename, dpi=200)
     plt.clf()
 
 
 def make_cube_movie(filename, tag, colorbar_title, fileprefix,
-                    sigmarange=3., ignore=None):
+                    sigmarange=3., ignore=None, multiplier=1.):
     """Make a stack of spatial slice maps and animate them"""
-    cube = algebra.make_vect(algebra.load(filename))
+    cube = algebra.make_vect(algebra.load(filename)) * multiplier
     if ignore:
         cube[cube == ignore] = ma.masked
     cube_mean = ma.mean(cube)
@@ -47,18 +50,17 @@ def make_cube_movie(filename, tag, colorbar_title, fileprefix,
         if (sigmarange > 0.):
             coloraxis = np.linspace(cube_mean - sigmarange * cube_std,
                                     cube_mean + sigmarange * cube_std,
-                                    500, endpoint=True)
+                                    100, endpoint=True)
         else:
             coloraxis = np.linspace(np.min(cube),  np.max(cube),
-                                    500, endpoint=True)
+                                    100, endpoint=True)
 
     freq_axis = cube.get_axis('freq')
     space_axis = (cube.get_axis('ra'), cube.get_axis('dec'))
 
     runlist = []
     for freqind in range(cube.shape[0]):
-        fulltitle = tag + " (freq = " + \
-                    repr(freq_axis[freqind] / 1.e6) + " MHz)"
+        fulltitle = tag + " (freq = %3.1f MHz)" % (freq_axis[freqind] / 1.e6)
         runlist.append((freqind, cube[freqind, :, :], space_axis[0],
                         space_axis[1], coloraxis, fulltitle,
                         colorbar_title, fileprefix))
@@ -66,10 +68,46 @@ def make_cube_movie(filename, tag, colorbar_title, fileprefix,
     pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
     pool.map(plot_single, runlist)
 
-    subprocess.check_call(('ffmpeg', '-y', '-i', cube_root + tag +\
+    subprocess.check_call(('ffmpeg', '-r', '10', '-y', '-i', cube_root + tag +\
                '%03d.png', tag + '.mp4'))
 
+# make plots of the 22hr selection
+root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_wiggleZ/"
+make_cube_movie(root_directory + "reg22selection.npy",
+                "reg22selection",
+                "Selection", cube_root + "reg22selection.npy",
+                sigmarange=None)
+make_cube_movie(root_directory + "reg22separable.npy",
+                "reg22separable",
+                "Separable Selection", cube_root + "reg22separable.npy",
+                sigmarange=None)
+sys.exit()
 
+# make plots of the 15hr field
+root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/combined_maps/"
+make_cube_movie(root_directory + "combined_41-73_cleaned_clean_test.npy",
+                "combined_41-73_cleaned_clean_test",
+                "Temperature (mK)", cube_root + "combined_41-73_cleaned_clean_test",
+                sigmarange=6., multiplier = 1000.)
+make_cube_movie(root_directory + "combined_41-73_cleaned_noise_inv_test.npy",
+                "combined_41-73_cleaned_noise_inv_test",
+                "Covariance", cube_root + "combined_41-73_cleaned_noise_inv_test",
+                sigmarange=-1)
+
+# make plots of the 22hr field
+#root_directory = "/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/84_ABCD_all_15_modes/"
+root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/combined_maps/"
+make_cube_movie(root_directory + "combined_22hr_41-84_cleaned_clean.npy",
+                "combined_22hr_41-84_cleaned_clean.npy",
+                "Temperature (mK)", cube_root + "combined_22hr_41-84_cleaned_clean.npy",
+                sigmarange=6, multiplier = 1000.)
+
+make_cube_movie(root_directory + "combined_22hr_41-84_cleaned_noise_inv.npy",
+                "combined_22hr_41-84_cleaned_noise_inv.npy",
+                "Covariance", cube_root + "combined_22hr_41-84_cleaned_noise_inv.npy",
+                sigmarange=-1)
+
+sys.exit()
 root_directory = "/mnt/raid-project/gmrt/calinliv/wiggleZ/simulations/test100/"
 make_cube_movie(root_directory + "simulated_signal_map_1.npy",
                 "simulated_signal_map_1",
