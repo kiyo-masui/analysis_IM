@@ -9,17 +9,18 @@ import scipy as sp
 field = '15hr'
 dm_field_centre = (218.25, 2.0) 
 #Here I'm grabbing the guppi data
-file_middles = tuple(dir_data.get_data_files(range(49,57) , '15hr', type='guppi'))
+file_middles = tuple(dir_data.get_data_files(range(41,90) , field='15hr', project='GBT10B_036',type='ralongmap'))
 
 pipe_modules = []
 # Chime has 8 cores, but you should save a few for other people.  Use 6 max.
-pipe_processes = 6
+pipe_processes = 10
 
-base_dir = os.getenv('GBT10B_OUT')
+base_dir = os.getenv('GBT_OUT')
+data_dir = os.getenv('GBT_DATA')
 #raw_data_dir = os.getenv('GBT10B_DATA')
 kiyo_dir = os.getenv('GBT10B_KM')
 prefix = ''
-map_prefix = prefix + field + '_49-56_B_flux_pol_cal'
+map_prefix = prefix + field 
 IFs = ()
 
 
@@ -37,11 +38,11 @@ ha_scans = ()
 # the only IF's saved to the following fits files).
 ha_IFs = IFs
 
-#from time_stream import flag_data
+from time_stream import flag_data
 # Comment this line to skip this step when running python pipeline/manager
-#pipe_modules.append(flag_data.FlagData)
+pipe_modules.append(flag_data.FlagData)
 #fd_input_root = ha_output_root
-fd_input_root = kiyo_dir + '/guppi_data/'
+fd_input_root = data_dir
 fd_file_middles = file_middles
 fd_input_end = '.fits'
 fd_output_root = base_dir + 'flagged/'
@@ -113,8 +114,8 @@ cc_average_cal_states = True
 #c_weights = (0.5, 0.5)
 #cc_weights = (0.0, 1.0)
 
-from map import dirty_map
-pipe_modules.append(dirty_map.DirtyMapMaker)
+#from map import dirty_map
+#pipe_modules.append(dirty_map.DirtyMapMaker)
 dm_input_root = cc_output_root
 dm_file_middles = file_middles
 dm_input_end = '.fits'
@@ -131,8 +132,8 @@ dm_noise_model = 'disjoint_scans'
 dm_polarizations = ('I','V')
 dm_noise_parameters_input_root = 'None'
 
-from map import clean_map
-pipe_modules.append(clean_map.CleanMapMaker)
+#from map import clean_map
+#pipe_modules.append(clean_map.CleanMapMaker)
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
 cm_polarizations = ('I','V')
