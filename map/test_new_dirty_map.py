@@ -171,9 +171,11 @@ class TestNoiseClass(unittest.TestCase):
         #### Test making noise in map space.
         P = dirty_map.Pointing(("ra", "dec"), (ra, dec), map, 'nearest')
         map_noise_inv = sp.zeros((nf, nra, ndec, nf, nra, ndec), dtype=float)
+        P_mat = P.get_matrix()
         tmp_map_noise_inv = al.partial_dot(noise_inv,
-                                           P.get_matrix().transpose())
-        tmp_map_noise_inv = al.partial_dot(P.get_matrix(), tmp_map_noise_inv)
+                                           P_mat)
+        print 'here'
+        tmp_map_noise_inv = al.partial_dot(P_mat.transpose(), tmp_map_noise_inv)
         print tmp_map_noise_inv.shape, tmp_map_noise_inv.axes
 
 

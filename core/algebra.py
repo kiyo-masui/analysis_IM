@@ -1657,9 +1657,9 @@ def partial_dot(left, right):
                 left_axes_to_dot_shape += (left_col_shape[ii],)
                 left_axes_to_dot_size *= left_col_shape[ii]
                 right_axes_to_dot += (right_rows[jj],)
-                right_axes_to_dot_names += (right_row_names[ii],)
-                right_axes_to_dot_shape += (right_row_shape[ii],)
-                right_axes_to_dot_size *= right_row_shape[ii]
+                right_axes_to_dot_names += (right_row_names[jj],)
+                right_axes_to_dot_shape += (right_row_shape[jj],)
+                right_axes_to_dot_size *= right_row_shape[jj]
                 break
     # Figure out which inner axes we won't be collapsing.
     left_axes_hanging = tuple(set(left_cols) - set(left_axes_to_dot))
