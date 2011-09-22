@@ -436,7 +436,7 @@ class TestAlgUtils(unittest.TestCase) :
         self.mat.rows = (0, 1)
         self.mat.cols = (2,)
         self.mat.axes = ('x', 'y', 'freq')
-        new_vect = algebra.partial_dot(self.mat, self.vect, 0)
+        new_vect = algebra.partial_dot(self.mat, self.vect)
         self.assertEqual(new_vect.shape, (4, 6, 2, 3))
         self.assertEqual(new_vect.axes, ('x', 'y', 'a', 'b'))
         numerical_result = sp.dot(sp.reshape(self.mat, (4*6, 5)), 
@@ -463,7 +463,7 @@ class TestAlgUtils(unittest.TestCase) :
         self.mat.rows = (0,)
         self.mat.axes = ('freq', 'x', 'y')
         matT = self.mat.transpose()
-        new_vect = algebra.partial_dot(matT, self.vect, 0)
+        new_vect = algebra.partial_dot(matT, self.vect)
         self.assertEqual(new_vect.shape, (4, 6, 2, 3))
         self.assertEqual(new_vect.axes, ('x', 'y', 'a', 'b'))
         # Reform origional matrix to get same numerical result.

@@ -1560,78 +1560,181 @@ def dot(arr1, arr2, check_inner_axes=True) :
         raise NotImplementedError("Matrix-matrix multiplication has not been "
                                   "Implemented yet.")
 
-def partial_dot(arr1, arr2, new_axes_location=0):
+def partial_dot(left, right):
     """Perform matrix multiplication on some subset of the axes.
     
     This is similar to a numpy `tensordot` but it is aware of the matrix and
     vector nature of the inputs and returns appropriate objects.  It decides
-    which axes to 'dot' based on the axis names. It also gives you a choice of
-    where to put the new axes.
+    which axes to 'dot' based on the axis names.
 
-    This is only implemented for a matrix x vector, where all the matrix
-    columns have names that that correspond to the vector axes.
+    Not implemented for matricies that have block diagonal structure.
 
     Parameters
     ----------
-    arr1 : alg_object (only mat implemented)
-    arr2 : alg_object (only vect implemented)
-    new_axes_location : int
+    left : mat or vect
+    right : mat or vect
     
     Returns
     -------
-    out_arr : alg_object (only vect implemented)
+    out : mat or vect
     """
-
-    if isinstance(arr1, mat) and isinstance(arr2, vect):
-        # Figure out which axes of the vector will be dotted.
-        vect_dot_axes = ()
-        vect_dot_shape = ()
-        for column_name in arr1.col_names():
-            if not column_name in arr2.axes:
-                msg = "All column axes must match a vector axis"
-                raise NotImplementedError(msg)
-            vect_axis_index = list(arr2.axes).index(column_name)
-            vect_dot_axes += (vect_axis_index,)
-            vect_dot_shape += (arr2.shape[vect_axis_index],)
-        if arr1.col_shape() != vect_dot_shape:
-            msg = "Axes to be dotted do not agree in length."
-            raise ValueError(msg)
-        # Figure out what the new array is going to look like.
-        new_arr_shape = ()
-        new_arr_axis_names = ()
-        for ii in range(arr2.ndim):
-            if not ii in vect_dot_axes:
-                new_arr_shape += (arr2.shape[ii],)
-                new_arr_axis_names += (arr2.axes[ii],)
-        new_arr_shape = (new_arr_shape[:new_axes_location] + arr1.row_shape()
-                         + new_arr_shape[new_axes_location:])
-        new_arr_axis_names = (new_arr_axis_names[:new_axes_location] 
-                              + arr1.row_names()
-                              + new_arr_axis_names[new_axes_location:])
-        # XXX: Probably want to make the dtype something more general
-        # considering the mat dtype.
-        out_arr = sp.empty(new_arr_shape, dtype=arr2.dtype)
-        out_arr = make_vect(out_arr, axis_names=new_arr_axis_names)
-        # Set up the arrays for the multiply.
-        n_row_axes = len(arr1.rows)
-        n_col_axes = len(arr1.cols)
-        # In many cases, the mose efficient thing to do is to iterate over the
-        # matrix rows.
-        tensordot_axes = (tuple(range(n_col_axes)), vect_dot_axes)
-        new_arr_index = [slice(None)] * out_arr.ndim
-        for mat_index in arr1.iter_row_index():
-            this_row = arr1[mat_index]
-            new_arr_entry = sp.tensordot(this_row, arr2, tensordot_axes)
-            for ii in xrange(n_row_axes):
-                new_arr_index[new_axes_location + ii] = mat_index[arr1.rows[ii]]
-            out_arr[tuple(new_arr_index)] = new_arr_entry
-    elif isinstance(arr1, vect) and isinstance(arr2, mat):
-        return partial_dot(arr2.transpose(), arr1, new_axes_location):
+    
+    # Figure out what kind of object the inputs are.
+    msg = "Inputs must be either mat or vect objects."
+    if isinstance(left, mat):
+        left_rows = left.rows
+        left_cols = left.cols
+    elif isinstance(left, vect):
+        left_rows = ()
+        left_cols = tuple(range(left.ndim))
     else:
-        msg = ("Only matrix-vector and vector-matrix multiplication "
-               "implemented.")
-        raise NotImplementedError(msg)
-    return out_arr
+        raise TypeError(msg)
+    if isinstance(right, mat):
+        right_rows = right.rows
+        right_cols = right.cols
+    elif isinstance(right, vect):
+        right_rows = tuple(range(right.ndim))
+        right_cols = ()
+    else:
+        raise TypeError(msg)
+    # For each input, get the axis names and shapes.
+    left_row_names = ()
+    left_row_shape = ()
+    left_row_size = 1
+    for axis_ind in left_rows:
+        left_row_names = left_row_names + (left.axes[axis_ind],)
+        left_row_shape = left_row_shape + (left.shape[axis_ind],)
+        left_row_size *= left.shape[axis_ind]
+    left_col_names = ()
+    left_col_shape = ()
+    left_col_size = 1
+    for axis_ind in left_cols:
+        left_col_names = left_col_names + (left.axes[axis_ind],)
+        left_col_shape = left_col_shape + (left.shape[axis_ind],)
+        left_col_size *= left.shape[axis_ind]
+    right_row_names = ()
+    right_row_shape = ()
+    right_row_size = 1
+    for axis_ind in right_rows:
+        right_row_names = right_row_names + (right.axes[axis_ind],)
+        right_row_shape = right_row_shape + (right.shape[axis_ind],)
+        right_row_size *= right.shape[axis_ind]
+    right_col_names = ()
+    right_col_shape = ()
+    right_col_size = 1
+    for axis_ind in right_cols:
+        right_col_names = right_col_names + (right.axes[axis_ind],)
+        right_col_shape = right_col_shape + (right.shape[axis_ind],)
+        right_col_size *= right.shape[axis_ind]
+    # The axes to collapse are ones with matching names between the left
+    # columns and the right rows.
+    left_axes_to_dot = ()
+    left_axes_to_dot_names = ()
+    left_axes_to_dot_shape = ()
+    left_axes_to_dot_size = 1
+    right_axes_to_dot = ()
+    right_axes_to_dot_names = ()
+    right_axes_to_dot_shape = ()
+    right_axes_to_dot_size = 1
+    for ii in range(len(left_cols)):
+        # Check for block diagonal structure.
+        if left_cols[ii] in left_rows:
+            raise NotImplementedError("Block diagonal structure not"
+                                      " supported (left matrix).")
+        for jj in range(len(right_rows)):
+            if right_rows[jj] in right_cols:
+                raise NotImplementedError("Block diagonal structure not"
+                                          " supported (right matrix).")
+            # If the names match up, these will be dotted together.
+            if left_col_names[ii] == right_row_names[jj]:
+                # Check that they are the same length
+                if left_col_shape[ii] != right_row_shape[jj]:
+                    raise ValueError("Axes to be contracted are not the same"
+                                     " length.")
+                # Add the pair to the list of axes to be contrated.
+                left_axes_to_dot += (left_cols[ii],)
+                left_axes_to_dot_names += (left_col_names[ii],)
+                left_axes_to_dot_shape += (left_col_shape[ii],)
+                left_axes_to_dot_size *= left_col_shape[ii]
+                right_axes_to_dot += (right_rows[jj],)
+                right_axes_to_dot_names += (right_row_names[ii],)
+                right_axes_to_dot_shape += (right_row_shape[ii],)
+                right_axes_to_dot_size *= right_row_shape[ii]
+                break
+    # Figure out which inner axes we won't be collapsing.
+    left_axes_hanging = tuple(set(left_cols) - set(left_axes_to_dot))
+    left_axes_hanging_size = left_col_size // left_axes_to_dot_size
+    left_axes_hanging_names = ()
+    left_axes_hanging_shape = ()
+    for axis in left_axes_hanging:
+        left_axes_hanging_names += (left.axes[axis],)
+        left_axes_hanging_shape += (left.shape[axis],)
+    right_axes_hanging = tuple(set(right_rows) - set(right_axes_to_dot))
+    right_axes_hanging_size = right_row_size // right_axes_to_dot_size
+    right_axes_hanging_names = ()
+    right_axes_hanging_shape = ()
+    for axis in right_axes_hanging:
+        right_axes_hanging_names += (right.axes[axis],)
+        right_axes_hanging_shape += (right.shape[axis],)
+    # Figure out the properties of the final matrix.
+    out_shape = (left_row_shape + right_axes_hanging_shape 
+                 + left_axes_hanging_shape + right_col_shape)
+    out_names = (left_row_names + right_axes_hanging_names 
+                 + left_axes_hanging_names + right_col_names)
+    n_out_rows = len(left_rows) + len(right_axes_hanging)
+    n_out_cols = len(left_axes_hanging) + len(right_cols)
+    out_rows = tuple(range(n_out_rows))
+    out_cols = tuple(range(n_out_rows, n_out_rows + n_out_cols))
+    dtype = (left.flat[[0]] * right.flat[[0]]).dtype
+    # Allowcate the out put array.
+    out = sp.empty(out_shape, dtype=dtype)
+    if not out_rows or not out_cols :
+        out = make_vect(out, out_names)
+    else :
+        out = make_mat(out, out_names, out_rows, out_cols)
+    out.copy_axis_info(left)
+    out.copy_axis_info(right)
+    # Initialize slicing index sets for each of the arrays.
+    full_slice = slice(None)
+    left_slice = [full_slice] * left.ndim
+    right_slice = [full_slice] * right.ndim
+    out_slice = [full_slice] * out.ndim
+    # In the sliced array, the indices to dot will be different.  Figure that
+    # out.
+    left_tensor_dot_axes = list(left_axes_to_dot)
+    for ii in range(len(left_axes_to_dot)):
+        for index in left_rows:
+            if index < left_axes_to_dot[ii]:
+                left_tensor_dot_axes[ii] -= 1
+    left_tensor_dot_axes = tuple(left_tensor_dot_axes)
+    right_tensor_dot_axes = list(right_axes_to_dot)
+    for ii in range(len(right_axes_to_dot)):
+        for index in right_axes_hanging:
+            if index < right_axes_to_dot[ii]:
+                right_tensor_dot_axes[ii] -= 1
+    right_tensor_dot_axes = tuple(right_tensor_dot_axes)
+    tensor_dot_axes = (left_tensor_dot_axes, right_tensor_dot_axes)
+    # Now iterate through the matrices and dot them together.
+    for ii in xrange(left_row_size):
+        # Figure out the indices for the left matrix and the out put.
+        tmp_ii = ii
+        for kk in xrange(len(left_rows)):
+            this_index = tmp_ii % left_row_shape[kk]
+            tmp_ii = tmp_ii // left_row_shape[kk]
+            left_slice[left_rows[kk]] = this_index
+            out_slice[kk] = this_index
+        for jj in xrange(right_axes_hanging_size):
+            # Figure out the indices for the right matrix and the out put.
+            tmp_jj = jj
+            for kk in xrange(len(right_axes_hanging)):
+                this_index = tmp_jj % right_axes_hanging_shape[kk]
+                tmp_jj = tmp_jj // right_axes_hanging_shape[kk]
+                right_slice[right_axes_hanging[kk]] = this_index
+                out_slice[len(left_rows) + kk] = this_index
+            out[tuple(out_slice)] = sp.tensordot(left[tuple(left_slice)],
+                                                  right[tuple(right_slice)],
+                                                  axes=tensor_dot_axes)
+    return out
 
 def empty_like(obj) :
     """Create a new algebra object with uninitialized data but otherwise the
