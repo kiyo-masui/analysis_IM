@@ -93,7 +93,7 @@ class Pointing(object):
         `map`, the following operations should be equivalent, with the later
         much more efficient.
         
-        >>> a = al.partial_dot(self.get_matrix.transpose(), map)
+        >>> a = al.partial_dot(self.get_matrix, map)
         >>> b = self.apply_to_time_axis(map)
         >>> sp.allclose(a, b)
         True
@@ -396,15 +396,39 @@ class Noise(object):
         # Noise weight by the 'independant frequency' term.
         block_weighted = al.dot(block_freq_inverse, data)
         # Calculate the second term that couples frequencies.
-        second_term = al.partial_dot(self.freq_modes.transpose(),
+        update_term = al.partial_dot(self.freq_modes.mat_transpose(),
                                      block_weighted)
-        second_term = al.dot(self.mode_noise_term, second_term)
-        second_term = al.partial_dot(self.freq_modes, second_term)
-        second_term = al.dot(block_freq_inverse, second_term)
+        update_term = al.dot(self.mode_noise_term, update_term)
+        update_term = al.partial_dot(self.freq_modes, update_term)
+        update_term = al.dot(block_freq_inverse, update_term)
         # Combine the terms.
-        out = block_weighted - second_term
-
+        out = block_weighted - update_term
         return out
+
+    def update_map_noise(self, P, f_ind, map_noise_inv):
+        """Convert noise to map space.
+
+        We fill the first axis (the first channel axis) one at a time to
+        conserve memory.
+        """
+
+        # Make sure that the map noise is compatible with the pointing.
+        if map_noise_inv.shape != P._map_shape + (self.n_chan,) + P._map_shape:
+            msg = "Map noise shape not compatible with pointing object."
+            raise ValueError(msg)
+        # Get the time domain noise inverse of this slice.
+        diag_freq_noise_f_ind = self.get_diag_allfreq_inverse(f_ind)
+        # Do all operations on to make the update term that only apply to the
+        # channel we are dealing with.
+        left_part_update_term = al.partial_dot(diag_freq_noise_f_ind, 
+                                               self.mode_noise_term)
+        # We get rid of the frequency axis on the left by indexing.
+        this_freq_modes = self.freq_modes.index_axis(0, find)
+        left_part_update_term = al.partial_dot(this_freq_modes,
+                                               left_part_update_term)
+        
+
+        
 
         
 

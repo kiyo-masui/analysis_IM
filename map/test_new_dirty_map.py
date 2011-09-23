@@ -126,7 +126,7 @@ class TestPointing(unittest.TestCase):
         map, time_stream, ra, dec, az, el, time, mask_inds = make_test_data()
         P = dirty_map.Pointing(('ra', 'dec'), (ra, dec), map, 'nearest')
         pointing_matrix = P.get_matrix()
-        gridded_data_mult = al.partial_dot(pointing_matrix.transpose(),
+        gridded_data_mult = al.partial_dot(pointing_matrix.mat_transpose(),
                                            time_stream)
         gridded_data_fast = P.apply_to_time_axis(time_stream)
         self.assertTrue(sp.allclose(gridded_data_mult, gridded_data_fast))
@@ -169,15 +169,25 @@ class TestNoiseClass(unittest.TestCase):
         self.assertTrue(sp.allclose(noise_weighted_data, al.dot(noise_inv,
                                                                 time_stream)))
         #### Test making noise in map space.
+        # First make the noise matrix by brute force.
         P = dirty_map.Pointing(("ra", "dec"), (ra, dec), map, 'nearest')
         map_noise_inv = sp.zeros((nf, nra, ndec, nf, nra, ndec), dtype=float)
         P_mat = P.get_matrix()
         tmp_map_noise_inv = al.partial_dot(noise_inv,
                                            P_mat)
-        print 'here'
-        tmp_map_noise_inv = al.partial_dot(P_mat.transpose(), tmp_map_noise_inv)
-        print tmp_map_noise_inv.shape, tmp_map_noise_inv.axes
-
+        tmp_map_noise_inv = al.partial_dot(P_mat.mat_transpose(), 
+                                           tmp_map_noise_inv)
+        # I mess up the meta data by doing this, but rotate the axes so they
+        # are in the desired order.
+        tmp_map_noise_inv = sp.rollaxis(tmp_map_noise_inv, 2, 0)
+        # Now use fast methods.
+        map_noise_inv = sp.zeros((nf, nra, ndec, nf, nra, ndec), dtype=float)
+        map_noise_inv = al.make_mat(map_noise_inv, axis_names=('freq', 'ra', 
+            'dec', 'freq', 'ra', 'dec'), row_axes=(0, 1, 2), 
+            col_axes=(3, 4, 5))
+        for ii in xrange(nf):
+            Noise.update_map_noise(P, ii, map_noise_inv[ii,:,:,:,:,:])
+        self.assertTrue(sp.allclose(map_noise_inv, tmp_map_noise_inv))
 
 
 if __name__ == '__main__' :

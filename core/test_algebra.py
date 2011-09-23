@@ -462,15 +462,33 @@ class TestAlgUtils(unittest.TestCase) :
         right_ans = sp.swapaxes(right_ans, 1, 2)
         self.assertTrue(sp.allclose(right_ans, result))
 
-    def test_partial_dot_mat_mat_block(self):
+    def deactivate_test_partial_dot_mat_mat_block(self):
         # Functionality not yet implemented.
-        pass
-
+        mat1 = sp.asarray(self.mat)
+        mat1.shape = (4, 3, 2, 5)
+        mat1 = algebra.make_mat(mat1, axis_names=('time', 'x', 'y', 'z'),
+                                row_axes=(0,1), col_axes=(0, 2, 3))
+        mat2 = sp.asarray(self.mat)
+        mat2.shape = (4, 5, 2, 3)
+        mat2 = algebra.make_mat(mat2, axis_names=('time', 'w', 'y', 'freq'), 
+                                row_axes=(0, 1, 2), col_axes=(1, 3))
+        tmp_arr = sp.tensordot(mat1, mat2, ((2,), (2,)))
+        right_ans = sp.empty((5, 4, 3, 5, 3))
+        for ii in range(4):
+            this_tmp = tmp_arr[ii,:,:,ii,:,:]
+            this_tmp = sp.rollaxis(this_tmp, 2, 0)
+            right_ans[:,ii,...] = this_tmp
+        result = algebra.partial_dot(mat1, mat2)
+        self.assertEqual(result.axes, ('w', 'time', 'x', 'z', 'freq'))
+        self.assertEqual(result.rows, (0, 1, 2))
+        self.assertEqual(result.rows, (0, 1, 2))
+        self.assertEqual(result.cols, (0, 3, 4))
+        self.assertTrue(sp.allclose(right_ans, result))
 
     def test_transpose(self):
         mat = self.mat
         mat_info = dict(mat.info)
-        matT = mat.transpose()
+        matT = mat.mat_transpose()
         self.assertEqual(mat.rows, matT.cols)
         self.assertEqual(mat.mat_shape()[0], matT.mat_shape()[1])
         self.assertEqual(mat.mat_shape()[1], matT.mat_shape()[0])
@@ -485,7 +503,7 @@ class TestAlgUtils(unittest.TestCase) :
         self.mat.cols = (1, 2)
         self.mat.rows = (0,)
         self.mat.axes = ('freq', 'x', 'y')
-        matT = self.mat.transpose()
+        matT = self.mat.mat_transpose()
         new_vect = algebra.partial_dot(matT, self.vect)
         self.assertEqual(new_vect.shape, (4, 6, 2, 3))
         self.assertEqual(new_vect.axes, ('x', 'y', 'a', 'b'))

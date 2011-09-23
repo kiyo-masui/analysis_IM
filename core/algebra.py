@@ -1419,7 +1419,7 @@ class mat(alg_object) :
                     col_start:col_start + block_shape[1]] = mat_block
         return out_mat
 
-    def transpose(self):
+    def mat_transpose(self):
         """Transpose the matrix.
 
         Returns an `mat` object with rows and columns exchanged.  The
@@ -1696,6 +1696,9 @@ def partial_dot(left, right):
     out.copy_axis_info(left)
     out.copy_axis_info(right)
     # Now dot the appropriate axes.
+    # TODO: tensordot, rearanges the axes, copies, reshapes, normal dots,
+    # reshapes, then copies.  We would be better off doing this ourselves
+    # given that we rearange and copy below.
     tmp_out = sp.tensordot(left, right, (left_axes_to_dot, right_axes_to_dot))
     # These axes will be in the wrong order so we need to rearrange to fit into
     # `out`.
