@@ -1,5 +1,7 @@
 """Program that calculates the correlation function across frequency slices.
 """
+# TODO: figure out data model for storing lags, etc. with class instance
+# TODO: needs to continue to work with multiprocessing
 
 import time
 import scipy as sp
@@ -18,7 +20,7 @@ class MapPair(object):
     noise_inv1, noise_inv2: algebra_vector
         Input Noise inverses.
     freq: tuple of ints
-        The frequency indeces to use.
+        The frequency indices to use.
 
     Attributes
     ----------
@@ -31,25 +33,12 @@ class MapPair(object):
     map1_code, map2_code: str
         A single letter representing which section the map is.
     freq: tuple of ints
-        The frequency indeces to use.
-    lags: tuple of ints
-        The angular lag tuples to use.
-    params: dict
-        A dictionary containing all the information from correlate_slices.ini
-    fore_corr, corr: 3D array
-        The correlation of the maps before and after mode subtraction.
-    fore_counts, counts: 3D array
-        The weights for the correlations before and after mode subtraction.
-    vals: array
-        The amplitude of the modes.
-    all_modes1, all_modes2: 2D array
-        All of the modes for the 2 maps in a pair (from 1 to len(freq)).
+        The frequency indices to use.
     modes1, modes2: 2D array
         The modes for the 2 maps in a pair (from 1 to number of modes
         to be subtracted).
     left_modes, right_modes: 3D array
-        What was subtracted from the maps during cleaning. Do not know why
-        the naming is like this.
+        What was subtracted from the maps during cleaning.
 
     """
 
@@ -68,29 +57,17 @@ class MapPair(object):
         self.noise_inv1 = noise_inv1
         self.noise_inv2 = noise_inv2
         self.freq = freq
-        # To be set by methods:
-        # NOTE fore_Pairs will not have these set, only Pairs.
-        self.fore_corr = 0
-        self.corr = 0
-        self.fore_counts = 0
         self.counts = 0
-        self.vals = 0
-        self.all_modes1 = 0
-        self.all_modes2 = 0
         self.modes1 = 0
         self.modes2 = 0
         self.left_modes = 0
         self.right_modes = 0
-        # For multiprocessing function since this can't be passed in.
-        self.lags = 0
         # For saving, to keep track of each mapname.
         self.map1_name = ''
         self.map2_name = ''
         # Which section [A, B, C, D...] the maps is from.
         self.map1_code = ''
         self.map2_code = ''
-        # To have information about where things are.
-        self.params = {}
 
     def set_names(self, name1, name2):
         """Set the map names and codes.
