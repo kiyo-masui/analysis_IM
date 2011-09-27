@@ -59,10 +59,12 @@ class Calibrate(base_single.BaseSingle) :
         # Main Action
         i = self.file_ind
         file_middle = self.params['file_middles'][i]
-        sess_num = file_middle.split('_')[0]
+        separate = file_middle.split('/')[1]
+        sess_num = separate.split('_')[0]
         sess_num = int(sess_num)
+        project = file_middle.split('/')[0]
 #        print sess_num
-        mueler_file_name = self.params['mueler_file']+str(sess_num)+'_mueller_matrix_from_inverted_params.txt'
+        mueler_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_mueller_matrix_from_inverted_params.txt'
         self.mueler = mueller(mueler_file_name)
         calibrate_pol(Data, self.mueler)
        	Data.add_history('Flux calibrated and Corrected for polarization leakage.', 

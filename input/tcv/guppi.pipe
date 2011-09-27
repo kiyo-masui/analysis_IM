@@ -6,10 +6,10 @@ from core import dir_data
 import scipy as sp
 
 # Here you choose which files to process.
-field = '15hr'
+field = '1hr'
 dm_field_centre = (218.25, 2.0) 
 #Here I'm grabbing the guppi data
-file_middles = tuple(dir_data.get_data_files(range(41,90) , field='15hr', project='GBT10B_036',type='ralongmap'))
+file_middles = tuple(dir_data.get_data_files(range(41,90) , field='1hr', project='GBT10B_036',type='ralongmap'))
 
 pipe_modules = []
 # Chime has 8 cores, but you should save a few for other people.  Use 6 max.
