@@ -9,13 +9,11 @@ A set of functions to bin optical catalog data into cubes
 import numpy as np
 import unittest
 import time
-import sys
 import shelve
 import random
 import multiprocessing
 import copy
 from core import algebra
-from optparse import OptionParser
 # TODO: make better parameter passing for catalog binning
 # TODO: put ranges of other fields in docstring
 
@@ -33,7 +31,8 @@ def find_edges(axis, delta=False):
 
 
 def print_edges(sample, edges, name):
-    """print bin edges for a catalog"""
+    """print bin edges for a catalog
+    """
     print "Binning %s from range (%5.3g, %5.3g) into (%5.3g, %5.3g)" % (
            name, min(sample), max(sample), min(edges), max(edges))
 
@@ -103,9 +102,9 @@ def bin_catalog_data(catalog, freq_axis, ra_axis,
     This currently assumes that all of the axes are uniformly spaced
     """
     # TODO: move this to a constants file
-    nu_21cm_MHz = 1420.40575177
+    nu_21cm_mhz = 1420.40575177
 
-    catalog_frequencies = nu_21cm_MHz * 1.e6 / (1 + catalog['z'])
+    catalog_frequencies = nu_21cm_mhz * 1.e6 / (1 + catalog['z'])
     num_catalog = catalog.size
     sample = np.zeros((num_catalog, 3))
     sample[:, 0] = catalog_frequencies
@@ -135,6 +134,9 @@ def bin_catalog_data(catalog, freq_axis, ra_axis,
 
 def bin_catalog_file(filename, freq_axis, ra_axis,
                      dec_axis, skip_header=None, verbose=True):
+    """Bin the catalog given in `filename` using the given freq, ra, and dec
+    axes.
+    """
 
     # read the WiggleZ catalog and convert redshift axis to frequency
     ndtype = [('RA', float), ('Dec', float), ('z', float),
@@ -152,14 +154,16 @@ def bin_catalog_file(filename, freq_axis, ra_axis,
 
 
 def wrap_bin_catalog_data(entry):
-    """hand some tuple of information to the binning code"""
+    """hand some tuple of information to the binning code
+    """
     (ranindex, rancat, freq_axis, ra_axis, dec_axis) = entry
     #print ranindex
     return bin_catalog_data(rancat, freq_axis, ra_axis, dec_axis)
 
 
 def template_map_axes(filename):
-    """Open a numpy array map and extract its axis/etc. information"""
+    """Open a numpy array map and extract its axis/etc. information
+    """
     #if filename is None:
     #    root_template = '/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test/'
     #    filename = root_template + \
@@ -249,7 +253,6 @@ def randomize_catalog_redshifts(catalog, fieldname):
     re-draw the redshifts of a catalog from N(z) according to observation
     priority -- from Chris Blake
     """
-    num_catalog = catalog.size
     nzilookupfile = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/wiggleZ_catalogs/"
     nzilookupfile += "nzpri_reg" + fieldname + "_tzuchingcats.dat"
     ndtype = [('CDF', float), ("z0", float), ("z1", float), ("z2", float),
@@ -257,13 +260,15 @@ def randomize_catalog_redshifts(catalog, fieldname):
     nzilookup = np.genfromtxt(nzilookupfile, dtype=ndtype, skiprows=1)
 
     # find the priority zones of each random source
-    whpriority = [np.where(catalog["sec"] == ipri)[0] for ipri in range(1,7)]
+    whpriority = [np.where(catalog["sec"] == ipri)[0] for ipri in range(1, 7)]
     numpriority = [(index, entry.size) for (index, entry)
-                    in zip(range(1,7), whpriority)]
-    randsample = [(index, np.random.random_sample(ssize)) for (index, ssize) in numpriority]
-    randz = [np.interp(draw, nzilookup["CDF"], nzilookup["z"+repr(index-1)])
+                    in zip(range(1, 7), whpriority)]
+    randsample = [(index, np.random.random_sample(ssize)) for \
+                  (index, ssize) in numpriority]
+    randz = [np.interp(draw, nzilookup["CDF"],
+                       nzilookup["z" + repr(index - 1)])
                     for (index, draw) in randsample]
-    for zone in range(0,6):
+    for zone in range(0, 6):
         catalog["z"][whpriority[zone]] = randz[zone]
 
     #print catalog["z"]
@@ -307,56 +312,57 @@ def estimate_selection_function(fieldname, template_file,
         #randdata = {}
         for entry in randlist:
             print "loading: " + entry[1]
-            randdata[entry[0]] = np.genfromtxt(entry[1], dtype=ndtype, skiprows=1)
+            randdata[entry[0]] = np.genfromtxt(entry[1], dtype=ndtype,
+                                               skiprows=1)
         randdata.close()
 
     (freq_axis, ra_axis, dec_axis, template_shape, template_map) = \
         template_map_axes(filename=template_file)
 
     selection_function = np.zeros(template_shape)
-    selection_functionA = np.zeros(template_shape)
-    selection_functionB = np.zeros(template_shape)
+    sel_func_a = np.zeros(template_shape)
+    sel_func_b = np.zeros(template_shape)
     for iternum in range(0, num_chunks):
-        runlistA = []
-        runlistB = []
+        runlist_a = []
+        runlist_b = []
         for count in range(0, chunking_size):
-            ranA = random.randint(0, n_rand_cats-1)
-            ranB = random.randint(0, n_rand_cats-1)
+            ran_a = random.randint(0, n_rand_cats - 1)
+            ran_b = random.randint(0, n_rand_cats - 1)
             # TODO: do we need deep copy here, or paranoid?
-            rancatA = randomize_catalog_redshifts(
-                            copy.deepcopy(randdata[repr(ranA)]),
+            rancat_a = randomize_catalog_redshifts(
+                            copy.deepcopy(randdata[repr(ran_a)]),
                             fieldname)
-            rancatB = randomize_catalog_redshifts(
-                            copy.deepcopy(randdata[repr(ranB)]),
+            rancat_b = randomize_catalog_redshifts(
+                            copy.deepcopy(randdata[repr(ran_b)]),
                             fieldname)
-            runlistA.append((ranA, rancatA, freq_axis, ra_axis, dec_axis))
-            runlistB.append((ranB, rancatB, freq_axis, ra_axis, dec_axis))
+            runlist_a.append((ran_a, rancat_a, freq_axis, ra_axis, dec_axis))
+            runlist_b.append((ran_b, rancat_b, freq_axis, ra_axis, dec_axis))
 
-        chunk_selection_functionA = np.zeros(template_shape)
-        chunk_selection_functionB = np.zeros(template_shape)
+        chunk_sel_func_a = np.zeros(template_shape)
+        chunk_sel_func_b = np.zeros(template_shape)
 
         pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
-        resultsA = pool.map(wrap_bin_catalog_data, runlistA)
-        resultsB = pool.map(wrap_bin_catalog_data, runlistB)
+        resultsA = pool.map(wrap_bin_catalog_data, runlist_a)
+        resultsB = pool.map(wrap_bin_catalog_data, runlist_b)
 
         for resultitem in resultsA:
-            chunk_selection_functionA += resultitem
+            chunk_sel_func_a += resultitem
 
         for resultitem in resultsB:
-            chunk_selection_functionB += resultitem
+            chunk_sel_func_b += resultitem
 
-        chunk_selection_functionA /= float(len(resultsA))
-        chunk_selection_functionB /= float(len(resultsB))
+        chunk_sel_func_a /= float(len(resultsA))
+        chunk_sel_func_b /= float(len(resultsB))
 
-        selection_functionA += chunk_selection_functionA
-        selection_functionB += chunk_selection_functionB
+        sel_func_a += chunk_sel_func_a
+        sel_func_b += chunk_sel_func_b
 
-        print np.std((selection_functionA-selection_functionB)/float(iternum+1)), \
-              np.mean(selection_functionA)/float(iternum+1), \
-              np.mean(selection_functionB)/float(iternum+1)
+        print np.std((sel_func_a - sel_func_b) / float(iternum + 1)), \
+              np.mean(sel_func_a) / float(iternum + 1), \
+              np.mean(sel_func_b) / float(iternum + 1)
 
-    selection_function = (selection_functionA +
-                          selection_functionB)/2./float(num_chunks)
+    selection_function = (sel_func_a +
+                          sel_func_b) / 2. / float(num_chunks)
     print np.mean(selection_function)
 
     map_wigglez_selection = algebra.make_vect(selection_function,
@@ -367,10 +373,12 @@ def estimate_selection_function(fieldname, template_file,
 
 
 class CatalogGriddingTest(unittest.TestCase):
-    """Unit test class for catalog gridding"""
+    """Unit test class for catalog gridding
+    """
 
     def test_simple(self):
-        """bin a simple 3x3x3 array"""
+        """bin a simple 3x3x3 array
+        """
 
         parent_axis = np.array([0.25, 0.75, 1.25])
         edges = find_edges(parent_axis)
@@ -432,44 +440,26 @@ class CatalogGriddingTest(unittest.TestCase):
         print result - alternate
 
 
-if __name__ == '__main__':
-    #parser = OptionParser(usage="usage: %prog [options]",
-    #                      version="%prog 1.0")
-    #parser.add_option("-t", "--test",
-    #                  action="store_true",
-    #                  dest="run_unittest",
-    #                  default=False,
-    #                  help="run some units tests on the catalog binning")
-    #parser.add_option("-f", "--file",
-    #                  action="store",
-    #                  dest="template_file",
-    #                  default=None,
-    #                  help="File for radio cube to use as template",)
-    #(options, args) = parser.parse_args()
+def generate_sel_15hr_22hr_gbtregion():
+    """generate selection functions for the 15hr and 22hr field based on GBT
+    map template for those regions
+    """
+    calinliv_dir = '/mnt/raid-project/gmrt/calinliv/wiggleZ/'
 
-    #if len(args) != 1:
-    #    parser.error("wrong number of arguments")
-    #print options
-    #print args
-
-    #if options.__dict__["run_unittest"]:
-    #    del sys.argv[1:]  # unittest would try to interpret these
-    #    unittest.main()
-    #else:
-    #    estimate_selection_function()
-    #    #bin_wigglez()
-
-    #----------------------------------------------------------------------
-
-    root_template = '/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test/'
-    template_file = root_template + \
+    root_template = calinliv_dir + "corr/test/"
+    template_mapname = root_template + \
                     'sec_A_15hr_41-73_cleaned_clean_map_I_with_B.npy'
 
-    bin_wigglez("15", template_file)
+    bin_wigglez("15", template_mapname)
 
-    root_template = "/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/84_ABCD_all_15_modes/"
-    template_file = root_template + \
+    root_template = calinliv_dir + "corr/84_ABCD_all_15_modes/"
+    template_mapname = root_template + \
                     'sec_A_22hr_41-84_cleaned_clean_map_I_with_C.npy'
 
-    bin_wigglez("22", template_file)
+    bin_wigglez("22", template_mapname)
 
+
+if __name__ == '__main__':
+    #estimate_selection_function()
+    #bin_wigglez()
+    generate_GBT_sel_15hr_22hr_gbtregion()
