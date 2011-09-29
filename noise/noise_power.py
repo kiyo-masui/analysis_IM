@@ -38,7 +38,8 @@ params_init = {
     # How many time bins to use.  By default, match to the first file.
     "n_time_bins" : 0,
     "window" : "hanning",
-    "deconvolve" : True
+    "deconvolve" : True,
+    "subtract_slope" : False
     }
 
 prefix = 'np_'
@@ -65,6 +66,7 @@ class NoisePower(object) :
         n_files = len(params["file_middles"])
         window = params['window']
         deconvolve = params['deconvolve']
+        subtract_slope = params['subtract_slope']
         # Loop over files to process.
         first_iteration = True
         for file_middle in params['file_middles'] :
@@ -90,7 +92,7 @@ class NoisePower(object) :
             # Calculate the raw power spectrum.
             power_mat, window_function, this_dt, full_mean = \
                 full_power_mat(Blocks, n_time=n_time, window=window, 
-                deconvolve=deconvolve)
+                deconvolve=deconvolve, subtract_slope=subtract_slope)
             # TODO: Figure out a better way to deal with this (only drop
             # affected frequencies).
             #if sp.any(sp.allclose(mask[:,0,0,:], 0.0, 0)):
@@ -110,7 +112,6 @@ class NoisePower(object) :
             thermal_expectation = (full_mean / sp.sqrt(this_dt)  /
                                    sp.sqrt(abs(Blocks[0].field['CDELT1'])) /
                                    sp.sqrt(1.0 / 2.0 / this_dt))
-                                
             if params['norm_to_thermal'] :
                 power_mat /= (thermal_expectation[:,None] 
                               * thermal_expectation[None,:])
@@ -126,8 +127,13 @@ class NoisePower(object) :
         if n_files > 0 :
             self.power_mat /= n_files
             self.thermal_expectation / n_files
-        plt.loglog(self.frequency, self.power_mat[:,10,10])
+        plt.loglog(self.frequency, self.power_mat[:,20,20])
         plt.show()
+        # Next steps: Take mean over frequency and then factor the chan-chan
+        # matrix.  Pick out the top n eigenvalues, then rotate the unaveraged
+        # power mat to that basis.  Look at the spectrum of thoses modes and
+        # the spectrums of leftover parts.  Save thermal parameters, the modes
+        # and the parameters for the spectra of those modes.
 
 def ps_freq_axis(dt, n):
     """Calculate the frequency axis for a power spectrum.
@@ -152,7 +158,7 @@ def ps_freq_axis(dt, n):
     return frequency
 
 def make_masked_time_stream(Blocks, ntime=None, window=None, 
-                            return_means=False) :
+                            return_means=False, subtract_slope=False) :
     """Converts Data Blocks into a single uniformly sampled time stream.
     
     Also produces the mask giving whether elements are valid entries or came
@@ -171,7 +177,9 @@ def make_masked_time_stream(Blocks, ntime=None, window=None,
         Type of window to apply to each DataBlock.  Valid options are the valid
         arguments to scipy.signal.get_window().  By default, don't window.
     return_means : bool
-        whether to return an array of the channed means.
+        Whether to return an array of the channed means.
+    subtract_slope : bool
+        Whether to subtract a linear function of time from each channel.
 
     Returns
     -------
@@ -198,10 +206,14 @@ def make_masked_time_stream(Blocks, ntime=None, window=None,
     # blocks.
     min_time = float('inf')
     max_time = 0.0
+    mean_time = 0.0
+    n_data_times = 0
     for Data in Blocks :
         Data.calc_time()
         min_time = min(min_time, min(Data.time))
         max_time = max(min_time, max(Data.time))
+        mean_time += sp.sum(Data.time)
+        n_data_times += len(Data.time)
         # Ensure that the time sampling is uniform.
         if not (sp.allclose(abs(sp.diff(Data.time)), dt, rtol=0.1)
                 and sp.allclose(abs(sp.mean(sp.diff(Data.time))), dt,
@@ -214,6 +226,7 @@ def make_masked_time_stream(Blocks, ntime=None, window=None,
             msg = ("All data blocks must have the same shape except the time "
                    "axis.")
             raise ce.DataError(msg)
+    mean_time /= n_data_times
     # Calculate the time axis.
     if not ntime :
         ntime = (max_time - min_time) // dt + 1
@@ -229,16 +242,27 @@ def make_masked_time_stream(Blocks, ntime=None, window=None,
     mask = sp.zeros((ntime,) + back_shape, dtype=sp.float32)
     # Very important to subtract the mean out of the signal, otherwise the
     # window coupling to the mean (0) mode will dominate everything.
-    total_sum = 0
+    total_sum = 0.0
     total_counts = 0
+    total_slope = 0.0
+    time_norm = 0.0
     for Data in Blocks:
         total_sum += sp.sum(Data.data.filled(0), 0)
         total_counts += ma.count(Data.data, 0)
+        total_slope += sp.sum(Data.data.filled(0) 
+                              * (Data.time[:,None,None,None] - mean_time), 0)
+        time_norm += sp.sum(sp.logical_not(ma.getmaskarray(Data.data))
+                            * (Data.time[:,None,None,None] - mean_time)**2, 0)
     total_mean = total_sum / total_counts
+    total_slope /= time_norm
     # Loop over all times and fill in the arrays.
     for Data in Blocks :
         # Subtract the mean calculated above.
         Data.data -= total_mean
+        # If desired, subtract of the linear function of time.
+        if subtract_slope:
+            Data.data -= (total_slope 
+                          * (Data.time[:,None,None,None] - mean_time))
         # Apply an offset to the time in case the start of the Data Block
         # doesn't line up with the time array perfectly.
         offset = time[sp.argmin(abs(time - Data.time[0]))] - Data.time[0]
@@ -436,7 +460,8 @@ def generate_overf_noise(amp, index, f0, dt, n):
     noise = fft.ifft(fft.fft(white_noise)*sp.sqrt(power_spectrum)).real
     return noise
 
-def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True) :
+def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True,
+                   subtract_slope=False) :
     """Calculate the full power spectrum of a data set with channel
     correlations.
     
@@ -444,7 +469,7 @@ def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True) :
     """
 
     full_data, mask, dt, channel_means = make_masked_time_stream(Blocks, n_time, 
-        window=window, return_means=True)
+        window=window, return_means=True, subtract_slope=subtract_slope)
     n_time = full_data.shape[0]
     # Broadcast to shape such that all pairs of channels are calculated.
     full_data1 = full_data[:,0,0,:,None]

@@ -462,27 +462,27 @@ class TestAlgUtils(unittest.TestCase) :
         right_ans = sp.swapaxes(right_ans, 1, 2)
         self.assertTrue(sp.allclose(right_ans, result))
 
-    def deactivate_test_partial_dot_mat_mat_block(self):
-        # Functionality not yet implemented.
-        mat1 = sp.asarray(self.mat)
-        mat1.shape = (4, 3, 2, 5)
-        mat1 = algebra.make_mat(mat1, axis_names=('time', 'x', 'y', 'z'),
-                                row_axes=(0,1), col_axes=(0, 2, 3))
-        mat2 = sp.asarray(self.mat)
-        mat2.shape = (4, 5, 2, 3)
-        mat2 = algebra.make_mat(mat2, axis_names=('time', 'w', 'y', 'freq'), 
-                                row_axes=(0, 1, 2), col_axes=(1, 3))
-        tmp_arr = sp.tensordot(mat1, mat2, ((2,), (2,)))
-        right_ans = sp.empty((5, 4, 3, 5, 3))
-        for ii in range(4):
-            this_tmp = tmp_arr[ii,:,:,ii,:,:]
-            this_tmp = sp.rollaxis(this_tmp, 2, 0)
-            right_ans[:,ii,...] = this_tmp
+    def test_partial_dot_mat_mat_block(self):
+        mat1 = sp.arange(2 * 3 * 5 * 7 *11)
+        mat1.shape = (2, 3, 5, 7, 11)
+        mat1 = algebra.make_mat(mat1, axis_names=('time', 'x', 'y', 'ra', 'z'),
+                                row_axes=(0, 1, 3), col_axes=(0, 2, 3, 4))
+        mat2 = sp.arange(2 * 13 * 5 * 7 * 17)
+        mat2.shape = (2, 13, 7, 5, 17)
+        mat2 = algebra.make_mat(mat2, 
+            axis_names=('time', 'w', 'ra', 'y', 'freq'), 
+            row_axes=(0, 1, 2, 3), col_axes=(1, 2, 4))
+        tmp_arr = sp.tensordot(mat1, mat2, ((2,), (3,)))
+        right_ans = sp.empty((7, 13, 2, 3, 11, 17))
+        for ii in range(2):
+            for jj in range(7):
+                this_tmp = tmp_arr[ii,:,jj,:,ii,:,jj,:]
+                this_tmp = sp.rollaxis(this_tmp, 2, 0)
+                right_ans[jj,:,ii,...] = this_tmp
         result = algebra.partial_dot(mat1, mat2)
-        self.assertEqual(result.axes, ('w', 'time', 'x', 'z', 'freq'))
-        self.assertEqual(result.rows, (0, 1, 2))
-        self.assertEqual(result.rows, (0, 1, 2))
-        self.assertEqual(result.cols, (0, 3, 4))
+        self.assertEqual(result.axes, ('ra', 'w', 'time', 'x', 'z', 'freq'))
+        self.assertEqual(result.rows, (0, 1, 2, 3))
+        self.assertEqual(result.cols, (0, 1, 4, 5))
         self.assertTrue(sp.allclose(right_ans, result))
 
     def test_transpose(self):

@@ -17,6 +17,7 @@ from scipy import interpolate
 import core.algebra as al
 import tools
 from noise import noise_power
+import kiyopy.custom_exceptions as ce
 
 # XXX
 import matplotlib.pyplot as plt
@@ -24,6 +25,35 @@ import matplotlib.pyplot as plt
 # Constant that represents a very high noise level.  Setting the noise of a
 # mode to this number deweights that mode.
 T_infinity = 10000.0  # Kelvin**2
+
+prefix ='dm_'
+params_init = {               
+               # IO:
+               'input_root' : './',
+               # The unique part of every fname
+               'file_middles' : ("testfile_GBTfits",),
+               'input_end' : ".fits",
+               'output_root' : "./testoutput_",
+               # Map parameters (Ra (deg), Dec (deg)).
+               'field_centre' : (325.0, 0.0),
+               # In pixels.
+               'map_shape' : (5, 5),
+               'pixel_spacing' : 0.5, # degrees
+               # How to treat the data.
+               'polarizations' : ('I',)
+               }
+
+class DirtyMapMaker(object):
+    """Dirty map maker.
+    """
+
+    def __init__(self, parameter_file_or_dict=None, feedback=2) :
+        # Read in the parameters.
+        self.params = parse_ini.parse(parameter_file_or_dict, params_init, 
+                                 prefix=prefix, feedback=feedback)
+        self.feedback = feedback
+
+
 
 class Pointing(object):
     """Class represents the pointing operator.
@@ -77,14 +107,54 @@ class Pointing(object):
             #map_axes_delta += (map.info[axis_name + "_delta"],)
         self._map_axes = map_axis_indices
         self._map_shape = map_axes_shape
-        #self.map_delta = map_axes_delta
-        #self.map_centre = map_axes_centre
-        # Store a reference to the map.  We are storing a copy of the map that
-        # has its own copy of all the metadata (including the numpy array
-        # metadata, such as .shape) so we don't have to worry about changes to
-        # the object whose reference we store.  However, we don't want to copy
-        # the acctual data, since this class only uses the metadata.
-        self._map = al.as_alg_like(map[...], map)
+        
+        # Store the full pointing matrix in sparse form.
+        n_pointings = len(coords[0])
+        n_coords = len(axis_names)
+        if self._scheme == "nearest":
+            self.dtype = int
+        else:
+            self.dtype = float
+        # Loop over the time stream and get the weights for each pointing.
+        memory_allocated = False
+        for ii in xrange(n_pointings):
+            coordinate = ()
+            for jj in xrange(n_coords):
+                coordinate += (self._coords[jj][ii],)
+            try:
+                pixels, weights = map.slice_interpolate_weights(
+                    self._map_axes, coordinate, scheme)
+            except ce.DataError:
+                # This pointing is outside the map bounds.  When this happens,
+                # point to the 0th pixel but with 0 weight.
+                continue
+            # On first iteration need to allocate memory for the sparse matrix
+            # storage.
+            if not memory_allocated:
+                n_points_template = pixels.shape[0]
+                self._pixel_inds = sp.zeros((n_pointings, n_coords,
+                                              n_points_template), dtype=int)
+                self._weights = sp.zeros((n_pointings, n_points_template),
+                                         dtype=self.dtype)
+                memory_allocated = True
+            self._pixel_inds[ii,:,:] = pixels.transpose()
+            self._weights[ii,:] = weights
+    
+    def get_sparse(self):
+        """Return the arrays representing the pointing matrix in sparse form.
+
+        Returns
+        -------
+        pixel_inds : array of ints
+            Shape is (n_pointings, n_coordinates, n_pixels_per_pointing).
+            These give which pixel entries are that are non zero for each
+            pointing.  If a pointing is off the map, that row will be zeros.
+        weights : array of floats
+            Shape is (n_pointings, n_pixels_per_pointing).
+            The entry of the pointing matrix corresponding with the matching
+            pixel index.  If a pointing is off the map, that row will be zeros.
+        """
+        return self._pixel_inds, self._weights
 
     def apply_to_time_axis(self, time_stream, map_out=None):
         """Use this operator to convert a 'time' axis to a coordinate axis.
@@ -106,27 +176,18 @@ class Pointing(object):
     def get_matrix(self):
         """Gets the matrix representation of the pointing operator."""
 
-        n_pointings = len(self._coords[0])
-        n_coords = len(self._axis_names)
-        if self._scheme == "nearest":
-            dtype = int
-        else:
-            dtype = float
+        n_pointings = self._pixel_inds.shape[0]
+        n_coords = self._pixel_inds.shape[1]
+        n_pixels_per_pointing = self._pixel_inds.shape[2]
         # Initialize the output matrix.
-        matrix = sp.zeros((n_pointings,) + self._map_shape, dtype=dtype)
+        matrix = sp.zeros((n_pointings,) + self._map_shape, dtype=self.dtype)
         matrix = al.make_mat(matrix, axis_names=("time",) + self._axis_names,
                              row_axes=(0,), col_axes=range(1, n_coords + 1))
         # Loop over the time stream and get the weights for each pointing.
         for ii in xrange(n_pointings):
-            coordinate = ()
-            for jj in xrange(n_coords):
-                coordinate += (self._coords[jj][ii],)
-            pixels, weights = self._map.slice_interpolate_weights(
-                self._map_axes, coordinate, self._scheme)
-            index = (ii,)
-            for jj in xrange(n_coords):
-                index += (pixels[:,jj],)
-            matrix[index] = weights
+            for jj in xrange( n_pixels_per_pointing):
+                matrix[(ii,) + tuple(self._pixel_inds[ii,:,jj])] = \
+                        self._weights[ii, jj]
         return matrix
 
 
@@ -178,20 +239,27 @@ class Noise(object):
                                row_axes=(0, 1), col_axes=(0, 1))
         self.diagonal = diagonal
 
-    def initialize_allfreq(self):
-        """Create the part of the noise matrix that contributes to a
-        frequencies equally.
+    def add_allfreq_modes(self, n_modes):
+        """Initialize time modes to be deweighted at all frequencies.
         """
 
         self._assert_not_finalized()
         # TODO: Need to copy the axis info from self.info.
         if hasattr(self, "allfreq"):
-            return
-        allfreq = sp.zeros((self.n_time, self.n_time), 
-                           dtype=float)
+            current_n_modes = self.allfreq.shape[0]
+            new_n_modes = current_n_modes + n_modes
+            old_allfreq = self.allfreq
+            allfreq = sp.zeros((new_n_modes, self.n_time), 
+                                    dtype=float)
+            allfreq[:current_n_modes,:] = old_allfreq
+        else :
+            current_n_modes = 0
+            allfreq = sp.zeros((n_modes, self.n_time), 
+                               dtype=float)
         allfreq = al.make_mat(allfreq, axis_names=("time", "time"), 
                                row_axes=(0,), col_axes=(1,))
         self.allfreq = allfreq
+        return current_n_modes
 
     # ---- Methods that build up the noise matrix. ----
 
@@ -230,13 +298,8 @@ class Noise(object):
         channel.
         """
         
-        self.initialize_allfreq()
-        nt = self.n_time
-        new_noise = sp.zeros((nt, nt), dtype=float)
-        # Formula from Sept 7, 2011 of Kiyo's notes.
-        new_noise += (T_infinity - 1.0)/nt
-        new_noise.flat[::nt + 1] += 1.0
-        self.allfreq += new_noise
+        start = self.add_allfreq_modes(1)
+        self.allfreq[start,:] = 1.0/math.sqrt(self.n_time)
 
     def deweight_time_slope(self):
         """Deweights time slope in each channel.
@@ -388,7 +451,7 @@ class Noise(object):
         return out
 
     def noise_weight_time_stream(self, data):
-        """Noise weight a time stream data vector.
+        """Noise weight a timeleft_part_update_term.axes stream data vector.
         """
         
         # Get the inverse of the 'independant frequency' part of the noise.
@@ -416,16 +479,46 @@ class Noise(object):
         if map_noise_inv.shape != P._map_shape + (self.n_chan,) + P._map_shape:
             msg = "Map noise shape not compatible with pointing object."
             raise ValueError(msg)
-        # Get the time domain noise inverse of this slice.
+        # Get the pointing information we need.
+        # The full matrix (inefficient but easy to use).
+        pointing_matrix = P.get_matrix()
+        # The sparse version, which is much more efficient.
+        pointing_inds, pointing_weights = P.get_sparse()
+        # Get the time domain noise inverse of this slice. This is in the
+        # time-time domain.
         diag_freq_noise_f_ind = self.get_diag_allfreq_inverse(f_ind)
-        # Do all operations on to make the update term that only apply to the
+        # Transform to the pixel-time domain.
+        diag_freq_f_ind_pix = al.partial_dot(pointing_matrix.mat_transpose(),
+                                              diag_freq_noise_f_ind)
+        # Do all operations to make the update term that only applies to the
         # channel we are dealing with.
-        left_part_update_term = al.partial_dot(diag_freq_noise_f_ind, 
+        left_part_update_term = al.partial_dot(diag_freq_f_ind_pix, 
                                                self.mode_noise_term)
         # We get rid of the frequency axis on the left by indexing.
-        this_freq_modes = self.freq_modes.index_axis(0, find)
-        left_part_update_term = al.partial_dot(this_freq_modes,
-                                               left_part_update_term)
+        this_freq_modes = self.freq_modes.index_axis(0, f_ind)
+        left_part_update_term = -al.partial_dot(this_freq_modes,
+                                                left_part_update_term)
+        # Now we loop through all the frequencies and build up the noise
+        # matrix.
+        for ii in xrange(self.n_chan):
+            # Isolate this frequency in the coupling term.
+            this_freq_modes = self.freq_modes.index_axis(0, ii)
+            this_map_noise = al.partial_dot(left_part_update_term,
+                                            this_freq_modes)
+            # Get the independant frequencies part.
+            this_diag_freq = self.get_diag_allfreq_inverse(ii)
+            # Final binomial inverse multiply.
+            this_map_noise = al.partial_dot(this_map_noise, this_diag_freq)
+            # Diagonal terms get the non-update term.
+            if ii == f_ind:
+                this_map_noise += diag_freq_f_ind_pix
+            # Convert the trailing time index to a pixel index and update the
+            # out put.
+            for jj in xrange(self.n_time):
+                this_pointing_inds = tuple(pointing_inds[jj])
+                map_noise_inv[(Ellipsis, ii) + this_pointing_inds] += \
+                        pointing_weights[jj,:] * this_map_noise[...,jj,None]
+
         
 
         

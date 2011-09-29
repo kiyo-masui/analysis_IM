@@ -736,7 +736,7 @@ class alg_object(object) :
                                "interpolation range.  axis: " + str(axis_ind)
                                + ", coord: " + str(value) + ", range: "
                                + str((min(axis), max(axis))))
-                    raise ValueError(message)
+                    raise ce.DataError(message)
                 distances = abs(axis - value)
                 min_ind = distances.argmin()
                 single_inds[ii, 0] = min_ind
@@ -770,7 +770,7 @@ class alg_object(object) :
                     message = ("Interpolation coordinate outside of "
                                "interpolation range.  axis: " + str(axes[ii])
                                + ", coord: " + str(coord[ii]) + ".")
-                    raise ValueError(message)
+                    raise ce.DataError(message)
                 points[0, ii] = round(index)
         else :
             message = "Unsupported interpolation algorithm: " + kind
@@ -1444,6 +1444,53 @@ class mat(alg_object) :
         out.rows = self.cols
         return out
 
+    def index_axis(self, axis, index):
+        """Remove an axis by indexing with an integer.
+        
+        Returns a view of the `mat` with an axis removed by indexing it with
+        the passed integer.  The output retains it's `mat` characteristics,
+        which are updated to reflect the removal of the index.
+
+        Parameters
+        ----------
+        axis : integer
+            Axis to remove.
+        index : integer
+            Which entry to choose from `axis`.
+
+        Returns
+        -------
+        out : mat or vect
+            If the removal of the axis deplete either the rows or columns, a
+            vect object is returned.  Otherwise a mat is returned.
+        """
+        
+        # Suport negitive indicies.
+        if axis < 0:
+            axis = self.ndim + axis
+        # Get copies of rows and colums ommitting the removed axis.
+        rows = list(self.rows)
+        if axis in rows:
+            rows.remove(axis)
+        rows = tuple(rows)
+        cols = list(self.cols)
+        if axis in cols:
+            cols.remove(axis)
+        cols = tuple(cols)
+        # New name attribute.
+        names = self.axes[:axis] + self.axes[axis+1:]
+        # Index the array.
+        slice_index = [slice(None)] * self.ndim
+        slice_index[axis] = index
+        out = sp.asarray(self[slice_index])
+        # Set the matrix meta data.
+        if not rows or not cols:
+            out = make_vect(out, axis_names=names)
+        else:
+            out = make_mat(out, axis_names=names, row_axes=rows, col_axes=cols)
+        out.copy_axis_info(self)
+        return out
+
 
 def _mat_class_factory(base_class) :
     """Internal class factory for making a matrix class that inherits from
@@ -1567,7 +1614,16 @@ def partial_dot(left, right):
     vector nature of the inputs and returns appropriate objects.  It decides
     which axes to 'dot' based on the axis names.
 
-    Not implemented for matricies that have block diagonal structure.
+    If a `vect` is passed, it is treated as `mat` with one row if it's the
+    first arguments and a matrix with one column if it's the second.  If the
+    output matrix has either only a single row or a single column, it is cast
+    as a `vect`.
+
+    This function can properly deal with block diagonal structure and axes
+    sorted in any order.
+
+    The axes in the output array as sorted such in order of block diagonal axes
+    then row-only axes then col-only axes.
 
     Parameters
     ----------
@@ -1577,139 +1633,314 @@ def partial_dot(left, right):
     Returns
     -------
     out : mat or vect
+        Tensor product of `left` and `right`, with any named axes appearing in
+        both `left`'s columns and `right`'s rows contracted.
     """
     
     # Figure out what kind of object the inputs are.
     msg = "Inputs must be either mat or vect objects."
     if isinstance(left, mat):
-        left_rows = left.rows
-        left_cols = left.cols
+        left_rows = list(left.rows)
+        left_cols = list(left.cols)
     elif isinstance(left, vect):
-        left_rows = ()
-        left_cols = tuple(range(left.ndim))
+        left_rows = []
+        left_cols = range(left.ndim)
     else:
         raise TypeError(msg)
     if isinstance(right, mat):
-        right_rows = right.rows
-        right_cols = right.cols
+        right_rows = list(right.rows)
+        right_cols = list(right.cols)
     elif isinstance(right, vect):
-        right_rows = tuple(range(right.ndim))
-        right_cols = ()
+        right_rows = range(right.ndim)
+        right_cols = []
     else:
         raise TypeError(msg)
-    # For each input, get the axis names and shapes.
-    left_row_names = ()
-    left_row_shape = ()
-    left_row_size = 1
-    for axis_ind in left_rows:
-        left_row_names = left_row_names + (left.axes[axis_ind],)
-        left_row_shape = left_row_shape + (left.shape[axis_ind],)
-        left_row_size *= left.shape[axis_ind]
-    left_col_names = ()
-    left_col_shape = ()
-    left_col_size = 1
-    for axis_ind in left_cols:
-        left_col_names = left_col_names + (left.axes[axis_ind],)
-        left_col_shape = left_col_shape + (left.shape[axis_ind],)
-        left_col_size *= left.shape[axis_ind]
-    right_row_names = ()
-    right_row_shape = ()
-    right_row_size = 1
-    for axis_ind in right_rows:
-        right_row_names = right_row_names + (right.axes[axis_ind],)
-        right_row_shape = right_row_shape + (right.shape[axis_ind],)
-        right_row_size *= right.shape[axis_ind]
-    right_col_names = ()
-    right_col_shape = ()
-    right_col_size = 1
-    for axis_ind in right_cols:
-        right_col_names = right_col_names + (right.axes[axis_ind],)
-        right_col_shape = right_col_shape + (right.shape[axis_ind],)
-        right_col_size *= right.shape[axis_ind]
-    # The axes to collapse are ones with matching names between the left
-    # columns and the right rows.
-    left_axes_to_dot = ()
-    left_axes_to_dot_names = ()
-    left_axes_to_dot_shape = ()
-    left_axes_to_dot_size = 1
-    right_axes_to_dot = ()
-    right_axes_to_dot_names = ()
-    right_axes_to_dot_shape = ()
-    right_axes_to_dot_size = 1
-    for ii in range(len(left_cols)):
-        # Check for block diagonal structure.
-        if left_cols[ii] in left_rows:
-            raise NotImplementedError("Block diagonal structure not"
-                                      " supported (left matrix).")
-        for jj in range(len(right_rows)):
-            if right_rows[jj] in right_cols:
-                raise NotImplementedError("Block diagonal structure not"
-                                          " supported (right matrix).")
-            # If the names match up, these will be dotted together.
-            if left_col_names[ii] == right_row_names[jj]:
-                # Check that they are the same length
-                if left_col_shape[ii] != right_row_shape[jj]:
-                    raise ValueError("Axes to be contracted are not the same"
-                                     " length.")
-                # Add the pair to the list of axes to be contrated.
-                left_axes_to_dot += (left_cols[ii],)
-                left_axes_to_dot_names += (left_col_names[ii],)
-                left_axes_to_dot_shape += (left_col_shape[ii],)
-                left_axes_to_dot_size *= left_col_shape[ii]
-                right_axes_to_dot += (right_rows[jj],)
-                right_axes_to_dot_names += (right_row_names[jj],)
-                right_axes_to_dot_shape += (right_row_shape[jj],)
-                right_axes_to_dot_size *= right_row_shape[jj]
-                break
-    # Figure out which inner axes we won't be collapsing.
-    left_axes_hanging = tuple(set(left_cols) - set(left_axes_to_dot))
-    left_axes_hanging_size = left_col_size // left_axes_to_dot_size
-    left_axes_hanging_names = ()
-    left_axes_hanging_shape = ()
-    for axis in left_axes_hanging:
-        left_axes_hanging_names += (left.axes[axis],)
-        left_axes_hanging_shape += (left.shape[axis],)
-    right_axes_hanging = tuple(set(right_rows) - set(right_axes_to_dot))
-    right_axes_hanging_size = right_row_size // right_axes_to_dot_size
-    right_axes_hanging_names = ()
-    right_axes_hanging_shape = ()
-    for axis in right_axes_hanging:
-        right_axes_hanging_names += (right.axes[axis],)
-        right_axes_hanging_shape += (right.shape[axis],)
-    # Figure out the properties of the final matrix.
-    out_shape = (left_row_shape + right_axes_hanging_shape 
-                 + left_axes_hanging_shape + right_col_shape)
-    out_names = (left_row_names + right_axes_hanging_names 
-                 + left_axes_hanging_names + right_col_names)
-    n_out_rows = len(left_rows) + len(right_axes_hanging)
-    n_out_cols = len(left_axes_hanging) + len(right_cols)
-    out_rows = tuple(range(n_out_rows))
-    out_cols = tuple(range(n_out_rows, n_out_rows + n_out_cols))
-    dtype = (left.flat[[0]] * right.flat[[0]]).dtype
-    # Allowcate the out put array.
-    out = sp.empty(out_shape, dtype=dtype)
-    if not out_rows or not out_cols :
+    # Find axes that are block diagonal make copies of the rows and cols that
+    # ommits the block diagonal ones.
+    left_cols_only = list(left_cols)
+    left_rows_only = list(left_rows)
+    right_cols_only = list(right_cols)
+    right_rows_only = list(right_rows)
+    left_diag = []
+    left_diag_names = []
+    left_col_only_names = []
+    for axis in left_cols:
+        if axis in left_rows:
+            left_diag.append(axis)
+            left_diag_names.append(left.axes[axis])
+            left_rows_only.remove(axis)
+            left_cols_only.remove(axis)
+        else :
+            left_col_only_names.append(left.axes[axis])
+    right_diag = []
+    right_diag_names = []
+    right_row_only_names = []
+    for axis in list(right_rows):
+        if axis in right_cols:
+            right_diag.append(axis)
+            right_diag_names.append(right.axes[axis])
+            right_rows_only.remove(axis)
+            right_cols_only.remove(axis)
+        else:
+            right_row_only_names.append(right.axes[axis])
+    # Divide all axes into groups based on what we are going to do with them.
+    # To not be dotted.
+    left_notdot = []
+    # Block diagonal axis to not dot.
+    left_notdot_diag = []
+    # To be dotted with a normal axis.
+    left_todot = []
+    right_todot = []
+    # To be dotted with a block diagonal axis.
+    left_todot_with_diag = []
+    right_todot_with_diag = []
+    # Block diagonal axes to be dotted with a normal axis.
+    left_todot_diag = []
+    right_todot_diag = []
+    # Block diagonal axes to be dotted with a block diagonal axis.
+    left_todot_diag_diag = []
+    right_todot_diag_diag = []
+    for axis in left_cols:
+        axis_name = left.axes[axis]
+        if (axis_name in left_col_only_names 
+            and axis_name not in right_row_only_names
+            and axis_name not in right_diag_names):
+            left_notdot.append(axis)
+        elif (axis_name in left_diag_names 
+              and axis_name not in right_row_only_names
+              and axis_name not in right_diag_names):
+            left_notdot_diag.append(axis)
+        elif (axis_name in left_col_only_names 
+              and axis_name in right_row_only_names):
+            left_todot.append(axis)
+            right_todot.append(right.axes.index(axis_name))
+        elif (axis_name in left_diag_names 
+              and axis_name in right_row_only_names):
+            left_todot_diag.append(axis)
+            right_todot_with_diag.append(right.axes.index(axis_name))
+        elif (axis_name in left_col_only_names 
+              and axis_name in right_diag_names):
+            left_todot_with_diag.append(axis)
+            right_todot_diag.append(right.axes.index(axis_name))
+        elif axis_name in left_diag_names and axis_name in right_diag_names:
+            left_todot_diag_diag.append(axis)
+            right_todot_diag_diag.append(right.axes.index(axis_name))
+    right_notdot = list(set(right_rows_only) - set(right_todot)
+                        - set(right_todot_with_diag))
+    right_notdot.sort()
+    right_notdot_diag = list(set(right_diag) - set(right_todot_diag)
+                             - set(right_todot_diag_diag))
+    right_notdot_diag.sort()
+    # Need shapes and names for all of these.
+    left_notdot_shape = [left.shape[axis] for axis in left_notdot]
+    left_notdot_names = [left.axes[axis] for axis in left_notdot]
+    left_notdot_diag_shape = [left.shape[axis] for axis in left_notdot_diag]
+    left_notdot_diag_names = [left.axes[axis] for axis in left_notdot_diag]
+    left_todot_shape = [left.shape[axis] for axis in left_todot]
+    left_todot_names = [left.axes[axis] for axis in left_todot]
+    left_todot_with_diag_shape = [left.shape[axis] for axis in
+                                  left_todot_with_diag]
+    left_todot_with_diag_names = [left.axes[axis] for axis in
+                                  left_todot_with_diag]
+    left_todot_diag_shape = [left.shape[axis] for axis in left_todot_diag]
+    left_todot_diag_names = [left.axes[axis] for axis in left_todot_diag]
+    left_todot_diag_diag_shape = [left.shape[axis] for axis in
+                                  left_todot_diag_diag]
+    left_todot_diag_diag_names = [left.axes[axis] for axis in
+                                  left_todot_diag_diag]
+    left_rows_only_shape = [left.shape[axis] for axis in left_rows_only]
+    left_rows_only_names = [left.axes[axis] for axis in left_rows_only]
+    right_notdot_shape = [right.shape[axis] for axis in right_notdot]
+    right_notdot_names = [right.axes[axis] for axis in right_notdot]
+    right_notdot_diag_shape = [right.shape[axis] 
+                               for axis in right_notdot_diag]
+    right_notdot_diag_names = [right.axes[axis] for axis in right_notdot_diag]
+    right_todot_shape = [right.shape[axis] for axis in right_todot]
+    right_todot_names = [right.axes[axis] for axis in right_todot]
+    right_todot_with_diag_shape = [right.shape[axis] for axis in
+                                  right_todot_with_diag]
+    right_todot_with_diag_names = [right.axes[axis] for axis in
+                                  right_todot_with_diag]
+    right_todot_diag_shape = [right.shape[axis] for axis in right_todot_diag]
+    right_todot_diag_names = [right.axes[axis] for axis in right_todot_diag]
+    right_todot_diag_diag_shape = [right.shape[axis] for axis in
+                                  right_todot_diag_diag]
+    right_todot_diag_diag_names = [right.axes[axis] for axis in
+                                  right_todot_diag_diag]
+    right_cols_only_shape = [right.shape[axis] for axis in right_cols_only]
+    right_cols_only_names = [right.axes[axis] for axis in right_cols_only]
+    # Figure out the shape, names, rows and cols of the output.
+    out_shape = (left_notdot_diag_shape + left_todot_diag_diag_shape
+                 + right_notdot_diag_shape + left_todot_diag_shape
+                 + left_rows_only_shape + right_notdot_shape 
+                 + left_notdot_shape + right_todot_diag_shape\
+                 + right_cols_only_shape)
+    out_names = (left_notdot_diag_names + left_todot_diag_diag_names
+                 + right_notdot_diag_names + left_todot_diag_names
+                 + left_rows_only_names + right_notdot_names
+                 + left_notdot_names + right_todot_diag_names
+                 + right_cols_only_names)
+    # First add the block diagonal axes as both rows and columns.
+    out_rows = range(len(left_notdot_diag) + len(left_todot_diag_diag)
+                     + len(right_notdot_diag))
+    out_cols = list(out_rows)
+    # Now add the others.
+    out_rows += range(len(out_rows), len(out_rows) + len(left_todot_diag)
+                      + len(left_rows_only) + len(right_notdot))
+    out_cols += range(len(out_rows), len(out_shape))
+    # Output data type.
+    out_dtype = (left.flat[[0]] * right.flat[[0]]).dtype
+    # Allowcate memory.
+    out = sp.empty(out_shape, dtype=out_dtype)
+    if not out_rows or not out_cols:
         out = make_vect(out, out_names)
-    else :
-        out = make_mat(out, axis_names=out_names, row_axes=out_rows, 
+    else:
+        out = make_mat(out, axis_names=out_names, row_axes=out_rows,
                        col_axes=out_cols)
-    out.copy_axis_info(left)
-    out.copy_axis_info(right)
-    # Now dot the appropriate axes.
-    # TODO: tensordot, rearanges the axes, copies, reshapes, normal dots,
-    # reshapes, then copies.  We would be better off doing this ourselves
-    # given that we rearange and copy below.
-    tmp_out = sp.tensordot(left, right, (left_axes_to_dot, right_axes_to_dot))
-    # These axes will be in the wrong order so we need to rearrange to fit into
-    # `out`.
-    axis_placement = len(left_rows)
-    right_hang_begin = len(left_rows) + len(left_axes_hanging)
-    for axis_ind in range(right_hang_begin, right_hang_begin 
-                          + len(right_axes_hanging)):
-        tmp_out = sp.rollaxis(tmp_out, axis_ind, axis_placement)
-        axis_placement += 1
-    # Copy into the out array such that every thing is stored in native order.
-    out[...] = tmp_out
+    # All the block diagonal axes will be treated together. Get the global
+    # shape of them.
+    all_diag_shape = (left_notdot_diag_shape + left_todot_diag_diag_shape 
+                      + right_notdot_diag_shape + left_todot_diag_shape 
+                      + right_todot_diag_shape)
+    n_diag_axes = len(all_diag_shape)
+    all_diag_size = 1
+    for s in all_diag_shape:
+        all_diag_size *= s
+    # Each of these block diagonal axes are associated with different axes in
+    # the input and output arrays.  Figure out the associations for each of
+    # them.  These arrays are the length of the number of diagonal axes and
+    # each entry refers to an axis in that array.  If the axis does not apply
+    # to that array, put None.
+    out_diag_inds = []
+    left_diag_inds = []
+    right_diag_inds = []
+    tmp_n_out_axes_passed = 0
+    for ii in range(len(left_notdot_diag)):
+        left_diag_inds.append(left_notdot_diag[ii])
+        right_diag_inds.append(None)
+        out_diag_inds.append(ii)
+    tmp_n_out_axes_passed += len(left_notdot_diag)
+    for ii in range(len(left_todot_diag_diag)):
+        left_diag_inds.append(left_todot_diag_diag[ii])
+        right_diag_inds.append(right_todot_diag_diag[ii])
+        out_diag_inds.append(ii + tmp_n_out_axes_passed)
+    tmp_n_out_axes_passed += len(left_todot_diag_diag)
+    for ii in range(len(right_notdot_diag)):
+        left_diag_inds.append(None)
+        right_diag_inds.append(right_notdot_diag[ii])
+        out_diag_inds.append(ii + tmp_n_out_axes_passed)
+    tmp_n_out_axes_passed += len(right_notdot_diag)
+    for ii in range(len(left_todot_diag)):
+        left_diag_inds.append(left_todot_diag[ii])
+        right_diag_inds.append(right_todot_with_diag[ii])
+        out_diag_inds.append(ii + tmp_n_out_axes_passed)
+    tmp_n_out_axes_passed += (len(left_todot_diag) + len(left_rows_only) 
+                              + len(right_notdot) + len(left_notdot))
+    for ii in range(len(right_todot_diag)):
+        left_diag_inds.append(left_todot_with_diag[ii])
+        right_diag_inds.append(right_todot_diag[ii])
+        out_diag_inds.append(ii + tmp_n_out_axes_passed)
+    # Once we index all the diagonal axes, the ones we want to dot will be in
+    # the wrong place.  Find the location of the axes we'll need in the new
+    # array.
+    left_sliced_rows_only = list(left_rows_only)
+    left_sliced_notdot = list(left_notdot)
+    left_sliced_todot = list(left_todot)
+    for diag_axis in left_diag_inds:
+        if not diag_axis is None:
+            for ii in range(len(left_rows_only)):
+                if diag_axis < left_rows_only[ii]:
+                    left_sliced_rows_only[ii] -= 1
+            for ii in range(len(left_notdot)):
+                if diag_axis < left_notdot[ii]:
+                    left_sliced_notdot[ii] -= 1
+            for ii in range(len(left_todot)):
+                if diag_axis < left_todot[ii]:
+                    left_sliced_todot[ii] -= 1
+    right_sliced_cols_only = list(right_cols_only)
+    right_sliced_notdot = list(right_notdot)
+    right_sliced_todot = list(right_todot)
+    for diag_axis in right_diag_inds:
+        if not diag_axis is None:
+            for ii in range(len(right_cols_only)):
+                if diag_axis < right_cols_only[ii]:
+                    right_sliced_cols_only[ii] -= 1
+            for ii in range(len(right_notdot)):
+                if diag_axis < right_notdot[ii]:
+                    right_sliced_notdot[ii] -= 1
+            for ii in range(len(right_todot)):
+                if diag_axis < right_todot[ii]:
+                    right_sliced_todot[ii] -= 1
+    # Once we slice the arrays to get one block, we will permute the axes to be
+    # in the proper order for dotting.
+    left_sliced_permute = (left_sliced_rows_only + left_sliced_notdot
+                           + left_sliced_todot)
+    right_sliced_permute = (right_sliced_todot + right_sliced_notdot
+                            + right_sliced_cols_only)
+    # Then we'll reshape both into 2D arrays (matricies).
+    left_sliced_reshape = (sp.prod(left_rows_only_shape + left_notdot_shape),
+                           sp.prod(left_todot_shape))
+    right_sliced_reshape = (sp.prod(right_todot_shape),
+                            sp.prod(right_notdot_shape +
+                                    right_cols_only_shape))
+    # After the dot, we will neet to reshape back.
+    out_sliced_reshape = tuple(left_rows_only_shape + left_notdot_shape
+                               + right_notdot_shape + right_cols_only_shape)
+    # And finally we will need to permute the out axes.
+    out_sliced_permute = range(len(left_rows_only))
+    out_sliced_permute += range(len(left_rows_only) + len(left_notdot_shape),
+                                len(left_rows_only) + len(left_notdot_shape) 
+                                + len(right_notdot))
+    out_sliced_permute += range(len(left_rows_only), len(left_rows_only)
+                                + len(left_notdot))
+    out_sliced_permute += range(len(out_sliced_reshape)- len(right_cols_only),
+                                len(out_sliced_reshape))
+    # Create an index for each of left, right and out.
+    left_slice = [slice(None)] * left.ndim
+    right_slice = [slice(None)] * right.ndim
+    out_slice = [slice(None)] * out.ndim
+    # Flags for corner cases of 0D arrays.
+    left_scalar_flag = False
+    right_scalar_flag = False
+    # Now we loop over all the block diagonal axes.
+    for ii in xrange(all_diag_size):
+        # Figure out exactly which blocks we are dealing with.
+        tmp_ii = ii
+        for kk in xrange(n_diag_axes - 1, -1, -1):
+            this_index = tmp_ii % all_diag_shape[kk]
+            out_slice[out_diag_inds[kk]] = this_index
+            if not left_diag_inds[kk] is None:
+                left_slice[left_diag_inds[kk]] = this_index
+            if not right_diag_inds[kk] is None:
+                right_slice[right_diag_inds[kk]] = this_index
+            tmp_ii = tmp_ii // all_diag_shape[kk]
+        this_left = left[tuple(left_slice)]
+        this_right = right[tuple(right_slice)]
+        # Permute and reshape the axes so the fast dot function can be used.
+        # Corner case, if this_left or this_right are scalars (0D arrays).
+        # TODO: Really these flags can be set outside the loop with a few more
+        # lines of code.
+        if ii == 0:
+            if this_left.ndim == 0:
+                left_scalar_flag = True
+            if this_left.ndim == 0 and this_right.ndim == 0:
+                right_scalar_flag = True
+        if not left_scalar_flag:
+            this_left = this_left.transpose(left_sliced_permute)
+            this_left = sp.reshape(this_left, left_sliced_reshape)
+        if not right_scalar_flag:
+            this_right = this_right.transpose(right_sliced_permute)
+            this_right = sp.reshape(this_right, right_sliced_reshape)
+        # Dot them.
+        if left_scalar_flag or right_scalar_flag:
+            this_out = this_left * this_right
+        else:
+            this_out = sp.dot(this_left, this_right)
+        # Reshape, permute and copy to the output.
+        if not (left_scalar_flag and right_scalar_flag):
+            this_out.shape = out_sliced_reshape
+            this_out = this_out.transpose(out_sliced_permute)
+        out[tuple(out_slice)] = this_out
     return out
 
 def empty_like(obj) :
