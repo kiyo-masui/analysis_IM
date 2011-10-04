@@ -182,24 +182,22 @@ class TestClasses(unittest.TestCase):
         Noise.deweight_time_mean()
         Noise.add_correlated_over_f(0.01, -1.2, 0.1)
         Noise.finalize()
-        return
-        #### Test that the first round of matrix inversion (using diagonal
-        # noise bits) works.
-        tmp_inv = Noise.get_diag_allfreq_inverse(2)
-        tmp_mat = sp.copy(Noise.allfreq)
-        tmp_mat.flat[::nt_d + 1] += Noise.diagonal[2,:]
-        tmp_eye = sp.dot(tmp_mat, tmp_inv)
-        self.assertTrue(sp.allclose(tmp_eye, sp.identity(nt_d)))
         #### Test the full inverse.
+        # Frist get a full representation of the noise matrix
         tmp_mat = sp.zeros((nf_d, nt_d, nf_d, nt_d))
         tmp_mat.flat[::nt_d*nf_d + 1] += Noise.diagonal.flat
         for ii in xrange(nf_d):
-            tmp_mat[ii,:,ii,:] += Noise.allfreq
+            for jj in xrange(Noise.time_modes.shape[0]):
+                tmp_mat[ii,:,ii,:] += (Noise.time_modes[jj,:]
+                                       * Noise.time_modes[jj,None,:]
+                                       * dirty_map.T_infinity)
         # Here I assume that the only frequency noise mode is the mean mode.
-        tmp_mat += Noise.mode_noise[0,None,:,None,:]/nf_d
+        tmp_mat += Noise.freq_mode_noise[0,None,:,None,:]/nf_d
         tmp_mat.shape = (nt_d*nf_d, nt_d*nf_d)
+        self.assertTrue(sp.allclose(tmp_mat, tmp_mat.transpose()))
         noise_inv = Noise.get_inverse()
         noise_inv.shape = (nt_d*nf_d, nt_d*nf_d)
+        self.assertTrue(sp.allclose(noise_inv, noise_inv.transpose()))
         tmp_eye = sp.dot(tmp_mat, noise_inv)
         noise_inv.shape = (nf_d, nt_d, nf_d, nt_d)
         self.assertTrue(sp.allclose(tmp_eye, sp.identity(nt_d*nf_d)))
@@ -226,8 +224,12 @@ class TestClasses(unittest.TestCase):
         map_noise_inv = al.make_mat(map_noise_inv, axis_names=('freq', 'ra', 
             'dec', 'freq', 'ra', 'dec'), row_axes=(0, 1, 2), 
             col_axes=(3, 4, 5))
+        Noise.set_pointing(P)
         for ii in xrange(nf_d):
-            Noise.update_map_noise(P, ii, map_noise_inv[ii,:,:,:,:,:])
+            for jj in xrange(nra_d):
+                for kk in xrange(ndec_d):
+                    Noise.update_map_noise(ii, (jj, kk),
+                                           map_noise_inv[ii,jj,kk,:,:,:])
         self.assertTrue(sp.allclose(map_noise_inv, tmp_map_noise_inv))
 
 

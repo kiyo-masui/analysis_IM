@@ -206,6 +206,22 @@ class Noise(object):
         The time axis of the data.
     """
 
+    # Internal nomiclature: The noise matrix is divided into three parts:  The
+    # 'diagonal' contains one weight for every data point and represents a
+    # fully diagonal matrix.  It has contributions from thermal noise and
+    # deweights masked points.
+    # The 'frequency_modes' part is the only part that
+    # couples frequencies.  There are only a small number of modes along the
+    # frequency axes, but each mode has a full time-time covariance matrix.
+    # The modes are assumed to be uncorrelated.  The number of frequency modes
+    # is named 'm'
+    # The 'time_modes' part deweights certain modes along the time axis.  They
+    # are uncorrelated between frequencies and the same for each frequency.
+    # The number time modes is named 'q'.
+    # The 'update' term will generally refer to the second term in the binomial
+    # inverse identity, and the 'update_modes' refers to rotation matrices in
+    # the identity.
+
     # ---- Initialization methods. ----
 
     def __init__(self, time_stream_data, time):
@@ -239,27 +255,27 @@ class Noise(object):
                                row_axes=(0, 1), col_axes=(0, 1))
         self.diagonal = diagonal
 
-    def add_allfreq_modes(self, n_modes):
+    def add_time_modes(self, n_new_modes):
         """Initialize time modes to be deweighted at all frequencies.
         """
 
         self._assert_not_finalized()
         # TODO: Need to copy the axis info from self.info.
-        if hasattr(self, "allfreq"):
-            current_n_modes = self.allfreq.shape[0]
-            new_n_modes = current_n_modes + n_modes
-            old_allfreq = self.allfreq
-            allfreq = sp.zeros((new_n_modes, self.n_time), 
+        if hasattr(self, "time_modes"):
+            current_q = self.time_modes.shape[0]
+            new_q = current_q + n_modes
+            old_time_modes = self.time_modes
+            time_modes = sp.zeros((new_q, self.n_time), 
                                     dtype=float)
-            allfreq[:current_n_modes,:] = old_allfreq
+            time_modes[:current_q,:] = old_allfreq
         else :
-            current_n_modes = 0
-            allfreq = sp.zeros((n_modes, self.n_time), 
+            current_q = 0
+            time_modes = sp.zeros((n_new_modes, self.n_time), 
                                dtype=float)
-        allfreq = al.make_mat(allfreq, axis_names=("time", "time"), 
-                               row_axes=(0,), col_axes=(1,))
-        self.allfreq = allfreq
-        return current_n_modes
+        time_modes = al.make_mat(time_modes, axis_names=("time_mode", "time"), 
+                                 row_axes=(0,), col_axes=(1,))
+        self.time_modes = time_modes
+        return current_q
 
     # ---- Methods that build up the noise matrix. ----
 
@@ -298,8 +314,8 @@ class Noise(object):
         channel.
         """
         
-        start = self.add_allfreq_modes(1)
-        self.allfreq[start,:] = 1.0/math.sqrt(self.n_time)
+        start = self.add_time_modes(1)
+        self.time_modes[start,:] = 1.0/math.sqrt(self.n_time)
 
     def deweight_time_slope(self):
         """Deweights time slope in each channel.
@@ -331,16 +347,18 @@ class Noise(object):
             raise RuntimeError("The correlated modes already exist and would "
                                "be overwritten.")
         # Only have one channel mode, the mean mode.
-        freq_modes = sp.ones((self.n_chan, 1), dtype=float)
+        freq_modes = sp.ones((1, self.n_chan), dtype=float)
         freq_modes /= sp.sqrt(self.n_chan)
-        self.freq_modes = al.make_mat(freq_modes, axis_names=("freq", "mode"),
+        self.freq_modes = al.make_mat(freq_modes, 
+                                      axis_names=("freq_mode", "freq"),
                                       row_axes=(0,), col_axes=(1,))
         # The covariance matrix for these modes (assumed orthoganal and
         # independant).
-        mode_noise = sp.empty((1, self.n_time, self.n_time),
+        freq_mode_noise = sp.empty((1, self.n_time, self.n_time),
                               dtype=float)
-        self.mode_noise = al.make_mat(mode_noise, axis_names=("mode", "time",
-            "time"), row_axes=(0,1), col_axes=(0,2))
+        self.freq_mode_noise = al.make_mat(freq_mode_noise, 
+            axis_names=("freq_mode", "time", "time"), 
+            row_axes=(0,1), col_axes=(0,2))
         # Build the matrix.
         time_deltas = abs(time[:, None] - time)
         # Smallest time step is the minimum of the first diagonal.
@@ -348,74 +366,112 @@ class Noise(object):
         n_lags = sp.amax(time_deltas) // dt + 2
         correlation_function = noise_power.calculate_overf_correlation(amp, 
             index, f0, dt, n_lags)
-        correlation_function_interpolator = \
+        corr_func_interpolator = \
             interpolate.interp1d(sp.arange(n_lags)*dt, correlation_function)
-        self.mode_noise[0,...] = correlation_function_interpolator(time_deltas)
+        self.freq_mode_noise[0,...] = corr_func_interpolator(time_deltas)
         # Multiply by number of channels since this is the mean, not the sum
         # (Sept 15, 2011 in Kiyo's notes).
-        self.mode_noise *= self.n_chan
+        self.freq_mode_noise *= self.n_chan
 
     def finalize(self):
         """Tell the class that you are done building the matrix.
         """
         
+        n_time = self.n_time
+        n_chan = self.n_chan
         # For now assume that all 3 noise components exist.  This should really
         # be adaptive so we don't have to have every component.
-        if (not hasattr(self, 'mode_noise') or not hasattr(self, 'allfreq') or 
-            not hasattr(self, 'diagonal')):
+        if (not hasattr(self, 'freq_modes') or not hasattr(self, 'time_modes')
+            or not hasattr(self, 'diagonal')):
             raise RuntimeError("Not all noise components have been set.")
         # Calculate the inverses of all matricies.
-        self.mode_noise_inv = al.empty_like(self.mode_noise)
-        for ii in xrange(self.mode_noise.shape[0]):
-            self.mode_noise_inv[ii, ...] = linalg.inv(self.mode_noise[ii, ...])
-        allfreq_inv = linalg.inv(self.allfreq)
-        self.allfreq_inv = al.as_alg_like(allfreq_inv, self.allfreq)
+        freq_mode_inv = al.empty_like(self.freq_mode_noise)
+        for ii in xrange(self.freq_mode_noise.shape[0]):
+            freq_mode_inv[ii, ...] = \
+                    linalg.inv(self.freq_mode_noise[ii, ...])
+        self.freq_mode_inv = freq_mode_inv
         diagonal_inv = self.diagonal**-1
         self.diagonal_inv = al.as_alg_like(diagonal_inv, self.diagonal)
         # Calculate the term in the bracket in the matrix inversion lemma.
-        self.mode_noise_term = al.empty_like(self.mode_noise_inv)
-        # TODO: Probably improve performance by interchanging the loops.  For
-        # now it doesn't matter since there is only 1 mode.
-        for ii in xrange(self.mode_noise.shape[0]):
-            this_mode_noise_inv = self.mode_noise_inv[ii,...]
-            this_mode = sp.copy(self.freq_modes[:,ii])
-            tmp_mat = sp.zeros_like(this_mode_noise_inv)
-            for jj in xrange(self.n_chan):
-                tmp_mat += this_mode[jj]**2 * self.get_diag_allfreq_inverse(jj)
-            tmp_mat += this_mode_noise_inv
-            self.mode_noise_term[ii,...] = linalg.inv(tmp_mat, True)
+        # Get the size of the update term.
+        # First, the rank of the correlated frequency part.
+        m = self.freq_modes.shape[0]
+        n_update =  m * n_time
+        # Next, the rank of the all frequencies part.
+        q = self.time_modes.shape[0]
+        n_update += q * n_chan
+        # Build the update matrix in blocks.
+        freq_mode_update = sp.zeros((m, n_time, m, n_time), dtype=float)
+        freq_mode_update = al.make_mat(freq_mode_update, 
+            axis_names=('freq_mode', 'time', 'freq_mode', 'time'),
+            row_axes=(0, 1), col_axes=(2, 3))
+        cross_update = sp.zeros((m, n_time, q, n_chan), dtype=float)
+        cross_update = al.make_mat(cross_update, 
+            axis_names=('freq_mode', 'time', 'time_mode', 'freq'),
+            row_axes=(0, 1), col_axes=(2, 3))
+        time_mode_update = sp.zeros((q, n_chan, q, n_chan), dtype=float)
+        time_mode_update = al.make_mat(time_mode_update, 
+            axis_names=('time_mode', 'freq', 'time_mode', 'freq'),
+            row_axes=(0, 1), col_axes=(2, 3))
+        # Build the matrices.
+        # Add the update mode noise in thier proper space.
+        for ii in range(m):
+            freq_mode_update[ii,:,ii,:] = self.freq_mode_inv[ii,:,:]
+        time_mode_update.flat[::q * n_chan + 1] = 1.0/T_infinity
+        # Now transform the diagonal noise to this funny space and add it to
+        # the update term.
+        # Do this one pair of modes at a time to make things less complicated.
+        for ii in xrange(m):
+            freq_mode1 = self.freq_modes.index_axis(0, ii)
+            for jj in xrange(m):
+                freq_mode2 = self.freq_modes.index_axis(0, jj)
+                tmp_mat = al.partial_dot(freq_mode1, diagonal_inv)
+                freq_mode_update[ii,:,jj,:].flat[::n_time + 1] += \
+                        al.partial_dot(tmp_mat, freq_mode2)
+        for ii in xrange(m):
+            freq_mode = self.freq_modes.index_axis(0, ii)
+            for jj in xrange(q):
+                time_mode = self.time_modes.index_axis(0,jj)
+                tmp_mat = al.partial_dot(freq_mode, diagonal_inv)
+                cross_update[ii,:,jj,:] += al.partial_dot(tmp_mat, time_mode)
+        for ii in xrange(q):
+            time_mode1 = self.time_modes.index_axis(0, ii)
+            for jj in xrange(q):
+                time_mode2 = self.time_modes.index_axis(0,jj)
+                tmp_mat = al.partial_dot(time_mode1, diagonal_inv)
+                time_mode_update[ii,:,jj,:].flat[::n_chan + 1] += \
+                        al.partial_dot(tmp_mat, time_mode2)
+        # Put all the update terms in one big matrix and invert it.
+        update_matrix = sp.empty((n_update, n_update), dtype=float)
+        # Top left.
+        update_matrix[:m * n_time,:m * n_time].flat[...] = \
+            freq_mode_update.flat
+        # Bottom right.
+        update_matrix[m * n_time:,m * n_time:].flat[...] = \
+            time_mode_update.flat
+        # Top right.
+        update_matrix[:m * n_time,m * n_time:].flat[...] = \
+            cross_update.flat
+        # Bottom left.
+        tmp_mat = sp.swapaxes(cross_update, 0, 2)
+        tmp_mat = sp.swapaxes(tmp_mat, 1, 3)
+        update_matrix[m * n_time:,:m * n_time].flat[...] = \
+            tmp_mat.flat
+        update_matrix_inv = linalg.inv(update_matrix)
+        # Copy the update terms back to thier own matrices and store them.
+        freq_mode_update.flat[...] = \
+                update_matrix_inv[:m * n_time,:m * n_time].flat
+        self.freq_mode_update = freq_mode_update
+        time_mode_update.flat[...] = \
+                update_matrix_inv[m * n_time:,m * n_time:].flat
+        self.time_mode_update = time_mode_update
+        cross_update.flat[...] = \
+                update_matrix_inv[:m * n_time,m * n_time:].flat
+        self.cross_update = cross_update
         # Set flag so no more modifications to the matricies can occure.
-        self.finalized = True
-    
+        self._finalized = True
+        
     # ---- Methods for using the Noise Matrix. ----
-
-    def get_diag_allfreq_inverse(self, find):
-        """Get the inverse of the combined diagonal and all frequency noise.
-        
-        Get the noise at only one frequency slice given by index `find`.
-        """
-        
-        if find == "full":
-            # Get the full matrix, not just one frequency slice.
-            out = sp.empty((self.n_chan, self.n_time, self.n_time),
-                           dtype=float)
-            out = al.make_mat(out, axis_names=("freq", "time", "time"),
-                              row_axes=(0, 1), col_axes=(0, 2))
-            out.copy_axis_info(self.info)
-            for ii in xrange(self.n_chan):
-                out[ii, ...] = self.get_diag_allfreq_inverse(ii)
-        else:
-            # Get the data we need.
-            diag = self.diagonal[find,...]
-            allfreq = self.allfreq
-            # Add the matricies.
-            out = sp.copy(allfreq)
-            out.flat[::self.n_time + 1] += diag
-            # Invert it..
-            out = linalg.inv(out, True)
-            # Set up the output as an algebra object.
-            out = al.as_alg_like(out, allfreq)
-        return out
 
     def get_inverse(self):
         """Get the full noise inverse.
@@ -424,106 +480,151 @@ class Noise(object):
         production we will only use part of the inverse at a time).
         """
         
+        self._assert_finalized()
         n_chan = self.n_chan
         n_time = self.n_time
-        # Allowcate memory
+        freq_modes = self.freq_modes
+        time_modes = self.time_modes
+        # Get the size of the update term.
+        # First, the rank of the correlated frequency part.
+        m = self.freq_modes.shape[0]
+        n_update =  m * n_time
+        # Next, the rank of the all frequencies part.
+        q = self.time_modes.shape[0]
+        n_update += q * n_chan
+        # Allowcate memory.
         out = sp.zeros((n_chan, n_time, n_chan, n_time), dtype=float)
-        # Loop over all frequency pairs.
-        for ii in xrange(n_chan):
-            mat1 = self.get_diag_allfreq_inverse(ii)
-            for jj in xrange(n_chan):
-                mat2 = self.get_diag_allfreq_inverse(jj)
-                # Loop over modes.
-                for kk in xrange(self.mode_noise_term.shape[0]):
-                    tmp_mat = sp.copy(self.mode_noise_term[kk,...])
-                    tmp_mat *= -self.freq_modes[ii,kk]*self.freq_modes[jj,kk]
-                    if kk == 0:
-                        mat_block = tmp_mat
-                    else:
-                        mat_block += tmp_mat
-                mat_block = sp.dot(mat1, mat_block)
-                mat_block = sp.dot(mat_block, mat2)
-                if ii == jj:
-                    mat_block += mat1
-                out[ii,:,jj,:] = mat_block
         out = al.make_mat(out, axis_names=('freq', 'time', 'freq', 'time'),
                           row_axes=(0, 1), col_axes=(2, 3))
+        # Loop over the frequency indeces to reduce workspace memory and
+        # for simplicity.
+        for ii in xrange(n_chan):
+            this_freq_modes1 = freq_modes.index_axis(1, ii)
+            for jj in xrange(n_chan):
+                this_freq_modes2 = freq_modes.index_axis(1, jj)
+                # The freq_mode-freq_mode part of the update term.
+                tmp_mat = al.partial_dot(this_freq_modes1, 
+                                         self.freq_mode_update)
+                out[ii,:,jj,:] -= al.partial_dot(tmp_mat, this_freq_modes2)
+                # The off diagonal blocks.
+                this_cross1 = self.cross_update.index_axis(3, ii)
+                this_cross2 = self.cross_update.index_axis(3, jj)
+                tmp_mat = al.partial_dot(this_cross2, time_modes)
+                out[ii,:,jj,:] -= al.partial_dot(this_freq_modes1, tmp_mat)
+                tmp_mat = al.partial_dot(this_cross1, time_modes)
+                tmp_mat = al.partial_dot(this_freq_modes2, tmp_mat)
+                out[ii,:,jj,:] -= tmp_mat.transpose()
+                # Finally the time_mode-time_mode part.
+                this_time_update = self.time_mode_update.index_axis(1, ii)
+                this_time_update = this_time_update.index_axis(2, jj)
+                tmp_mat = al.partial_dot(time_modes.mat_transpose(), 
+                                         this_time_update)
+                out[ii,:,jj,:] -= al.partial_dot(tmp_mat, time_modes)
+                # Multiply by thermal.
+                out[ii,:,jj,:] *= self.diagonal_inv[ii,:,None]
+                out[ii,:,jj,:] *= self.diagonal_inv[jj,None,:]
+        # Add the thermal term.
+        out.flat[::n_chan * n_time + 1] += self.diagonal_inv.flat[...]
         return out
 
     def noise_weight_time_stream(self, data):
         """Noise weight a timeleft_part_update_term.axes stream data vector.
         """
         
-        # Get the inverse of the 'independant frequency' part of the noise.
-        block_freq_inverse = self.get_diag_allfreq_inverse("full")
-        # Noise weight by the 'independant frequency' term.
-        block_weighted = al.dot(block_freq_inverse, data)
-        # Calculate the second term that couples frequencies.
-        update_term = al.partial_dot(self.freq_modes.mat_transpose(),
-                                     block_weighted)
-        update_term = al.dot(self.mode_noise_term, update_term)
-        update_term = al.partial_dot(self.freq_modes, update_term)
-        update_term = al.dot(block_freq_inverse, update_term)
+        time_modes = self.time_modes
+        freq_modes = self.freq_modes
+        freq_mode_update = self.freq_mode_update
+        time_mode_update = self.time_mode_update
+        cross_update = self.cross_update
+        diagonal_inv = self.diagonal_inv
+        # Noise weight by the diagonal part of the noise.
+        diag_weighted = al.dot(diagonal_inv, data)
+        # Calculate the update term carrying the freq modes and the time modes
+        # through separately.
+        # Transform to the update space.
+        tmp_update_term_freq = al.partial_dot(freq_modes, diag_weighted)
+        update_term_time = al.partial_dot(time_modes, diag_weighted)
+        # Multiply by the update matrix.
+        update_term_freq = (al.partial_dot(freq_mode_update, 
+                                           tmp_update_term_freq)
+                            + al.partial_dot(cross_update, update_term_time))
+        update_term_time = (al.partial_dot(time_mode_update, update_term_time)
+                            + al.partial_dot(cross_update.mat_transpose(),
+                                             tmp_update_term_freq))
+        # Transform back.
+        update_term_freq = al.partial_dot(freq_modes.mat_transpose(),
+                                          update_term_freq)
+        update_term_time = al.partial_dot(time_modes.mat_transpose(),
+                                          update_term_time)
+        # Combine.
+        update_term = update_term_freq + update_term_time.transpose()
+        # Final multiply by the diagonal component.
+        update_term = al.partial_dot(diagonal_inv, update_term)
         # Combine the terms.
-        out = block_weighted - update_term
+        out = diag_weighted - update_term
         return out
 
-    def update_map_noise(self, P, f_ind, map_noise_inv):
-        """Convert noise to map space.
+    def set_pointing(self, P):
+        """Sets the pointing for the for the noise.
 
-        We fill the first axis (the first channel axis) one at a time to
-        conserve memory.
+        Calling this function lets the Noise class know how to transform to map
+        space.
         """
 
-        # Make sure that the map noise is compatible with the pointing.
-        if map_noise_inv.shape != P._map_shape + (self.n_chan,) + P._map_shape:
-            msg = "Map noise shape not compatible with pointing object."
-            raise ValueError(msg)
-        # Get the pointing information we need.
-        # The full matrix (inefficient but easy to use).
-        pointing_matrix = P.get_matrix()
-        # The sparse version, which is much more efficient.
-        pointing_inds, pointing_weights = P.get_sparse()
-        # Get the time domain noise inverse of this slice. This is in the
-        # time-time domain.
-        diag_freq_noise_f_ind = self.get_diag_allfreq_inverse(f_ind)
-        # Transform to the pixel-time domain.
-        diag_freq_f_ind_pix = al.partial_dot(pointing_matrix.mat_transpose(),
-                                              diag_freq_noise_f_ind)
-        # Do all operations to make the update term that only applies to the
-        # channel we are dealing with.
-        left_part_update_term = al.partial_dot(diag_freq_f_ind_pix, 
-                                               self.mode_noise_term)
-        # We get rid of the frequency axis on the left by indexing.
-        this_freq_modes = self.freq_modes.index_axis(0, f_ind)
-        left_part_update_term = -al.partial_dot(this_freq_modes,
-                                                left_part_update_term)
-        # Now we loop through all the frequencies and build up the noise
-        # matrix.
-        for ii in xrange(self.n_chan):
-            # Isolate this frequency in the coupling term.
-            this_freq_modes = self.freq_modes.index_axis(0, ii)
-            this_map_noise = al.partial_dot(left_part_update_term,
-                                            this_freq_modes)
-            # Get the independant frequencies part.
-            this_diag_freq = self.get_diag_allfreq_inverse(ii)
-            # Final binomial inverse multiply.
-            this_map_noise = al.partial_dot(this_map_noise, this_diag_freq)
-            # Diagonal terms get the non-update term.
-            if ii == f_ind:
-                this_map_noise += diag_freq_f_ind_pix
-            # Convert the trailing time index to a pixel index and update the
-            # out put.
-            for jj in xrange(self.n_time):
-                this_pointing_inds = tuple(pointing_inds[jj])
-                map_noise_inv[(Ellipsis, ii) + this_pointing_inds] += \
-                        pointing_weights[jj,:] * this_map_noise[...,jj,None]
+        if len(P._map_shape) != 2:
+            raise NotImplementedError("Only 2 D pointings implemented.")
+        self.pointing_inds, self.pointing_weights = P.get_sparse()
 
-        
+    def update_map_noise(self, f_ind, pixel_inds, map_noise_inv):
+        """Convert noise to map space.
 
+        We fill build the matrix one row at a time for performance reasons.
+        This is implemented without using the algebra interface for the arrays,
+        again for performance.
+        """
         
-
-        
+        # Unpack pixel inds (assumes 2D pointing).
+        x_ind = pixel_inds[0]
+        y_ind = pixel_inds[1]
+        # Get some variables from self.
+        time_modes = self.time_modes
+        freq_modes = self.freq_modes
+        pointing_inds = self.pointing_inds
+        pointing_weights = self.pointing_weights
+        n_time = self.n_time
+        n_pix_per_pointing = pointing_inds.shape[-1]
+        # Numbers of frequency modes and time modes.
+        m = freq_modes.shape[0]
+        q = time_modes.shape[0]
+        # Isolate some the parts of variouse arrays that are relevant to the
+        # current frequency row.
+        this_chan_time_mode_update = self.time_mode_update[:,f_ind,...]
+        this_chan_freq_modes = freq_modes[:,f_ind,...]
+        this_chan_cross_update = self.cross_update[:,:,:,f_ind]
+        # For cross update at this channel, we really want the transpose.
+        this_chan_cross_update = sp.rollaxis(this_chan_cross_update, -1, 0)
+        this_chan_cross_update = sp.copy(this_chan_cross_update)
+        # Figure out which pointing indecies apply to this row of the matrix.
+        row_pointings = []
+        row_weights = []
+        for ii in xrange(n_time):
+            for jj in xrange(n_pix_per_pointing):
+                if (pointing_inds[ii,0,jj] == x_ind 
+                    and pointing_inds[ii,1,jj] == y_ind):
+                    row_pointings.append(ii)
+                    row_weights.append(pointing_weights[ii,jj])
+        # If this data set never points to the pixel for this row, do nothing.
+        if not row_pointings:
+            return
+        # Now loop over the pointings that we just found.
+        for ii in xrange(len(row_pointings)):
+            time_ind = row_pointings[ii]
+            weight = row_weights[ii]
+            # Isolate the relevant parts of some of the matrices and vectors.
+            this_time_time_modes = time_modes[:,time_ind]
+            this_time_freq_mode_update = self.freq_mode_update[:,time_ind,...]
+            this_time_cross_update = self.cross_update[:,time_ind,...]
+            # Now build up the central matrix.
 
 
 

@@ -1468,14 +1468,21 @@ class mat(alg_object) :
         # Suport negitive indicies.
         if axis < 0:
             axis = self.ndim + axis
-        # Get copies of rows and colums ommitting the removed axis.
+        # Get copies of rows and colums ommitting the removed axis.  Also, any
+        # indecies that are greater than axis, need to decremented.
         rows = list(self.rows)
         if axis in rows:
             rows.remove(axis)
-        rows = tuple(rows)
         cols = list(self.cols)
         if axis in cols:
             cols.remove(axis)
+        for ii in range(len(rows)):
+            if rows[ii] > axis:
+                rows[ii] -= 1
+        for ii in range(len(cols)):
+            if cols[ii] > axis:
+                cols[ii] -= 1
+        rows = tuple(rows)
         cols = tuple(cols)
         # New name attribute.
         names = self.axes[:axis] + self.axes[axis+1:]
@@ -1792,11 +1799,6 @@ def partial_dot(left, right):
     out_dtype = (left.flat[[0]] * right.flat[[0]]).dtype
     # Allowcate memory.
     out = sp.empty(out_shape, dtype=out_dtype)
-    if not out_rows or not out_cols:
-        out = make_vect(out, out_names)
-    else:
-        out = make_mat(out, axis_names=out_names, row_axes=out_rows,
-                       col_axes=out_cols)
     # All the block diagonal axes will be treated together. Get the global
     # shape of them.
     all_diag_shape = (left_notdot_diag_shape + left_todot_diag_diag_shape 
@@ -1941,6 +1943,13 @@ def partial_dot(left, right):
             this_out.shape = out_sliced_reshape
             this_out = this_out.transpose(out_sliced_permute)
         out[tuple(out_slice)] = this_out
+    # XXX There is a bug where this crashes for certain cases if these lines
+    # are before the loop.
+    if not out_rows or not out_cols:
+        out = make_vect(out, out_names)
+    else:
+        out = make_mat(out, axis_names=out_names, row_axes=out_rows,
+                       col_axes=out_cols)
     return out
 
 def empty_like(obj) :
