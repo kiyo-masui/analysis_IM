@@ -73,13 +73,18 @@ def make_cube_movie(filename, tag, colorbar_title, fileprefix,
 
 # make plots of the 22hr selection
 root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_wiggleZ/"
+make_cube_movie(root_directory + "reg22montecarlo.npy",
+                "reg22montecarlo",
+                "MC Selection", cube_root + "reg22montecarlo",
+                sigmarange=None)
+sys.exit()
 make_cube_movie(root_directory + "reg22selection.npy",
                 "reg22selection",
-                "Selection", cube_root + "reg22selection.npy",
+                "Selection", cube_root + "reg22selection",
                 sigmarange=None)
 make_cube_movie(root_directory + "reg22separable.npy",
                 "reg22separable",
-                "Separable Selection", cube_root + "reg22separable.npy",
+                "Separable Selection", cube_root + "reg22separable",
                 sigmarange=None)
 sys.exit()
 

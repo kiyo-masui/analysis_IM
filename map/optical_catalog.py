@@ -14,6 +14,7 @@ import random
 import multiprocessing
 import copy
 from core import algebra
+from core import constants as cc
 # TODO: make better parameter passing for catalog binning
 # TODO: put ranges of other fields in docstring
 
@@ -101,10 +102,7 @@ def bin_catalog_data(catalog, freq_axis, ra_axis,
     bin catalog data onto a grid in RA, Dec, and frequency
     This currently assumes that all of the axes are uniformly spaced
     """
-    # TODO: move this to a constants file
-    nu_21cm_mhz = 1420.40575177
-
-    catalog_frequencies = nu_21cm_mhz * 1.e6 / (1 + catalog['z'])
+    catalog_frequencies = cc.freq_21cm_MHz * 1.e6 / (1 + catalog['z'])
     num_catalog = catalog.size
     sample = np.zeros((num_catalog, 3))
     sample[:, 0] = catalog_frequencies
@@ -187,6 +185,7 @@ def bin_wigglez(fieldname, template_file):
     root_data = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/"
     binned_data = root_data + "binned_wiggleZ/"
     root_catalogs = root_data + "wiggleZ_catalogs/"
+    catalog_subdir = fieldname + "hr/"
     n_rand_cats = 1000
     n_to_save = 100
 
@@ -195,8 +194,8 @@ def bin_wigglez(fieldname, template_file):
     outfile_separable = binned_data + "reg" + fieldname + "separable.npy"
     outfile_rand = binned_data + "reg" + fieldname + "rand"
 
-    infile_data = root_catalogs + "reg" + fieldname + "data.dat"
-    rootrand = root_catalogs + "reg" + fieldname + "rand"
+    infile_data = root_catalogs + catalog_subdir + "reg" + fieldname + "data.dat"
+    rootrand = root_catalogs + catalog_subdir + "reg" + fieldname + "rand"
 
     randlist = [(index, (rootrand + "%03d.dat" % index))
                 for index in range(0, n_rand_cats)]
@@ -254,6 +253,7 @@ def randomize_catalog_redshifts(catalog, fieldname):
     priority -- from Chris Blake
     """
     nzilookupfile = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/wiggleZ_catalogs/"
+    nzilookupfile += fieldname + "hr/"
     nzilookupfile += "nzpri_reg" + fieldname + "_tzuchingcats.dat"
     ndtype = [('CDF', float), ("z0", float), ("z1", float), ("z2", float),
               ("z3", float),  ("z4", float), ("z5", float)]
@@ -277,8 +277,7 @@ def randomize_catalog_redshifts(catalog, fieldname):
     return catalog
 
 
-# TODO: make the template_cube lean less on being the 15hr field
-# TODO: remove A/B split in averaging? probably un-needed
+# TODO: remove A/B split in averaging? probably not needed
 def estimate_selection_function(fieldname, template_file,
                                 catalog_shelvefile="randcatdata.shelve",
                                 generate_rancat_shelve=True):
@@ -294,13 +293,16 @@ def estimate_selection_function(fieldname, template_file,
     root_data = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/"
     binned_data = root_data + "binned_wiggleZ/"
     root_catalogs = root_data + "wiggleZ_catalogs/"
+    catalog_subdir = fieldname + "hr/"
 
     outfile_selection = binned_data + "reg" + fieldname + "montecarlo.npy"
     n_rand_cats = 1000
     chunking_size = 10  # break the averaging into pooled multiprocess jobs
-    num_chunks = 9000
+    #num_chunks = 9000
+    #num_chunks = 20000
+    num_chunks = 60000
 
-    rootrand = root_catalogs + "reg" + fieldname + "rand"
+    rootrand = root_catalogs + catalog_subdir + "reg" + fieldname + "rand"
     randlist = [(repr(index), (rootrand + "%03d.dat" % index))
                 for index in range(0, n_rand_cats)]
 
@@ -341,7 +343,8 @@ def estimate_selection_function(fieldname, template_file,
         chunk_sel_func_a = np.zeros(template_shape)
         chunk_sel_func_b = np.zeros(template_shape)
 
-        pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+        # leave 3 processors free to be nice
+        pool = multiprocessing.Pool(processes=(multiprocessing.cpu_count()-3))
         resultsA = pool.map(wrap_bin_catalog_data, runlist_a)
         resultsB = pool.map(wrap_bin_catalog_data, runlist_b)
 
@@ -459,7 +462,40 @@ def generate_sel_15hr_22hr_gbtregion():
     bin_wigglez("22", template_mapname)
 
 
+def generate_MCsel_15hr_gbtregion():
+    """generate selection functions for the 22hr field using a Monte Carlo
+    over random source positions, consistently with priority zones from
+    C. Blake
+    """
+
+    calinliv_dir = '/mnt/raid-project/gmrt/calinliv/wiggleZ/'
+    root_template = calinliv_dir + "corr/test/"
+    template_mapname = root_template + \
+                    'sec_A_15hr_41-73_cleaned_clean_map_I_with_B.npy'
+
+    estimate_selection_function('15', template_mapname,
+                                catalog_shelvefile="randcatdata15.shelve",
+                                generate_rancat_shelve=True)
+
+
+def generate_MCsel_22hr_gbtregion():
+    """generate selection functions for the 22hr field using a Monte Carlo
+    over random source positions, consistently with priority zones from
+    C. Blake
+    """
+
+    calinliv_dir = '/mnt/raid-project/gmrt/calinliv/wiggleZ/'
+    root_template = calinliv_dir + "corr/84_ABCD_all_15_modes/"
+    template_mapname = root_template + \
+                    'sec_A_22hr_41-84_cleaned_clean_map_I_with_C.npy'
+
+    estimate_selection_function('22', template_mapname,
+                                catalog_shelvefile="randcatdata.shelve",
+                                generate_rancat_shelve=False)
+
+
 if __name__ == '__main__':
-    #estimate_selection_function()
     #bin_wigglez()
-    generate_GBT_sel_15hr_22hr_gbtregion()
+    generate_MCsel_15hr_gbtregion()
+    #generate_MCsel_22hr_gbtregion()
+    #generate_GBT_sel_15hr_22hr_gbtregion()
