@@ -9,7 +9,7 @@ import scipy as sp
 field = '1hr'
 dm_field_centre = (218.25, 2.0) 
 #Here I'm grabbing the guppi data
-file_middles = tuple(dir_data.get_data_files(range(00,10) , field='1hr', project='GBT11B_055',type='ralongmap'))
+file_middles = tuple(dir_data.get_data_files(range(00,8) , field='1hr', project='GBT11B_055',type='ralongmap'))
 
 pipe_modules = []
 # Chime has 8 cores, but you should save a few for other people.  Use 6 max.
@@ -38,9 +38,9 @@ ha_scans = ()
 # the only IF's saved to the following fits files).
 ha_IFs = IFs
 
-from time_stream import flag_data
+#from time_stream import flag_data
 # Comment this line to skip this step when running python pipeline/manager
-pipe_modules.append(flag_data.FlagData)
+#pipe_modules.append(flag_data.FlagData)
 #fd_input_root = ha_output_root
 fd_input_root = data_dir
 fd_file_middles = file_middles
@@ -57,9 +57,9 @@ fd_sigma_thres = 6
 fd_badness_thres = 0.1
 fd_time_cut = 40
 
-from time_stream import rebin_freq
+#from time_stream import rebin_freq
 # Comment this line to skip this step when running python pipeline/manager
-pipe_modules.append(rebin_freq.RebinFreq)
+#pipe_modules.append(rebin_freq.RebinFreq)
 rf_input_root = fd_output_root
 rf_file_middles = file_middles
 rf_input_end = '.fits'
@@ -72,9 +72,9 @@ rf_channel_width = 0.
 rf_n_bins_combined = 16
 rf_mean_instead_median = False
 
-from time_stream import rotate_pol
+#from time_stream import rotate_pol
 # Comment this line to skip this step in pipline.
-pipe_modules.append(rotate_pol.RotatePol)
+#pipe_modules.append(rotate_pol.RotatePol)
 rp_input_root = rf_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
