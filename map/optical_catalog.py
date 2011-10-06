@@ -162,11 +162,6 @@ def wrap_bin_catalog_data(entry):
 def template_map_axes(filename):
     """Open a numpy array map and extract its axis/etc. information
     """
-    #if filename is None:
-    #    root_template = '/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test/'
-    #    filename = root_template + \
-    #               'sec_A_15hr_41-73_cleaned_clean_map_I_with_B.npy'
-
     print "using the volume template file: " + filename
     template_map = algebra.make_vect(algebra.load(filename))
     freq_axis = template_map.get_axis('freq')
@@ -194,7 +189,8 @@ def bin_wigglez(fieldname, template_file):
     outfile_separable = binned_data + "reg" + fieldname + "separable.npy"
     outfile_rand = binned_data + "reg" + fieldname + "rand"
 
-    infile_data = root_catalogs + catalog_subdir + "reg" + fieldname + "data.dat"
+    infile_data = root_catalogs + catalog_subdir + "reg" + \
+                  fieldname + "data.dat"
     rootrand = root_catalogs + catalog_subdir + "reg" + fieldname + "rand"
 
     randlist = [(index, (rootrand + "%03d.dat" % index))
@@ -316,7 +312,6 @@ def estimate_selection_function(fieldname, template_file,
             print "loading: " + entry[1]
             randdata[entry[0]] = np.genfromtxt(entry[1], dtype=ndtype,
                                                skiprows=1)
-        randdata.close()
 
     (freq_axis, ra_axis, dec_axis, template_shape, template_map) = \
         template_map_axes(filename=template_file)
@@ -344,7 +339,7 @@ def estimate_selection_function(fieldname, template_file,
         chunk_sel_func_b = np.zeros(template_shape)
 
         # leave 3 processors free to be nice
-        pool = multiprocessing.Pool(processes=(multiprocessing.cpu_count()-3))
+        pool = multiprocessing.Pool(processes=(multiprocessing.cpu_count() - 3))
         resultsA = pool.map(wrap_bin_catalog_data, runlist_a)
         resultsB = pool.map(wrap_bin_catalog_data, runlist_b)
 
@@ -367,6 +362,7 @@ def estimate_selection_function(fieldname, template_file,
     selection_function = (sel_func_a +
                           sel_func_b) / 2. / float(num_chunks)
     print np.mean(selection_function)
+    randdata.close()
 
     map_wigglez_selection = algebra.make_vect(selection_function,
                                               axis_names=('freq', 'ra', 'dec'))
@@ -490,7 +486,7 @@ def generate_MCsel_22hr_gbtregion():
                     'sec_A_22hr_41-84_cleaned_clean_map_I_with_C.npy'
 
     estimate_selection_function('22', template_mapname,
-                                catalog_shelvefile="randcatdata.shelve",
+                                catalog_shelvefile="randcatdata22.shelve",
                                 generate_rancat_shelve=False)
 
 
