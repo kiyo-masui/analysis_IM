@@ -163,6 +163,7 @@ class BaseSingle(object) :
         if hasattr(self, 'feedback_title') and self.feedback > 1:
             print ''
         # Finally write the data back to file.
+        utils.mkparents(output_fname)
         Writer.write(output_fname)
 
 
