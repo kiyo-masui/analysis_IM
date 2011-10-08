@@ -1,4 +1,5 @@
 """Make simulated signal realizations in the GBT survey volume"""
+import sys
 import scipy as sp
 from simulations import corr21cm
 #from simulations import foregroundsck
@@ -44,6 +45,8 @@ def realize_simulation(freq_axis, ra_axis, dec_axis, verbose=True):
                simobj.nu_lower, simobj.nu_upper, simobj.nu_num)
 
     # note that the temperature there is in mK, and one wants K locally
+    simobj.gen_cache(fname="ok.dat")
+    sys.ext()
     return simobj.getfield() * 0.001
 
 

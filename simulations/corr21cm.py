@@ -105,7 +105,7 @@ class Corr21cm(RedshiftCorrelation, Map3d):
 
         x = ((1.0 / self.cosmology.omega_m) - 1.0) / (1.0 + z)**3
 
-        num = 1.0 + 1.175*x + 0.3064*x**2 + 0.005335*x**3
+        num = 1.0 + 1.175*x + 0.3064*x**2 + 0.005355*x**3
         den = 1.0 + 1.857*x + 1.021 *x**2 + 0.1530  *x**3
 
         d = (1.0 + x)**0.5 / (1.0 + z) * num / den
@@ -162,4 +162,3 @@ class Corr21cm(RedshiftCorrelation, Map3d):
         cube = self.realisation(z1, z2, self.x_width, self.y_width, self.nu_num, self.x_num, self.y_num, zspace = False)[::-1,:,:].copy()
 
         return cube
-        
