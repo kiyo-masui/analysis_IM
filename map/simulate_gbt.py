@@ -34,8 +34,8 @@ def realize_simulation(freq_axis, ra_axis, dec_axis, verbose=True):
     simobj.y_width = max(dec_axis) - min(dec_axis)
     (simobj.x_num, simobj.y_num) = (len(ra_axis), len(dec_axis))
 
-    simobj.nu_lower = min(freq_axis)
-    simobj.nu_upper = max(freq_axis)
+    simobj.nu_lower = min(freq_axis)/1.e6
+    simobj.nu_upper = max(freq_axis)/1.e6
     simobj.nu_num = len(freq_axis)
 
     if verbose:
@@ -45,29 +45,6 @@ def realize_simulation(freq_axis, ra_axis, dec_axis, verbose=True):
 
     # note that the temperature there is in mK, and one wants K locally
     return simobj.getfield() * 0.001
-
-
-def realize_simulation_old(freq_axis, ra_axis, dec_axis, verbose=True):
-    """do basic handling to call Richard's simulation code"""
-    thetax = max(ra_axis) - min(ra_axis)
-    thetay = max(dec_axis) - min(dec_axis)
-    (num_ra, num_dec) = (len(ra_axis), len(dec_axis))
-
-    freq_near = max(freq_axis)
-    freq_far = min(freq_axis)
-    num_freq = len(freq_axis)
-    z_near = cc.freq_21cm_MHz / freq_near
-    z_far = cc.freq_21cm_MHz / freq_far
-
-    simobj = corr21cm.Corr21cm()
-
-    if verbose:
-        print "Sim: %dx%d field (%fx%f deg) from z=%f to z=%f (%d bins)" % \
-              (num_ra, num_dec, thetax, thetay, z_near, z_far, num_freq)
-
-    # note that the temperature there is in mK, and one wants K locally
-    return simobj.realisation(z_near, z_far, thetax, thetay,
-                          num_freq, num_ra, num_dec)[::-1, ...] * 0.001
 
 
 def make_simulation_set(template_file, outfile_raw, outfile_beam,
@@ -83,11 +60,6 @@ def make_simulation_set(template_file, outfile_raw, outfile_beam,
 
     gbtsim = realize_simulation(freq_axis, ra_axis, dec_axis, verbose=verbose)
     sim_map = algebra.make_vect(gbtsim, axis_names=('freq', 'ra', 'dec'))
-
-    # TODO: need this?
-    (num_ra, num_dec) = (len(ra_axis), len(dec_axis))
-    sim_map = sim_map[:, :num_ra, :num_dec]
-
     sim_map.copy_axis_info(gbt_map)
 
     beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792,
@@ -107,7 +79,7 @@ def make_simulation_set(template_file, outfile_raw, outfile_beam,
     algebra.save(outfile_beam_plus_data, sim_map_withbeam)
 
 
-def generate_sim_15hr_gbtregion():
+def generate_sim_15hr_gbtregion(numsim=100):
     """generate simulations
     """
 
@@ -117,12 +89,22 @@ def generate_sim_15hr_gbtregion():
                     'sec_A_15hr_41-73_cleaned_clean_map_I_with_B.npy'
 
     simdir = '/mnt/raid-project/gmrt/eswitzer/wiggleZ/simulations/15hr/'
-    outfile_raw = simdir + 'sim_test.npy'
-    outfile_beam = simdir + 'sim_beam_test.npy'
-    outfile_beam_plus_data = simdir + 'sim_beam_plus_data_test.npy'
 
-    make_simulation_set(template_mapname, outfile_raw, outfile_beam,
-                        outfile_beam_plus_data)
+    rawlist = [ simdir + 'sim_' + str('%03d' % index) + '.npy' \
+                for index in range(numsim)]
+
+    beamlist = [ simdir + 'sim_beam_' + str('%03d' % index) + '.npy' \
+                for index in range(numsim)]
+
+    bpdlist = [ simdir + 'sim_beam_plus_data' + str('%03d' % index) + '.npy' \
+                for index in range(numsim)]
+
+    for (outfile_raw, outfile_beam, outfile_beam_plus_data) in \
+        zip(rawlist, beamlist, bpdlist):
+        print outfile_raw, outfile_beam, outfile_beam_plus_data
+
+        make_simulation_set(template_mapname, outfile_raw, outfile_beam,
+                            outfile_beam_plus_data)
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 """
 A set of functions to bin optical catalog data into cubes
-
+http://astronomy.swin.edu.au/~cblake/tzuching.html
     In the 15h field,
     ra range is 214. to 223.
     dec range is 0. to 4.
