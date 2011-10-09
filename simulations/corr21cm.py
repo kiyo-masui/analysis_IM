@@ -30,8 +30,8 @@ class Corr21cm(RedshiftCorrelation, Map3d):
             ps = lambda k: np.exp(-0.5 * k**2 / kstar**2) * c1(k)
 
         RedshiftCorrelation.__init__(self, ps_vv = ps, redshift = redshift)
-        self._load_cache(join(dirname(__file__),"data/corr_z1.5_2.dat"))
-        self.load_fft_cache(join(dirname(__file__),"data/fftcache.npz"))
+        self._load_cache(join(dirname(__file__),"data/corr_z1.5.dat"))
+        #self.load_fft_cache(join(dirname(__file__),"data/fftcache.npz"))
 
 
     def T_b(self, z):
