@@ -646,7 +646,7 @@ class RedshiftCorrelation(object):
         tgrid2 = np.zeros((3, numx, numy))
         acube = np.zeros((numz, numx, numy))
 
-        # Iterate over reshift slices, constructing the coordinates
+        # Iterate over redshift slices, constructing the coordinates
         # and interpolating into the 3d cube.
         for i in range(numz):
             zi = (xa[i] - c1) / (c2-c1) * numz
