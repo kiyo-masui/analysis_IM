@@ -1,5 +1,4 @@
 """Make simulated signal realizations in the GBT survey volume"""
-import sys
 import scipy as sp
 from simulations import corr21cm
 #from simulations import foregroundsck
@@ -7,13 +6,13 @@ from simulations import corr21cm
 import core.algebra as algebra
 import map.beam as beam
 from core import constants as cc
+import multiprocessing
 
 
 # TODO: TEMPORARY duplicate of func in optical_catalog; move more generic
 def template_map_axes(filename):
     """Open a numpy array map and extract its axis/etc. information
     """
-    print "using the volume template file: " + filename
     template_map = algebra.make_vect(algebra.load(filename))
     freq_axis = template_map.get_axis('freq')
     ra_axis = template_map.get_axis('ra')
@@ -22,15 +21,21 @@ def template_map_axes(filename):
 
 
 # TODO: confirm ra=x, dec=y (thetax = 5, thetay = 3 in 15hr)
-def realize_simulation(freq_axis, ra_axis, dec_axis, verbose=True):
+def realize_simulation(freq_axis, ra_axis, dec_axis, verbose=True,
+                       streaming=True):
     """do basic handling to call Richard's simulation code
+    here we use 300 h km/s from WiggleZ for streaming dispersion
     Notes on foreground calls for the future (also copy param member func.):
     syn = foregroundsck.Synchrotron()
     synfield = syn.getfield()
     ps = pointsource.DiMatteo()
     psf = ps.getfield()
     """
-    simobj = corr21cm.Corr21cm()
+    if streaming:
+        simobj = corr21cm.Corr21cm(sigma_v=300.*0.72)
+    else:
+        simobj = corr21cm.Corr21cm()
+
     simobj.x_width = max(ra_axis) - min(ra_axis)
     simobj.y_width = max(dec_axis) - min(dec_axis)
     (simobj.x_num, simobj.y_num) = (len(ra_axis), len(dec_axis))
@@ -45,13 +50,11 @@ def realize_simulation(freq_axis, ra_axis, dec_axis, verbose=True):
                simobj.nu_lower, simobj.nu_upper, simobj.nu_num)
 
     # note that the temperature there is in mK, and one wants K locally
-    simobj.gen_cache(fname="ok.dat")
-    sys.ext()
     return simobj.getfield() * 0.001
 
 
 def make_simulation_set(template_file, outfile_raw, outfile_beam,
-                        outfile_beam_plus_data, verbose=True):
+                        outfile_beam_plus_data, verbose=True, streaming=True):
     """Produce simulated GBT data volumes of three types:
     (from dimensions of a given template file)
     1. the raw simulation
@@ -61,7 +64,8 @@ def make_simulation_set(template_file, outfile_raw, outfile_beam,
     (freq_axis, ra_axis, dec_axis, gbt_map_shape, gbt_map) = \
         template_map_axes(template_file)
 
-    gbtsim = realize_simulation(freq_axis, ra_axis, dec_axis, verbose=verbose)
+    gbtsim = realize_simulation(freq_axis, ra_axis, dec_axis,
+                                streaming=streaming, verbose=verbose)
     sim_map = algebra.make_vect(gbtsim, axis_names=('freq', 'ra', 'dec'))
     sim_map.copy_axis_info(gbt_map)
 
@@ -82,7 +86,18 @@ def make_simulation_set(template_file, outfile_raw, outfile_beam,
     algebra.save(outfile_beam_plus_data, sim_map_withbeam)
 
 
-def generate_sim_15hr_gbtregion(numsim=100):
+def wrap_sim(runitem):
+    (template_mapname, outfile_raw, outfile_beam, outfile_beam_plus_data, streaming) = runitem
+    print "using template: " + template_mapname
+    print "using raw output cube file: " + outfile_raw
+    print "using raw output cube file conv. by beam: " + outfile_beam
+    print "using raw output cube file conv. by beam plus data: " + outfile_beam_plus_data
+
+    make_simulation_set(template_mapname, outfile_raw, outfile_beam,
+                        outfile_beam_plus_data, streaming=streaming)
+
+
+def generate_sim_15hr_gbtregion(numsim=100, streaming=True):
     """generate simulations
     """
 
@@ -92,23 +107,34 @@ def generate_sim_15hr_gbtregion(numsim=100):
                     'sec_A_15hr_41-73_cleaned_clean_map_I_with_B.npy'
 
     simdir = '/mnt/raid-project/gmrt/eswitzer/wiggleZ/simulations/15hr/'
+    if streaming:
+        simdir += "simvel_"
+    else:
+        simdir += "sim_"
 
-    rawlist = [ simdir + 'sim_' + str('%03d' % index) + '.npy' \
-                for index in range(numsim)]
+    templatelist = [ template_mapname for index in range(numsim) ]
 
-    beamlist = [ simdir + 'sim_beam_' + str('%03d' % index) + '.npy' \
-                for index in range(numsim)]
+    rawlist = [ simdir + str('%03d' % index) + '.npy' \
+                for index in range(numsim) ]
 
-    bpdlist = [ simdir + 'sim_beam_plus_data' + str('%03d' % index) + '.npy' \
-                for index in range(numsim)]
+    beamlist = [ simdir + 'beam_' + str('%03d' % index) + '.npy' \
+                for index in range(numsim) ]
 
-    for (outfile_raw, outfile_beam, outfile_beam_plus_data) in \
-        zip(rawlist, beamlist, bpdlist):
-        print outfile_raw, outfile_beam, outfile_beam_plus_data
+    bpdlist = [ simdir + 'beam_plus_data' + str('%03d' % index) + '.npy' \
+                for index in range(numsim) ]
 
-        make_simulation_set(template_mapname, outfile_raw, outfile_beam,
-                            outfile_beam_plus_data)
+    streamlist = [ streaming for index in range(numsim) ]
+
+    runlist = zip(templatelist, rawlist, beamlist, bpdlist, streamlist)
+
+    for runitem in runlist:
+        wrap_sim(runitem)
+
+    # the version of python which supports the simulation code does not support
+    # multiprocessing...
+    #pool = multiprocessing.Pool(processes=multiprocessing.cpu_count()-3)
+    #pool.map(wrap_sim, runlist)
 
 
 if __name__ == '__main__':
-    generate_sim_15hr_gbtregion()
+    generate_sim_15hr_gbtregion(streaming=False)

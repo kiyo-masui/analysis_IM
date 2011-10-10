@@ -2,7 +2,7 @@ from plotting import plot_cube as pc
 
 # TODO: delete tag from invocation
 # TODO: cube root invocation
-# TODO: fix error bars in selection function
+# TODO: fix color bars in selection function
 # TODO: define output directory for movies
 cube_frame_dir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/cube_frames/"
 output_dir = ""
