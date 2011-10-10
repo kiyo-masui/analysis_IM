@@ -6,21 +6,29 @@ from core import dir_data
 import scipy as sp
 
 # Here you choose which files to process.
-field = '1hr'
-dm_field_centre = (218.25, 2.0) 
+field = '15hr'
+#dm_field_centre = (218.25, 2.0) 
 #Here I'm grabbing the guppi data
-file_middles = tuple(dir_data.get_data_files(range(00,8) , field='1hr', project='GBT11B_055',type='ralongmap'))
+file_middles = tuple(dir_data.get_data_files(range(41,57) , field='15hr', project='GBT10B_036',type='ralongmap')+dir_data.get_data_files(range(58,91), field='15hr', project='GBT10B_036', type='ralongmap'))
+
+n_files = len(file_middles)
+middles_a = file_middles[:n_files//4]
+middles_b = file_middles[n_files//4:2*n_files//4]
+middles_c = file_middles[2*n_files//4:3*n_files//4]
+middles_d = file_middles[3*n_files//4:n_files]
 
 pipe_modules = []
 # Chime has 8 cores, but you should save a few for other people.  Use 6 max.
+# Prawn has 12 cores.
 pipe_processes = 10
 
 base_dir = os.getenv('GBT_OUT')
+
 data_dir = os.getenv('GBT_DATA')
 #raw_data_dir = os.getenv('GBT10B_DATA')
 kiyo_dir = os.getenv('GBT10B_KM')
 prefix = ''
-map_prefix = prefix + field 
+map_prefix = '' + field +'_41-90_'
 IFs = ()
 
 
@@ -86,8 +94,8 @@ rp_IFs = ()
 rp_new_pols = (1,2,3,4)
 rp_average_cals = False
 
-from time_stream import flux_pol_cal
-pipe_modules.append(flux_pol_cal.Calibrate)
+#from time_stream import flux_pol_cal
+#pipe_modules.append(flux_pol_cal.Calibrate)
 tc_input_root = rp_output_root
 tc_file_middles = file_middles
 tc_input_end = '.fits'
@@ -98,9 +106,11 @@ tc_IFs = ()
 
 tc_mueler_file = base_dir + 'mueller_params/'
 
-from time_stream import combine_cal
+### Combine Cal is not in Liviu's pipeline. ###
+
+#from time_stream import combine_cal
 # Comment this line to skip this step in pipeline
-pipe_modules.append(combine_cal.CombineCal)
+#pipe_modules.append(combine_cal.CombineCal)
 cc_input_root =tc_output_root
 cc_file_middles = file_middles
 cc_input_end = '.fits'
@@ -114,9 +124,9 @@ cc_average_cal_states = True
 #c_weights = (0.5, 0.5)
 #cc_weights = (0.0, 1.0)
 
-#from map import dirty_map
-#pipe_modules.append(dirty_map.DirtyMapMaker)
-dm_input_root = cc_output_root
+from map import dirty_map
+pipe_modules.append(dirty_map.DirtyMapMaker)
+dm_input_root = tc_output_root
 dm_file_middles = file_middles
 dm_input_end = '.fits'
 dm_output_root = base_dir + 'maps/' + map_prefix
@@ -124,19 +134,127 @@ dm_output_end = '.fits'
 dm_scans = ()
 dm_IFs = (0,)
 
+#Centre is 218.25,2. for 15hr
+#Centre is 325.75,0. for 22hr
+#Centre is 12.75,0.0 for 1hr
+dm_field_centre = (218.25,2.0)
 dm_map_shape = (64,32)
 #dm_map_shape = (70, 45)
 #dm_map_shape = (100, 80)
 dm_pixel_spacing = .075
 dm_noise_model = 'disjoint_scans'
-dm_polarizations = ('I','V')
+dm_polarizations = ('I',)
 dm_noise_parameters_input_root = 'None'
 
-#from map import clean_map
-#pipe_modules.append(clean_map.CleanMapMaker)
+from map import clean_map
+pipe_modules.append(clean_map.CleanMapMaker)
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
-cm_polarizations = ('I','V')
+cm_polarizations = ('I',)
+
+from time_stream import subtract_map_data
+pipe_modules.append(subtract_map_data.Subtract)
+sm_input_root = tc_output_root
+sm_file_middles = file_middles
+sm_input_end = '.fits'
+sm_output_root = base_dir + 'map_subtracted/'
+sm_output_end = '.fits'
+sm_scans = ()
+sm_IFs = ()
+
+sm_pols = ()
+sm_map_file = base_dir + 'maps/' + map_prefix + 'clean_map_I.npy'
+sm_solve_for_gain = True
+sm_gain_output_end = '_gain.pickle'
+sm_interpolation = 'linear'
+
+from time_stream import reflag
+pipe_modules.append(reflag.ReFlag)
+sf_input_root = tc_output_root
+sf_file_middles = file_middles
+sf_input_end = '.fits'
+sf_output_root = base_dir + 'reflagged/'
+sf_output_end = '.fits'
+sf_scans = ()
+sf_IFs = ()
+
+sf_thres = 5.0
+sf_subtracted_input_root = sm_output_root
+sf_subtracted_output_root = base_dir + 'reflag_sub/'
+
+from noise import measure_noise
+pipe_modules.append(measure_noise.Measure)
+mn_input_root = sf_subtracted_input_root
+mn_file_middles = file_middles
+mn_input_end = '.fits'
+mn_output_root = base_dir + 'noise_measurments/'
+
+mn_model = "scan_var"
+
+#### Make sub map A ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
+dmA_file_middles = middles_a
+dmA_input_root = sf_output_root
+dmA_output_root = base_dir + 'maps/' + "sec_A_" + map_prefix
+
+dmA_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+cmA_input_root = dmA_output_root
+cmA_output_root = dmA_output_root
+cmA_save_noise_diag = True
+
+#### Make sub map B ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+dmB_file_middles = middles_b
+dmB_input_root = sf_output_root
+dmB_output_root = base_dir + 'maps/' + "sec_B_" + map_prefix
+
+dmB_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+cmB_input_root = dmB_output_root
+cmB_output_root = dmB_output_root
+cmB_save_noise_diag = True
+
+#### Make sub map C ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
+dmC_file_middles = middles_c
+dmC_input_root = sf_output_root
+dmC_output_root = base_dir + 'maps/' + "sec_C_" + map_prefix
+
+dmC_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+cmC_input_root = dmC_output_root
+cmC_output_root = dmC_output_root
+cmC_save_noise_diag = True
+
+#### Make sub map D ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+dmD_file_middles = middles_d
+dmD_input_root = sf_output_root
+dmD_output_root = base_dir + 'maps/' + "sec_D_" + map_prefix
+
+dmD_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
+cmD_input_root = dmD_output_root
+cmD_output_root = dmD_output_root
+cmD_save_noise_diag = True
+
 
 # Not actually nessesary, but good do do anyway.
 del file_middles
