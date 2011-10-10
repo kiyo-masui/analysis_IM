@@ -512,14 +512,18 @@ class RedshiftCorrelation(object):
     _sigma_v = 0.0
     def sigma_v(self, z):
         """Return the pairwise velocity dispersion at a given redshift.
+        This is stored internally as `self._sigma_v` in units of km/s
+        Note that e.g. WiggleZ reports sigma_v in h km/s
         """
-        return np.ones_like(z) * self._sigma_v
+        print "using sigma_v (km/s): " + repr(self._sigma_v)
+        sigma_v_hinvMpc = (self._sigma_v / 100.)
+        return np.ones_like(z) * sigma_v_hinvMpc
 
 
     def velocity_damping(self, kpar):
         """The velocity damping term for the non-linear power spectrum.
         """
-        return (1.0 + (kpar * self.sigma_v(self.ps_redshift))**2)**-1
+        return (1.0 + (kpar * self.sigma_v(self.ps_redshift))**2.)**-1.
 
 
     def _realisation_dv(self, d, n):
@@ -589,6 +593,7 @@ class RedshiftCorrelation(object):
             The volume cube.
 
         """
+        d1 = self.cosmology.proper_distance(z1)
         d2 = self.cosmology.proper_distance(z2)
         c1 = self.cosmology.comoving_distance(z1)
         c2 = self.cosmology.comoving_distance(z2)
@@ -596,11 +601,12 @@ class RedshiftCorrelation(object):
         # Make cube pixelisation finer, such that angular cube will
         # have sufficient resolution on the closest face.
         d = np.array([c2-c1, thetax * d2 * units.degree, thetay * d2 * units.degree])
-        n = np.array([numz, int(c2 / c1 * numx), int(c2 / c1 * numy)])
+        #n = np.array([numz, int(c2 / c1 * numx), int(c2 / c1 * numy)])
+        n = np.array([numz, int(d2 / d1 * numx), int(d2 / d1 * numy)])
 
         # Enlarge cube size by 1 in each dimension, so raytraced cube
         # sits exactly within the gridded points.
-        d = d * (n+1) / n
+        d = d * (n + 1) / n
         n = n + 1
 
         print "Generating cube: %f x %f x %f Mpc^3" % (d[0], d[1], d[2])

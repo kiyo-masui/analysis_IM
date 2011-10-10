@@ -48,15 +48,19 @@ class Cosmology:
 
     units = 'cosmo'
 
-    omega_b = 0.0458
-    omega_c = 0.229
-    omega_l = 0.7252
+    #omega_b = 0.0458
+    omega_b = 0.04482
+    #omega_c = 0.229
+    omega_c = 0.22518
+    #omega_l = 0.7252
+    omega_l = 0.73
 
     omega_g = 0.0
     omega_n = 0.0
 
     # H_0 given in km/s / Mpc
-    H0 = 70.2
+    #H0 = 70.2
+    H0 = 72.
 
     @property
     def omega_m(self):
@@ -70,7 +74,6 @@ class Cosmology:
     def omega_k(self):
         return 1.0 - (self.omega_l + self.omega_b + self.omega_c + self.omega_g + self.omega_n)
 
-    
 
     @staticmethod
     def init_physical(ombh2 = 0.02255, omch2 = 0.1126, H0 = 70.2, omkh2 = 0.0, t0 = 2.726, nnu = 3.046):
