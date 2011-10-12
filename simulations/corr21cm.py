@@ -100,7 +100,7 @@ class Corr21cm(RedshiftCorrelation, Map3d):
         -----
         See _[1].
 
-        .. [1] http://http://arxiv.org/abs/1012.2671
+        .. [1] http://arxiv.org/abs/1012.2671
         """
 
         x = ((1.0 / self.cosmology.omega_m) - 1.0) / (1.0 + z)**3
@@ -131,7 +131,7 @@ class Corr21cm(RedshiftCorrelation, Map3d):
         -----
         See _[1].
 
-        .. [1] http://http://arxiv.org/abs/1012.2671
+        .. [1] http://arxiv.org/abs/1012.2671
         """
 
         x = ((1.0 / self.cosmology.omega_m) - 1.0) / (1.0 + z)**3
