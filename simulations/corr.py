@@ -598,7 +598,7 @@ class RedshiftCorrelation(object):
         # Make cube pixelisation finer, such that angular cube with
         # have sufficient resolution on the closest face.
         d = np.array([c2-c1, thetax * d2 * units.degree, thetay * d2 * units.degree])
-        n = np.array([numz, int(c2 / c1 * numx), int(c2 / c1 * numy)])
+        n = np.array([numz, int(d2 / d1 * numx), int(d2 / d1 * numy)])
 
         # Enlarge cube size by 1 in each dimension, so raytraced cube
         # sits exactly within the gridded points.
