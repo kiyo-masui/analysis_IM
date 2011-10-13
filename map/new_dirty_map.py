@@ -13,11 +13,14 @@ import numpy.ma as ma
 import scipy.fftpack as fft
 from scipy import linalg
 from scipy import interpolate
+import numpy as np
 
 import core.algebra as al
 import tools
 from noise import noise_power
 import kiyopy.custom_exceptions as ce
+from kiyopy import parse_ini
+import _mapmaker as _mapmaker_c
 
 # XXX
 import matplotlib.pyplot as plt
@@ -34,24 +37,121 @@ params_init = {
                'file_middles' : ("testfile_GBTfits",),
                'input_end' : ".fits",
                'output_root' : "./testoutput_",
+               # What data to include from each file.
+               'scans' : (),
+               'bands' : (0,),
+               'polarizations' : ('I',),
                # Map parameters (Ra (deg), Dec (deg)).
                'field_centre' : (325.0, 0.0),
                # In pixels.
                'map_shape' : (5, 5),
                'pixel_spacing' : 0.5, # degrees
                # How to treat the data.
-               'polarizations' : ('I',)
+               # How much data to include at a time (scan by scan or file by
+               # file)
+               'time_block' : 'file',
+               # What kind of frequency correlations to use.  Options are
+               # 'None', 'mean' and 'measured'.
+               'frequency_correlations' : 'None',
+               # Ignored unless 'frequency_correlations' is measured.
+               'number_frequency_modes' : 1,
+               # What number to use as the thermal nose.  Options are
+               # 'channel_var', and 'thermal'.
+               'thermal_weight' : 'thermal',
+               'deweight_time_mean' : True,
+               'deweight_time_slope' : False,
                }
 
-class DirtyMapMaker(object):
+class DirtyMap(object):
     """Dirty map maker.
     """
 
-    def __init__(self, parameter_file_or_dict=None, feedback=2) :
+    def __init__(self, parameter_file_or_dict=None, feedback=2):
         # Read in the parameters.
         self.params = parse_ini.parse(parameter_file_or_dict, params_init, 
                                  prefix=prefix, feedback=feedback)
         self.feedback = feedback
+
+    def preprocess_data(self):
+        """Reads data and does some preprocessing and data selection."""
+        pass
+
+    def get_noise_parameter(self, parameter_name):
+        """Reads a desired noise parameter for the current data."""
+        pass
+
+    def execute(self):
+        """Driver method."""
+        
+        params = self.params
+        n_pols = len(params["polarizations"])
+        n_bands = len(params["bands"])
+        for ii in range(n_pols):
+            for jj in range(n_bands):
+                self.pol = ii
+                self.band = jj
+                # Initialization of the outputs.
+                # XXX
+                self.n_chan = n_chan
+                self.map = map
+                self.cov_inv = cov_inv
+                # XXX
+                # Do work.
+                self.make_map()
+                # IO.
+
+    def make_map(self):
+        """Makes map for current polarization and band.
+        
+        This worker function has been split off for testing reasons.
+        """
+        
+        params = self.params
+        map = self.map
+        cov_inv = self.cov_inv
+        n_files = len(params["file_middles"])
+        # Initialize lists for the data and the noise.
+        data = []
+        noise = []
+        pointing = []
+        # Loop over the files get the data and build the noise.
+        # XXX change this to an iterator over blocks (scans or files).
+        for ii in xrange(n_files):
+            # Setting the file number tells the IO methods which data to read.
+            self.file_number = ii
+            # Get all the information we need from the data files.
+            time_stream, ra, dec, az, el, time, mask_inds = \
+                    self.preprocess_data()
+            P = Pointing(("ra", "dec"), (ra, dec), map, "linear")
+            data.append(time_stream)
+            pointing.append(P)
+            # Now build up our noise model for this piece of data.
+            N = Noise(time_stream, time)
+            N.add_mask(mask_inds)
+            # The thermal part.
+            if params["thermal_weight"] is "thermal":
+                thermal_noise = self.get_noise_parameter("thermal")
+                N.add_thermal(thermal_noise)
+            else:
+                raise ValueError("Invalid 'thermal_weight'.")
+            # Frequency correlations.
+            if params['frequency_correlations'] is 'mean':
+                mean_overf = self.get_noise_parameter("mean_over_f")
+                N.add_correlated_over_f(*mean_overf)
+            else:
+                raise ValueError("Invalid frequency correlations.")
+            # Things to do along the time axis.
+            if params['deweight_time_mean']:
+                N.deweight_time_mean()
+            if params['deweight_time_slope']:
+                N.deweight_time_slope()
+            N.finalize()
+            N.set_pointing(P)
+            noise.append(N)
+        # Now we have lists with all the data and thier noise.  Accumulate it
+        # into a dirty map and its covariance.
+        n_time_blocks = len(data)
+        #for ii in xrange(self.n_chan):
 
 
 
@@ -111,29 +211,21 @@ class Pointing(object):
         # Store the full pointing matrix in sparse form.
         n_pointings = len(coords[0])
         n_coords = len(axis_names)
-        if self._scheme == "nearest":
-            self.dtype = int
-        else:
-            self.dtype = float
+        self.dtype = np.float
         # Loop over the time stream and get the weights for each pointing.
         memory_allocated = False
         for ii in xrange(n_pointings):
             coordinate = ()
             for jj in xrange(n_coords):
                 coordinate += (self._coords[jj][ii],)
-            try:
-                pixels, weights = map.slice_interpolate_weights(
-                    self._map_axes, coordinate, scheme)
-            except ce.DataError:
-                # This pointing is outside the map bounds.  When this happens,
-                # point to the 0th pixel but with 0 weight.
-                continue
+            pixels, weights = map.slice_interpolate_weights(
+                self._map_axes, coordinate, scheme)
             # On first iteration need to allocate memory for the sparse matrix
             # storage.
             if not memory_allocated:
                 n_points_template = pixels.shape[0]
                 self._pixel_inds = sp.zeros((n_pointings, n_coords,
-                                              n_points_template), dtype=int)
+                                              n_points_template), dtype=np.int)
                 self._weights = sp.zeros((n_pointings, n_points_template),
                                          dtype=self.dtype)
                 memory_allocated = True
@@ -159,19 +251,63 @@ class Pointing(object):
     def apply_to_time_axis(self, time_stream, map_out=None):
         """Use this operator to convert a 'time' axis to a coordinate axis.
         
-        This functions implements a fast matrix multiplication.  For input
+        This functions implements a fast matrix multiplication. It is roughly
+        equivalent to using `algebra.partial_dot` except in axis placement.
+        This function "replaces" the time axis with the map axes which is
+        different from `partial_dot`'s behaviour.  This function is much more
+        efficient than using `partial_dot`.
+        
+        For input
         `map`, the following operations should be equivalent, with the later
         much more efficient.
         
-        >>> a = al.partial_dot(self.get_matrix, map)
+        # XXX This example is wrong and broken.
+        >>> a = al.partial_dot(map)
         >>> b = self.apply_to_time_axis(map)
         >>> sp.allclose(a, b)
         True
-        
         """
         
-        msg = "Fast multiply not implemented."
-        raise NotImplementedError(msg)
+        if not isinstance(time_stream, al.vect):
+            raise TypeError("Input data must be an algebra.vect object.")
+        # Find the time axis for the input.
+        for ii in range(time_stream.ndim):
+            if time_stream.axes[ii] == 'time':
+                time_axis = ii
+                break
+        else :
+            raise ValueError("Input data vect doesn't have a time axis.")
+        # Get some dimensions.
+        n_pointings = self._pixel_inds.shape[0]
+        n_pixels_template = self._pixel_inds.shape[2]
+        n_axes = len(self._axis_names)
+        if time_stream.shape[time_axis] != n_pointings:
+            msg = ("Time stream data and pointing have different number of"
+                   " time points.")
+            raise ValueError(msg)
+        # Get the shape and axis names of the output.
+        out_shape = (time_stream.shape[:time_axis] + self._map_shape
+                     + time_stream.shape[time_axis + 1:])
+        out_axes = (time_stream.axes[:time_axis] + self._axis_names
+                     + time_stream.axes[time_axis + 1:])
+        # Allowcate output memory if not passed.
+        if map_out is None:
+            map_out = sp.zeros(out_shape, dtype=float)
+            map_out = al.make_vect(map_out, axis_names=out_axes)
+        else :
+            if map_out.shape != out_shape:
+                raise ValueError("Output array is the wrong shape.")
+        # Initialize tuples that will index the input and the output.
+        data_index = [slice(None),] * time_stream.ndim + [None]
+        out_index = [slice(None),] * map_out.ndim
+        # Loop over the time axis and do the dot.
+        for ii in xrange(n_pointings):
+            data_index[time_axis] = ii
+            for kk in xrange(n_axes):
+                out_index[time_axis + kk] = self._pixel_inds[ii,kk,:]
+            map_out[tuple(out_index)] += (self._weights[ii,:]
+                                   * time_stream[tuple(data_index)])
+        return map_out
 
     def get_matrix(self):
         """Gets the matrix representation of the pointing operator."""
@@ -263,11 +399,11 @@ class Noise(object):
         # TODO: Need to copy the axis info from self.info.
         if hasattr(self, "time_modes"):
             current_q = self.time_modes.shape[0]
-            new_q = current_q + n_modes
+            new_q = current_q + n_new_modes
             old_time_modes = self.time_modes
             time_modes = sp.zeros((new_q, self.n_time), 
                                     dtype=float)
-            time_modes[:current_q,:] = old_allfreq
+            time_modes[:current_q,:] = old_time_modes
         else :
             current_q = 0
             time_modes = sp.zeros((n_new_modes, self.n_time), 
@@ -324,12 +460,16 @@ class Noise(object):
         channel.
         """
 
-        raise NotImplementedError()
-    
+        start = self.add_time_modes(1)
+        mode = self.time - sp.mean(self.time)
+        mode /= sp.sqrt(sp.sum(mode**2))
+        self.time_modes[start,:] = mode
+
     def add_correlated_over_f(self, amp, index, f0):
         """Add 1/f noise that is perfectly correlated between frequencies.
 
-        This modifies the the correlated mode part of the noise matrix.
+        This modifies the the correlated mode part of the noise matrix. It adds
+        a single mode with equal amplitude in all frequencies.
 
         Parameters
         ----------
@@ -531,6 +671,7 @@ class Noise(object):
         """Noise weight a timeleft_part_update_term.axes stream data vector.
         """
         
+        self._assert_finalized()
         time_modes = self.time_modes
         freq_modes = self.freq_modes
         freq_mode_update = self.freq_mode_update
@@ -570,7 +711,7 @@ class Noise(object):
         Calling this function lets the Noise class know how to transform to map
         space.
         """
-
+        
         if len(P._map_shape) != 2:
             raise NotImplementedError("Only 2 D pointings implemented.")
         self.pointing_inds, self.pointing_weights = P.get_sparse()
@@ -578,54 +719,64 @@ class Noise(object):
     def update_map_noise(self, f_ind, pixel_inds, map_noise_inv):
         """Convert noise to map space.
 
-        We fill build the matrix one row at a time for performance reasons.
+        We will build the matrix one row at a time for performance reasons.
         This is implemented without using the algebra interface for the arrays,
         again for performance.
         """
         
-        # Unpack pixel inds (assumes 2D pointing).
-        x_ind = pixel_inds[0]
-        y_ind = pixel_inds[1]
-        # Get some variables from self.
-        time_modes = self.time_modes
-        freq_modes = self.freq_modes
-        pointing_inds = self.pointing_inds
-        pointing_weights = self.pointing_weights
-        n_time = self.n_time
-        n_pix_per_pointing = pointing_inds.shape[-1]
-        # Numbers of frequency modes and time modes.
-        m = freq_modes.shape[0]
-        q = time_modes.shape[0]
-        # Isolate some the parts of variouse arrays that are relevant to the
-        # current frequency row.
-        this_chan_time_mode_update = self.time_mode_update[:,f_ind,...]
-        this_chan_freq_modes = freq_modes[:,f_ind,...]
-        this_chan_cross_update = self.cross_update[:,:,:,f_ind]
-        # For cross update at this channel, we really want the transpose.
-        this_chan_cross_update = sp.rollaxis(this_chan_cross_update, -1, 0)
-        this_chan_cross_update = sp.copy(this_chan_cross_update)
-        # Figure out which pointing indecies apply to this row of the matrix.
-        row_pointings = []
-        row_weights = []
-        for ii in xrange(n_time):
-            for jj in xrange(n_pix_per_pointing):
-                if (pointing_inds[ii,0,jj] == x_ind 
-                    and pointing_inds[ii,1,jj] == y_ind):
-                    row_pointings.append(ii)
-                    row_weights.append(pointing_weights[ii,jj])
-        # If this data set never points to the pixel for this row, do nothing.
-        if not row_pointings:
-            return
-        # Now loop over the pointings that we just found.
-        for ii in xrange(len(row_pointings)):
-            time_ind = row_pointings[ii]
-            weight = row_weights[ii]
-            # Isolate the relevant parts of some of the matrices and vectors.
-            this_time_time_modes = time_modes[:,time_ind]
-            this_time_freq_mode_update = self.freq_mode_update[:,time_ind,...]
-            this_time_cross_update = self.cross_update[:,time_ind,...]
-            # Now build up the central matrix.
+        self._assert_finalized()
+        if pixel_inds is None:
+            # Doing one frequency row at a time but all pixels simultaniousely.
+            _mapmaker_c.update_map_noise_freq(self.diagonal_inv, self.freq_modes,
+                    self.time_modes, self.freq_mode_update,
+                    self.time_mode_update, self.cross_update, 
+                    self.pointing_inds, self.pointing_weights, 
+                    f_ind, map_noise_inv)
+        else:
+            # One matrix row at a time.
+            _mapmaker_c.update_map_noise_row(self.diagonal_inv, self.freq_modes,
+                    self.time_modes, self.freq_mode_update,
+                    self.time_mode_update, self.cross_update, 
+                    self.pointing_inds, self.pointing_weights, 
+                    pixel_inds[0], pixel_inds[1], f_ind, map_noise_inv)
+        
 
+def trim_time_stream(data, coords, lower_bounds, upper_bounds):
+    """Discards data that is out of the map bounds.
 
+    Parameters
+    ----------
+    data : algebra.vect
+        The time stream data.  The vect object axes must be ('freq', 'time').
+    coords : tuple (length `n`) of arrays
+        The pointing information for `n` map coordinates as a function of time.
+    lower_bounds : tuple (length `n`) of floats.
+        Lower map boundaries for each coordinate.
+    upper_bounds : tuple (length `n`) of floats.
+        Upper map boundaries for each coordinate.
 
-
+    Returns
+    -------
+    trimmed_data : algebra.vect
+        New data vector with ashortened time axes to exclude off map
+        pointings.
+    inds : 1d array of ints
+        Which tim stream array indices were retained (this array can be used 
+        index other arrays).
+    """
+    
+    n_time = data.shape[1]
+    # Loop through the pointing information and see which times are on the map.
+    inds = []
+    for ii in range(n_time):
+        for jj in range(len(coords)):
+            if (coords[jj][ii] < lower_bounds[jj]
+                or coords[jj][ii] > upper_bounds[jj]):
+                break
+        else:
+            inds.append(ii)
+    inds = sp.asarray(inds, dtype=int)
+    # Shorten the time axis and cast as a vect object.
+    trimmed_data = sp.ascontiguousarray(data[:,inds])
+    trimmed_data = al.make_vect(trimmed_data, axis_names=('freq', 'time'))
+    return trimmed_data, inds

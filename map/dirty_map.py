@@ -42,7 +42,7 @@ params_init = {
                #                     internally but uncorrelated between scans.
                # 'diag*' and 'grid' produce a noise file in the same format as
                # the map. 'disjoint_scans' produces a full noise covarience
-               # (n_pix^2 numbers), each polarization in its onwn file.
+               # (n_pix^2 numbers), each polarization in its own file.
                'noise_model' : 'grid',
                # Measured noise parameters.
                'noise_parameters_input_root' : 'None'
