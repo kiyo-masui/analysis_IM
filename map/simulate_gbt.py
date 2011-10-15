@@ -97,6 +97,7 @@ def wrap_sim(runitem):
                         outfile_beam_plus_data, streaming=streaming)
 
 
+# TODO: have this use the path data base
 def generate_sim_15hr_gbtregion(numsim=100, streaming=True):
     """generate simulations
     """
@@ -114,13 +115,13 @@ def generate_sim_15hr_gbtregion(numsim=100, streaming=True):
 
     templatelist = [ template_mapname for index in range(numsim) ]
 
-    rawlist = [ simdir + str('%03d' % index) + '.npy' \
+    rawlist = [ simdir + ('%03d' % index) + '.npy' \
                 for index in range(numsim) ]
 
-    beamlist = [ simdir + 'beam_' + str('%03d' % index) + '.npy' \
+    beamlist = [ simdir + ('beam_%03d' % index) + '.npy' \
                 for index in range(numsim) ]
 
-    bpdlist = [ simdir + 'beam_plus_data' + str('%03d' % index) + '.npy' \
+    bpdlist = [ simdir + ('beam_plus_data_%03d' % index) + '.npy' \
                 for index in range(numsim) ]
 
     streamlist = [ streaming for index in range(numsim) ]
