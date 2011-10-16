@@ -2,8 +2,10 @@
 import os
 import sys
 import time
+import datetime
 import urllib2
 import subprocess
+import getpass
 
 
 def print_path_properties(pathname):
@@ -86,17 +88,36 @@ class DataPath(object):
     or
     http://www.cita.utoronto.ca/~eswitzer/GBT_param/path_database.py
 
+    Usage:
+    # start the class, printing version information
+    >>> datapath_db = DataPath()
+    DataPath: opening URL
+        http://www.cita.utoronto.ca/~eswitzer/GBT_param/path_database.py
+    DataPath: File database date/version ...
+    DataPath: Run info: ... by ...
+    git_SHA: ...
+    git_blame: ...
+    git_date: ...
+
+    # pick index '44' of the 15hr sims
+    >>> datapath_db.fetch("sim15hr_beam", pick='44')
+    file ...simulations/15hr/sim_beam_044.npy: ...
+    '...simulations/15hr/sim_beam_044.npy'
+
+    # get the 15hr sim path
+    >>> datapath_db.fetch("sim15hr_path")
+    path ...simulations/15hr/: ...
+    '...simulations/15hr/'
+
+    TODO: also allow dbs from local paths instead of URLs
+    TODO: switch to ordered dictionaries instead of list+dictionary?
+    TODO: code check that all files in the db exist, etc.
+
     Extensions to consider:
         -require writing to a log file; check exists; opt. overwrite
         -functions support links through e.g.
             15hrmap -> 15hrmap_run5_e1231231231_etc_Etc.
         -framework for data over http
-
-    TODO: also allow dbs from local paths instead of URLs
-    TODO: code to render individual record to markup (use in log and web)
-    TODO: switch to ordered dictionaries instead of list+dictionary
-    TODO: code check that all files in the db exist, etc.
-    TODO: get username and date for the run, log it
     """
 
     # URL to the default path database
@@ -120,6 +141,11 @@ class DataPath(object):
         self.check_groups()
         self.clprint("File database date/version " + self.version)
 
+        # get user and code version information
+        dateinfo = datetime.datetime.now()
+        self.runinfo = (dateinfo.strftime("%Y-%m-%d %H:%M:%S"),
+                        getpass.getuser())
+        self.clprint("Run info: %s by %s" % self.runinfo)
         if not skip_gitlog:
             self.get_gitlog()
 
@@ -316,8 +342,13 @@ class DataPath(object):
 
 
 if __name__ == "__main__":
+    import doctest
+
+    # generate the path db markdown website
     datapath_db = DataPath()
     datapath_db.generate_path_webpage()
 
-    print datapath_db.fetch("sim15hr_beam", pick='44')
-    print datapath_db.fetch("sim15hr_path")
+    # run some tests
+    OPTIONFLAGS = (doctest.ELLIPSIS |
+                   doctest.NORMALIZE_WHITESPACE)
+    doctest.testmod(optionflags=OPTIONFLAGS)
