@@ -7,73 +7,93 @@ import urllib2
 import subprocess
 import getpass
 
-# TODO: check read permissions
-def print_path_properties(pathname, intend_write=False, intend_read=False):
-    r"""Print whether or not a path is writable
+
+def path_properties(pathname, intend_write=False, intend_read=False,
+                    prepend="", silent=False, is_file=False):
+    r"""Check various properties about the path, print the result
     if `intend_write` then die if the path does not exist or is not writable
     if `intend_read` then die if the path does not exist
+    with a `prepend` string the filename, whether it is writable, and
+    what its last modification date was if the file exists.
+
+    # Usage examples:
+    >>> path_properties("this_does_not_exist.txt", is_file=True)
+    => this_does_not_exist.txt: does not exist,
+        but path: ./ exists, is writable and not readable.
+    (True, False, True, False, '...')
+
+    >>> path_properties("/tmp/nor_does_this.txt", is_file=True)
+    => /tmp/nor_does_this.txt: does not exist,
+        but path: /tmp/ exists, is writable and not readable.
+    (True, False, True, False, '...')
+
+    # here's one that you should not be able to write to
+    >>> path_properties("/var/nor_does_this.txt", is_file=True)
+    => /var/nor_does_this.txt: does not exist,
+        but path: /var/ exists, is not writable and not readable.
+    (True, False, False, False, '...')
+
+    # here's one that definitely exists
+    >>> path_properties(__file__, is_file=True)
+    => ...: exists, is writable and readable.
+    (True, True, True, False, '...')
+
+    # test a writeable directory that exists
+    >>> path_properties('/tmp/')
+    => /tmp/: exists, is writable and readable.
+    (True, True, True, True, '...')
     """
-    entry = "path %s:" % pathname
-    exists = os.path.exists(pathname)
+    entry = "=> %s%s:" % (prepend, pathname)
+
+    exists = os.access(pathname, os.F_OK)
+    readable = os.access(pathname, os.R_OK)
+    writable = os.access(pathname, os.W_OK)
+    executable = os.access(pathname, os.X_OK)
     if exists:
-        entry += " exists and "
-        if os.access(pathname, os.W_OK):
+        modtime = time.ctime(os.path.getmtime(pathname))
+    else:
+        modtime = None
+
+    # if this is a file that does not exist, check the directory
+    if not exists and is_file:
+        directory = "/".join(pathname.split("/")[:-1])
+        if directory == "":
+            directory = "."
+        directory += "/"
+
+        writable = os.access(directory, os.W_OK)
+        exists = os.access(directory, os.F_OK)
+        if exists:
+            modtime = time.ctime(os.path.getmtime(directory))
+
+        readable = False
+        entry += " does not exist, but path: %s" % directory
+
+    if exists:
+        entry += " exists,"
+
+        if writable:
             entry += " is writable"
         else:
             entry += " is not writable"
-            if intend_write:
-                sys.exit()
+
+        if readable:
+            entry += " and readable."
+        else:
+            entry += " and not readable."
     else:
         entry += " does not exist"
-        if (intend_read or intend_write):
-            sys.exit()
 
-    print entry
+    if not silent:
+        print entry
 
+    if intend_read and not readable:
+        sys.exit()
 
-# TODO: check read permissions
-def file_properties(filename, intend_write=False, intend_read=False):
-    r"""determine if a file exists, and if so get its date and permissions,
-    if not then see if the directory is writable.
-    if
-    """
-    exists = True
-    try:
-        open(filename)
-    except IOError:
-        exists = False
+    if intend_write and not writable:
+        sys.exit()
 
-    if exists:
-        writable = os.access(filename, os.W_OK)
-        modtime = time.ctime(os.path.getmtime(filename))
-    else:
-        directory = "/".join(filename.split("/")[:-1])
-        writable = os.access(directory, os.W_OK)
-        modtime = False
-
-    return (modtime, writable)
-
-
-# TODO: check read permissions
-def print_file_properties(filename, prepend=""):
-    r"""Print the output of file_properties as an entry
-    with a `prepend` string, the filename, whether it is writable, and
-    what its last modification date was if the file exists.
-    """
-    fileprop = file_properties(filename)
-    entry = "file %s %s:" % (prepend, filename)
-
-    if fileprop[1]:
-        entry += " writable"
-    else:
-        entry += " is not writable"
-
-    if fileprop[0]:
-        entry += ", last modified: " + fileprop[0]
-    else:
-        entry += ", does not exist yet"
-
-    print entry
+    return (exists, readable, writable, executable, modtime)
 
 
 def print_dictionary(dict_in, key_list=None, prepend=""):
@@ -114,13 +134,24 @@ class DataPath(object):
 
     # pick index '44' of the 15hr sims
     >>> datapath_db.fetch("sim_15hr_beam", pick='44')
-    file ...simulations/15hr/sim_beam_044.npy: ...
-    '...simulations/15hr/sim_beam_044.npy'
+    => .../simulations/15hr/sim_beam_044.npy: ...
+    '.../simulations/15hr/sim_beam_044.npy'
 
     # get the 15hr sim path
     >>> datapath_db.fetch("sim_15hr_path")
-    path ...simulations/15hr/: ...
-    '...simulations/15hr/'
+    => .../simulations/15hr/: ...
+    '.../simulations/15hr/'
+
+**********************************************************************
+File "utils/data_paths.py", line 141, in __main__.DataPath
+Failed example:
+    datapath_db.fetch("sim_15hr_path")
+Expected:
+    #...simulations/15hr/: ...
+    #'...simulations/15hr/'
+Got:
+**********************************************************************
+
 
     TODO: also allow dbs from local paths instead of URLs
     TODO: switch to ordered dictionaries instead of list+dictionary?
@@ -307,33 +338,41 @@ class DataPath(object):
                          key_list=["SHA", "blame", "date"],
                          prepend="git_")
 
-    def fetch(self, dbkey, pick=None):
+    def fetch(self, dbkey, pick=None, intend_read=False, intend_write=False):
         r"""The access function for this database class:
         Fetch the data for a requested key in the db.
 
         `pick` takes one index from a file list
         if the database entry is a file list, return a tuple of the index
         indices and a dictionary (the list orders the dictionary)
+
+        if `intend_write` then die if the path does not exist or not writable
+        if `intend_read` then die if the path does not exist
         """
         dbentry = self._pathdict[dbkey]
 
         if 'file' in dbentry:
             pathout = dbentry['file']
-            print_file_properties(pathout)
+            path_properties(pathout, intend_write=intend_write,
+                            intend_read=intend_read, is_file=True)
 
         if 'path' in dbentry:
             pathout = dbentry['path']
-            print_path_properties(pathout)
+            path_properties(pathout, intend_write=intend_write,
+                            intend_read=intend_read, is_file=False)
 
         if 'filelist' in dbentry:
             pathout = (dbentry['listindex'], dbentry['filelist'])
             if pick:
                 pathout = pathout[1][pick]
-                print_file_properties(pathout)
+                path_properties(pathout, intend_write=intend_write,
+                                intend_read=intend_read, is_file=True)
             else:
                 for item in pathout[0]:
                     filepath = pathout[1][item]
-                    print_file_properties(filepath, prepend=item)
+                    path_properties(filepath, intend_write=intend_write,
+                                    intend_read=intend_read, is_file=True,
+                                    prepend=item)
 
         return pathout
 
