@@ -7,23 +7,35 @@ import urllib2
 import subprocess
 import getpass
 
-
-def print_path_properties(pathname):
+# TODO: check read permissions
+def print_path_properties(pathname, intend_write=False, intend_read=False):
     r"""Print whether or not a path is writable
+    if `intend_write` then die if the path does not exist or is not writable
+    if `intend_read` then die if the path does not exist
     """
     entry = "path %s:" % pathname
-
-    if os.access(pathname, os.W_OK):
-        entry += " is writable"
+    exists = os.path.exists(pathname)
+    if exists:
+        entry += " exists and "
+        if os.access(pathname, os.W_OK):
+            entry += " is writable"
+        else:
+            entry += " is not writable"
+            if intend_write:
+                sys.exit()
     else:
-        entry += " is not writable"
+        entry += " does not exist"
+        if (intend_read or intend_write):
+            sys.exit()
 
     print entry
 
 
-def file_properties(filename):
+# TODO: check read permissions
+def file_properties(filename, intend_write=False, intend_read=False):
     r"""determine if a file exists, and if so get its date and permissions,
-    if not then see if the directory is writable
+    if not then see if the directory is writable.
+    if
     """
     exists = True
     try:
@@ -42,6 +54,7 @@ def file_properties(filename):
     return (modtime, writable)
 
 
+# TODO: check read permissions
 def print_file_properties(filename, prepend=""):
     r"""Print the output of file_properties as an entry
     with a `prepend` string, the filename, whether it is writable, and
@@ -100,18 +113,19 @@ class DataPath(object):
     git_date: ...
 
     # pick index '44' of the 15hr sims
-    >>> datapath_db.fetch("sim15hr_beam", pick='44')
+    >>> datapath_db.fetch("sim_15hr_beam", pick='44')
     file ...simulations/15hr/sim_beam_044.npy: ...
     '...simulations/15hr/sim_beam_044.npy'
 
     # get the 15hr sim path
-    >>> datapath_db.fetch("sim15hr_path")
+    >>> datapath_db.fetch("sim_15hr_path")
     path ...simulations/15hr/: ...
     '...simulations/15hr/'
 
     TODO: also allow dbs from local paths instead of URLs
     TODO: switch to ordered dictionaries instead of list+dictionary?
     TODO: code check that all files in the db exist, etc.
+    TODO: find db size in memory and total # files, print on website
 
     Extensions to consider:
         -require writing to a log file; check exists; opt. overwrite
