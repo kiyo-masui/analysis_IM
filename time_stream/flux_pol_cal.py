@@ -190,7 +190,9 @@ def calibrate_pol(Data, m_total) :
      # Tells which mueller matrix to use. 
                freq_limit = len(m_total[0,0,:])
                frequency = int(Data.freq[freq]/1000)
+#               print frequency
                bin = int((900000-frequency)*freq_limit/200000)
+#               print bin
 #               if freq_limit == 200:
 #                   bin = 900-frequency
 #Not setup to work with spectrometer data.
