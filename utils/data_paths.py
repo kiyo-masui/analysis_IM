@@ -142,17 +142,6 @@ class DataPath(object):
     => .../simulations/15hr/: ...
     '.../simulations/15hr/'
 
-**********************************************************************
-File "utils/data_paths.py", line 141, in __main__.DataPath
-Failed example:
-    datapath_db.fetch("sim_15hr_path")
-Expected:
-    #...simulations/15hr/: ...
-    #'...simulations/15hr/'
-Got:
-**********************************************************************
-
-
     TODO: also allow dbs from local paths instead of URLs
     TODO: switch to ordered dictionaries instead of list+dictionary?
     TODO: code check that all files in the db exist, etc.
