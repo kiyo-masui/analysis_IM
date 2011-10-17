@@ -1,6 +1,7 @@
 import scipy
 import scipy.ndimage
 import scipy.fftpack
+import scipy.special
 import numpy as np
 import math
 
@@ -319,7 +320,7 @@ class RedshiftCorrelation(object):
         sigma = theta * self.cosmology.proper_distance(za)
         pi = self.cosmology.comoving_distance(z2) - self.cosmology.comoving_distance(z1)
 
-        return self.correlation_flatsky(pi, sigma, z1, z2)
+        return self.redshiftspace_correlation(pi, sigma, z1, z2)
 
 
 
@@ -492,6 +493,35 @@ class RedshiftCorrelation(object):
         return 1.0 * np.ones_like(z)
 
 
+
+    def mean(self, z):
+        r"""Mean value of the field at a given redshift.
+
+        Parameters
+        ----------
+        z : array_like
+            redshift to calculate at.
+
+        Returns
+        -------
+        mean : array_like
+            the mean value of the field at each redshift.
+        """
+        return np.ones_like(z) * 0.0
+
+    _sigma_v = 0.0
+    def sigma_v(self, z):
+        """Return the pairwise velocity dispersion at a given redshift.
+        """
+        return np.ones_like(z) * self._sigma_v
+
+
+    def velocity_damping(self, kpar):
+        """The velocity damping term for the non-linear power spectrum.
+        """
+        return (1.0 + (kpar * self.sigma_v(self.ps_redshift))**2)**-1
+
+
     def _realisation_dv(self, d, n):
         """Generate the density and line of sight velocity fields in a
         3d cube.
@@ -503,7 +533,7 @@ class RedshiftCorrelation(object):
         def psv(karray):
             """Assume k0 is line of sight"""
             k = (karray**2).sum(axis=3)**0.5
-            return self.ps_vv(k)
+            return self.ps_vv(k) * self.velocity_damping(karray[..., 0])
 
         # Generate an underlying random field realisation of the
         # matter distribution.
@@ -528,21 +558,6 @@ class RedshiftCorrelation(object):
         return (df, vf) #, rfv)
 
 
-    def mean(self, z):
-        r"""Mean value of the field at a given redshift.
-
-        Parameters
-        ----------
-        z : array_like
-            redshift to calculate at.
-
-        Returns
-        -------
-        mean : array_like
-            the mean value of the field at each redshift.
-        """
-        return np.ones_like(z) * 0.0
-    
 
     def realisation(self, z1, z2, thetax, thetay, numz, numx, numy, zspace = True):
         r"""Simulate a redshift-space volume.
@@ -583,7 +598,7 @@ class RedshiftCorrelation(object):
         # Make cube pixelisation finer, such that angular cube with
         # have sufficient resolution on the closest face.
         d = np.array([c2-c1, thetax * d2 * units.degree, thetay * d2 * units.degree])
-        n = np.array([numz, int(c2 / c1 * numx), int(c2 / c1 * numy)])
+        n = np.array([numz, int(d2 / d1 * numx), int(d2 / d1 * numy)])
 
         # Enlarge cube size by 1 in each dimension, so raytraced cube
         # sits exactly within the gridded points.
@@ -702,7 +717,7 @@ class RedshiftCorrelation(object):
             def _integrator(f, a, b):
                 #return quad(f, a, b, limit=1000, epsrel = 1e-7, full_output=(0 if _feedback else 1))[0]
                 #return Integrate_Patterson(f, a, b, eps = 1e-7, abs=1e-10)[0]
-                return chebyshev_vec(f, a, b, epsrel = 1e-7, epsabs=1e-10)[0]
+                return integrate.chebyshev(f, a, b, epsrel = 1e-7, epsabs=1e-10)[0]
                 #return romberg(f, a, b, eps = 1e-6)
             #full_output=(0 if _feedback else 1))[0]
             mink = 1e-2 * l / (x1 + x2)
@@ -815,14 +830,14 @@ class RedshiftCorrelation(object):
 
     def save_fft_cache(self, fname):
         if not self._aps_cache:
-            self.angular_powerspectrum_fft(100, 1.0, 1.0)
+            self.angular_powerspectrum_fft(np.array([100]), np.array([1.0]), np.array([1.0]))
 
         np.savez(fname, dd=self._aps_dd, dv=self._aps_dv, vv=self._aps_vv)
 
 
     def load_fft_cache(self, fname):
 
-        a = np.loadz(fname)
+        a = np.load(fname)
 
         self._aps_dd = a['dd']
         self._aps_dv = a['dv']
@@ -835,9 +850,9 @@ class RedshiftCorrelation(object):
 
         kperpmin = 1e-4
         kperpmax = 40.0
-        nkperp = 2000
+        nkperp = 500
         kparmax = 40.0
-        nkpar = 32768
+        nkpar = 16384
 
         if not self._aps_cache:
             
@@ -881,9 +896,9 @@ class RedshiftCorrelation(object):
         coords[0,...] = np.log10(kperp / kperpmin) / np.log10(kperpmax / kperpmin) * (nkperp-1)
         coords[1,...] = rpar / (math.pi / kparmax)
 
-        psdd = scipy.ndimage.map_coordinates(self._aps_dd, coords, order=3)
-        psdv = scipy.ndimage.map_coordinates(self._aps_dv, coords, order=3)
-        psvv = scipy.ndimage.map_coordinates(self._aps_vv, coords, order=3)
+        psdd = scipy.ndimage.map_coordinates(self._aps_dd, coords, order=2)
+        psdv = scipy.ndimage.map_coordinates(self._aps_dv, coords, order=2)
+        psvv = scipy.ndimage.map_coordinates(self._aps_vv, coords, order=2)
 
         return D1*D2*pf1*pf2*(b1*b2*psdd + (f1*b2 + f2*b1)*psdv + f1*f2*psvv) / (xc**2 * np.pi)
 
@@ -953,7 +968,7 @@ def _integrate(r, l, psfunc):
         #return quad(f, a, b, args=args, limit=1000, epsrel = 1e-7, 
         #            full_output=(0 if _feedback else 1))[0]
         #return Integrate_Patterson(f, a, b, eps = 1e-7, abs=1e-10, args=args)[0]
-        return chebyshev_vec(f, a, b, epsrel = 1e-7, epsabs=1e-9, args=args)[0]
+        return integrate.chebyshev(f, a, b, epsrel = 1e-7, epsabs=1e-9, args=args)
     mink = 1e-4
     maxk = 1e3
     cutk = 5e1

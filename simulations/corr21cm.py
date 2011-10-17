@@ -30,7 +30,8 @@ class Corr21cm(RedshiftCorrelation, Map3d):
             ps = lambda k: np.exp(-0.5 * k**2 / kstar**2) * c1(k)
 
         RedshiftCorrelation.__init__(self, ps_vv = ps, redshift = redshift)
-        #self._load_cache("data/corr_z1.5.dat")
+        self._load_cache(join(dirname(__file__),"data/corr_z1.5.dat"))
+        #self.load_fft_cache(join(dirname(__file__),"data/fftcache.npz"))
 
 
     def T_b(self, z):
@@ -99,7 +100,7 @@ class Corr21cm(RedshiftCorrelation, Map3d):
         -----
         See _[1].
 
-        .. [1] http://http://arxiv.org/abs/1012.2671
+        .. [1] http://arxiv.org/abs/1012.2671
         """
 
         x = ((1.0 / self.cosmology.omega_m) - 1.0) / (1.0 + z)**3
@@ -130,7 +131,7 @@ class Corr21cm(RedshiftCorrelation, Map3d):
         -----
         See _[1].
 
-        .. [1] http://http://arxiv.org/abs/1012.2671
+        .. [1] http://arxiv.org/abs/1012.2671
         """
 
         x = ((1.0 / self.cosmology.omega_m) - 1.0) / (1.0 + z)**3

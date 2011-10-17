@@ -24,9 +24,9 @@ freq = np.linspace(nul, nuh, nf)
 z = units.nu21 / freq
 z1, z2 = np.meshgrid(z, z)
 
-cr = corr21cm.Corr21cm.from_file_matterps(fname = "data/corr0.dat", redshift = 0.0)
+cr = corr21cm.Corr21cm()
 
-cs = cr.correlation_angular(0.0, z1, z2)
+cs = cr.angular_correlation(0.0, z1, z2)
 
 noise_power = 1e-7
 
