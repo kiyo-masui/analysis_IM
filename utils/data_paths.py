@@ -9,41 +9,44 @@ import getpass
 
 
 def path_properties(pathname, intend_write=False, intend_read=False,
-                    prepend="", silent=False, is_file=False):
+                    file_index="", prefix="", silent=False, is_file=False):
     r"""Check various properties about the path, print the result
     if `intend_write` then die if the path does not exist or is not writable
     if `intend_read` then die if the path does not exist
-    with a `prepend` string the filename, whether it is writable, and
-    what its last modification date was if the file exists.
+    `file_index` is an optional mark to put in front of the file name
+    `prefix` is an optional mark to prefix the file property output
+    `silent` turns off printing unless there was an intend_r/w error
+    `is_file` designates a file; if it does not exist check if the path is
+    writable.
 
     # Usage examples:
     >>> path_properties("this_does_not_exist.txt", is_file=True)
     => this_does_not_exist.txt: does not exist,
-        but path: ./ exists, is writable and not readable.
+        but path: ./ exists, is writable, is not readable.
     (True, False, True, False, '...')
 
     >>> path_properties("/tmp/nor_does_this.txt", is_file=True)
     => /tmp/nor_does_this.txt: does not exist,
-        but path: /tmp/ exists, is writable and not readable.
+        but path: /tmp/ exists, is writable, is not readable.
     (True, False, True, False, '...')
 
     # here's one that you should not be able to write to
     >>> path_properties("/var/nor_does_this.txt", is_file=True)
     => /var/nor_does_this.txt: does not exist,
-        but path: /var/ exists, is not writable and not readable.
+        but path: /var/ exists, is not writable, is not readable.
     (True, False, False, False, '...')
 
     # here's one that definitely exists
     >>> path_properties(__file__, is_file=True)
-    => ...: exists, is writable and readable.
+    => ...: exists, is writable, is readable.
     (True, True, True, False, '...')
 
     # test a writeable directory that exists
     >>> path_properties('/tmp/')
-    => /tmp/: exists, is writable and readable.
+    => /tmp/: exists, is writable, is readable.
     (True, True, True, True, '...')
     """
-    entry = "=> %s%s:" % (prepend, pathname)
+    entry = "%s=> %s%s:" % (prefix, file_index, pathname)
 
     exists = os.access(pathname, os.F_OK)
     readable = os.access(pathname, os.R_OK)
@@ -73,14 +76,14 @@ def path_properties(pathname, intend_write=False, intend_read=False,
         entry += " exists,"
 
         if writable:
-            entry += " is writable"
+            entry += " is writable,"
         else:
-            entry += " is not writable"
+            entry += " is not writable,"
 
         if readable:
-            entry += " and readable."
+            entry += " is readable."
         else:
-            entry += " and not readable."
+            entry += " is not readable."
     else:
         entry += " does not exist"
 
@@ -88,9 +91,11 @@ def path_properties(pathname, intend_write=False, intend_read=False,
         print entry
 
     if intend_read and not readable:
+        print "ERROR: " + entry
         sys.exit()
 
     if intend_write and not writable:
+        print "ERROR: " + entry
         sys.exit()
 
     return (exists, readable, writable, executable, modtime)
@@ -134,12 +139,12 @@ class DataPath(object):
 
     # pick index '44' of the 15hr sims
     >>> datapath_db.fetch("sim_15hr_beam", pick='44')
-    => .../simulations/15hr/sim_beam_044.npy: ...
+    (sim_15hr_beam) => .../simulations/15hr/sim_beam_044.npy: ...
     '.../simulations/15hr/sim_beam_044.npy'
 
     # get the 15hr sim path
     >>> datapath_db.fetch("sim_15hr_path")
-    => .../simulations/15hr/: ...
+    (sim_15hr_path) => .../simulations/15hr/: ...
     '.../simulations/15hr/'
 
     TODO: also allow dbs from local paths instead of URLs
@@ -327,7 +332,8 @@ class DataPath(object):
                          key_list=["SHA", "blame", "date"],
                          prepend="git_")
 
-    def fetch(self, dbkey, pick=None, intend_read=False, intend_write=False):
+    def fetch(self, dbkey, pick=None, intend_read=False, intend_write=False,
+              purpose="", silent=False):
         r"""The access function for this database class:
         Fetch the data for a requested key in the db.
 
@@ -337,31 +343,38 @@ class DataPath(object):
 
         if `intend_write` then die if the path does not exist or not writable
         if `intend_read` then die if the path does not exist
+        `purpose` inputs a purpose for this file for logging
+        `silent` does not print anything upon fetch unless error
         """
         dbentry = self._pathdict[dbkey]
+        prefix = "%s (%s) " % (purpose, dbkey)
 
         if 'file' in dbentry:
             pathout = dbentry['file']
             path_properties(pathout, intend_write=intend_write,
-                            intend_read=intend_read, is_file=True)
+                            intend_read=intend_read, is_file=True,
+                            prefix=prefix, silent=silent)
 
         if 'path' in dbentry:
             pathout = dbentry['path']
             path_properties(pathout, intend_write=intend_write,
-                            intend_read=intend_read, is_file=False)
+                            intend_read=intend_read, is_file=False,
+                            prefix=prefix, silent=silent)
 
         if 'filelist' in dbentry:
             pathout = (dbentry['listindex'], dbentry['filelist'])
             if pick:
                 pathout = pathout[1][pick]
                 path_properties(pathout, intend_write=intend_write,
-                                intend_read=intend_read, is_file=True)
+                                intend_read=intend_read, is_file=True,
+                                prefix=prefix, silent=silent)
             else:
                 for item in pathout[0]:
                     filepath = pathout[1][item]
                     path_properties(filepath, intend_write=intend_write,
                                     intend_read=intend_read, is_file=True,
-                                    prepend=item)
+                                    file_index=item, prefix=prefix,
+                                    silent=silent)
 
         return pathout
 

@@ -7,6 +7,8 @@ import core.algebra as algebra
 import map.beam as beam
 from core import constants as cc
 import multiprocessing
+from utils import data_paths
+import sys
 
 
 # TODO: TEMPORARY duplicate of func in optical_catalog; move more generic
@@ -98,36 +100,29 @@ def wrap_sim(runitem):
 
 
 # TODO: have this use the path data base
-def generate_sim_15hr_gbtregion(numsim=100, streaming=True):
+def generate_sim(template_key, output_key, output_beam_key,
+                 output_beam_plus_data_key, streaming=True):
     """generate simulations
     """
 
-    calinliv_dir = '/mnt/raid-project/gmrt/calinliv/wiggleZ/'
-    root_template = calinliv_dir + "corr/test/"
-    template_mapname = root_template + \
-                    'sec_A_15hr_41-73_cleaned_clean_map_I_with_B.npy'
+    datapath_db = data_paths.DataPath()
+    template_mapname = datapath_db.fetch(template_key, pick='A_with_B',
+                                         purpose="template for sim. output",
+                                         intend_read=True)
 
-    simdir = '/mnt/raid-project/gmrt/eswitzer/wiggleZ/simulations/15hr/'
-    if streaming:
-        simdir += "simvel_"
-    else:
-        simdir += "sim_"
+    rawlist = datapath_db.fetch(output_key, intend_write=True,
+                                purpose="output sim+", silent=True)
 
-    templatelist = [ template_mapname for index in range(numsim) ]
+    beamlist = datapath_db.fetch(output_beam_key, intend_write=True,
+                                purpose="output sim+beam", silent=True)
 
-    rawlist = [ simdir + ('%03d' % index) + '.npy' \
-                for index in range(numsim) ]
+    bpdlist = datapath_db.fetch(output_beam_plus_data_key, intend_write=True,
+                                purpose="output sim+beam+data", silent=True)
 
-    beamlist = [ simdir + ('beam_%03d' % index) + '.npy' \
-                for index in range(numsim) ]
+    runlist = [(template_mapname, rawlist[1][index], beamlist[1][index],
+                bpdlist[1][index], streaming) for index in rawlist[0]]
 
-    bpdlist = [ simdir + ('beam_plus_data_%03d' % index) + '.npy' \
-                for index in range(numsim) ]
-
-    streamlist = [ streaming for index in range(numsim) ]
-
-    runlist = zip(templatelist, rawlist, beamlist, bpdlist, streamlist)
-
+    #sys.exit()
     for runitem in runlist:
         wrap_sim(runitem)
 
@@ -138,4 +133,13 @@ def generate_sim_15hr_gbtregion(numsim=100, streaming=True):
 
 
 if __name__ == '__main__':
-    generate_sim_15hr_gbtregion(streaming=False)
+
+    # 15 hr
+    generate_sim('GBT_15hr_Liviu_15mode', 'sim_15hr',
+                 'sim_15hr_beam', 'sim_15hr_beam_plus_data',
+                  streaming=False)
+
+    # 15 hr with velocity streaming
+    generate_sim('GBT_15hr_Liviu_15mode', 'simvel_15hr',
+                 'simvel_15hr_beam', 'simvel_15hr_beam_plus_data',
+                  streaming=True)
