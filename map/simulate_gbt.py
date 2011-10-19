@@ -70,6 +70,7 @@ def make_simulation_set(template_file, outfile_raw, outfile_beam,
                                 streaming=streaming, verbose=verbose)
     sim_map = algebra.make_vect(gbtsim, axis_names=('freq', 'ra', 'dec'))
     sim_map.copy_axis_info(gbt_map)
+    algebra.save(outfile_raw, sim_map)
 
     beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792,
                  0.281176247549, 0.270856788455, 0.26745856078,
@@ -77,14 +78,12 @@ def make_simulation_set(template_file, outfile_raw, outfile_beam,
     freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
                              dtype=float)
     freq_data *= 1.0e6
+
     beamobj = beam.GaussianBeam(beam_data, freq_data)
     sim_map_withbeam = beamobj.apply(sim_map)
-
-    algebra.save(outfile_raw, sim_map)
     algebra.save(outfile_beam, sim_map_withbeam)
 
     sim_map_withbeam += gbt_map
-
     algebra.save(outfile_beam_plus_data, sim_map_withbeam)
 
 
@@ -103,10 +102,11 @@ def wrap_sim(runitem):
 def generate_sim(template_key, output_key, output_beam_key,
                  output_beam_plus_data_key, streaming=True):
     """generate simulations
+    here, assuming the sec A of the set is the template map
     """
 
     datapath_db = data_paths.DataPath()
-    template_mapname = datapath_db.fetch(template_key, pick='A_with_B',
+    template_mapname = datapath_db.fetch(template_key, pick='A_clean_map',
                                          purpose="template for sim. output",
                                          intend_read=True)
 
@@ -134,8 +134,10 @@ def generate_sim(template_key, output_key, output_beam_key,
 
 if __name__ == '__main__':
 
+    # alternative template: 'GBT_15hr_Liviu_15mode'
+
     # 15 hr
-    generate_sim('GBT_15hr_Liviu_15mode', 'sim_15hr',
+    generate_sim('GBT_15hr_map', 'sim_15hr',
                  'sim_15hr_beam', 'sim_15hr_beam_plus_data',
                   streaming=False)
 

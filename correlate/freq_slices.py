@@ -1,4 +1,4 @@
-"""Program that calculates the correlation function across frequency slices.
+"""Clean the radio cubes
 """
 
 import copy
@@ -6,10 +6,8 @@ import multiprocessing
 import time
 import os
 import cPickle
-
 import scipy as sp
 from numpy import linalg
-
 from kiyopy import parse_ini
 import kiyopy.utils
 from core import algebra
@@ -154,7 +152,8 @@ class NewSlices(object):
                         noise_inv2 = copy.deepcopy(noise_invs[map2_index])
 
                         pair = map_pair.MapPair(map1, map2,
-                            noise_inv1, noise_inv2, freq_list)
+                                                noise_inv1, noise_inv2,
+                                                freq_list)
 
                         pair.lags = lags
                         pair.params = params
@@ -290,8 +289,8 @@ class NewSlices(object):
                 pairs[pair_index].modes2)
 
         # Save cleaned clean maps, cleaned noises, and modes.
-        save_data(self, params['save_maps'], params['save_noises'],
-            params['save_modes'])
+        self.save_data(self, params['save_maps'], params['save_noises'],
+                             params['save_modes'])
 
         # Finish if this was just first pass.
         if params['first_pass_only']:
@@ -347,6 +346,52 @@ class NewSlices(object):
             pickle_slices(self)
 
         return
+
+    def save_data(self, save_maps=False, save_noises=False, save_modes=False):
+        ''' Save the all of the clean data.
+
+        Saves the cleaned data and modes to the output directory specified
+        in the parameters of the configuration file.
+
+        Parameters
+        ----------
+        save_maps: bool
+            Save the cleaned clean maps to output directory if `True`.
+        save_noises: bool
+            Save the cleaned noise invs to output directory if `True`.
+        save_modes: bool
+            Save what was subtracted from the maps to output directory if `True`.
+
+        '''
+        # Get the output directory and filenames.
+        out_root = self.params['output_root']
+        # Make sure folder is there.
+        if not os.path.isdir(out_root):
+            os.mkdir(out_root)
+
+        for pair in self.pairs:
+            map1_savename = out_root + pair.map1_name + \
+                "_cleaned_clean_map_I_with_" + pair.map2_code + ".npy"
+            map2_savename = out_root + pair.map2_name + \
+                "_cleaned_clean_map_I_with_" + pair.map1_code + ".npy"
+            noise_inv1_savename = out_root + pair.map1_name + \
+                "_cleaned_noise_inv_I_with_" + pair.map2_code + ".npy"
+            noise_inv2_savename = out_root + pair.map2_name + \
+                "_cleaned_noise_inv_I_with_" + pair.map1_code + ".npy"
+            left_modes_savename = out_root + pair.map1_name + \
+                "_modes_clean_map_I_with_" + pair.map2_code + ".npy"
+            right_modes_savename = out_root + pair.map2_name + \
+                "_modes_clean_map_I_with_" + pair.map1_code + ".npy"
+
+            if save_maps:
+                algebra.save(map1_savename, pair.map1)
+                algebra.save(map2_savename, pair.map2)
+            if save_noises:
+                algebra.save(noise_inv1_savename, pair.noise_inv1)
+                algebra.save(noise_inv2_savename, pair.noise_inv2)
+            if save_modes:
+                algebra.save(left_modes_savename, pair.left_modes)
+                algebra.save(right_modes_savename, pair.right_modes)
 
 
 def multiproc(pair, save_dir, pair_number, final):
@@ -411,64 +456,13 @@ def control_correlation(pair, lags, final):
         The angular lags.
     final: bool
         If True, then the fore correlation is being done. If False, then the
-        final correlation is being done. Dont mix these up!
+        final correlation is being done. Don't mix these up!
 
     """
     if final:
         pair.corr, pair.counts = pair.correlate(lags, speedup=True)
     else:
         pair.fore_corr, pair.fore_counts = pair.correlate(lags, speedup=True)
-
-
-def save_data(slice_obj, save_maps=False, save_noises=False, save_modes=False):
-    ''' Save the all of the clean data.
-
-    Saves the cleaned data and modes to the output directory specified
-    in the parameters of the configuration file.
-
-    Parameters
-    ----------
-
-    slice_obj: NewSlices
-        `slice_obj` contains ALL of the data.
-    save_maps: bool
-        Save the cleaned clean maps to output directory if `True`.
-    save_noises: bool
-        Save the cleaned noise invs to output directory if `True`.
-    save_modes: bool
-        Save what was subtracted from the maps to output directory if `True`.
-
-    '''
-    # Get the output directory and filenames.
-    out_root = slice_obj.params['output_root']
-    # Make sure folder is there.
-    if not os.path.isdir(out_root):
-        os.mkdir(out_root)
-
-    for pair in slice_obj.pairs:
-        map1_savename = out_root + pair.map1_name + \
-            "_cleaned_clean_map_I_with_" + pair.map2_code + ".npy"
-        map2_savename = out_root + pair.map2_name + \
-            "_cleaned_clean_map_I_with_" + pair.map1_code + ".npy"
-        noise_inv1_savename = out_root + pair.map1_name + \
-            "_cleaned_noise_inv_I_with_" + pair.map2_code + ".npy"
-        noise_inv2_savename = out_root + pair.map2_name + \
-            "_cleaned_noise_inv_I_with_" + pair.map1_code + ".npy"
-        left_modes_savename = out_root + pair.map1_name + \
-            "_modes_clean_map_I_with_" + pair.map2_code + ".npy"
-        right_modes_savename = out_root + pair.map2_name + \
-            "_modes_clean_map_I_with_" + pair.map1_code + ".npy"
-
-        # Save data.
-        if save_maps:
-            algebra.save(map1_savename, pair.map1)
-            algebra.save(map2_savename, pair.map2)
-        if save_noises:
-            algebra.save(noise_inv1_savename, pair.noise_inv1)
-            algebra.save(noise_inv2_savename, pair.noise_inv2)
-        if save_modes:
-            algebra.save(left_modes_savename, pair.left_modes)
-            algebra.save(right_modes_savename, pair.right_modes)
 
 
 # TODO: phase this out because of annoying import dependencies

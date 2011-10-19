@@ -563,7 +563,8 @@ class RedshiftCorrelation(object):
 
 
 
-    def realisation(self, z1, z2, thetax, thetay, numz, numx, numy, zspace = True):
+    def realisation(self, z1, z2, thetax, thetay, numz, numx, numy,
+                    zspace=True, refinement=1):
         r"""Simulate a redshift-space volume.
 
         Generates a 3D (angle-angle-redshift) volume from the given
@@ -608,6 +609,8 @@ class RedshiftCorrelation(object):
         # sits exactly within the gridded points.
         d = d * (n + 1) / n
         n = n + 1
+        # now multiply by scaling for a finer sub-grid
+        n = refinement*n
 
         print "Generating cube: %f x %f x %f Mpc^3" % (d[0], d[1], d[2])
 

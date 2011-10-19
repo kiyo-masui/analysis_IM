@@ -51,9 +51,13 @@ class Corr21cm(RedshiftCorrelation, Map3d):
         Returns
         -------
         T_b : array_like
+
+        Notes: the prefactor used to be 0.3 mK, but Tzu-Ching pointed out that this
+        was from and error in 2008PhRvL.100i1303C, Eric recalculated this to be
+        0.39 mK (agrees with 0.4 mK quoted over phone from Tzu-Ching)
         """
 
-        return (0.3 * ((self.cosmology.omega_m + self.cosmology.omega_l * (1+z)**-3) / 0.29)**-0.5
+        return (0.39 * ((self.cosmology.omega_m + self.cosmology.omega_l * (1+z)**-3) / 0.29)**-0.5
                 * ((1.0 + z) / 2.5)**0.5 * (self.omega_HI(z) / 1e-3))
 
     def mean(self, z):

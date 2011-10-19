@@ -1,4 +1,4 @@
-"""Program that calculates the correlation function across frequency slices.
+r"""Program that calculates the correlation function across frequency slices.
 """
 # TODO: figure out data model for storing lags, etc. with class instance
 # TODO: needs to continue to work with multiprocessing
@@ -11,7 +11,7 @@ from map import beam
 
 
 class MapPair(object):
-    """Pair of maps that are processed together and cross correlated.
+    r"""Pair of maps that are processed together and cross correlated.
 
     Parameters
     ----------
@@ -70,7 +70,7 @@ class MapPair(object):
         self.map2_code = ''
 
     def set_names(self, name1, name2):
-        """Set the map names and codes.
+        r"""Set the map names and codes.
 
         Set map1_name to name1 and map2_name to name2.
         Also the map codes. Note it is hardcoded for 4 maps right now.
@@ -107,7 +107,7 @@ class MapPair(object):
             raise
 
     def degrade_resolution(self):
-        """Convolves the maps down to the lowest resolution.
+        r"""Convolves the maps down to the lowest resolution.
 
         Also convolves the noise, making sure to deweight pixels near the edge
         as well.  Converts noise to factorizable form by averaging.
@@ -146,15 +146,14 @@ class MapPair(object):
         self.noise_inv2 = algebra.as_alg_like(noise2, self.noise_inv2)
 
     def make_noise_factorizable(self):
-        """Convert noise weights such that the factor into a function a
+        r"""Convert noise weights such that the factor into a function a
         frequecy times a function of pixel by taking means over the original
         weights.
         """
 
         # TODO: move me elsewhere!
         def make_factorizable(noise):
-            """factorize the noise"""
-            # Take the reciprical.
+            r"""factorize the noise"""
             noise[noise < 1.e-30] = 1.e-30
             noise = 1. / noise
             noise = ma.array(noise)
@@ -181,7 +180,14 @@ class MapPair(object):
         self.noise_inv2 = algebra.as_alg_like(noise_inv2, self.noise_inv2)
 
     def subtract_weighted_mean(self):
-        """Subtracts the weighted mean from each frequency slice."""
+        r"""Subtracts the weighted mean from each frequency slice."""
+        print "-"*80
+        print self.noise_inv1.shape
+        print self.map1.shape
+        print self.noise_inv2.shape
+        print self.map2.shape
+        print "-"*80
+
         means1 = sp.sum(sp.sum(self.noise_inv1 * self.map1, -1), -1)
         means1 /= sp.sum(sp.sum(self.noise_inv1, -1), -1)
         means1.shape += (1, 1)
@@ -196,7 +202,7 @@ class MapPair(object):
         self.map2[self.noise_inv2 < 1.e-20] = 0
 
     def subtract_frequency_modes(self, modes1, modes2=None):
-        """Subtract frequency mode from the map.
+        r"""Subtract frequency mode from the map.
 
         This does not save anything anymore. The outmaps (L and R modes)
         that were saved before are now stored as a variable in the class
@@ -258,7 +264,7 @@ class MapPair(object):
         self.right_modes = outmap_right
 
     def correlate(self, lags=(), speedup=False):
-        """Calculate the cross correlation function of the maps.
+        r"""Calculate the cross correlation function of the maps.
 
         The cross correlation function is a function of f1, f2 and angular lag.
         The angular lag bins are passed, all pairs of frequencies are

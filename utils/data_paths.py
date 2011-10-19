@@ -262,7 +262,7 @@ class DataPath(object):
             if (len(listindex) <= suppress_lists):
                 retstring += "* __File list__:\n"
                 for listitem in listindex:
-                    retstring += "    * `" + listitem + "` :`" + \
+                    retstring += "    * `" + listitem + "` : `" + \
                                  dbentry['filelist'][listitem] + "`\n"
 
         if 'path' in dbentry:
@@ -391,7 +391,7 @@ class DataPath(object):
         fileobj.write("Data path DB\n============\n\n")
         fileobj.write("specified by local path: `%s` and URL `%s`\n" %
                       (localdb, self.db_url))
-        self.print_path_db_by_group(suppress_lists=12, fileobj=fileobj)
+        self.print_path_db_by_group(suppress_lists=30, fileobj=fileobj)
 
         fileobj.close()
 

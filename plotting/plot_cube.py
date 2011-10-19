@@ -37,7 +37,7 @@ def plot_single(plotitem):
 # TODO: delete frames once generated
 def make_cube_movie(cubename, colorbar_title, cube_frame_dir,
                     outputdir="./", sigmarange=3., ignore=None, multiplier=1.,
-                    transverse=False):
+                    transverse=False, title=None):
     """Make a stack of spatial slice maps and animate them
     transverse plots along RA and freq and image plane is in Dec
     """
@@ -50,6 +50,9 @@ def make_cube_movie(cubename, colorbar_title, cube_frame_dir,
         orientation = "_freqRA"
     else:
         orientation = "_RADec"
+
+    if not title:
+        title = tag
 
     if ignore:
         cube[cube == ignore] = ma.masked
@@ -75,13 +78,13 @@ def make_cube_movie(cubename, colorbar_title, cube_frame_dir,
     runlist = []
     if transverse:
         for decind in range(cube.shape[2]):
-            fulltitle = tag + " (dec = %3.1f)" % (dec_axis[decind])
+            fulltitle = title + " (dec = %3.1f)" % (dec_axis[decind])
             runlist.append((decind, cube[:, :, decind], freq_axis,
                             ra_axis, color_axis, ["Freq","Ra"], 20., fulltitle,
                             colorbar_title, fileprefix))
     else:
         for freqind in range(cube.shape[0]):
-            fulltitle = tag + " (freq = %3.1f MHz)" % (freq_axis[freqind])
+            fulltitle = title + " (freq = %3.1f MHz)" % (freq_axis[freqind])
             runlist.append((freqind, cube[freqind, :, :], ra_axis,
                             dec_axis, color_axis, ["RA","Dec"], 1., fulltitle,
                             colorbar_title, fileprefix))
