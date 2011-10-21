@@ -5,6 +5,7 @@ import sys
 
 import scipy as sp
 import scipy.fftpack as fft
+import scipy.signal as sig
 import numpy.ma as ma
 import matplotlib.pyplot as plt
 
@@ -33,7 +34,9 @@ params_init = {
     # Whether to put into units of the thermal expectation.
     "norm_to_thermal" : False,
     # How many time bins to use.  By default, match to the first file.
-    "n_time_bins" : 0
+    "n_time_bins" : 0,
+    "window" : "hanning",
+    "deconvolve" : True
     }
 
 class NoisePower(object) :
@@ -55,15 +58,19 @@ class NoisePower(object) :
         pol_weights = params['pol_weights']
         n_time = params["n_time_bins"]
         n_files = len(params["file_middles"])
+        window = params['window']
+        deconvolve = params['deconvolve']
         first_iteration = True
         # Loop over files to process.
         for file_middle in params['file_middles'] :
             input_fname = (params['input_root'] + file_middle +
                            params['input_end'])
-            # Read in the data, and loop over data blocks.
+            # Read in the data.
             Reader = core.fitsGBT.Reader(input_fname)
             Blocks = Reader.read(params['scans'], params['IFs'],
                                  force_tuple=True)
+            # Loop over the Blocks to select the channel polarizations and cal
+            # state that we want to process.
             for Data in Blocks:
                 data = Data.data
                 data_selected = ma.zeros((Data.dims[0], 1, 1, Data.dims[3]),
@@ -75,48 +82,24 @@ class NoisePower(object) :
                                                    * pol_weights[ii]
                                                    * cal_weights[jj])
                 Data.set_data(data_selected)
-            full_data, mask, this_dt = make_masked_time_stream(Blocks, n_time)
+            #full_data, mask, this_dt = make_masked_time_stream(Blocks, n_time,
+            #                                                  window="hanning")
+            power_mat, this_frequency, this_n_time, this_dt, full_mean = \
+                full_power_mat(Blocks, n_time=n_time, window=window, 
+                               deconvolve=deconvolve, return_extras=True)
             # TODO: Figure out a better way to deal with this (only drop
             # affected frequencies).
-            if sp.any(sp.allclose(mask[:,0,0,:], 0.0, 0)):
-                n_files -= 1
-                continue
-            if first_iteration and not n_time :
-                n_time = full_data.shape[0]
-                dt = this_dt
-            elif abs((this_dt - dt)/dt) > 0.001 :
+            #if sp.any(sp.allclose(mask[:,0,0,:], 0.0, 0)):
+            #    n_files -= 1
+            #    continue
+            if first_iteration :
+                n_time = this_n_time
+                frequency = this_frequency
+            elif not sp.allclose(frequency, this_frequency, rtol=0.001):
                 msg = "Files have different time samplings."
                 raise ce.DataError(msg)
-
-            # XXX to speed things up for testing.
-            full_data = full_data[...,0::10]
-            mask = mask[...,0::10]
-            #full_data = full_data[...,[80]]
-            #mask = mask[...,[80]]
-            # XXX
-
-            full_mean = sp.mean(full_data, 0)/sp.mean(mask, 0)
-            full_data -= full_mean
-            full_mean.shape = full_mean.shape[-1:]
-            full_data *= mask
-            full_data1 = full_data[:,0,0,:,None]
-            full_data2 = full_data[:,0,0,None,:]
-            mask1 = mask[:,0,0,:,None]
-            mask2 = mask[:,0,0,None,:]
-
-            n_freq = full_data.shape[-1]
-            thermal_expectation = (full_mean / sp.sqrt(dt) 
+            thermal_expectation = (full_mean / sp.sqrt(this_dt) 
                                 / sp.sqrt(abs(Blocks[0].field['CDELT1'])))
-            # Loop to do only a bit of the calculation at a time.  Reduces
-            # memory use by a factor of a few.
-            power_mat = sp.empty((n_time//2, n_freq, n_freq),
-                                      dtype=float)
-            for ii in xrange(n_freq):
-                # `out` argument must be a view, not a copy.
-                windowed_power(full_data1[:,[ii],:], mask1[:,[ii],:],
-                               full_data2, mask2, axis=0,
-                               out=(power_mat[:,ii,:])[:,None,:])
-            frequency = ps_freq_axis(dt, full_data.shape[0])
             if params['norm_to_thermal'] :
                 power_mat /= (thermal_expectation[:,None] 
                               * thermal_expectation[None,:])
@@ -132,8 +115,6 @@ class NoisePower(object) :
         if n_files > 0 :
             self.power_mat /= n_files
             self.thermal_expectation / n_files
-
-
 
 
 
@@ -311,7 +292,8 @@ def ps_freq_axis(dt, n):
     frequency *= df
     return frequency
 
-def make_masked_time_stream(Blocks, ntime=None) :
+def make_masked_time_stream(Blocks, ntime=None, window=None, 
+                            return_means=False) :
     """Converts Data Blocks into a single uniformly sampled time stream.
     
     Also produces the mask giving whether elements are valid entries or came
@@ -324,7 +306,13 @@ def make_masked_time_stream(Blocks, ntime=None) :
     ntime : int
         Total number of time bins in output arrays.  If shorter than required
         extra data is truncated.  If longer, extra data is masked.  Default is
-        to use exactly the number that fits all the data.
+        to use exactly the number that fits all the data.  Set to a negitive
+        factor to zero pad to a power of 2 and by at least at least the factor.
+    window : string or tuple
+        Type of window to apply to each DataBlock.  Valid options are the valid
+        arguments to scipy.signal.get_window().  By default, don't window.
+    return_means : bool
+        whether to return an array of the channed means.
 
     Returns
     -------
@@ -338,6 +326,8 @@ def make_masked_time_stream(Blocks, ntime=None) :
         time_stream = mask*real_data.
     dt : float
         The time step of the returned time stream.
+    means : array (optional)
+        The mean from each channel.
     """
 
     # Shape of all axes except the time axis.
@@ -367,27 +357,53 @@ def make_masked_time_stream(Blocks, ntime=None) :
             raise ce.DataError(msg)
     # Calculate the time axis.
     if not ntime :
-        time = sp.arange(min_time, max_time + dt, dt)
-        ntime = len(time)
-    else :
-        time = sp.arange(ntime)*dt + min_time
+        ntime = (max_time - min_time) // dt + 1
+    elif ntime < 0:
+        # 0 pad by a factor of at least -ntime.
+        time_min = -ntime * (max_time - min_time) / dt
+        ntime = 1
+        while ntime < time_min:
+            ntime *= 2
+    time = sp.arange(ntime)*dt + min_time
     # Allowcate memory for the outputs.
     time_stream = sp.zeros((ntime,) + back_shape, dtype=float)
     mask = sp.zeros((ntime,) + back_shape, dtype=sp.float32)
+    # Very important to subtract the mean out of the signal, otherwise the
+    # window coupling to the mean (0) mode will dominate everything.
+    total_sum = 0
+    total_counts = 0
+    for Data in Blocks:
+        total_sum += sp.sum(Data.data.filled(0), 0)
+        total_counts += ma.count(Data.data, 0)
+    total_mean = total_sum / total_counts
     # Loop over all times and fill in the arrays.
     for Data in Blocks :
+        # Subtract the mean calculated above.
+        Data.data -= total_mean
         # Apply an offset to the time in case the start of the Data Block
         # doesn't line up with the time array perfectly.
         offset = time[sp.argmin(abs(time - Data.time[0]))] - Data.time[0]
+        # Generate window function.
+        if window:
+            window_function = sig.get_window(window, Data.dims[0])
         for ii in range(Data.dims[0]) :
             ind = sp.argmin(abs(time - (Data.time[ii] + offset)))
             if abs(time[ind] - (Data.time[ii])) < 0.5*dt :
                 if sp.any(mask[ind, ...]) :
                     msg = "Overlapping times in Data Blocks."
                     raise ce.DataError(msg)
-                time_stream[ind, ...] = Data.data[ii, ...].filled(0.0)
-                mask[ind, ...] = sp.logical_not(Data.data.mask[ii, ...])
-    return time_stream, mask, dt
+                if window:
+                    window_value = window_function[ii]
+                else :
+                    window_value = 1.0
+                time_stream[ind, ...] = (window_value 
+                                         * Data.data[ii, ...].filled(0.0))
+                mask[ind, ...] = window_value * sp.logical_not(ma.getmaskarray(
+                                     Data.data)[ii, ...])
+    if return_means:
+        return time_stream, mask, dt, total_mean
+    else :
+        return time_stream, mask, dt
 
 def windowed_power(data1, window1, data2=None, window2=None, axis=-1, out=None) :
     """Calculates a windowed cross power spectrum.
@@ -442,12 +458,25 @@ def windowed_power(data1, window1, data2=None, window2=None, axis=-1, out=None) 
     data_power = fft.fft(data1, axis=axis)*fft.fft(data2, axis=axis).conj()
     window_power = (fft.fft(window1, axis=axis)
                     * fft.fft(window2, axis=axis).conj())
-    true_corr = (fft.ifft(data_power, axis=axis, overwrite_x=True)
-                 / fft.ifft(window_power, axis=axis, overwrite_x=True))
-    del data_power, window_power
+    data_corr = fft.ifft(data_power, axis=axis, overwrite_x=True)
+    window_corr = fft.ifft(window_power, axis=axis, overwrite_x=True)
+    true_corr = data_corr / window_corr
+    n = data1.shape[axis]
+    # XXX
+    #plt.figure()
+    #plt.semilogy(window_power[:,0,0], '.')
+    #plt.semilogy(-window_power[:,0,0], '.r')
+    #plt.figure()
+    #plt.semilogy(window_corr[:, 0, 0])
+    #plt.semilogy(data_corr[:, 0, 0])
+    #plt.semilogy(true_corr[:, 0, 0])
+    #plt.semilogy(true_corr[:, 0, 1])
+    #plt.show()
+    #print sp.where(window_corr == 0)
+    # XXX
+    del data_power, window_power, data_corr, window_corr
     true_power = fft.fft(true_corr, axis=axis, overwrite_x=True)
     del true_corr
-    n = len(data1)
     # Truncate the power spectrum to only the unaliased and positive
     # frequencies.
     s = slice(n//2)
@@ -457,9 +486,76 @@ def windowed_power(data1, window1, data2=None, window2=None, axis=-1, out=None) 
     if not out is None :
         out[...] = true_power[indices]
     else :
-        # Copy to release memory.
+        # Copy to release extra memory.
         out = sp.copy(true_power[indices])
     return out
+
+def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True,
+                   return_extras=False) :
+    """Calculate the full power spectrum of a data set with channel
+    correlations.
+    
+    Only one cal state and pol state assumed.
+    """
+
+    full_data, mask, dt, channel_means = make_masked_time_stream(Blocks, n_time, 
+        window=window, return_means=True)
+    n_time = full_data.shape[0]
+    # Broadcast to shape such that all pairs of channels are calculated.
+    full_data1 = full_data[:,0,0,:,None]
+    full_data2 = full_data[:,0,0,None,:]
+    mask1 = mask[:,0,0,:,None]
+    mask2 = mask[:,0,0,None,:]
+    channel_means = channel_means[0, 0, :]
+    # XXX Accutally do this efficiently.
+    if not deconvolve:
+        mask1[:] = 1
+        mask2[:] = 1
+    # Frequencies for the power spectrum (Hz)
+    frequency = ps_freq_axis(dt, n_time)
+    n_chan = full_data.shape[-1]
+    # Loop to do only a bit of the calculation at a time.  Reduces
+    # memory use by a factor of a few.
+    power_mat = sp.empty((n_time//2, n_chan, n_chan),
+                              dtype=float)
+    for ii in xrange(n_chan):
+        # `out` argument must be a view, not a copy.
+        windowed_power(full_data1[:,[ii],:], mask1[:,[ii],:], full_data2,
+                       mask2, axis=0, out=(power_mat[:,ii,:])[:,None,:])
+    if return_extras:
+        return power_mat, frequency, n_time, dt, channel_means
+    else:
+        return power_mat, frequency
+
+def diag_power_mat(Blocks, n_time=None, window=None, deconvolve=True) :
+    """Calculate the full power spectrum of a data set without channel
+    correlations.
+    
+    Only one cal state and pol state assumed.
+    """
+
+    full_data, mask, dt = make_masked_time_stream(Blocks, n_time, window)
+    n_time = full_data.shape[0]
+    # Broadcast to shape such that all pairs of channels are calculated.
+    full_data1 = full_data[:,0,0,:]
+    mask1 = mask[:,0,0,:]
+    # XXX Accutally do this efficiently.
+    if not deconvolve:
+        mask1[:] = 1
+        mask2[:] = 1
+    # Frequencies for the power spectrum (Hz)
+    frequency = ps_freq_axis(dt, n_time)
+    n_chan = full_data.shape[-1]
+    # Loop to do only a bit of the calculation at a time.  Reduces
+    # memory use by a factor of a few.
+    power_mat = sp.empty((n_time//2, n_chan),
+                              dtype=float)
+    windowed_power(full_data1, mask1, axis=0, out=power_mat)
+
+    return power_mat, frequency
+
+
+
 
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":

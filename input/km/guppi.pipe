@@ -96,8 +96,10 @@ dm_scans = ()
 dm_IFs = (0,)
 
 dm_field_centre = (217.9, 2.0)
-dm_map_shape = (64, 32)
-dm_pixel_spacing = .075
+#dm_map_shape = (64, 32)
+#dm_pixel_spacing = .075
+dm_map_shape = (128, 64)
+dm_pixel_spacing = .0375
 dm_noise_model = 'disjoint_scans'
 dm_polarizations = ('I',)
 dm_noise_parameters_input_root = 'None'
@@ -138,7 +140,7 @@ sf_thres = 5.0
 sf_subtracted_input_root = sm_output_root
 sf_subtracted_output_root = base_dir + 'reflag_sub/'
 
-from noise import measure_noise
+#from noise import measure_noise
 #pipe_modules.append(measure_noise.Measure)
 mn_input_root = sf_subtracted_input_root
 mn_file_middles = file_middles
@@ -150,7 +152,7 @@ mn_model = "scan_var"
 #### Make sub map A ####
 
 from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
 dmA_file_middles = middles_a
 dmA_input_root = sf_output_root
 dmA_output_root = base_dir + 'maps/' + "sec_A_" + map_prefix
@@ -166,7 +168,7 @@ cmA_save_noise_diag = True
 #### Make sub map B ####
 
 from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
 dmB_file_middles = middles_b
 dmB_input_root = sf_output_root
 dmB_output_root = base_dir + 'maps/' + "sec_B_" + map_prefix
@@ -182,7 +184,7 @@ cmB_save_noise_diag = True
 #### Make sub map C ####
 
 from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
 dmC_file_middles = middles_c
 dmC_input_root = sf_output_root
 dmC_output_root = base_dir + 'maps/' + "sec_C_" + map_prefix
@@ -198,7 +200,7 @@ cmC_save_noise_diag = True
 #### Make sub map D ####
 
 from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 dmD_file_middles = middles_d
 dmD_input_root = sf_output_root
 dmD_output_root = base_dir + 'maps/' + "sec_D_" + map_prefix
