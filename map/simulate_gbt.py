@@ -11,50 +11,6 @@ from utils import data_paths
 import sys
 
 
-# TODO: TEMPORARY duplicate of func in optical_catalog; move more generic
-def template_map_axes(filename):
-    """Open a numpy array map and extract its axis/etc. information
-    """
-    template_map = algebra.make_vect(algebra.load(filename))
-    freq_axis = template_map.get_axis('freq')
-    ra_axis = template_map.get_axis('ra')
-    dec_axis = template_map.get_axis('dec')
-    return (freq_axis, ra_axis, dec_axis, template_map.shape, template_map)
-
-
-# TODO: confirm ra=x, dec=y (thetax = 5, thetay = 3 in 15hr)
-def realize_simulation_old(freq_axis, ra_axis, dec_axis, verbose=True,
-                       streaming=True):
-    """do basic handling to call Richard's simulation code
-    here we use 300 h km/s from WiggleZ for streaming dispersion
-    Notes on foreground calls for the future (also copy param member func.):
-    syn = foregroundsck.Synchrotron()
-    synfield = syn.getfield()
-    ps = pointsource.DiMatteo()
-    psf = ps.getfield()
-    """
-    if streaming:
-        simobj = corr21cm.Corr21cm(sigma_v=300.*0.72)
-    else:
-        simobj = corr21cm.Corr21cm()
-
-    simobj.x_width = max(ra_axis) - min(ra_axis)
-    simobj.y_width = max(dec_axis) - min(dec_axis)
-    (simobj.x_num, simobj.y_num) = (len(ra_axis), len(dec_axis))
-
-    simobj.nu_lower = min(freq_axis)/1.e6
-    simobj.nu_upper = max(freq_axis)/1.e6
-    simobj.nu_num = len(freq_axis)
-
-    if verbose:
-        print "Sim: %dx%d field (%fx%f deg) from nu=%f to nu=%f (%d bins)" % \
-              (simobj.x_num, simobj.y_num, simobj.x_width, simobj.y_width,
-               simobj.nu_lower, simobj.nu_upper, simobj.nu_num)
-
-    # note that the temperature there is in mK, and one wants K locally
-    return simobj.getfield() * 0.001
-
-
 # TODO: confirm ra=x, dec=y (thetax = 5, thetay = 3 in 15hr)
 def realize_simulation(template_map, streaming=True):
     """do basic handling to call Richard's simulation code
