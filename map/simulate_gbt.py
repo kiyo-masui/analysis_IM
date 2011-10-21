@@ -114,9 +114,29 @@ if __name__ == '__main__':
     # 15 hr
     generate_sim('GBT_15hr_map', 'sim_15hr',
                  'sim_15hr_beam', 'sim_15hr_beam_plus_data',
-                  streaming=False, parallel=False)
+                  streaming=False, parallel=True)
 
     # 15 hr with velocity streaming
-    #generate_sim('GBT_15hr_map', 'simvel_15hr',
-    #             'simvel_15hr_beam', 'simvel_15hr_beam_plus_data',
-    #              streaming=True)
+    generate_sim('GBT_15hr_map', 'simvel_15hr',
+                 'simvel_15hr_beam', 'simvel_15hr_beam_plus_data',
+                  streaming=True, parallel=True)
+
+    # 22 hr
+    generate_sim('GBT_22hr_map', 'sim_22hr',
+                 'sim_22hr_beam', 'sim_22hr_beam_plus_data',
+                  streaming=False, parallel=True)
+
+    # 22 hr with velocity streaming
+    generate_sim('GBT_22hr_map', 'simvel_22hr',
+                 'simvel_22hr_beam', 'simvel_22hr_beam_plus_data',
+                  streaming=True, parallel=True)
+
+    # 1 hr
+    generate_sim('GBT_1hr_map', 'sim_1hr',
+                 'sim_1hr_beam', 'sim_1hr_beam_plus_data',
+                  streaming=False, parallel=True)
+
+    # 1 hr with velocity streaming
+    generate_sim('GBT_1hr_map', 'simvel_1hr',
+                 'simvel_1hr_beam', 'simvel_1hr_beam_plus_data',
+                  streaming=True, parallel=True)

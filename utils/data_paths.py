@@ -245,13 +245,16 @@ class DataPath(object):
 
     def print_db_item(self, dbkey, suppress_lists=6, silent=False):
         r"""print a database entry to markdown format
+        'desc' and 'status' are requires keys in the file attributes
         suppress printing of lists of more than `suppress_lists` files
         `silent` only returns a string instead of printing
         """
         dbentry = self._pathdict[dbkey]
         retstring = "### `%s`\n" % dbkey
-        #retstring += "-"*len(retstring) + "\n"
         retstring += "* __Description__: %s\n" % dbentry['desc']
+
+        if 'status' in dbentry:
+            retstring += "* __Status__: %s\n" % dbentry['status']
 
         if 'notes' in dbentry:
             retstring += "* __Notes__: %s\n" % dbentry['notes']

@@ -7,7 +7,6 @@ import time
 import os
 import cPickle
 import scipy as sp
-from numpy import linalg
 from kiyopy import parse_ini
 import kiyopy.utils
 from core import algebra
@@ -234,7 +233,6 @@ class NewSlices(object):
             self.fore_pairs = copy.deepcopy(fore_pairs)
             # With this, you do not need fore_pairs anymore.
             self.pairs = copy.deepcopy(fore_pairs)
-            print "gung ho!"
 
             pairs = self.pairs
 
@@ -246,7 +244,7 @@ class NewSlices(object):
             # already saved and do not need to run the first correlation again.
             svd_info_list = []
             for pair in pairs:
-                vals, modes1, modes2 = get_freq_svd_modes(pair.fore_corr,
+                vals, modes1, modes2 = cf.get_freq_svd_modes(pair.fore_corr,
                                                           len(freq_list))
                 pair.vals = vals
 
@@ -415,7 +413,7 @@ def multiproc(pair, save_dir, pair_number, final):
 
     """
 
-    print "I am starting."
+    print "freq_slices multiprocessing starting on " + repr(pair_number)
     # Having a function looks nicer than an if statement.
     control_correlation(pair, pair.lags, final)
     file_name = save_dir
