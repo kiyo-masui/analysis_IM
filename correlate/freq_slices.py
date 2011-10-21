@@ -247,7 +247,7 @@ class NewSlices(object):
             svd_info_list = []
             for pair in pairs:
                 vals, modes1, modes2 = get_freq_svd_modes(pair.fore_corr,
-                                                   len(freq_list))
+                                                          len(freq_list))
                 pair.vals = vals
 
                 # Save ALL of the modes for reference.

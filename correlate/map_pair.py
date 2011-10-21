@@ -181,13 +181,6 @@ class MapPair(object):
 
     def subtract_weighted_mean(self):
         r"""Subtracts the weighted mean from each frequency slice."""
-        print "-"*80
-        print self.noise_inv1.shape
-        print self.map1.shape
-        print self.noise_inv2.shape
-        print self.map2.shape
-        print "-"*80
-
         means1 = sp.sum(sp.sum(self.noise_inv1 * self.map1, -1), -1)
         means1 /= sp.sum(sp.sum(self.noise_inv1, -1), -1)
         means1.shape += (1, 1)
