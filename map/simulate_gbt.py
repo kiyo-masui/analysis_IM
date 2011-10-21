@@ -23,7 +23,7 @@ def template_map_axes(filename):
 
 
 # TODO: confirm ra=x, dec=y (thetax = 5, thetay = 3 in 15hr)
-def realize_simulation(freq_axis, ra_axis, dec_axis, verbose=True,
+def realize_simulation_old(freq_axis, ra_axis, dec_axis, verbose=True,
                        streaming=True):
     """do basic handling to call Richard's simulation code
     here we use 300 h km/s from WiggleZ for streaming dispersion
@@ -55,6 +55,24 @@ def realize_simulation(freq_axis, ra_axis, dec_axis, verbose=True,
     return simobj.getfield() * 0.001
 
 
+# TODO: confirm ra=x, dec=y (thetax = 5, thetay = 3 in 15hr)
+def realize_simulation(template_map, streaming=True):
+    """do basic handling to call Richard's simulation code
+    here we use 300 h km/s from WiggleZ for streaming dispersion
+    Notes on foreground calls for the future (also copy param member func.):
+    syn = foregroundsck.Synchrotron()
+    synfield = syn.getfield()
+    ps = pointsource.DiMatteo()
+    psf = ps.getfield()
+    """
+    if streaming:
+        simobj = corr21cm.Corr21cm.like_kiyo_map(template_map, sigma_v=300.*0.72)
+    else:
+        simobj = corr21cm.Corr21cm.like_kiyo_map(template_map)
+
+    return simobj.get_kiyo_field()
+
+
 def make_simulation_set(template_file, outfile_raw, outfile_beam,
                         outfile_beam_plus_data, verbose=True, streaming=True):
     """Produce simulated GBT data volumes of three types:
@@ -63,13 +81,15 @@ def make_simulation_set(template_file, outfile_raw, outfile_beam,
     2. the simulation convolved by the instrumental beam
     3. the simulation convolved by the instrumental beam plus the template
     """
-    (freq_axis, ra_axis, dec_axis, gbt_map_shape, gbt_map) = \
-        template_map_axes(template_file)
+    #(freq_axis, ra_axis, dec_axis, gbt_map_shape, gbt_map) = \
+    #    template_map_axes(template_file)
+    #gbtsim = realize_simulation(freq_axis, ra_axis, dec_axis,
+    #                            streaming=streaming, verbose=verbose)
+    template_map = algebra.make_vect(algebra.load(template_file))
+    gbtsim = realize_simulation(template_map, streaming=streaming)
 
-    gbtsim = realize_simulation(freq_axis, ra_axis, dec_axis,
-                                streaming=streaming, verbose=verbose)
     sim_map = algebra.make_vect(gbtsim, axis_names=('freq', 'ra', 'dec'))
-    sim_map.copy_axis_info(gbt_map)
+    sim_map.copy_axis_info(template_map)
     algebra.save(outfile_raw, sim_map)
 
     beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792,
@@ -83,7 +103,7 @@ def make_simulation_set(template_file, outfile_raw, outfile_beam,
     sim_map_withbeam = beamobj.apply(sim_map)
     algebra.save(outfile_beam, sim_map_withbeam)
 
-    sim_map_withbeam += gbt_map
+    sim_map_withbeam += template_map
     algebra.save(outfile_beam_plus_data, sim_map_withbeam)
 
 
@@ -100,7 +120,7 @@ def wrap_sim(runitem):
 
 # TODO: have this use the path data base
 def generate_sim(template_key, output_key, output_beam_key,
-                 output_beam_plus_data_key, streaming=True):
+                 output_beam_plus_data_key, streaming=True, parallel=True):
     """generate simulations
     here, assuming the sec A of the set is the template map
     """
@@ -123,13 +143,12 @@ def generate_sim(template_key, output_key, output_beam_key,
                 bpdlist[1][index], streaming) for index in rawlist[0]]
 
     #sys.exit()
-    for runitem in runlist:
-        wrap_sim(runitem)
-
-    # the version of python which supports the simulation code does not support
-    # multiprocessing...
-    #pool = multiprocessing.Pool(processes=multiprocessing.cpu_count()-3)
-    #pool.map(wrap_sim, runlist)
+    if parallel:
+        pool = multiprocessing.Pool(processes=multiprocessing.cpu_count()-3)
+        pool.map(wrap_sim, runlist)
+    else:
+        for runitem in runlist:
+            wrap_sim(runitem)
 
 
 if __name__ == '__main__':
@@ -139,9 +158,9 @@ if __name__ == '__main__':
     # 15 hr
     generate_sim('GBT_15hr_map', 'sim_15hr',
                  'sim_15hr_beam', 'sim_15hr_beam_plus_data',
-                  streaming=False)
+                  streaming=False, parallel=False)
 
     # 15 hr with velocity streaming
-    generate_sim('GBT_15hr_Liviu_15mode', 'simvel_15hr',
-                 'simvel_15hr_beam', 'simvel_15hr_beam_plus_data',
-                  streaming=True)
+    #generate_sim('GBT_15hr_map', 'simvel_15hr',
+    #             'simvel_15hr_beam', 'simvel_15hr_beam_plus_data',
+    #              streaming=True)
