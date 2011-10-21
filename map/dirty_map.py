@@ -167,7 +167,7 @@ class DirtyMapMaker(object) :
                                 # but assume each frequency has uncorrelated
                                 # noise. This is a big matrix so make sure it
                                 # is reasonable.
-                                size = shape[0]^2*shape[1]^2*shape[2]
+                                size = shape[0]**2 * shape[1]**2 * shape[2]
                                 if size > 4e9 : # 16 GB
                                     raise RunTimeError('Map size too big. '
                                                        'Asked for a lot '
