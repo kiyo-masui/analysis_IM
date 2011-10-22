@@ -178,6 +178,7 @@ class DataPath(object):
     git_SHA: ...
     git_blame: ...
     git_date: ...
+    DataPath: ... files registered; database size = ...
 
     # pick index '44' of the 15hr sims
     >>> datapath_db.fetch("sim_15hr_beam", pick='44')
@@ -192,8 +193,8 @@ class DataPath(object):
     TODO: also allow dbs from local paths instead of URLs
     TODO: switch to ordered dictionaries instead of list+dictionary?
     TODO: code check that all files in the db exist, etc.
-    TODO: find db size in memory and total # files, print on website
     TODO: make command line to regen file hash, web page
+    TODO: make fetch handle file hashes and note updates
 
     Extensions to consider:
         -require writing to a log file; check exists; opt. overwrite
@@ -236,6 +237,12 @@ class DataPath(object):
         self.clprint("Run info: %s by %s" % self.runinfo)
         if not skip_gitlog:
             self.get_gitlog()
+        self._db_size = (len(self._hashdict),
+                        sys.getsizeof(self._pathdict) +
+                        sys.getsizeof(self._hashdict))
+
+        self.clprint("%d files registered; database size in memory = %s" %
+                     self._db_size)
 
     def clprint(self, string_in):
         r"""print with class message; could extend to logger"""
@@ -482,6 +489,8 @@ class DataPath(object):
         fileobj.write("* file hash table specified by `%s`\n" % self.hash_url)
         fileobj.write("* website, checksums compiled: %s by %s\n" % \
                        self.runinfo)
+        fileobj.write("* %d files registered; database size in memory = %s\n" %
+                     self._db_size)
         self.print_path_db_by_group(suppress_lists=30, fileobj=fileobj)
 
         fileobj.close()
