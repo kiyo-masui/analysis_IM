@@ -319,6 +319,7 @@ class MapPair(object):
 
         if speedup:
             print "Starting Correlation (sparse version)"
+
             (nr1, nd1) = (len(map1_ra), len(map1_dec))
             (nr2, nd2) = (len(map2_ra), len(map2_dec))
             (r1ind, d1ind) = (sp.arange(nr1), sp.arange(nd1))

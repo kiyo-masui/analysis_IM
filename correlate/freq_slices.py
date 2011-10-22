@@ -287,8 +287,9 @@ class NewSlices(object):
                 pairs[pair_index].modes2)
 
         # Save cleaned clean maps, cleaned noises, and modes.
-        self.save_data(self, params['save_maps'], params['save_noises'],
-                             params['save_modes'])
+        self.save_data(save_maps=params['save_maps'],
+                       save_noises=params['save_noises'],
+                       save_modes=params['save_modes'])
 
         # Finish if this was just first pass.
         if params['first_pass_only']:

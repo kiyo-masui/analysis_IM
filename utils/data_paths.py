@@ -6,10 +6,12 @@ import datetime
 import urllib2
 import subprocess
 import getpass
+import hashlib
 
 
 def path_properties(pathname, intend_write=False, intend_read=False,
-                    file_index="", prefix="", silent=False, is_file=False):
+                    file_index="", prefix="", silent=False, is_file=False,
+                    die_overwrite=False):
     r"""Check various properties about the path, print the result
     if `intend_write` then die if the path does not exist or is not writable
     if `intend_read` then die if the path does not exist
@@ -49,6 +51,9 @@ def path_properties(pathname, intend_write=False, intend_read=False,
     entry = "%s=> %s%s:" % (prefix, file_index, pathname)
 
     exists = os.access(pathname, os.F_OK)
+    # save the state of the file (exist will later specify if the parent dir
+    # exists, but we also care about this specific file)
+    file_exists = exists
     readable = os.access(pathname, os.R_OK)
     writable = os.access(pathname, os.W_OK)
     executable = os.access(pathname, os.X_OK)
@@ -98,10 +103,40 @@ def path_properties(pathname, intend_write=False, intend_read=False,
         print "ERROR: " + entry
         sys.exit()
 
+    if intend_write and file_exists:
+        if die_overwrite:
+            print "OVERWRITE ERROR: " + entry
+            sys.exit()
+        else:
+            print "WARNING: you will overwrite " + entry
+
     return (exists, readable, writable, executable, modtime)
 
 
-def print_dictionary(dict_in, key_list=None, prepend=""):
+def hashfile(filename, hasher=hashlib.md5(), blocksize=65536, max_size=1.e8):
+    r"""determine the hash of a file in blocks
+    if it exceeds `max_size` just report the modification time
+    if the file does not exist, report '-1'
+    """
+    if os.access(filename, os.F_OK):
+        if (os.path.getsize(filename) < max_size):
+            afile = open(filename, 'r')
+            buf = afile.read(blocksize)
+            while len(buf) > 0:
+                hasher.update(buf)
+                buf = afile.read(blocksize)
+
+            afile.close()
+            hash = hasher.hexdigest()
+        else:
+            hash = time.ctime(os.path.getmtime(filename))
+    else:
+        hash = "-1"
+
+    return hash
+
+
+def print_dictionary(dict_in, handle, key_list=None, prepend=""):
     r"""print a dictionary in a slightly nicer way
     `key_list` specifies the keys to print; None is to print all
     `prepend` is a string to prepend to each entry (useful to tag)
@@ -110,7 +145,7 @@ def print_dictionary(dict_in, key_list=None, prepend=""):
         key_list = dict_in.keys()
 
     for key in key_list:
-        print "%s%s: %s" % (prepend, key, dict_in[key])
+        print >> handle, "%s%s: %s" % (prepend, key, dict_in[key])
 
 
 class DataPath(object):
@@ -243,12 +278,14 @@ class DataPath(object):
                 print "ERROR: " + dbkey + " is not in the group list"
                 sys.exit()
 
-    def print_db_item(self, dbkey, suppress_lists=6, silent=False):
+    def print_db_item(self, dbkey, suppress_lists=6, silent=False,
+                      skiphash=False):
         r"""print a database entry to markdown format
         'desc' and 'status' are requires keys in the file attributes
         suppress printing of lists of more than `suppress_lists` files
         `silent` only returns a string instead of printing
         """
+        hashdict = {}  # calculate and record the hashes of the files
         dbentry = self._pathdict[dbkey]
         retstring = "### `%s`\n" % dbkey
         retstring += "* __Description__: %s\n" % dbentry['desc']
@@ -262,41 +299,62 @@ class DataPath(object):
         if ('filelist' in dbentry):
             listindex = dbentry['listindex']
             retstring += "* __List index__: `" + repr(listindex) + "`\n"
+
+            if not skiphash:
+                for listitem in listindex:
+                    filename = dbentry['filelist'][listitem]
+                    hashdict[filename] = hashfile(filename)
+
             if (len(listindex) <= suppress_lists):
                 retstring += "* __File list__:\n"
                 for listitem in listindex:
-                    retstring += "    * `" + listitem + "` : `" + \
-                                 dbentry['filelist'][listitem] + "`\n"
+                    filename = dbentry['filelist'][listitem]
+                    if not skiphash:
+                        retstring += "    * `%s`:  (md5: %s) `%s`\n" % \
+                                    (listitem, hashdict[filename], filename)
+                    else:
+                        retstring += "    * `%s`: `%s`\n" % \
+                                    (listitem, filename)
 
         if 'path' in dbentry:
             retstring += "* __Path__: `%s`\n" % dbentry['path']
 
         if 'file' in dbentry:
-            retstring += "* __File__: `%s`\n" % dbentry['file']
+            filename = dbentry['file']
+            if not skiphash:
+                hashdict[filename] = hashfile(filename)
+                retstring += "* __File__: (md5: %s) `%s`\n" % \
+                             (hashdict[filename], dbentry['file'])
+            else:
+                retstring += "* __File__: `%s`\n" % dbentry['file']
 
         if not silent:
             print retstring
 
-        return retstring
+        return (retstring, hashdict)
 
-    def print_path_db(self, suppress_lists=6, fileobj=None):
+    def print_path_db(self, suppress_lists=6, fileobj=None, skiphash=False):
         r"""print all the files in the path database; note that it is a
         dictionary and so this is un-ordered. print_path_db_by_group prints the
         database items ordered by the file group specifications.
+
+        You should only need to use this if the db groups are broken.
 
         Suppress printing of lists of more than `suppress_lists` files.
         If given a filename, this will write to a text file in markdown format.
         """
         print "-" * 80
-        for dbkey in self._pathdict:
-            dbstring = self.print_db_item(dbkey, suppress_lists=suppress_lists)
 
-            if fileobj:
-                fileobj.write(dbstring + "\n")
+        for dbkey in self._pathdict:
+            (dbstring, hashdict) = self.print_db_item(dbkey,
+                                          suppress_lists=suppress_lists,
+                                          skiphash=skiphash)
+            print dbstring
 
         print "-" * 80
 
-    def print_path_db_by_group(self, suppress_lists=6, fileobj=None):
+    def print_path_db_by_group(self, suppress_lists=6, fileobj=None,
+                               hashobj=None):
         r"""print all the files in the path database ordered by group
         specification.
 
@@ -304,6 +362,12 @@ class DataPath(object):
         If given a filename, this will write to a text file in markdown format.
         """
         print "-" * 80
+
+        if hashobj:
+            skiphash = False
+        else:
+            skiphash = True
+
         for groupname in self._group_order:
             print "%s\n%s\n" % (groupname, "-" * len(groupname))
             if fileobj:
@@ -311,10 +375,14 @@ class DataPath(object):
                               (groupname, "-" * len(groupname)))
 
             for dbkey in self._groups[groupname]:
-                dbstring = self.print_db_item(dbkey,
-                                              suppress_lists=suppress_lists)
+                (dbstring, hashdict) = self.print_db_item(dbkey,
+                                              suppress_lists=suppress_lists,
+                                              skiphash=skiphash)
                 if fileobj:
                     fileobj.write(dbstring + "\n")
+
+                if hashobj:
+                    print_dictionary(hashdict, hashobj)
 
         print "-" * 80
 
@@ -331,9 +399,10 @@ class DataPath(object):
         gitdict['note'] = " ".join(gitlog[4].split()[1:])
         self.gitlog = gitdict
 
-        print_dictionary(self.gitlog,
+        print_dictionary(self.gitlog, sys.stdout,
                          key_list=["SHA", "blame", "date"],
                          prepend="git_")
+
 
     def fetch(self, dbkey, pick=None, intend_read=False, intend_write=False,
               purpose="", silent=False):
@@ -381,22 +450,31 @@ class DataPath(object):
 
         return pathout
 
-    def generate_path_webpage(self):
+    def generate_path_webpage(self, skiphash=False):
         r"""Write out a markdown file with the file database
         """
         localpath = "/cita/d/www/home/eswitzer/GBT_param/"
         localdb = localpath + "path_database.py"
         dbwebpage = localpath + "path_database.txt"
+        dbhashpage = localpath + "hashlist.txt"
 
         print "writing markdown website to: " + dbwebpage
+        print "writing file hash list to: " + dbhashpage
         fileobj = open(dbwebpage, "w")
+        if skiphash:
+            hashobj = None
+        else:
+            hashobj = open(dbhashpage, "w")
 
         fileobj.write("Data path DB\n============\n\n")
         fileobj.write("specified by local path: `%s` and URL `%s`\n" %
                       (localdb, self.db_url))
-        self.print_path_db_by_group(suppress_lists=30, fileobj=fileobj)
+        self.print_path_db_by_group(suppress_lists=30, fileobj=fileobj,
+                                    hashobj=hashobj)
 
         fileobj.close()
+        if not skiphash:
+            hashobj.close()
 
 
 if __name__ == "__main__":
@@ -405,6 +483,7 @@ if __name__ == "__main__":
     # generate the path db markdown website
     datapath_db = DataPath()
     datapath_db.generate_path_webpage()
+    #datapath_db.generate_path_webpage(skiphash=True)
 
     # run some tests
     OPTIONFLAGS = (doctest.ELLIPSIS |
