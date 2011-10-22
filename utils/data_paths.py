@@ -7,6 +7,7 @@ import urllib2
 import subprocess
 import getpass
 import hashlib
+import ast
 
 
 def path_properties(pathname, intend_write=False, intend_read=False,
@@ -129,11 +130,14 @@ def hashfile(filename, hasher=hashlib.md5(), blocksize=65536, max_size=1.e8):
             afile.close()
             hash = hasher.hexdigest()
         else:
-            hash = time.ctime(os.path.getmtime(filename))
-    else:
-        hash = "-1"
+            hash = "too_big"
 
-    return hash
+        modtime = time.ctime(os.path.getmtime(filename))
+    else:
+        hash = "not_exist"
+        modtime = "not_exist"
+
+    return (hash, modtime)
 
 
 def print_dictionary(dict_in, handle, key_list=None, prepend=""):
@@ -145,7 +149,7 @@ def print_dictionary(dict_in, handle, key_list=None, prepend=""):
         key_list = dict_in.keys()
 
     for key in key_list:
-        print >> handle, "%s%s: %s" % (prepend, key, dict_in[key])
+        print >> handle, "%s%s: %s" % (prepend, key, repr(dict_in[key]))
 
 
 class DataPath(object):
@@ -166,6 +170,9 @@ class DataPath(object):
     >>> datapath_db = DataPath()
     DataPath: opening URL
         http://www.cita.utoronto.ca/~eswitzer/GBT_param/path_database.py
+    DataPath: opening URL
+        http://www.cita.utoronto.ca/~eswitzer/GBT_param/hashlist.txt
+    # checksums compiled: ... by ...
     DataPath: File database date/version ...
     DataPath: Run info: ... by ...
     git_SHA: ...
@@ -186,6 +193,7 @@ class DataPath(object):
     TODO: switch to ordered dictionaries instead of list+dictionary?
     TODO: code check that all files in the db exist, etc.
     TODO: find db size in memory and total # files, print on website
+    TODO: make command line to regen file hash, web page
 
     Extensions to consider:
         -require writing to a log file; check exists; opt. overwrite
@@ -198,20 +206,26 @@ class DataPath(object):
     _db_root = "http://www.cita.utoronto.ca/~eswitzer/GBT_param/"
     _db_file = "path_database.py"
     _db_url_default = _db_root + _db_file
+    _hash_file = "hashlist.txt"
+    _hash_url_default = _db_root + _hash_file
 
-    def __init__(self, db_url=_db_url_default, skip_gitlog=False):
+    def __init__(self, db_url=_db_url_default, hash_url=_hash_url_default,
+                 skip_gitlog=False):
         r"""Load a file path specification and get basic run info
         """
 
-        self._pathdict = {}     # the main path database
-        self._groups = {}       # dictionary of database key lists by group
-        self._group_order = []  # order in which to print the groups
-        self.version = "Empty"  # the database version
-        self.db_url = db_url    # URL to load the database specification from
-        self.gitlog = "Empty"   # git SHA and commit info
+        self._pathdict = {}       # the main path database
+        self._hashdict = {}       # file hash database
+        self._groups = {}         # dictionary of database key lists by group
+        self._group_order = []    # order in which to print the groups
+        self.version = "Empty"    # the database version
+        self.db_url = db_url      # URL: database specification
+        self.hash_url = hash_url  # URL: file hash specification
+        self.gitlog = "Empty"     # git SHA and commit info
 
         # load the file database and git version info
         self.load_pathdict(db_url)
+        self.load_hashdict(hash_url)
         self.check_groups()
         self.clprint("File database date/version " + self.version)
 
@@ -259,6 +273,27 @@ class DataPath(object):
         self._groups.update(bounding_box['groups'])
         self._group_order = bounding_box['group_order']
 
+    def load_hashdict(self, hash_url):
+        r"""Load the file hash library
+        """
+        self.clprint("opening URL " + self.hash_url)
+
+        resp = urllib2.urlopen(hash_url)
+        if (resp.code != 200):
+            print "ERROR: path database URL invalid (%s)" % resp.code
+        hash_spec = resp.read()
+        hash_spec = hash_spec.split("\n")
+        for entry in hash_spec:
+            if len(entry) > 0:
+                if (entry[0] == "#"):
+                    print entry
+                else:
+                    parser = entry.split(": ")
+                    filename = parser[0]
+                    filename = filename.strip()
+                    fileinfo = ast.literal_eval(parser[1])
+                    self._hashdict[filename] = fileinfo
+
     def check_groups(self):
         r"""check that all the database keys are accounted for by groups
         """
@@ -278,14 +313,12 @@ class DataPath(object):
                 print "ERROR: " + dbkey + " is not in the group list"
                 sys.exit()
 
-    def print_db_item(self, dbkey, suppress_lists=6, silent=False,
-                      skiphash=False):
+    def print_db_item(self, dbkey, suppress_lists=6, silent=False):
         r"""print a database entry to markdown format
         'desc' and 'status' are requires keys in the file attributes
         suppress printing of lists of more than `suppress_lists` files
         `silent` only returns a string instead of printing
         """
-        hashdict = {}  # calculate and record the hashes of the files
         dbentry = self._pathdict[dbkey]
         retstring = "### `%s`\n" % dbkey
         retstring += "* __Description__: %s\n" % dbentry['desc']
@@ -296,22 +329,17 @@ class DataPath(object):
         if 'notes' in dbentry:
             retstring += "* __Notes__: %s\n" % dbentry['notes']
 
-        if ('filelist' in dbentry):
+        if 'filelist' in dbentry:
             listindex = dbentry['listindex']
             retstring += "* __List index__: `" + repr(listindex) + "`\n"
-
-            if not skiphash:
-                for listitem in listindex:
-                    filename = dbentry['filelist'][listitem]
-                    hashdict[filename] = hashfile(filename)
 
             if (len(listindex) <= suppress_lists):
                 retstring += "* __File list__:\n"
                 for listitem in listindex:
                     filename = dbentry['filelist'][listitem]
-                    if not skiphash:
-                        retstring += "    * `%s`:  (md5: %s) `%s`\n" % \
-                                    (listitem, hashdict[filename], filename)
+                    if filename in self._hashdict:
+                        retstring += "    * `%s`: `%s` `%s`\n" % \
+                                    (listitem, filename, self._hashdict[filename])
                     else:
                         retstring += "    * `%s`: `%s`\n" % \
                                     (listitem, filename)
@@ -321,19 +349,18 @@ class DataPath(object):
 
         if 'file' in dbentry:
             filename = dbentry['file']
-            if not skiphash:
-                hashdict[filename] = hashfile(filename)
-                retstring += "* __File__: (md5: %s) `%s`\n" % \
-                             (hashdict[filename], dbentry['file'])
+            if filename in self._hashdict:
+                retstring += "* __File__: `%s` `%s`\n" % \
+                             (filename, self._hashdict[filename])
             else:
                 retstring += "* __File__: `%s`\n" % dbentry['file']
 
         if not silent:
             print retstring
 
-        return (retstring, hashdict)
+        return retstring
 
-    def print_path_db(self, suppress_lists=6, fileobj=None, skiphash=False):
+    def print_path_db(self, suppress_lists=6, fileobj=None):
         r"""print all the files in the path database; note that it is a
         dictionary and so this is un-ordered. print_path_db_by_group prints the
         database items ordered by the file group specifications.
@@ -346,15 +373,13 @@ class DataPath(object):
         print "-" * 80
 
         for dbkey in self._pathdict:
-            (dbstring, hashdict) = self.print_db_item(dbkey,
-                                          suppress_lists=suppress_lists,
-                                          skiphash=skiphash)
+            dbstring = self.print_db_item(dbkey,
+                                          suppress_lists=suppress_lists)
             print dbstring
 
         print "-" * 80
 
-    def print_path_db_by_group(self, suppress_lists=6, fileobj=None,
-                               hashobj=None):
+    def print_path_db_by_group(self, suppress_lists=6, fileobj=None):
         r"""print all the files in the path database ordered by group
         specification.
 
@@ -363,11 +388,6 @@ class DataPath(object):
         """
         print "-" * 80
 
-        if hashobj:
-            skiphash = False
-        else:
-            skiphash = True
-
         for groupname in self._group_order:
             print "%s\n%s\n" % (groupname, "-" * len(groupname))
             if fileobj:
@@ -375,14 +395,10 @@ class DataPath(object):
                               (groupname, "-" * len(groupname)))
 
             for dbkey in self._groups[groupname]:
-                (dbstring, hashdict) = self.print_db_item(dbkey,
-                                              suppress_lists=suppress_lists,
-                                              skiphash=skiphash)
+                dbstring = self.print_db_item(dbkey,
+                                              suppress_lists=suppress_lists)
                 if fileobj:
                     fileobj.write(dbstring + "\n")
-
-                if hashobj:
-                    print_dictionary(hashdict, hashobj)
 
         print "-" * 80
 
@@ -450,31 +466,60 @@ class DataPath(object):
 
         return pathout
 
-    def generate_path_webpage(self, skiphash=False):
+    def generate_path_webpage(self):
         r"""Write out a markdown file with the file database
         """
         localpath = "/cita/d/www/home/eswitzer/GBT_param/"
         localdb = localpath + "path_database.py"
         dbwebpage = localpath + "path_database.txt"
-        dbhashpage = localpath + "hashlist.txt"
 
         print "writing markdown website to: " + dbwebpage
-        print "writing file hash list to: " + dbhashpage
         fileobj = open(dbwebpage, "w")
-        if skiphash:
-            hashobj = None
-        else:
-            hashobj = open(dbhashpage, "w")
 
         fileobj.write("Data path DB\n============\n\n")
-        fileobj.write("specified by local path: `%s` and URL `%s`\n" %
+        fileobj.write("* specified by local path: `%s` and URL `%s`\n" %
                       (localdb, self.db_url))
-        self.print_path_db_by_group(suppress_lists=30, fileobj=fileobj,
-                                    hashobj=hashobj)
+        fileobj.write("* file hash table specified by `%s`\n" % self.hash_url)
+        fileobj.write("* website, checksums compiled: %s by %s\n" % \
+                       self.runinfo)
+        self.print_path_db_by_group(suppress_lists=30, fileobj=fileobj)
 
         fileobj.close()
-        if not skiphash:
-            hashobj.close()
+
+    def generate_hashtable(self):
+        r"""Write out the file hash table
+        """
+        localpath = "/cita/d/www/home/eswitzer/GBT_param/"
+        dbhashpage = localpath + "hashlist.txt"
+
+        print "writing file hash list to: " + dbhashpage
+        hashobj = open(dbhashpage, "w")
+        hashdict = {}
+        hashlist = []
+
+        hashobj.write("# checksums compiled: %s by %s\n" % \
+                       self.runinfo)
+
+        for groupname in self._group_order:
+            for dbkey in self._groups[groupname]:
+                dbentry = self._pathdict[dbkey]
+
+                if 'filelist' in dbentry:
+                    listindex = dbentry['listindex']
+                    for listitem in listindex:
+                        filename = dbentry['filelist'][listitem]
+                        hashdict[filename] = hashfile(filename)
+                        hashlist.append(filename)
+                        print "%s: %s" % (filename, hashdict[filename])
+
+                if 'file' in dbentry:
+                    filename = dbentry['file']
+                    hashdict[filename] = hashfile(filename)
+                    hashlist.append(filename)
+                    print "%s: %s" % (filename, hashdict[filename])
+
+        print_dictionary(hashdict, hashobj, key_list=hashlist)
+        hashobj.close()
 
 
 if __name__ == "__main__":
@@ -483,7 +528,7 @@ if __name__ == "__main__":
     # generate the path db markdown website
     datapath_db = DataPath()
     datapath_db.generate_path_webpage()
-    #datapath_db.generate_path_webpage(skiphash=True)
+    #datapath_db.generate_hashtable()
 
     # run some tests
     OPTIONFLAGS = (doctest.ELLIPSIS |
