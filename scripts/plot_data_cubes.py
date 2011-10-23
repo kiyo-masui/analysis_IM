@@ -1,223 +1,159 @@
+r"""Several scripts to call plot_cube_movie and make movies of GBT data,
+simulations, etc.
+"""
+import numpy as np
+from utils import data_paths
 from plotting import plot_cube as pc
+from core import algebra
+import sys
 
-# TODO: delete tag from invocation
-# TODO: cube root invocation
-# TODO: fix color bars in selection function
-# TODO: define output directory for movies
 cube_frame_dir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/cube_frames/"
 output_dir = ""
 
-def plot_15hr_selection():
-    """make plots of the 15hr selection
+def plot_GBT_maps(keyname, transverse=False, skip_noise=False):
+    datapath_db = data_paths.DataPath()
+
+    section_list = ['A', 'B', 'C', 'D']
+    for section in section_list:
+        filename = datapath_db.fetch(keyname,
+                                     pick=(section + '_clean_map'))
+        title = "Sec. %s, %s" % (section, keyname)
+        pc.make_cube_movie(filename,
+                           "Temperature (mK)", cube_frame_dir, sigmarange=5.,
+                           outputdir="./", multiplier=1000.,
+                           transverse=transverse,
+                           title=title)
+
+        filename = datapath_db.fetch(keyname,
+                                     pick=(section + '_dirty_map'))
+        title = "Sec. %s, %s (dirty)" % (section, keyname)
+        pc.make_cube_movie(filename,
+                           "Temperature (mK)", cube_frame_dir, sigmarange=5.,
+                           outputdir="./", multiplier=1000.,
+                           transverse=transverse,
+                           title=title)
+
+        if not skip_noise:
+            filename = datapath_db.fetch(keyname,
+                                         pick=(section + '_noise_diag'))
+            title = "Sec. %s, %s (noise)" % (section, keyname)
+            pc.make_cube_movie(filename,
+                               "Covariance", cube_frame_dir, sigmarange=-1,
+                               outputdir="./", multiplier=1000.,
+                               transverse=transverse,
+                               title=title)
+
+
+def plot_GBT_mapset():
+    plot_GBT_maps('GBT_15hr_map_proposal', transverse=True, skip_noise=True)
+    plot_GBT_maps('GBT_15hr_map_proposal', transverse=False, skip_noise=True)
+    plot_GBT_maps('GBT_15hr_map', transverse=True)
+    plot_GBT_maps('GBT_15hr_map', transverse=False)
+    plot_GBT_maps('GBT_22hr_map', transverse=True)
+    plot_GBT_maps('GBT_22hr_map', transverse=False)
+    plot_GBT_maps('GBT_1hr_map', transverse=True)
+    plot_GBT_maps('GBT_1hr_map', transverse=False)
+
+
+def plot_simulations(keyname, transverse=False):
+    """make movies of the 15hr simulations
+    permutations: with or without streaming, including beam, adding real data
     """
-    root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_wiggleZ/"
-    pc.make_cube_movie(root_directory + "reg15montecarlo.npy",
-                    "reg15montecarlo",
-                    "MC Selection", cube_frame_dir + "reg15montecarlo",
-                    sigmarange=None)
-    root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_wiggleZ/"
-    pc.make_cube_movie(root_directory + "reg15separable.npy",
-                    "15hr_Wigglez_separable_selection",
-                    "# galaxies/pixel", cube_frame_dir + "15hr_Wigglez_separable_selection")
-    root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_wiggleZ/"
-    pc.make_cube_movie(root_directory + "reg15selection.npy",
-                    "15hr_Wigglez_selection",
-                    "# galaxies/pixel", cube_frame_dir + "15hr_Wigglez_selection")
+    datapath_db = data_paths.DataPath()
 
-    pc.make_cube_movie("delta_selection.npy",
-                    "delta_selection",
-                    "Difference in selection", cube_frame_dir + "delta_selection")
-    pc.make_cube_movie("reg15selection_est.npy",
-                    "reg15selection_est",
-                    "Full selection", cube_frame_dir + "reg15selection_est",
-                    sigmarange=None)
+    filename = datapath_db.fetch(keyname, pick='15')
+    pc.make_cube_movie(filename,
+                       "Temperature (mK)", cube_frame_dir, sigmarange=5.,
+                       outputdir="./", multiplier=1000., transverse=transverse)
 
-def plot_15hr_selection():
-    """make plots of the 22hr selection
-    """
-    root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_wiggleZ/"
+    #pc.make_cube_movie(root_directory + "sim_beam_" + suffix,
+    #                   "Temperature (mK)", cube_frame_dir, sigmarange=5.,
+    #                   outputdir="./", multiplier=1000., transverse=transverse)
+    #pc.make_cube_movie(root_directory + "sim_beam_plus_data" + suffix,
+    #                   "Temperature (mK)", cube_frame_dir, sigmarange=10.,
+    #                   outputdir="./", multiplier=1000., transverse=transverse)
+    #pc.make_cube_movie(root_directory + "simvel_" + suffix,
+    #                   "Temperature (mK)", cube_frame_dir, sigmarange=5.,
+    #                   outputdir="./", multiplier=1000., transverse=transverse)
+    #pc.make_cube_movie(root_directory + "simvel_beam_" + suffix,
+    #                   "Temperature (mK)", cube_frame_dir, sigmarange=5.,
+    #                   outputdir="./", multiplier=1000., transverse=transverse)
+    #pc.make_cube_movie(root_directory + "simvel_beam_plus_data" + suffix,
+    #                   "Temperature (mK)", cube_frame_dir, sigmarange=10.,
+    #                   outputdir="./", multiplier=1000., transverse=transverse)
 
-    pc.make_cube_movie(root_directory + "reg22montecarlo.npy",
-                    "reg22montecarlo",
-                    "MC Selection", cube_frame_dir + "reg22montecarlo",
-                    sigmarange=None)
 
-    pc.make_cube_movie(root_directory + "reg22selection.npy",
-                    "reg22selection",
-                    "Selection", cube_frame_dir + "reg22selection",
-                    sigmarange=None)
+def plot_GBT_simset():
+    plot_simulations('sim_15hr', transverse=True)
+    plot_simulations('sim_15hr', transverse=False)
 
-    pc.make_cube_movie(root_directory + "reg22separable.npy",
-                    "reg22separable",
-                    "Separable Selection", cube_frame_dir + "reg22separable",
-                    sigmarange=None)
 
-# make plots of the 15hr field
-root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/combined_maps/"
-pc.make_cube_movie(root_directory + "combined_41-73_cleaned_clean_test.npy",
-                "combined_41-73_cleaned_clean_test",
-                "Temperature (mK)", cube_frame_dir + "combined_41-73_cleaned_clean_test",
-                sigmarange=6., multiplier = 1000.)
-pc.make_cube_movie(root_directory + "combined_41-73_cleaned_noise_inv_test.npy",
-                "combined_41-73_cleaned_noise_inv_test",
-                "Covariance", cube_frame_dir + "combined_41-73_cleaned_noise_inv_test",
-                sigmarange=-1)
+def plot_difference(filename1, filename2, title, sigmarange=6., sigmacut=None,
+                    transverse=False, outputdir="./", multiplier=1000.,
+                    logscale=False, fractional=False, filetag_suffix="",
+                    ignore=None, diff_filename="./difference.npy"):
+    """make movies of the difference of two maps (assuming same dimensions)"""
+    map1 = algebra.make_vect(algebra.load(filename1))
+    map2 = algebra.make_vect(algebra.load(filename2))
 
-# make plots of the 22hr field
-#root_directory = "/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/84_ABCD_all_15_modes/"
-root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/combined_maps/"
-pc.make_cube_movie(root_directory + "combined_22hr_41-84_cleaned_clean.npy",
-                "combined_22hr_41-84_cleaned_clean.npy",
-                "Temperature (mK)", cube_frame_dir + "combined_22hr_41-84_cleaned_clean.npy",
-                sigmarange=6, multiplier = 1000.)
+    if fractional:
+        difftitle = "fractional diff."
+        dmap = (map1-map2)/map1*100.
+    else:
+        difftitle = "difference"
+        dmap = map1-map2
 
-pc.make_cube_movie(root_directory + "combined_22hr_41-84_cleaned_noise_inv.npy",
-                "combined_22hr_41-84_cleaned_noise_inv.npy",
-                "Covariance", cube_frame_dir + "combined_22hr_41-84_cleaned_noise_inv.npy",
-                sigmarange=-1)
+    algebra.save(diff_filename, dmap)
 
-sys.exit()
-root_directory = "/mnt/raid-project/gmrt/calinliv/wiggleZ/simulations/test100/"
-pc.make_cube_movie(root_directory + "simulated_signal_map_1.npy",
-                "simulated_signal_map_1",
-                "Temperature", cube_frame_dir + "simulated_signal_map_1",
-                sigmarange=[-1.,1.])
-root_directory = "/mnt/raid-project/gmrt/calinliv/wiggleZ/simulations/test100/"
-pc.make_cube_movie(root_directory + "simulated_signal_map_1_with_beam.npy",
-                "simulated_signal_map_1_with_beam",
-                "Temperature", cube_frame_dir + "simulated_signal_map_1_with_beam",
-                sigmarange=[-1.,1.])
-root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest/73_ABCD_all_0_modes_sim_maponly_NOCONV/"
-pc.make_cube_movie(root_directory + "sec_A_15hr_41-73_cleaned_clean_map_I_with_B.npy",
-                "sec_A_15hr_41-73_cleaned_clean_map_I_with_B_noconv",
-                "Temperature", cube_frame_dir + "sec_A_15hr_41-73_cleaned_clean_map_I_with_B_noconv",
-                sigmarange=[-1.,1.])
-root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest/73_ABCD_all_0_modes_sim_maponly/"
-pc.make_cube_movie(root_directory + "sec_A_15hr_41-73_cleaned_clean_map_I_with_B.npy",
-                "sec_A_15hr_41-73_cleaned_clean_map_I_with_B",
-                "Temperature", cube_frame_dir + "sec_A_15hr_41-73_cleaned_clean_map_I_with_B",
-                sigmarange=[-1.,1.])
-root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest_combined_maps_0_50/"
-pc.make_cube_movie(root_directory + "combined_sim_41-73_cleaned_clean_0.npy",
-                "combined_sim_41-73_cleaned_clean_0",
-                "Temperature", cube_frame_dir + "combined_sim_41-73_cleaned_clean_0",
-                sigmarange=[-1.,1.])
-sys.exit()
+    pc.make_cube_movie(diff_filename,
+                       difftitle, cube_frame_dir, sigmarange=6,
+                       sigmacut=sigmacut, outputdir=outputdir, ignore=ignore,
+                       multiplier=multiplier, transverse=transverse,
+                       logscale=False)
 
-root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/noise_model/"
-pc.make_cube_movie(root_directory + "completeness_model_41-73_15modes.npy",
-                "completeness_model_41-73_15modes",
-                "Completeness", cube_frame_dir + "completeness_model_41-73_15modes",
-                sigmarange=5., ignore=-1.)
-sys.exit()
-root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/noise_model/"
-pc.make_cube_movie(root_directory + "noise_model_41-73_15modes.npy",
-                "noise_model_41-73_15modes",
-                "Temperature", cube_frame_dir + "noise_model_41-73_15modes",
-                sigmarange=5., ignore=-1.)
-sys.exit()
+    pc.make_cube_movie(filename1,
+                       title, cube_frame_dir, sigmarange=sigmarange,
+                       sigmacut=sigmacut, outputdir=outputdir, ignore=ignore,
+                       multiplier=multiplier, transverse=transverse,
+                       logscale=logscale, filetag_suffix="_1")
 
-root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/combined_maps/"
-pc.make_cube_movie(root_directory + "combined_41-73_clean_test.npy",
-                "combined_41-73_clean_test",
-                "Temperature", cube_frame_dir + "combined_41-73_clean_test",
-                sigmarange=8.)
-pc.make_cube_movie(root_directory + "combined_41-73_noise_inv_test.npy",
-                "combined_41-73_noise_inv_test",
-                "Covariance", cube_frame_dir + "combined_41-73_noise_inv_test",
-                sigmarange=-1)
-sys.exit()
+    pc.make_cube_movie(filename2,
+                       title, cube_frame_dir, sigmarange=sigmarange,
+                       sigmacut=sigmacut, outputdir=outputdir, ignore=ignore,
+                       multiplier=multiplier, transverse=transverse,
+                       logscale=logscale, filetag_suffix="_2")
 
-root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/combined_maps/"
-pc.make_cube_movie(root_directory + "combined_41-73_cleaned_clean_test.npy",
-                "combined_41-73_cleaned_clean_test",
-                "Temperature", cube_frame_dir + "combined_41-73_cleaned_clean_test",
-                sigmarange=4.)
-pc.make_cube_movie(root_directory + "combined_41-73_cleaned_noise_inv_test.npy",
-                "combined_41-73_cleaned_noise_inv_test",
-                "Covariance", cube_frame_dir + "combined_41-73_cleaned_noise_inv_test",
-                sigmarange=-1)
-sys.exit()
 
-root_directory = "/mnt/raid-project/gmrt/kiyo/wiggleZ/corr/"
-pc.make_cube_movie(root_directory + \
-                "sec_B_15hr_41-69_cleaned_clean_map_I_with_A.npy",
-                "sec_B_15hr_41-69_cleaned_clean_map_I_with_A",
-                "Temperature",
-                cube_frame_dir + "sec_B_15hr_41-69_cleaned_clean_map_I_with_A",
-                sigmarange=[-0.001, 0.001])
-pc.make_cube_movie(root_directory + \
-                "sec_A_15hr_41-69_cleaned_clean_map_I_with_B.npy",
-                "sec_A_15hr_41-69_cleaned_clean_map_I_with_B",
-                "Temperature",
-                cube_frame_dir + "sec_A_15hr_41-69_cleaned_clean_map_I_with_B",
-                sigmarange=[-0.001, 0.001])
-sys.exit()
+def plot_GBT_diff_tests():
+    tcv_15root = "/mnt/raid-project/gmrt/tcv/"
+    tcv_15root += "modetest/73_ABCD_all_15_modes_real_maponly/"
+    tcv_15map = tcv_15root + "sec_A_15hr_41-90_cleaned_clean_map_I_with_B.npy"
+    tcv_15noise = tcv_15root + "sec_A_15hr_41-90_cleaned_noise_inv_I_with_B.npy"
+    ers_15root = "/mnt/raid-project/gmrt/eswitzer/GBT/"
+    ers_15root += "cleaned_maps/freq_slices_refactor_tests_15modes/"
+    ers_15map = ers_15root + "sec_A_15hr_41-90_cleaned_clean_map_I_with_B.npy"
+    ers_15noise = ers_15root + "sec_A_15hr_41-90_cleaned_noise_inv_I_with_B.npy"
 
-root_directory = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/combined_maps/"
-pc.make_cube_movie(root_directory + "combined_41-69_cleaned_product.npy",
-                "combined_41-69_cleaned_product",
-                "Temperature", cube_frame_dir + "combined_41-69_cleaned_product",
-                sigmarange=20.)
-pc.make_cube_movie(root_directory + "combined_41-69_cleaned_clean.npy",
-                "combined_41-69_cleaned_clean",
-                "Temperature", cube_frame_dir + "combined_41-69_cleaned_clean",
-                sigmarange=[-0.01, 0.01])
-pc.make_cube_movie(root_directory + "combined_41-69_cleaned_noise_inv.npy",
-                "combined_41-69_cleaned_noise_inv",
-                "Covariance", cube_frame_dir + "combined_41-69_cleaned_noise_inv",
-                sigmarange=-1)
-sys.exit()
+    plot_difference(tcv_15map, ers_15map, "Temperature (mK)", sigmarange=6.,
+                    fractional=False, diff_filename="./map_difference.npy",
+                    transverse=False)
 
-root_directory = "/mnt/raid-project/gmrt/kiyo/wiggleZ/corr/"
-pc.make_cube_movie(root_directory + "sec_A_15hr_41-69_cleaned_clean_map_I.npy",
-                "sec_A_15hr_41-69_cleaned_clean_map_I",
-                "Temperature", cube_frame_dir + "sec_A_15hr_41-69_cleaned_clean_map_I",
-                sigmarange=[-0.01, 0.01])
-pc.make_cube_movie(root_directory + "sec_A_15hr_41-69_cleaned_noise_inv_I.npy",
-                "sec_A_15hr_41-69_cleaned_noise_inv_I",
-                "Covariance", cube_frame_dir + "sec_A_15hr_41-69_cleaned_noise_inv_I",
-                sigmarange=-1)
-pc.make_cube_movie(root_directory + "sec_B_15hr_41-69_cleaned_clean_map_I.npy",
-                "sec_B_15hr_41-69_cleaned_clean_map_I",
-                "Temperature", cube_frame_dir + "sec_B_15hr_41-69_cleaned_clean_map_I",
-                sigmarange=[-0.01, 0.01])
-pc.make_cube_movie(root_directory + "sec_B_15hr_41-69_cleaned_noise_inv_I.npy",
-                "sec_B_15hr_41-69_cleaned_noise_inv_I",
-                "Covariance", cube_frame_dir + "sec_B_15hr_41-69_cleaned_noise_inv_I",
-                sigmarange=-1)
-sys.exit()
+    plot_difference(tcv_15map, ers_15map, "Temperature (mK)", sigmarange=6.,
+                    fractional=False, diff_filename="./map_difference.npy",
+                    transverse=True)
 
-root_directory = "/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test/"
-maplist = ["sec_A_15hr_41-73_cleaned_clean_map_I_with_B",
-        "sec_A_15hr_41-73_cleaned_clean_map_I_with_C",
-        "sec_A_15hr_41-73_cleaned_clean_map_I_with_D",
-        "sec_B_15hr_41-73_cleaned_clean_map_I_with_A",
-        "sec_B_15hr_41-73_cleaned_clean_map_I_with_C",
-        "sec_B_15hr_41-73_cleaned_clean_map_I_with_D",
-        "sec_C_15hr_41-73_cleaned_clean_map_I_with_A",
-        "sec_C_15hr_41-73_cleaned_clean_map_I_with_B",
-        "sec_C_15hr_41-73_cleaned_clean_map_I_with_D",
-        "sec_D_15hr_41-73_cleaned_clean_map_I_with_A",
-        "sec_D_15hr_41-73_cleaned_clean_map_I_with_B",
-        "sec_D_15hr_41-73_cleaned_clean_map_I_with_C"]
-covlist = ["sec_A_15hr_41-73_cleaned_noise_inv_I_with_B",
-        "sec_A_15hr_41-73_cleaned_noise_inv_I_with_C",
-        "sec_A_15hr_41-73_cleaned_noise_inv_I_with_D",
-        "sec_B_15hr_41-73_cleaned_noise_inv_I_with_A",
-        "sec_B_15hr_41-73_cleaned_noise_inv_I_with_C",
-        "sec_B_15hr_41-73_cleaned_noise_inv_I_with_D",
-        "sec_C_15hr_41-73_cleaned_noise_inv_I_with_A",
-        "sec_C_15hr_41-73_cleaned_noise_inv_I_with_B",
-        "sec_C_15hr_41-73_cleaned_noise_inv_I_with_D",
-        "sec_D_15hr_41-73_cleaned_noise_inv_I_with_A",
-        "sec_D_15hr_41-73_cleaned_noise_inv_I_with_B",
-        "sec_D_15hr_41-73_cleaned_noise_inv_I_with_C"]
+    plot_difference(tcv_15noise, ers_15noise, "log inv. covariance", sigmarange=-1.,
+                    multiplier=1., logscale=True, fractional=True,
+                    diff_filename="./noise_inv_fractional_difference.npy",
+                    transverse=False)
 
-for tagname in maplist:
-    pc.make_cube_movie(root_directory + tagname + ".npy",
-                tagname, "Temperature", cube_frame_dir + tagname)
-for tagname in covlist:
-    pc.make_cube_movie(root_directory + tagname + ".npy",
-                tagname, "Covariance", cube_frame_dir + tagname)
+    plot_difference(tcv_15noise, ers_15noise, "log inv. covariance", sigmarange=-1.,
+                    multiplier=1., logscale=True, fractional=True,
+                    diff_filename="./noise_inv_fractional_difference.npy",
+                    transverse=True)
 
+
+if __name__ == "__main__":
+    #plot_GBT_mapset():
+    #plot_GBT_simset():
+    plot_GBT_diff_tests()

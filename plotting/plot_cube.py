@@ -36,12 +36,15 @@ def plot_single(plotitem):
 
 # TODO: delete frames once generated
 def make_cube_movie(cubename, colorbar_title, cube_frame_dir,
-                    outputdir="./", sigmarange=3., ignore=None, multiplier=1.,
-                    transverse=False, title=None):
+                    filetag_suffix="",
+                    outputdir="./", sigmarange=6., ignore=None, multiplier=1.,
+                    transverse=False, title=None, sigmacut=None, logscale=False):
     """Make a stack of spatial slice maps and animate them
     transverse plots along RA and freq and image plane is in Dec
+    First mask any points that exceed `sigmacut`, and then report the extent of
+    `sigmarange` away from the mean
     """
-    cube = algebra.make_vect(algebra.load(cubename)) * multiplier
+    # set up the labels:
     tag = ".".join(cubename.split(".")[:-1])  # extract root name
     tag = tag.split("/")[-1]
     fileprefix = cube_frame_dir + tag
@@ -54,10 +57,36 @@ def make_cube_movie(cubename, colorbar_title, cube_frame_dir,
     if not title:
         title = tag
 
-    if ignore:
-        cube[cube == ignore] = ma.masked
-    cube_mean = ma.mean(cube)
-    cube_std = ma.std(cube)
+    # prepare the data
+    cube = algebra.make_vect(algebra.load(cubename)) * multiplier
+    if logscale:
+        cube = np.log10(cube)
+
+    isnan = np.isnan(cube)
+    isinf = np.isinf(cube)
+    maskarray = ma.mask_or(isnan, isinf)
+
+    if ignore is not None:
+        maskarray = ma.mask_or(maskarray, (cube == ignore))
+
+    if sigmacut:
+        #np.set_printoptions(threshold=np.nan, precision=4)
+        deviation = np.abs((cube-np.mean(cube))/np.std(cube))
+        extend_maskarray = (cube > (sigmacut * deviation))
+        maskarray = ma.mask_or(extend_maskarray, maskarray)
+
+    mcube = ma.masked_array(cube, mask=maskarray)
+
+    try:
+        whmaskarray = np.where(maskarray)[0]
+        mask_fraction = float(len(whmaskarray))/float(cube.size)
+    except:
+        mask_fraction = 0.
+
+    print "fraction of map clipped: %f" % mask_fraction
+    (cube_mean, cube_std) = (mcube.mean(), mcube.std())
+    print "cube mean=%g std=%g" % (cube_mean, cube_std)
+
     try:
         len(sigmarange)
         color_axis = np.linspace(sigmarange[0], sigmarange[1],
@@ -66,10 +95,12 @@ def make_cube_movie(cubename, colorbar_title, cube_frame_dir,
         if (sigmarange > 0.):
             color_axis = np.linspace(cube_mean - sigmarange * cube_std,
                                     cube_mean + sigmarange * cube_std,
-                                    100, endpoint=True)
+                                    500, endpoint=True)
         else:
-            color_axis = np.linspace(np.min(cube),  np.max(cube),
-                                    100, endpoint=True)
+            color_axis = np.linspace(ma.min(mcube),  ma.max(mcube),
+                                    500, endpoint=True)
+
+    print "using range: [%g, %g]" % (np.min(color_axis), np.max(color_axis))
 
     freq_axis = cube.get_axis('freq')
     freq_axis /= 1.e6  # convert to MHz
@@ -92,8 +123,8 @@ def make_cube_movie(cubename, colorbar_title, cube_frame_dir,
     pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
     pool.map(plot_single, runlist)
 
-    subprocess.check_call(('ffmpeg', '-r', '10', '-y', '-i', cube_frame_dir + tag +\
-               '%03d.png', outputdir + tag + orientation + '.mp4'))
+    subprocess.check_call(('ffmpeg', '-r', '10', '-y', '-i', cube_frame_dir + tag + \
+               '%03d.png', outputdir + tag + filetag_suffix + orientation + '.mp4'))
 
     for fileindex in range(len(runlist)):
         os.remove(fileprefix + str('%03d' % fileindex) + '.png')
