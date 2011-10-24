@@ -9,10 +9,11 @@ from core import constants as cc
 import multiprocessing
 from utils import data_paths
 import sys
+from numpy import random
 
 
 # TODO: confirm ra=x, dec=y (thetax = 5, thetay = 3 in 15hr)
-def realize_simulation(template_map, streaming=True):
+def realize_simulation(template_map, streaming=True, seed=None, refinement=1):
     """do basic handling to call Richard's simulation code
     here we use 300 h km/s from WiggleZ for streaming dispersion
     Notes on foreground calls for the future (also copy param member func.):
@@ -26,7 +27,10 @@ def realize_simulation(template_map, streaming=True):
     else:
         simobj = corr21cm.Corr21cm.like_kiyo_map(template_map)
 
-    return simobj.get_kiyo_field()
+    if seed is not None:
+        random.seed(seed)
+
+    return simobj.get_kiyo_field(refinement=refinement)
 
 
 def make_simulation_set(template_file, outfile_raw, outfile_beam,
@@ -74,7 +78,21 @@ def wrap_sim(runitem):
                         outfile_beam_plus_data, streaming=streaming)
 
 
-# TODO: have this use the path data base
+def test_scheme(template_file, sim_filename1, sim_filename2):
+    r"""look at some differences between maps"""
+    template_map = algebra.make_vect(algebra.load(template_file))
+    gbtsim1 = realize_simulation(template_map, streaming=True,
+                                seed=5489, refinement=1.)
+    gbtsim2 = realize_simulation(template_map, streaming=False,
+                                    seed=5489, refinement=1.)
+
+    sim_map1 = algebra.make_vect(gbtsim1, axis_names=('freq', 'ra', 'dec'))
+    sim_map2 = algebra.make_vect(gbtsim2, axis_names=('freq', 'ra', 'dec'))
+    sim_map1.copy_axis_info(template_map)
+    sim_map2.copy_axis_info(template_map)
+    algebra.save(sim_filename1, sim_map1)
+    algebra.save(sim_filename2, sim_map2)
+
 def generate_sim(template_key, output_key, output_beam_key,
                  output_beam_plus_data_key, streaming=True, parallel=True):
     """generate simulations
@@ -107,10 +125,8 @@ def generate_sim(template_key, output_key, output_beam_key,
             wrap_sim(runitem)
 
 
-if __name__ == '__main__':
-
+def generate_full_simset():
     # alternative template: 'GBT_15hr_Liviu_15mode'
-
     # 15 hr
     generate_sim('GBT_15hr_map', 'sim_15hr',
                  'sim_15hr_beam', 'sim_15hr_beam_plus_data',
@@ -140,3 +156,14 @@ if __name__ == '__main__':
     generate_sim('GBT_1hr_map', 'simvel_1hr',
                  'simvel_1hr_beam', 'simvel_1hr_beam_plus_data',
                   streaming=True, parallel=True)
+
+def run_scheme_test():
+    template_file = "/mnt/raid-project/gmrt/tcv/maps/sec_A_15hr_41-90_clean_map_I.npy"
+    sim_filename1 = "sim_streaming1.npy"
+    sim_filename2 = "sim_streaming2.npy"
+    test_scheme(template_file, sim_filename1, sim_filename2)
+
+
+if __name__ == '__main__':
+    #generate_full_simset()
+    run_scheme_test()

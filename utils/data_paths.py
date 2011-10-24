@@ -97,11 +97,11 @@ def path_properties(pathname, intend_write=False, intend_read=False,
         print entry
 
     if intend_read and not readable:
-        print "ERROR: " + entry
+        print "ERROR: no file to read"
         sys.exit()
 
     if intend_write and not writable:
-        print "ERROR: " + entry
+        print "ERROR: can not write this file"
         sys.exit()
 
     if intend_write and file_exists:
@@ -178,7 +178,7 @@ class DataPath(object):
     git_SHA: ...
     git_blame: ...
     git_date: ...
-    DataPath: ... files registered; database size = ...
+    DataPath: ... files registered; database size in memory ...
 
     # pick index '44' of the 15hr sims
     >>> datapath_db.fetch("sim_15hr_beam", pick='44')
