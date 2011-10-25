@@ -192,27 +192,13 @@ class NewSlices(object):
             # Correlate the maps with multiprocessing. Note that the
             # correlations are saved to file separately then loaded in
             # together because that's (one way) how multiprocessing works.
-            fore_pairs = []
-            processes_list = []
-            for pair_index in range(0, num_map_pairs):
-                # Calls 1 multiproc (which governs the correlating) for each
-                # pair on a new CPU so you can have all pairs working at once.
-                multi = multiprocessing.Process(target=multiproc,
-                                                args=([pairs[pair_index],
-                                                       params['output_root'],
-                                                       pair_index, False]))
+            runlist = [(pairs[pair_index],
+                        params['output_root'],
+                        pair_index, False) for
+                        pair_index in range(0, num_map_pairs)]
 
-                processes_list.append(multi)
-
-                multi.start()
-
-            # Waits for all correlations to finish before continuing.
-            while True in [multi.is_alive() for multi in processes_list]:
-                print "processing"
-                time.sleep(5)
-
-            # just to be safe
-            time.sleep(1)
+            pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+            pool.map(multiproc, runlist)
 
             # Load the correlations and save them to each pair. The pairs that
             # got passed to multiproc are not the same ones as ones in
@@ -221,6 +207,7 @@ class NewSlices(object):
             file_name = params['output_root']
             file_name += "map_pair_for_freq_slices_fore_corr_"
 
+            fore_pairs = []
             for count in range(0, num_map_pairs):
                 print "Loading correlation for pair %d" % (count)
                 pickle_handle = open(file_name + str(count) + ".pkl", "r")
@@ -298,30 +285,19 @@ class NewSlices(object):
 
         # Correlate the cleaned maps.
         # Here we could calculate the power spectrum instead eventually.
+        runlist = [(pairs[pair_index],
+                    params['output_root'],
+                    pair_index, True) for
+                    pair_index in range(0, num_map_pairs)]
 
-        # Same as previous multiproc, but this time, you get the final
-        # correlation for each pair.
-        temp_pair_list = []
-        processes_list = []
-        for pair_index in range(0, num_map_pairs):
-            multi = multiprocessing.Process(target=multiproc,
-                                            args=([pairs[pair_index],
-                                                   params['output_root'],
-                                                   pair_index, True]))
+        pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+        pool.map(multiproc, runlist)
 
-            processes_list.append(multi)
-            multi.start()
-
-        while True in [multi.is_alive() for multi in processes_list]:
-            print "processing"
-            time.sleep(5)
-
-        # just to be safe
-        time.sleep(1)
         print "Loading map pairs back into program."
         file_name = params['output_root']
         file_name += "map_pair_for_freq_slices_corr_"
 
+        temp_pair_list = []
         for count in range(0, num_map_pairs):
             print "Loading correlation for pair %d" % (count)
             pickle_handle = open(file_name + str(count) + ".pkl", "r")
@@ -332,7 +308,6 @@ class NewSlices(object):
             pickle_handle.close()
 
         self.pairs = copy.deepcopy(temp_pair_list)
-        print "gung ho!"
 
         # Get the average correlation and its standard deviation.
         corr_list = []
@@ -393,7 +368,7 @@ class NewSlices(object):
                 algebra.save(right_modes_savename, pair.right_modes)
 
 
-def multiproc(pair, save_dir, pair_number, final):
+def multiproc(runitem):
     r"""Do the correlation for a map_pair `pair`.
 
     The correlation is then saved to a numbered file corresponding to
@@ -413,9 +388,15 @@ def multiproc(pair, save_dir, pair_number, final):
         the final correlation is being done. Dont mix these up!
 
     """
+    (pair, save_dir, pair_number, final) = run_item
 
     print "freq_slices multiprocessing starting on " + repr(pair_number)
-    # Having a function looks nicer than an if statement.
+
+    if final:
+        pair.corr, pair.counts = pair.correlate(pair.lags, speedup=True)
+    else:
+        pair.fore_corr, pair.fore_counts = pair.correlate(pair.lags, speedup=True)
+
     control_correlation(pair, pair.lags, final)
     file_name = save_dir
     # Make sure folder is there.
@@ -439,29 +420,6 @@ def multiproc(pair, save_dir, pair_number, final):
     cPickle.dump(to_save, pickle_handle)
     pickle_handle.close()
     return
-
-
-def control_correlation(pair, lags, final):
-    r"""Call the 1st or 2nd correlation on the map_pair.
-
-    Saves the correlation and its weight in `pair`.
-    For multiprocessing since it cannot deal with return values.
-
-    Parameters
-    ----------
-    pair: map_pair
-        A pair with 2 maps that will be correlated.
-    lags: tuple of ints
-        The angular lags.
-    final: bool
-        If True, then the fore correlation is being done. If False, then the
-        final correlation is being done. Don't mix these up!
-
-    """
-    if final:
-        pair.corr, pair.counts = pair.correlate(lags, speedup=True)
-    else:
-        pair.fore_corr, pair.fore_counts = pair.correlate(lags, speedup=True)
 
 
 # TODO: phase this out because of annoying import dependencies

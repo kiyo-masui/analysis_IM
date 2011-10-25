@@ -78,9 +78,6 @@ def radio_correlation(init_filename):
     inf_array = np.isinf(noiseinv_radio2)
     noiseinv_radio2[inf_array] = 0.
 
-    if params['convolve']:
-        print "ERROR: simulations should be convolved by the beam already!"
-
     freqlist = params['freq']  # full: range(map_radio.shape[0])
 
     algebra.compressed_array_summary(map_radio1[freqlist, :, :],
@@ -98,6 +95,10 @@ def radio_correlation(init_filename):
 
     if params['subtract_mean']:
         cross_pair.subtract_weighted_mean()
+
+    if params['convolve']:
+        print "WARNING: you are degrading the beams"
+        cross_pair.degrade_resolution()
 
     (corr, counts) = cross_pair.correlate(params['lags'],
                             speedup=params['speedup'])

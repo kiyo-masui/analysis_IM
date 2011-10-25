@@ -295,6 +295,7 @@ def collapse_correlation_1d(corr, f_lags, a_lags, weights=None):
     a_fact = 34.0  # Mpc/h per degree at 800MHz.
     f_fact = 4.5   # Mpc/h per MHz at 800MHz.
     # Hard code lags in MPc/h.
+    #nbins = 10
     nbins = 15
     lags = sp.empty(nbins)
     lags[0] = 2.0
