@@ -7,6 +7,8 @@ the pointing operator (`Pointing`) and the time domain noise operator
 """
 
 import math
+import threading
+from Queue import Queue
 
 import scipy as sp
 import numpy.ma as ma
@@ -27,7 +29,10 @@ import matplotlib.pyplot as plt
 
 # Constant that represents a very high noise level.  Setting the noise of a
 # mode to this number deweights that mode.
-T_infinity = 10000.0  # Kelvin**2
+# 100 K**2 seems like a good number.  Bigger than any actual noise mode we would
+# encounter, but not so big that it screws up numerical stability.
+T_infinity = 100.0  # Kelvin**2
+#T_infinity = 10.  # Kelvin**2
 
 prefix ='dm_'
 params_init = {               
@@ -80,9 +85,10 @@ class DirtyMap(object):
         """Reads a desired noise parameter for the current data."""
         pass
 
-    def execute(self):
+    def execute(self, n_processes):
         """Driver method."""
         
+        self.n_processes = n_processes
         params = self.params
         n_pols = len(params["polarizations"])
         n_bands = len(params["bands"])
@@ -93,6 +99,8 @@ class DirtyMap(object):
                 # Initialization of the outputs.
                 # XXX
                 self.n_chan = n_chan
+                self.n_ra = n_ra
+                self.n_dec = n_dec
                 self.map = map
                 self.cov_inv = cov_inv
                 # XXX
@@ -111,20 +119,19 @@ class DirtyMap(object):
         cov_inv = self.cov_inv
         n_files = len(params["file_middles"])
         # Initialize lists for the data and the noise.
-        data = []
-        noise = []
-        pointing = []
+        data_list = []
+        noise_list = []
+        pointing_list = []
         # Loop over the files get the data and build the noise.
-        # XXX change this to an iterator over blocks (scans or files).
+        # TODO change this to an iterator over blocks (scans or files).
         for ii in xrange(n_files):
             # Setting the file number tells the IO methods which data to read.
             self.file_number = ii
             # Get all the information we need from the data files.
+            # ### Divid by 0 error here.
             time_stream, ra, dec, az, el, time, mask_inds = \
                     self.preprocess_data()
             P = Pointing(("ra", "dec"), (ra, dec), map, "linear")
-            data.append(time_stream)
-            pointing.append(P)
             # Now build up our noise model for this piece of data.
             N = Noise(time_stream, time)
             N.add_mask(mask_inds)
@@ -146,14 +153,67 @@ class DirtyMap(object):
             if params['deweight_time_slope']:
                 N.deweight_time_slope()
             N.finalize()
-            N.set_pointing(P)
-            noise.append(N)
+            # Make the dirty map.
+            weighted_time_stream = N.weight_time_stream(time_stream)
+            map += P.apply_to_time_axis(weighted_time_stream)
+            # Store all these for later.
+            data_list.append(time_stream)
+            pointing_list.append(P)
+            noise_list.append(N)
         # Now we have lists with all the data and thier noise.  Accumulate it
         # into a dirty map and its covariance.
-        n_time_blocks = len(data)
-        #for ii in xrange(self.n_chan):
+        n_time_blocks = len(data_list)
+        # Initialize the queue of work to be done.
+        index_queue = Queue()
+        # Define a function that takes work off a queue and does it.  Variables
+        # local to this function prefixed with 'thread_'.
+        def thread_work():
+            while True:
+                thread_inds = index_queue.get()
+                # None will be the flag that there is no more work to do.
+                if thread_inds is None:
+                    return
+                thread_f_ind = thread_inds[0]
+                thread_ra_ind = thread_inds[1]
+                thread_cov_inv_row = sp.zeros((self.n_dec, self.n_chan,
+                                               self.n_ra, self.n_dec),
+                                              dtype=float)
+                for thread_kk in xrange(n_time_blocks):
+                    thread_P = pointing_list[thread_kk]
+                    thread_N = noise_list[thread_kk]
+                    thread_P.noise_to_map_domain(thread_N, thread_f_ind, 
+                                    thread_ra_ind, thread_cov_inv_row)
+                cov_inv[thread_f_ind,thread_ra_ind,...] = thread_cov_inv_row
+        # Start the worker threads.
+        thread_list = []
+        for ii in range(self.n_processes):
+            T = threading.Thread(target=thread_work)
+            T.start()
+            thread_list.append(T)
+        # Now put work on the queue for the threads to do.
+        for ii in xrange(self.n_chan):
+            for jj in xrange(self.n_ra):
+                index_queue.put((ii, jj))
+        # At the end of the queue, tell the threads that they are done.
+        for ii in range(self.n_processes):
+            index_queue.put(None)
+        # Wait for the threads.
+        for T in thread_list:
+            T.join()
+        if not index_queue.empty():
+            raise RuntimeError("A thread had an error.")
+        # Now go through and make sure that the noise isn't singular by adding
+        # a bit of information to untouched pixels.
+        diag_slice = slice(None, None, 
+                           self.n_ra * self.n_dec * self.n_chan + 1)
+        cov_diag = cov_inv.flat[diag_slice]
+        untouched_inds = cov_diag < 1.0e-8 / T_infinity
+        tmp_add = sp.zeros(cov_diag.size, dtype=float)
+        tmp_add[untouched_inds] = 1.0 / T_infinity
+        cov_inv.flat[diag_slice] += tmp_add
 
 
+#### Classes ####
 
 class Pointing(object):
     """Class represents the pointing operator.
@@ -326,6 +386,24 @@ class Pointing(object):
                         self._weights[ii, jj]
         return matrix
 
+    def noise_to_map_domain(self, Noise, f_ind, ra_ind, map_noise_inv):
+        """Convert noise to map space.
+        
+        For performace and IO reasons this is done with a call to this function
+        for each frequency row and each ra row.  All dec rows and all columns
+        are handled in this function simultaniousely.
+
+        This function is designed to be thread safe in that if it is called
+        from two separate threads but with different `f_ind` or `ra_ind`, there
+        should be no race conditions.
+        """
+        
+        Noise._assert_finalized()
+        _mapmaker_c.update_map_noise_chan_ra_row(Noise.diagonal_inv,
+                Noise.freq_modes, Noise.time_modes, Noise.freq_mode_update,
+                Noise.time_mode_update, Noise.cross_update, self._pixel_inds,
+                self._weights, f_ind, ra_ind, map_noise_inv)
+        
 
 class Noise(object):
     """Object that represents the noise matrix for time stream data.
@@ -451,7 +529,10 @@ class Noise(object):
         """
         
         start = self.add_time_modes(1)
-        self.time_modes[start,:] = 1.0/math.sqrt(self.n_time)
+        # Purposely not normalized to better represent the 'mean mode'.
+        # XXX To make this normalized, need to make a time_modes_noise matrix
+        # and put the extra factors in it (like in time_modes_noise).
+        self.time_modes[start,:] = 1.0
 
     def deweight_time_slope(self):
         """Deweights time slope in each channel.
@@ -462,7 +543,8 @@ class Noise(object):
 
         start = self.add_time_modes(1)
         mode = self.time - sp.mean(self.time)
-        mode /= sp.sqrt(sp.sum(mode**2))
+        # Purposely normalized to sqrt(n).
+        mode *= sp.sqrt(self.n_time) / sp.sqrt(sp.sum(mode**2)) 
         self.time_modes[start,:] = mode
 
     def add_correlated_over_f(self, amp, index, f0):
@@ -512,7 +594,7 @@ class Noise(object):
         # Multiply by number of channels since this is the mean, not the sum
         # (Sept 15, 2011 in Kiyo's notes).
         self.freq_mode_noise *= self.n_chan
-
+      
     def finalize(self):
         """Tell the class that you are done building the matrix.
         """
@@ -598,6 +680,12 @@ class Noise(object):
         update_matrix[m * n_time:,:m * n_time].flat[...] = \
             tmp_mat.flat
         update_matrix_inv = linalg.inv(update_matrix)
+        # TODO: Som sort of condition number check here?
+        #if hasattr(self, 'flag'):
+        #    e, v = linalg.eigh(update_matrix)
+        #    print "Update term condition number:", max(e)/min(e)
+        #    e, v = linalg.eigh(update_matrix_inv)
+        #    print "Update term  inverse condition number:", max(e)/min(e)
         # Copy the update terms back to thier own matrices and store them.
         freq_mode_update.flat[...] = \
                 update_matrix_inv[:m * n_time,:m * n_time].flat
@@ -660,14 +748,30 @@ class Noise(object):
                 tmp_mat = al.partial_dot(time_modes.mat_transpose(), 
                                          this_time_update)
                 out[ii,:,jj,:] -= al.partial_dot(tmp_mat, time_modes)
+                # XXX
+                #if hasattr(self, 'flag'):
+                #    e, v = linalg.eigh(out[ii,:,jj,:])
+                #    print "Intermediate 1 eig range:", max(-e), min(-e)
+                ###
                 # Multiply by thermal.
                 out[ii,:,jj,:] *= self.diagonal_inv[ii,:,None]
                 out[ii,:,jj,:] *= self.diagonal_inv[jj,None,:]
+                # XXX
+                #if hasattr(self, 'flag'):
+                #    e, v = linalg.eigh(out[ii,:,jj,:])
+                #    print "Intermediate 2 eig range:", max(-e), min(-e),
+                #    print max(-e)/min(-e)
+                #    print -e
+                ###
         # Add the thermal term.
         out.flat[::n_chan * n_time + 1] += self.diagonal_inv.flat[...]
+        # XXX
+        #if hasattr(self, 'flag'):
+        #    a = out.flat[::n_chan * n_time + 1] / self.diagonal_inv.flat[...]
+        #    print "subtraction precision loss:", max(a), min(a)
         return out
 
-    def noise_weight_time_stream(self, data):
+    def weight_time_stream(self, data):
         """Noise weight a timeleft_part_update_term.axes stream data vector.
         """
         
@@ -703,43 +807,10 @@ class Noise(object):
         update_term = al.partial_dot(diagonal_inv, update_term)
         # Combine the terms.
         out = diag_weighted - update_term
-        return out
+        return out 
 
-    def set_pointing(self, P):
-        """Sets the pointing for the for the noise.
 
-        Calling this function lets the Noise class know how to transform to map
-        space.
-        """
-        
-        if len(P._map_shape) != 2:
-            raise NotImplementedError("Only 2 D pointings implemented.")
-        self.pointing_inds, self.pointing_weights = P.get_sparse()
-
-    def update_map_noise(self, f_ind, pixel_inds, map_noise_inv):
-        """Convert noise to map space.
-
-        We will build the matrix one row at a time for performance reasons.
-        This is implemented without using the algebra interface for the arrays,
-        again for performance.
-        """
-        
-        self._assert_finalized()
-        if pixel_inds is None:
-            # Doing one frequency row at a time but all pixels simultaniousely.
-            _mapmaker_c.update_map_noise_freq(self.diagonal_inv, self.freq_modes,
-                    self.time_modes, self.freq_mode_update,
-                    self.time_mode_update, self.cross_update, 
-                    self.pointing_inds, self.pointing_weights, 
-                    f_ind, map_noise_inv)
-        else:
-            # One matrix row at a time.
-            _mapmaker_c.update_map_noise_row(self.diagonal_inv, self.freq_modes,
-                    self.time_modes, self.freq_mode_update,
-                    self.time_mode_update, self.cross_update, 
-                    self.pointing_inds, self.pointing_weights, 
-                    pixel_inds[0], pixel_inds[1], f_ind, map_noise_inv)
-        
+#### Utilities ####
 
 def trim_time_stream(data, coords, lower_bounds, upper_bounds):
     """Discards data that is out of the map bounds.

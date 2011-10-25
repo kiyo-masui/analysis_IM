@@ -6,6 +6,7 @@ import scipy as sp
 import scipy.fftpack as fft
 from numpy import random
 import scipy.linalg as linalg
+import matplotlib.pyplot as plt
 
 import noise_power as npow
 from core import fitsGBT
@@ -101,7 +102,7 @@ class TestWindowedPower(unittest.TestCase) :
         for ii in range(n_trials) :
             wave = self.amp1*random.randn(n_points)
             p = npow.windowed_power(wave, window)
-            power += npow.prune_power(p)
+            power += npow.prune_power(p).real
         power /= n_trials
         self.assertTrue(sp.allclose(power/self.amp1**2, 1.0,
                                     atol=4.0*(2.0/sp.sqrt(n_trials))))
@@ -123,7 +124,7 @@ class TestWindowedPower(unittest.TestCase) :
             wave = self.amp1*random.randn(n_points)
             p = npow.windowed_power(wave*window1, window1, wave*window2,
                                        window2)
-            power += npow.prune_power(p)
+            power += npow.prune_power(p).real
         power /= n_trials
         self.assertTrue(sp.allclose(power/self.amp1**2, 1.0,
                                     atol=6.0*(2.0/sp.sqrt(n_trials))))
@@ -139,7 +140,7 @@ class TestWindowedPower(unittest.TestCase) :
         power = sp.zeros(n_points//2)
         for ii in range(n_trials) :
             wave = self.amp1*random.randn(n_points)
-            power += npow.prune_power(npow.calculate_power(wave))
+            power += npow.prune_power(npow.calculate_power(wave)).real
         power /= n_trials
         power = npow.make_power_physical_units(power, dt)
         freqs = npow.ps_freq_axis(dt, n_points)

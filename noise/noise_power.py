@@ -330,7 +330,7 @@ def windowed_power(data1, window1, data2=None, window2=None, axis=-1) :
     are simply masks: arrays of 0s and 1s, but the function should work fine
     for more general windows.
     """
-
+    
     if data2 is None :
         data2 = data1
     if window2 is None :
@@ -347,7 +347,7 @@ def calculate_power(data1, data2=None, axis=-1):
     If input data has units Kelvin, power spectrum has units Kelvin**2 (not
     Kelvin**2 / bin).
     """
-
+    
     if data2 is None :
         data2 = data1
     power = fft.fft(data1, axis=axis)*fft.fft(data2, axis=axis).conj()
@@ -443,6 +443,8 @@ def overf_power_spectrum(amp, index, f0, dt, n):
     freq = sp.arange(n, dtype=float)
     freq[n//2+1:] -= freq[-1] + 1
     freq = abs(freq)*df
+    # 0th mode is meaningless.  Set to unity to avoid errors.
+    freq[0] = 1
     # Make the power spectrum.
     power = amp*(freq/f0)**index
     # Set the mean mode explicitly to 0.
