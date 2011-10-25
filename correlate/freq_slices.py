@@ -317,7 +317,8 @@ class NewSlices(object):
         self.corr_final, self.corr_std = cf.get_corr_and_std_3d(corr_list)
 
         if params['pickle_slices']:
-            pickle_slices(self)
+            pickle_slices(self, self.params['output_root'] +
+                                'New_Slices_object.pkl')
 
         return
 
@@ -420,36 +421,6 @@ def multiproc(runitem):
     cPickle.dump(to_save, pickle_handle)
     pickle_handle.close()
     return
-
-
-# TODO: phase this out because of annoying import dependencies
-def pickle_slices(slice_obj):
-    r"""Save the NewSlices object with ALL the info to file.
-
-    Pickle slice_obj to the output directory from the ini file.
-
-    Parameters
-    ----------
-    slice_obj: NewSlices
-        The object to get pickled. The output directory is saved in itself.
-
-    Notes
-    -----
-    If you pickle slice_obj from outide of this class, to use it,
-    you can import: 'from correlate import freq_slices as fs'
-    But since the pickle has been done from inside this class, you must:
-    'from correlate.freq_slices import *'
-
-    """
-    # Check folder exists.
-    out_root = slice_obj.params['output_root']
-    if not os.path.isdir(out_root):
-        os.mkdir(out_root)
-    # Save.
-    pickle_file = out_root + 'New_Slices_object.pkl'
-    pickle_handle = open(pickle_file, 'w')
-    cPickle.dump(slice_obj, pickle_handle)
-    pickle_handle.close()
 
 
 # For running this module from the command line

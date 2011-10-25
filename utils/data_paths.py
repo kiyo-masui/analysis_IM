@@ -1,144 +1,12 @@
 """DataPath class specification"""
-import os
 import sys
 import time
 import datetime
 import urllib2
 import subprocess
 import getpass
-import hashlib
 import ast
-
-
-def path_properties(pathname, intend_write=False, intend_read=False,
-                    file_index="", prefix="", silent=False, is_file=False,
-                    die_overwrite=False):
-    r"""Check various properties about the path, print the result
-    if `intend_write` then die if the path does not exist or is not writable
-    if `intend_read` then die if the path does not exist
-    `file_index` is an optional mark to put in front of the file name
-    `prefix` is an optional mark to prefix the file property output
-    `silent` turns off printing unless there was an intend_r/w error
-    `is_file` designates a file; if it does not exist check if the path is
-    writable.
-
-    # Usage examples:
-    >>> path_properties("this_does_not_exist.txt", is_file=True)
-    => this_does_not_exist.txt: does not exist,
-        but path: ./ exists, is writable, is not readable.
-    (True, False, True, False, '...')
-
-    >>> path_properties("/tmp/nor_does_this.txt", is_file=True)
-    => /tmp/nor_does_this.txt: does not exist,
-        but path: /tmp/ exists, is writable, is not readable.
-    (True, False, True, False, '...')
-
-    # here's one that you should not be able to write to
-    >>> path_properties("/var/nor_does_this.txt", is_file=True)
-    => /var/nor_does_this.txt: does not exist,
-        but path: /var/ exists, is not writable, is not readable.
-    (True, False, False, False, '...')
-
-    # here's one that definitely exists
-    >>> path_properties(__file__, is_file=True)
-    => ...: exists, is writable, is readable.
-    (True, True, True, False, '...')
-
-    # test a writeable directory that exists
-    >>> path_properties('/tmp/')
-    => /tmp/: exists, is writable, is readable.
-    (True, True, True, True, '...')
-    """
-    entry = "%s=> %s%s:" % (prefix, file_index, pathname)
-
-    exists = os.access(pathname, os.F_OK)
-    # save the state of the file (exist will later specify if the parent dir
-    # exists, but we also care about this specific file)
-    file_exists = exists
-    readable = os.access(pathname, os.R_OK)
-    writable = os.access(pathname, os.W_OK)
-    executable = os.access(pathname, os.X_OK)
-    if exists:
-        modtime = time.ctime(os.path.getmtime(pathname))
-    else:
-        modtime = None
-
-    # if this is a file that does not exist, check the directory
-    if not exists and is_file:
-        directory = "/".join(pathname.split("/")[:-1])
-        if directory == "":
-            directory = "."
-        directory += "/"
-
-        writable = os.access(directory, os.W_OK)
-        exists = os.access(directory, os.F_OK)
-        if exists:
-            modtime = time.ctime(os.path.getmtime(directory))
-
-        readable = False
-        entry += " does not exist, but path: %s" % directory
-
-    if exists:
-        entry += " exists,"
-
-        if writable:
-            entry += " is writable,"
-        else:
-            entry += " is not writable,"
-
-        if readable:
-            entry += " is readable."
-        else:
-            entry += " is not readable."
-    else:
-        entry += " does not exist"
-
-    if not silent:
-        print entry
-
-    if intend_read and not readable:
-        print "ERROR: no file to read"
-        sys.exit()
-
-    if intend_write and not writable:
-        print "ERROR: can not write this file"
-        sys.exit()
-
-    if intend_write and file_exists:
-        if die_overwrite:
-            print "OVERWRITE ERROR: " + entry
-            sys.exit()
-        else:
-            print "WARNING: you will overwrite " + entry
-
-    return (exists, readable, writable, executable, modtime)
-
-
-def hashfile(filename, hasher=hashlib.md5(), blocksize=65536, max_size=1.e8):
-    r"""determine the hash of a file in blocks
-    if it exceeds `max_size` just report the modification time
-    if the file does not exist, report '-1'
-    """
-    if os.access(filename, os.F_OK):
-        if (os.path.getsize(filename) < max_size):
-            afile = open(filename, 'r')
-            buf = afile.read(blocksize)
-            while len(buf) > 0:
-                hasher.update(buf)
-                buf = afile.read(blocksize)
-
-            afile.close()
-            hash = hasher.hexdigest()
-        else:
-            hash = "too_big"
-
-        modtime = time.ctime(os.path.getmtime(filename))
-    else:
-        hash = "not_exist"
-        modtime = "not_exist"
-
-    return (hash, modtime)
-
+from utils import file_tools as ft
 
 def print_dictionary(dict_in, handle, key_list=None, prepend=""):
     r"""print a dictionary in a slightly nicer way
@@ -446,30 +314,30 @@ class DataPath(object):
 
         if 'file' in dbentry:
             pathout = dbentry['file']
-            path_properties(pathout, intend_write=intend_write,
-                            intend_read=intend_read, is_file=True,
-                            prefix=prefix, silent=silent)
+            ft.path_properties(pathout, intend_write=intend_write,
+                               intend_read=intend_read, is_file=True,
+                               prefix=prefix, silent=silent)
 
         if 'path' in dbentry:
             pathout = dbentry['path']
-            path_properties(pathout, intend_write=intend_write,
-                            intend_read=intend_read, is_file=False,
-                            prefix=prefix, silent=silent)
+            ft.path_properties(pathout, intend_write=intend_write,
+                               intend_read=intend_read, is_file=False,
+                               prefix=prefix, silent=silent)
 
         if 'filelist' in dbentry:
             pathout = (dbentry['listindex'], dbentry['filelist'])
             if pick:
                 pathout = pathout[1][pick]
-                path_properties(pathout, intend_write=intend_write,
-                                intend_read=intend_read, is_file=True,
-                                prefix=prefix, silent=silent)
+                ft.path_properties(pathout, intend_write=intend_write,
+                                   intend_read=intend_read, is_file=True,
+                                   prefix=prefix, silent=silent)
             else:
                 for item in pathout[0]:
                     filepath = pathout[1][item]
-                    path_properties(filepath, intend_write=intend_write,
-                                    intend_read=intend_read, is_file=True,
-                                    file_index=item, prefix=prefix,
-                                    silent=silent)
+                    ft.path_properties(filepath, intend_write=intend_write,
+                                       intend_read=intend_read, is_file=True,
+                                       file_index=item, prefix=prefix,
+                                       silent=silent)
 
         return pathout
 
@@ -517,13 +385,13 @@ class DataPath(object):
                     listindex = dbentry['listindex']
                     for listitem in listindex:
                         filename = dbentry['filelist'][listitem]
-                        hashdict[filename] = hashfile(filename)
+                        hashdict[filename] = ft.hashfile(filename)
                         hashlist.append(filename)
                         print "%s: %s" % (filename, hashdict[filename])
 
                 if 'file' in dbentry:
                     filename = dbentry['file']
-                    hashdict[filename] = hashfile(filename)
+                    hashdict[filename] = ft.hashfile(filename)
                     hashlist.append(filename)
                     print "%s: %s" % (filename, hashdict[filename])
 
