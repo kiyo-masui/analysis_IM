@@ -11,8 +11,8 @@ from kiyopy import parse_ini
 import kiyopy.utils
 from core import algebra
 from correlate import map_pair
-from utils import io_wrap
 from correlate import correlation_functions as cf
+from utils import file_tools as ft
 
 params_init = {
                # IO:
@@ -250,12 +250,12 @@ class NewSlices(object):
             self.pairs = pairs
 
             if params['save_svd_info']:
-                io_wrap.save_pickle(self.svd_info_list, params['svd_file'])
+                ft.save_pickle(self.svd_info_list, params['svd_file'])
         else:
             # The first correlation and svd has been skipped.
             # This means you already have the modes so you can just load
             # them from file.
-            self.svd_info_list = io_wrap.load_pickle(params['svd_file'])
+            self.svd_info_list = ft.load_pickle(params['svd_file'])
             # Set the svd info to the pairs.
             for i in range(0, len(pairs)):
                 svd_info = self.svd_info_list[i]
@@ -317,8 +317,8 @@ class NewSlices(object):
         self.corr_final, self.corr_std = cf.get_corr_and_std_3d(corr_list)
 
         if params['pickle_slices']:
-            pickle_slices(self, self.params['output_root'] +
-                                'New_Slices_object.pkl')
+            save_pickle(self, self.params['output_root'] + \
+                              'New_Slices_object.pkl')
 
         return
 

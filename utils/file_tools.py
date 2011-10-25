@@ -5,26 +5,37 @@ import sys
 import time
 
 
-def extract_rootdir(pathname):
-    directory = "/".join(pathname.split("/")[:-1])
-    if directory == "":
-        directory = "."
-    directory += "/"
-    return directory
-
-
-def pickle_save(input_obj, filename):
+def save_pickle(pickle_data, filename):
     r"""wrap cPickle; useful for general class load/save
     note that if you load a pickle outside of the class that saved itself, you
     must fully specify the class space as if you were the class, e.g.:
     from correlate.freq_slices import * to import the freq_slices object
     """
-    rootdir = extract_rootdir(filename)
-    if not os.path.isdir(rootdir):
-        os.mkdir(rootdir)
+    pickle_out_root = os.path.dirname(filename)
+    if not os.path.isdir(pickle_out_root):
+        os.mkdir(pickle_out_root)
+
     pickle_handle = open(filename, 'w')
-    cPickle.dump(input_obj, pickle_handle)
+    cPickle.dump(pickle_data, pickle_handle)
     pickle_handle.close()
+
+
+def load_pickle(filename):
+    r"""Return `pickle_data` saved in file with name `filename`.
+    """
+    pickle_handle = open(filename, 'r')
+    pickle_data = cPickle.load(pickle_handle)
+    pickle_handle.close()
+    return pickle_data
+
+
+def extract_rootdir(pathname):
+    r"""superceded by os.path.dirname(filename)"""
+    directory = "/".join(pathname.split("/")[:-1])
+    if directory == "":
+        directory = "."
+    directory += "/"
+    return directory
 
 
 def path_properties(pathname, intend_write=False, intend_read=False,
@@ -82,10 +93,7 @@ def path_properties(pathname, intend_write=False, intend_read=False,
 
     # if this is a file that does not exist, check the directory
     if not exists and is_file:
-        directory = "/".join(pathname.split("/")[:-1])
-        if directory == "":
-            directory = "."
-        directory += "/"
+        directory = os.path.dirname(pathname)
 
         writable = os.access(directory, os.W_OK)
         exists = os.access(directory, os.F_OK)
