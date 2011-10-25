@@ -27,8 +27,9 @@ class RebinTime(base_single.BaseSingle) :
                           + str(self.params['n_bins_combined']), ))
         return Data
 
-def rebin(Data, width, mean=False, by_nbins=False) :
+def rebin(Data, n_bins) :
     """The function that acctually does the rebinning on a Data Block."""
+    pass
     
 
 
