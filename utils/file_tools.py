@@ -12,7 +12,7 @@ def save_pickle(pickle_data, filename):
     note that if you load a pickle outside of the class that saved itself, you
     must fully specify the class space as if you were the class, e.g.:
     from correlate.freq_slices import * to import the freq_slices object
-    This clobbers anything in the requested file open as 'n'
+    This clobbers anything in the requested file.
     """
     pickle_out_root = os.path.dirname(filename)
     if not os.path.isdir(pickle_out_root):
@@ -158,16 +158,16 @@ def hashfile(filename, hasher=hashlib.md5(), blocksize=65536, max_size=1.e8):
                 buf = afile.read(blocksize)
 
             afile.close()
-            hash = hasher.hexdigest()
+            hash_digest = hasher.hexdigest()
         else:
-            hash = "too_big"
+            hash_digest = "too_big"
 
         modtime = time.ctime(os.path.getmtime(filename))
     else:
-        hash = "not_exist"
+        hash_digest = "not_exist"
         modtime = "not_exist"
 
-    return (hash, modtime)
+    return (hash_digest, modtime)
 
 
 class ClassPersistence(object):
@@ -228,6 +228,7 @@ class ClassPersistence(object):
             setattr(self, key, shelveobj[key])
         shelveobj.close()
 
+
 class TestClassPersistence(ClassPersistence):
     r"""Example class for ClassPersistence object
     One option the load_variables provides is to split the __init__ into to two
@@ -265,7 +266,8 @@ class TestClassPersistence(ClassPersistence):
 
     # with only one variable
     >>> test.shelve_variables(shelvefile, varlist=['var1'])
-    shelve_variables: shelving ['var1'] to file /tmp/testClassPersistence.shelve
+    shelve_variables: shelving ['var1'] to file
+        /tmp/testClassPersistence.shelve
     >>> testr = shelve.open(shelvefile)
     >>> print "recovered shelve: " + repr(testr)
     recovered shelve: {'var1': 'test'}

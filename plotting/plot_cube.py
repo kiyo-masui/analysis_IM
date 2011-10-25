@@ -12,15 +12,16 @@ from utils import data_paths
 
 cube_frame_dir = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/cube_frames/"
 
+
 def plot_single(plotitem):
     """plot a single map slice; helper function for process pool"""
     (index, cube_slice, xaxis, yaxis, vaxis, xylabels, aspect, \
             title, cbar_title, fileprefix) = plotitem
     print title, repr(cube_slice.shape)
-    plt.figure(figsize=(7,3.3))
+    plt.figure(figsize=(7, 3.3))
     cplot = plt.contourf(xaxis, yaxis, np.transpose(cube_slice), vaxis)
     plt.axis('scaled')
-    plt.axes().set_aspect(aspect) # 'equal' also?
+    plt.axes().set_aspect(aspect)  # 'equal' also?
     plt.xlim((np.min(xaxis), np.max(xaxis)))
     plt.ylim((np.min(yaxis), np.max(yaxis)))
     plt.xlabel(xylabels[0])
@@ -36,10 +37,11 @@ def plot_single(plotitem):
     plt.clf()
 
 
-def make_cube_movie(cubename, colorbar_title, cube_frame_dir,
+def make_cube_movie(cubename, colorbar_title, frame_dir,
                     filetag_suffix="",
                     outputdir="./", sigmarange=6., ignore=None, multiplier=1.,
-                    transverse=False, title=None, sigmacut=None, logscale=False):
+                    transverse=False, title=None, sigmacut=None,
+                    logscale=False):
     """Make a stack of spatial slice maps and animate them
     transverse plots along RA and freq and image plane is in Dec
     First mask any points that exceed `sigmacut`, and then report the extent of
@@ -48,7 +50,7 @@ def make_cube_movie(cubename, colorbar_title, cube_frame_dir,
     # set up the labels:
     tag = ".".join(cubename.split(".")[:-1])  # extract root name
     tag = tag.split("/")[-1]
-    fileprefix = cube_frame_dir + tag
+    fileprefix = frame_dir + tag
     nlevels = 500
 
     if transverse:
@@ -73,7 +75,7 @@ def make_cube_movie(cubename, colorbar_title, cube_frame_dir,
 
     if sigmacut:
         #np.set_printoptions(threshold=np.nan, precision=4)
-        deviation = np.abs((cube-np.mean(cube))/np.std(cube))
+        deviation = np.abs((cube - np.mean(cube)) / np.std(cube))
         extend_maskarray = (cube > (sigmacut * deviation))
         maskarray = ma.mask_or(extend_maskarray, maskarray)
 
@@ -81,7 +83,7 @@ def make_cube_movie(cubename, colorbar_title, cube_frame_dir,
 
     try:
         whmaskarray = np.where(maskarray)[0]
-        mask_fraction = float(len(whmaskarray))/float(cube.size)
+        mask_fraction = float(len(whmaskarray)) / float(cube.size)
     except:
         mask_fraction = 0.
 
@@ -113,27 +115,30 @@ def make_cube_movie(cubename, colorbar_title, cube_frame_dir,
         for decind in range(cube.shape[2]):
             fulltitle = title + " (dec = %3.1f)" % (dec_axis[decind])
             runlist.append((decind, cube[:, :, decind], freq_axis,
-                            ra_axis, color_axis, ["Freq","Ra"], 20., fulltitle,
-                            colorbar_title, fileprefix))
+                            ra_axis, color_axis, ["Freq", "Ra"], 20.,
+                            fulltitle, colorbar_title, fileprefix))
     else:
         for freqind in range(cube.shape[0]):
             fulltitle = title + " (freq = %3.1f MHz)" % (freq_axis[freqind])
             runlist.append((freqind, cube[freqind, :, :], ra_axis,
-                            dec_axis, color_axis, ["RA","Dec"], 1., fulltitle,
-                            colorbar_title, fileprefix))
+                            dec_axis, color_axis, ["RA", "Dec"], 1.,
+                            fulltitle, colorbar_title, fileprefix))
 
-    pool = multiprocessing.Pool(processes=multiprocessing.cpu_count()-4)
+    pool = multiprocessing.Pool(processes=(multiprocessing.cpu_count() - 4))
     pool.map(plot_single, runlist)
 
-    subprocess.check_call(('ffmpeg', '-r', '10', '-y', '-i', cube_frame_dir + tag + \
-               '%03d.png', outputdir + tag + filetag_suffix + orientation + '.mp4'))
+    argument = frame_dir + tag + '%03d.png'
+    outfile = outputdir + tag + filetag_suffix + orientation + '.mp4'
+    subprocess.check_call(('ffmpeg', '-r', '10', '-y', '-i',
+                            argument, outfile))
 
     for fileindex in range(len(runlist)):
         os.remove(fileprefix + str('%03d' % fileindex) + '.png')
 
 
-def plot_GBT_maps(keyname, transverse=False, skip_noise=False, skip_map=True,
-                  outputdir="./", sigmarange=[0.,0.001]):
+def plot_gbt_maps(keyname, transverse=False, skip_noise=False, skip_map=True,
+                  outputdir="./", sigmarange=[0., 0.001]):
+    r"""plot the 15hr, 22hr and 1hr real maps"""
     datapath_db = data_paths.DataPath()
 
     section_list = ['A', 'B', 'C', 'D']
@@ -144,7 +149,7 @@ def plot_GBT_maps(keyname, transverse=False, skip_noise=False, skip_map=True,
             title = "Sec. %s, %s" % (section, keyname)
             make_cube_movie(filename,
                                "Temperature (mK)", cube_frame_dir,
-                               sigmarange=5.,
+                               sigmarange=6.,
                                outputdir=outputdir, multiplier=1000.,
                                transverse=transverse,
                                title=title)
@@ -154,7 +159,7 @@ def plot_GBT_maps(keyname, transverse=False, skip_noise=False, skip_map=True,
             title = "Sec. %s, %s (dirty)" % (section, keyname)
             make_cube_movie(filename,
                                "Temperature (mK)", cube_frame_dir,
-                               sigmarange=5.,
+                               sigmarange=6.,
                                outputdir=outputdir, multiplier=1000.,
                                transverse=transverse,
                                title=title)
@@ -180,9 +185,9 @@ def plot_simulations(keyname, transverse=False, outputdir="./"):
     datapath_db = data_paths.DataPath()
 
     filename = datapath_db.fetch(keyname, pick='15')
-    make_cube_movie(filename,
-                       "Temperature (mK)", cube_frame_dir, sigmarange=5.,
-                       outputdir=outputdir, multiplier=1000., transverse=transverse)
+    make_cube_movie(filename, "Temperature (mK)", cube_frame_dir,
+                    sigmarange=5., outputdir=outputdir, multiplier=1000.,
+                    transverse=transverse)
 
     #make_cube_movie(root_directory + "sim_beam_" + suffix,
     #                   "Temperature (mK)", cube_frame_dir, sigmarange=5.,
@@ -203,7 +208,7 @@ def plot_simulations(keyname, transverse=False, outputdir="./"):
 
 def plot_difference(filename1, filename2, title, sigmarange=6., sigmacut=None,
                     transverse=False, outputdir="./", multiplier=1000.,
-                    logscale=False, fractional=False, filetag_suffix="",
+                    logscale=False, fractional=False,
                     ignore=None, diff_filename="./difference.npy"):
     """make movies of the difference of two maps (assuming same dimensions)"""
     map1 = algebra.make_vect(algebra.load(filename1))
@@ -211,10 +216,10 @@ def plot_difference(filename1, filename2, title, sigmarange=6., sigmacut=None,
 
     if fractional:
         difftitle = "fractional diff."
-        dmap = (map1-map2)/map1*100.
+        dmap = (map1 - map2) / map1 * 100.
     else:
         difftitle = "difference"
-        dmap = map1-map2
+        dmap = map1 - map2
 
     algebra.save(diff_filename, dmap)
 

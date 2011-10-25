@@ -3,7 +3,6 @@
 
 import copy
 import multiprocessing
-import time
 import os
 import cPickle
 import scipy as sp
@@ -270,8 +269,9 @@ class NewSlices(object):
 
         # Subtract foregrounds.
         for pair_index in range(0, len(pairs)):
-            pairs[pair_index].subtract_frequency_modes(pairs[pair_index].modes1,
-                pairs[pair_index].modes2)
+            pairs[pair_index].subtract_frequency_modes(
+                                pairs[pair_index].modes1,
+                                pairs[pair_index].modes2)
 
         # Save cleaned clean maps, cleaned noises, and modes.
         self.save_data(save_maps=params['save_maps'],
@@ -317,8 +317,8 @@ class NewSlices(object):
         self.corr_final, self.corr_std = cf.get_corr_and_std_3d(corr_list)
 
         if params['pickle_slices']:
-            save_pickle(self, self.params['output_root'] + \
-                              'New_Slices_object.pkl')
+            ft.save_pickle(self, self.params['output_root'] + \
+                                 'New_Slices_object.pkl')
 
         return
 
@@ -335,7 +335,8 @@ class NewSlices(object):
         save_noises: bool
             Save the cleaned noise invs to output directory if `True`.
         save_modes: bool
-            Save what was subtracted from the maps to output directory if `True`.
+            Save what was subtracted from the maps to output directory
+            if `True`.
 
         '''
         # Get the output directory and filenames.
@@ -389,16 +390,16 @@ def multiproc(runitem):
         the final correlation is being done. Dont mix these up!
 
     """
-    (pair, save_dir, pair_number, final) = run_item
+    (pair, save_dir, pair_number, final) = runitem
 
     print "freq_slices multiprocessing starting on " + repr(pair_number)
 
     if final:
         pair.corr, pair.counts = pair.correlate(pair.lags, speedup=True)
     else:
-        pair.fore_corr, pair.fore_counts = pair.correlate(pair.lags, speedup=True)
+        pair.fore_corr, pair.fore_counts = pair.correlate(pair.lags,
+                                                          speedup=True)
 
-    control_correlation(pair, pair.lags, final)
     file_name = save_dir
     # Make sure folder is there.
     if not os.path.isdir(file_name):
