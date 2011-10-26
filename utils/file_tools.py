@@ -194,9 +194,9 @@ class ClassPersistence(object):
         print "load_pickle: from file " + filename
         return load_pickle(filename)
 
-    def shelve_variables(self, filename, varlist=None):
+    def shelve_variables(self, filename, varlist_in=None):
         r"""save the variables in a class, optionally just those named in
-        `varlist`. Note that __dict__ of an instance is just user-provided
+        `varlist_in`. Note that __dict__ of an instance is just user-provided
         variables, but Class.__dict__ here is everything in the class.
         This clobbers anything in the requested file open as 'n'
         """
@@ -206,26 +206,48 @@ class ClassPersistence(object):
 
         shelveobj = shelve.open(filename, 'n')
 
-        if varlist is None:
-            print "shelve_variables: shelving all var. %s to file %s" % \
-                  (repr(self.__dict__.keys()), filename)
-            shelveobj.update(self.__dict__)
+        message = "shelve_variables: "
+        if varlist_in is None:
+            try:
+                varlist_in = self.varlist
+                message += "varlist specified in-class: "
+            except:
+                varlist_in = self.__dict__.keys()
+                message += "saving all attributes: "
+                #shelveobj.update(self.__dict__)
         else:
-            print "shelve_variables: shelving %s to file %s" % \
-                  (varlist, filename)
-            for key in varlist:
-                shelveobj[key] = self.__dict__[key]
+            message += "saving to varlist: "
+
+        message += "%s to %s" % (varlist_in, filename)
+        print message
+        for key in varlist_in:
+            shelveobj[key] = self.__dict__[key]
 
         shelveobj.close()
 
-    def load_variables(self, filename, varlist=None):
+    def load_variables(self, filename, varlist_in=None):
         r"""load variables from a shelve directly into class attributes"""
         shelveobj = shelve.open(filename, 'r')
-        if varlist is None:
-            varlist = shelveobj.keys()
 
-        for key in varlist:
-            setattr(self, key, shelveobj[key])
+        message = "load_variables: "
+        if varlist_in is None:
+            try:
+                varlist_in = self.varlist
+                message += "varlist specified in-class: "
+            except:
+                varlist_in = shelveobj.keys()
+                message += "loading all attributes: "
+        else:
+            message += "saving to varlist: "
+
+        message += "%s from %s" % (varlist_in, filename)
+        print message
+        for key in varlist_in:
+            try:
+                setattr(self, key, shelveobj[key])
+            except KeyError:
+                print "ERROR: requested variable %s not in shelve!" % key
+
         shelveobj.close()
 
 
@@ -239,7 +261,8 @@ class TestClassPersistence(ClassPersistence):
     # test the full recovery via pickle files
     >>> test = TestClassPersistence('test', [[0,0],[1,1]])
     >>> print "original class __dict__:" + repr(test.__dict__)
-    original class __dict__:{'var1': 'test', 'var2': [[0, 0], [1, 1]]}
+    original class __dict__:{'varlist': ['var1', 'var2'],
+        'var1': 'test', 'var2': [[0, 0], [1, 1]]}
     >>> pklfile = "/tmp/testClassPersistence.pkl"
     >>> shelvefile = "/tmp/testClassPersistence.shelve"
 
@@ -253,7 +276,7 @@ class TestClassPersistence(ClassPersistence):
 
     # test the shelve
     >>> test.shelve_variables(shelvefile)
-    shelve_variables: shelving all var. ['var1', 'var2'] to file
+    shelve_variables: varlist specified in-class: ['var1', 'var2'] to
         /tmp/testClassPersistence.shelve
     >>> testr = shelve.open(shelvefile)
     >>> print "recovered shelve :" + repr(testr)
@@ -261,24 +284,32 @@ class TestClassPersistence(ClassPersistence):
     >>> testr.close()
 
     >>> test2 = TestClassPersistence(shelve_filename=shelvefile)
+    load_variables: varlist specified in-class: ['var1', 'var2'] from
+        /tmp/testClassPersistence.shelve
     >>> print "shelve-loaded class __dict__:" + repr(test2.__dict__)
-    shelve-loaded class __dict__:{'var1': 'test', 'var2': [[0, 0], [1, 1]]}
+    shelve-loaded class __dict__:{'varlist': ['var1', 'var2'],
+        'var1': 'test', 'var2': [[0, 0], [1, 1]]}
 
     # with only one variable
-    >>> test.shelve_variables(shelvefile, varlist=['var1'])
-    shelve_variables: shelving ['var1'] to file
+    >>> test.shelve_variables(shelvefile, varlist_in=['var1'])
+    shelve_variables: saving to varlist: ['var1'] to
         /tmp/testClassPersistence.shelve
     >>> testr = shelve.open(shelvefile)
     >>> print "recovered shelve: " + repr(testr)
     recovered shelve: {'var1': 'test'}
     >>> testr.close()
     >>> test3 = TestClassPersistence(shelve_filename=shelvefile)
+    load_variables: varlist specified in-class: ['var1', 'var2'] from
+        /tmp/testClassPersistence.shelve
+    ERROR: requested variable var2 not in shelve!
     >>> print "reduced shelve-loaded class __dict__:" + repr(test3.__dict__)
-    reduced shelve-loaded class __dict__:{'var1': 'test'}
+    reduced shelve-loaded class __dict__:{'varlist': ['var1', 'var2'],
+        'var1': 'test'}
     >>> os.remove(pklfile)
     >>> os.remove(shelvefile)
     """
     def __init__(self, *args, **kwargs):
+        self.varlist = ['var1', 'var2']
         if ((len(args) == 0) and ("shelve_filename" in kwargs)):
             self.shelve_init(*args, **kwargs)
         else:

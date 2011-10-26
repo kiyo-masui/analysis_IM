@@ -10,7 +10,7 @@ from core import algebra
 from map import beam
 
 
-class MapPair(object):
+class MapPair(ClassPersistence):
     r"""Pair of maps that are processed together and cross correlated.
 
     Parameters
@@ -42,21 +42,39 @@ class MapPair(object):
 
     """
 
-    def __init__(self, map1, map2, noise_inv1, noise_inv2, freq):
+    def __init__(self, *args, **kwargs):
+        # variable names that define the object (for loading and saving)
+        self.varlist = ['map1', 'map2', 'noise_inv1', 'noise_inv2', 'freq']
+        self.varlist.extend(['counts', 'modes1', 'modes2'])
+        self.varlist.extend(['left_modes', 'right_modes'])
+        self.varlist.extend(['map1_name', 'map2_name'])
+
+        if ((len(args) == 0) and ("shelve_filename" in kwargs)):
+            self.shelve_init(*args, **kwargs)
+        else:
+            self.standard_init(*args, **kwargs)
+
+    def shelve_init(self, *args, **kwargs):
+        shelve_filename = kwargs['shelve_filename']
+        self.load_variables(shelve_filename)
+
+    def standard_init(self, *args, **kwargs):
+        r"""
+        arguments: map1, map2, noise_inv1, noise_inv2, freq
+        """
+        (self.map1, self.map2) = (args[0], args[1])
+        (self.noise_inv1, self.noise_inv2) = (args[2], args[3])
+        self.freq = args[4]
+
         # Give infinite noise to unconsidered frequencies (This doesn't affect
         # anything but the output maps).
-        noise_dimensions = noise_inv1.shape[0]
+        noise_dimensions = self.noise_inv1.shape[0]
         for noise_index in range(noise_dimensions):
             if not noise_index in freq:
-                noise_inv1[noise_index, ...] = 0
-                noise_inv2[noise_index, ...] = 0
+                self.noise_inv1[noise_index, ...] = 0
+                self.noise_inv2[noise_index, ...] = 0
 
         # Set attributes.
-        self.map1 = map1
-        self.map2 = map2
-        self.noise_inv1 = noise_inv1
-        self.noise_inv2 = noise_inv2
-        self.freq = freq
         self.counts = 0
         self.modes1 = 0
         self.modes2 = 0
