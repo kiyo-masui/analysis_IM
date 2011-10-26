@@ -127,8 +127,8 @@ class NoisePower(object) :
         if n_files > 0 :
             self.power_mat /= n_files
             self.thermal_expectation / n_files
-        plt.loglog(self.frequency, self.power_mat[:,20,20])
-        plt.show()
+        #plt.loglog(self.frequency, self.power_mat[:,20,20])
+        #plt.show()
         # Next steps: Take mean over frequency and then factor the chan-chan
         # matrix.  Pick out the top n eigenvalues, then rotate the unaveraged
         # power mat to that basis.  Look at the spectrum of thoses modes and
@@ -483,9 +483,9 @@ def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True,
     # Loop to do only a bit of the calculation at a time.  Reduces
     # memory use by a factor of a few.
     power_mat = sp.empty((n_time, n_chan, n_chan),
-                              dtype=float)
+                              dtype=complex)
     window_function = sp.empty((n_time, n_chan, n_chan),
-                              dtype=float)
+                              dtype=complex)
     for ii in xrange(n_chan):
         w = calculate_power(mask1[:,[ii],:], mask2, axis=0)
         if deconvolve:
