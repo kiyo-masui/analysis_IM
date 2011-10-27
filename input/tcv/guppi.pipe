@@ -6,12 +6,12 @@ from core import dir_data
 import scipy as sp
 
 # Here you choose which files to process.
-field = '1hr'
+field = '15hr'
 #dm_field_centre = (218.25, 2.0) 
 #Here I'm grabbing the guppi data
-#file_middles = tuple(dir_data.get_data_files(range(41-90), field='15hr', project='GBT10B_036', type='ralongmap'))
+file_middles = tuple(dir_data.get_data_files(range(41-90), field='15hr', project='GBT10B_036', type='ralongmap'))
 #file_middles = tuple(dir_data.get_data_files(range(41,90), field='22hr', project='GBT10B_036', type='ralongmap')) 
-file_middles = tuple(dir_data.get_data_files(range(41,90), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(00,14) , field='1hr', project='GBT11B_055',type='ralongmap'))
+#file_middles = tuple(dir_data.get_data_files(range(41,90), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(00,14) , field='1hr', project='GBT11B_055',type='ralongmap'))
 
 #file_middles = tuple(dir_data.get_data_files(range(8,9), field='1hr', project='GBT11B_055', type='ralongmap'))
 
@@ -32,7 +32,7 @@ data_dir = os.getenv('GBT_DATA')
 #raw_data_dir = os.getenv('GBT10B_DATA')
 kiyo_dir = os.getenv('GBT10B_KM')
 prefix = ''
-map_prefix = '' + field +'_none_'
+map_prefix = '' + field +'_41-90_'
 IFs = ()
 
 
@@ -140,13 +140,13 @@ dm_IFs = (0,)
 
 #Centre is 218.25,2. for 15hr
 #Centre is 325.5,0. for 22hr 
-#Centre is 12.75,0.0 for 1hr - Needs correction, looks like it should be 13,1.5, need larger map anyways
-dm_field_centre = (13.0,1.5)
+#Centre is 13.25,1.5 for 1hr 
+dm_field_centre = (218.25,2.)
 dm_map_shape = (64,32)
 #dm_map_shape = (70, 45)
 #dm_map_shape = (100, 80)
 #dm_pixel_spacing = 0.1 # for 22hr map (328-323 RA and +/-1.5 DEC)
-dm_pixel_spacing = 0.3 #Need larger pixels or larger maps  for 1hr maps
+dm_pixel_spacing = 0.2 # for 1hr map (18.5-8 RA and 4.5, -1.5 DEC)
 #dm_pixel_spacing = .075
 dm_noise_model = 'disjoint_scans'
 dm_polarizations = ('I',)
