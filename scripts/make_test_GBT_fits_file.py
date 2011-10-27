@@ -13,7 +13,12 @@ import os
 import scipy as sp
 import pyfits
 
-data_file_name  = (os.getenv('GBT10B_DATA')  + 
+from core import fitsGBT
+from time_stream import rebin_freq, rebin_time, split_bands
+
+
+#### The origional spectrometer gbt test data file.
+data_file_name  = (os.getenv('GBT10B_SPEC')  + 
                   '/01_wigglez22hr_azel_17-24.raw.acs.fits')
 #                  '04_wigglez1hr_azel_113-120.raw.acs.fits')
 test_file_name = './testdata/testfile_GBTfits.fits'
@@ -51,3 +56,22 @@ inds = sp.array(inds_total)
 
 testhdulist[1].data = fitsdata[inds]
 testhdulist.writeto(test_file_name)
+
+
+#### A series of test data files created from guppi data.
+guppi_file_name  = (os.getenv('GBT_DATA')  + 
+                    '/GBT10B_036/42_wigglez15hrst_ralongmap_230-237.fits')
+Reader = fitsGBT.Reader(guppi_file_name)
+Blocks = Reader.read((0,1), None)
+for Data in Blocks:
+    rebin_freq.rebin(Data, 32, True, True)
+    rebin_time.rebin(Data, 2)
+Writer = fitsGBT.Writer(Blocks)
+Writer.write('./testdata/testfile_guppi_rebinned.fits')
+
+split_Blocks = ()
+for Data in Blocks:
+    split_Blocks += split_bands.split(Data, 2, 32, 25)
+Writer = fitsGBT.Writer(split_Blocks)
+Writer.write('./testdata/testfile_guppi_split.fits')
+
