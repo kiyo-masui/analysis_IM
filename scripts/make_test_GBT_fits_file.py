@@ -9,12 +9,14 @@ testing, or regression testing.
 """
 
 import os
+import copy
 
 import scipy as sp
 import pyfits
 
 from core import fitsGBT
-from time_stream import rebin_freq, rebin_time, split_bands
+from time_stream import rebin_freq, rebin_time, split_bands, combine_cal
+from time_stream import rotate_pol
 
 
 #### The origional spectrometer gbt test data file.
@@ -66,12 +68,28 @@ Blocks = Reader.read((0,1), None)
 for Data in Blocks:
     rebin_freq.rebin(Data, 32, True, True)
     rebin_time.rebin(Data, 2)
-Writer = fitsGBT.Writer(Blocks)
-Writer.write('./testdata/testfile_guppi_rebinned.fits')
 
 split_Blocks = ()
 for Data in Blocks:
     split_Blocks += split_bands.split(Data, 2, 32, 25)
+
+comb_Blocks = copy.deepcopy(split_Blocks)
+for Data in comb_Blocks:
+    combine_cal.combine(Data, sub_mean=False)
+
+rot_Blocks = copy.deepcopy(comb_Blocks)
+for Data in rot_Blocks:
+    rotate_pol.rotate(Data)
+
+
+Writer = fitsGBT.Writer(Blocks)
+Writer.write('./testdata/testfile_guppi_rebinned.fits')
 Writer = fitsGBT.Writer(split_Blocks)
 Writer.write('./testdata/testfile_guppi_split.fits')
+Writer = fitsGBT.Writer(comb_Blocks)
+Writer.write('./testdata/testfile_guppi_combined.fits')
+Writer = fitsGBT.Writer(rot_Blocks)
+Writer.write('./testdata/testfile_guppi_rotated.fits')
+
+
 
