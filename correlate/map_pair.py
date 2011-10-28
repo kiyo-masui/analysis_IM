@@ -8,9 +8,9 @@ import scipy as sp
 import numpy.ma as ma
 from core import algebra
 from map import beam
+from utils import file_tools as ft
 
-
-class MapPair(ClassPersistence):
+class MapPair(ft.ClassPersistence):
     r"""Pair of maps that are processed together and cross correlated.
 
     Parameters
@@ -70,7 +70,7 @@ class MapPair(ClassPersistence):
         # anything but the output maps).
         noise_dimensions = self.noise_inv1.shape[0]
         for noise_index in range(noise_dimensions):
-            if not noise_index in freq:
+            if not noise_index in self.freq:
                 self.noise_inv1[noise_index, ...] = 0
                 self.noise_inv2[noise_index, ...] = 0
 
@@ -165,7 +165,7 @@ class MapPair(ClassPersistence):
 
     def make_noise_factorizable(self):
         r"""Convert noise weights such that the factor into a function a
-        frequecy times a function of pixel by taking means over the original
+        frequency times a function of pixel by taking means over the original
         weights.
         """
 
@@ -274,7 +274,7 @@ class MapPair(ClassPersistence):
                     outmap_right[mode_index, ira, jdec] = amp
         self.right_modes = outmap_right
 
-    def correlate(self, lags=(), speedup=False):
+    def correlate(self, lags=(), speedup=False, verbose=False):
         r"""Calculate the cross correlation function of the maps.
 
         The cross correlation function is a function of f1, f2 and angular lag.
@@ -310,6 +310,18 @@ class MapPair(ClassPersistence):
         map2_ra = map2.get_axis('ra')
         map1_dec = map1.get_axis('dec')
         map2_dec = map2.get_axis('dec')
+
+        #print lags
+        #print map1_ra
+        #print map2_ra
+        #print map1_dec
+        #print map2_dec
+        #print map1.shape
+        #print map2.shape
+        #print noise1.shape
+        #print noise2.shape
+        #print freq1
+        #print freq2
 
         input_map1 = map1[freq1, :, :]
         input_map2 = map2[freq2, :, :]
@@ -375,7 +387,9 @@ class MapPair(ClassPersistence):
                         wprod = weights1[r1m, d1m] * weights2[r2m, d2m]
                         corr[if1, jf2, klag] += sp.sum(dprod)
                         counts[if1, jf2, klag] += sp.sum(wprod)
-                    print if1, jf2, (time.time() - start), counts[if1, jf2, :]
+
+                    if verbose:
+                        print if1, jf2, (time.time() - start), counts[if1, jf2, :]
         else:
             print "Starting Correlation (full version)"
             for if1 in range(len(freq1)):
@@ -393,7 +407,9 @@ class MapPair(ClassPersistence):
                         mask = (lag_inds == klag)
                         corr[if1, jf2, klag] += sp.sum(dprod.flatten()[mask])
                         counts[if1, jf2, klag] += sp.sum(wprod.flatten()[mask])
-                    print if1, jf2, (time.time() - start), counts[if1, jf2, :]
+
+                    if verbose:
+                        print if1, jf2, (time.time() - start), counts[if1, jf2, :]
 
         mask = (counts < 1e-20)
         counts[mask] = 1

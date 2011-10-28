@@ -136,7 +136,7 @@ def make_cube_movie(cubename, colorbar_title, frame_dir,
         os.remove(fileprefix + str('%03d' % fileindex) + '.png')
 
 
-def plot_gbt_maps(keyname, transverse=False, skip_noise=False, skip_map=True,
+def plot_gbt_maps(keyname, transverse=False, skip_noise=False, skip_map=False,
                   outputdir="./", sigmarange=[0., 0.001]):
     r"""plot the 15hr, 22hr and 1hr real maps"""
     datapath_db = data_paths.DataPath()

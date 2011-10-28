@@ -8,6 +8,7 @@ import getpass
 import ast
 from utils import file_tools as ft
 
+
 def print_dictionary(dict_in, handle, key_list=None, prepend=""):
     r"""print a dictionary in a slightly nicer way
     `key_list` specifies the keys to print; None is to print all
@@ -18,6 +19,92 @@ def print_dictionary(dict_in, handle, key_list=None, prepend=""):
 
     for key in key_list:
         print >> handle, "%s%s: %s" % (prepend, key, repr(dict_in[key]))
+
+
+def extract_split_tag(keylist, divider="_", ignore=None):
+    r"""take a list like ['A_ok', 'B_ok'], and return ['A', 'B']
+    list is made unique and sorted alphabetically
+    anything in `ignore` is thrown out
+    """
+    taglist = []
+    for key in keylist:
+        taglist.append(key.split(divider)[0])
+
+    taglist = list(set(taglist))
+
+    if ignore is not None:
+        taglist = [tag for tag in taglist if tag not in ignore]
+
+    taglist.sort()
+    return taglist
+
+
+def unique_cross_pairs(list1, list2):
+    r"""given ['A','B'], ['A','B'] return ['AB']"""
+    retlist = []
+    for ind1 in range(len(list1)):
+        for ind2 in range(len(list2)):
+            if ind2 > ind1:
+                retlist.append((list1[ind1], list2[ind2]))
+
+    return retlist
+
+
+# TODO: write doctest for this
+def cross_maps(map1key, map2key, noise_inv1key, noise_inv2key,
+               map_suffix="_clean_map", noise_inv_suffix="_noise_inv",
+               verbose=True):
+    r"""Use the database to report all unique crossed map maps given map and
+    noise_inv keys.
+    """
+    dbp = DataPath()
+    retpairs = {}
+    retpairslist = []
+
+    (map1keys, map1set) = dbp.fetch(map1key, intend_read=True,
+                                    silent=True)
+
+    (map2keys, map2set) = dbp.fetch(map2key, intend_read=True,
+                                    silent=True)
+
+    (noise_inv1keys, noise_inv1set) = dbp.fetch(noise_inv1key,
+                                        intend_read=True,
+                                        silent=True)
+
+    (noise_inv2keys, noise_inv2set) = dbp.fetch(noise_inv2key,
+                                        intend_read=True,
+                                        silent=True)
+
+    map1tags = extract_split_tag(map1keys, ignore=['firstpass'])
+    map2tags = extract_split_tag(map1keys, ignore=['firstpass'])
+    noise_inv1tags = extract_split_tag(noise_inv1keys, ignore=['firstpass'])
+    noise_inv2tags = extract_split_tag(noise_inv2keys, ignore=['firstpass'])
+
+    if (map1tags != noise_inv1tags) or (map2tags != noise_inv2tags):
+        print "ERROR: noise_inv and maps are not matched"
+        sys.exit()
+
+    if verbose:
+        print "Using map1 tags %s and map2 tags %s" % (map1tags, map2tags)
+
+    comblist = unique_cross_pairs(map1tags, map2tags)
+    for (tag1, tag2) in comblist:
+        pairname = "%s_with_%s" % (tag1, tag2)
+        retpairslist.append(pairname)
+        pairdict = {'map1': map1set[tag1 + map_suffix],
+                    'noise_inv1': noise_inv1set[tag1 + noise_inv_suffix],
+                    'map2': map2set[tag2 + map_suffix],
+                    'noise_inv2': noise_inv2set[tag2 + noise_inv_suffix]}
+
+        if verbose:
+            print "-"*80
+            print_dictionary(pairdict, sys.stdout,
+                            key_list=['map1', 'noise_inv1',
+                                      'map2', 'noise_inv2'])
+
+        retpairs[pairname] = pairdict
+
+    return (retpairslist, retpairs)
 
 
 class DataPath(object):
@@ -404,8 +491,8 @@ if __name__ == "__main__":
 
     # generate the path db markdown website
     datapath_db = DataPath()
-    datapath_db.generate_path_webpage()
     #datapath_db.generate_hashtable()
+    datapath_db.generate_path_webpage()
 
     # run some tests
     OPTIONFLAGS = (doctest.ELLIPSIS |

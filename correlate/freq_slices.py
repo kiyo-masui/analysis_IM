@@ -4,6 +4,7 @@
 import copy
 import multiprocessing
 import os
+import time
 import cPickle
 import scipy as sp
 from kiyopy import parse_ini
@@ -191,13 +192,36 @@ class NewSlices(object):
             # Correlate the maps with multiprocessing. Note that the
             # correlations are saved to file separately then loaded in
             # together because that's (one way) how multiprocessing works.
-            runlist = [(pairs[pair_index],
-                        params['output_root'],
-                        pair_index, False) for
-                        pair_index in range(0, num_map_pairs)]
+            fore_pairs = []
+            processes_list = []
+            for pair_index in range(0, num_map_pairs):
+                # Calls 1 multiproc (which governs the correlating) for each
+                # pair on a new CPU so you can have all pairs working at once.
+                multi = multiprocessing.Process(target=multiproc,
+                                                args=([pairs[pair_index],
+                                                       params['output_root'],
+                                                       pair_index, False]))
 
-            pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
-            pool.map(multiproc, runlist)
+                processes_list.append(multi)
+
+                multi.start()
+
+            # Waits for all correlations to finish before continuing.
+            while True in [multi.is_alive() for multi in processes_list]:
+                print "processing"
+                time.sleep(5)
+
+            # just to be safe
+            time.sleep(1)
+
+            # more concise call, but multiprocessing does not behave well with
+            # complex objects...........
+            #runlist = [(pair_index,
+            #            params['output_root'],
+            #            False) for
+            #            pair_index in range(0, num_map_pairs)]
+            #pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+            #pool.map(self.multiproc, runlist)
 
             # Load the correlations and save them to each pair. The pairs that
             # got passed to multiproc are not the same ones as ones in
@@ -206,7 +230,6 @@ class NewSlices(object):
             file_name = params['output_root']
             file_name += "map_pair_for_freq_slices_fore_corr_"
 
-            fore_pairs = []
             for count in range(0, num_map_pairs):
                 print "Loading correlation for pair %d" % (count)
                 pickle_handle = open(file_name + str(count) + ".pkl", "r")
@@ -285,19 +308,38 @@ class NewSlices(object):
 
         # Correlate the cleaned maps.
         # Here we could calculate the power spectrum instead eventually.
-        runlist = [(pairs[pair_index],
-                    params['output_root'],
-                    pair_index, True) for
-                    pair_index in range(0, num_map_pairs)]
+        temp_pair_list = []
+        processes_list = []
+        for pair_index in range(0, num_map_pairs):
+            multi = multiprocessing.Process(target=multiproc,
+                                            args=([pairs[pair_index],
+                                                   params['output_root'],
+                                                   pair_index, True]))
 
-        pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
-        pool.map(multiproc, runlist)
+            processes_list.append(multi)
+            multi.start()
+
+        while True in [multi.is_alive() for multi in processes_list]:
+            print "processing"
+            time.sleep(5)
+
+        # just to be safe
+        time.sleep(1)
+
+        # ugh, would really rathter use implementation below except multiprocessing
+        # does not behave.................
+        #runlist = [(pairs[pair_index],
+        #            params['output_root'],
+        #            pair_index, True) for
+        #            pair_index in range(0, num_map_pairs)]
+
+        #pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+        #pool.map(multiproc, runlist)
 
         print "Loading map pairs back into program."
         file_name = params['output_root']
         file_name += "map_pair_for_freq_slices_corr_"
 
-        temp_pair_list = []
         for count in range(0, num_map_pairs):
             print "Loading correlation for pair %d" % (count)
             pickle_handle = open(file_name + str(count) + ".pkl", "r")
@@ -370,7 +412,7 @@ class NewSlices(object):
                 algebra.save(right_modes_savename, pair.right_modes)
 
 
-def multiproc(runitem):
+def multiproc(pair, save_dir, pair_number, final):
     r"""Do the correlation for a map_pair `pair`.
 
     The correlation is then saved to a numbered file corresponding to
@@ -390,15 +432,13 @@ def multiproc(runitem):
         the final correlation is being done. Dont mix these up!
 
     """
-    (pair, save_dir, pair_number, final) = runitem
 
     print "freq_slices multiprocessing starting on " + repr(pair_number)
-
     if final:
         pair.corr, pair.counts = pair.correlate(pair.lags, speedup=True)
     else:
         pair.fore_corr, pair.fore_counts = pair.correlate(pair.lags,
-                                                          speedup=True)
+                                                              speedup=True)
 
     file_name = save_dir
     # Make sure folder is there.

@@ -19,7 +19,7 @@ def save_pickle(pickle_data, filename):
         os.mkdir(pickle_out_root)
 
     pickle_handle = open(filename, 'wb')
-    cPickle.dump(pickle_data, pickle_handle)
+    cPickle.dump(pickle_data, pickle_handle, -1)
     pickle_handle.close()
 
 
@@ -82,7 +82,7 @@ def path_properties(pathname, intend_write=False, intend_read=False,
     => /tmp/: exists, is writable, is readable.
     (True, True, True, True, '...')
     """
-    entry = "%s=> %s%s:" % (prefix, file_index, pathname)
+    entry = "%s=> %s %s:" % (prefix, file_index, pathname)
 
     exists = os.access(pathname, os.F_OK)
     # save the state of the file (exist will later specify if the parent dir

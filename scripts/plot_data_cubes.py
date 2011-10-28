@@ -3,25 +3,25 @@ simulations, etc.
 """
 from plotting import plot_cube as pc
 
-def plot_GBT_mapset(outputdir="/cita/d/www/home/eswitzer/movies/"):
-    pc.plot_GBT_maps('GBT_15hr_map_proposal', transverse=True,
-                     outputdir=outputdir, skip_noise=True)
-    pc.plot_GBT_maps('GBT_15hr_map_proposal', transverse=False,
-                     outputdir=outputdir, skip_noise=True)
-    pc.plot_GBT_maps('GBT_15hr_map', outputdir=outputdir, transverse=True)
-    pc.plot_GBT_maps('GBT_15hr_map', outputdir=outputdir, transverse=False)
-    pc.plot_GBT_maps('GBT_22hr_map', outputdir=outputdir, transverse=True)
-    pc.plot_GBT_maps('GBT_22hr_map', outputdir=outputdir, transverse=False)
-    pc.plot_GBT_maps('GBT_1hr_map', outputdir=outputdir, transverse=True)
-    pc.plot_GBT_maps('GBT_1hr_map', outputdir=outputdir, transverse=False)
+def plot_gbt_mapset(outputdir="/cita/d/www/home/eswitzer/movies/"):
+    #pc.plot_gbt_maps('GBT_15hr_map_proposal', transverse=True,
+    #                 outputdir=outputdir, skip_noise=True)
+    #pc.plot_gbt_maps('GBT_15hr_map_proposal', transverse=False,
+    #                 outputdir=outputdir, skip_noise=True)
+    pc.plot_gbt_maps('GBT_15hr_map', outputdir=outputdir, transverse=True)
+    #pc.plot_gbt_maps('GBT_15hr_map', outputdir=outputdir, transverse=False)
+    pc.plot_gbt_maps('GBT_22hr_map', outputdir=outputdir, transverse=True)
+    pc.plot_gbt_maps('GBT_22hr_map', outputdir=outputdir, transverse=False)
+    pc.plot_gbt_maps('GBT_1hr_map', outputdir=outputdir, transverse=True)
+    pc.plot_gbt_maps('GBT_1hr_map', outputdir=outputdir, transverse=False)
 
 
-def plot_GBT_simset(outputdir="/cita/d/www/home/eswitzer/movies/"):
+def plot_gbt_simset(outputdir="/cita/d/www/home/eswitzer/movies/"):
     pc.plot_simulations('sim_15hr', outputdir=outputdir, transverse=True)
     pc.plot_simulations('sim_15hr', outputdir=outputdir, transverse=False)
 
 
-def plot_GBT_diff_tests(outputdir="/cita/d/www/home/eswitzer/movies/"):
+def plot_gbt_diff_tests(outputdir="/cita/d/www/home/eswitzer/movies/"):
     tcv_15root = "/mnt/raid-project/gmrt/tcv/"
     tcv_15root += "modetest/73_ABCD_all_15_modes_real_maponly/"
     tcv_15map = tcv_15root + "sec_A_15hr_41-90_cleaned_clean_map_I_with_B.npy"
@@ -57,7 +57,7 @@ def plot_sim_scheme(outputdir="/cita/d/www/home/eswitzer/movies/"):
                     outputdir=outputdir, transverse=False)
 
 if __name__ == "__main__":
-    plot_GBT_mapset()
-    #plot_GBT_simset()
-    #plot_GBT_diff_tests()
+    plot_gbt_mapset()
+    #plot_gbt_simset()
+    #plot_gbt_diff_tests()
     #plot_sim_scheme()
