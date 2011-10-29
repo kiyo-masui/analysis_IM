@@ -21,7 +21,8 @@ def plot_gbt_simset(outputdir="/cita/d/www/home/eswitzer/movies/"):
     pc.plot_simulations('sim_15hr', outputdir=outputdir, transverse=False)
 
 
-def plot_gbt_diff_tests(outputdir="/cita/d/www/home/eswitzer/movies/"):
+def plot_gbt_diff_tests(outputdir="/cita/d/www/home/eswitzer/movies/",
+                        transverse=False):
     tcv_15root = "/mnt/raid-project/gmrt/tcv/"
     tcv_15root += "modetest/73_ABCD_all_15_modes_real_maponly/"
     tcv_15map = tcv_15root + "sec_A_15hr_41-90_cleaned_clean_map_I_with_B.npy"
@@ -35,19 +36,20 @@ def plot_gbt_diff_tests(outputdir="/cita/d/www/home/eswitzer/movies/"):
                     fractional=False, diff_filename="./map_difference.npy",
                     outputdir=outputdir, transverse=False)
 
-    pc.plot_difference(tcv_15map, ers_15map, "Temperature (mK)", sigmarange=6.,
-                    fractional=False, diff_filename="./map_difference.npy",
-                    outputdir=outputdir, transverse=True)
-
     pc.plot_difference(tcv_15noise, ers_15noise, "log inv. covariance", sigmarange=-1.,
                     multiplier=1., logscale=True, fractional=True,
                     diff_filename="./noise_inv_fractional_difference.npy",
                     outputdir=outputdir, transverse=False)
 
-    pc.plot_difference(tcv_15noise, ers_15noise, "log inv. covariance", sigmarange=-1.,
-                    multiplier=1., logscale=True, fractional=True,
-                    diff_filename="./noise_inv_fractional_difference.npy",
-                    outputdir=outputdir, transverse=True)
+    if transverse:
+        pc.plot_difference(tcv_15map, ers_15map, "Temperature (mK)", sigmarange=6.,
+                        fractional=False, diff_filename="./map_difference.npy",
+                        outputdir=outputdir, transverse=True)
+
+        pc.plot_difference(tcv_15noise, ers_15noise, "log inv. covariance", sigmarange=-1.,
+                        multiplier=1., logscale=True, fractional=True,
+                        diff_filename="./noise_inv_fractional_difference.npy",
+                        outputdir=outputdir, transverse=True)
 
 def plot_sim_scheme(outputdir="/cita/d/www/home/eswitzer/movies/"):
     sim1 = "sim_streaming1.npy"
@@ -57,7 +59,7 @@ def plot_sim_scheme(outputdir="/cita/d/www/home/eswitzer/movies/"):
                     outputdir=outputdir, transverse=False)
 
 if __name__ == "__main__":
-    plot_gbt_mapset()
+    #plot_gbt_mapset()
     #plot_gbt_simset()
-    #plot_gbt_diff_tests()
+    plot_gbt_diff_tests()
     #plot_sim_scheme()
