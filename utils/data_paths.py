@@ -94,13 +94,15 @@ def cross_maps(map1key, map2key, noise_inv1key, noise_inv2key,
         pairdict = {'map1': map1set[tag1 + map_suffix],
                     'noise_inv1': noise_inv1set[tag1 + noise_inv_suffix],
                     'map2': map2set[tag2 + map_suffix],
-                    'noise_inv2': noise_inv2set[tag2 + noise_inv_suffix]}
+                    'noise_inv2': noise_inv2set[tag2 + noise_inv_suffix],
+                    'tag1': tag1, 'tag2': tag2}
 
         if verbose:
             print "-"*80
             print_dictionary(pairdict, sys.stdout,
                             key_list=['map1', 'noise_inv1',
-                                      'map2', 'noise_inv2'])
+                                      'map2', 'noise_inv2',
+                                      'tag1', 'tag2'])
 
         retpairs[pairname] = pairdict
 

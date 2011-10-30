@@ -160,7 +160,7 @@ def hashfile(filename, hasher=hashlib.md5(), blocksize=65536, max_size=1.e8):
             afile.close()
             hash_digest = hasher.hexdigest()
         else:
-            hash_digest = "too_big"
+            hash_digest = "large_file"
 
         modtime = time.ctime(os.path.getmtime(filename))
     else:

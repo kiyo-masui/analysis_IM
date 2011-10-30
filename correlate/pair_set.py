@@ -12,6 +12,11 @@ from core import algebra
 from correlate import map_pair
 from multiprocessing import Process, current_process
 # TODO: replace output_root with intermediate product directory
+# TODO: move all magic strings to __init__ or params
+# TODO: replace print with logging
+# TODO: make function which subtracts 0-50
+# TODO: have the cleaning act on the weights too?
+# TODO: tag the outputs with the same 15hr_etc etc. as the data?
 
 params_init = {
                'output_root': "./testoutput/",
@@ -29,7 +34,7 @@ params_init = {
                'factorizable_noise': True,
                'sub_weighted_mean': True,
                'modes': 10,
-               'no_weights': True  #REVERT ME
+               'no_weights': False
                }
 prefix = 'fs_'
 
@@ -58,14 +63,17 @@ class PairSet(ft.ClassPersistence):
 
     def execute(self):
         r"""main call to execute the various steps in foreground removal"""
-        self.load_pairs(regenerate=False)  # use previous diag(N^-1)
-        #self.load_pairs()
+        self.load_pairs(regenerate=True)
         self.preprocess_pairs()
         #self.calculate_correlation()
         self.calculate_svd()
 
-    def second_pass(self):
+    def clean_maps(self):
         self.load_pairs(regenerate=False)  # use previous diag(N^-1)
+        self.preprocess_pairs()
+        n_modes = self.params['modes']
+        self.subtract_foregrounds(n_modes)
+        self.save_data()
 
     def load_pairs(self, regenerate=True):
         r"""load the set of map/noise pairs specified by keys handed to the
@@ -88,10 +96,9 @@ class PairSet(ft.ClassPersistence):
 
             if not par['no_weights']:
                 noise_inv1 = self.process_noise_inv(pdict['noise_inv1'],
-                                                    pairitem,
                                                     regenerate=regenerate)
+
                 noise_inv2 = self.process_noise_inv(pdict['noise_inv2'],
-                                                    pairitem,
                                                     regenerate=regenerate)
             else:
                 noise_inv1 = algebra.ones_like(map1)
@@ -100,6 +107,8 @@ class PairSet(ft.ClassPersistence):
             pair = map_pair.MapPair(map1, map2,
                                     noise_inv1, noise_inv2,
                                     self.freq_list)
+
+            pair.set_names(pdict['tag1'], pdict['tag2'])
 
             pair.lags = self.lags
             pair.params = self.params
@@ -123,7 +132,7 @@ class PairSet(ft.ClassPersistence):
         for pairitem in self.pairlist:
             filename = self.params['output_root']
             filename += "map_pair_for_freq_slices_fore_corr_%s.pkl" % pairitem
-            multi = Process(target=multiproc, args=([self.pairs[pairitem],
+            multi = Process(target=wrap_corr, args=([self.pairs[pairitem],
                             filename]), name=pairitem)
 
             process_list.append(multi)
@@ -151,6 +160,52 @@ class PairSet(ft.ClassPersistence):
                 print "ERROR: in SVD, correlation functions not loaded"
                 sys.exit()
 
+    def subtract_foregrounds(self, n_modes):
+        for pairitem in self.pairlist:
+            print "subtracting %d modes from %s" % (n_modes, pairitem)
+            filename = self.params['output_root']
+            filename_svd = filename + "SVD_pair_%s.pkl" % pairitem
+            svd_info = ft.load_pickle(filename_svd)
+
+            vals = svd_info[0]
+            (all_modes1, all_modes2) = (svd_info[1], svd_info[2])
+
+            self.pairs[pairitem].subtract_frequency_modes(
+                                    svd_info[1][:n_modes],
+                                    svd_info[2][:n_modes])
+
+    def save_data(self):
+        ''' Save the all of the clean data.
+        '''
+        out_root = self.params['output_root']
+        # Make sure folder is there.
+        if not os.path.isdir(out_root):
+            os.mkdir(out_root)
+
+        for pairitem in self.pairlist:
+            pair = self.pairs[pairitem]
+            (tag1, tag2) = (pair.map1_name, pair.map2_name)
+            map1_savename = "%s/sec_%s_cleaned_clean_map_I_with_%s.npy" % \
+                            (out_root, tag1, tag2)
+            map2_savename = "%s/sec_%s_cleaned_clean_map_I_with_%s.npy" % \
+                            (out_root, tag2, tag1)
+            noise_inv1_savename = "%s/sec_%s_cleaned_noise_inv_I_with_%s.npy" % \
+                            (out_root, tag1, tag2)
+            noise_inv2_savename = "%s/sec_%s_cleaned_noise_inv_I_with_%s.npy" % \
+                            (out_root, tag2, tag1)
+            modes1_savename = "%s/sec_%s_modes_clean_map_I_with_%s.npy" % \
+                            (out_root, tag1, tag2)
+            modes2_savename = "%s/sec_%s_modes_clean_map_I_with_%s.npy" % \
+                            (out_root, tag2, tag1)
+
+            algebra.save(map1_savename, pair.map1)
+            algebra.save(map2_savename, pair.map2)
+            algebra.save(noise_inv1_savename, pair.noise_inv1)
+            algebra.save(noise_inv2_savename, pair.noise_inv2)
+            algebra.save(modes1_savename, pair.left_modes)
+            algebra.save(modes2_savename, pair.right_modes)
+
+    # Service functions ------------------------------------------------------
     def call_pairs(self, call):
         r"""call some operation on the map pairs"""
         for pairitem in self.pairlist:
@@ -165,7 +220,7 @@ class PairSet(ft.ClassPersistence):
             method_to_call()
 
     # TODO: this could probably replaced with a memoize
-    def process_noise_inv(self, filename, pairtag, regenerate=True):
+    def process_noise_inv(self, filename, regenerate=True):
         r"""buffer reading the noise inverse files for speed and also
         save to a file in the intermediate output path.
 
@@ -173,8 +228,9 @@ class PairSet(ft.ClassPersistence):
         produce it.
         """
         if filename not in self.noisefiledict:
-            filename_diag = "%s/noise_inv_diag_%s.npy" % \
-                           (self.params['output_root'], pairtag)
+            basename = filename.split("/")[-1].split(".npy")[0]
+            filename_diag = "%s/%s_diag.npy" % \
+                           (self.params['output_root'], basename)
             exists = os.access(filename_diag, os.F_OK)
             if exists and not regenerate:
                 print "loading diagonal noise: " + filename_diag
@@ -191,7 +247,7 @@ class PairSet(ft.ClassPersistence):
         return copy.deepcopy(self.noisefiledict[filename])
 
 
-def multiproc(pair, filename):
+def wrap_corr(pair, filename):
     r"""Do the correlation for a map_pair `pair`.
     Correlations in the `pair` (map_pair type) are saved to `filename`
     """
@@ -205,6 +261,7 @@ def multiproc(pair, filename):
 if __name__ == '__main__':
     import sys
     if len(sys.argv) == 2:
-        PairSet(str(sys.argv[1])).execute()
+        #PairSet(str(sys.argv[1])).execute()
+        PairSet(str(sys.argv[1])).clean_maps()
     else:
         print 'Need one argument: parameter file name.'

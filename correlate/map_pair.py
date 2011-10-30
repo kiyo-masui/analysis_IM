@@ -152,13 +152,13 @@ class MapPair(ft.ClassPersistence):
         noise1 = 1. / noise1
         noise1 = common_resolution.apply(noise1, cval=1.e30)
         noise1 = 1. / noise1
-        noise1[noise1 < 1.e-20] = 0
+        noise1[noise1 < 1.e-20] = 0.
 
         noise2[noise2 < 1.e-30] = 1.e-30
         noise2 = 1 / noise2
         noise2 = common_resolution.apply(noise2, cval=1.e30)
         noise2 = 1. / noise2
-        noise2[noise2 < 1.e-20] = 0
+        noise2[noise2 < 1.e-20] = 0.
 
         self.noise_inv1 = algebra.as_alg_like(noise1, self.noise_inv1)
         self.noise_inv2 = algebra.as_alg_like(noise2, self.noise_inv2)
@@ -209,16 +209,11 @@ class MapPair(ft.ClassPersistence):
         self.map2 -= means2
 
         # Zero out all the infinit noise pixels (0 weight).
-        self.map1[self.noise_inv1 < 1.e-20] = 0
-        self.map2[self.noise_inv2 < 1.e-20] = 0
+        self.map1[self.noise_inv1 < 1.e-20] = 0.
+        self.map2[self.noise_inv2 < 1.e-20] = 0.
 
     def subtract_frequency_modes(self, modes1, modes2=None):
         r"""Subtract frequency mode from the map.
-
-        This does not save anything anymore. The outmaps (L and R modes)
-        that were saved before are now stored as a variable in the class
-        and the saving of everything (maps, noise_invs, and modes) is done
-        later in it's own function.
 
         Parameters
         ---------
