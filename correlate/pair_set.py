@@ -171,7 +171,7 @@ class PairSet(ft.ClassPersistence):
         process_list = []
         for pairitem in self.pairlist:
             filename = self.output_root
-            filename += "map_pair_for_freq_slices_fore_corr_%s.pkl" % pairitem
+            filename += "foreground_corr_pair_%s.pkl" % pairitem
             multi = Process(target=wrap_corr, args=([self.pairs[pairitem],
                             filename]), name=pairitem)
 

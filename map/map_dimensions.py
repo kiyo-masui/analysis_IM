@@ -9,14 +9,67 @@ def axis_param(axis):
     return (min_axis, max_axis, abs(axis[1]-axis[0]), extent, len(axis))
 
 
-def test_15hr_map():
-    blank = sp.zeros((256, 64, 32))
+def find_map_region(min_ra, max_ra, min_dec, max_dec, target_sample=0.25,
+                    multiplier=16, search_start=0):
+    r"""target 0.25 pixels/FWHM"""
+    # do multiples of 16 so that 256 freq * 16N is a multiple of 4096
 
-    info = {'ra_delta': -0.075045715822411624,
-            'dec_delta': 0.075,
-            'dec_centre': 2.0,
+    ra_sampling = target_sample*2.  # initial value that will not fail
+    n_ra = search_start
+    while ra_sampling > target_sample:
+        n_ra += multiplier
+        ra_sampling = find_map_dimensions(define_map_region(min_ra, max_ra,
+                                                     min_dec, max_dec, n_ra, 32), silent=True)
+        ra_sampling = ra_sampling[0]
+
+    dec_sampling = target_sample*2.
+    n_dec = search_start
+    while dec_sampling > target_sample:
+        n_dec += multiplier
+        dec_sampling = find_map_dimensions(define_map_region(min_ra, max_ra,
+                                           min_dec, max_dec, n_ra, n_dec), silent=True)
+        dec_sampling = dec_sampling[1]
+
+    ra_sample_ratio = target_sample/ra_sampling
+    dec_sample_ratio = target_sample/dec_sampling
+
+    print "n_ra=%d, samp=%g, ratio=%g" % (n_ra, ra_sampling,
+                                          target_sample/ra_sampling)
+
+    print "n_dec=%d, samp=%g, ratio=%g" % (n_dec, dec_sampling,
+                                          target_sample/dec_sampling)
+
+    print "original ra=(%g,%g), dec=(%g,%g)" % (min_ra, max_ra,
+                                                min_dec, max_dec)
+
+    template_map = define_map_region(min_ra, max_ra, min_dec, max_dec, n_ra, n_dec)
+    # now expand the map a bit so that pixels are exactly 0.25 deg
+    info = template_map.info
+
+    blank = sp.zeros((256, n_ra, n_dec))
+    info['ra_delta'] *= ra_sample_ratio
+    info['dec_delta'] *= dec_sample_ratio
+    map_prod = algebra.make_vect(blank, axis_names=('freq', 'ra', 'dec'))
+    map_prod.info = info
+
+    return map_prod
+
+
+def define_map_region(min_ra, max_ra, min_dec, max_dec, n_ra, n_dec):
+    blank = sp.zeros((256, n_ra, n_dec))
+
+    #axis = (delta*(sp.arange(len) - len//2) + centre)
+    ra_delta = (max_ra - min_ra)/float(n_ra-1)
+    ra_centre = min_ra + ra_delta*float((n_ra)//2)
+
+    dec_delta = (max_dec - min_dec)/float(n_dec-1)
+    dec_centre = min_dec + dec_delta*float((n_dec)//2)
+
+    info = {'ra_delta': ra_delta,
+            'dec_delta': dec_delta,
+            'dec_centre': dec_centre,
             'axes': ('freq', 'ra', 'dec'),
-            'ra_centre': 217.9,
+            'ra_centre': ra_centre,
             'freq_centre': 799609375.0,
             'freq_delta': -781250.0,
             'type': 'vect'}
@@ -26,12 +79,11 @@ def test_15hr_map():
     return map_prod
 
 
-def find_map_dimensions(map_in, print_infofield=True):
+def find_map_dimensions(map_in, silent=False):
     r"""print various aspects of the maps"""
     if isinstance(map_in, str):
         map_in = algebra.make_vect(algebra.load(map_in))
 
-    print map_in.shape
 
     ra_axis = map_in.get_axis('ra')
     mmd_ra = axis_param(ra_axis)
@@ -49,28 +101,33 @@ def find_map_dimensions(map_in, print_infofield=True):
                              dtype=float)
     beam_FWHM = interp1d(freq_data, beam_data)
 
-    if print_infofield:
-        for key in map_in.info:
-            print "%s: %s" % (key, map_in.info[key])
-
-    print "RA min=%g deg, max=%g deg, delta=%g deg, extent=%g deg, N=%d" % mmd_ra
-    print "Dec min=%g deg, max=%g deg, delta=%g deg, extent=%g deg, N=%d" % mmd_dec
-    print "Freq min=%g MHz, max=%g MHz, delta=%g MHz, extent=%g MHz, N=%d" % mmd_freq
-
     beam_minfreq = beam_FWHM(mmd_freq[0])
     beam_maxfreq = beam_FWHM(mmd_freq[1])
     pixelfrac_ramin = mmd_ra[2]/beam_minfreq
     pixelfrac_decmin = mmd_dec[2]/beam_minfreq
     pixelfrac_ramax = mmd_ra[2]/beam_maxfreq
     pixelfrac_decmax = mmd_dec[2]/beam_maxfreq
-    print "beam FWHM at %g MHz=%g deg; pixel frac RA, Dec=(%g, %g)" % \
-          (mmd_freq[0], beam_minfreq, pixelfrac_ramin, pixelfrac_decmin)
+    if not silent:
+        for key in map_in.info:
+            print "%s: %s" % (key, map_in.info[key])
 
-    print "beam FWHM at %g MHz=%g deg; pixel frac RA, Dec=(%g, %g)" % \
-          (mmd_freq[1], beam_maxfreq, pixelfrac_ramax, pixelfrac_decmax)
-    print "-"*80
+        print map_in.shape
+        print "RA min=%g deg, max=%g deg, delta=%g deg, extent=%g deg, N=%d" % mmd_ra
+        print "Dec min=%g deg, max=%g deg, delta=%g deg, extent=%g deg, N=%d" % mmd_dec
+        print "Freq min=%g MHz, max=%g MHz, delta=%g MHz, extent=%g MHz, N=%d" % mmd_freq
 
-if __name__ == '__main__':
+        print "beam FWHM at %g MHz=%g deg; pixel frac RA, Dec=(%g, %g)" % \
+              (mmd_freq[0], beam_minfreq, pixelfrac_ramin, pixelfrac_decmin)
+
+        print "beam FWHM at %g MHz=%g deg; pixel frac RA, Dec=(%g, %g)" % \
+              (mmd_freq[1], beam_maxfreq, pixelfrac_ramax, pixelfrac_decmax)
+        print "-"*80
+
+    # return the sampling at the finest resolution
+    return (pixelfrac_ramax, pixelfrac_decmax)
+
+
+def print_map_summary():
     print "former 15hr field dimensions"
     find_map_dimensions('/mnt/raid-project/gmrt/kiyo/wiggleZ/maps/sec_A_15hr_41-73_clean_map_I.npy')
     print "15hr field dimensions"
@@ -80,5 +137,28 @@ if __name__ == '__main__':
     print "1hr field dimensions"
     find_map_dimensions('/mnt/raid-project/gmrt/tcv/maps/sec_A_1hr_none_clean_map_I.npy')
 
+
+def new_map_templates(target_sample=0.25, multiplier=16, search_start=16):
+
+    template_15hr = find_map_region(220.3, 215.574, 0.8, 3.125,
+                    target_sample=target_sample, multiplier=multiplier,
+                    search_start=search_start)
     print "proposed 15hr field dimensions"
-    find_map_dimensions(test_15hr_map())
+    find_map_dimensions(template_15hr)
+
+    template_22hr = find_map_region(220.3, 215.574, 0.8, 3.125,
+                    target_sample=target_sample, multiplier=multiplier,
+                    search_start=search_start)
+    print "proposed 22hr field dimensions"
+    find_map_dimensions(template_22hr)
+
+    template_1hr = find_map_region(220.3, 215.574, 0.8, 3.125,
+                    target_sample=target_sample, multiplier=multiplier,
+                    search_start=search_start)
+    print "proposed 1hr field dimensions"
+    find_map_dimensions(template_1hr)
+
+
+if __name__ == '__main__':
+    new_map_templates(target_sample=0.25, multiplier=16, search_start=16)
+    new_map_templates(target_sample=0.25, multiplier=1, search_start=2)
