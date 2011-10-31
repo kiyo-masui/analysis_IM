@@ -224,7 +224,7 @@ def plot_difference(filename1, filename2, title, sigmarange=6., sigmacut=None,
     algebra.save(diff_filename, dmap)
 
     make_cube_movie(diff_filename,
-                       difftitle, cube_frame_dir, sigmarange=6,
+                       difftitle, cube_frame_dir, sigmarange=6.,
                        sigmacut=sigmacut, outputdir=outputdir, ignore=ignore,
                        multiplier=multiplier, transverse=transverse,
                        logscale=False)

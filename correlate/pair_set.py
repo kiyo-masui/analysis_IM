@@ -1,3 +1,15 @@
+r"""perform operations on sets of map pairs
+
+Some improvements to consider:
+    tag the outputs with the same 15hr_session etc as the data; right now these
+    are fully specified by the directory
+    pro to change: what if files move to a differently-named dir?
+    con: what if tags grow sec_A_15hr_test1_4waysplit_etc.etc_etc._etc._with_B
+    currently prefer more verbose directory names registered in the file db
+
+    have the cleaning act on the weights -- this is probably only relevant when
+    the full N^-1 rather than its diagonal is considered
+"""
 import os
 import sys
 import copy
@@ -11,15 +23,13 @@ import kiyopy.utils
 from core import algebra
 from correlate import map_pair
 from multiprocessing import Process, current_process
-# TODO: replace output_root with intermediate product directory
+# TODO: make map cleaning multiprocess; could also use previous cleaning, e.g.
+# 5 modes to clean 10 modes = modes 5 to 10 (but no need to do this)
 # TODO: move all magic strings to __init__ or params
 # TODO: replace print with logging
-# TODO: make function which subtracts 0-50
-# TODO: have the cleaning act on the weights too?
-# TODO: tag the outputs with the same 15hr_etc etc. as the data?
 
 params_init = {
-               'output_root': "./testoutput/",
+               'output_root': "local_test",
                # Options of saving.
                # What frequencies to correlate:
                'map1': 'GBT_15hr_map',
@@ -33,7 +43,7 @@ params_init = {
                'convolve': True,
                'factorizable_noise': True,
                'sub_weighted_mean': True,
-               'modes': 10,
+               'modes': [10, 15],
                'no_weights': False
                }
 prefix = 'fs_'
@@ -48,32 +58,55 @@ class PairSet(ft.ClassPersistence):
         self.pairs = {}
         self.pairlist = []
         self.noisefiledict = {}
+        self.datapath_db = dp.DataPath()
+
 
         self.params = parse_ini.parse(parameter_file_or_dict, params_init,
                                       prefix=prefix)
 
         self.freq_list = sp.array(self.params['freq_list'], dtype=int)
         self.lags = sp.array(self.params['lags'])
+        self.output_root = self.datapath_db.fetch(self.params['output_root'],
+                                                  intend_write=True)
 
         # Write parameter file.
-        kiyopy.utils.mkparents(self.params['output_root'])
-        parse_ini.write_params(self.params,
-                               self.params['output_root'] + 'params.ini',
+        kiyopy.utils.mkparents(self.output_root)
+        parse_ini.write_params(self.params, self.output_root + 'params.ini',
                                prefix=prefix)
 
     def execute(self):
         r"""main call to execute the various steps in foreground removal"""
+        self.calculate_corr_svd()
+        self.clean_maps(freestanding=False) # data are already loaded
+
+    def calculate_corr_svd(self):
+        r""" "macro" which finds the correlation functions for the pairs of
+        given maps, then the SVD.
+        """
         self.load_pairs(regenerate=True)
         self.preprocess_pairs()
-        #self.calculate_correlation()
+        # If the correlation is already calculated, this can be commented out
+        # and the SVD will load the previously-calculated correlations
+        self.calculate_correlation()
         self.calculate_svd()
 
-    def clean_maps(self):
-        self.load_pairs(regenerate=False)  # use previous diag(N^-1)
-        self.preprocess_pairs()
-        n_modes = self.params['modes']
-        self.subtract_foregrounds(n_modes)
-        self.save_data()
+    def clean_maps(self, freestanding=True):
+        r""" "macro" which open the data, does pre-processing, loads the
+        pre-calculated SVD modes, subtracts them, and saves the data.
+        This is the second stage. If `freestanding` assume that the data have
+        not been loaded into pairs and pre-processed.
+        """
+        if freestanding:
+            self.load_pairs(regenerate=False)  # use previous diag(N^-1)
+            self.preprocess_pairs()
+
+        self.uncleaned_pairs = copy.deepcopy(self.pairs)
+        for n_modes in self.params['modes']:
+            # clean self.pairs and save its components
+            self.subtract_foregrounds(n_modes)
+            self.save_data(n_modes)
+            # reset the all the pair data
+            self.pairs = copy.deepcopy(self.uncleaned_pairs)
 
     def load_pairs(self, regenerate=True):
         r"""load the set of map/noise pairs specified by keys handed to the
@@ -82,14 +115,16 @@ class PairSet(ft.ClassPersistence):
         """
         par = self.params
         (self.pairlist, pairdict) = dp.cross_maps(par['map1'], par['map2'],
-                                             par['noise_inv1'], par['noise_inv2'],
+                                             par['noise_inv1'],
+                                             par['noise_inv2'],
                                              verbose=False)
 
         for pairitem in self.pairlist:
             pdict = pairdict[pairitem]
-            print "-"*80
+            print "-" * 80
             dp.print_dictionary(pdict, sys.stdout,
-                                key_list=['map1', 'noise_inv1', 'map2', 'noise_inv2'])
+                                key_list=['map1', 'noise_inv1',
+                                          'map2', 'noise_inv2'])
 
             map1 = algebra.make_vect(algebra.load(pdict['map1']))
             map2 = algebra.make_vect(algebra.load(pdict['map2']))
@@ -115,6 +150,11 @@ class PairSet(ft.ClassPersistence):
             self.pairs[pairitem] = pair
 
     def preprocess_pairs(self):
+        r"""perform several preparation tasks on the data
+        1. convolve down to a common beam
+        2. make the noise factorizable
+        3. subtract the weighted mean from each freq. slice
+        """
         if self.params["convolve"]:
             self.call_pairs("degrade_resolution")
 
@@ -130,7 +170,7 @@ class PairSet(ft.ClassPersistence):
         """
         process_list = []
         for pairitem in self.pairlist:
-            filename = self.params['output_root']
+            filename = self.output_root
             filename += "map_pair_for_freq_slices_fore_corr_%s.pkl" % pairitem
             multi = Process(target=wrap_corr, args=([self.pairs[pairitem],
                             filename]), name=pairitem)
@@ -145,7 +185,7 @@ class PairSet(ft.ClassPersistence):
     def calculate_svd(self):
         r"""calculate the SVD of all pairs"""
         for pairitem in self.pairlist:
-            filename = self.params['output_root']
+            filename = self.output_root
             filename_corr = filename + "foreground_corr_pair_%s.pkl" % pairitem
             filename_svd = filename + "SVD_pair_%s.pkl" % pairitem
             print filename_corr
@@ -161,49 +201,49 @@ class PairSet(ft.ClassPersistence):
                 sys.exit()
 
     def subtract_foregrounds(self, n_modes):
+        r"""call subtract_frequency_modes on the maps with the modes as found
+        in the svd, removing the first `n_modes`
+        """
         for pairitem in self.pairlist:
             print "subtracting %d modes from %s" % (n_modes, pairitem)
-            filename = self.params['output_root']
-            filename_svd = filename + "SVD_pair_%s.pkl" % pairitem
+            filename_svd = "%s/SVD_pair_%s.pkl" % (self.output_root, pairitem)
+            # svd_info: 0 is vals, 1 is modes1 (left), 2 is modes2 (right)
             svd_info = ft.load_pickle(filename_svd)
-
-            vals = svd_info[0]
-            (all_modes1, all_modes2) = (svd_info[1], svd_info[2])
 
             self.pairs[pairitem].subtract_frequency_modes(
                                     svd_info[1][:n_modes],
                                     svd_info[2][:n_modes])
 
-    def save_data(self):
+    def save_data(self, n_modes):
         ''' Save the all of the clean data.
         '''
-        out_root = self.params['output_root']
         # Make sure folder is there.
-        if not os.path.isdir(out_root):
-            os.mkdir(out_root)
+        if not os.path.isdir(self.output_root):
+            os.mkdir(self.output_root)
 
+        n_modes = "%dmodes" % n_modes
         for pairitem in self.pairlist:
             pair = self.pairs[pairitem]
             (tag1, tag2) = (pair.map1_name, pair.map2_name)
-            map1_savename = "%s/sec_%s_cleaned_clean_map_I_with_%s.npy" % \
-                            (out_root, tag1, tag2)
-            map2_savename = "%s/sec_%s_cleaned_clean_map_I_with_%s.npy" % \
-                            (out_root, tag2, tag1)
-            noise_inv1_savename = "%s/sec_%s_cleaned_noise_inv_I_with_%s.npy" % \
-                            (out_root, tag1, tag2)
-            noise_inv2_savename = "%s/sec_%s_cleaned_noise_inv_I_with_%s.npy" % \
-                            (out_root, tag2, tag1)
-            modes1_savename = "%s/sec_%s_modes_clean_map_I_with_%s.npy" % \
-                            (out_root, tag1, tag2)
-            modes2_savename = "%s/sec_%s_modes_clean_map_I_with_%s.npy" % \
-                            (out_root, tag2, tag1)
+            map1_file = "%s/sec_%s_cleaned_clean_map_I_with_%s_%s.npy" % \
+                            (self.output_root, tag1, tag2, n_modes)
+            map2_file = "%s/sec_%s_cleaned_clean_map_I_with_%s_%s.npy" % \
+                            (self.output_root, tag2, tag1, n_modes)
+            noise_inv1_file = "%s/sec_%s_cleaned_noise_inv_I_with_%s_%s.npy" % \
+                            (self.output_root, tag1, tag2, n_modes)
+            noise_inv2_file = "%s/sec_%s_cleaned_noise_inv_I_with_%s_%s.npy" % \
+                            (self.output_root, tag2, tag1, n_modes)
+            modes1_file = "%s/sec_%s_modes_clean_map_I_with_%s_%s.npy" % \
+                            (self.output_root, tag1, tag2, n_modes)
+            modes2_file = "%s/sec_%s_modes_clean_map_I_with_%s_%s.npy" % \
+                            (self.output_root, tag2, tag1, n_modes)
 
-            algebra.save(map1_savename, pair.map1)
-            algebra.save(map2_savename, pair.map2)
-            algebra.save(noise_inv1_savename, pair.noise_inv1)
-            algebra.save(noise_inv2_savename, pair.noise_inv2)
-            algebra.save(modes1_savename, pair.left_modes)
-            algebra.save(modes2_savename, pair.right_modes)
+            algebra.save(map1_file, pair.map1)
+            algebra.save(map2_file, pair.map2)
+            algebra.save(noise_inv1_file, pair.noise_inv1)
+            algebra.save(noise_inv2_file, pair.noise_inv2)
+            algebra.save(modes1_file, pair.left_modes)
+            algebra.save(modes2_file, pair.right_modes)
 
     # Service functions ------------------------------------------------------
     def call_pairs(self, call):
@@ -230,10 +270,10 @@ class PairSet(ft.ClassPersistence):
         if filename not in self.noisefiledict:
             basename = filename.split("/")[-1].split(".npy")[0]
             filename_diag = "%s/%s_diag.npy" % \
-                           (self.params['output_root'], basename)
+                           (self.output_root, basename)
             exists = os.access(filename_diag, os.F_OK)
             if exists and not regenerate:
-                print "loading diagonal noise: " + filename_diag
+                print "loading pre-diagonalized noise: " + filename_diag
                 self.noisefiledict[filename] = algebra.make_vect(
                                                 algebra.load(filename_diag))
             else:
@@ -259,9 +299,8 @@ def wrap_corr(pair, filename):
 
 
 if __name__ == '__main__':
-    import sys
     if len(sys.argv) == 2:
-        #PairSet(str(sys.argv[1])).execute()
-        PairSet(str(sys.argv[1])).clean_maps()
+        PairSet(str(sys.argv[1])).execute()
+        #PairSet(str(sys.argv[1])).clean_maps()
     else:
         print 'Need one argument: parameter file name.'
