@@ -277,7 +277,7 @@ class DataPath(object):
                 print "ERROR: " + dbkey + " is not in the group list"
                 sys.exit()
 
-    def print_db_item(self, dbkey, suppress_lists=6, silent=False):
+    def print_db_item(self, dbkey, suppress_lists=90, silent=False):
         r"""print a database entry to markdown format
         'desc' and 'status' are requires keys in the file attributes
         suppress printing of lists of more than `suppress_lists` files
@@ -324,7 +324,7 @@ class DataPath(object):
 
         return retstring
 
-    def print_path_db(self, suppress_lists=6, fileobj=None):
+    def print_path_db(self, suppress_lists=90, fileobj=None):
         r"""print all the files in the path database; note that it is a
         dictionary and so this is un-ordered. print_path_db_by_group prints the
         database items ordered by the file group specifications.
@@ -343,7 +343,7 @@ class DataPath(object):
 
         print "-" * 80
 
-    def print_path_db_by_group(self, suppress_lists=6, fileobj=None):
+    def print_path_db_by_group(self, suppress_lists=90, fileobj=None):
         r"""print all the files in the path database ordered by group
         specification.
 
@@ -448,7 +448,7 @@ class DataPath(object):
                        self.runinfo)
         fileobj.write("* %d files registered; database size in memory = %s\n" %
                      self._db_size)
-        self.print_path_db_by_group(suppress_lists=30, fileobj=fileobj)
+        self.print_path_db_by_group(suppress_lists=90, fileobj=fileobj)
 
         fileobj.close()
 
@@ -493,7 +493,7 @@ if __name__ == "__main__":
 
     # generate the path db markdown website
     datapath_db = DataPath()
-    #datapath_db.generate_hashtable()
+    datapath_db.generate_hashtable()
     datapath_db.generate_path_webpage()
 
     # run some tests

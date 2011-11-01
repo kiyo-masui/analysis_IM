@@ -163,7 +163,7 @@ def new_map_templates(target_sample=0.25, multiplier=16, search_start=16):
     #template_1hr = find_map_region(18., 8., -1.6, 4.4,
     #                target_sample=target_sample, multiplier=multiplier,
     #                search_start=search_start)
-    template_1hr = find_map_region(18., 8., -1., 4.4,
+    template_1hr = find_map_region(18., 8., -0.7, 4.4,
                     target_sample=target_sample, multiplier=multiplier,
                     search_start=search_start)
     find_map_dimensions(template_1hr)

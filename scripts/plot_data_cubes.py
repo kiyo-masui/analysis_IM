@@ -22,15 +22,18 @@ def plot_gbt_simset(outputdir="/cita/d/www/home/eswitzer/movies/"):
 
 
 def plot_gbt_diff_tests(outputdir="/cita/d/www/home/eswitzer/movies/",
-                        transverse=False):
+                        transverse=True):
     tcv_15root = "/mnt/raid-project/gmrt/tcv/"
     tcv_15root += "modetest/73_ABCD_all_15_modes_real_maponly/"
     tcv_15map = tcv_15root + "sec_A_15hr_41-90_cleaned_clean_map_I_with_B.npy"
     tcv_15noise = tcv_15root + "sec_A_15hr_41-90_cleaned_noise_inv_I_with_B.npy"
-    ers_15root = "/mnt/raid-project/gmrt/eswitzer/GBT/"
-    ers_15root += "cleaned_maps/freq_slices_refactor_tests_15modes/"
-    ers_15map = ers_15root + "sec_A_15hr_41-90_cleaned_clean_map_I_with_B.npy"
-    ers_15noise = ers_15root + "sec_A_15hr_41-90_cleaned_noise_inv_I_with_B.npy"
+    #ers_15root = "/mnt/raid-project/gmrt/eswitzer/GBT/"
+    #ers_15root += "cleaned_maps/freq_slices_refactor_tests_15modes/"
+    #ers_15map = ers_15root + "sec_A_15hr_41-90_cleaned_clean_map_I_with_B.npy"
+    #ers_15noise = ers_15root + "sec_A_15hr_41-90_cleaned_noise_inv_I_with_B.npy"
+    ers_15root = "./data_test/"
+    ers_15map = ers_15root + "sec_A_cleaned_clean_map_I_with_B_15modes.npy"
+    ers_15noise = ers_15root + "sec_A_cleaned_noise_inv_I_with_B_15modes.npy"
 
     pc.plot_difference(tcv_15map, ers_15map, "Temperature (mK)", sigmarange=6.,
                     fractional=False, diff_filename="./map_difference.npy",
@@ -50,6 +53,7 @@ def plot_gbt_diff_tests(outputdir="/cita/d/www/home/eswitzer/movies/",
                         multiplier=1., logscale=True, fractional=True,
                         diff_filename="./noise_inv_fractional_difference.npy",
                         outputdir=outputdir, transverse=True)
+
 
 def plot_sim_scheme(outputdir="/cita/d/www/home/eswitzer/movies/"):
     sim1 = "sim_streaming1.npy"
