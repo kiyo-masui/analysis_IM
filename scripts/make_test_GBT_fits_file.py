@@ -10,6 +10,7 @@ testing, or regression testing.
 
 import os
 import copy
+import shelve
 
 import scipy as sp
 import pyfits
@@ -17,6 +18,7 @@ import pyfits
 from core import fitsGBT
 from time_stream import rebin_freq, rebin_time, split_bands, combine_cal
 from time_stream import rotate_pol
+from noise import measure_noise
 
 
 #### The origional spectrometer gbt test data file.
@@ -81,6 +83,9 @@ rot_Blocks = copy.deepcopy(comb_Blocks)
 for Data in rot_Blocks:
     rotate_pol.rotate(Data)
 
+# Measure some parameters from the noise.
+#out_db = shelve.open('./testdata/testfile_guppi_noise_parameters.shelve')
+#parameters = get_correlated_overf(rot_Blocks, 1.0, window='hanning')
 
 Writer = fitsGBT.Writer(Blocks)
 Writer.write('./testdata/testfile_guppi_rebinned.fits')
@@ -90,6 +95,4 @@ Writer = fitsGBT.Writer(comb_Blocks)
 Writer.write('./testdata/testfile_guppi_combined.fits')
 Writer = fitsGBT.Writer(rot_Blocks)
 Writer.write('./testdata/testfile_guppi_rotated.fits')
-
-
 

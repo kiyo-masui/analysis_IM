@@ -237,11 +237,10 @@ class TestClasses(unittest.TestCase):
         # Frist get a full representation of the noise matrix
         tmp_mat = sp.zeros((nf_d, nt, nf_d, nt))
         tmp_mat.flat[::nt*nf_d + 1] += Noise.diagonal.flat
-        for ii in xrange(nf_d):
-            for jj in xrange(Noise.time_modes.shape[0]):
-                tmp_mat[ii,:,ii,:] += (Noise.time_modes[jj,:]
-                                       * Noise.time_modes[jj,:,None]
-                                       * dirty_map.T_infinity)
+        for jj in xrange(Noise.time_modes.shape[0]):
+            tmp_mat += (Noise.time_mode_noise[jj,:,None,:,None]
+                        * Noise.time_modes[jj,None,:,None,None]
+                        * Noise.time_modes[jj,None,None,None,:])
         for jj in xrange(Noise.freq_modes.shape[0]):
             tmp_mat +=  (Noise.freq_mode_noise[jj,None,:,None,:]
                          * Noise.freq_modes[jj,:,None,None,None]
@@ -295,13 +294,7 @@ class TestClasses(unittest.TestCase):
         nt = len(time)
         # Frist Way.
         Noise1 = dirty_map.Noise(time_stream, time)
-        # XXX
-        #print
-        #print "Matrix 1:"
-        #Noise1.flag = True
-        ###
         thermal_noise_levels = sp.zeros((1,)) + 0.04  # Kelvin**2
-        #thermal_noise_levels = sp.zeros((1,)) + 0.000004  # Kelvin**2
         Noise1.add_thermal(thermal_noise_levels)
         Noise1.add_mask(mask_inds)
         Noise1.deweight_time_mean()
@@ -309,21 +302,11 @@ class TestClasses(unittest.TestCase):
         Noise1.add_correlated_over_f(0.01, -1.2, 0.1)
         Noise1.finalize()
         N1 = Noise1.get_inverse()
-        ###
-        #N1_m = N1.view()
-        #N1_m.shape = (nt, nt)
-        #e, v = linalg.eigh(N1_m)
-        #print "Inverse eigs number:", max(e), min(e), max(e)/min(e)
         # Second Way.
         Noise2 = dirty_map.Noise(time_stream, time)
-        # XXX
-        #print "Matrix 2:"
-        #Noise2.flag = True
-        ###
         thermal_noise_levels = sp.zeros((1,)) + 0.04  # Kelvin**2
         Noise2.add_thermal(thermal_noise_levels)
         Noise2.add_mask(mask_inds)
-        #Noise2.deweight_time_mean()
         Noise2.deweight_time_slope()
         Noise2.add_correlated_over_f(0.01, -1.2, 0.1)
         Noise2.freq_mode_noise += dirty_map.T_infinity
@@ -331,13 +314,42 @@ class TestClasses(unittest.TestCase):
         N2 = Noise2.get_inverse()
         N2_m = N2.view()
         N2_m.shape = (nt, nt)
-        ###
-        #e, v = linalg.eigh(N2_m)
-        #print "Inverse eigs number:", max(e), min(e), max(e)/min(e)
         self.assertTrue(sp.allclose(N2, N1))
 
+    def test_uncoupled_channels(self):
+        time_stream, ra, dec, az, el, time, mask_inds = \
+                                               self.DM.get_all_trimmed()
+        nt = len(time)
+        Noise = dirty_map.Noise(time_stream, time)
+        thermal_noise_level = 0.04  # Kelvin**2
+        Noise.add_thermal(thermal_noise_level)
+        Noise.add_mask(mask_inds)
+        Noise.deweight_time_mean()
+        Noise.deweight_time_slope()
+        Noise.add_correlated_over_f(0.01, -1.2, 0.1)
+        self.assertRaises(NotImplementedError, Noise.finalize,
+                          frequency_correlations=False)
+        return
+        Noise.finalize(frequency_correlations=False)
+        N_inv = Noise.get_inverse()
+        self.assertEqual(N_inv.shape, (nf_d, nt, nt))
+        # Calculate the noise on a slice and make sure it multiplies to give
+        # the identity.
+        N = sp.zeros(nf_d, nt * nt)
+        N[:,::nt + 1] = thermal_noise_level
+        for ii in range(Noise.time_mode_noise.shape[0]):
+            N += (Noise.time_mode_noise[ii,...].flat[::nf_d + 1,None,None]
+                  * Noise.time_modes[ii,None,:,None]
+                  * Noise.time_modes[ii,None,None,:])
+        for ii in xrange(nf_d):
+            for jj in xrange(Noise.freq_modes.shape[0]):
+                N[ii,...] += (Noise.freq_mode_noise[jj,...] 
+                      * Noise.freq_modes[jj,ii]**2)
+        eye = sp.eye(nt, nt)
+        for ii in range(nf_d):
+            tmp_eye = sp.dot(N, N_inv[ii,...])
+            self.assertTrue(sp.allclose(tmp_eye, eye))
 
-        
     def deactivate_test_profile(self):
         """Not an actual test, this is for profiling."""
         
@@ -579,9 +591,10 @@ class TestEngine(unittest.TestCase):
         Maker.pol = 0
         Maker.band = 0
         # Replace the data reader with mock data generator.
-        def preprocess_data(MakerClass):
-            return Data.get_all_trimmed(MakerClass.file_number)
-        Maker.preprocess_data = lambda : preprocess_data(Maker)
+        def iterate_data():
+            for ii in xrange(n_data):
+                yield Data.get_all_trimmed(ii)
+        Maker.iterate_data = iterate_data
         # Replace the noise parameter reader.
         def get_noise_parameter(MakerClass, parameter_name):
             if parameter_name == "thermal":
@@ -602,7 +615,8 @@ class TestEngine(unittest.TestCase):
         # Initialize the map maker's map and inverse covariance.
         map = Data.get_map()
         Maker.map = map
-        cov_inv = sp.zeros((nf, nra, ndec, nf, nra, ndec),
+        # I use ones instead of zeros to make sure it gets overwritten.
+        cov_inv = sp.ones((nf, nra, ndec, nf, nra, ndec),
                            dtype=float)
         cov_inv = al.make_mat(cov_inv, axis_names=('freq', 'ra', 'dec',
             'freq', 'ra', 'dec'), row_axes=(0, 1, 2), col_axes=(3, 4, 5))
@@ -646,26 +660,44 @@ class TestModuleIO(unittest.TestCase):
     
     def setUp(self):
 
-        nra = 64
-        ndec = 32
-        
+        nra = 16
+        ndec = 8
         self.params = {
-            'dm_file_middles' : ['a'] * n_data,
+            'dm_input_root' : './testdata/',
+            'dm_file_middles' : ('testfile_guppi_combined',),
+            'dm_input_end' : '.fits',
+            'dm_output_root' : './testoutput_',
+            'dm_scans' : (),
+            'dm_bands' : (),
+            'dm_polarizations' : ('I', 'U'),
             'dm_map_shape' : (nra, ndec),
-            'dm_field_centre' : (21., 0.),
-            'dm_pixel_spacing' : 0.075,
+            'dm_field_centre' : (218., 2.),
+            'dm_pixel_spacing' : 0.15,
             'dm_time_block' : 'file',
             'dm_frequency_correlations' : 'mean',
+            'number_frequency_modes' : 1,
+            'dm_noise_parameter_file' : "",
             'dm_thermal_weight' : 'thermal',
             'dm_deweight_time_mean' : True,
             'dm_deweight_time_slope' : True
                   }
     
-    def test_module(self) :
+    def deactivate_test_normal(self) :
         params = self.params
         dirty_map.DirtyMap(params, feedback=0).execute(4)
         files = glob.glob('*testout*')
-        self.assertTrue(len(files) > 1)
+        # 17 files = 2 pols * 2 bands * 2 (map and noise) * 2 (.npy and
+        # .npy.meta) + 1 (parameter file)
+        self.assertTrue(len(files) == 17)
+
+    def deactivate_test_separate_scans(self) :
+        params = self.params
+        params['dm_time_block'] = 'scan'
+        dirty_map.DirtyMap(params, feedback=0).execute(4)
+        files = glob.glob('*testout*')
+        # 17 files = 2 pols * 2 bands * 2 (map and noise) * 2 (.npy and
+        # .npy.meta) + 1 (parameter file)
+        self.assertTrue(len(files) == 17)
 
     def tearDown(self) :
         files = glob.glob('*testout*')
