@@ -23,7 +23,7 @@ params_init = {
 prefix = 'fs_'
 
 
-class BulkCorrelate(ft.ClassPersistence):
+class BatchCorrelate(ft.ClassPersistence):
     r"""produce a set of map pairs implied by the database keys"""
     def __init__(self, parameter_file_or_dict=None):
         self.params = parse_ini.parse(parameter_file_or_dict, params_init,
@@ -97,6 +97,6 @@ class BulkCorrelate(ft.ClassPersistence):
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:
-        BulkCorrelate(str(sys.argv[1])).execute()
+        BatchCorrelate(str(sys.argv[1])).execute()
     else:
         print 'Need one argument: parameter file name.'

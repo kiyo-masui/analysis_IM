@@ -1,7 +1,5 @@
 r"""Program that calculates the correlation function across frequency slices.
 """
-# TODO: figure out data model for storing lags, etc. with class instance
-# TODO: needs to continue to work with multiprocessing
 
 import time
 import sys
@@ -12,6 +10,7 @@ from map import beam
 from kiyopy import parse_ini
 import kiyopy.utils
 from utils import file_tools as ft
+# TODO: move single map operations to a separate class
 
 params_init = {
                'output_root': "./data_test/",
@@ -29,6 +28,7 @@ prefix = 'fs_'
 
 
 class CorrelateSingle():
+    r"""Class to handle correlation of a single map pair"""
     def __init__(self, parameter_file_or_dict=None):
         self.params = parse_ini.parse(parameter_file_or_dict, params_init,
                                       prefix=prefix)
@@ -47,12 +47,16 @@ class CorrelateSingle():
         parse_ini.write_params(self.params, self.inifile,
                                prefix=prefix)
 
-    def execute(self):
+        # load the maps, N^-1
         map1 = algebra.make_vect(algebra.load(self.params['map1']))
         map2 = algebra.make_vect(algebra.load(self.params['map2']))
         noise_inv1 = algebra.make_vect(algebra.load(self.params['noise_inv1']))
         noise_inv2 = algebra.make_vect(algebra.load(self.params['noise_inv2']))
         self.pair = MapPair(map1, map2, noise_inv1, noise_inv2, self.freq_list)
+
+    def execute(self):
+        r"""calculate the correlation function of the given map pair"""
+        print "stuff here"
 
 
 class MapPair(ft.ClassPersistence):
@@ -88,6 +92,10 @@ class MapPair(ft.ClassPersistence):
     """
 
     def __init__(self, *args, **kwargs):
+        r"""
+        arguments: map1, map2, noise_inv1, noise_inv2, freq
+        """
+        super(MapPair, self).__init__()
         # variable names that define the object (for loading and saving)
         self.varlist = ['map1', 'map2', 'noise_inv1', 'noise_inv2', 'freq']
         self.varlist.extend(['counts', 'modes1', 'modes2'])
@@ -95,42 +103,32 @@ class MapPair(ft.ClassPersistence):
         self.varlist.extend(['map1_name', 'map2_name'])
 
         if ((len(args) == 0) and ("shelve_filename" in kwargs)):
-            self.shelve_init(*args, **kwargs)
+            shelve_filename = kwargs['shelve_filename']
+            self.load_variables(shelve_filename)
         else:
-            self.standard_init(*args, **kwargs)
+            (self.map1, self.map2) = (args[0], args[1])
+            (self.noise_inv1, self.noise_inv2) = (args[2], args[3])
+            self.freq = args[4]
 
-    def shelve_init(self, *args, **kwargs):
-        shelve_filename = kwargs['shelve_filename']
-        self.load_variables(shelve_filename)
+            # Give infinite noise to unconsidered frequencies
+            noise_dimensions = self.noise_inv1.shape[0]
+            for noise_index in range(noise_dimensions):
+                if not noise_index in self.freq:
+                    self.noise_inv1[noise_index, ...] = 0
+                    self.noise_inv2[noise_index, ...] = 0
 
-    def standard_init(self, *args, **kwargs):
-        r"""
-        arguments: map1, map2, noise_inv1, noise_inv2, freq
-        """
-        (self.map1, self.map2) = (args[0], args[1])
-        (self.noise_inv1, self.noise_inv2) = (args[2], args[3])
-        self.freq = args[4]
-
-        # Give infinite noise to unconsidered frequencies (This doesn't affect
-        # anything but the output maps).
-        noise_dimensions = self.noise_inv1.shape[0]
-        for noise_index in range(noise_dimensions):
-            if not noise_index in self.freq:
-                self.noise_inv1[noise_index, ...] = 0
-                self.noise_inv2[noise_index, ...] = 0
-
-        # Set attributes.
-        self.counts = 0
-        self.modes1 = 0
-        self.modes2 = 0
-        self.left_modes = 0
-        self.right_modes = 0
-        # For saving, to keep track of each mapname.
-        self.map1_name = ''
-        self.map2_name = ''
-        # Which section [A, B, C, D...] the maps is from.
-        self.map1_code = ''
-        self.map2_code = ''
+            # Set attributes.
+            self.counts = 0
+            self.modes1 = 0
+            self.modes2 = 0
+            self.left_modes = 0
+            self.right_modes = 0
+            # For saving, to keep track of each mapname.
+            self.map1_name = ''
+            self.map2_name = ''
+            # Which section [A, B, C, D...] the maps is from.
+            self.map1_code = ''
+            self.map2_code = ''
 
     def set_names(self, name1, name2):
         r"""Set the map names and codes.
@@ -214,7 +212,6 @@ class MapPair(ft.ClassPersistence):
         weights.
         """
 
-        # TODO: move me elsewhere!
         def make_factorizable(noise):
             r"""factorize the noise"""
             noise[noise < 1.e-30] = 1.e-30
@@ -222,7 +219,7 @@ class MapPair(ft.ClassPersistence):
             noise = ma.array(noise)
             # Get the freqency averaged noise per pixel.  Propagate mask in any
             # frequency to all frequencies.
-            for noise_index in range(noise.shape[0]):
+            for noise_index in range(ma.shape(noise)[0]):
                 if sp.all(noise[noise_index, ...] > 1.e20):
                     noise[noise_index, ...] = ma.masked
             noise_fmean = ma.mean(noise, 0)
@@ -404,8 +401,10 @@ class MapPair(ft.ClassPersistence):
             posmaskdict = {}
             for klag in range(nlags):
                 mask = (lag_inds == klag)
-                posmaskdict[repr(klag)] = (ra1_pairind[mask], ra2_pairind[mask],
-                                           dec1_pairind[mask], dec2_pairind[mask])
+                posmaskdict[repr(klag)] = (ra1_pairind[mask],
+                                           ra2_pairind[mask],
+                                           dec1_pairind[mask],
+                                           dec2_pairind[mask])
 
             for if1 in range(len(freq1)):
                 for jf2 in range(len(freq2)):
@@ -417,11 +416,6 @@ class MapPair(ft.ClassPersistence):
                     weights2 = input_noise2[jf2, :, :]
 
                     for klag in range(nlags):
-                        # cached, but written out:
-                        #dprod = data1[ra1_pairind[mask], dec1_pairind[mask]]* \
-                        #        data2[ra2_pairind[mask], dec2_pairind[mask]]
-                        #wprod = weights1[ra1_pairind[mask], dec1_pairind[mask]] * \
-                        #        weights2[ra2_pairind[mask], dec2_pairind[mask]]
                         (r1m, r2m, d1m, d2m) = posmaskdict[repr(klag)]
                         dprod = data1[r1m, d1m] * data2[r2m, d2m]
                         wprod = weights1[r1m, d1m] * weights2[r2m, d2m]
@@ -429,7 +423,8 @@ class MapPair(ft.ClassPersistence):
                         counts[if1, jf2, klag] += sp.sum(wprod)
 
                     if verbose:
-                        print if1, jf2, (time.time() - start), counts[if1, jf2, :]
+                        print if1, jf2, (time.time() - start)
+                        print counts[if1, jf2, :]
         else:
             print "Starting Correlation (full version)"
             for if1 in range(len(freq1)):
@@ -449,7 +444,8 @@ class MapPair(ft.ClassPersistence):
                         counts[if1, jf2, klag] += sp.sum(wprod.flatten()[mask])
 
                     if verbose:
-                        print if1, jf2, (time.time() - start), counts[if1, jf2, :]
+                        print if1, jf2, (time.time() - start)
+                        print counts[if1, jf2, :]
 
         mask = (counts < 1e-20)
         counts[mask] = 1
@@ -464,4 +460,3 @@ if __name__ == '__main__':
         CorrelateSingle(str(sys.argv[1])).execute()
     else:
         print 'Need one argument: parameter file name.'
-

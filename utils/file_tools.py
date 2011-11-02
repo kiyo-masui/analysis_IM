@@ -175,8 +175,9 @@ class ClassPersistence(object):
     depend on the context of the class instance, so are a pain to open later
     in different contexts -- they are fine to purely save intermediate data.
     """
-    def __init__(self):
-        print "This is your ClassPersistence base class talking"
+    def __init__(self, verbose=False):
+        if verbose:
+            print "Class using ClassPersistence for file IO"
 
     def save_pickle(self, filename):
         """note that to withold certain attributes (like open file handles)
