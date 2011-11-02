@@ -1,28 +1,10 @@
+r"""prepare a correlation analysis of all relevant pairs of maps"""
 import sys
 import scipy as sp
 from utils import file_tools as ft
 from kiyopy import parse_ini
 import kiyopy.utils
 from utils import data_paths as dp
-# using the prescription for which noise to associate to the map sets form all
-# pairs of maps for the correlation code.:s
-# GBT_15hr_cleaned_Eric_0mode A_with_B;map
-
-# calculate correlations in batch (designed to be used with PBS/scinet)
-# problem: each correlation wants a different .ini file.
-# can group correlations and use multiprocessing, but would rather have pbs
-# spin one-off correlations to run on scinet
-# standalone function that 
-
-# want: A_with_B_x_B_with_A -- these six pairs
-# split on cross_sym, _with_ A B
-
-# need an intelligible way to summarize correlations:
-# for each map: field name, {15hr, wigglez, etc} method it was cleaned with
-# A_with_B, etc.
-
-# map1_key_interiorname_noise1_key_interiorname
-# GBT_15hr_cleaned_Eric_0mode_A_with_B_x_GBT_15hr_cleaned_Eric_0mode_B_with_A.ini
 
 params_init = {
                'output_root': "./data_test/",
@@ -42,6 +24,7 @@ prefix = 'fs_'
 
 
 class BulkCorrelate(ft.ClassPersistence):
+    r"""produce a set of map pairs implied by the database keys"""
     def __init__(self, parameter_file_or_dict=None):
         self.params = parse_ini.parse(parameter_file_or_dict, params_init,
                                       prefix=prefix)
@@ -61,14 +44,22 @@ class BulkCorrelate(ft.ClassPersistence):
                                prefix=prefix)
 
     def execute(self):
+        r"""perform the main function of this class (for pipeline call)"""
         for pairitem in self.params['pairlist']:
             print pairitem
-            self.define_map_pairs(pairitem['map1'], pairitem['map2'],
-                                  pairitem['noise_inv1'], pairitem['noise_inv2'])
+            self.generate_ini_batch(pairitem['map1'], pairitem['map2'],
+                                    pairitem['noise_inv1'],
+                                    pairitem['noise_inv2'])
 
-    def define_map_pairs(self, map1_key, map2_key, noise1_key, noise2_key):
-        par = self.params
-        (self.pairlist, self.pairdict) = \
+    def generate_ini_batch(self, map1_key, map2_key, noise1_key, noise2_key):
+        r""" produce a batch of ini files which can be fed to PBS or run
+        independently on prawn. The correlations are built from all pairs and
+        then labelled by their database keys, e.g.
+        [map1_key]_A_with_B_x_[map2_key]_B_with_A.ini
+        the noise_inv keys are not annotated in the filename but on can read
+        off the files in the .ini file
+        """
+        (pairlist, pairdict) = \
                 dp.cross_maps(map1_key, map2_key,
                               noise1_key, noise2_key,
                               map_suffix=";map",
@@ -76,37 +67,36 @@ class BulkCorrelate(ft.ClassPersistence):
                               cross_sym="_x_",
                               pair_former="GBTauto_cross_pairs",
                               ignore=['param'],
-                              tag1prefix = map1_key + "_",
-                              tag2prefix = map2_key + "_",
+                              tag1prefix=map1_key + "_",
+                              tag2prefix=map2_key + "_",
                               verbose=False)
 
-        freq_list_full = range(self.nfreq_bin)
-        for pairname in self.pairlist:
+        for pairname in pairlist:
             ininame = pairname + ".ini"
-            fh = open(self.ini_root + ininame, 'w')
+            inifile = open(self.ini_root + ininame, 'w')
             print ininame
-            fileinfo = self.pairdict[pairname]
-            fh.write("import os\nimport scipy as sp\n\n")
-            fh.write("fs_output_root = '%s'\n" % self.params['output_root'])
-            fh.write("fs_output_filetag = '%s'\n" % pairname)
-            fh.write("fs_map1 = '%s'\n" %fileinfo['map1'])
-            fh.write("fs_noise_inv1 = '%s'\n" % fileinfo['noise_inv1'])
-            fh.write("fs_map2 = '%s'\n" % fileinfo['map2'])
-            fh.write("fs_noise_inv2 = '%s'\n" % fileinfo['noise_inv2'])
-            fh.write("fs_lags = %s\n" % self.lags)
-            fh.write("fs_freq_list = range(%d)\n" % self.nfreq_bin)
+            fileinfo = pairdict[pairname]
+            inifile.write("import os\nimport scipy as sp\n\n")
+            inifile.write("fs_output_root = '%s'\n" % \
+                          self.params['output_root'])
+            inifile.write("fs_output_filetag = '%s'\n" % pairname)
+            inifile.write("fs_map1 = '%s'\n" % fileinfo['map1'])
+            inifile.write("fs_noise_inv1 = '%s'\n" % fileinfo['noise_inv1'])
+            inifile.write("fs_map2 = '%s'\n" % fileinfo['map2'])
+            inifile.write("fs_noise_inv2 = '%s'\n" % fileinfo['noise_inv2'])
+            inifile.write("fs_lags = %s\n" % self.lags)
+            inifile.write("fs_freq_list = range(%d)\n" % self.nfreq_bin)
             cutlist = []
             for fbin in range(self.nfreq_bin):
                 if fbin not in self.freq_list:
                     cutlist.append(fbin)
-            fh.write("cutlist = %s\n" % repr(cutlist))
+            inifile.write("cutlist = %s\n" % repr(cutlist))
             comp = '[x for x in fs_freq_list if x not in cutlist]'
-            fh.write("fs_freq_list = tuple(%s)\n" % comp)
-            fh.close()
+            inifile.write("fs_freq_list = tuple(%s)\n" % comp)
+            inifile.close()
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:
         BulkCorrelate(str(sys.argv[1])).execute()
     else:
         print 'Need one argument: parameter file name.'
-
