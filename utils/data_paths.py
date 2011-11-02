@@ -21,8 +21,8 @@ def print_dictionary(dict_in, handle, key_list=None, prepend=""):
         print >> handle, "%s%s: %s" % (prepend, key, repr(dict_in[key]))
 
 
-def extract_split_tag(keylist, divider="_", ignore=None):
-    r"""take a list like ['A_ok', 'B_ok'], and return ['A', 'B']
+def extract_split_tag(keylist, divider=";", ignore=None):
+    r"""take a list like ['A;ok', 'B;ok'], and return ['A', 'B']
     list is made unique and sorted alphabetically
     anything in `ignore` is thrown out
     """
@@ -39,8 +39,52 @@ def extract_split_tag(keylist, divider="_", ignore=None):
     return taglist
 
 
+def GBTauto_cross_pairs(list1, list2, cross_sym="_with_"):
+    r"""given the list of map tags, produce a list of paired tuples
+
+    list1 = ['A_with_B', 'A_with_C', ..., 'B_with_A', ...]
+    list1 = ['A_with_B', 'A_with_C', ..., 'B_with_A', ...]
+    gives:
+    [('A_with_B', 'B_with_A'), ('A_with_C', 'C_with_A')
+     ('A_with_D', 'D_with_A'), ('B_with_C', 'C_with_B')
+     ('B_with_D', 'D_with_B'), ('C_with_D', 'D_with_C')]
+    """
+    maplist1 = []
+    for entry in list1:
+        maplist1.extend(entry.split(cross_sym))
+    maplist1 = list(set(maplist1))
+    maplist1.sort()
+
+    maplist2 = []
+    for entry in list1:
+        maplist2.extend(entry.split(cross_sym))
+    maplist2 = list(set(maplist2))
+    maplist2.sort()
+
+    if (maplist1 != maplist2):
+        print "ERROR: auto-power has unmatched map split"
+        sys.exit()
+
+    combolist = unique_cross_pairs(maplist1, maplist2)
+    retlist = []
+    for item in combolist:
+        left = "%s%s%s" % (item[0], cross_sym, item[1])
+        right = "%s%s%s" % (item[1], cross_sym, item[0])
+        retlist.append((left, right))
+
+    return retlist
+
+
 def unique_cross_pairs(list1, list2):
-    r"""given ['A','B'], ['A','B'] return ['AB']"""
+    r"""given the list of map tags, produce a list of tuples of unique pairs
+    of those map (recognizing AxB = BxA)
+
+    >>> list1 = ['A', 'B', 'C', 'D']
+    >>> list2 = ['A', 'B', 'C', 'D']
+    >>> unique_cross_pairs(list1, list2)
+    [('A', 'B'), ('A', 'C'), ('A', 'D'), ('B', 'C'), ('B', 'D'), ('C', 'D')]
+
+    """
     retlist = []
     for ind1 in range(len(list1)):
         for ind2 in range(len(list2)):
@@ -49,11 +93,12 @@ def unique_cross_pairs(list1, list2):
 
     return retlist
 
-
 # TODO: write doctest for this
 def cross_maps(map1key, map2key, noise_inv1key, noise_inv2key,
-               map_suffix="_clean_map", noise_inv_suffix="_noise_inv",
-               verbose=True):
+               map_suffix=";clean_map", noise_inv_suffix=";noise_inv",
+               verbose=True, ignore=['firstpass'], cross_sym="_with_",
+               pair_former="unique_cross_pairs",
+               tag1prefix="", tag2prefix=""):
     r"""Use the database to report all unique crossed map maps given map and
     noise_inv keys.
     """
@@ -75,10 +120,10 @@ def cross_maps(map1key, map2key, noise_inv1key, noise_inv2key,
                                         intend_read=True,
                                         silent=True)
 
-    map1tags = extract_split_tag(map1keys, ignore=['firstpass'])
-    map2tags = extract_split_tag(map1keys, ignore=['firstpass'])
-    noise_inv1tags = extract_split_tag(noise_inv1keys, ignore=['firstpass'])
-    noise_inv2tags = extract_split_tag(noise_inv2keys, ignore=['firstpass'])
+    map1tags = extract_split_tag(map1keys, ignore=ignore)
+    map2tags = extract_split_tag(map1keys, ignore=ignore)
+    noise_inv1tags = extract_split_tag(noise_inv1keys, ignore=ignore)
+    noise_inv2tags = extract_split_tag(noise_inv2keys, ignore=ignore)
 
     if (map1tags != noise_inv1tags) or (map2tags != noise_inv2tags):
         print "ERROR: noise_inv and maps are not matched"
@@ -87,9 +132,18 @@ def cross_maps(map1key, map2key, noise_inv1key, noise_inv2key,
     if verbose:
         print "Using map1 tags %s and map2 tags %s" % (map1tags, map2tags)
 
-    comblist = unique_cross_pairs(map1tags, map2tags)
+    dispatch = {'unique_cross_pairs': unique_cross_pairs,
+                'GBTauto_cross_pairs': GBTauto_cross_pairs}
+
+    if pair_former not in dispatch:
+        print "ERROR: pair_former is does not match a known function"
+        sys.exit()
+
+    comblist = dispatch[pair_former](map1tags, map2tags)
+
     for (tag1, tag2) in comblist:
-        pairname = "%s_with_%s" % (tag1, tag2)
+        pairname = "%s%s%s%s%s" % \
+                    (tag1prefix, tag1, cross_sym, tag2prefix, tag2)
         retpairslist.append(pairname)
         pairdict = {'map1': map1set[tag1 + map_suffix],
                     'noise_inv1': noise_inv1set[tag1 + noise_inv_suffix],
@@ -493,7 +547,7 @@ if __name__ == "__main__":
 
     # generate the path db markdown website
     datapath_db = DataPath()
-    datapath_db.generate_hashtable()
+    #datapath_db.generate_hashtable()
     datapath_db.generate_path_webpage()
 
     # run some tests

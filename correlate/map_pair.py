@@ -4,11 +4,56 @@ r"""Program that calculates the correlation function across frequency slices.
 # TODO: needs to continue to work with multiprocessing
 
 import time
+import sys
 import scipy as sp
 import numpy.ma as ma
 from core import algebra
 from map import beam
+from kiyopy import parse_ini
+import kiyopy.utils
 from utils import file_tools as ft
+
+params_init = {
+               'output_root': "./data_test/",
+               'output_filetag': 'test',
+               'map1': "map1.npy",
+               'map2': "map2.npy",
+               'noise_inv1': "noise_inv1.npy",
+               'noise_inv2': "noise_inv2.npy",
+               'freq_list': (),
+               # Angular lags at which to calculate the correlation.  Upper
+               # edge bins in degrees.
+               'lags': tuple(sp.arange(0.002, 0.2, 0.12))
+               }
+prefix = 'fs_'
+
+
+class CorrelateSingle():
+    def __init__(self, parameter_file_or_dict=None):
+        self.params = parse_ini.parse(parameter_file_or_dict, params_init,
+                                      prefix=prefix)
+
+        self.freq_list = sp.array(self.params['freq_list'], dtype=int)
+        self.lags = self.params['lags']
+
+        #self.output_root = self.datapath_db.fetch(self.params['output_root'],
+        #                                          intend_write=True)
+        self.output_root = self.params['output_root']
+        self.output_filetag = self.params['output_filetag']
+        self.inifile = self.output_root + self.output_filetag + ".ini"
+
+        # Write parameter file.
+        kiyopy.utils.mkparents(self.output_root)
+        parse_ini.write_params(self.params, self.inifile,
+                               prefix=prefix)
+
+    def execute(self):
+        map1 = algebra.make_vect(algebra.load(self.params['map1']))
+        map2 = algebra.make_vect(algebra.load(self.params['map2']))
+        noise_inv1 = algebra.make_vect(algebra.load(self.params['noise_inv1']))
+        noise_inv2 = algebra.make_vect(algebra.load(self.params['noise_inv2']))
+        self.pair = MapPair(map1, map2, noise_inv1, noise_inv2, self.freq_list)
+
 
 class MapPair(ft.ClassPersistence):
     r"""Pair of maps that are processed together and cross correlated.
@@ -413,3 +458,10 @@ class MapPair(ft.ClassPersistence):
         counts[mask] = 0
 
         return corr, counts
+
+if __name__ == '__main__':
+    if len(sys.argv) == 2:
+        CorrelateSingle(str(sys.argv[1])).execute()
+    else:
+        print 'Need one argument: parameter file name.'
+
