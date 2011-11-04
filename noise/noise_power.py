@@ -93,6 +93,10 @@ class NoisePower(object) :
             power_mat, window_function, this_dt, full_mean = \
                 full_power_mat(Blocks, n_time=n_time, window=window, 
                 deconvolve=deconvolve, subtract_slope=subtract_slope)
+            # Get rid of the extra cal and polarization axes.
+            power_mat = power_mat[:,0,0,:,:]
+            window_function = window_function[:,0,0,:,:]
+            full_mean = full_mean[0,0,:]
             # TODO: Figure out a better way to deal with this (only drop
             # affected frequencies).
             #if sp.any(sp.allclose(mask[:,0,0,:], 0.0, 0)):
@@ -231,11 +235,13 @@ def make_masked_time_stream(Blocks, ntime=None, window=None,
     if not ntime :
         ntime = (max_time - min_time) // dt + 1
     elif ntime < 0:
-        # 0 pad by a factor of at least -ntime.
+        # 0 pad by a factor of at least -ntime, but at most 10% more than this.
         time_min = -ntime * (max_time - min_time) / dt
-        ntime = 1
-        while ntime < time_min:
-            ntime *= 2
+        n_block = 1
+        while n_block < time_min/20.0:
+            n_block *= 2
+        ntime = (time_min//n_block  + 1) * n_block
+
     time = sp.arange(ntime)*dt + min_time
     # Allowcate memory for the outputs.
     time_stream = sp.zeros((ntime,) + back_shape, dtype=float)
@@ -253,6 +259,8 @@ def make_masked_time_stream(Blocks, ntime=None, window=None,
                               * (Data.time[:,None,None,None] - mean_time), 0)
         time_norm += sp.sum(sp.logical_not(ma.getmaskarray(Data.data))
                             * (Data.time[:,None,None,None] - mean_time)**2, 0)
+    total_counts[total_counts == 0] = 1
+    time_norm[time_norm == 0.0] = 1
     total_mean = total_sum / total_counts
     total_slope /= time_norm
     # Loop over all times and fill in the arrays.
@@ -386,7 +394,7 @@ def make_power_physical_units(power, dt):
     """Converts power spectrum to physical units given.
 
     Given the time stream time step, devide by the bandwidth to put the power
-    spectrum in the most physical units.
+    spectrum in the most physical units of amp**2/Hz.
     """
     
     return power*dt*2
@@ -469,37 +477,41 @@ def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True,
     
     Only one cal state and pol state assumed.
     """
-
+    
     full_data, mask, dt, channel_means = make_masked_time_stream(Blocks, n_time, 
         window=window, return_means=True, subtract_slope=subtract_slope)
     n_time = full_data.shape[0]
+    n_pol = full_data.shape[1]
+    n_cal = full_data.shape[2]
     # Broadcast to shape such that all pairs of channels are calculated.
-    full_data1 = full_data[:,0,0,:,None]
-    full_data2 = full_data[:,0,0,None,:]
-    mask1 = mask[:,0,0,:,None]
-    mask2 = mask[:,0,0,None,:]
-    channel_means = channel_means[0, 0, :]
+    full_data1 = full_data[:,:,:,:,None]
+    full_data2 = full_data[:,:,:,None,:]
+    mask1 = mask[:,:,:,:,None]
+    mask2 = mask[:,:,:,None,:]
     n_chan = full_data.shape[-1]
     # Loop to do only a bit of the calculation at a time.  Reduces
     # memory use by a factor of a few.
-    power_mat = sp.empty((n_time, n_chan, n_chan),
+    power_mat = sp.empty((n_time, n_pol, n_cal, n_chan, n_chan),
                               dtype=complex)
-    window_function = sp.empty((n_time, n_chan, n_chan),
+    window_function = sp.empty((n_time, n_pol, n_cal, n_chan, n_chan),
                               dtype=complex)
+    # Break the calculation up over a loop to conserve memory.
     for ii in xrange(n_chan):
-        w = calculate_power(mask1[:,[ii],:], mask2, axis=0)
+        w = calculate_power(mask1[:,:,:,[ii],:], mask2, axis=0)
+        # Calculate the window normalizations.
+        window_norms = sp.mean(w, 0)
+        # Do nothing to fully masked channels to keep things finite.
+        window_norms[window_norms < 1e-7] = 1
         if deconvolve:
-            p = windowed_power(full_data1[:,[ii],:],
-                mask1[:,[ii],:], full_data2, mask2, axis=0)
-            power_mat[:,[ii],:] = p
+            p = windowed_power(full_data1[:,:,:,[ii],:],
+                               mask1[:,:,:,[ii],:], full_data2, mask2, axis=0)
+            power_mat[:,:,:,[ii],:] = p
         else:
-            p = calculate_power(full_data1[:,[ii],:], full_data2, axis=0)
+            p = calculate_power(full_data1[:,:,:,[ii],:], full_data2, axis=0)
             # Normalize from windowing.
-            power_mat[:,[ii],:] = p / sp.mean(w, 0)
-        # Normalize the window.
-        w /= sp.mean(w, 0)
-        window_function[:,[ii],:] = w
-
+            power_mat[:,:,:,[ii],:] = p / window_norms
+        w /= window_norms
+        window_function[:,:,:,[ii],:] = w
     return power_mat, window_function, dt, channel_means
 
 

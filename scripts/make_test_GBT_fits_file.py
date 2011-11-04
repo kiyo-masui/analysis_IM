@@ -84,8 +84,37 @@ for Data in rot_Blocks:
     rotate_pol.rotate(Data)
 
 # Measure some parameters from the noise.
-#out_db = shelve.open('./testdata/testfile_guppi_noise_parameters.shelve')
-#parameters = get_correlated_overf(rot_Blocks, 1.0, window='hanning')
+# Sort into 2 bands
+file_pars = {}
+band1_Blocks = []
+band2_Blocks = []
+band1 = 0
+band2 = 0
+for Data in rot_Blocks:
+    band = int(round(Data.field["CRVAL1"]/1e6))
+    if band == band1:
+        band1_Blocks.append(Data)
+    elif band == band2:
+        band2_Blocks.append(Data)
+    elif not band1:
+        band1 = band
+        band1_Blocks.append(Data)
+    elif not band2:
+        band2 = band
+        band2_Blocks.append(Data)
+    else :
+        raise RuntimeError()
+
+# Measure the parameters.
+file_pars[band1] = measure_noise.measure_noise_parameters(band1_Blocks, 
+                                         ["channel_var", "mean_over_f"])
+file_pars[band2] = measure_noise.measure_noise_parameters(band2_Blocks, 
+                                         ["channel_var", "mean_over_f"])
+out_db = shelve.open('./testdata/testfile_guppi_noise_parameters.shelve', 'n')
+out_db["testfile_guppi_rotated"] = file_pars
+out_db.close()
+
+
 
 Writer = fitsGBT.Writer(Blocks)
 Writer.write('./testdata/testfile_guppi_rebinned.fits')

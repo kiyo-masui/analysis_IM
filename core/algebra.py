@@ -1796,7 +1796,10 @@ def partial_dot(left, right):
                       + len(left_rows_only) + len(right_notdot))
     out_cols += range(len(out_rows), len(out_shape))
     # Output data type.
-    out_dtype = (left.flat[[0]] * right.flat[[0]]).dtype
+    # This is no good because it crashes for length 0 arrays.
+    #out_dtype = (left.flat[[0]] * right.flat[[0]]).dtype
+    # There are functions that do this in higher versions of numpy.
+    out_dtype = sp.dtype(float)
     # Allowcate memory.
     out = sp.empty(out_shape, dtype=out_dtype)
     # All the block diagonal axes will be treated together. Get the global
