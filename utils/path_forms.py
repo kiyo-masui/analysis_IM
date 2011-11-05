@@ -173,7 +173,7 @@ class PathForms(object):
                     if suffix != "noise_diag_I.npy":
                         filelist[filekey] = "%s%s_%s" % \
                                             (fileroot, field_tag, suffix)
-                    listindex.append(filekey)
+                        listindex.append(filekey)
 
         val['listindex'] = listindex
         val['filelist'] = filelist

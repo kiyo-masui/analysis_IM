@@ -6,6 +6,7 @@ import urllib2
 import subprocess
 import getpass
 import ast
+import re
 from utils import file_tools as ft
 # TODO: parse [ENV_VAR] in path string
 
@@ -20,18 +21,6 @@ def print_dictionary(dict_in, handle, key_list=None, prepend=""):
 
     for key in key_list:
         print >> handle, "%s%s: %s" % (prepend, key, repr(dict_in[key]))
-
-
-def get_env(name):
-    r"""retrieve a selected environment variable"""
-    try:
-        envpath = os.environ[name]
-    except KeyError:
-        print "your environment variable %s is not set, see header in %s" % \
-                (name, db_url)
-        sys.exit()
-
-    return envpath
 
 
 def extract_split_tag(keylist, divider=";", ignore=None):
@@ -193,7 +182,7 @@ class DataPath(object):
     # start the class, printing version information
     >>> datapath_db = DataPath()
     DataPath: opening URL
-        http://www.cita.utoronto.ca/~eswitzer/GBT_param/path_database.py
+        http://www.cita.utoronto.ca/~eswitzer/GBT_param/path_database.shelve
     DataPath: opening URL
         http://www.cita.utoronto.ca/~eswitzer/GBT_param/hashlist.txt
     # checksums compiled: ... by ...
@@ -229,13 +218,14 @@ class DataPath(object):
 
     # URL to the default path database
     _db_root = "http://www.cita.utoronto.ca/~eswitzer/GBT_param/"
-    _db_file = "path_database.py"
+    #_db_file = "path_database.py"
+    _db_file = "path_database.shelve"
     _db_url_default = _db_root + _db_file
     _hash_file = "hashlist.txt"
     _hash_url_default = _db_root + _hash_file
 
     def __init__(self, db_url=_db_url_default, hash_url=_hash_url_default,
-                 skip_gitlog=False):
+                 skip_gitlog=False, load_via_exec=False):
         r"""Load a file path specification and get basic run info
         """
 
@@ -249,7 +239,12 @@ class DataPath(object):
         self.gitlog = "Empty"     # git SHA and commit info
 
         # load the file database and git version info
-        self.load_pathdict(db_url)
+        if load_via_exec:
+            self.execload_pathdict(db_url)
+        else:
+            self.load_pathdict(db_url)
+
+        self.replace_local_variables()
         self.load_hashdict(hash_url)
         self.check_groups()
         self.clprint("File database date/version " + self.version)
@@ -272,7 +267,29 @@ class DataPath(object):
         r"""print with class message; could extend to logger"""
         print "DataPath: " + string_in
 
-    def load_pathdict(self, db_url, print_dbspec=False):
+    def load_pathdict(self, db_url):
+        r"""Load the parameter dictionary as a shelve through http
+
+        note that the class instance update()'s its dictionary, so subsequent
+        calls of this function on different files will overwrite or augment
+        dictionaries that have already been loaded.
+        """
+        self.clprint("opening URL " + self.db_url)
+
+        resp = urllib2.urlopen(db_url)
+        # urllib2 will die if this fails, but to be safe,
+        if (resp.code != 200):
+            print "ERROR: path database URL invalid (%s)" % resp.code
+
+        bounding_box = ft.load_shelve_over_http(db_url)
+
+        # extract only the useful database information
+        self.version = bounding_box['version_tag']
+        self._pathdict.update(bounding_box['pdb'])
+        self._groups.update(bounding_box['groups'])
+        self._group_order = bounding_box['group_order']
+
+    def execload_pathdict(self, db_url, print_dbspec=False):
         r"""Load the parameter dictionary
 
         note that the class instance update()'s its dictionary, so subsequent
@@ -303,6 +320,32 @@ class DataPath(object):
         self._pathdict.update(bounding_box['pdb'])
         self._groups.update(bounding_box['groups'])
         self._group_order = bounding_box['group_order']
+
+    def replace_local_variables(self):
+        r"""go through the entries and replace the enviornment variables with
+        their actual values
+        """
+        for groupname in self._group_order:
+            for dbkey in self._groups[groupname]:
+                dbentry = self._pathdict[dbkey]
+
+                if 'filelist' in dbentry:
+                    listindex = dbentry['listindex']
+                    for listitem in listindex:
+                        filename = dbentry['filelist'][listitem]
+                        filename = ft.repl_bracketed_env(filename)
+                        dbentry['filelist'][listitem] = \
+                                    re.sub('//', '/', filename)
+
+                if 'file' in dbentry:
+                    filename = ft.repl_bracketed_env(dbentry['file'])
+                    dbentry['file'] = re.sub('//', '/', filename)
+
+                if 'path' in dbentry:
+                    pathname = ft.repl_bracketed_env(dbentry['path'])
+                    dbentry['path'] = re.sub('//', '/', pathname)
+
+                self._pathdict[dbkey] = dbentry
 
     def load_hashdict(self, hash_url):
         r"""Load the file hash library

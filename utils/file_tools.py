@@ -1,10 +1,68 @@
 import os
+import string
 import cPickle
 import hashlib
 import sys
 import time
 import shelve
+import tempfile
+import urllib2
 # TODO: use path_properties to check on files other functions here try to write
+
+
+def load_shelve_over_http(url):
+    r"""load a shelve specified by a url into a dictionary as output
+    shleve does not accept file handles, so write using tempfile
+    there is probably a more elegant way to do this
+    """
+    req = urllib2.urlopen(url)
+    temp_file = tempfile.NamedTemporaryFile()
+
+    chunksize = 16 * 1024
+    while True:
+        chunk = req.read(chunksize)
+        if not chunk: break
+        temp_file.write(chunk)
+
+    shelvedict = shelve.open(temp_file.name, "r")
+    retdict = {}
+    retdict.update(shelvedict)
+    shelvedict.close()
+    temp_file.close()
+
+    return retdict
+
+
+def get_env(name):
+    r"""retrieve a selected environment variable"""
+    try:
+        env_var = os.environ[name]
+    except KeyError:
+        print "your environment variable %s is not set" % name
+        sys.exit()
+
+    return env_var
+
+
+def repl_bracketed_env(string_in):
+    r"""replace any []-enclosed all caps subtring [ENV_VAR] with its
+    environment vairable
+
+    >>> repl_bracketed_env("this is your path: [PATH]")
+    'this is your path: ...'
+    """
+    ttable = string.maketrans("[]", "[[")
+    breakup = string_in.translate(ttable).split("[")
+    retval = []
+    for item in breakup:
+        if item.isupper():
+            item = get_env(item)
+
+        retval.append(item)
+
+    retval = ''.join(retval)
+
+    return retval
 
 
 def save_pickle(pickle_data, filename):
