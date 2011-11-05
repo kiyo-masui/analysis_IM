@@ -57,6 +57,7 @@ class CorrelateSingle():
     def execute(self):
         r"""calculate the correlation function of the given map pair"""
         print "stuff here"
+        # SAVE TO SHELVE NOTPICKLE
 
 
 class MapPair(ft.ClassPersistence):

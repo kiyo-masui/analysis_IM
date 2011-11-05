@@ -7,6 +7,7 @@ import subprocess
 import getpass
 import ast
 from utils import file_tools as ft
+# TODO: parse [ENV_VAR] in path string
 
 
 def print_dictionary(dict_in, handle, key_list=None, prepend=""):
@@ -19,6 +20,18 @@ def print_dictionary(dict_in, handle, key_list=None, prepend=""):
 
     for key in key_list:
         print >> handle, "%s%s: %s" % (prepend, key, repr(dict_in[key]))
+
+
+def get_env(name):
+    r"""retrieve a selected environment variable"""
+    try:
+        envpath = os.environ[name]
+    except KeyError:
+        print "your environment variable %s is not set, see header in %s" % \
+                (name, db_url)
+        sys.exit()
+
+    return envpath
 
 
 def extract_split_tag(keylist, divider=";", ignore=None):
