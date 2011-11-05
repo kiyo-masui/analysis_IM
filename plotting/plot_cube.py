@@ -145,7 +145,7 @@ def plot_gbt_maps(keyname, transverse=False, skip_noise=False, skip_map=False,
     for section in section_list:
         if not skip_map:
             filename = datapath_db.fetch(keyname, intend_read=True,
-                                         pick=(section + '_clean_map'))
+                                         pick=(section + ';clean_map'))
             title = "Sec. %s, %s" % (section, keyname)
             make_cube_movie(filename,
                                "Temperature (mK)", cube_frame_dir,
@@ -155,7 +155,7 @@ def plot_gbt_maps(keyname, transverse=False, skip_noise=False, skip_map=False,
                                title=title)
 
             filename = datapath_db.fetch(keyname, intend_read=True,
-                                         pick=(section + '_dirty_map'))
+                                         pick=(section + ';dirty_map'))
             title = "Sec. %s, %s (dirty)" % (section, keyname)
             make_cube_movie(filename,
                                "Temperature (mK)", cube_frame_dir,
@@ -166,7 +166,7 @@ def plot_gbt_maps(keyname, transverse=False, skip_noise=False, skip_map=False,
 
         if not skip_noise:
             filename = datapath_db.fetch(keyname, intend_read=True,
-                                         pick=(section + '_noise_diag'))
+                                         pick=(section + ';noise_diag'))
             title = "Sec. %s, %s (noise)" % (section, keyname)
             # sigmacut=0.008
             make_cube_movie(filename,

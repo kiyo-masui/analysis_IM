@@ -3,7 +3,6 @@ random catalogs """
 import os
 import copy
 import re
-import string
 import shelve
 import numpy as np
 import scipy as sp
@@ -16,6 +15,7 @@ from core import algebra
 import multiprocessing
 from kiyopy import parse_ini
 import cPickle
+from correlate import correlation_functions as cf
 # TODO: convert batch params into ini files; move multiplier and cross-power to
 # batch param
 # TODO: make sure all methods here used counts/weights as-saved
@@ -67,20 +67,20 @@ def make_corr(filename, verbose=False, identifier=None, cross_power=False,
 
     frange = run_params["freq"]
     realrange = corr_shelve["freq_axis"]
-    corr_2D = fs.rebin_corr_freq_lag(corr, realrange[list(frange)],
+    corr_2d = cf.rebin_corr_freq_lag(corr, realrange[list(frange)],
                                      weights=corr_counts, return_fbins=True,
                                      nfbins=200)
 
-    corr_1d = fs.collapse_correlation_1d(corr_2D[0], corr_2D[2], real_lags,
-                                         weights=corr_2D[1])
+    corr_1d = cf.collapse_correlation_1d(corr_2d[0], corr_2d[2], real_lags,
+                                         weights=corr_2d[1])
 
     if cross_power:
         correlation_1d = corr_1d[0] * 1.e3
-        correlation_2d = corr_2D[0] * 1.e3
+        correlation_2d = corr_2d[0] * 1.e3
     else:
         print "Taking the signed square root"
         correlation_1d = sp.sign(corr_1d[0]) * sp.sqrt(abs(corr_1d[0])) * 1e3
-        correlation_2d = sp.sign(corr_2D[0]) * sp.sqrt(abs(corr_2D[0])) * 1e3
+        correlation_2d = sp.sign(corr_2d[0]) * sp.sqrt(abs(corr_2d[0])) * 1e3
 
     output["run_params"] = run_params
     output["lags"] = run_params["lags"]
@@ -94,8 +94,8 @@ def make_corr(filename, verbose=False, identifier=None, cross_power=False,
     output["corr1D_weights"] = corr_1d[1]
     output["corr1D_lags"] = tuple(corr_1d[2])
     output["corr2D"] = correlation_2d
-    output["corr2D_weights"] = corr_2D[1]
-    output["corr2D_fbins"] = corr_2D[2]
+    output["corr2D_weights"] = corr_2d[1]
+    output["corr2D_fbins"] = corr_2d[2]
     if identifier:
         output["identifier"] = identifier
 
@@ -112,17 +112,17 @@ def make_autocorr(filename, identifier=None,
     """
     output = {}
     # Load the New_Slices_object.pkl
-    f = open(filename, "r")
+    pkl_handle = open(filename, "r")
     print filename
-    F = cPickle.load(f)
-    f.close()
+    pkl_obj = cPickle.load(pkl_handle)
+    pkl_handle.close()
 
     # Setting axis info after pickling. Make sure to use a map with the proper
     # info set.
     map_file = "/mnt/raid-project/gmrt/calinliv/wiggleZ/maps/" + \
                    "sec_A_15hr_41-73_clean_map_I.npy"
     orig_map = algebra.make_vect(algebra.load(map_file))
-    for pair in F.pairs:
+    for pair in pkl_obj.pairs:
         pair.Map1.info = orig_map.info
         pair.Map2.info = orig_map.info
         pair.Noise_inv1.info = orig_map.info
@@ -131,49 +131,49 @@ def make_autocorr(filename, identifier=None,
     # 3D->2D->1D
     corr_2d_list = []
     corr_1d_list = []
-    for i in range(0, len(F.pairs)):
+    for i in range(0, len(pkl_obj.pairs)):
         # The corr to use.
-        corr = F.pairs[i].corr
+        corr = pkl_obj.pairs[i].corr
         if (multiplier != 1.):
             print "WARNING: using a multiplier of: " + repr(multiplier)
         corr *= multiplier
         # The lags used
-        lags = sp.array(F.params['lags'])
+        lags = sp.array(pkl_obj.params['lags'])
         real_lags = copy.deepcopy(lags)
         real_lags[0] = 0
         real_lags[1:] -= sp.diff(lags) / 2.0
         # The range selected in ini file.
-        frange = F.params['freq']
+        frange = pkl_obj.params['freq']
         # The corresponding real frequencies for that range.
-        realrange = [F.pairs[i].Map1.get_axis('freq')[f] for f in frange]
+        realrange = [pkl_obj.pairs[i].Map1.get_axis('freq')[f] for f in frange]
         # The 2D correlation.
-        corr_2D = fs.rebin_corr_freq_lag(corr, realrange, nfbins=200,
-                             weights=F.pairs[i].counts, return_fbins=True)
-        corr_2d_list.append(corr_2D[0])
+        corr_2d = cf.rebin_corr_freq_lag(corr, realrange, nfbins=200,
+                             weights=pkl_obj.pairs[i].counts, return_fbins=True)
+        corr_2d_list.append(corr_2d[0])
         # The 1D correlation.
-        corr_1d = fs.collapse_correlation_1d(corr_2D[0], corr_2D[2],
-                                             real_lags, corr_2D[1])
+        corr_1d = cf.collapse_correlation_1d(corr_2d[0], corr_2d[2],
+                                             real_lags, corr_2d[1])
         corr_1d_list.append(copy.deepcopy(corr_1d[0]))
         # The values for x_left, x_centre, x_right.
         x_axis = corr_1d[2]
 
     # Put the 1D correlations into a matrix to be averaged easily.
-    matrix_1D = []
+    matrix_1d = []
     for corr_1d in corr_1d_list:
-        matrix_1D.append(corr_1d.tolist())
+        matrix_1d.append(corr_1d.tolist())
 
-    matrix_1D = sp.array(matrix_1D)
+    matrix_1d = sp.array(matrix_1d)
 
     # Get the average 1D corr and it's sample variance.
     vals = []
     std = []
-    for i in range(0, matrix_1D.shape[1]):
+    for i in range(0, matrix_1d.shape[1]):
         # Get the sqrt to get mK.
-        vals.append(sp.mean(sp.sign(matrix_1D[:, i]) * \
-                    sp.sqrt(abs(matrix_1D[:, i]))))
+        vals.append(sp.mean(sp.sign(matrix_1d[:, i]) * \
+                    sp.sqrt(abs(matrix_1d[:, i]))))
 
-        std.append(sp.std(sp.sign(matrix_1D[:, i]) * \
-                   sp.sqrt(abs(matrix_1D[:, i]))))
+        std.append(sp.std(sp.sign(matrix_1d[:, i]) * \
+                   sp.sqrt(abs(matrix_1d[:, i]))))
 
     vals = sp.array(vals)
     std = sp.array(std)
@@ -184,14 +184,14 @@ def make_autocorr(filename, identifier=None,
         std *= 1000.
 
     # Build output dictionary.
-    output["run_params"] = F.params
-    output["lags"] = F.params["lags"]
+    output["run_params"] = pkl_obj.params
+    output["lags"] = pkl_obj.params["lags"]
     output["real_lags"] = real_lags
     # uncomment these only if you need them in the shelve file; makes it huge
     #output["corr"] = corr # Not supported for 6 pairs
     #output["corr_counts"] = corr_counts # not supported for 6 pairs.
-    output["freq"] = F.params["freq"]
-    output["freq_axis"] = F.pairs[0].Map1.get_axis('freq')
+    output["freq"] = pkl_obj.params["freq"]
+    output["freq_axis"] = pkl_obj.pairs[0].Map1.get_axis('freq')
     output["corr1D"] = vals
     output["corr1D_std"] = std
 #    output["corr1D_weights"] = corr_1d[1]
@@ -199,8 +199,8 @@ def make_autocorr(filename, identifier=None,
     output["x_axis"] = x_axis
 #    There are 6 of these now so it's weird.
 #    output["corr2D"] = correlation_2d
-#    output["corr2D_weights"] = corr_2D[1]   # Same as above.
-    output["corr2D_fbins"] = corr_2D[2]  # Ok. Bins are the same for each pair.
+#    output["corr2D_weights"] = corr_2d[1]   # Same as above.
+    output["corr2D_fbins"] = corr_2d[2]  # Ok. Bins are the same for each pair.
 
     if identifier:
         return (identifier, output)
@@ -264,6 +264,7 @@ def tuple_list_to_dict(list_in):
 
 
 def compare_corr_one(file_a, file_b, print_params=False):
+    r"""compare two correlation functions"""
     corr_a_shelve = shelve.open(file_a)
     corr_b_shelve = shelve.open(file_b)
     corr_a = corr_a_shelve["corr"]
@@ -373,6 +374,7 @@ def wrap_plot_corr(runitem):
 
 
 def process_pairs(batch_param, prefix="pair", filename=None):
+    r"""accumulate the information from all pairs"""
     if filename:
         master = shelve.open(filename)
     else:
@@ -400,11 +402,12 @@ def process_pairs(batch_param, prefix="pair", filename=None):
 
 
 def average_collapsed_loss(batch_param, dir_prefix="plots/", filename=None):
+    r"""find the 1D correlation 'transfer function'
+    """
     if filename:
         master = shelve.open(filename)
     else:
         master = shelve.open(batch_param["path"] + "/run_master_corr.shelve")
-    filelist = make_shelve_names(batch_param)
     n_modes = 26
     n_pairs = 6
     n_lags = 15
@@ -446,7 +449,7 @@ def batch_correlations_statistics(batch_param, randtoken="rand",
     # make a sublist of calculated correlations for just the random trials
     randlist = []
     for item in filelist:
-        if string.find(item[0], randtoken) != -1:
+        if not (randtoken in item[0]):
             randlist.append(item)
 
     print "number of random catalogs to stack: " + repr(len(randlist))
@@ -513,7 +516,7 @@ def batch_compensation_function(batch_param, modetoken="mode", filename=None):
     # make a sublist of calculated correlations for just the random trials
     modelist = []
     for item in filelist:
-        if string.find(item[0], modetoken) != -1:
+        if not (modetoken in item[0]):
             modelist.append(item)
 
     print "number of mode subtraction runs: " + repr(len(modelist))
@@ -550,10 +553,10 @@ def plot_batch_correlations(batch_param, dir_prefix="plots/",
     filelist = make_shelve_names(batch_param)
     coloraxis = np.linspace(color_range[0], color_range[1], 100, endpoint=True)
 
-    d = os.path.dirname(dir_prefix)
+    new_directory = os.path.dirname(dir_prefix)
     if not os.path.exists(d):
         print "making the directory: " + dir_prefix
-        os.makedirs(d)
+        os.makedirs(new_directory)
 
     # write out the notes if they exist
     try:
@@ -582,6 +585,7 @@ def plot_batch_correlations(batch_param, dir_prefix="plots/",
 
 
 def plot_covariance(matrix_in, filename, axis_labels=None, mask_lower=False):
+    r"""plot the covariance between correlation function bins"""
     if mask_lower:
         mask = np.tri(matrix_in.shape[0], k=-1)
         # mask out the lower triangle
@@ -611,12 +615,12 @@ def plot_contour(filename, fbins, lags, corr_2d, title=None, coloraxis=None):
 
     #a.set_figwidth(a.get_figwidth() / 3.0)
     if coloraxis is not None:
-        cplt = plt.contourf(lags, (fbins) / 1e6, corr_2d, coloraxis)
+        cplot = plt.contourf(lags, (fbins) / 1e6, corr_2d, coloraxis)
     else:
-        cplt = plt.contourf(lags, (fbins) / 1e6, corr_2d)
+        cplot = plt.contourf(lags, (fbins) / 1e6, corr_2d)
 
-    cplt.ax.set_xscale('log')
-    cplt.ax.set_yscale('log')
+    cplot.ax.set_xscale('log')
+    cplot.ax.set_yscale('log')
 
     plt.axis('scaled')
     plt.xlim((0.05, 0.9))
@@ -625,7 +629,7 @@ def plot_contour(filename, fbins, lags, corr_2d, title=None, coloraxis=None):
     plt.ylabel("frequency lag, $\pi$ (MHz, 4.5$\cdotp$Mpc/h)")
     plt.title(title)
     #c = plt.colorbar(f, ticks=coloraxis)
-    cbar = plt.colorbar(f)
+    cbar = plt.colorbar(cplot)
 
     cbar.ax.set_ylabel("correlation (mK)")
     plt.savefig(filename)
