@@ -223,7 +223,7 @@ class DirtyMap(object):
             self.noise_params = shelve.open(params['noise_parameter_file'], 'r')
         else:
             self.noise_params = None
-        # Set the map dimentioning parameters.
+        # Set the map dimensioning parameters.
         self.n_ra = params['map_shape'][0]
         self.n_dec = params['map_shape'][1]
         spacing = params["pixel_spacing"]
@@ -940,26 +940,25 @@ class Noise(object):
             # it to the update term. Do this one pair of modes at a time
             # to make things less complicated.
             for ii in xrange(m):
-                freq_mode1 = self.freq_modes.index_axis(0, ii)
                 for jj in xrange(m):
-                    freq_mode2 = self.freq_modes.index_axis(0, jj)
-                    tmp_mat = al.partial_dot(freq_mode1, diagonal_inv)
+                    tmp_freq_update = sp.sum(self.freq_modes[ii,:,None]
+                                             * self.freq_modes[jj,:,None]
+                                             * diagonal_inv[:,:], 0)
                     freq_mode_update[ii,:,jj,:].flat[::n_time + 1] += \
-                            al.partial_dot(tmp_mat, freq_mode2)
+                            tmp_freq_update
             for ii in xrange(m):
-                freq_mode = self.freq_modes.index_axis(0, ii)
                 for jj in xrange(q):
-                    time_mode = self.time_modes.index_axis(0,jj)
-                    tmp_mat = al.partial_dot(freq_mode, diagonal_inv)
-                    cross_update[ii,:,jj,:] += al.partial_dot(tmp_mat, 
-                                                              time_mode)
+                    tmp_cross_update = (self.freq_modes[ii,None,:]
+                                        * self.time_modes[jj,:,None]
+                                        * diagonal_inv.transpose())
+                    cross_update[ii,:,jj,:] += tmp_cross_update
             for ii in xrange(q):
-                time_mode1 = self.time_modes.index_axis(0, ii)
                 for jj in xrange(q):
-                    time_mode2 = self.time_modes.index_axis(0,jj)
-                    tmp_mat = al.partial_dot(time_mode1, diagonal_inv)
+                    tmp_time_update = sp.sum(self.time_modes[ii,None,:]
+                                             * self.time_modes[jj,None,:]
+                                             * diagonal_inv[:,:], 1)
                     time_mode_update[ii,:,jj,:].flat[::n_chan + 1] += \
-                            al.partial_dot(tmp_mat, time_mode2)
+                            tmp_time_update
             # Put all the update terms in one big matrix and invert it.
             update_matrix = sp.empty((n_update, n_update), dtype=float)
             # Top left.
@@ -978,11 +977,17 @@ class Noise(object):
                 tmp_mat.flat
             update_matrix_inv = linalg.inv(update_matrix)
             # TODO: Some sort of condition number check here?
-            #if hasattr(self, 'flag'):
-            #    e, v = linalg.eigh(update_matrix)
-            #    print "Update term condition number:", max(e)/min(e)
-            #    e, v = linalg.eigh(update_matrix_inv)
-            #    print "Update term  inverse condition number:", max(e)/min(e)
+            if hasattr(self, 'flag'):
+                A = time_mode_update.view()
+                A.shape = (q * n_chan,) * 2 
+                e, v = linalg.eigh(A)
+                print "time_mode condition number:", max(e)/min(e)
+                A = freq_mode_update.view()
+                A.shape = (m * n_time,) * 2 
+                e, v = linalg.eigh(A)
+                print "freq_mode condition number:", max(e)/min(e)
+                e, v = linalg.eigh(update_matrix)
+                print "Update term condition number:", max(e)/min(e)
             # Copy the update terms back to thier own matrices and store them.
             freq_mode_update.flat[...] = \
                     update_matrix_inv[:m * n_time,:m * n_time].flat
@@ -993,6 +998,16 @@ class Noise(object):
             cross_update.flat[...] = \
                     update_matrix_inv[:m * n_time,m * n_time:].flat
             self.cross_update = cross_update
+            # TODO: Some sort of condition number check here?
+            if hasattr(self, 'flag'):
+                A = time_mode_update.view()
+                A.shape = (q * n_chan,) * 2 
+                e, v = linalg.eigh(A)
+                print "time_mode condition number:", max(e)/min(e)
+                A = freq_mode_update.view()
+                A.shape = (m * n_time,) * 2 
+                e, v = linalg.eigh(A)
+                print "freq_mode condition number:", max(e)/min(e)
         else:
             # Ignore the channel correlations in the noise.  Ignore freq_modes.
             self._frequency_correlations = False
@@ -1045,6 +1060,15 @@ class Noise(object):
         n_chan = self.n_chan
         n_time = self.n_time
         if self._frequency_correlations:
+            #self.freq_modes = self.freq_modes.astype(sp.float32) ####
+            #self.time_modes = self.time_modes.astype(sp.float32) ####
+            #self.time_mode_update = self.time_mode_update.astype(sp.float32) 
+            #self.freq_mode_update = self.freq_mode_update.astype(sp.float32)
+            #self.cross_update = self.cross_update.astype(sp.float32)
+            #self.diagonal_inv = self.diagonal_inv.astype(sp.float32) ####
+            if hasattr(self, 'flag'):
+                e = self.diagonal_inv.flat[:]
+                print "Diagonal condition number:", max(e)/min(e)
             freq_modes = self.freq_modes
             time_modes = self.time_modes
             # Get the size of the update term.
@@ -1073,21 +1097,81 @@ class Noise(object):
                     this_cross1 = self.cross_update.index_axis(3, ii)
                     this_cross2 = self.cross_update.index_axis(3, jj)
                     tmp_mat = al.partial_dot(this_cross2, time_modes)
-                    out[ii,:,jj,:] -= al.partial_dot(this_freq_modes1,
-                                                     tmp_mat)
+                    tmp_mat = al.partial_dot(this_freq_modes1,
+                                             tmp_mat)
+                    #if hasattr(self, 'flag'):
+                    #    e = (abs(tmp_mat -  out[ii,:,jj,:]) /
+                    #         abs(tmp_mat)).flat[:]
+                    #    print "Part 2 subtraction level:", min(e)
+                    #    print "fraction < 1e-5:", float(sp.sum(e < 1e-5))/len(e)
+                    out[ii,:,jj,:] -= tmp_mat
                     tmp_mat = al.partial_dot(this_cross1, time_modes)
                     tmp_mat = al.partial_dot(this_freq_modes2, tmp_mat)
-                    out[ii,:,jj,:] -= tmp_mat.transpose()
+                    tmp_mat = tmp_mat.transpose()
+                    #if hasattr(self, 'flag'):
+                    #    e = (abs(tmp_mat -  out[ii,:,jj,:]) /
+                    #         abs(tmp_mat)).flat[:]
+                    #    print "Part 3 subtraction level:", min(e)
+                    #    print "fraction < 1e-5:", float(sp.sum(e < 1e-5))/len(e)
+                    out[ii,:,jj,:] -= tmp_mat
                     # Finally the time_mode-time_mode part.
                     this_time_update = self.time_mode_update.index_axis(1, ii)
                     this_time_update = this_time_update.index_axis(2, jj)
                     tmp_mat = al.partial_dot(time_modes.mat_transpose(), 
                                              this_time_update)
-                    out[ii,:,jj,:] -= al.partial_dot(tmp_mat, time_modes)
+                    tmp_mat = al.partial_dot(tmp_mat, time_modes)
+                    #if hasattr(self, 'flag'):
+                    #    e = (abs(tmp_mat -  out[ii,:,jj,:]) /
+                    #         abs(tmp_mat)).flat[:]
+                    #    print "Part 4 subtraction level:", min(e)
+                    #    print "fraction < 1e-5:", float(sp.sum(e < 1e-5))/len(e)
+                    out[ii,:,jj,:] -= tmp_mat
+                    #if hasattr(self, 'flag'):
+                    #    A = out[ii,:,jj,:].view()
+                    #    A.shape = (n_time,) * 2
+                    #    e, v = linalg.eigh(A)
+                    #    e = abs(e)
+                    #    print "Step 1 condition number:", max(e)/min(e)
                     out[ii,:,jj,:] *= self.diagonal_inv[ii,:,None]
                     out[ii,:,jj,:] *= self.diagonal_inv[jj,None,:]
+                    #if hasattr(self, 'flag'):
+                    #    A = out[ii,:,jj,:].view()
+                    #    A.shape = (n_time,) * 2
+                    #    e, v = linalg.eigh(A)
+                    #    e = abs(e)
+                    #    print "Step 2 condition number:", max(e)/min(e)
+            #if hasattr(self, 'flag'):
+            #    A = out.view()
+            #    A.shape = (n_chan*n_time,) * 2
+            #    e, v = linalg.eigh(A)
+            #    e = abs(e)
+            #    print "Step 3 condition number:", max(e)/min(e)
             # Add the thermal term.
             out.flat[::n_chan * n_time + 1] += self.diagonal_inv.flat[...]
+            # Add the identity.
+            #out.flat[::n_chan * n_time + 1] += 1
+            #if hasattr(self, 'flag'):
+            #    A = out.view()
+            #    A.shape = (n_chan*n_time,) * 2
+            #    e, v = linalg.eigh(A)
+            #    e = abs(e)
+            #    print "Step 4 condition number:", max(e)/min(e)
+            # Multiply by the thermal term.
+            #for ii in xrange(n_chan):
+            #    for jj in xrange(n_chan):
+            #        out[ii,:,jj,:] *= self.diagonal_inv[jj,None,:]
+            if hasattr(self, 'flag'):
+                A = out.view()
+                A.shape = (n_chan*n_time,) * 2
+                e, v = linalg.eigh(A)
+                e = abs(e)
+                print "final condition number:", max(e)/min(e)
+            self.freq_modes = self.freq_modes.astype(float) ####
+            self.time_modes = self.time_modes.astype(float) ####
+            self.time_mode_update = self.time_mode_update.astype(float) 
+            self.freq_mode_update = self.freq_mode_update.astype(float)
+            self.cross_update = self.cross_update.astype(float)
+            self.diagonal_inv = self.diagonal_inv.astype(float) ####
         else:
             time_modes = self.time_modes
             time_mode_update = self.time_mode_update
