@@ -1087,15 +1087,19 @@ class Noise(object):
             for ii in xrange(n_chan):
                 this_freq_modes1 = freq_modes.index_axis(1, ii)
                 for jj in xrange(n_chan):
+                    # Get only the matricies that apply to this slice.
                     this_freq_modes2 = freq_modes.index_axis(1, jj)
+                    this_cross1 = self.cross_update.index_axis(3, ii)
+                    this_cross2 = self.cross_update.index_axis(3, jj)
+                    this_time_update = self.time_mode_update.index_axis(1, ii)
+                    this_time_update = this_time_update.index_axis(2, jj)
                     # The freq_mode-freq_mode part of the update term.
                     tmp_mat = al.partial_dot(this_freq_modes1, 
                                              self.freq_mode_update)
-                    out[ii,:,jj,:] -= al.partial_dot(tmp_mat, 
+                    tmp_mat = al.partial_dot(tmp_mat, 
                                                      this_freq_modes2)
+                    out[ii,:,jj,:] -= tmp_mat
                     # The off diagonal blocks.
-                    this_cross1 = self.cross_update.index_axis(3, ii)
-                    this_cross2 = self.cross_update.index_axis(3, jj)
                     tmp_mat = al.partial_dot(this_cross2, time_modes)
                     tmp_mat = al.partial_dot(this_freq_modes1,
                                              tmp_mat)
@@ -1115,8 +1119,6 @@ class Noise(object):
                     #    print "fraction < 1e-5:", float(sp.sum(e < 1e-5))/len(e)
                     out[ii,:,jj,:] -= tmp_mat
                     # Finally the time_mode-time_mode part.
-                    this_time_update = self.time_mode_update.index_axis(1, ii)
-                    this_time_update = this_time_update.index_axis(2, jj)
                     tmp_mat = al.partial_dot(time_modes.mat_transpose(), 
                                              this_time_update)
                     tmp_mat = al.partial_dot(tmp_mat, time_modes)
