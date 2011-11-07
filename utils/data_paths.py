@@ -335,15 +335,15 @@ class DataPath(object):
                         filename = dbentry['filelist'][listitem]
                         filename = ft.repl_bracketed_env(filename)
                         dbentry['filelist'][listitem] = \
-                                    re.sub('//', '/', filename)
+                                    re.sub('/+', '/', filename)
 
                 if 'file' in dbentry:
                     filename = ft.repl_bracketed_env(dbentry['file'])
-                    dbentry['file'] = re.sub('//', '/', filename)
+                    dbentry['file'] = re.sub('/+', '/', filename)
 
                 if 'path' in dbentry:
                     pathname = ft.repl_bracketed_env(dbentry['path'])
-                    dbentry['path'] = re.sub('//', '/', pathname)
+                    dbentry['path'] = re.sub('/+', '/', pathname)
 
                 self._pathdict[dbkey] = dbentry
 

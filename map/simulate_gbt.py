@@ -100,7 +100,7 @@ def generate_sim(template_key, output_key, output_beam_key,
     """
 
     datapath_db = data_paths.DataPath()
-    template_mapname = datapath_db.fetch(template_key, pick='A_clean_map',
+    template_mapname = datapath_db.fetch(template_key, pick='A;clean_map',
                                          purpose="template for sim. output",
                                          intend_read=True)
 
@@ -125,37 +125,28 @@ def generate_sim(template_key, output_key, output_beam_key,
             wrap_sim(runitem)
 
 
-def generate_full_simset():
-    # alternative template: 'GBT_15hr_Liviu_15mode'
-    # 15 hr
-    generate_sim('GBT_15hr_map', 'sim_15hr',
-                 'sim_15hr_beam', 'sim_15hr_beam_plus_data',
-                  streaming=False, parallel=True)
+def generate_simset(fieldname, streaming=False):
+    template_key = 'GBT_%s_map' % fieldname
 
-    # 15 hr with velocity streaming
-    generate_sim('GBT_15hr_map', 'simvel_15hr',
-                 'simvel_15hr_beam', 'simvel_15hr_beam_plus_data',
-                  streaming=True, parallel=True)
+    if streaming:
+        tag = "simvel"
+    else:
+        tag= "sim"
 
-    # 22 hr
-    generate_sim('GBT_22hr_map', 'sim_22hr',
-                 'sim_22hr_beam', 'sim_22hr_beam_plus_data',
-                  streaming=False, parallel=True)
+    output_key = '%s_%s' % (tag, fieldname)
+    output_beam_key = '%s_%s_beam' % (tag, fieldname)
+    output_beam_plus_data_key = '%s_%s_beam_plus_data' % (tag, fieldname)
 
-    # 22 hr with velocity streaming
-    generate_sim('GBT_22hr_map', 'simvel_22hr',
-                 'simvel_22hr_beam', 'simvel_22hr_beam_plus_data',
-                  streaming=True, parallel=True)
+    generate_sim(template_key, output_key,
+                 output_beam_key, output_beam_plus_data_key,
+                 streaming=streaming, parallel=True)
 
-    # 1 hr
-    generate_sim('GBT_1hr_map', 'sim_1hr',
-                 'sim_1hr_beam', 'sim_1hr_beam_plus_data',
-                  streaming=False, parallel=True)
 
-    # 1 hr with velocity streaming
-    generate_sim('GBT_1hr_map', 'simvel_1hr',
-                 'simvel_1hr_beam', 'simvel_1hr_beam_plus_data',
-                  streaming=True, parallel=True)
+def generate_full_simset(fieldlist):
+    for fieldname in fieldlist:
+        generate_simset(fieldname, streaming=True)
+        generate_simset(fieldname, streaming=False)
+
 
 def run_scheme_test():
     template_file = "/mnt/raid-project/gmrt/tcv/maps/sec_A_15hr_41-90_clean_map_I.npy"
@@ -165,5 +156,6 @@ def run_scheme_test():
 
 
 if __name__ == '__main__':
-    #generate_full_simset()
-    run_scheme_test()
+    #generate_full_simset(['15hr', '22hr', '1hr'])
+    generate_full_simset(['22hr'])
+    #run_scheme_test()
