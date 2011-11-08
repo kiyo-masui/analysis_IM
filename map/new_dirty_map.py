@@ -945,9 +945,9 @@ class Noise(object):
             # Build the matrices.
             # Add the update mode noise in thier proper space.
             for ii in range(m):
-                freq_mode_update[ii,:,ii,:] = freq_mode_inv[ii,:,:]
+                freq_mode_update[ii,:,ii,:] = self.freq_mode_noise[ii,:,:]
             for ii in range(q):
-                time_mode_update[ii,:,ii,:] = time_mode_inv[ii,:,:]
+                time_mode_update[ii,:,ii,:] = self.time_mode_noise[ii,:,:]
             # Now transform the diagonal noise to this funny space and add
             # it to the update term. Do this one pair of modes at a time
             # to make things less complicated.
