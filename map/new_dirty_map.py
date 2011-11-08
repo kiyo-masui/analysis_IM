@@ -904,10 +904,22 @@ class Noise(object):
             for ii in xrange(self.freq_mode_noise.shape[0]):
                 freq_mode_inv[ii,...] = \
                         linalg.inv(self.freq_mode_noise[ii,...])
+                if hasattr(self, 'flag'):
+                    A = self.freq_mode_noise[ii].view()
+                    A.shape = (n_time,) * 2
+                    e, v = linalg.eigh(A)
+                    e = abs(e)
+                    print "Initial freq_mode condition number:", max(e)/min(e)
             time_mode_inv = al.empty_like(self.time_mode_noise)
             for ii in xrange(self.time_mode_noise.shape[0]):
                 time_mode_inv[ii,...] = \
                         linalg.inv(self.time_mode_noise[ii,...])
+                if hasattr(self, 'flag'):
+                    A = self.time_mode_noise[ii].view()
+                    A.shape = (n_chan,) * 2
+                    e, v = linalg.eigh(A)
+                    e = abs(e)
+                    print "Initial time_mode condition number:", max(e)/min(e)
             # The normal case when se are considering the full noise.
             # Calculate the term in the bracket in the matrix inversion lemma.
             # Get the size of the update term.
@@ -1096,32 +1108,54 @@ class Noise(object):
                     # The freq_mode-freq_mode part of the update term.
                     tmp_mat = al.partial_dot(this_freq_modes1, 
                                              self.freq_mode_update)
+                    tmp2 = al.partial_dot(this_cross1, time_modes)
+                    tmp2 = tmp2.transpose((2, 0, 1))
+                    #if hasattr(self, 'flag'):
+                    #    e = (abs(tmp_mat + tmp2) /
+                    #         abs(tmp_mat)).flat[:]
+                    #    print "Part 1 subtraction level:", min(e)
+                    #    print "fraction < 1e-5:", float(sp.sum(e < 1e-5))/len(e)
+                    tmp_mat += tmp2
                     tmp_mat = al.partial_dot(tmp_mat, 
                                                      this_freq_modes2)
-                    out[ii,:,jj,:] -= tmp_mat
-                    # The off diagonal blocks.
-                    tmp_mat = al.partial_dot(this_cross2, time_modes)
-                    tmp_mat = al.partial_dot(this_freq_modes1,
-                                             tmp_mat)
                     #if hasattr(self, 'flag'):
                     #    e = (abs(tmp_mat -  out[ii,:,jj,:]) /
                     #         abs(tmp_mat)).flat[:]
                     #    print "Part 2 subtraction level:", min(e)
                     #    print "fraction < 1e-5:", float(sp.sum(e < 1e-5))/len(e)
                     out[ii,:,jj,:] -= tmp_mat
-                    tmp_mat = al.partial_dot(this_cross1, time_modes)
-                    tmp_mat = al.partial_dot(this_freq_modes2, tmp_mat)
-                    tmp_mat = tmp_mat.transpose()
+                    # The off diagonal blocks.
+                    #if hasattr(self, 'flag'):
+                    #    e = (abs(tmp_mat -  out[ii,:,jj,:]) /
+                    #         abs(tmp_mat)).flat[:]
+                    #    print "Part 2 subtraction level:", min(e)
+                    #    print "fraction < 1e-5:", float(sp.sum(e < 1e-5))/len(e)
+                    #out[ii,:,jj,:] -= tmp_mat
+                    #tmp_mat = al.partial_dot(this_cross1, time_modes)
+                    #tmp_mat = al.partial_dot(this_freq_modes2, tmp_mat)
+                    #tmp_mat = tmp_mat.transpose()
                     #if hasattr(self, 'flag'):
                     #    e = (abs(tmp_mat -  out[ii,:,jj,:]) /
                     #         abs(tmp_mat)).flat[:]
                     #    print "Part 3 subtraction level:", min(e)
                     #    print "fraction < 1e-5:", float(sp.sum(e < 1e-5))/len(e)
-                    out[ii,:,jj,:] -= tmp_mat
+                    #out[ii,:,jj,:] -= tmp_mat
                     # Finally the time_mode-time_mode part.
                     tmp_mat = al.partial_dot(time_modes.mat_transpose(), 
                                              this_time_update)
+                    tmp2 = al.partial_dot(this_freq_modes1, this_cross2)
+                    #if hasattr(self, 'flag'):
+                    #    e = (abs(tmp_mat + tmp2) /
+                    #         abs(tmp_mat)).flat[:]
+                    #    print "Part 3 subtraction level:", min(e)
+                    #    print "fraction < 1e-5:", float(sp.sum(e < 1e-5))/len(e)
+                    tmp_mat += tmp2
                     tmp_mat = al.partial_dot(tmp_mat, time_modes)
+                    #if hasattr(self, 'flag'):
+                    #    e = (abs(tmp_mat -  out[ii,:,jj,:]) /
+                    #         abs(tmp_mat)).flat[:]
+                    #    print "Part 4 subtraction level:", min(e)
+                    #    print "fraction < 1e-5:", float(sp.sum(e < 1e-5))/len(e)
                     #if hasattr(self, 'flag'):
                     #    e = (abs(tmp_mat -  out[ii,:,jj,:]) /
                     #         abs(tmp_mat)).flat[:]
@@ -1135,7 +1169,8 @@ class Noise(object):
                     #    e = abs(e)
                     #    print "Step 1 condition number:", max(e)/min(e)
                     out[ii,:,jj,:] *= self.diagonal_inv[ii,:,None]
-                    out[ii,:,jj,:] *= self.diagonal_inv[jj,None,:]
+                    #out[ii,:,jj,:] *= self.diagonal_inv[jj,None,:]
+                    #out[ii,:,jj,:] *= self.diagonal_inv[jj,None,:]
                     #if hasattr(self, 'flag'):
                     #    A = out[ii,:,jj,:].view()
                     #    A.shape = (n_time,) * 2
@@ -1149,19 +1184,17 @@ class Noise(object):
             #    e = abs(e)
             #    print "Step 3 condition number:", max(e)/min(e)
             # Add the thermal term.
-            out.flat[::n_chan * n_time + 1] += self.diagonal_inv.flat[...]
+            #out.flat[::n_chan * n_time + 1] += self.diagonal_inv.flat[...]
+            if hasattr(self, 'flag'):
+                A = out.view()
+                A.shape = (n_chan*n_time,) * 2
+                e, v = linalg.eig(A)
+                print "Smallest eigs:"
+                print sp.sort(e.real)[:4] + 1.0
             # Add the identity.
-            #out.flat[::n_chan * n_time + 1] += 1
-            #if hasattr(self, 'flag'):
-            #    A = out.view()
-            #    A.shape = (n_chan*n_time,) * 2
-            #    e, v = linalg.eigh(A)
-            #    e = abs(e)
-            #    print "Step 4 condition number:", max(e)/min(e)
+            out.flat[::n_chan * n_time + 1] += 1.0
             # Multiply by the thermal term.
-            #for ii in xrange(n_chan):
-            #    for jj in xrange(n_chan):
-            #        out[ii,:,jj,:] *= self.diagonal_inv[jj,None,:]
+            out[:,:,:,:] *= self.diagonal_inv[:,:]
             if hasattr(self, 'flag'):
                 A = out.view()
                 A.shape = (n_chan*n_time,) * 2

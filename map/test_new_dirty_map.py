@@ -225,10 +225,7 @@ class TestClasses(unittest.TestCase):
                                                self.DM.get_all_trimmed()
         nt = len(time)
         Noise = dirty_map.Noise(time_stream, time)
-        ### XXX
-        thermal_noise_levels = sp.zeros((nf_d)) + 0.004  # Kelvin**2
-        Noise.flag = None
-        ####
+        thermal_noise_levels = sp.zeros((nf_d)) + 0.04  # Kelvin**2
         Noise.add_thermal(thermal_noise_levels)
         Noise.add_mask(mask_inds)
         self.assertTrue(sp.alltrue(Noise.diagonal[mask_inds] > 10))
@@ -288,6 +285,60 @@ class TestClasses(unittest.TestCase):
         stop = time_module.clock()
         #print "Constructing map noise took %5.2f seconds." % (stop - start)
         self.assertTrue(sp.allclose(map_noise_inv, tmp_map_noise_inv))
+
+    def test_numerical_stability(self):
+        self.DM.nscans = 10
+        self.DM.nt_scan = 10
+        self.DM.nt = 100
+        time_stream, ra, dec, az, el, time, mask_inds = \
+                                               self.DM.get_all_trimmed()
+        nt = len(time)
+        Noise = dirty_map.Noise(time_stream, time)
+        Noise.flag = True
+        thermal_noise_levels = sp.zeros((nf_d)) + 0.0001  # Kelvin**2
+        Noise.add_thermal(thermal_noise_levels)
+        Noise.add_mask(mask_inds)
+        Noise.deweight_time_mean()
+        Noise.deweight_time_slope()
+        Noise.add_correlated_over_f(1.0, -1.2, 0.1)
+        Noise.finalize()
+        # Frist get a full representation of the noise matrix
+        N = sp.zeros((nf_d, nt, nf_d, nt))
+        N.flat[::nt*nf_d + 1] += Noise.diagonal.flat
+        for jj in xrange(Noise.time_modes.shape[0]):
+            N += (Noise.time_mode_noise[jj,:,None,:,None]
+                        * Noise.time_modes[jj,None,:,None,None]
+                        * Noise.time_modes[jj,None,None,None,:])
+        for jj in xrange(Noise.freq_modes.shape[0]):
+            N +=  (Noise.freq_mode_noise[jj,None,:,None,:]
+                         * Noise.freq_modes[jj,:,None,None,None]
+                         * Noise.freq_modes[jj,None,None,:,None])
+        N.shape = (nt*nf_d, nt*nf_d)
+        N_inv = linalg.inv(N)
+        e, v = linalg.eig(N_inv)
+        print "Condition number of normal inversion:", max(e)/min(e)
+        print sp.sum(e < 0)
+        tmp = N_inv[:,:] / Noise.diagonal_inv.flat[:]
+        #tmp.flat[::nt * nf_d + 1] -= 1.0
+        e, v = linalg.eig(tmp)
+        print sp.sort(e.real)[:4]
+        #print e[:20].real
+        # Test the full inverse.
+        noise_inv = Noise.get_inverse()
+        noise_inv.shape = (nt*nf_d, nt*nf_d)
+        # Check for negitive eigenvalues.
+        e, v = linalg.eig(noise_inv)
+        print sp.sum(e < 0)
+        tmp = noise_inv[:,:] / Noise.diagonal_inv.flat[:]
+        e, v = linalg.eig(tmp)
+        print sp.sort(e.real)[:4]
+        #####
+        e, v = linalg.eig(N_inv)
+        print sp.sort(e.real)[:4]
+        e, v = linalg.eig(noise_inv)
+        print sp.sort(e.real)[:4]
+        self.assertTrue(sp.alltrue(e > 0))
+        self.assertTrue(sp.allclose(noise_inv, N_inv))
 
     def test_mean_mode_equivalent(self):
         """Test 2 equivalent ways to deweight mean, see if they agree."""
