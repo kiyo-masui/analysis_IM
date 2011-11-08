@@ -900,26 +900,26 @@ class Noise(object):
             if not hasattr(self, "time_modes"):
                 self.add_time_modes(0)
             # Calculate the inverses of all matricies.
-            freq_mode_inv = al.empty_like(self.freq_mode_noise)
-            for ii in xrange(self.freq_mode_noise.shape[0]):
-                freq_mode_inv[ii,...] = \
-                        linalg.inv(self.freq_mode_noise[ii,...])
-                if hasattr(self, 'flag'):
-                    A = self.freq_mode_noise[ii].view()
-                    A.shape = (n_time,) * 2
-                    e, v = linalg.eigh(A)
-                    e = abs(e)
-                    print "Initial freq_mode condition number:", max(e)/min(e)
-            time_mode_inv = al.empty_like(self.time_mode_noise)
-            for ii in xrange(self.time_mode_noise.shape[0]):
-                time_mode_inv[ii,...] = \
-                        linalg.inv(self.time_mode_noise[ii,...])
-                if hasattr(self, 'flag'):
-                    A = self.time_mode_noise[ii].view()
-                    A.shape = (n_chan,) * 2
-                    e, v = linalg.eigh(A)
-                    e = abs(e)
-                    print "Initial time_mode condition number:", max(e)/min(e)
+            #freq_mode_inv = al.empty_like(self.freq_mode_noise)
+            #for ii in xrange(self.freq_mode_noise.shape[0]):
+            #    freq_mode_inv[ii,...] = \
+            #            linalg.inv(self.freq_mode_noise[ii,...])
+            #    if hasattr(self, 'flag'):
+            #        A = self.freq_mode_noise[ii].view()
+            #        A.shape = (n_time,) * 2
+            #        e, v = linalg.eigh(A)
+            #        e = abs(e)
+            #        print "Initial freq_mode condition number:", max(e)/min(e)
+            #time_mode_inv = al.empty_like(self.time_mode_noise)
+            #for ii in xrange(self.time_mode_noise.shape[0]):
+            #    time_mode_inv[ii,...] = \
+            #            linalg.inv(self.time_mode_noise[ii,...])
+            #    if hasattr(self, 'flag'):
+            #        A = self.time_mode_noise[ii].view()
+            #        A.shape = (n_chan,) * 2
+            #        e, v = linalg.eigh(A)
+            #        e = abs(e)
+            #        print "Initial time_mode condition number:", max(e)/min(e)
             # The normal case when se are considering the full noise.
             # Calculate the term in the bracket in the matrix inversion lemma.
             # Get the size of the update term.
@@ -956,21 +956,31 @@ class Noise(object):
                     tmp_freq_update = sp.sum(self.freq_modes[ii,:,None]
                                              * self.freq_modes[jj,:,None]
                                              * diagonal_inv[:,:], 0)
-                    freq_mode_update[ii,:,jj,:].flat[::n_time + 1] += \
-                            tmp_freq_update
+                    tmp_freq_update = (self.freq_mode_noise[ii,:,:]
+                                       * tmp_freq_update)
+                    tmp_freq_update = sp.dot(tmp_freq_update[:,:],
+                                             self.freq_mode_noise[jj,:,:])
+                    freq_mode_update[ii,:,jj,:] += tmp_freq_update
             for ii in xrange(m):
                 for jj in xrange(q):
                     tmp_cross_update = (self.freq_modes[ii,None,:]
                                         * self.time_modes[jj,:,None]
                                         * diagonal_inv.transpose())
+                    tmp_cross_update = sp.dot(self.freq_mode_noise[ii,:,:],
+                                              tmp_cross_update)
+                    tmp_cross_update = sp.dot(tmp_cross_update[:,:],
+                                              self.time_mode_noise[jj,:,:])
                     cross_update[ii,:,jj,:] += tmp_cross_update
             for ii in xrange(q):
                 for jj in xrange(q):
                     tmp_time_update = sp.sum(self.time_modes[ii,None,:]
                                              * self.time_modes[jj,None,:]
                                              * diagonal_inv[:,:], 1)
-                    time_mode_update[ii,:,jj,:].flat[::n_chan + 1] += \
-                            tmp_time_update
+                    tmp_time_update = (self.time_mode_noise[ii,:,:]
+                                       * tmp_time_update)
+                    tmp_time_update = sp.dot(tmp_time_update[:,:],
+                                             self.time_mode_noise[jj,:,:])
+                    time_mode_update[ii,:,jj,:] += tmp_time_update
             # Put all the update terms in one big matrix and invert it.
             update_matrix = sp.empty((n_update, n_update), dtype=float)
             # Top left.
@@ -1003,12 +1013,35 @@ class Noise(object):
             # Copy the update terms back to thier own matrices and store them.
             freq_mode_update.flat[...] = \
                     update_matrix_inv[:m * n_time,:m * n_time].flat
-            self.freq_mode_update = freq_mode_update
             time_mode_update.flat[...] = \
                     update_matrix_inv[m * n_time:,m * n_time:].flat
-            self.time_mode_update = time_mode_update
             cross_update.flat[...] = \
                     update_matrix_inv[:m * n_time,m * n_time:].flat
+            # Multiply both sides by the noise terms.
+            for ii in xrange(m):
+                for jj in xrange(m):
+                    tmp_freq_update = sp.dot(self.freq_mode_noise[ii,:,:],
+                                             freq_mode_update[ii,:,jj,:])
+                    tmp_freq_update = sp.dot(tmp_freq_update,
+                                             self.freq_mode_noise[jj,:,:])
+                    freq_mode_update[ii,:,jj,:] = tmp_freq_update
+            for ii in xrange(m):
+                for jj in xrange(q):
+                    tmp_cross_update = sp.dot(self.freq_mode_noise[ii,:,:],
+                                              cross_update[ii,:,jj,:])
+                    tmp_cross_update = sp.dot(tmp_cross_update,
+                                              self.time_mode_noise[jj,:,:])
+                    cross_update[ii,:,jj,:] = tmp_cross_update
+            for ii in xrange(q):
+                for jj in xrange(q):
+                    tmp_time_update = sp.dot(self.time_mode_noise[ii,:,:],
+                                             time_mode_update[ii,:,jj,:])
+                    tmp_time_update = sp.dot(tmp_time_update,
+                                             self.time_mode_noise[jj,:,:])
+                    time_mode_update[ii,:,jj,:] = tmp_time_update
+
+            self.time_mode_update = time_mode_update
+            self.freq_mode_update = freq_mode_update
             self.cross_update = cross_update
             # TODO: Some sort of condition number check here?
             if hasattr(self, 'flag'):
