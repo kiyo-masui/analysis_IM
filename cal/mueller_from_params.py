@@ -52,7 +52,7 @@ for i in range(0,freq_limit):
     m_total[3,3,i] = flux*(sp.cos(al)*sp.cos(al)*sp.cos(ps)+sp.sin(al)*sp.sin(al)*sp.cos(ps+2*ch))
     M_total = sp.mat(m_total[:,:,i])
 #   print M_total
-    M_total = M_total.I
+#    M_total = M_total.I
 #   M_astron = sp.mat(m_astron[:,:,i])
 #   M_total = M_astron*M_total
     m_tot[i,0] = mp[i,0]
@@ -73,7 +73,7 @@ for i in range(0,freq_limit):
     m_tot[i,15] = M_total[3,2]
     m_tot[i,16] = M_total[3,3]
         
-prefix = '14'
+prefix = '16'
 #path = '$GBT10B_OUT/mueller_params/'
 suffix = '_mueller_matrix_from_inverted_params.txt'
 filename = prefix+suffix

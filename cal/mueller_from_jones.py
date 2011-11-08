@@ -5,7 +5,7 @@ import numpy.ma as ma
 import pylab as pl
 import numpy as np
 
-jones = np.loadtxt('jones_bin1.txt')
+jones = np.loadtxt('Jones1019_2_fluxcal.txt')
 
 # Generates Inverse Mueller Matrix for use
 freq_limit = len(jones[:,0])
@@ -53,7 +53,7 @@ for i in range(0,freq_limit):
     m_tot[i,15] = M_total[3,2]
     m_tot[i,16] = M_total[3,3]
         
-prefix = '67'
+prefix = '16'
 #path = '$GBT10B_OUT/mueller_params/'
 suffix = '_mueller_matrix_from_jones.txt'
 filename = prefix+suffix
