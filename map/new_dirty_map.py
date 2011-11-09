@@ -945,9 +945,9 @@ class Noise(object):
             # Build the matrices.
             # Add the update mode noise in thier proper space.
             for ii in range(m):
-                freq_mode_update[ii,:,ii,:] = 1
+                freq_mode_update[ii,:,ii,:] = self.freq_mode_noise[ii,:,:]
             for ii in range(q):
-                time_mode_update[ii,:,ii,:] = 1
+                time_mode_update[ii,:,ii,:] = self.time_mode_noise[ii,:,:]
             # Now transform the diagonal noise to this funny space and add
             # it to the update term. Do this one pair of modes at a time
             # to make things less complicated.
@@ -958,16 +958,15 @@ class Noise(object):
                                              * diagonal_inv[:,:], 0)
                     tmp_freq_update = (self.freq_mode_noise[ii,:,:]
                                        * tmp_freq_update)
-                    #tmp_freq_update = sp.dot(tmp_freq_update[:,:],
-                    #                         self.freq_mode_noise[jj,:,:])
+                    tmp_freq_update = sp.dot(tmp_freq_update[:,:],
+                                             self.freq_mode_noise[jj,:,:])
                     freq_mode_update[ii,:,jj,:] += tmp_freq_update
-            cross_update_2 = al.empty_like(cross_update)
             for ii in xrange(m):
                 for jj in xrange(q):
                     tmp_cross_update = (self.freq_modes[ii,None,:]
                                         * self.time_modes[jj,:,None]
                                         * diagonal_inv.transpose())
-                    cross_update_2[ii,:,jj,:] = sp.dot(self.freq_mode_noise[ii,:,:],
+                    tmp_cross_update = sp.dot(self.freq_mode_noise[ii,:,:],
                                               tmp_cross_update)
                     tmp_cross_update = sp.dot(tmp_cross_update[:,:],
                                               self.time_mode_noise[jj,:,:])
@@ -979,8 +978,8 @@ class Noise(object):
                                              * diagonal_inv[:,:], 1)
                     tmp_time_update = (self.time_mode_noise[ii,:,:]
                                        * tmp_time_update)
-                    #tmp_time_update = sp.dot(tmp_time_update[:,:],
-                    #                         self.time_mode_noise[jj,:,:])
+                    tmp_time_update = sp.dot(tmp_time_update[:,:],
+                                             self.time_mode_noise[jj,:,:])
                     time_mode_update[ii,:,jj,:] += tmp_time_update
             # Put all the update terms in one big matrix and invert it.
             update_matrix = sp.empty((n_update, n_update), dtype=float)
@@ -994,7 +993,7 @@ class Noise(object):
             update_matrix[:m * n_time,m * n_time:].flat[...] = \
                 cross_update.flat
             # Bottom left.
-            tmp_mat = sp.swapaxes(cross_update_2, 0, 2)
+            tmp_mat = sp.swapaxes(cross_update, 0, 2)
             tmp_mat = sp.swapaxes(tmp_mat, 1, 3)
             update_matrix[m * n_time:,:m * n_time].flat[...] = \
                 tmp_mat.flat
@@ -1018,40 +1017,32 @@ class Noise(object):
                     update_matrix_inv[m * n_time:,m * n_time:].flat
             cross_update.flat[...] = \
                     update_matrix_inv[:m * n_time,m * n_time:].flat
-            tmp_mat = sp.swapaxes(cross_update_2, 0, 2)
-            tmp_mat = sp.swapaxes(tmp_mat, 1, 3)
-            tmp_mat.flat[...] = update_matrix[m * n_time:,:m * n_time].flat
-            tmp_mat = sp.swapaxes(tmp_mat, 1, 3)
-            tmp_mat = sp.swapaxes(tmp_mat, 0, 2)
-            cross_update_2.flat[...] = tmp_mat.flat
             # Multiply both sides by the noise terms.
             for ii in xrange(m):
                 for jj in xrange(m):
                     tmp_freq_update = sp.dot(self.freq_mode_noise[ii,:,:],
                                              freq_mode_update[ii,:,jj,:])
-                    #tmp_freq_update = sp.dot(tmp_freq_update,
-                    #                         self.freq_mode_noise[jj,:,:])
+                    tmp_freq_update = sp.dot(tmp_freq_update,
+                                             self.freq_mode_noise[jj,:,:])
                     freq_mode_update[ii,:,jj,:] = tmp_freq_update
             for ii in xrange(m):
                 for jj in xrange(q):
                     tmp_cross_update = sp.dot(self.freq_mode_noise[ii,:,:],
                                               cross_update[ii,:,jj,:])
-                    cross_update_2[ii,:,jj,:] = sp.dot(cross_update_2[ii,:,jj,:],
+                    tmp_cross_update = sp.dot(tmp_cross_update,
                                               self.time_mode_noise[jj,:,:])
-                    #tmp_cross_update = sp.dot(tmp_cross_update,
-                    #                          self.time_mode_noise[jj,:,:])
                     cross_update[ii,:,jj,:] = tmp_cross_update
             for ii in xrange(q):
                 for jj in xrange(q):
                     tmp_time_update = sp.dot(self.time_mode_noise[ii,:,:],
                                              time_mode_update[ii,:,jj,:])
-                    #tmp_time_update = sp.dot(tmp_time_update,
-                    #                         self.time_mode_noise[jj,:,:])
+                    tmp_time_update = sp.dot(tmp_time_update,
+                                             self.time_mode_noise[jj,:,:])
                     time_mode_update[ii,:,jj,:] = tmp_time_update
+
             self.time_mode_update = time_mode_update
             self.freq_mode_update = freq_mode_update
             self.cross_update = cross_update
-            self.cross_update_2 = cross_update_2
             # TODO: Some sort of condition number check here?
             if hasattr(self, 'flag'):
                 A = time_mode_update.view()
@@ -1144,7 +1135,7 @@ class Noise(object):
                     # Get only the matricies that apply to this slice.
                     this_freq_modes2 = freq_modes.index_axis(1, jj)
                     this_cross1 = self.cross_update.index_axis(3, ii)
-                    this_cross2 = self.cross_update_2.index_axis(3, jj)
+                    this_cross2 = self.cross_update.index_axis(3, jj)
                     this_time_update = self.time_mode_update.index_axis(1, ii)
                     this_time_update = this_time_update.index_axis(2, jj)
                     # The freq_mode-freq_mode part of the update term.
