@@ -9,7 +9,7 @@ import scipy.fftpack as fft
 import scipy.signal as sig
 import numpy.random as rand
 import numpy.ma as ma
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 from kiyopy import parse_ini
 import kiyopy.utils
