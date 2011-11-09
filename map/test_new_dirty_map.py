@@ -295,7 +295,7 @@ class TestClasses(unittest.TestCase):
         nt = len(time)
         Noise = dirty_map.Noise(time_stream, time)
         Noise.flag = True
-        thermal_noise_levels = sp.zeros((nf_d)) + 0.01  # Kelvin**2
+        thermal_noise_levels = sp.zeros((nf_d)) + 1.0  # Kelvin**2
         Noise.add_thermal(thermal_noise_levels)
         Noise.add_mask(mask_inds)
         Noise.deweight_time_mean()
