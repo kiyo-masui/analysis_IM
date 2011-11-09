@@ -117,7 +117,11 @@ def find_map_dimensions(map_in, silent=False):
         for key in infolist:
             print "%s: %s" % (key, map_in.info[key])
 
-        print map_in.shape
+        shp = map_in.shape
+        print shp
+        # 2^30 or 10^9...
+        covsize = shp[0] * shp[1] ** 2. * shp[2] ** 2. * 4. / 2.**30.
+        print "covariance size in GB: %g" % covsize
         print "RA min=%g deg, max=%g deg, delta=%g deg, extent=%g deg, N=%d" % mmd_ra
         print "Dec min=%g deg, max=%g deg, delta=%g deg, extent=%g deg, N=%d" % mmd_dec
         print "Freq min=%g MHz, max=%g MHz, delta=%g MHz, extent=%g MHz, N=%d" % mmd_freq
@@ -147,31 +151,41 @@ def print_map_summary():
 
 def new_map_templates(target_sample=0.25, multiplier=16, search_start=16):
 
-    print "proposed 15hr field dimensions"
-    template_15hr = find_map_region(220.3, 215.5, 0.7, 3.3,
-                    target_sample=target_sample, multiplier=multiplier,
-                    search_start=search_start)
-    find_map_dimensions(template_15hr)
+    #print "proposed 15hr field dimensions"
+    #template_15hr = find_map_region(220.3, 215.5, 0.7, 3.3,
+    #                target_sample=target_sample, multiplier=multiplier,
+    #                search_start=search_start)
+    #find_map_dimensions(template_15hr)
 
-    print "proposed 22hr field dimensions"
-    template_22hr = find_map_region(327.9, 323., -1.5, 1.5,
-                    target_sample=target_sample, multiplier=multiplier,
-                    search_start=search_start)
-    find_map_dimensions(template_22hr)
+    #print "proposed 22hr field dimensions"
+    #template_22hr = find_map_region(327.9, 323., -1.5, 1.5,
+    #                target_sample=target_sample, multiplier=multiplier,
+    #                search_start=search_start)
+    #find_map_dimensions(template_22hr)
 
     print "proposed 1hr field dimensions"
     #template_1hr = find_map_region(18., 8., -1.6, 4.4,
     #                target_sample=target_sample, multiplier=multiplier,
     #                search_start=search_start)
-    template_1hr = find_map_region(18., 8., -0.7, 4.4,
+    #template_1hr = find_map_region(18., 8., -0.7, 4.4,
+    #                target_sample=target_sample, multiplier=multiplier,
+    #                search_start=search_start)
+    #find_map_dimensions(template_1hr)
+    # 100 GB
+    template_1hr = find_map_region(17., 9., -0.5, 4.3,
                     target_sample=target_sample, multiplier=multiplier,
                     search_start=search_start)
     find_map_dimensions(template_1hr)
 
+    #template_1hr = find_map_region(17.3, 8.6, -0.6, 4.4,
+    #                target_sample=target_sample, multiplier=multiplier,
+    #                search_start=search_start)
+    #find_map_dimensions(template_1hr)
+
 
 if __name__ == '__main__':
     new_map_templates(target_sample=0.25, multiplier=1, search_start=2)
-    print "previous map dimensions"
-    print "="*80
-    print_map_summary()
+    #print "previous map dimensions"
+    #print "="*80
+    #print_map_summary()
     #new_map_templates(target_sample=0.25, multiplier=16, search_start=16)

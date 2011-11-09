@@ -4,21 +4,33 @@ simulations, etc.
 from plotting import plot_cube as pc
 
 def plot_gbt_mapset(outputdir="/cita/d/www/home/eswitzer/movies/"):
+    #pc.plot_gbt_maps('GBT_15hr_map_cleaned_20mode', outputdir=outputdir, transverse=False)
+    #pc.plot_gbt_maps('GBT_15hr_map_cleaned_0mode', outputdir=outputdir, transverse=False)
+    #pc.plot_gbt_maps('GBT_22hr_map_cleaned_20mode', outputdir=outputdir, transverse=False)
+    #pc.plot_gbt_maps('GBT_22hr_map_cleaned_0mode', outputdir=outputdir, transverse=False)
+
     #pc.plot_gbt_maps('GBT_15hr_map_proposal', transverse=True,
     #                 outputdir=outputdir, skip_noise=True)
     #pc.plot_gbt_maps('GBT_15hr_map_proposal', transverse=False,
     #                 outputdir=outputdir, skip_noise=True)
-    pc.plot_gbt_maps('GBT_15hr_map', outputdir=outputdir, transverse=True)
-    #pc.plot_gbt_maps('GBT_15hr_map', outputdir=outputdir, transverse=False)
-    pc.plot_gbt_maps('GBT_22hr_map', outputdir=outputdir, transverse=True)
+    #pc.plot_gbt_maps('GBT_15hr_map', outputdir=outputdir, transverse=True)
+    pc.plot_gbt_maps('GBT_15hr_map', outputdir=outputdir, transverse=False)
+    #pc.plot_gbt_maps('GBT_22hr_map', outputdir=outputdir, transverse=True)
     pc.plot_gbt_maps('GBT_22hr_map', outputdir=outputdir, transverse=False)
-    pc.plot_gbt_maps('GBT_1hr_map', outputdir=outputdir, transverse=True)
-    pc.plot_gbt_maps('GBT_1hr_map', outputdir=outputdir, transverse=False)
+    #pc.plot_gbt_maps('GBT_1hr_map', outputdir=outputdir, transverse=True)
+    #pc.plot_gbt_maps('GBT_1hr_map', outputdir=outputdir, transverse=False)
 
 
 def plot_gbt_simset(outputdir="/cita/d/www/home/eswitzer/movies/"):
-    pc.plot_simulations('sim_15hr', outputdir=outputdir, transverse=True)
+    #pc.plot_simulations('sim_15hr', outputdir=outputdir, transverse=True)
+    #pc.plot_simulations('sim_22hr', outputdir=outputdir, transverse=True)
+    #pc.plot_simulations('sim_1hr', outputdir=outputdir, transverse=True)
+
     pc.plot_simulations('sim_15hr', outputdir=outputdir, transverse=False)
+    pc.plot_simulations('sim_15hr_beam', outputdir=outputdir, transverse=False)
+    pc.plot_simulations('sim_22hr', outputdir=outputdir, transverse=False)
+    pc.plot_simulations('sim_22hr_beam', outputdir=outputdir, transverse=False)
+    #pc.plot_simulations('sim_1hr', outputdir=outputdir, transverse=False)
 
 
 def plot_gbt_diff_tests(outputdir="/cita/d/www/home/eswitzer/movies/",
@@ -63,7 +75,7 @@ def plot_sim_scheme(outputdir="/cita/d/www/home/eswitzer/movies/"):
                     outputdir=outputdir, transverse=False)
 
 if __name__ == "__main__":
-    #plot_gbt_mapset()
-    #plot_gbt_simset()
-    plot_gbt_diff_tests()
+    plot_gbt_simset()
+    plot_gbt_mapset()
+    #plot_gbt_diff_tests()
     #plot_sim_scheme()

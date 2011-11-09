@@ -144,8 +144,8 @@ def generate_simset(fieldname, streaming=False):
 
 def generate_full_simset(fieldlist):
     for fieldname in fieldlist:
-        generate_simset(fieldname, streaming=True)
         generate_simset(fieldname, streaming=False)
+        generate_simset(fieldname, streaming=True)
 
 
 def run_scheme_test():
@@ -157,5 +157,5 @@ def run_scheme_test():
 
 if __name__ == '__main__':
     #generate_full_simset(['15hr', '22hr', '1hr'])
-    generate_full_simset(['22hr'])
+    generate_full_simset(['15hr', '22hr'])
     #run_scheme_test()
