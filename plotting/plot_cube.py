@@ -50,7 +50,6 @@ def gnuplot_single(plotitem):
     yminmax = (np.min(yaxis), np.max(yaxis))
     cminmax = (np.min(vaxis), np.max(vaxis))
     aspect = (yminmax[1] - yminmax[0]) / (xminmax[1] - xminmax[0])
-    print FWHM, angular_scale
 
     # TODO: optimize this
     for xind in range(len(xaxis)):
@@ -278,33 +277,6 @@ def plot_gbt_maps(keyname, transverse=False, skip_noise=False, skip_map=False,
                                logscale=False,
                                transverse=transverse,
                                title=title)
-
-
-def plot_simulations(keyname, transverse=False, outputdir="./"):
-    """make movies of the 15hr simulations
-    permutations: with or without streaming, including beam, adding real data
-    """
-    datapath_db = data_paths.DataPath()
-
-    filename = datapath_db.fetch(keyname, pick='1')
-    make_cube_movie(filename, "Temperature (mK)", cube_frame_dir,
-                    sigmarange=5., outputdir=outputdir, multiplier=1000.,
-                    transverse=transverse)
-    #make_cube_movie(root_directory + "sim_beam_" + suffix,
-    #                   "Temperature (mK)", cube_frame_dir, sigmarange=5.,
-    #                   outputdir="./", multiplier=1000., transverse=transverse)
-    #make_cube_movie(root_directory + "sim_beam_plus_data" + suffix,
-    #                   "Temperature (mK)", cube_frame_dir, sigmarange=10.,
-    #                   outputdir="./", multiplier=1000., transverse=transverse)
-    #make_cube_movie(root_directory + "simvel_" + suffix,
-    #                   "Temperature (mK)", cube_frame_dir, sigmarange=5.,
-    #                   outputdir="./", multiplier=1000., transverse=transverse)
-    #make_cube_movie(root_directory + "simvel_beam_" + suffix,
-    #                   "Temperature (mK)", cube_frame_dir, sigmarange=5.,
-    #                   outputdir="./", multiplier=1000., transverse=transverse)
-    #make_cube_movie(root_directory + "simvel_beam_plus_data" + suffix,
-    #                   "Temperature (mK)", cube_frame_dir, sigmarange=10.,
-    #                   outputdir="./", multiplier=1000., transverse=transverse)
 
 
 def plot_difference(filename1, filename2, title, sigmarange=6., sigmacut=None,

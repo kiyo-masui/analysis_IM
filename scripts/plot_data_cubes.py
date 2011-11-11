@@ -2,6 +2,7 @@ r"""Several scripts to call plot_cube_movie and make movies of GBT data,
 simulations, etc.
 """
 from plotting import plot_cube as pc
+from utils import data_paths
 
 def plot_gbt_mapset(outputdir="/cita/d/www/home/eswitzer/movies/"):
     #pc.plot_gbt_maps('GBT_15hr_map_cleaned_20mode', outputdir=outputdir, transverse=False)
@@ -67,6 +68,24 @@ def plot_gbt_diff_tests(outputdir="/cita/d/www/home/eswitzer/movies/",
                         outputdir=outputdir, transverse=True)
 
 
+def plot_gbt_comb_modeset(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/"):
+    datapath_db = data_paths.DataPath()
+
+    for modenum in range(0, 55, 5):
+        #keyname = "GBT_%s_combined_cleaned_%dmode_map" % (fieldname, modenum)
+        #filename = datapath_db.fetch(keyname)
+        #pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
+        #                sigmarange=5., outputdir=outputdir, multiplier=1000.,
+        #                transverse=False)
+
+        keyname = "GBT_%s_combined_cleaned_%dmode_weight" % \
+                  (fieldname, modenum)
+        filename = datapath_db.fetch(keyname)
+        pc.make_cube_movie(filename, "inverse variance weight", pc.cube_frame_dir,
+                        sigmarange=-1, outputdir=outputdir, multiplier=1.,
+                        transverse=False)
+
+
 def plot_sim_scheme(outputdir="/cita/d/www/home/eswitzer/movies/"):
     sim1 = "sim_streaming1.npy"
     sim2 = "sim_streaming2.npy"
@@ -75,7 +94,9 @@ def plot_sim_scheme(outputdir="/cita/d/www/home/eswitzer/movies/"):
                     outputdir=outputdir, transverse=False)
 
 if __name__ == "__main__":
-    plot_gbt_simset()
-    plot_gbt_mapset()
+    plot_gbt_comb_modeset('15hr')
+    #plot_gbt_comb_modeset('22hr')
+    #plot_gbt_simset()
+    #plot_gbt_mapset()
     #plot_gbt_diff_tests()
     #plot_sim_scheme()

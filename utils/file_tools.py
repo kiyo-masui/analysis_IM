@@ -23,6 +23,7 @@ def load_shelve_over_http(url):
         chunk = req.read(chunksize)
         if not chunk: break
         temp_file.write(chunk)
+    temp_file.flush()
 
     shelvedict = shelve.open(temp_file.name, "r")
     retdict = {}
@@ -185,7 +186,7 @@ def path_properties(pathname, intend_write=False, intend_read=False,
         print entry
 
     if intend_read and not readable:
-        print "ERROR: no file to read"
+        print "ERROR: no file to read: %s" % pathname
         sys.exit()
 
     if intend_write and not writable:
