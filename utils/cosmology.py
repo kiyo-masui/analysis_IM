@@ -13,7 +13,7 @@ from units import *
 
 class Cosmology:
     r""" Class to store a cosmology, and compute measures.
-    
+
     Defines a cosmology and allows calculation of a few simple
     quantities (notably distance measures and lookback time).
 
@@ -140,17 +140,16 @@ class Cosmology:
         H : scalar
             The Hubble parameter.
         """
-        
 
-	if(z == None):
-	    H = self.H0
+        if (z == None):
+            H = self.H0
         else:
             H  = self.H0 * (self.omega_r * (1 + z)**4 +  self.omega_m * (1 + z)**3 + self.omega_k * (1 + z)**2
                             + self.omega_l)**0.5
-        
+
         # Convert to SI
         return H * 1000.0 / mega_parsec
-	    
+
     def comoving_distance(self, z):
         r"""The comoving distance to redshift z.
 
@@ -160,7 +159,7 @@ class Cosmology:
         ----------
         z : array_like
             The redshift(s) to calculate at.
-        
+
         Returns
         -------
         dist : array_like
@@ -176,7 +175,7 @@ class Cosmology:
 
     def proper_distance(self, z):
         r"""The proper distance to an event at redshift z.
-        
+
         The proper distance can be ill defined. In this case we mean
         the comoving transverse separation between two events at the
         same redshift divided by their angular separation. This
@@ -186,7 +185,7 @@ class Cosmology:
         ----------
         z : array_like
             The redshift(s) to calculate at.
-        
+
         Returns
         -------
         dist : array_like
@@ -247,20 +246,20 @@ class Cosmology:
 
 
     def lookback_time(self, z):
-	r""" The lookback time out to redshift z.
+        r""" The lookback time out to redshift z.
 
         Parameters
         ----------
         z : array_like
             The redshift(s) to calculate at.
-        
+
         Returns
         -------
         time : array_like
             The lookback time to each redshift.
         """
 
-	# Calculate the integrand.
+        # Calculate the integrand.
         def f(z1):
             return 1.0 / (self.H(z1) * (1 + z1))
 
@@ -288,7 +287,7 @@ class Cosmology:
             return 1.0
 
         raise Exception("Units not known")
-        
+
 
 @np.vectorize
 def _intfz(f, a, b):
@@ -300,7 +299,7 @@ def _intfz(f, a, b):
         return integrate.patterson(f, a, b, epsrel = 1e-5, epsabs = 1e-10)
         #return integrate.chebyshev(f, a, b, epsrel = 1e-5, epsabs = 1e-10)
         #return integrate.romberg(f, a, b, epsrel = 1e-5, epsabs = 1e-10)
-        #return quad(f, a, b, epsrel = 1e-5, epsabs = 1e-10)[0]
+        #return integrate.quad(f, a, b, epsrel = 1e-5, epsabs = 1e-10)[0]
     
     
     cut = 1e2

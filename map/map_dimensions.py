@@ -1,6 +1,10 @@
 import scipy as sp
 from scipy.interpolate import interp1d
 import core.algebra as algebra
+from utils.cosmology import Cosmology
+from utils import units
+from core import constants as cc
+# TODO: clean up the variable names, shorten code
 
 def axis_param(axis):
     r"""return min, max and delta assuming unif. spacing"""
@@ -83,6 +87,7 @@ def find_map_dimensions(map_in, silent=False):
     r"""print various aspects of the maps"""
     if isinstance(map_in, str):
         map_in = algebra.make_vect(algebra.load(map_in))
+    cosmology = Cosmology()
 
     ra_axis = map_in.get_axis('ra')
     mmd_ra = axis_param(ra_axis)
@@ -110,6 +115,33 @@ def find_map_dimensions(map_in, silent=False):
     pixelfrac_decmin = mmd_dec[2]/beam_minfreq
     pixelfrac_ramax = dracosdec/beam_maxfreq
     pixelfrac_decmax = mmd_dec[2]/beam_maxfreq
+
+    # cosmological sizes
+    dfreq = mmd_freq[2]
+    z1 = cc.freq_21cm_MHz/mmd_freq[0] - 1.  # z at min freq
+    z2 = cc.freq_21cm_MHz/mmd_freq[1] - 1.  # z at max freq
+    dz1 = cc.freq_21cm_MHz/(mmd_freq[0]+dfreq) - 1.
+    dz2 = cc.freq_21cm_MHz/(mmd_freq[1]-dfreq) - 1.
+    d1 = cosmology.proper_distance(z1)
+    d2 = cosmology.proper_distance(z2)
+    c1 = cosmology.comoving_distance(z1)
+    c2 = cosmology.comoving_distance(z2)
+    dc1 = cosmology.comoving_distance(dz1)
+    dc2 = cosmology.comoving_distance(dz2)
+
+    ra_extent_z1 = mmd_ra[3] * d1 * units.degree * ra_fact
+    ra_pixel_extent_z1 = mmd_ra[2] * d1 * units.degree * ra_fact
+    ra_extent_z2 =  mmd_ra[3] * d2 * units.degree * ra_fact
+    ra_pixel_extent_z2 = mmd_ra[2] * d2 * units.degree * ra_fact
+    dec_extent_z1 = mmd_dec[3] * d1 * units.degree
+    dec_pixel_extent_z1 = mmd_dec[2] * d1 * units.degree
+    dec_extent_z2 =  mmd_dec[3] * d2 * units.degree
+    dec_pixel_extent_z2 = mmd_dec[2] * d2 * units.degree
+
+    redshift_extent = c1 - c2
+    redshift_pixel_extent_z1 = c1 - dc1
+    redshift_pixel_extent_z2 = dc2 - c2
+
     if not silent:
         infolist = ['ra_centre', 'ra_delta',
                     'dec_centre', 'dec_delta',
@@ -132,6 +164,26 @@ def find_map_dimensions(map_in, silent=False):
 
         print "beam FWHM at %g MHz=%g deg; pixel frac RA, Dec=(%g, %g)" % \
               (mmd_freq[1], beam_maxfreq, pixelfrac_ramax, pixelfrac_decmax)
+
+
+        print "redshift range: z=%g-%g" % (z2, z1)
+        print "proper distance range (h^-1 cMpc): d=%g-%g" % (d2, d1)
+        print "comoving distance range (h^-1 cMpc): d=%g-%g, extent = %g" % \
+              (c2, c1, redshift_extent)
+        print "at %g MHz, width in RA=%g Dec=%g h^-1 cMpc" % \
+              (mmd_freq[0], ra_extent_z1, dec_extent_z1)
+        print "at %g MHz, pixel width in RA=%g Dec=%g h^-1 cMpc" % \
+              (mmd_freq[0], ra_pixel_extent_z1, dec_pixel_extent_z1)
+        print "the freq bin starting at %g MHz has width %g" % \
+                (mmd_freq[0], redshift_pixel_extent_z1)
+
+        print "at %g MHz, width in RA=%g Dec=%g h^-1 cMpc" % \
+              (mmd_freq[1], ra_extent_z2, dec_extent_z2)
+        print "at %g MHz, pixel width in RA=%g Dec=%g h^-1 cMpc" % \
+              (mmd_freq[1], ra_pixel_extent_z2, dec_pixel_extent_z2)
+        print "the freq bin starting at %g MHz has width %g" % \
+                (mmd_freq[1], redshift_pixel_extent_z2)
+
         print "-"*80
 
     # return the sampling at the finest resolution
@@ -152,16 +204,16 @@ def print_map_summary():
 def new_map_templates(target_sample=0.25, multiplier=16, search_start=16):
 
     #print "proposed 15hr field dimensions"
-    #template_15hr = find_map_region(220.3, 215.5, 0.7, 3.3,
-    #                target_sample=target_sample, multiplier=multiplier,
-    #                search_start=search_start)
-    #find_map_dimensions(template_15hr)
+    template_15hr = find_map_region(220.3, 215.5, 0.7, 3.3,
+                    target_sample=target_sample, multiplier=multiplier,
+                    search_start=search_start)
+    find_map_dimensions(template_15hr)
 
     #print "proposed 22hr field dimensions"
-    #template_22hr = find_map_region(327.9, 323., -1.5, 1.5,
-    #                target_sample=target_sample, multiplier=multiplier,
-    #                search_start=search_start)
-    #find_map_dimensions(template_22hr)
+    template_22hr = find_map_region(327.9, 323., -1.5, 1.5,
+                    target_sample=target_sample, multiplier=multiplier,
+                    search_start=search_start)
+    find_map_dimensions(template_22hr)
 
     print "proposed 1hr field dimensions"
     #template_1hr = find_map_region(18., 8., -1.6, 4.4,
