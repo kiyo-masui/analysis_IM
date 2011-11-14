@@ -37,6 +37,8 @@ static PyObject * Filling(PyObject *self, PyObject *args){
 	conf->dec0 = conf->mapinf[2];
 	conf->ddec = conf->mapinf[3];
 	conf->mapshape = (int *)malloc(conf->dim*sizeof(int));
+	//conf->boxinf0 = (int *)malloc(conf->dim*sizeof(int));
+	//conf->boxinf1 = (int *)malloc(conf->dim*sizeof(int));
 
 	conf->box = (double *)box->data; 
 	conf->boxshape = (int *)malloc(conf->dim*sizeof(int));
@@ -44,8 +46,8 @@ static PyObject * Filling(PyObject *self, PyObject *args){
 		conf->mapshape[i] = map->dimensions[i];
 		conf->boxshape[i] = box->dimensions[i];
 	}
-	conf->boxinf0 = (int *)boxinf0->data;
-	conf->boxinf1 = (int *)boxinf1->data;
+	conf->boxinf0 = (long *)boxinf0->data;
+	conf->boxinf1 = (long *)boxinf1->data;
 	conf->box_x = (double *)box_x->data; conf->nbox_x = box_x->dimensions[0];
 	conf->box_y = (double *)box_y->data; conf->nbox_y = box_y->dimensions[0];
 	conf->box_z = (double *)box_z->data; conf->nbox_z = box_z->dimensions[0];

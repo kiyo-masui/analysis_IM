@@ -4,6 +4,7 @@ int fillingf(FillConf *conf){
 	
 	double disc = ((double)conf->nbox_x)/conf->boxshape[0];
 	//printf("\tdisc = %lg\n", disc);
+	//printf("\tbox j = %d\n", conf->boxinf1[2]);
 
 	for (int i=conf->boxinf0[0]; i<conf->boxinf1[0]; i++)
 		for (int j=conf->boxinf0[1]; j<conf->boxinf1[1]; j++)
@@ -230,7 +231,7 @@ int makepk(FFT *fft, PK *pk){
 //	double kmin = 1.*kunitx;
 	double kmin = pk->k[0];
 	double kmax = pk->k[pk->N-1];
-	printf("%lg %lg\n", kmin, kmax);
+//	printf("%lg %lg\n", kmin, kmax);
 	double dk = pow(10, log10(kmax/kmin)/pk->N);
 	#ifdef Linearkbin
 		printf("\t::Using Linear k bin\n");

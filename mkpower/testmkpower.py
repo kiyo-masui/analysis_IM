@@ -35,15 +35,12 @@ params_init = {
 	'Zrange' : (0.,6*15),
 
 	'kbinNum' : 20,
-	'kmin' : None,
-	'kmax' : None,
 
 	'FKPweight' : False,
 	'FKPpk' : 1.e-3,
 	'OmegaHI' : 1.e-3,
 	'Omegam' : 0.23,
 	'OmegaL' : 0.74,
-	'z' : 1,
 }
 
 pi = 3.1415926
@@ -66,6 +63,7 @@ class PowerSpectrumMaker(object):
 
 		params = self.params
 		out_root = params['output_root']
+		input_root = params['input_root']
 		resultf = params['hr'][0]
 		if len(params['last']) != 0:
 			resultf = resultf + params['last'][0]
@@ -81,23 +79,13 @@ class PowerSpectrumMaker(object):
 
 		fftbox = self.GetRadioFFTbox()
 
-
 		kbn = params['kbinNum']
-		kmin = params['kmin']
-		kmax = params['kmax']
-
-		kunit = 2.*pi/(params['boxunit'])
 		PK = np.zeros(kbn)
-		if (kmin==None) or (kmax==None):
-			k = np.logspace(
-				log10(1./params['boxshape'][0]), log10(sqrt(3)), num=kbn+1)
-		else:
-			kmin = kmin/kunit
-			kmax = kmax/kunit
-			k = np.logspace(log10(kmin), log10(kmax), num=kbn+1)
+		k = np.zeros(kbn)
 		PK2 = np.zeros(shape=(10, 10))
 		k2 = np.zeros(shape=(2, 10))
 		MakePower.Make(fftbox, PK, k, PK2, k2)
+		kunit = 2.*pi/(params['boxunit'])
 		k = k*kunit
 		k2 = k2*kunit
 		boxN = params['boxshape'][0]*params['boxshape'][1]*params['boxshape'][2]
@@ -105,28 +93,6 @@ class PowerSpectrumMaker(object):
 		PK2 = PK2
 		#PK = PK/(V*boxN)
 		#PK2 = PK2/V/boxN
-
-#		OmegaHI = params['OmegaHI']
-#		Omegam = params['Omegam']
-#		OmegaL = params['OmegaL']
-#		z = params['z']
-#		a3 = (1+z)**(-3)
-#		Tb = (OmegaHI) * ((Omegam + a3*OmegaL)/0.29)**(-0.5)\
-#			* ((1.+z)/2.5)**0.5
-#		#if params['PKunit']=='mK':
-#		#	Tb = Tb/1.e-3
-#
-#		xx = ((1.0/Omegam)-1.0)/(1.0+z)**3
-#		num = 1.0 + 1.175*xx + 0.3046*xx**2 + 0.005335*xx**3
-#		den = 1.0 + 1.875*xx + 1.021 *xx**2 + 0.1530  *xx**3
-#
-#		G = (1.0 + xx)**0.5/(1.0+z)*num/den
-#		#print G**2*(1+z)**(-2)
-#		PKrand = sp.load('/home/lixiating/Work/GBT/crandomresult/PK_combined_auto-100randmaps.npy')
-#		PKrand = PKrand*Tb**2
-#
-#		PK = PKrand
-
 
 		non0 = PK.nonzero()
 		#print PK.min(), PK.max()
@@ -144,44 +110,37 @@ class PowerSpectrumMaker(object):
 				sp.save(out_root+'PK2_'+resultf, PK2)
 				sp.save(out_root+'k_'+resultf, k)
 
-		#power_th = np.load('../maps/test/power_yuebin.npy')
-		#power_th[0] = power_th[0]/0.705
-		#power_th[1] = power_th[1]*0.705**3
+		power_th = np.load(input_root+'power_yuebin.npy')
+		power_th[0] = power_th[0]/0.705
+		power_th[1] = power_th[1]*0.705**3
 
-		#power_0 = np.load(out_root+'PK_test_yuebin_2-test_yuebin_2_0.npy')
-		#k_0 = np.load(out_root+'k_test_yuebin_2-test_yuebin_2_0.npy')
-		#non0_0 = power_0.nonzero()
-		#power_0 = power_0.take(non0_0)
-		#k_0 = k_0.take(non0_0)
 
 		if self.plot==True:
 			print PK
-			#print power_0
 			plt.figure(figsize=(8,8))
 			#print k
 			#print PK
 			plt.subplot('211')
 			plt.scatter(k.take(non0), PK.take(non0))
-			#plt.scatter(k_0, power_0, c='w')
-			#plt.plot(power_th[0], power_th[1], c='r')
+			plt.plot(power_th[0], power_th[1], c='r')
 			plt.loglog()
 			#plt.semilogx()
-			plt.ylim(ymin=1.e-1)	
+			plt.ylim(ymin=1.e-6)	
 			plt.xlim(xmin=k.min(), xmax=k.max())
 			plt.title('Power Spectrum')
 			plt.xlabel('$k$')
 			plt.ylabel('$P(k) (Kelvin^{2}(h^{-1}Mpc)^3)$')
 
 			PK = PK*k*k*k/2./pi/pi
-			#power_th[1] = power_th[1]*power_th[0]*power_th[0]*power_th[0]/2/pi/pi
+			power_th[1] = power_th[1]*power_th[0]*power_th[0]*power_th[0]/2/pi/pi
 
 			#print PK
 			plt.subplot('212')
 			plt.scatter(k.take(non0), PK.take(non0))
-			#plt.plot(power_th[0], power_th[1], c='r')
+			plt.plot(power_th[0], power_th[1], c='r')
 			plt.loglog()
 			#plt.semilogx()
-			plt.ylim(ymin=1.e-4)	
+			plt.ylim(ymin=1.e-12)	
 			plt.xlim(xmin=k.min(), xmax=k.max())
 			plt.xlabel('$k (h Mpc^{-1})$')
 			plt.ylabel('$\Delta^2 (Kelvin^{2})$')
@@ -239,22 +198,147 @@ class PowerSpectrumMaker(object):
 		end = pol_str
 		if len(params['last']) != 0:
 			end = end + params['last'][0]
-		box_fname = in_root + 'fftbox_' + hr_str + mid[0] + end + '.npy'
-		box = np.load(box_fname)
+		imap_fname = in_root + hr_str + mid[0] + end + '.npy'
+		imap = algebra.load(imap_fname)
+		imap = algebra.make_vect(imap)
+		if imap.axes != ('freq', 'ra', 'dec') :
+			raise ce.DataError('AXES ERROR!')
 
-		nbox_fname = in_root + 'fftbox_' + hr_str + mid[1] + end + '.npy'
-		nbox = np.load(nbox_fname)
+		box = np.load(imap_fname)
+
+		nmap_fname = in_root + hr_str + mid[1] + end + '.npy'
+		try:
+			nmap = algebra.load(nmap_fname)
+			nmap = algebra.make_vect(nmap)
+
+			bad = nmap<1.e-5*nmap.flatten().max()
+			nmap[bad] = 0.
+			non0 = nmap.nonzero()
+			#imap[non0] = imap[non0]/nmap[non0]
+		except IOError:
+			print 'NO Noise File :: Set Noise to One'
+			nmap = algebra.info_array(sp.ones(imap.shape))
+			nmap.axes = imap.axes
+			nmap = algebra.make_vect(nmap)
+		if FKPweight:
+			for i in range(nmap.shape[0]):
+				#nmap[i] = nmap[i]/(1.+nmap[i]*fkpp)
+				nmap[i] = 1./(1.+nmap[i]*fkpp)
 
 		#Using map in different day 
 		hr_str = params['hr'][1]
 		end = pol_str
 		if len(params['last']) != 0:
 			end = end + params['last'][1]
-		box_fname = in_root + 'fftbox_' + hr_str + mid[0] + end + '.npy'
-		box2 = np.load(box_fname)
+		imap_fname = in_root + hr_str + mid[0] + end + '.npy'
+		imap2 = algebra.load(imap_fname)
+		imap2 = algebra.make_vect(imap2)
+		if imap2.axes != ('freq', 'ra', 'dec') :
+			raise ce.DataError('AXES ERROR!')
 
-		nbox_fname = in_root + 'fftbox_' + hr_str + mid[1] + end + '.npy'
-		nbox2 = np.load(nbox_fname)
+		box2 = np.load(imap_fname)
+
+		nmap_fname = in_root + hr_str + mid[1] + end + '.npy'
+		try:
+			nmap2 = algebra.load(nmap_fname)
+			nmap2 = algebra.make_vect(nmap2)
+	
+			bad = nmap2<1.e-5*nmap2.flatten().max()
+			nmap2[bad] = 0.
+			non0 = nmap2.nonzero()
+			#imap2[non0] = imap2[non0]/nmap2[non0]
+		except IOError:
+			print 'NO Noise File :: Set Noise to One'
+			nmap2 = algebra.info_array(sp.ones(imap2.shape))
+			nmap2.axes = imap2.axes
+			nmap2 = algebra.make_vect(nmap2)
+		if FKPweight:
+			for i in range(nmap.shape[0]):
+				#nmap2[i] = nmap2[i]/(1.+nmap2[i]*fkpp)
+				nmap2[i] = 1./(1.+nmap2[i]*fkpp)
+
+		#print imap2.flatten().min()
+		#print dmap2.flatten().min()
+		#print nmap2.flatten().sum()
+
+		mapshape = np.array(imap.shape)
+		#print imap.shape
+
+		r  = self.discrete(self.fq2r(imap.get_axis('freq')))
+		ra = self.discrete(imap.get_axis('ra'))*deg2rad
+		de = self.discrete(imap.get_axis('dec'))*deg2rad
+		ra0= ra[int(ra.shape[0]/2)]
+		ra = ra - ra0
+		dr = r.ptp()/r.shape[0]
+		dra= ra.ptp()/ra.shape[0]
+		dde= de.ptp()/de.shape[0]
+		disc_n = params['discrete']
+
+		#print r.min(), r.max()
+		#print self.xyz(ra.min(), de.min(), r.min())
+		#print self.xyz(ra.max(), de.min(), r.min())
+		#print self.xyz(ra.min(), de.max(), r.min())
+		#print self.xyz(ra.max(), de.max(), r.min())
+		#print self.xyz(ra.min(), de.min(), r.max())
+		#print self.xyz(ra.max(), de.min(), r.max())
+		#print self.xyz(ra.min(), de.max(), r.max())
+		#print self.xyz(ra.max(), de.max(), r.max())
+
+		#return 0
+
+		mapinf = [dr, dra, dde, disc_n]
+		mapinf = np.array(mapinf)
+
+		#box = algebra.info_array(sp.zeros(params['boxshape']))
+		#box.axes = ('x','y','z')
+		#box = algebra.make_vect(box)
+		#boxshape = np.array(box.shape)
+
+		#box2 = algebra.info_array(sp.zeros(params['boxshape']))
+		#box2.axes = ('x','y','z')
+		#box2 = algebra.make_vect(box2)
+		
+		xrange0 = params['Xrange'][0]
+		yrange0 = params['Yrange'][0]
+		zrange0 = params['Zrange'][0]
+		boxunit = params['boxunit']
+		shapex = params['boxshape'][2]
+		shapera = ra.shape[0]
+		V = params['boxunit']**3
+
+		boxinf = [xrange0, yrange0, zrange0, boxunit]
+		boxinf = np.array(boxinf)
+
+		print "PowerMaker: Filling the BOX"
+		#MakePower.Filling(imap, imap2, box, box2, r, ra, de, boxinf, mapinf)
+		#MakePower.Filling(dmap, dmap2, box, box2, r, ra, de, boxinf, mapinf)
+
+		# normalize 
+		#nbox = algebra.info_array(sp.zeros(params['boxshape']))
+		#nbox.axes = ('x','y','z')
+		#nbox = algebra.make_vect(nbox)
+		#nbox2 = algebra.info_array(sp.zeros(params['boxshape']))
+		#nbox2.axes = ('x','y','z')
+		#nbox2 = algebra.make_vect(nbox2)
+
+		##non0 = nmap.nonzero()
+		##nmap[non0] = np.sqrt(1./nmap[non0])
+		##non0 = nmap2.nonzero()
+		##nmap2[non0] = np.sqrt(1./nmap2[non0])
+
+		#MakePower.Filling(nmap, nmap2, nbox, nbox2, r, ra, de, boxinf, mapinf)
+
+		nbox = algebra.info_array(sp.ones(params['boxshape']))
+		nbox.axes = ('x','y','z')
+		nbox = algebra.make_vect(nbox)
+		nbox2 = algebra.info_array(sp.ones(params['boxshape']))
+		nbox2.axes = ('x','y','z')
+		nbox2 = algebra.make_vect(nbox2)
+
+		if params['saveweight']:
+			sp.save(out_root+'Weight_'+resultf, nbox)
+			sp.save(out_root+'Weight2_'+resultf, nbox2)
+			print '\t::Weight Saved '
 
 		normal = (nbox**2).flatten().sum()
 		normal2 = (nbox2**2).flatten().sum()
@@ -262,36 +346,23 @@ class PowerSpectrumMaker(object):
 		#print normal
 		box = box*nbox
 		box2 = box2*nbox2
-		#box = nbox*nbox
-		#box2 = nbox2*nbox2
-
-		V = params['boxunit']**3
 
 		print "PowerMaker: FFTing "
 		inputa = np.zeros(params['boxshape'], dtype=complex)
+		inputa.real = box
 		outputa = np.zeros(params['boxshape'], dtype=complex)
 		fft = FFTW.Plan(inputa,outputa, direction='forward', flags=['measure'])
-		inputa.imag = 0.
-		inputa.real = box
 		FFTW.execute(fft)
-
-		#print outputa[10][10]
-
-		inputb = np.zeros(params['boxshape'], dtype=complex)
-		outputb = np.zeros(params['boxshape'], dtype=complex)
-		fft = FFTW.Plan(inputb,outputb, direction='forward', flags=['measure'])
-		inputb.imag = 0.
-		inputb.real = box2
-		FFTW.execute(fft)
-		
-		#print outputb[10][10]
-
-		fftbox = (outputa.__mul__(outputb.conjugate())).real
-
-		#fftbox = (outputa*(outputa.conjugate())).real
+		#box = outputa.real**2 + outputa.imag**2
+		#inputb = np.zeros(params['boxshape'], dtype=complex)
+		#inputb.real = box2
+		#outputb = np.zeros(params['boxshape'], dtype=complex)
+		#fft = FFTW.Plan(inputb,outputb, direction='forward', flags=['measure'])
+		#FFTW.execute(fft)
+		fftbox = (outputa*(outputa.conjugate())).real
 		fftbox = fftbox*V/normal #/2./pi/pi/pi
 		#boxN = params['boxshape'][0]*params['boxshape'][1]*params['boxshape'][2]
-		#fftbox = fftbox*V/boxN #/2./pi/pi/pi
+		#fftbox = 2*fftbox*V/boxN #/2./pi/pi/pi
 
 		return fftbox
 

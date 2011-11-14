@@ -17,7 +17,8 @@ typedef struct{
 	int *mapshape;
 
 	double *box;
-	int *boxinf0;	int *boxinf1;
+	//int *boxinf0;	int *boxinf1;
+	long *boxinf0;	long *boxinf1;
 	int *boxshape;
 	double *box_x;	int nbox_x;
 	double *box_y;	int nbox_y;

@@ -1,0 +1,195 @@
+#! /usr/bin/env python
+
+import scipy as sp
+import numpy as np
+from numpy.fft import *
+import scipy.linalg as linalg
+
+from core import algebra, hist
+from kiyopy import parse_ini
+import kiyopy.utils
+import kiyopy.custom_exceptions as ce
+from scipy import integrate
+from math import *
+from sys import *
+import matplotlib.pyplot as plt
+
+
+pi = 3.1415926
+deg2rad = pi/180.
+
+params_init = {
+	'processes' : 1,
+	'plot' : True,
+	'input_root' : '../newmaps/',
+	'hr' : ('15hr_40-41-43_','15hr_42_',),
+	'mid' : ('dirty_map_','noise_inv_diag_'),
+	'polarizations' : ('I',),
+	'output_root' : './',
+	'last' : (),
+
+}
+prefix = 'pr_'
+
+class PeakRemove(object):
+	"""Remove the Big Peak in the map"""
+
+	def __init__(self, parameter_file_or_dict=None, feedback=2):
+		# Read in the parameters.
+		self.params = parse_ini.parse(parameter_file_or_dict, params_init, prefix=prefix)
+
+		self.feedback=feedback
+
+		self.plot = bool(self.params['plot'])
+	
+	def execute(self, nprocesses=1):
+		params = self.params
+
+		# Make parent directory and write parameter file.
+		kiyopy.utils.mkparents(params['output_root'])
+		parse_ini.write_params(params, params['output_root']+'params.ini',prefix='pk_')
+		in_root = params['input_root']
+		out_root = params['output_root']
+		mid = params['mid']
+		last = params['last']
+		all_out_fname_list = []
+		all_in_fname_list = []
+		
+		#### Process ####
+		pol_str = params['polarizations'][0]
+		#hr_str = params['hr'][0]
+		for hr_str, ii in zip(params['hr'],range(len(params['hr']))):
+			end = pol_str
+			if len(last)!=0:
+				end = end + last[ii]
+			#imap_fname = in_root + hr_str + 'dirty_map_' + pol_str + '.npy'
+			#imap_fname = in_root + hr_str + mid + pol_str + '.npy'
+			imap_fname = in_root + hr_str + mid[0] + end + '.npy'
+			imap = algebra.load(imap_fname)
+			imap = algebra.make_vect(imap)
+			if imap.axes != ('freq', 'ra', 'dec') :
+				raise ce.DataError('AXES ERROR!')
+
+			nmap_fname = in_root + hr_str + mid[1] + end + '.npy'
+			try:
+				nmap = algebra.load(nmap_fname)
+				nmap = algebra.make_vect(nmap)
+
+				bad = nmap<1.e-5*nmap.flatten().max()
+				nmap[bad] = 0.
+				non0 = nmap.nonzero()
+				#imap[non0] = imap[non0]/nmap[non0]
+			except IOError:
+				print 'NO Noise File :: Set Noise to One'
+				nmap = algebra.info_array(sp.ones(imap.shape))
+				nmap.axes = imap.axes
+				nmap = algebra.make_vect(nmap)
+			nmap.info = imap.info
+			if nmap.axes != ('freq', 'ra', 'dec') :
+				raise ce.DataError('AXES ERROR!')
+			
+			print 'Removing Peak... Map:' + hr_str[:-1]
+			self.pkrm(imap,nmap,
+				out_root+'pkrm'+hr_str+'dirty_map_'+pol_str+'.png', threshold=2.5)
+
+			pkrm_fname = out_root + 'pkrm_' + hr_str + mid[0] + end + '.npy'
+			algebra.save(pkrm_fname, imap)
+			all_out_fname_list.append(
+				kiyopy.utils.abbreviate_file_path(pkrm_fname))
+
+			pkrm_nfname = out_root + 'pkrm_' + hr_str + mid[1] + end + '.npy'
+			algebra.save(pkrm_nfname, nmap)
+			all_out_fname_list.append(
+				kiyopy.utils.abbreviate_file_path(pkrm_nfname))
+
+		return 0
+
+	def pkrm(self, imap, nmap, fname, threshold=2.0):
+		freq = imap.get_axis('freq')/1.e6
+		if self.plot==True:
+			plt.figure(figsize=(8,8))
+			plt.subplot(211)
+			plt.title('Map with peak remove')
+			plt.xlabel('Frequece (MHz)')
+			plt.ylabel('$\Delta$ T(Kelvin) Without Foreground')
+			#for i in range(13,14):
+			#	for j in range(25, 26):
+			for i in range(0,imap.shape[2]):
+				for j in range(0, imap.shape[1]):
+					plt.plot(freq, imap.swapaxes(0,2)[i][j])
+
+		dsigma = 50
+		while(dsigma>0.01):
+			sigma = imap.std(0)
+			for i in range(0, imap.shape[0]):
+				good = [np.fabs(imap[i]).__lt__(threshold*sigma)]
+				choicelist = [imap[i]]
+				imap[i] = np.select(good, choicelist)
+				choicelist = [nmap[i]]
+				nmap[i] = np.select(good, choicelist)
+			dsigma = (sigma.__sub__(imap.std(0))).max()
+			#print dsigma
+		#print '\n'
+
+		if self.plot==True:
+			plt.subplot(212)
+			plt.xlabel('Frequece (MHz)')
+			plt.ylabel('$\Delta$ T(Kelvin) Without Foreground')
+			#for i in range(13,14):
+			#	for j in range(25, 26):
+			for i in range(0,imap.shape[2]):
+				for j in range(0, imap.shape[1]):
+					plt.plot(freq, imap.swapaxes(0,2)[i][j])
+
+			plt.savefig(fname, format='png')
+			plt.show()
+			#plt.ylim(-0.0001,0.0001)
+
+	def xyzv(self, ra, de, r, ra0=0.):
+		x = r*sin(0.5*pi-de)*cos(ra-ra0)
+		y = r*sin(0.5*pi-de)*sin(ra-ra0)
+		z = r*cos(0.5*pi-de)
+		v = r**2*sin(0.5*pi-de)
+		return x, y, z, v
+
+	def fq2r(self, freq, freq0=1.4e9 , c_H0 = 2.99e3, Omegam=0.27, Omegal=0.73):
+		"""change the freq to distence"""
+		zz =  freq0/freq - 1.
+		for i in range(0, zz.shape[0]):
+			zz[i] = c_H0*self.funcdl(zz[i], Omegam, Omegal)
+		return zz
+	
+	def discrete(self, array):
+		"""discrete the data pixel into small size"""
+		newarray = sp.zeros(self.params['discrete']*(array.shape[0]-1)+1)
+		for i in range(0, array.shape[0]-1):
+			delta = (array[i+1]-array[i])/float(self.params['discrete'])
+			for j in range(0, self.params['discrete']):
+				newarray[i*self.params['discrete']+j] = array[i] + j*delta
+		newarray[-1] = array[-1]
+		return newarray
+
+	def funcdl(self, z, omegam, omegal):
+		func = lambda z, omegam, omegal: \
+			((1.+z)**2*(1.+omegam*z)-z*(2.+z)*omegal)**(-0.5)
+		dl, dlerr = integrate.quad(func, 0, z, args=(omegam, omegal))
+	
+		if omegam+omegal>1. :
+			k = (omegam+omegal-1.)**(0.5)
+			return sin(k*dl)/k
+		elif omegam+omegal<1.:
+			k = (1.-omegam-omegal)**(0.5)
+			return sinh(k*dl)/k
+		elif omegam+omegal==1.:
+			return dl
+
+
+
+if __name__ == '__main__':
+	import sys
+	if len(sys.argv)==2 :
+		PeakRemove(str(sys.argv[1])).execute()
+	elif len(sys.argv)>2 :
+		print 'Maximun one argument, a parameter file name.'
+	else :
+		PeakRemove().execute()

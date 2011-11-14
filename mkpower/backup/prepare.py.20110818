@@ -1,12 +1,10 @@
 #! /usr/bin/env python
 
-import ctypes
 import scipy as sp
 import numpy as np
 from numpy.fft import *
 import scipy.linalg as linalg
 import multiprocessing as mp
-import random
 
 from core import algebra, hist
 from kiyopy import parse_ini
@@ -17,7 +15,6 @@ from math import *
 from sys import *
 import matplotlib.pyplot as plt
 import MakePower
-
 
 pi = 3.1415926
 deg2rad = pi/180.
@@ -98,23 +95,24 @@ class Prepare(object):
 						end = end + last[ii]
 					imap_fname = hr[ii] + mid[0] + end + '.npy'
 					nmap_fname = hr[ii] + mid[1] + end + '.npy'
-					#mock_fname = hr[ii] + 'mock_map_' + end + '.npy'
 					process_list[ii%n_new] = mp.Process(
-						target=self.process_map, 
-						args=(imap_fname, nmap_fname))
-						#args=(imap_fname, nmap_fname, mock_fname))
+						target=self.process_map, args=(imap_fname, nmap_fname))
 					process_list[ii%n_new].start()
 		return 0
 
-	def process_map(self, imap_fname, nmap_fname, mock_fname=None):
+	def process_map(self, imap_fname, nmap_fname):
 		params = self.params
 		out_root = params['output_root']
 		in_root = params['input_root']
 		
 		imap = algebra.load(in_root + imap_fname)
 		imap = algebra.make_vect(imap)
-		print imap.flatten().mean()
-		imap = imap - imap.flatten().mean()
+		imap = 100*imap
+		#imap = algebra.info_array(sp.ones(iimap.shape))
+		#imap = algebra.make_vect(imap)
+		#imap.axes = iimap.axes
+		#imap.info = iimap.info
+		#print imap.axes
 		if imap.axes != ('freq', 'ra', 'dec') :
 			raise ce.DataError('AXES ERROR!')
 
@@ -134,17 +132,17 @@ class Prepare(object):
 		nmap.info = imap.info
 		if nmap.axes != ('freq', 'ra', 'dec') :
 			raise ce.DataError('AXES ERROR!')
+		
+#		print 'Removing Peak... Map:' + hr_str[:-1]
+#		self.pkrm(imap,nmap,
+#			out_root+'pkrm'+hr_str+'dirty_map_'+pol_str+'.png', threshold=2.5)
 
-		if mock_fname != None:
-			mmap = algebra.info_array(
-				2.*np.random.rand(imap.shape[0],imap.shape[1], imap.shape[2])-0.5)
-			mmap.axes = imap.axes
-			mmap = algebra.make_vect(mmap)
-			box, nbox, mbox = self.fill(imap, nmap, mmap)
-			pkrm_nfname = out_root + 'fftbox_' +  mock_fname
-			algebra.save(pkrm_nfname, mbox)
-		else:
-			box, nbox = self.fill(imap, nmap)
+		print imap.flatten().max()
+		print imap.flatten().min()
+		box, nbox = self.fill(imap, nmap)
+		box = box/100.
+		print box.flatten().max()
+		print box.flatten().min()
 
 		pkrm_fname = out_root + 'fftbox_' + imap_fname
 		algebra.save(pkrm_fname, box)
@@ -152,31 +150,21 @@ class Prepare(object):
 		pkrm_nfname = out_root + 'fftbox_' +  nmap_fname
 		algebra.save(pkrm_nfname, nbox)
 
-#		print mmap.shape
 
-#		print 'Removing Peak... Map:' + hr_str[:-1]
-#		self.pkrm(imap,nmap,
-#			out_root+'pkrm'+hr_str+'dirty_map_'+pol_str+'.png', threshold=2.5)
-
-		#print imap.flatten().max()
-		#print imap.flatten().min()
-		#print box.flatten().max()
-		#print box.flatten().min()
-
-
-	def fill(self, imap, nmap, mmap=None):
+	def fill(self, imap, nmap):
 		params = self.params
 		
 		mapshape = np.array(imap.shape)
 
-		r  = self.fq2r(imap.get_axis('freq'))
-		ra = imap.get_axis('ra')*deg2rad
-		de = imap.get_axis('dec')*deg2rad
+		r  = self.discrete(self.fq2r(imap.get_axis('freq')))
+		ra = self.discrete(imap.get_axis('ra'))*deg2rad
+		de = self.discrete(imap.get_axis('dec'))*deg2rad
 		ra0= ra[int(ra.shape[0]/2)]
 		ra = ra - ra0
+		dr = r.ptp()/r.shape[0]
 		dra= ra.ptp()/ra.shape[0]
 		dde= de.ptp()/de.shape[0]
-
+		disc_n = params['discrete']
 
 		#print r.min(), r.max()
 		#print self.xyz(ra.min(), de.min(), r.min())
@@ -190,63 +178,35 @@ class Prepare(object):
 
 		###return 0
 
-		mapinf = [ra.min(), dra, de.min(), dde]
+		mapinf = [dr, dra, dde, disc_n]
 		mapinf = np.array(mapinf)
 
 		box = algebra.info_array(sp.zeros(params['boxshape']))
 		box.axes = ('x','y','z')
 		box = algebra.make_vect(box)
+		boxshape = np.array(box.shape)
 		
-		box_xrange = params['Xrange']
-		box_yrange = params['Yrange']
-		box_zrange = params['Zrange']
-		box_unit = params['boxunit']
-		box_disc = params['discrete']
+		xrange0 = params['Xrange'][0]
+		yrange0 = params['Yrange'][0]
+		zrange0 = params['Zrange'][0]
+		boxunit = params['boxunit']
 
-		box_x = np.arange(box_xrange[0], box_xrange[1], box_unit/box_disc)
-		box_y = np.arange(box_yrange[0], box_yrange[1], box_unit/box_disc)
-		box_z = np.arange(box_zrange[0], box_zrange[1], box_unit/box_disc)
-
-		#print box_x.shape
-		#print box_y.shape
-		#print box_z.shape
-
-		boxshape = np.array(box.shape)*box_disc
-
-		boxinf0 = [0, 0, 0]
-		boxinf0 = np.array(boxinf0)
-		boxinf1 = [boxshape[0], boxshape[1], boxshape[2]]
-		boxinf1 = np.array(boxinf1)
+		boxinf = [xrange0, yrange0, zrange0, boxunit]
+		boxinf = np.array(boxinf)
 
 		print "MapPrepare: Filling the FFT BOX"
-		MakePower.Filling(
-			imap, r, mapinf, box, boxinf0, boxinf1, box_x, box_y, box_z)
+		MakePower.Filling(imap, box, r, ra, de, boxinf, mapinf)
 
 
 		nbox = algebra.info_array(sp.zeros(params['boxshape']))
 		nbox.axes = ('x','y','z')
 		nbox = algebra.make_vect(nbox)
 
-		#nbox = algebra.info_array(sp.ones(params['boxshape']))
-		#nbox.axes = ('x','y','z')
-		#nbox = algebra.make_vect(nbox)
 
-		#print boxinf1
-		MakePower.Filling(
-			nmap, r, mapinf, nbox, boxinf0, boxinf1, box_x, box_y, box_z)
-
-
-		if mmap != None:
-			mbox = algebra.info_array(sp.zeros(params['boxshape']))
-			mbox.axes = ('x','y','z')
-			mbox = algebra.make_vect(mbox)
-			MakePower.Filling(
-				mmap, r, mapinf, mbox, boxinf0, boxinf1, box_x, box_y, box_z)
-			return box, nbox, mbox
-		else:
-			return box, nbox
+		MakePower.Filling(nmap, nbox, r, ra, de, boxinf, mapinf)
 
 		#return imap, nmap
+		return box, nbox
 
 	def pkrm(self, imap, nmap, fname, threshold=2.0):
 		freq = imap.get_axis('freq')/1.e6

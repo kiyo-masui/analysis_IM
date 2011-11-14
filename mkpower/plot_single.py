@@ -117,6 +117,8 @@ class PowerSpectrumPlot(object):
 		#power_th[1] = power_th[1]*0.705**3
 
 
+
+
 		# import the power spectrum result
 		if params['resultf']==None:
 			k = sp.load(params['input_root'] + 'k_'+resultf+'.npy')
@@ -132,51 +134,51 @@ class PowerSpectrumPlot(object):
 		PK = PK.take(non0)[0]
 		k = k.take(non0)[0]
 
-		# Calibrate the bias
-		if params['biascal']:
-			biask = sp.load(params['biascaldir_k']).take(non0)[0]
-			bias = sp.load(params['biascaldir_b']).take(non0)[0]
-			if (biask-k).any():
-				print "biask and k not match!!"
-				return 0
-			#B = interp1d(biask, bias, kind='cubic')
-			#non0 = PK.nonzero()
-			#k_biascal = k.take(non0)[0]
-			print biask
-			print bias
-			#if params['cross']:
-			#	biascal = biascal.__pow__(0.5)
-			#	print biascal
-			PK_biascal = PK * bias
-			k_biascal = biask
-			Averageplot = True
-			try:
-				PKvar = sp.load(params['input_root'] + 
-					'PKvar_combined_'+resultf+'.npy')
-				PKerr_average_biascal = np.ndarray(shape=(2,len(non0[0])))
-				PKerr_average_biascal[0] = PKvar.copy().take(non0)[0] * bias
-				PKerr_average_biascal[1] = PKvar.copy().take(non0)[0] * bias
-				print PKerr_average_biascal
-				for i in range(len(non0[0])):
-					if PKerr_average_biascal[0][i] >=PK_biascal[i]:
-						PKerr_average_biascal[0][i] = PK_biascal[i]-1.e-15
-			except IOError:
-				print '\t::No Average Error!!'
-				Averageplot = False
+		## Calibrate the bias
+		#if params['biascal']:
+		#	biask = sp.load(params['biascaldir_k']).take(non0)[0]
+		#	bias = sp.load(params['biascaldir_b']).take(non0)[0]
+		#	if (biask-k).any():
+		#		print "biask and k not match!!"
+		#		return 0
+		#	#B = interp1d(biask, bias, kind='cubic')
+		#	#non0 = PK.nonzero()
+		#	#k_biascal = k.take(non0)[0]
+		#	print biask
+		#	print bias
+		#	#if params['cross']:
+		#	#	biascal = biascal.__pow__(0.5)
+		#	#	print biascal
+		#	PK_biascal = PK * bias
+		#	k_biascal = biask
+		#	Averageplot = True
+		#	try:
+		#		PKvar = sp.load(params['input_root'] + 
+		#			'PKvar_combined_'+resultf+'.npy')
+		#		PKerr_average_biascal = np.ndarray(shape=(2,len(non0[0])))
+		#		PKerr_average_biascal[0] = PKvar.copy().take(non0)[0] * bias
+		#		PKerr_average_biascal[1] = PKvar.copy().take(non0)[0] * bias
+		#		print PKerr_average_biascal
+		#		for i in range(len(non0[0])):
+		#			if PKerr_average_biascal[0][i] >=PK_biascal[i]:
+		#				PKerr_average_biascal[0][i] = PK_biascal[i]-1.e-15
+		#	except IOError:
+		#		print '\t::No Average Error!!'
+		#		Averageplot = False
 
-			#PK_biascal[PK_biascal<0]=0
-			#non0 = PK_biascal.nonzero()
-			#PK_biascal = PK_biascal.take(non0)[0]
-			#k_biascal = k_biascal.take(non0)[0]
-			#if Averageplot:
-			#	PKerr_average_biascal = np.ndarray(shape=(2,len(non0[0])))
-			#	PKerr_average_biascal[0]= \
-			#		PKerr_average_biascal_full[0].take(non0)[0]
-			#	PKerr_average_biascal[1]= \
-			#		PKerr_average_biascal_full[1].take(non0)[0]
-			#	for i in range(len(PKerr_average_biascal[0])):
-			#		if PKerr_average_biascal[0][i] >=PK_biascal[i]:
-			#			PKerr_average_biascal[0][i] = PK_biascal[i]-1.e-15
+		#	#PK_biascal[PK_biascal<0]=0
+		#	#non0 = PK_biascal.nonzero()
+		#	#PK_biascal = PK_biascal.take(non0)[0]
+		#	#k_biascal = k_biascal.take(non0)[0]
+		#	#if Averageplot:
+		#	#	PKerr_average_biascal = np.ndarray(shape=(2,len(non0[0])))
+		#	#	PKerr_average_biascal[0]= \
+		#	#		PKerr_average_biascal_full[0].take(non0)[0]
+		#	#	PKerr_average_biascal[1]= \
+		#	#		PKerr_average_biascal_full[1].take(non0)[0]
+		#	#	for i in range(len(PKerr_average_biascal[0])):
+		#	#		if PKerr_average_biascal[0][i] >=PK_biascal[i]:
+		#	#			PKerr_average_biascal[0][i] = PK_biascal[i]-1.e-15
 
 #		PKeach = sp.load(params['input_root'] + 'PKeach_' + resultf + '.npy')
 #		for ii in range(PKeach.shape[0]):
@@ -265,7 +267,7 @@ class PowerSpectrumPlot(object):
 
 		PKcamb[1] = PKcamb[1]*(G**2*(1+z)**(-2))
 		if params['cross']: 
-			PKcamb[1] = PKcamb[1]*Tb
+			PKcamb[1] = PKcamb[1]*T
 		else: 
 			PKcamb[1] = PKcamb[1]*(Tb**2)
 			
@@ -277,10 +279,7 @@ class PowerSpectrumPlot(object):
 
 		
 		# plot
-		plt.figure(figsize=(8,8))
-		#print k
-		#print PK
-		plt.subplot('211')
+		plt.figure(figsize=(8,4))
 		
 		#for i in range(0,50):
 		#	plt.scatter(k, PKjk[i].take(non0), alpha=0.5, c='b')
@@ -292,9 +291,9 @@ class PowerSpectrumPlot(object):
 		#plt.show()
 		#return 
 
-		#plt.scatter(k, PK, c='b')
-		plt.plot(PKcamb[0], PKcamb[1], 'g-', linewidth=2, label='Theoretical')
-		#plt.plot(power_th[0], power_th[1], c='r', label='YueBin')
+		plt.subplot('111')
+		plt.plot(PKcamb[0], PKcamb[1], 'g-', linewidth=2, 
+			label='Theoretical Power Spectrum')
 		#plt.plot(PKnonl_k, PKnonl, 'k-', linewidth=2,
 		#	label='Theoretical Convolved wiht Window')
 		if JKplot:
@@ -303,12 +302,13 @@ class PowerSpectrumPlot(object):
 		elif Averageplot:
 			plt.errorbar(k, PK, PKerr_average, fmt='o', c='r',
 				label='Noise Inv Weight', capsize=4.5, elinewidth=1)
-			if params['biascal']:
-				print PK_biascal
-				plt.errorbar(k_biascal, PK_biascal, PKerr_average_biascal,
-					fmt='o', c='g',
-					label='Noise Inv Weight(Bias calibrated)', 
-					capsize=4.5, elinewidth=1)
+			#if params['biascal']:
+			#	print PK_biascal
+			#	plt.errorbar(k_biascal, PK_biascal, PKerr_average_biascal,
+			#		fmt='o', c='r',
+			#		#label='Noise Inverse Weighted', 
+			#		label='21cm Auto Power Spectrum', 
+			#		capsize=4.5, elinewidth=1)
 		else:
 			plt.scatter(k, PK, c='b', label='Noise Inv Weight')
 		if FKPweight:
@@ -328,7 +328,7 @@ class PowerSpectrumPlot(object):
 		#plt.xlim(xmin=0.01, xmax=k.max()+0.1*k.max())
 		#plt.xlim(xmin=k.min()-0.1*k.min(), xmax=k.max()+0.1*k.max())
 		plt.title('Power Spectrum')
-		#plt.xlabel('$k$')
+		plt.xlabel('$k (hMpc^{-1})$')
 		if params['cross']:
 			ylabel = '$P(k) (%(PKunit)s(h^{-1}Mpc)^3)$' %params
 		else:
@@ -336,107 +336,47 @@ class PowerSpectrumPlot(object):
 		plt.ylabel(ylabel)
 		plt.legend(loc=0, scatterpoints=1)
 
-		PK = PK*k*k*k/2./pi/pi
-		if JKplot:
-			PKerr = PKerr*k*k*k/2./pi/pi
-		if Averageplot:
-			PKerr_average = PKerr_average*k*k*k/2./pi/pi
-		if FKPweight:
-			PKfkp = PKfkp*kfkp*kfkp*kfkp/2./pi/pi
-			PKerrfkp = PKerrfkp*kfkp*kfkp*kfkp/2./pi/pi
-		if params['biascal']:
-			PK_biascal = PK_biascal*k_biascal*k_biascal*k_biascal/2./pi/pi
-			PKerr_average_biascal = \
-				PKerr_average_biascal*k_biascal*k_biascal*k_biascal/2./pi/pi
-		PKcamb[1] = PKcamb[1]*PKcamb[0]*PKcamb[0]*PKcamb[0]/2./pi/pi
-		#PKnonl = PKnonl*PKnonl_k**3/2./pi/pi
-		#power_th[1] = power_th[1]*power_th[0]*power_th[0]*power_th[0]/2/pi/pi
-
-		#print PK
-		plt.subplot('212')
-		#plt.scatter(k, PK, c='b')
-		plt.plot(PKcamb[0], PKcamb[1], 'g-', linewidth=2, label='Theoretical')
-		#plt.plot(power_th[0], power_th[1], c='r', label='YueBin')
-		#plt.plot(PKnonl_k, PKnonl, c='k', linewidth=2,
-		#	label='Theoretical Convolved wiht Window')
-		if JKplot:
-			plt.errorbar(k, PK, PKerr, fmt='o', c='b', 
-				label='Noise Inv Weight', capsize=4.5, elinewidth=1)
-		elif Averageplot:
-			plt.errorbar(k, PK, PKerr_average, fmt='o', c='r',
-				label='Noise Inv Weight', capsize=4.5, elinewidth=1)
-			if params['biascal']:
-				plt.errorbar(k_biascal, PK_biascal, PKerr_average_biascal,
-					fmt='o', c='g',
-					label='Noise Inv Weight(Bias calibrated)', 
-					capsize=4.5, elinewidth=1)
-		else:
-			plt.scatter(k, PK, c='b', label='Noise Inv Weight')
-		if FKPweight:
-			plt.errorbar(kfkp, PKfkp, PKerrfkp, fmt='o', c='r',
-				label='FPK Weight',capsize=4,elinewidth=1)
-		plt.loglog()
-		#plt.semilogx()
-		ymin = ymin*1.e-3
-		plt.ylim(ymin=ymin)	
-		if (kmin==None) or (kmax==None):
-			plt.xlim(xmin=0.01, xmax=0.9)
-		else:
-			plt.xlim(xmin=kmin-0.01*kmin, xmax=kmax+0.01*kmax)
-		#plt.xlim(xmin=0.01, xmax=0.9)
-		#plt.xlim(xmin=0.01, xmax=k.max()+0.1*k.max())
-		#plt.xlim(xmin=k.min()-0.1*k.min(), xmax=k.max()+0.1*k.max())
-		#plt.xlim(xmin=k.min(), xmax=k.max())
-		plt.xlabel('$k (h Mpc^{-1})$')
-		if params['cross']:
-			ylabel = '$\Delta^2 (%(PKunit)s)$' %params
-		else:
-			ylabel = '$\Delta^2 (%(PKunit)s^{2})$' %params
-		plt.ylabel(ylabel)
-		#plt.legend()
-		#plt.show()
-		plt.legend(loc=0, scatterpoints=1)
 		plt.savefig(params['output_root']+'power_err_'+resultf+'.eps', 
 			format='eps')
 
 		plt.show()
 
-	def xyz(self, ra, de, r, ra0=0.):
-		x = r*sin(0.5*pi-de)*cos(ra-ra0)
-		y = r*sin(0.5*pi-de)*sin(ra-ra0)
-		z = r*cos(0.5*pi-de)
-		return x, y, z
-
-	def fq2r(self, freq, freq0=1.4e9 , c_H0 = 2.99e3, Omegam=0.27, Omegal=0.73):
-		"""change the freq to distence"""
-		zz =  freq0/freq - 1.
-		for i in range(0, zz.shape[0]):
-			zz[i] = c_H0*self.funcdl(zz[i], Omegam, Omegal)
-		return zz
-	
-	def discrete(self, array):
-		"""discrete the data pixel into small size"""
-		newarray = sp.zeros(self.params['discrete']*(array.shape[0]-1)+1)
-		for i in range(0, array.shape[0]-1):
-			delta = (array[i+1]-array[i])/float(self.params['discrete'])
-			for j in range(0, self.params['discrete']):
-				newarray[i*self.params['discrete']+j] = array[i] + j*delta
-		newarray[-1] = array[-1]
-		return newarray
-
-	def funcdl(self, z, omegam, omegal):
-		func = lambda z, omegam, omegal: \
-			((1.+z)**2*(1.+omegam*z)-z*(2.+z)*omegal)**(-0.5)
-		dl, dlerr = integrate.quad(func, 0, z, args=(omegam, omegal))
-	
-		if omegam+omegal>1. :
-			k = (omegam+omegal-1.)**(0.5)
-			return sin(k*dl)/k
-		elif omegam+omegal<1.:
-			k = (1.-omegam-omegal)**(0.5)
-			return sinh(k*dl)/k
-		elif omegam+omegal==1.:
-			return dl
+#	def xyz(self, ra, de, r, ra0=0.):
+#		x = r*sin(0.5*pi-de)*cos(ra-ra0)
+#		y = r*sin(0.5*pi-de)*sin(ra-ra0)
+#		z = r*cos(0.5*pi-de)
+#		return x, y, z
+#
+#	def fq2r(self, freq, freq0=1.4e9 , c_H0 = 2.99e3, Omegam=0.27, Omegal=0.73):
+#		"""change the freq to distence"""
+#		zz =  freq0/freq - 1.
+#		for i in range(0, zz.shape[0]):
+#			zz[i] = c_H0*self.funcdl(zz[i], Omegam, Omegal)
+#		return zz
+#	
+#	def discrete(self, array):
+#		"""discrete the data pixel into small size"""
+#		newarray = sp.zeros(self.params['discrete']*(array.shape[0]-1)+1)
+#		for i in range(0, array.shape[0]-1):
+#			delta = (array[i+1]-array[i])/float(self.params['discrete'])
+#			for j in range(0, self.params['discrete']):
+#				newarray[i*self.params['discrete']+j] = array[i] + j*delta
+#		newarray[-1] = array[-1]
+#		return newarray
+#
+#	def funcdl(self, z, omegam, omegal):
+#		func = lambda z, omegam, omegal: \
+#			((1.+z)**2*(1.+omegam*z)-z*(2.+z)*omegal)**(-0.5)
+#		dl, dlerr = integrate.quad(func, 0, z, args=(omegam, omegal))
+#	
+#		if omegam+omegal>1. :
+#			k = (omegam+omegal-1.)**(0.5)
+#			return sin(k*dl)/k
+#		elif omegam+omegal<1.:
+#			k = (1.-omegam-omegal)**(0.5)
+#			return sinh(k*dl)/k
+#		elif omegam+omegal==1.:
+#			return dl
 
 
 

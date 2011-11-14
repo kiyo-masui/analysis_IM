@@ -15,7 +15,7 @@ from math import *
 from sys import *
 import matplotlib.pyplot as plt
 import mkpower
-from mpi4py import MPI
+#from mpi4py import MPI
 
 
 #dirty_map = algebra.load("15hr_41_dirty_map_I.npy")
@@ -43,6 +43,8 @@ params_init = {
 	'last' : (),
 	'output_root' : '../../../powerresult/',
 
+	'cllist' : None,
+
 	'boxshape' : (128,128,128),
 	'boxunit' : 15., # in unit Mpc
 	'discrete' : 3,
@@ -59,6 +61,8 @@ prefix = 'pkc_'
 
 class PowerSpectrumMaker(object):
 	"""Calculate The Power Spectrum"""
+	B = []
+	Bk = []
 
 	def __init__(self, parameter_file_or_dict=None, feedback=1):
 		# Read in the parameters.
@@ -68,9 +72,9 @@ class PowerSpectrumMaker(object):
 	
 	def execute(self, nprocesses=1):
 		
-		comm = MPI.COMM_WORLD
-		rank = comm.Get_rank()
-		size = comm.Get_size()
+		#comm = MPI.COMM_WORLD
+		#rank = comm.Get_rank()
+		#size = comm.Get_size()
 
 		params = self.params
 		resultf = params['resultf']
@@ -89,6 +93,15 @@ class PowerSpectrumMaker(object):
 
 		FKPweight = params['FKPweight']
 		n_processes = params['processes']
+
+		if params['cllist']!=None:
+			# Read in the bias calibration data
+			self.B = sp.load(params['input_root']+
+				'Bias_Be_'+params['resultf'][:-4]+'_12simmaps.npy')
+			self.Bk = sp.load(params['input_root']+
+				'Bias_k_'+params['resultf'][:-4]+'_12simmaps.npy')
+			#print self.B
+
 
 		#### Process ####
 		n_new = n_processes - 1
@@ -157,6 +170,27 @@ class PowerSpectrumMaker(object):
 				'PKvar_combined_' + resultf, PKvar)
 			sp.save(params['output_root']+\
 				'PK_combined_' + resultf, PKmean)
+	
+	def findbias(self, hr, last, cllist, B):
+
+		def findidx(aa):
+			idx=('A', 'B', 'C', 'D')
+			for s in idx:
+				if aa.find(s)!=-1:
+					return s
+
+		bias = np.ones(B.shape[1])
+
+		for i in range(len(hr)):
+			idx = findidx(hr[i]) + findidx(last[i])
+			#print idx
+			clidx = cllist.index(idx)
+			bias = bias*np.sqrt(B[clidx])
+			#print bias
+			return bias
+
+
+		
 
 
 	def process_map(self, mapnum, rank):
@@ -164,11 +198,17 @@ class PowerSpectrumMaker(object):
 		params['hr'] = (params['hrlist'][mapnum][0],params['hrlist'][mapnum][1])
 		params['last'] =(params['ltlist'][mapnum][0],params['ltlist'][mapnum][1])
 
+		if params['cllist']!=None:
+			bias = self.findbias(params['hr'], 
+				params['last'], params['cllist'], self.B)
+
 		kiyopy.utils.mkparents(params['output_root'])
 		inifile = params['output_root']+ 'rank' + str(rank) +'params.ini'
 		parse_ini.write_params(params, inifile ,prefix='pk_')
 		PK = mkpower.PowerSpectrumMaker(
 			inifile, feedback=self.feedback).execute()
+		if params['cllist']!=None:
+			PK = PK*bias
 		self.q.put_nowait(PK)
 
 #		jkbin = int(params['jknumber']/size)
