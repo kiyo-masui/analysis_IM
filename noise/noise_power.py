@@ -7,9 +7,12 @@ import math
 import scipy as sp
 import scipy.fftpack as fft
 import scipy.signal as sig
+import scipy.linalg as linalg
+import scipy.special
 import numpy.random as rand
 import numpy.ma as ma
-#import matplotlib.pyplot as plt
+# XXX for testing, but needs to be commented for production.
+import matplotlib.pyplot as plt
 
 from kiyopy import parse_ini
 import kiyopy.utils
@@ -52,47 +55,126 @@ class NoisePower(object) :
         self.params = parse_ini.parse(parameter_file_or_dict, params_init, 
                                       prefix=prefix, feedback=feedback)
         self.feedback = feedback
+    
+    def get_data(self, file_middle):
+        params = self.params
+        cal_weights = params['cal_weights']
+        pol_weights = params['pol_weights']
+        n_time = self.n_time
+        window = params['window']
+        subtract_slope = params['subtract_slope']
+        input_fname = (params['input_root'] + file_middle +
+                           params['input_end'])
+        # Read in the data.
+        Reader = core.fitsGBT.Reader(input_fname)
+        Blocks = Reader.read(params['scans'], params['IFs'],
+                             force_tuple=True)
+        # On the first pass, set the channel width.
+        if not hasattr(self, "chan_width"):
+            self.chan_width = Blocks[0].field['CDELT1']
+        # Loop over the Blocks to select the channel polarizations and cal
+        # state that we want to process.
+        for Data in Blocks:
+            data = Data.data
+            data_selected = ma.zeros((Data.dims[0], 1, 1, Data.dims[3]),
+                                      dtype=float)
+            data_selected.mask = ma.getmaskarray(data_selected)
+            for ii in range(len(pol_weights)) :
+                for jj in range(len(cal_weights)) :
+                    data_selected[:,0,0,:] += (data[:,ii,jj,:]
+                                               * pol_weights[ii]
+                                               * cal_weights[jj])
+            Data.set_data(data_selected)
+        # Convert the data to the proper format and return it.
+        return make_masked_time_stream(Blocks, n_time, window=window, 
+                                       return_means=True, 
+                                       subtract_slope=subtract_slope)
+    
+    def execute(self):
+        self.power_mat, self.thermal_expectation = self.full_calculation()
+        n_chan = self.power_mat.shape[1]
+        n_freq = self.power_mat.shape[0]
+        # Calculate the the mean channel correlations at low frequencies.
+        low_f_mat = sp.mean(self.power_mat[1:4 * n_chan + 1,:,:], 0).real
+        # Factorize it into preinciple components.
+        e, v = linalg.eigh(low_f_mat)
+        e_sorted = sp.sort(e)
+        self.low_f_mode_values = e
+        # Make sure the eigenvalues are sorted.
+        if sp.any(sp.diff(e) < 0):
+            raise RuntimeError("Eigenvalues not sorted.")
+        self.low_f_modes = v
+        # Now subtract out the noisiest channel modes and see what is left.
+        n_modes_subtract = 10
+        mode_subtracted_power_mat = sp.copy(self.power_mat.real)
+        mode_subtracted_auto_power = sp.empty((n_modes_subtract, n_freq))
+        for ii in range(n_modes_subtract):
+            mode = v[:,-ii]
+            amp = sp.sum(mode[:,None] * mode_subtracted_power_mat, 1)
+            amp = sp.sum(amp * mode, 1)
+            to_subtract = amp[:,None,None] * mode[:,None] * mode
+            mode_subtracted_power_mat -= to_subtract
+            auto_power = mode_subtracted_power_mat.view()
+            auto_power.shape = (n_freq, n_chan**2)
+            auto_power = auto_power[:,::n_chan + 1]
+            mode_subtracted_auto_power[ii,:] = sp.mean(auto_power, -1)
+        self.subtracted_auto_power = mode_subtracted_auto_power
 
-    def execute(self, nprocesses=1) :
+    def full_calculation(self, chan_modes_subtract=None, n_poly_subtract=0):
         
         # Some set up.
         params = self.params
+        deconvolve = params['deconvolve']
         kiyopy.utils.mkparents(params['output_root'])
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
                                prefix=prefix)
-        cal_weights = params['cal_weights']
-        pol_weights = params['pol_weights']
-        n_time = params["n_time_bins"]
+        self.n_time = params["n_time_bins"]
         n_files = len(params["file_middles"])
-        window = params['window']
-        deconvolve = params['deconvolve']
-        subtract_slope = params['subtract_slope']
         # Loop over files to process.
         first_iteration = True
         for file_middle in params['file_middles'] :
-            input_fname = (params['input_root'] + file_middle +
-                           params['input_end'])
-            # Read in the data.
-            Reader = core.fitsGBT.Reader(input_fname)
-            Blocks = Reader.read(params['scans'], params['IFs'],
-                                 force_tuple=True)
-            # Loop over the Blocks to select the channel polarizations and cal
-            # state that we want to process.
-            for Data in Blocks:
-                data = Data.data
-                data_selected = ma.zeros((Data.dims[0], 1, 1, Data.dims[3]),
-                                          dtype=float)
-                data_selected.mask = ma.getmaskarray(data_selected)
-                for ii in range(len(pol_weights)) :
-                    for jj in range(len(cal_weights)) :
-                        data_selected[:,0,0,:] += (data[:,ii,jj,:]
-                                                   * pol_weights[ii]
-                                                   * cal_weights[jj])
-                Data.set_data(data_selected)
+            # Get the data.
+            full_data, mask, this_dt, full_mean = self.get_data(file_middle)
+            if first_iteration :
+                self.n_time = full_data.shape[0]
+                n_chan = full_data.shape[-1]
+                dt = this_dt
+            elif not sp.allclose(dt, this_dt, rtol=0.001):
+                msg = "Files have different time samplings."
+                raise ce.DataError(msg)
+            # Subtract out any channel modes passed in.
+            if not (chan_modes_subtract is None):
+                for v in chan_modes_subtract:
+                    full_data -= v * sp.sum(v * full_data, -1)[:, None]
+            # Subtract out polynomials from each channel if desired.
+            if first_iteration:
+                # Generate basis polynomials.
+                basis_poly = sp.empty((n_poly_subtract, self.n_time))
+                time_scaled = ((sp.arange(self.n_time, dtype=float) * 2
+                                - self.n_time + 1.0) / self.n_time)
+                for ii in range(n_poly_subtract):
+                    #tmp_poly = scipy.special.eval_chebyu(ii, time_scaled)
+                    tmp_poly = sp.cos(sp.pi*ii*time_scaled)
+                    tmp_poly *= 1.0/sp.sqrt(sp.sum(tmp_poly**2))
+                    basis_poly[ii,:] = tmp_poly
+                # Allocate memory to hold the amplitude spectrum.
+                poly_spectrum = sp.zeros((n_poly_subtract, n_chan), 
+                                         dtype=float)
+            # Fit for the polynomials in each channel.
+            for ii in range(n_chan):
+                weighted_poly = basis_poly * mask[:,0,0,ii]
+                poly_corr = sp.sum(full_data[:,0,0,ii]
+                                   * basis_poly[:,:], -1)
+                poly_covar = sp.sum(weighted_poly[:,None,:] 
+                                    * basis_poly[None,:,:], -1)
+                if n_poly_subtract:
+                    poly_amps = linalg.solve(poly_covar, poly_corr, 
+                                             sym_pos=True, overwrite_a=True,
+                                             overwrite_b=True)
+                    poly_spectrum[:,ii] += poly_amps**2
             # Calculate the raw power spectrum.
-            power_mat, window_function, this_dt, full_mean = \
-                full_power_mat(Blocks, n_time=n_time, window=window, 
-                deconvolve=deconvolve, subtract_slope=subtract_slope)
+            power_mat, window_function = calculate_full_power_mat(full_data, 
+                                                mask, deconvolve=deconvolve)
             # Get rid of the extra cal and polarization axes.
             power_mat = power_mat[:,0,0,:,:]
             window_function = window_function[:,0,0,:,:]
@@ -102,42 +184,37 @@ class NoisePower(object) :
             #if sp.any(sp.allclose(mask[:,0,0,:], 0.0, 0)):
             #    n_files -= 1
             #    continue
-            if first_iteration :
-                n_time = power_mat.shape[0]
-                dt = this_dt
-            elif not sp.allclose(dt, this_dt, rtol=0.001):
-                msg = "Files have different time samplings."
-                raise ce.DataError(msg)
             # Format the power spectrum.
             power_mat = prune_power(power_mat, 0)
             power_mat = make_power_physical_units(power_mat, this_dt)
             # TODO In the future the thermal expectation could include
             # polarization factors (be 'I' aware) and cal factors.
             thermal_expectation = (full_mean / sp.sqrt(this_dt)  /
-                                   sp.sqrt(abs(Blocks[0].field['CDELT1'])) /
+                                   sp.sqrt(abs(self.chan_width)) /
                                    sp.sqrt(1.0 / 2.0 / this_dt))
             if params['norm_to_thermal'] :
                 power_mat /= (thermal_expectation[:,None] 
                               * thermal_expectation[None,:])
             # Combine across files.
             if first_iteration :
-                self.power_mat = power_mat
-                self.thermal_expectation = thermal_expectation
+                total_power_mat = power_mat
+                total_thermal_expectation = thermal_expectation
             else :
-                self.power_mat += power_mat
-                self.thermal_expectation += thermal_expectation
+                total_power_mat += power_mat
+                total_thermal_expectation += thermal_expectation
             first_iteration = False
-        self.frequency = ps_freq_axis(dt, n_time)
+        if not hasattr(self, 'frequency'):
+            self.frequency = ps_freq_axis(dt, self.n_time)
         if n_files > 0 :
-            self.power_mat /= n_files
-            self.thermal_expectation / n_files
-        #plt.loglog(self.frequency, self.power_mat[:,20,20])
-        #plt.show()
-        # Next steps: Take mean over frequency and then factor the chan-chan
-        # matrix.  Pick out the top n eigenvalues, then rotate the unaveraged
-        # power mat to that basis.  Look at the spectrum of thoses modes and
-        # the spectrums of leftover parts.  Save thermal parameters, the modes
-        # and the parameters for the spectra of those modes.
+            total_power_mat /= n_files
+            total_thermal_expectation / n_files
+            poly_spectrum /= n_files
+        if n_poly_subtract:
+            return total_power_mat, total_thermal_expectation, poly_spectrum
+        else:
+            return total_power_mat, total_thermal_expectation
+        
+
 
 def ps_freq_axis(dt, n):
     """Calculate the frequency axis for a power spectrum.
@@ -470,16 +547,7 @@ def generate_overf_noise(amp, index, f0, dt, n):
     noise = fft.ifft(fft.fft(white_noise)*sp.sqrt(power_spectrum)).real
     return noise
 
-def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True,
-                   subtract_slope=False) :
-    """Calculate the full power spectrum of a data set with channel
-    correlations.
-    
-    Only one cal state and pol state assumed.
-    """
-    
-    full_data, mask, dt, channel_means = make_masked_time_stream(Blocks, n_time, 
-        window=window, return_means=True, subtract_slope=subtract_slope)
+def calculate_full_power_mat(full_data, mask, deconvolve=True):
     n_time = full_data.shape[0]
     n_pol = full_data.shape[1]
     n_cal = full_data.shape[2]
@@ -498,8 +566,9 @@ def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True,
     # Break the calculation up over a loop to conserve memory.
     for ii in xrange(n_chan):
         w = calculate_power(mask1[:,:,:,[ii],:], mask2, axis=0)
-        # Calculate the window normalizations.
-        window_norms = sp.mean(w, 0)
+        # Calculate the window normalizations.  This is critical as several
+        # functions that call this one assume this normalization.
+        window_norms = sp.sum(w, 0) / float(n_time)
         # Do nothing to fully masked channels to keep things finite.
         window_norms[window_norms < 1e-7] = 1
         if deconvolve:
@@ -512,6 +581,21 @@ def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True,
             power_mat[:,:,:,[ii],:] = p / window_norms
         w /= window_norms
         window_function[:,:,:,[ii],:] = w
+    return power_mat, window_function
+
+def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True,
+                   subtract_slope=False) :
+    """Calculate the full power spectrum of a data set with channel
+    correlations.
+    
+    Only one cal state and pol state assumed.
+    """
+    
+    full_data, mask, dt, channel_means = make_masked_time_stream(Blocks, 
+        n_time, window=window, return_means=True,
+        subtract_slope=subtract_slope)
+    power_mat, window_function = calculate_full_power_mat(full_data, mask, 
+                                                         deconvolve=deconvolve)
     return power_mat, window_function, dt, channel_means
 
 

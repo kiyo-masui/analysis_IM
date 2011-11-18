@@ -107,9 +107,13 @@ for Data in rot_Blocks:
 
 # Measure the parameters.
 file_pars[band1] = measure_noise.measure_noise_parameters(band1_Blocks, 
-                                         ["channel_var", "mean_over_f"])
+                            ["channel_var", "mean_over_f",
+                             "freq_modes_over_f_2", "freq_modes_over_f_4",
+                             "freq_modes_over_f_6"])
 file_pars[band2] = measure_noise.measure_noise_parameters(band2_Blocks, 
-                                         ["channel_var", "mean_over_f"])
+                            ["channel_var", "mean_over_f",
+                             "freq_modes_over_f_2", "freq_modes_over_f_4",
+                             "freq_modes_over_f_6"])
 out_db = shelve.open('./testdata/testfile_guppi_noise_parameters.shelve', 'n')
 out_db["testfile_guppi_rotated"] = file_pars
 out_db.close()

@@ -432,7 +432,7 @@ class TestEngine(unittest.TestCase):
     def test_over_f(self):
         """Test with over f dominated noise."""
 
-        nf = 1
+        nf = 2
         nra = 10
         ndec = 10
         map_size = 1.2
@@ -449,6 +449,7 @@ class TestEngine(unittest.TestCase):
         new_map, map_diffs, nor = self.make_map(Data, 20)
         expected_map = new_map - map_diffs
         # These statistical tests fail 1% of the time under normal conditions.
+        print nor
         self.assertTrue(nor > -3)
         self.assertTrue(nor < 3)
 
@@ -602,7 +603,7 @@ class TestEngine(unittest.TestCase):
         new_map, map_diffs, nor = self.make_map(Data, 6)
         expected_map = new_map - map_diffs
 
-    def make_map(self, Data, n_data=10, time=False):
+    def make_map(self, Data, n_data=10, time=False, thermal=None, over_f=None):
         """This does all the map making for the input parameters.  Contains no
         tests."""
         
@@ -611,8 +612,14 @@ class TestEngine(unittest.TestCase):
         ndec = Data.ndec
         map_size = Data.map_size
         scan_size = Data.scan_size
-        thermal_var = Data.thermal
-        over_f_pars = Data.correlated_noise
+        if thermal is None:
+            thermal_var = Data.thermal
+        else:
+            thermal_var = thermal
+        if over_f is None:
+            over_f_pars = Data.correlated_noise
+        else:
+            over_f_pars = over_f
 
         params = {
             'dm_file_middles' : ['a'] * n_data,

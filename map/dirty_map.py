@@ -205,6 +205,7 @@ class DirtyMap(object):
             # treating the frequency correlations.
             if parameter_name == "thermal":
                 if self.params["frequency_correlations"] == "mean":
+                    # XXX Pretty sure I have to multiply by the bandwidth here!!!
                     return noise_entry["mean_over_f"][0]
                 elif noise_entry.has_key("channel_var"):
                     return noise_entry["channel_var"]

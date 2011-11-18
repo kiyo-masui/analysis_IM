@@ -5,6 +5,7 @@ import multiprocessing as mp
 import time as time_module
 
 import scipy as sp
+import scipy.linalg as linalg
 import numpy.ma as ma
 
 import noise_power as npow
@@ -125,8 +126,8 @@ def measure_noise_parameters(Blocks, parameters):
     # Calculate the full correlated power spectrum.
     power_mat, window_function, dt, channel_means = npow.full_power_mat(
             Blocks, window="hanning", deconvolve=False, n_time=-1.05)
-    # This shouldn't be nessisary, since I've tried to keep thing finite in the
-    # above function.  However, leave it in for now just in case.
+    # This shouldn't be nessisary, since I've tried to keep things finite in
+    # the above function.  However, leave it in for now just in case.
     if not sp.alltrue(sp.isfinite(power_mat)) :
         msg = ("Non finite power spectrum calculated.  Offending data in "
                "file starting with scan %d." % (Blocks[0].field['SCAN']))
@@ -145,8 +146,8 @@ def measure_noise_parameters(Blocks, parameters):
     cal_ind = 0
     n_pols = power_mat.shape[1]
     for ii in range(n_pols):
-        this_pol_power = power_mat[:,ii,cal_ind,:]
-        this_pol_window = window_function[:,ii,cal_ind,:]
+        this_pol_power = power_mat[:,ii,cal_ind,:,:]
+        this_pol_window = window_function[:,ii,cal_ind,:,:]
         this_pol = Blocks[0].field['CRVAL4'][ii]
         this_pol_parameters = {}
         # Now figure out what we want to measure and measure it.
@@ -158,8 +159,85 @@ def measure_noise_parameters(Blocks, parameters):
         if "mean_over_f" in parameters:
             this_pol_parameters["mean_over_f"] = get_mean_over_f(
                     this_pol_power, this_pol_window, frequency)
+        for noise_model in parameters:
+            if noise_model[:18] == "freq_modes_over_f_":
+                n_modes = int(noise_model[18:])
+                this_pol_parameters[noise_model] = \
+                        get_freq_modes_over_f(this_pol_power, this_pol_window,
+                                              frequency, n_modes)
         out_parameters[this_pol] = this_pol_parameters
     return out_parameters
+
+def get_freq_modes_over_f(power_mat, window_function, frequency, n_modes):
+    """Fines the most correlated frequency modes and fits thier noise."""
+    
+    n_f = len(frequency)
+    n_chan = power_mat.shape[-1]
+    n_time = window_function.shape[0]
+    # Initialize the dictionary that will hold all the parameters.
+    output_params = {}
+    # First take the low frequency part of the spetrum matrix and average over
+    # enough bins to get a well conditioned matrix.
+    low_f_mat = sp.mean(power_mat[:4*n_chan,:,:].real, 0)
+    # Factor the matrix to get the most correlated modes.
+    e, v = linalg.eigh(low_f_mat)
+    # Power matrix striped of the biggest modes.
+    reduced_power = sp.copy(power_mat)
+    # Solve for the spectra of these modes.
+    for ii in range(n_modes):
+        this_mode_params = {}
+        # Get power spectrum and window function for this mode.
+        mode = v[:,-1 - ii]
+        mode_power = sp.sum(mode * power_mat.real, -1)
+        mode_power = sp.sum(mode * mode_power, -1)
+        mode_window = sp.sum(mode[:,None]**2 * window_function.real, 1)
+        mode_window = sp.sum(mode_window * mode[None,:]**2, 1)
+        # Fit the spectrum.
+        p = fit_overf_const(mode_power, mode_window, frequency)
+        # Put all the parameters we measured into the output.
+        this_mode_params['amplitude'] = p[0]
+        this_mode_params['index'] = p[1]
+        this_mode_params['f_0'] = p[2]
+        this_mode_params['thermal'] = p[3]
+        this_mode_params['mode'] = mode
+        output_params['over_f_mode_' + str(ii)] = this_mode_params
+        # Remove the mode from the power matrix.
+        tmp_amp = sp.sum(power_mat * mode, -1)
+        tmp_amp = sp.sum(tmp_amp * mode, -1)
+        reduced_power -= tmp_amp[:,None,None] * mode[:,None] * mode
+    # Now that we've striped the noisiest modes, measure the auto power
+    # spectrum, averaged over channels.
+    auto_spec_mean = reduced_power.view()
+    auto_spec_mean.shape = (n_f, n_chan**2)
+    auto_spec_mean = auto_spec_mean[:,::n_chan + 1].real
+    auto_spec_mean = sp.mean(auto_spec_mean, -1)
+    auto_spec_window = window_function.view()
+    auto_spec_window.shape = (n_time, n_chan**2)
+    auto_spec_window = auto_spec_window[:,::n_chan + 1].real
+    auto_spec_window = sp.mean(auto_spec_window, -1)
+    auto_spec_params = fit_overf_const(auto_spec_mean, auto_spec_window,
+                                       frequency)
+    if (auto_spec_params[0] < 0 or auto_spec_params[3] < 0 or
+        auto_spec_params[1] > -0.2):
+        auto_cross_over = 0.
+        auto_index = 0.
+    else:
+        auto_index = auto_spec_params[1]
+        auto_cross_over = auto_spec_params[2] * (auto_spec_params[0]
+                                 / auto_spec_params[3])**(-1./auto_index)
+    output_params['all_channel_index'] = auto_index
+    output_params['all_channel_corner_f'] = auto_cross_over
+    # Finally measure the thermal part of the noise in each channel.
+    cross_over_ind = sp.digitize([auto_cross_over * 4], frequency)[0]
+    cross_over_ind = max(cross_over_ind, n_f // 2)
+    cross_over_ind = min(cross_over_ind, int(9. * n_f / 10.))
+    thermal = reduced_power[cross_over_ind:,:,:].real
+    n_high_f = thermal.shape[0]
+    thermal.shape = (n_high_f, n_chan**2)
+    thermal = sp.mean(thermal[:,::n_chan + 1], 0)
+    output_params['thermal'] = thermal
+    return output_params
+
 
 def get_mean_over_f(power_mat, window_function, frequency) :
     """Measures noise parameters of a set of scans assuming correlated 1/f.
@@ -170,7 +248,7 @@ def get_mean_over_f(power_mat, window_function, frequency) :
     Parameters
     ----------
     power_mat : array
-        Pruned of egitive frequencies and 0 frequency.
+        Pruned of negitive frequencies and 0 frequency.
     """
     
     n_f = len(frequency)
@@ -247,9 +325,72 @@ def get_mean_over_f(power_mat, window_function, frequency) :
     #print over_f_params, thermal_params
     #plt.show() 
     # XXX
-    # Unpack and repack answers.
-    over_f = (over_f_params[0], over_f_params[1], f_0)
-    return thermal_params, over_f
+    # Unpack and repack results and return.
+    output_params = {}
+    output_params['amplitude'] = over_f_params[0]
+    output_params['index'] = over_f_params[1]
+    output_params['thermal'] = thermal_params
+    output_params['f_0'] = f_0
+
+    return output_params
+
+def fit_overf_const(power, window, freq):
+    """Fit $A*f**alpha + C$ to a 1D power spectrum."""
+    
+    n_f = len(freq)
+    f_0 = 1.0
+    dt = 1./2./freq[-1]
+    n_time = len(window)
+    if n_f != n_time // 2 - 1:
+        raise RuntimeError("Power spectrum and window sizes incompatible.")
+    # Spectrum function we will fit too.
+    def model(params):
+        a = params[0]
+        i = params[1]
+        t = params[2]
+        spec = npow.overf_power_spectrum(a, i, f_0, dt, n_time)
+        spec += t
+        spec = npow.convolve_power(spec, window)
+        spec = npow.prune_power(spec)
+        spec = spec[1:].real
+        return spec
+    # Residuals function.
+    def residuals(params):
+        return (power - model(params))/weights
+    # Get good initial guesses for the parameters.  It is extreemly important
+    # to do well here.
+    params = sp.empty(3, dtype=float)
+    # First guess the thermal level by taking the mean at high frequencies.
+    norm = n_time / sp.sum(window.real)
+    #print norm
+    params[2] = sp.mean(power[-n_f//10:]) * norm
+    params[1] = -1
+    params[0] = sp.mean((power * freq)[:n_f//10]) * norm
+    old_weights = abs(power)
+    # Iteratively fit then update the weights.
+    for ii in range(4):
+        new_weights = abs(model(params))
+        weights = old_weights + new_weights
+        old_weights = new_weights
+        # XXX
+        #plt.figure()
+        #plt.loglog(freq, power)
+        #plt.loglog(freq, model(params))
+        #plt.figure()
+        #plt.semilogx(freq, residuals(params))
+        #print params
+        ###
+        params, ier = sp.optimize.leastsq(residuals, params)
+    #plt.figure()
+    #plt.loglog(freq, power)
+    #plt.loglog(freq, model(params))
+    #print params
+    plt.show()
+    # Unpack results and return.
+    amp = params[0]
+    index = params[1]
+    thermal = params[2]
+    return amp, index, f_0, thermal
 
 
 

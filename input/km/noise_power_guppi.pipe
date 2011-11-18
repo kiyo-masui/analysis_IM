@@ -8,8 +8,10 @@ import scipy as sp
 #                "40_wigglez15hrst_ralongmap_85-92",
 #                "40_wigglez15hrst_ralongmap_77-84")
 #file_middles = ("40_3C286_onoff_66", "40_3C286_onoff_68")
-file_middles = ("GBT10B_036/89_3C48_track_146",)
-#file_middles = ("GBT11B_055/05_NCP_track_120",)
+#file_middles = ("GBT10B_036/89_3C48_track_146",)
+file_middles = ("GBT11B_055/05_NCP_track_120",)
+#file_middles = ("GBT11B_055/16_NCP_track_208",)
+#file_middles = ("GBT11B_055/13_NCP_track_135",)
 
 
 
@@ -56,5 +58,5 @@ np_cal_weights = (1.0,1.0)
 np_n_time_bins = 0
 np_window = "hanning"
 np_deconvolve = False
-np_subtract_slope = True
+np_subtract_slope = False
 
