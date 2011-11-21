@@ -27,6 +27,9 @@ nra_d = 20
 ndec_d = 20
 map_size_d = 6.0
 
+dt_d = 0.2
+BW_d = 1./2./dt_d
+
 
 class DataMaker(object):
     """Class that generates test data."""
@@ -34,7 +37,8 @@ class DataMaker(object):
     def __init__(self, nscans=nscans_d, nt_scan=nt_scan_d, nf=nf_d, nra=nra_d,
                  ndec=ndec_d, scan_size=scan_size_d, map_size=map_size_d,
                  thermal=0, correlated_noise=None, random_mean=0,
-                 random_slope=0, add_ground=False):
+                 random_slope=0, add_ground=False, freq_mode_noise=None,
+                 universal_over_f=None):
         # Store parameters.
         self.nscans = nscans
         self.nt_scan = nt_scan
@@ -47,12 +51,14 @@ class DataMaker(object):
         # Noise parameters.
         self.thermal = thermal
         self.correlated_noise = correlated_noise
+        self.freq_mode_noise = freq_mode_noise
         self.random_mean = random_mean
         self.random_slope = random_slope
+        self.universal_over_f = universal_over_f
         # Initialize a counter.
         self.data_set_number = 0
         self.nt = nt_scan * nscans
-        self.dt = 0.2
+        self.dt = dt_d
 
     def ground_az_el(self, az, el):
         time_stream = sp.zeros((self.nf, self.nt))
@@ -128,7 +134,8 @@ class DataMaker(object):
         return map
 
     def get_noise(self, number):
-        noise_data = random.randn(self.nf, self.nt) * sp.sqrt(self.thermal)
+        thermal = sp.zeros(self.nf) + self.thermal
+        noise_data = random.randn(self.nf, self.nt) * sp.sqrt(thermal)[:,None]
         t = self.get_time(number)
         # Noisy mean mode.
         noise_data += random.randn(self.nf, 1) * sp.sqrt(self.random_mean)
@@ -137,6 +144,17 @@ class DataMaker(object):
         slope_mode = (sp.sqrt(self.nt) * (t - sp.mean(t)) 
                        / sp.sqrt(sp.sum((t - sp.mean(t))**2)))
         noise_data += slope_noise * slope_mode
+        if not self.universal_over_f is None:
+            amps = sp.empty(self.nf)
+            amps[:] = self.thermal * 2.0 * self.dt
+            index = self.universal_over_f[0]
+            f0 = self.universal_over_f[1]
+            for ii in range(self.nf):
+                over_f = noise_power.generate_overf_noise(amps[ii], index, f0,
+                                                          self.dt, self.nt*2)
+                ov_f_interpolator = interpolate.interp1d(t[0] 
+                                    + sp.arange(self.nt*2)*self.dt, over_f)
+                noise_data[ii,:] += ov_f_interpolator(t)
         if not self.correlated_noise is None:
             amp = self.correlated_noise[0]
             index = self.correlated_noise[1]
@@ -146,6 +164,21 @@ class DataMaker(object):
             ov_f_interpolator = interpolate.interp1d(t[0] 
                                     + sp.arange(self.nt*2)*self.dt, over_f)
             noise_data += ov_f_interpolator(t)
+        if not self.freq_mode_noise is None:
+            for ii, p in enumerate(self.freq_mode_noise):
+                mode = make_frequency_mode(ii, self.nf)
+                amp = p[0]
+                index = p[1]
+                f0 = p[2]
+                thermal = p[3]
+                over_f = noise_power.generate_overf_noise(amp, index, f0,
+                                                      self.dt, self.nt*2)
+                ov_f_interpolator = interpolate.interp1d(t[0] 
+                                    + sp.arange(self.nt*2)*self.dt, over_f)
+                mode_noise = ov_f_interpolator(t)
+                thermal_amp = sp.sqrt(thermal / 2. / self.dt)
+                mode_noise += random.randn(self.nt) * thermal_amp
+                noise_data += mode[:,None] * mode_noise
         return noise_data
 
     def get_all(self, number=None):
@@ -189,6 +222,19 @@ class DataMaker(object):
         mask_inds = (sp.asarray(new_mask_inds[0], dtype=int),
                      sp.asarray(new_mask_inds[1], dtype=int))
         return time_stream, ra, dec, az, el, time, mask_inds
+
+
+def make_frequency_mode(mode_num, nf):
+    """Deterministically return a normal vector of length `nf`.
+
+    Different modes are orthoganal for `mode_num` < `nf`/2.
+    """
+
+    k = 2. * sp.pi * float(mode_num + 1) / nf
+    phase = (mode_num + 6) * sp.sqrt(2)
+    mode = sp.cos(k * sp.arange(nf) + phase)
+    mode /= sp.sqrt(sp.dot(mode, mode))
+    return mode
 
 
 class TestClasses(unittest.TestCase):
@@ -437,8 +483,8 @@ class TestEngine(unittest.TestCase):
         ndec = 10
         map_size = 1.2
         scan_size = 1.3
-        # These parameters are teetering on the edge of numerical stability.
-        thermal_var = 0.0001
+        # These parameters.ers are teetering on the edge of numerical stability.
+        thermal_var = 0.00005 * BW_d * 2
         over_f_pars = (0.0001, -0.95, 5.0)
         
         Data = DataMaker(nscans=6, nt_scan=50, nf=nf, nra=nra,
@@ -449,31 +495,160 @@ class TestEngine(unittest.TestCase):
         new_map, map_diffs, nor = self.make_map(Data, 20)
         expected_map = new_map - map_diffs
         # These statistical tests fail 1% of the time under normal conditions.
-        print nor
         self.assertTrue(nor > -3)
         self.assertTrue(nor < 3)
 
-    def test_normal(self):
-        """Test under 'normal' conditions."""
-        
-        nf = 3
+    def test_over_f_fails(self):
+        """Test with over f dominated noise and make sure that chis squared is
+        wrong if the input noise is wrong."""
+
+        nf = 2
         nra = 10
         ndec = 10
         map_size = 1.2
         scan_size = 1.3
-        thermal_var = 0.00001
-        over_f_pars = (.001, -0.95, 0.1)
+        # These parameters are teetering on the edge of numerical stability.
+        thermal_var = 0.00004 * BW_d * 2
+        over_f_pars = (0.0001, -0.95, 5.0)
+        over_f_noise_model = (0.00005, -0.95, 5.0)
         
         Data = DataMaker(nscans=6, nt_scan=50, nf=nf, nra=nra,
                  ndec=ndec, scan_size=scan_size, map_size=map_size,
                  thermal=thermal_var, correlated_noise=over_f_pars,
-                 random_mean=10., random_slope=10.,
+                 random_mean=0., random_slope=0.,
                  add_ground=False)
-        new_map, map_diffs, nor = self.make_map(Data, 20)
+        new_map, map_diffs, nor = self.make_map(Data, 20,
+                                                over_f=over_f_noise_model)
+        expected_map = new_map - map_diffs
+        # These statistical tests fail 1% of the time under normal conditions.
+        self.assertTrue(nor > 0)
+
+    def test_normal(self): 
+        """Test under 'normal' conditions."""
+        
+        nf = 20
+        nra = 5
+        ndec = 5
+        map_size = 0.6
+        scan_size = 0.7
+        thermal_var = 0.00005 * BW_d * 2
+        over_f_pars = [(.0003, -1.4, 1., 0.0001), (.0001, -1.1, 1., 0.0002),
+                       (.00003, -0.8, 1., 0.0003)]
+        universal_pars = (-1.5, 0.1)
+        
+        Data = DataMaker(nscans=6, nt_scan=20, nf=nf, nra=nra,
+                 ndec=ndec, scan_size=scan_size, map_size=map_size,
+                 thermal=thermal_var, correlated_noise=None,
+                 random_mean=10., random_slope=10.,
+                 add_ground=False, freq_mode_noise=over_f_pars,
+                 universal_over_f=universal_pars)
+        new_map, map_diffs, nor = self.make_map(Data, 80)
         expected_map = new_map - map_diffs
         # These statistical tests fail 1% of the time under normal conditions.
         self.assertTrue(nor > -3)
         self.assertTrue(nor < 3)
+
+    def test_all_freq(self): 
+        """Test under all freq dominated conditions."""
+        
+        nf = 20
+        nra = 5
+        ndec = 5
+        map_size = 0.6
+        scan_size = 0.7
+        thermal_var = 0.00005 * BW_d * 2 * (5. + sp.arange(nf)/nf) / 5.
+        over_f_pars = [(.00003, -1.4, 1., 0.00001)]
+        # Spectra needs to be pretty steep since we cut it off 1 octave after
+        # the corner.
+        universal_pars = (-1.8, 0.2)
+        
+        Data = DataMaker(nscans=6, nt_scan=20, nf=nf, nra=nra,
+                 ndec=ndec, scan_size=scan_size, map_size=map_size,
+                 thermal=thermal_var, correlated_noise=None,
+                 random_mean=10., random_slope=10.,
+                 add_ground=False, freq_mode_noise=over_f_pars,
+                 universal_over_f=universal_pars)
+        new_map, map_diffs, nor = self.make_map(Data, 80)
+        expected_map = new_map - map_diffs
+        # These statistical tests fail 1% of the time under normal conditions.
+        self.assertTrue(nor > -3)
+        self.assertTrue(nor < 3)
+
+    def test_all_freq_fails(self): 
+        """Test under that the chi squared is wrong for bad all_freq model.
+        """
+        
+        nf = 20
+        nra = 5
+        ndec = 5
+        map_size = 0.6
+        scan_size = 0.7
+        thermal_var = 0.00005 * BW_d * 2 * (5. + sp.arange(nf)/nf) / 5.
+        over_f_pars = [(.00003, -1.4, 1., 0.00001)]
+        universal_pars = (-1.6, 0.25)
+        universal_pars_model = (-1.9, 0.15)
+        
+        Data = DataMaker(nscans=6, nt_scan=20, nf=nf, nra=nra,
+                 ndec=ndec, scan_size=scan_size, map_size=map_size,
+                 thermal=thermal_var, correlated_noise=None,
+                 random_mean=10., random_slope=10.,
+                 add_ground=False, freq_mode_noise=over_f_pars,
+                 universal_over_f=universal_pars)
+        new_map, map_diffs, nor = self.make_map(Data, 80, 
+                                         all_channel=universal_pars_model)
+        expected_map = new_map - map_diffs
+        # These statistical tests fail 1% of the time under normal conditions.
+        self.assertTrue(nor > 1)
+
+    def test_freq_modes_fails(self):
+        nf = 10
+        nra = 5
+        ndec = 5
+        map_size = 0.6
+        scan_size = 0.7
+        thermal_var = 0.00005 * BW_d * 2
+        over_f_pars = [(.003, -1.4, 1., 0.0001), (.001, -1.1, 1., 0.0002),
+                       (.0003, -0.8, 1., 0.0003)]
+        over_f_noise = [(.009, -1.7, 1., 0.0001), (.006, -1.1, 1., 0.0002),
+                       (.002, -0.5, 1., 0.0003)]
+        universal_pars = (-0.7, 0.)
+        
+        Data = DataMaker(nscans=6, nt_scan=20, nf=nf, nra=nra,
+                 ndec=ndec, scan_size=scan_size, map_size=map_size,
+                 thermal=thermal_var, correlated_noise=None,
+                 random_mean=10., random_slope=10.,
+                 add_ground=False, freq_mode_noise=over_f_noise,
+                 universal_over_f=universal_pars)
+        new_map, map_diffs, nor = self.make_map(Data, 80, 
+                                                over_f_modes=over_f_pars)
+        expected_map = new_map - map_diffs
+        # These statistical tests fail 1% of the time under normal conditions.
+        self.assertTrue(nor > 1)
+        
+    def test_freq_modes_fails_thermal(self):
+        nf = 10
+        nra = 5
+        ndec = 5
+        map_size = 0.6
+        scan_size = 0.7
+        thermal_var = 0.00005 * BW_d * 2
+        over_f_pars = [(.0003, -1.4, 1., 0.001), (.0001, -1.1, 1., 0.002),
+                       (.00003, -0.8, 1., 0.003)]
+        over_f_noise = [(.0003, -1.4, 1., 0.005), (.0001, -1.1, 1., 0.008),
+                       (.00003, -0.5, 1., 0.015)]
+        universal_pars = (-0.7, 0.)
+        
+        Data = DataMaker(nscans=6, nt_scan=20, nf=nf, nra=nra,
+                 ndec=ndec, scan_size=scan_size, map_size=map_size,
+                 thermal=thermal_var, correlated_noise=None,
+                 random_mean=10., random_slope=10.,
+                 add_ground=False, freq_mode_noise=over_f_noise,
+                 universal_over_f=universal_pars)
+        new_map, map_diffs, nor = self.make_map(Data, 80, 
+                                                over_f_modes=over_f_pars)
+        expected_map = new_map - map_diffs
+        # Very weak test just to make sure we are in the ball park.
+        self.assertTrue(nor > -1)
 
     def test_mean(self):
         """Test the mean subtration."""
@@ -483,7 +658,7 @@ class TestEngine(unittest.TestCase):
         ndec = 10
         map_size = 1.2
         scan_size = 1.3
-        thermal_var = 0.001
+        thermal_var = 0.0005 * BW_d * 2
         over_f_pars = (.0000001, -0.95, 0.1)
         
         Data = DataMaker(nscans=2, nt_scan=10, nf=nf, nra=nra,
@@ -505,7 +680,7 @@ class TestEngine(unittest.TestCase):
         ndec = 10
         map_size = 1.2
         scan_size = 1.3
-        thermal_var = 0.001
+        thermal_var = 0.0005 * BW_d * 2
         over_f_pars = (.000000001, -0.95, 0.1)
         
         Data = DataMaker(nscans=2, nt_scan=10, nf=nf, nra=nra,
@@ -526,7 +701,7 @@ class TestEngine(unittest.TestCase):
         ndec = 10
         map_size = 1.2
         scan_size = 1.3
-        thermal_var = 0.001
+        thermal_var = 0.0005 * BW_d * 2
         over_f_pars = (.0000001, -0.95, 0.1)
         
         Data = DataMaker(nscans=2, nt_scan=10, nf=nf, nra=nra,
@@ -567,7 +742,7 @@ class TestEngine(unittest.TestCase):
         ndec = 10
         map_size = 1.2
         scan_size = 1.3
-        thermal_var = 0.001
+        thermal_var = 0.0005 * BW_d * 2
         over_f_pars = (.000000001, -0.95, 0.1)
         
         Data = DataMaker(nscans=2, nt_scan=10, nf=nf, nra=nra,
@@ -578,7 +753,7 @@ class TestEngine(unittest.TestCase):
         new_map, map_diffs, nor = self.make_map(Data, 40)
         expected_map = new_map - map_diffs
         # Pretty weak test since this only affects a small number of modes.
-        self.assertTrue(nor > 3)
+        self.assertTrue(nor > 1)
 
     def test_untouched_pixels(self):
 
@@ -587,7 +762,7 @@ class TestEngine(unittest.TestCase):
         ndec = 10
         map_size = 1.2
         scan_size = 2.0
-        thermal_var = 0.001
+        thermal_var = 0.0005 * BW_d * 2
         over_f_pars = (.001, -0.95, 0.1)
         
         # Small number of densly sampled scans.  The pixels that are hit are
@@ -603,7 +778,8 @@ class TestEngine(unittest.TestCase):
         new_map, map_diffs, nor = self.make_map(Data, 6)
         expected_map = new_map - map_diffs
 
-    def make_map(self, Data, n_data=10, time=False, thermal=None, over_f=None):
+    def make_map(self, Data, n_data=10, time=False, thermal=None, over_f=None,
+                 over_f_modes=None, all_channel=None):
         """This does all the map making for the input parameters.  Contains no
         tests."""
         
@@ -612,14 +788,33 @@ class TestEngine(unittest.TestCase):
         ndec = Data.ndec
         map_size = Data.map_size
         scan_size = Data.scan_size
+        # Figure out the thermal values.
         if thermal is None:
             thermal_var = Data.thermal
         else:
             thermal_var = thermal
+        # Figure out what the noise frequeny modes are.
         if over_f is None:
             over_f_pars = Data.correlated_noise
         else:
             over_f_pars = over_f
+        if over_f_modes is None:
+            over_f_mode_pars = Data.freq_mode_noise
+        else:
+            over_f_mode_pars = over_f_modes
+        # Figure out what to use all the all channel noise.
+        if all_channel is None:
+            all_channel_pars = Data.universal_over_f
+        else:
+            all_channel_pars = all_channel
+        # Figure out what noise model will be used.
+        if (not over_f is None) or (over_f_modes is None and not
+                                    Data.correlated_noise is None):
+            n_modes = 0
+            noise_model = 'mean'
+        else :
+            n_modes = len(over_f_mode_pars)
+            noise_model = 'measured'
 
         params = {
             'dm_file_middles' : ['a'] * n_data,
@@ -627,8 +822,8 @@ class TestEngine(unittest.TestCase):
             'dm_field_centre' : (21., 0.),
             'dm_pixel_spacing' : map_size/nra,
             'dm_time_block' : 'file',
-            'dm_frequency_correlations' : 'mean',
-            'dm_thermal_weight' : 'thermal',
+            'dm_frequency_correlations' : noise_model,
+            'dm_number_frequency_modes' : n_modes,
             'dm_deweight_time_mean' : True,
             'dm_deweight_time_slope' : True
                   }
@@ -648,7 +843,14 @@ class TestEngine(unittest.TestCase):
                 return thermal
             elif parameter_name == "mean_over_f":
                 return over_f_pars
-                #return (0.01, -1.2, 0.1)
+            elif parameter_name[:12] == "over_f_mode_":
+                mode_number = int(parameter_name[12:])
+                mode = make_frequency_mode(mode_number, nf)
+                return over_f_mode_pars[mode_number] + (mode,)
+            elif parameter_name == "all_channel":
+                thermal = sp.empty(nf)
+                thermal[...] = thermal_var / BW_d / 2.
+                return (thermal_var,) + all_channel_pars
             else :
                 raise ValueError()
         Maker.get_noise_parameter = lambda p_name : get_noise_parameter(Maker,
@@ -722,13 +924,13 @@ class TestModuleIO(unittest.TestCase):
             'dm_field_centre' : (218., 2.),
             'dm_pixel_spacing' : 0.3,
             'dm_time_block' : 'file',
-            'dm_frequency_correlations' : 'mean',
-            'dm_number_frequency_modes' : 1,
+            'dm_frequency_correlations' : 'measured',
+            'dm_number_frequency_modes' : 4,
             'dm_deweight_time_mean' : True,
             'dm_deweight_time_slope' : True
                   }
     
-    def test_normal(self) :
+    def test_normal(self):
         params = self.params
         dirty_map.DirtyMap(params, feedback=0).execute(4)
         files = glob.glob('*testout*')

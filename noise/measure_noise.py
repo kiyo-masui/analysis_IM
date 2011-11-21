@@ -155,7 +155,8 @@ def measure_noise_parameters(Blocks, parameters):
             power_diag = this_pol_power.view()
             power_diag.shape = (n_f, n_chan**2)
             power_diag = power_diag[:,::n_chan + 1].real
-            this_pol_parameters["channel_var"] = sp.mean(power_diag, 0)/(2*dt)
+            # Integral of the power spectrum from -BW to BW.
+            this_pol_parameters["channel_var"] = sp.mean(power_diag, 0) / dt
         if "mean_over_f" in parameters:
             this_pol_parameters["mean_over_f"] = get_mean_over_f(
                     this_pol_power, this_pol_window, frequency)
@@ -385,7 +386,7 @@ def fit_overf_const(power, window, freq):
     #plt.loglog(freq, power)
     #plt.loglog(freq, model(params))
     #print params
-    plt.show()
+    #plt.show()
     # Unpack results and return.
     amp = params[0]
     index = params[1]

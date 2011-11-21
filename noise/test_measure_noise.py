@@ -103,7 +103,7 @@ class TestMeasures(unittest.TestCase) :
         nb = self.nb
         # Give every channel a different thermal noise floor.
         thermal_norm = 1.0 + 1.0/nf*sp.arange(nf)  # K**2/Hz
-        self.data *= sp.sqrt(thermal_norm * bw)
+        self.data *= sp.sqrt(thermal_norm * bw * 2)
         # Now make a 1/f like noise component
         ntime = self.data.shape[0]
         index = -1.45
@@ -141,7 +141,7 @@ class TestMeasures(unittest.TestCase) :
         nb = self.nb
         # Give every channel a different thermal noise floor.
         thermal_norm = 1.0 + 1.0/nf*sp.arange(nf)  # K**2/Hz
-        self.data *= sp.sqrt(thermal_norm * bw)
+        self.data *= sp.sqrt(thermal_norm * bw * 2)
         n_time = self.data.shape[0]
         # Now make a 1/f like noise component in a few frequency modes.
         n_modes = 3
@@ -218,7 +218,7 @@ class TestFunctions(unittest.TestCase):
         for ii in range(n_spec):
             time_stream = noise_power.generate_overf_noise(amp, index, f_0,
                                                                 dt, n_time)
-            time_stream += rand.normal(size=n_time) * sp.sqrt(thermal * BW)
+            time_stream += rand.normal(size=n_time) * sp.sqrt(thermal * BW * 2)
             time_stream -= sp.mean(time_stream)
             time_stream *= window
             p += noise_power.calculate_power(time_stream)

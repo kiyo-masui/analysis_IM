@@ -470,11 +470,11 @@ def prune_power(power_spectrum, axis=-1):
 def make_power_physical_units(power, dt):
     """Converts power spectrum to physical units given.
 
-    Given the time stream time step, devide by the bandwidth to put the power
-    spectrum in the most physical units of amp**2/Hz.
+    Given the time stream time step, devide by the twice the bandwidth to 
+    put the power spectrum in the most physical units of amp**2/Hz.
     """
     
-    return power*dt*2
+    return power*dt
 
 def deconvolve_power(power_spectrum, window_power, axis=-1):
     """Deconvolve a power spectrum with a window function."""
@@ -515,8 +515,8 @@ def calculate_overf_correlation(amp, index, f0, dt, n_lags):
     # Bump the whole thing up to the last lag is at 0 correlation (as opposed
     # to being negitive).
     corr -= corr[-1]
-    # To normalize, need to multiply by the bandwidth.
-    corr *= 1.0/2/dt
+    # To normalize, need to multiply by twice the bandwidth.
+    corr *= 1.0/dt
     return corr
 
 def overf_power_spectrum(amp, index, f0, dt, n):
@@ -542,8 +542,8 @@ def generate_overf_noise(amp, index, f0, dt, n):
     white_noise = rand.normal(size=n)
     power_spectrum = overf_power_spectrum(amp, index, f0, dt, n)
     # Power spectrum is in physical units of T**2/Hz.  Put in discrete units by
-    # multiplying by the bandwidth.
-    power_spectrum *= 1.0/2.0/dt
+    # multiplying by twice the bandwidth.
+    power_spectrum *= 1.0/dt
     noise = fft.ifft(fft.fft(white_noise)*sp.sqrt(power_spectrum)).real
     return noise
 

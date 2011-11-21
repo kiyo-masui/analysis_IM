@@ -145,8 +145,9 @@ class TestWindowedPower(unittest.TestCase) :
         power = npow.make_power_physical_units(power, dt)
         freqs = npow.ps_freq_axis(dt, n_points)
         df = abs(sp.mean(sp.diff(freqs)))
-        # The integral of the power spectrum should be the variance.
-        integrated_power = sp.sum(power)*df
+        # The integral of the power spectrum should be the variance. Factor of
+        # 2 get the negitive frequencies.
+        integrated_power = sp.sum(power) * df * 2
         self.assertTrue(sp.allclose(integrated_power/self.amp1**2, 1.0,
                                     atol=4.0*(2.0/sp.sqrt(n_trials*n_points))))
 
@@ -179,9 +180,9 @@ class TestUtils(unittest.TestCase):
         n = 1000
         dt = 0.01
         BW = 1.0/2/dt
-        amplitude = 0.5/BW  # K^2/Hz
+        amplitude = 0.5 / BW / 2   # K^2/Hz
         corr = npow.calculate_overf_correlation(amplitude, 0, 1, dt, n)
-        self.assertAlmostEqual(corr[0], amplitude*BW)
+        self.assertAlmostEqual(corr[0], amplitude*BW*2)
         self.assertTrue(sp.allclose(corr[1:], 0))
 
     def test_overf_correlation_bw(self):
@@ -200,12 +201,12 @@ class TestUtils(unittest.TestCase):
         n1 = 50000
         dt1 = 0.01
         BW1 = 1.0/2/dt1
-        corr1 = npow.calculate_overf_correlation(10.0/BW1, -1.3, 1.0, 
+        corr1 = npow.calculate_overf_correlation(10.0 / BW1 / 2, -1.3, 1.0, 
                                                       dt1, n1)
         n2 = 5000
         dt2 = 0.01
         BW2 = 1.0/2/dt2
-        corr2 = npow.calculate_overf_correlation(10.0/BW2, -1.3, 1.0,
+        corr2 = npow.calculate_overf_correlation(10.0 / BW2 / 2, -1.3, 1.0,
                                                     dt2, n2)
         # The overlapping time scale parts should all be about the same.
         self.assertTrue(sp.allclose(sp.diff(corr1)[:n2//2], 
