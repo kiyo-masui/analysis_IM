@@ -67,6 +67,9 @@ class ForegroundMap(Map3d):
     def frequency_covariance(self, nu1, nu2):
         pass
 
+    def aps(self, l, nu1, nu2):
+        return (self.angular_powerspectrum(l) * self.frequency_covariance(nu1, nu2))
+
 
     def generate_weight(self, regen = False):
         r"""Pregenerate the k weights array.
