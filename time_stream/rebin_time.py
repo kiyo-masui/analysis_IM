@@ -1,7 +1,5 @@
 #!/usr/bin/python
-"""This module down samples the frequency axis of the data.
-
-This fails for if your numpy version is < 1.3.
+"""This module down samples the time axis of the data.
 """
 
 import math
@@ -13,7 +11,6 @@ import base_single
 import kiyopy.custom_exceptions as ce
 from core import utils
 
-prefix = 'rt_'
 
 class RebinTime(base_single.BaseSingle) :
     """Pipeline module that down samples the frequnecy axis of the data."""
@@ -21,6 +18,8 @@ class RebinTime(base_single.BaseSingle) :
     params_init = {
                    'n_bins_combined' : 2
                    }
+    prefix = 'rt_'
+
     def action(self, Data, ) :
         rebin(Data, self.params['n_bins_combined'])
         Data.add_history('Rebinned time axis.', 

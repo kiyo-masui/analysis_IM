@@ -1,2 +1,11 @@
 This package contains all map tools.  This is the proper place for modules
 pertaining to map making, beams and covariance matrix generation for maps.
+
+There are severl libraries that need to be built for the map making modules 
+to work. Building them requires a distribution of cythion as well as f2py 
+(which is distributed with numpy).  To build these libraries type the following
+from this director:
+
+```bash
+python setup.py build_ext --inplace
+```

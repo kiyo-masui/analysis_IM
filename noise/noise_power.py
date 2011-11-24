@@ -568,9 +568,9 @@ def calculate_full_power_mat(full_data, mask, deconvolve=True):
         w = calculate_power(mask1[:,:,:,[ii],:], mask2, axis=0)
         # Calculate the window normalizations.  This is critical as several
         # functions that call this one assume this normalization.
-        window_norms = sp.sum(w, 0) / float(n_time)
+        window_norms = sp.sum(w.real, 0) / float(n_time)
         # Do nothing to fully masked channels to keep things finite.
-        window_norms[window_norms < 1e-7] = 1
+        window_norms[window_norms < 1e-10] = 1
         if deconvolve:
             p = windowed_power(full_data1[:,:,:,[ii],:],
                                mask1[:,:,:,[ii],:], full_data2, mask2, axis=0)

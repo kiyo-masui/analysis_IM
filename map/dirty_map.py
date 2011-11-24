@@ -10,6 +10,7 @@ import math
 import threading
 from Queue import Queue
 import shelve
+import sys
 
 import scipy as sp
 import numpy.ma as ma
@@ -33,6 +34,7 @@ import _mapmaker as _mapmaker_c
 # 100 K**2 seems like a good number.  Bigger than any actual noise mode we would
 # encounter, but not so big that it screws up numerical stability.
 T_infinity = 100.0  # Kelvin**2
+T_small = T_infinity * 1.e-10
 
 prefix ='dm_'
 params_init = {               
@@ -45,7 +47,7 @@ params_init = {
                # Shelve file that holds measurements of the noise.
                # What data to include from each file.
                'scans' : (),
-               'bands' : (0,),
+               'IFs' : (0,),
                'polarizations' : ('I',),
                # Map parameters (Ra (deg), Dec (deg)).
                'field_centre' : (325.0, 0.0),
@@ -67,7 +69,7 @@ params_init = {
                'deweight_time_slope' : False,
                }
 
-class DirtyMap(object):
+class DirtyMapMaker(object):
     """Dirty map maker.
     """
 
@@ -124,12 +126,19 @@ class DirtyMap(object):
             if (self.pols[self.pol_ind] != Data.field['CRVAL4'][self.pol_ind]):
                 msg = "Data doesn't all have the same polarizations."
                 raise ce.DataError(msg)
-            channel_sums += ma.sum(Data.data[:,self.pol_ind,0,:], 0)
-            channel_sq_sums += ma.sum(Data.data[:,self.pol_ind,0,:]**2, 0)
+            filled_data = Data.data[:,self.pol_ind,0,:].filled(0)
+            channel_sums += sp.sum(filled_data, 0)
+            channel_sq_sums += sp.sum(filled_data**2, 0)
             channel_counts += ma.count(Data.data[:,self.pol_ind,0,:], 0)
         channel_counts[channel_counts == 0] = 1
         channel_means = channel_sums / channel_counts
         channel_vars = channel_sq_sums / channel_counts
+        channel_vars = channel_vars - channel_means**2
+        # Get rid of any wierd channels.
+        bad_channels =  (channel_vars < 1.e-4 
+                        * sp.median(channel_vars[channel_counts > 5]))
+        bad_channels = sp.logical_or(channel_counts < 5, bad_channels)
+        channel_vars[bad_channels] = T_infinity
         # Store the variances in case they are needed as noise weights.
         self.channel_vars = channel_vars
         # Allocate memory for the outputs.
@@ -169,7 +178,8 @@ class DirtyMap(object):
         mask_inds = (mask_inds_chan, mask_inds_time)
         # Make sure the bandwidths are the same for all Data Blocks.
         dt = sp.mean(tmp_dt)
-        if not sp.allclose(tmp_dt, dt, rtol=1e-4):
+        if not sp.allclose(tmp_dt, dt, rtol=1e-2):
+            print tmp_dt, dt
             raise RuntimeError("Samplings not uniform.")
         self.BW = 1./2./dt
         # Now trim this down to exculd all data points that are outside the map
@@ -275,7 +285,7 @@ class DirtyMap(object):
         first_file_name = (params["input_root"] + params["file_middles"][0]
                            + params["input_end"])
         Reader = fitsGBT.Reader(first_file_name, feedback=self.feedback)
-        Blocks = Reader.read(0, ())
+        Blocks = Reader.read(0, (), force_tuple=True)
         self.n_chan = Blocks[0].dims[3]
         # Figure out which polarization indices to process.
         n_pols = Blocks[0].dims[1]
@@ -296,7 +306,7 @@ class DirtyMap(object):
         # Get the centre frequncies of all the bands and figure out which bands
         # to process.
         n_bands = len(Reader.IF_set)
-        band_inds = params["bands"]
+        band_inds = params["IFs"]
         if not band_inds:
             band_inds = range(n_bands)
         delta_freq = Blocks[0].field['CDELT1']
@@ -349,13 +359,21 @@ class DirtyMap(object):
                 self.map = map
                 self.cov_inv = cov_inv
                 # Do work.
-                self.make_map()
+                try:
+                    self.make_map()
+                except:
+                    # I think yo need to do this to get a sensible error
+                    # message, otherwise it will print cov_inv and fill the
+                    # screen.
+                    del self.cov_inv, cov_inv
+                    raise
                 # IO.
                 # To write the noise_inverse, all we have to do is delete the
                 # memeory map object.
                 del self.cov_inv, cov_inv
                 al.save(map_filename, map)
-        self.noise_params.close()
+        if not self.noise_params is None:
+            self.noise_params.close()
 
     def make_map(self):
         """Makes map for current polarization and band.
@@ -377,6 +395,9 @@ class DirtyMap(object):
         for this_data in self.iterate_data():
             # Unpack all the input data.
             time_stream, ra, dec, az, el, time, mask_inds = this_data
+            n_time = time_stream.shape[1]
+            if n_time == 0:
+                continue
             P = Pointing(("ra", "dec"), (ra, dec), map, "linear")
             # Now build up our noise model for this piece of data.
             N = Noise(time_stream, time)
@@ -413,6 +434,8 @@ class DirtyMap(object):
             data_list.append(time_stream)
         # Threaded loop to finalize all the noises.  Each finalization requires
         # a large inverse.
+        if self.feedback > 1:
+            print "Finalizing %d noise files: " % len(data_list)
         # Initialize the queue of noise objects to work on.
         noise_queue = Queue()
         # Define a function that takes work off the queue and does it.
@@ -426,6 +449,9 @@ class DirtyMap(object):
                     thread_N.finalize(frequency_correlations=(not
                             self.uncorrelated_channels),
                             preserve_matrices=False)
+                    if self.feedback > 1:
+                        print '.',
+                        sys.stdout.flush()
         # Start the worker threads.
         thread_list = []
         for ii in range(self.n_processes):
@@ -454,6 +480,10 @@ class DirtyMap(object):
             # Make the dirty map.
             weighted_time_stream = N.weight_time_stream(time_stream)
             map += P.apply_to_time_axis(weighted_time_stream)
+        if self.feedback > 1:
+            print
+            print "Noise finalized and dirty map done."
+            print "Building map covariance. Indices finished (channel, ra):"
         # Now we have lists with all the data and thier noise.  Accumulate it
         # into a dirty map and its covariance.
         n_time_blocks = len(noise_list)
@@ -480,6 +510,9 @@ class DirtyMap(object):
                     # This line has to be an assignment, not addition.  cov_inv
                     # uninitialized to 0.
                     cov_inv[thread_f_ind,...] = thread_cov_inv_block
+                    if self.feedback > 1:
+                        print " (%d, :)" % thread_f_ind,
+                        sys.stdout.flush()
                 else :
                     thread_f_ind = thread_inds[0]
                     thread_ra_ind = thread_inds[1]
@@ -495,6 +528,9 @@ class DirtyMap(object):
                     # uninitialized to 0.
                     cov_inv[thread_f_ind,thread_ra_ind,...] = \
                             thread_cov_inv_row
+                    if self.feedback > 1:
+                        print " (%d, %d)" % (thread_f_ind, thread_ra_ind),
+                        sys.stdout.flush()
         # Start the worker threads.
         thread_list = []
         for ii in range(self.n_processes):
@@ -899,6 +935,9 @@ class Noise(object):
         """
         
         self.initialize_diagonal()
+        if (not sp.all(sp.isfinite(thermal_levels))
+            or sp.any(thermal_levels < T_small)):
+            raise ValueError("Non finite thermal noise.")
         if isinstance(thermal_levels, sp.ndarray):
             self.diagonal += thermal_levels[:, None]
         else:
@@ -916,7 +955,7 @@ class Noise(object):
         """
         
         self.initialize_diagonal()
-        self.diagonal[mask_inds] += T_infinity
+        self.diagonal[mask_inds] = T_infinity
 
     def deweight_time_mean(self):
         """Deweights time mean in each channel.

@@ -1,7 +1,6 @@
 #!/usr/bin/python
-"""This module down samples the frequency axis of the data.
-
-This fails for if your numpy version is < 1.3.
+"""Module splits up the frequency axis into multiple blocks (bands, IFs,
+whatver you want to call them).
 """
 
 import math
@@ -15,20 +14,28 @@ import kiyopy.custom_exceptions as ce
 from core import utils
 from core import data_block
 
-prefix = 'rt_'
-
-params_init = {
-        }
 
 class SplitBands(base_single.BaseSingle) :
     """Pipeline module that splits data into multiple bands."""
 
-    def action(self, Data, ) :
-        Blocks = split(Data)
+    prefix = 'sb_'
+
+    params_init = {
+            'n_bands' : 2,
+            'n_bins_band' : 32,
+            'offset' : 0
+            }
+
+    def action(self, Data, ):
+        params = self.params
+        Blocks = split(Data, params['n_bands'], params['n_bins_band'],
+                       params['offset'])
         Data.add_history('Split into bands.', 
-                         ('Number of time bins averaged: '
-                          + str(self.params['n_bins_combined']), ))
+                         ('(n_bands, n_bins_band, offset): '
+                          + str((params['n_bands'], params['n_bins_band'],
+                                 params['offset'])),))
         return Blocks
+
 
 def split(Data, n_bands=2, bins_band=None, offset=0):
     

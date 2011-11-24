@@ -2,6 +2,8 @@
 
 import unittest
 import copy
+import glob
+import os
 
 import scipy as sp
 import numpy.ma as ma
@@ -35,8 +37,30 @@ class TestFunctions(unittest.TestCase) :
             self.assertTrue(sp.allclose(this_freq, Blocks[ii].freq))
 
     def test_raise(self):
-        self.assertRaises(ValueError, split_bands.split, self.Data, 2, 60, 23)
-    
+        self.assertRaises(ValueError, split_bands.split, self.Data, 2, 60, 23)    
+
+
+class TestModule(unittest.TestCase) :
+
+    def test_module(self) :
+        params = {'sb_n_bands' : 2,
+                  'sb_n_bins_band' : 10,
+                  'sb_offset' : 3,
+                  'sb_input_root' : './testdata/',
+                  'sb_file_middles' : ('testfile_guppi',),
+                  'sb_input_end' : '_rebinned.fits',
+                  'sb_output_root' : './testout_',
+                  'sb_output_end' : '_split.fits'
+                 }
+        split_bands.SplitBands(params, feedback=0).execute()
+        files = glob.glob('*testout*')
+        self.assertTrue(len(files) > 1)
+
+    def tearDown(self) :
+        files = glob.glob('*testout*')
+        for f in files :
+            os.remove(f)
+
         
 
 

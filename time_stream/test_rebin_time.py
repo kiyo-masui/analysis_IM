@@ -2,6 +2,8 @@
 
 import unittest
 import copy
+import glob
+import os
 
 import scipy as sp
 import numpy.ma as ma
@@ -81,6 +83,27 @@ class TestFunctions(unittest.TestCase) :
     def tearDown(self):
         del self.Data
 
+
+class TestModule(unittest.TestCase) :
+
+    def test_module(self) :
+        params = {'rt_n_bins_combined' : 3,
+                  'rt_input_root' : './testdata/',
+                  'rt_file_middles' : ('testfile_guppi',),
+                  'rt_input_end' : '_split.fits',
+                  'rt_output_root' : './testout_',
+                  'rt_output_end' : '_time_rebinned.fits'
+                 }
+        rebin_time.RebinTime(params, feedback=0).execute()
+        files = glob.glob('*testout*')
+        self.assertTrue(len(files) > 1)
+
+    def tearDown(self) :
+        files = glob.glob('*testout*')
+        for f in files :
+            os.remove(f)
+
+   
 
 if __name__ == '__main__' :
     unittest.main()

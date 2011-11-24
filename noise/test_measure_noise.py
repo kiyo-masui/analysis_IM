@@ -11,10 +11,12 @@ import numpy.random as rand
 import scipy.fftpack as fft
 import numpy.ma as ma
 import scipy.signal as sig
+import matplotlib.pyplot as plt
 
 from core import data_block, utils
 import measure_noise as mn
 import noise_power
+from map import dirty_map
 
 #class TestModule(unittest.TestCase) :
 class TestModule(object) :
@@ -34,6 +36,7 @@ class TestModule(object) :
         files = glob.glob('*testout*')
         for f in files :
             os.remove(f)
+
 
 class TestMeasures(unittest.TestCase) :
     
@@ -91,7 +94,7 @@ class TestMeasures(unittest.TestCase) :
         for p in parameters.itervalues():
             variance = p['channel_var']
             right_ans = sp.arange(1, nf+1)**2
-            right_ans[3] = 0
+            right_ans[3] = dirty_map.T_infinity
             self.assertTrue(sp.allclose(variance,
                                         right_ans, rtol=0.1))
 
@@ -195,11 +198,60 @@ class TestMeasures(unittest.TestCase) :
             if pol == 1:
                 self.assertTrue(sp.allclose(measured_general_ind,
                                             general_index, atol=0.4))
-                self.assertTrue(sp.allclose(measured_corner,
-                                            general_cross_over, rtol=0.6))
+                #Only need logarithmic accuracy on the corner.
+                self.assertTrue(sp.allclose(sp.log(measured_corner),
+                                            sp.log(general_cross_over),
+                                            atol=1.5))
             elif pol == 3:
                 self.assertEqual(measured_general_ind, 0)
                 self.assertEqual(measured_corner, 0)
+
+    def test_all_masked(self):
+        Blocks = self.make_blocks()
+        for Data in Blocks:
+            Data.data[...] = ma.masked
+        model_name = 'freq_modes_over_f_' + str(3)
+        parameters = mn.measure_noise_parameters(Blocks, [model_name])
+        for pol, pol_params in parameters.iteritems():
+            for ii in range(3):
+                mode_noise = pol_params[model_name]['over_f_mode_' + str(ii)]
+                self.assertTrue(sp.allclose(mode_noise['amplitude'], 0))
+                self.assertTrue(sp.allclose(mode_noise['index'], 0))
+                self.assertTrue(sp.allclose(mode_noise['thermal'],
+                                            dirty_map.T_infinity))
+            thermal = pol_params[model_name]['thermal']
+            self.assertTrue(sp.allclose(thermal, dirty_map.T_infinity))
+            measured_general_ind = pol_params[model_name]['all_channel_index']
+            measured_corner = pol_params[model_name]['all_channel_corner_f']
+            self.assertTrue(sp.allclose(measured_general_ind, 0))
+            self.assertTrue(sp.allclose(measured_corner, 0))
+
+    def test_few_masked(self):
+        Blocks = self.make_blocks()
+        for Data in Blocks:
+            Data.data[:,:,:,6] = ma.masked
+            Data.data[:,:,:,13] = ma.masked
+        model_name = 'freq_modes_over_f_' + str(3)
+        parameters = mn.measure_noise_parameters(Blocks, [model_name])
+        for pol, pol_params in parameters.iteritems():
+            for ii in range(3):
+                mode_noise = pol_params[model_name]['over_f_mode_' + str(ii)]
+                self.assertTrue(sp.allclose(mode_noise['thermal'], self.dt,
+                                            rtol=0.2))
+                self.assertTrue(sp.allclose(mode_noise['mode'][6], 0,
+                                            atol=1.e-10))
+                self.assertTrue(sp.allclose(mode_noise['mode'][13], 0,
+                                            atol=1.e-10))
+            expected = sp.ones(self.nf, dtype=float) * self.dt
+            expected[6] = dirty_map.T_infinity
+            expected[13] = dirty_map.T_infinity
+            thermal = pol_params[model_name]['thermal']
+            # weak test since the above modes may have favoured a few channels.
+            self.assertTrue(sp.allclose(thermal, expected, rtol=0.8))
+            measured_general_ind = pol_params[model_name]['all_channel_index']
+            measured_corner = pol_params[model_name]['all_channel_corner_f']
+            self.assertTrue(sp.allclose(measured_general_ind, 0))
+            self.assertTrue(sp.allclose(measured_corner, 0))
 
 
 class TestFunctions(unittest.TestCase):

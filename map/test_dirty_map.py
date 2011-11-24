@@ -15,6 +15,7 @@ from numpy import random
 import core.algebra as al
 import dirty_map as dirty_map
 from noise import noise_power
+from core import fitsGBT
 
 # Default data parameters used for most of the tests.
 nscans_d = 6
@@ -827,7 +828,7 @@ class TestEngine(unittest.TestCase):
             'dm_deweight_time_mean' : True,
             'dm_deweight_time_slope' : True
                   }
-        Maker = dirty_map.DirtyMap(params, feedback=0)
+        Maker = dirty_map.DirtyMapMaker(params, feedback=0)
         Maker.pol = 0
         Maker.band = 0
         # Replace the data reader with mock data generator.
@@ -904,6 +905,77 @@ class TestEngine(unittest.TestCase):
         return new_map, map_diffs, nor
 
 
+class TestPreprocessor(unittest.TestCase):
+
+    def setUp(self):
+        Reader = fitsGBT.Reader("./testdata/testfile_guppi_combined.fits",
+                                feedback=0)
+        self.Blocks = Reader.read((), 1)
+        Data = self.Blocks[0]
+        Data.calc_freq()
+        Maker = dirty_map.DirtyMapMaker({}, feedback=0)
+        n_chan = Data.dims[-1]
+        Maker.n_chan = n_chan
+        Maker.pols = (1, 2, 3, 4)
+        Maker.pol_ind = 0
+        Maker.band_centres = (Data.freq[Data.dims[-1]//2],)
+        Maker.band_ind = 0
+        map = sp.zeros((Data.dims[-1], 32, 15))
+        map = al.make_vect(map, ('freq', 'ra', 'dec'))
+        map.set_axis_info('freq', Data.freq[Data.dims[-1]//2],
+                          Data.field['CRVAL1'])
+        map.set_axis_info('ra', 218, 0.075)
+        map.set_axis_info('dec', 2, 0.075)
+        Maker.map = map
+        self.Maker = Maker
+        # The variances of each channel.
+        self.norms = (sp.arange(1., 2., 0.25)[:,None]
+                      * (sp.arange(1., 2., 1./n_chan)[None,:]))
+        for Data in self.Blocks:
+            Data.data[...] = random.randn(*Data.data.shape)
+            Data.data *= sp.sqrt(self.norms[:,None,:])
+            Data.data += 50.
+
+    def test_basic(self):
+        time_stream, ra, dec, az, el, time, mask_inds = \
+                self.Maker.preprocess_data(self.Blocks)
+        self.assertTrue(sp.allclose(sp.mean(time_stream, 1), 0, atol=0.2))
+        self.assertTrue(sp.allclose(sp.var(time_stream, 1), self.norms[0,:], 
+                                    rtol=0.4))
+        self.assertTrue(sp.allclose(self.Maker.channel_vars,
+                                    self.norms[0,:], rtol=0.4))
+
+    def test_masked_channel(self):
+        for Data in self.Blocks:
+            Data.data[:,:,:,13] = ma.masked
+            Data.data[:,:,:,17] = 0.
+        time_stream, ra, dec, az, el, time, mask_inds = \
+                self.Maker.preprocess_data(self.Blocks)
+        self.assertTrue(sp.allclose(self.Maker.channel_vars[[13,17]],
+                                    dirty_map.T_infinity))
+
+    def test_masked_inds(self):
+        # Since the preprocessor moves stuff around, put a high value beside
+        # all the masked ends so we can find it.
+        self.Blocks[0].data[11,0,0,12] = ma.masked
+        self.Blocks[0].data[11,0,0,13] = 100
+        self.Blocks[0].data[6,0,0,2] = ma.masked
+        self.Blocks[0].data[6,0,0,3] = 100
+        self.Blocks[0].data[37,0,0,21] = ma.masked
+        self.Blocks[0].data[37,0,0,22] = 100
+        self.Blocks[0].data[73,0,0,6] = ma.masked
+        self.Blocks[0].data[73,0,0,7] = 100
+        self.Blocks[0].data[134,0,0,9] = ma.masked
+        self.Blocks[0].data[134,0,0,10] = 100
+        time_stream, ra, dec, az, el, time, mask_inds = \
+                self.Maker.preprocess_data(self.Blocks)
+        self.assertTrue(len(mask_inds[0]) > 0)
+        for ii in range(len(mask_inds[0])):
+            t_ind = mask_inds[1][ii]
+            f_ind = mask_inds[0][ii]
+            self.assertTrue(time_stream[f_ind + 1, t_ind] > 40)
+
+
 class TestModuleIO(unittest.TestCase):
     
     def setUp(self):
@@ -918,7 +990,7 @@ class TestModuleIO(unittest.TestCase):
             'dm_noise_parameter_file' :
                     './testdata/testfile_guppi_noise_parameters.shelve',
             'dm_scans' : (),
-            'dm_bands' : (),
+            'dm_IFs' : (),
             'dm_polarizations' : ('I',),
             'dm_map_shape' : (nra, ndec),
             'dm_field_centre' : (218., 2.),
@@ -932,7 +1004,7 @@ class TestModuleIO(unittest.TestCase):
     
     def test_normal(self):
         params = self.params
-        dirty_map.DirtyMap(params, feedback=0).execute(4)
+        dirty_map.DirtyMapMaker(params, feedback=0).execute(4)
         files = glob.glob('*testout*')
         # 17 files = 2 pols * 2 bands * 2 (map and noise) * 2 (.npy and
         # .npy.meta) + 1 (parameter file)
@@ -941,7 +1013,7 @@ class TestModuleIO(unittest.TestCase):
     def test_separate_scans(self) :
         params = self.params
         params['dm_time_block'] = 'scan'
-        dirty_map.DirtyMap(params, feedback=0).execute(4)
+        dirty_map.DirtyMapMaker(params, feedback=0).execute(4)
         files = glob.glob('*testout*')
         # 17 files = 2 pols * 2 bands * 2 (map and noise) * 2 (.npy and
         # .npy.meta) + 1 (parameter file)
@@ -950,7 +1022,7 @@ class TestModuleIO(unittest.TestCase):
     def test_independant_channels(self) :
         params = self.params
         params["dm_frequency_correlations"] = "None"
-        dirty_map.DirtyMap(params, feedback=0).execute(4)
+        dirty_map.DirtyMapMaker(params, feedback=0).execute(4)
         files = glob.glob('*testout*')
         # 17 files = 2 pols * 2 bands * 2 (map and noise) * 2 (.npy and
         # .npy.meta) + 1 (parameter file)

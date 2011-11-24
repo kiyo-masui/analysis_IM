@@ -235,7 +235,7 @@ class TestUtils(unittest.TestCase):
         corr_theory = npow.calculate_overf_correlation(amp, index, f0, dt,
                                                        n)[:n_corr]
         self.assertTrue(sp.allclose(sp.diff(corr), sp.diff(corr_theory),
-                                    rtol=0.1))
+                                    rtol=0.15))
 
 
 

@@ -15,6 +15,7 @@ import kiyopy.pickle_method
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
 import core.fitsGBT
+from map import dirty_map
 
 # XXX
 import matplotlib.pyplot as plt
@@ -28,7 +29,7 @@ params_init = {
                "output_root" : "./",
                "output_filename" : "noise_parameters.shelve",
                "scans" : (),
-               "bands" : (),
+               "IFs" : (),
                # What parameters to measure.
                "parameters" : ["channel_var", "mean_over_f"]
                }
@@ -91,7 +92,7 @@ class Measure(object) :
     def process_file(self, file_name, Pipe=None) :
         
         try :
-            band_inds = self.params["bands"]
+            band_inds = self.params["IFs"]
             parameter_names = self.params["parameters"]
             Reader = core.fitsGBT.Reader(file_name, feedback=self.feedback)
             n_bands = len(Reader.IF_set)
@@ -155,8 +156,16 @@ def measure_noise_parameters(Blocks, parameters):
             power_diag = this_pol_power.view()
             power_diag.shape = (n_f, n_chan**2)
             power_diag = power_diag[:,::n_chan + 1].real
+            window_function_diag = this_pol_window.view()
+            window_function_diag.shape = (n_time, n_chan**2)
+            window_function_diag = window_function_diag[:,::n_chan + 1]
             # Integral of the power spectrum from -BW to BW.
-            this_pol_parameters["channel_var"] = sp.mean(power_diag, 0) / dt
+            channel_var = sp.mean(power_diag, 0) / dt
+            # If a channel is completly masked Deweight it by giving a high
+            # variance
+            channel_var[sp.mean(window_function_diag, 0).real < 1.e-3] = \
+                        dirty_map.T_infinity
+            this_pol_parameters["channel_var"] = channel_var
         if "mean_over_f" in parameters:
             this_pol_parameters["mean_over_f"] = get_mean_over_f(
                     this_pol_power, this_pol_window, frequency)
@@ -173,6 +182,7 @@ def get_freq_modes_over_f(power_mat, window_function, frequency, n_modes):
     """Fines the most correlated frequency modes and fits thier noise."""
     
     n_f = len(frequency)
+    d_f = sp.mean(sp.diff(frequency))
     n_chan = power_mat.shape[-1]
     n_time = window_function.shape[0]
     # Initialize the dictionary that will hold all the parameters.
@@ -182,6 +192,9 @@ def get_freq_modes_over_f(power_mat, window_function, frequency, n_modes):
     low_f_mat = sp.mean(power_mat[:4*n_chan,:,:].real, 0)
     # Factor the matrix to get the most correlated modes.
     e, v = linalg.eigh(low_f_mat)
+    # Make sure they are sorted.
+    if not sp.alltrue(sp.diff(e)[-n_modes:] >= 0):
+        raise RuntimeError("Eigenvalues not sorted")
     # Power matrix striped of the biggest modes.
     reduced_power = sp.copy(power_mat)
     # Solve for the spectra of these modes.
@@ -191,15 +204,22 @@ def get_freq_modes_over_f(power_mat, window_function, frequency, n_modes):
         mode = v[:,-1 - ii]
         mode_power = sp.sum(mode * power_mat.real, -1)
         mode_power = sp.sum(mode * mode_power, -1)
-        mode_window = sp.sum(mode[:,None]**2 * window_function.real, 1)
+        mode_window = sp.sum(mode[:,None]**2 * window_function, 1)
         mode_window = sp.sum(mode_window * mode[None,:]**2, 1)
-        # Fit the spectrum.
-        p = fit_overf_const(mode_power, mode_window, frequency)
-        # Put all the parameters we measured into the output.
-        this_mode_params['amplitude'] = p[0]
-        this_mode_params['index'] = p[1]
-        this_mode_params['f_0'] = p[2]
-        this_mode_params['thermal'] = p[3]
+        # Protect against no data.
+        if sp.mean(mode_window).real < 1e-3:
+            this_mode_params['amplitude'] = 0.
+            this_mode_params['index'] = 0.
+            this_mode_params['f_0'] = 1.
+            this_mode_params['thermal'] = dirty_map.T_infinity
+        else:
+            # Fit the spectrum.
+            p = fit_overf_const(mode_power, mode_window, frequency)
+            # Put all the parameters we measured into the output.
+            this_mode_params['amplitude'] = p[0]
+            this_mode_params['index'] = p[1]
+            this_mode_params['f_0'] = p[2]
+            this_mode_params['thermal'] = p[3]
         this_mode_params['mode'] = mode
         output_params['over_f_mode_' + str(ii)] = this_mode_params
         # Remove the mode from the power matrix.
@@ -212,20 +232,27 @@ def get_freq_modes_over_f(power_mat, window_function, frequency, n_modes):
     auto_spec_mean.shape = (n_f, n_chan**2)
     auto_spec_mean = auto_spec_mean[:,::n_chan + 1].real
     auto_spec_mean = sp.mean(auto_spec_mean, -1)
-    auto_spec_window = window_function.view()
-    auto_spec_window.shape = (n_time, n_chan**2)
-    auto_spec_window = auto_spec_window[:,::n_chan + 1].real
-    auto_spec_window = sp.mean(auto_spec_window, -1)
-    auto_spec_params = fit_overf_const(auto_spec_mean, auto_spec_window,
-                                       frequency)
-    if (auto_spec_params[0] < 0 or auto_spec_params[3] < 0 or
-        auto_spec_params[1] > -0.2):
+    diag_window = window_function.view()
+    diag_window.shape = (n_time, n_chan**2)
+    diag_window = diag_window[:,::n_chan + 1]
+    auto_spec_window = sp.mean(diag_window, -1)
+    if sp.mean(auto_spec_window).real < 1.e-3:
         auto_cross_over = 0.
         auto_index = 0.
     else:
-        auto_index = auto_spec_params[1]
-        auto_cross_over = auto_spec_params[2] * (auto_spec_params[0]
-                                 / auto_spec_params[3])**(-1./auto_index)
+        auto_spec_params = fit_overf_const(auto_spec_mean, auto_spec_window,
+                                           frequency)
+        if (auto_spec_params[0] < 0 or auto_spec_params[3] < 0 or
+            auto_spec_params[1] > -0.2):
+            auto_cross_over = 0.
+            auto_index = 0.
+        else:
+            auto_index = auto_spec_params[1]
+            auto_cross_over = auto_spec_params[2] * (auto_spec_params[0]
+                                     / auto_spec_params[3])**(-1./auto_index)
+            if auto_cross_over < 2*d_f:
+                auto_index = 0.
+                auto_cross_over = 0.
     output_params['all_channel_index'] = auto_index
     output_params['all_channel_corner_f'] = auto_cross_over
     # Finally measure the thermal part of the noise in each channel.
@@ -236,6 +263,11 @@ def get_freq_modes_over_f(power_mat, window_function, frequency, n_modes):
     n_high_f = thermal.shape[0]
     thermal.shape = (n_high_f, n_chan**2)
     thermal = sp.mean(thermal[:,::n_chan + 1], 0)
+    thermal_norms = sp.mean(diag_window, 0).real
+    bad_inds = thermal_norms < 1.e-3
+    thermal_norms[bad_inds] = 1.
+    thermal /= thermal_norms
+    thermal[bad_inds] = dirty_map.T_infinity
     output_params['thermal'] = thermal
     return output_params
 
@@ -336,19 +368,34 @@ def get_mean_over_f(power_mat, window_function, frequency) :
     return output_params
 
 def fit_overf_const(power, window, freq):
-    """Fit $A*f**alpha + C$ to a 1D power spectrum."""
+    """Fit $A*f**alpha + C$ to a 1D power spectrum.
     
+    Power spectrum should be real and contain only positive fequencies.  Window
+    function should be complex and have both positive and negitive frequencies.
+    """
+    
+
     n_f = len(freq)
     f_0 = 1.0
     dt = 1./2./freq[-1]
     n_time = len(window)
+    # Minimum spectral index.
+    min_index = 0.1
     if n_f != n_time // 2 - 1:
         raise RuntimeError("Power spectrum and window sizes incompatible.")
+    # Make sure the window function is well behaved.
+    if ((not window[0].real > 0)
+        or (not abs(window[0].imag) < 1.e-6 * window[0].real)):
+        raise ValueError("Badly behaved window function.")
     # Spectrum function we will fit too.
+    # Instead of fitting for the index directly, we sue another parameter that
+    # does not admit index >= -0.2.  This avoids a degeneracy with thermal when
+    # index = 0.
+    # Also force the amplitudes to be positive by squaring.
     def model(params):
-        a = params[0]
-        i = params[1]
-        t = params[2]
+        a = params[0]**2
+        i = -(params[1]**2 + min_index)
+        t = params[2]**2
         spec = npow.overf_power_spectrum(a, i, f_0, dt, n_time)
         spec += t
         spec = npow.convolve_power(spec, window)
@@ -364,9 +411,9 @@ def fit_overf_const(power, window, freq):
     # First guess the thermal level by taking the mean at high frequencies.
     norm = n_time / sp.sum(window.real)
     #print norm
-    params[2] = sp.mean(power[-n_f//10:]) * norm
-    params[1] = -1
-    params[0] = sp.mean((power * freq)[:n_f//10]) * norm
+    params[2] = sp.sqrt(abs(sp.mean(power[-n_f//10:]) * norm))
+    params[1] = sp.sqrt(1 - min_index) # Corresponds to index = -1
+    params[0] = sp.sqrt(abs(sp.mean((power * freq)[:n_f//10]) * norm))
     old_weights = abs(power)
     # Iteratively fit then update the weights.
     for ii in range(4):
@@ -381,16 +428,20 @@ def fit_overf_const(power, window, freq):
         #plt.semilogx(freq, residuals(params))
         #print params
         ###
-        params, ier = sp.optimize.leastsq(residuals, params)
+        params, cov_x, info, mesg, ier = sp.optimize.leastsq(residuals, 
+                                                    params, full_output=True)
     #plt.figure()
     #plt.loglog(freq, power)
     #plt.loglog(freq, model(params))
     #print params
     #plt.show()
+    # Check that a solution was found.
+    #if ier not in (1, 2, 3, 4):
+    #    raise RuntimeError("Could not find a solution. " + repr(params))
     # Unpack results and return.
-    amp = params[0]
-    index = params[1]
-    thermal = params[2]
+    amp = params[0]**2
+    index = -(params[1]**2 + min_index)
+    thermal = params[2]**2
     return amp, index, f_0, thermal
 
 
