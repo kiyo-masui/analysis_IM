@@ -1,5 +1,7 @@
 import scipy
 import scipy.ndimage
+import scipy.fftpack
+import scipy.special
 import numpy as np
 import math
 
@@ -188,7 +190,7 @@ class RedshiftCorrelation(object):
         if self._vv_only:
             ps = self.ps_vv(k) * (b1 + mu2 * f1) * (b2 + mu2 * f2)
         else:
-            ps = (b1*b2*self.ps_dd(k) + 2*mu2 * self.ps_dv(k) * (f1*b2 + f2*b1) + mu2**2 * f1*f2 * self.ps_vv(k))
+            ps = (b1*b2*self.ps_dd(k) + mu2 * self.ps_dv(k) * (f1*b2 + f2*b1) + mu2**2 * f1*f2 * self.ps_vv(k))
         
 
         return D1*D2*pf1*pf2*ps
@@ -318,7 +320,7 @@ class RedshiftCorrelation(object):
         sigma = theta * self.cosmology.proper_distance(za)
         pi = self.cosmology.comoving_distance(z2) - self.cosmology.comoving_distance(z1)
 
-        return self.correlation_flatsky(pi, sigma, z1, z2)
+        return self.redshiftspace_correlation(pi, sigma, z1, z2)
 
 
 
@@ -491,6 +493,35 @@ class RedshiftCorrelation(object):
         return 1.0 * np.ones_like(z)
 
 
+
+    def mean(self, z):
+        r"""Mean value of the field at a given redshift.
+
+        Parameters
+        ----------
+        z : array_like
+            redshift to calculate at.
+
+        Returns
+        -------
+        mean : array_like
+            the mean value of the field at each redshift.
+        """
+        return np.ones_like(z) * 0.0
+
+    _sigma_v = 0.0
+    def sigma_v(self, z):
+        """Return the pairwise velocity dispersion at a given redshift.
+        """
+        return np.ones_like(z) * self._sigma_v
+
+
+    def velocity_damping(self, kpar):
+        """The velocity damping term for the non-linear power spectrum.
+        """
+        return (1.0 + (kpar * self.sigma_v(self.ps_redshift))**2)**-1
+
+
     def _realisation_dv(self, d, n):
         """Generate the density and line of sight velocity fields in a
         3d cube.
@@ -502,7 +533,7 @@ class RedshiftCorrelation(object):
         def psv(karray):
             """Assume k0 is line of sight"""
             k = (karray**2).sum(axis=3)**0.5
-            return self.ps_vv(k)
+            return self.ps_vv(k) * self.velocity_damping(karray[..., 0])
 
         # Generate an underlying random field realisation of the
         # matter distribution.
@@ -527,21 +558,6 @@ class RedshiftCorrelation(object):
         return (df, vf) #, rfv)
 
 
-    def mean(self, z):
-        r"""Mean value of the field at a given redshift.
-
-        Parameters
-        ----------
-        z : array_like
-            redshift to calculate at.
-
-        Returns
-        -------
-        mean : array_like
-            the mean value of the field at each redshift.
-        """
-        return np.ones_like(z) * 0.0
-    
 
     def realisation(self, z1, z2, thetax, thetay, numz, numx, numy, zspace = True):
         r"""Simulate a redshift-space volume.
@@ -582,7 +598,7 @@ class RedshiftCorrelation(object):
         # Make cube pixelisation finer, such that angular cube with
         # have sufficient resolution on the closest face.
         d = np.array([c2-c1, thetax * d2 * units.degree, thetay * d2 * units.degree])
-        n = np.array([numz, int(c2 / c1 * numx), int(c2 / c1 * numy)])
+        n = np.array([numz, int(d2 / d1 * numx), int(d2 / d1 * numy)])
 
         # Enlarge cube size by 1 in each dimension, so raytraced cube
         # sits exactly within the gridded points.
@@ -701,7 +717,7 @@ class RedshiftCorrelation(object):
             def _integrator(f, a, b):
                 #return quad(f, a, b, limit=1000, epsrel = 1e-7, full_output=(0 if _feedback else 1))[0]
                 #return Integrate_Patterson(f, a, b, eps = 1e-7, abs=1e-10)[0]
-                return chebyshev_vec(f, a, b, epsrel = 1e-7, epsabs=1e-10)[0]
+                return integrate.chebyshev(f, a, b, epsrel = 1e-7, epsabs=1e-10)[0]
                 #return romberg(f, a, b, eps = 1e-6)
             #full_output=(0 if _feedback else 1))[0]
             mink = 1e-2 * l / (x1 + x2)
@@ -784,14 +800,15 @@ class RedshiftCorrelation(object):
                 return _int_lin(kp) * kp
 
             def _integrator(f, a, b):
-                #return quad(f, a, b, limit=1000, epsrel = 1e-7, full_output=(0 if _feedback else 1))[0]
+                #return quad(f, a, b, limit=1000, epsrel = 1e-10, full_output=(0 if _feedback else 1))[0]
                 #return Integrate_Patterson(f, a, b, eps = 1e-7, abs=1e-10)[0]
-                i = chebyshev_vec(f, a, b, epsrel = 1e-12, epsabs=1e-15)
+                i = integrate.chebyshev(f, a, b, epsrel = 1e-12, epsabs=1e-16)
+                #i = integrate.romberg(f, a, b, epsrel = 1e-15)
                 #print i
-                return i[0]
+                return i
                 #return romberg(f, a, b, eps = 1e-8)
 
-            i1 = _integrator(_int_lin, 1e-3, 5e1)
+            i1 = _integrator(_int_lin, 0.0, 2e1)
 
             return i1
             
@@ -807,6 +824,87 @@ class RedshiftCorrelation(object):
             cla.flat = [ _ps_single(l, z1, z2) for (l, z1, z2) in bobj ]
 
             return cla
+
+
+    _aps_cache = False
+
+    def save_fft_cache(self, fname):
+        if not self._aps_cache:
+            self.angular_powerspectrum_fft(np.array([100]), np.array([1.0]), np.array([1.0]))
+
+        np.savez(fname, dd=self._aps_dd, dv=self._aps_dv, vv=self._aps_vv)
+
+
+    def load_fft_cache(self, fname):
+
+        a = np.load(fname)
+
+        self._aps_dd = a['dd']
+        self._aps_dv = a['dv']
+        self._aps_vv = a['vv']
+
+        self._aps_cache = True
+        
+
+    def angular_powerspectrum_fft(self, la, za1, za2):
+
+        kperpmin = 1e-4
+        kperpmax = 40.0
+        nkperp = 500
+        kparmax = 40.0
+        nkpar = 16384
+
+        if not self._aps_cache:
+            
+            kperp = np.logspace(np.log10(kperpmin), np.log10(kperpmax), nkperp)[:,np.newaxis]
+            
+            #kpar = (np.fft.fftfreq(nkpar) * 2 * nkpar)[np.newaxis,:]
+            kpar = np.linspace(0, kparmax, nkpar)[np.newaxis,:]
+            
+            k = (kpar**2 + kperp**2)**0.5
+            mu2 = kpar**2 / k**2
+            
+            self._dd = self.ps_vv(k)
+            self._dv = self._dd * mu2
+            self._vv = self._dd * mu2**2
+            
+            self._aps_dd = scipy.fftpack.dct(self._dd, type=1) * kparmax / (2*nkpar)
+            self._aps_dv = scipy.fftpack.dct(self._dv, type=1) * kparmax / (2*nkpar)
+            self._aps_vv = scipy.fftpack.dct(self._vv, type=1) * kparmax / (2*nkpar)
+
+            self._aps_cache = True
+
+        xa1 = self.cosmology.comoving_distance(za1)
+        xa2 = self.cosmology.comoving_distance(za2)
+            
+        b1 = self.bias_z(za1)
+        b2 = self.bias_z(za2)
+        f1 = self.growth_rate(za1)
+        f2 = self.growth_rate(za2)
+        D1 = self.growth_factor(za1) / self.growth_factor(self.ps_redshift)
+        D2 = self.growth_factor(za2) / self.growth_factor(self.ps_redshift)
+        pf1 = self.prefactor(za1)
+        pf2 = self.prefactor(za2)
+        
+        xc = 0.5 * (xa1 + xa2)
+
+        kperp = la / xc
+        
+        rpar = np.abs(xa2 - xa1)
+
+        coords = np.empty((2,) + kperp.shape)
+        coords[0,...] = np.log10(kperp / kperpmin) / np.log10(kperpmax / kperpmin) * (nkperp-1)
+        coords[1,...] = rpar / (math.pi / kparmax)
+
+        psdd = scipy.ndimage.map_coordinates(self._aps_dd, coords, order=2)
+        psdv = scipy.ndimage.map_coordinates(self._aps_dv, coords, order=2)
+        psvv = scipy.ndimage.map_coordinates(self._aps_vv, coords, order=2)
+
+        return D1*D2*pf1*pf2*(b1*b2*psdd + (f1*b2 + f2*b1)*psdv + f1*f2*psvv) / (xc**2 * np.pi)
+
+            
+
+    
 
 
 def inverse_approx(f, x1, x2):
@@ -870,7 +968,7 @@ def _integrate(r, l, psfunc):
         #return quad(f, a, b, args=args, limit=1000, epsrel = 1e-7, 
         #            full_output=(0 if _feedback else 1))[0]
         #return Integrate_Patterson(f, a, b, eps = 1e-7, abs=1e-10, args=args)[0]
-        return chebyshev_vec(f, a, b, epsrel = 1e-7, epsabs=1e-9, args=args)[0]
+        return integrate.chebyshev(f, a, b, epsrel = 1e-7, epsabs=1e-9, args=args)
     mink = 1e-4
     maxk = 1e3
     cutk = 5e1

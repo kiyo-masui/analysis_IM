@@ -77,6 +77,8 @@ class ReFlag(base_single.BaseSingle) :
         if self.feedback > 1 :
             print ''
         # Finally write the data back to file.
+        utils.mkparents(output_fname)
+        utils.mkparents(sub_output_fname)
         Writer.write(output_fname)
         SubWriter.write(sub_output_fname)
 

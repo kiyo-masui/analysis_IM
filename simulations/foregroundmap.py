@@ -7,7 +7,7 @@ import gaussianfield
 from maps import *
 
 
-def matrix_root_manynull(mat, threshold = 1e-16):
+def matrix_root_manynull(mat, threshold = 1e-16, truncate = True):
     """Square root a matrix.
 
     An inefficient alternative to the Cholesky decomposition for a
@@ -23,22 +23,27 @@ def matrix_root_manynull(mat, threshold = 1e-16):
     threshold : scalar, optional
         Set any eigenvalues a factor `threshold` smaller than the
         largest eigenvalue to zero.
+    truncate : boolean, optional
+        If True (default), truncate the matrix root, to the number of positive
+        eigenvalues.
 
     Returns
     =======
     root : ndarray
         The decomposed matrix. This is truncated to the number of
-        non-zero eigen values.
+        non-zero eigen values (if truncate is set).
     num_pos : integer
-        The number of positive eigenvalues.
+            The number of positive eigenvalues (returned only if truncate is set).
     """
     evals, evecs = la.eigh(mat)
 
     evals[np.where(evals < evals.max() * threshold)] = 0.0
     num_pos = len(np.flatnonzero(evals))
-
-    return (evecs[:,-num_pos:] * evals[np.newaxis,-num_pos:]**0.5), num_pos
-
+    
+    if truncate:
+        return (evecs[:,-num_pos:] * evals[np.newaxis,-num_pos:]**0.5), num_pos
+    else:
+        return (evecs * evals[np.newaxis,:]**0.5)
     
 
 class ForegroundMap(Map3d):
