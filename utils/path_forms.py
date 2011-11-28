@@ -92,6 +92,9 @@ class PathForms(object):
         self.groups[group_key].append(key)
         val['file'] = self.fetch_path(parent) + filename
 
+        val['group_key'] = group_key
+        val['parent'] = parent
+
         if notes is not None:
             val['notes'] = notes
 
@@ -114,6 +117,9 @@ class PathForms(object):
         val = {'desc': desc}
         self.groups[group_key].append(key)
         fileroot = self.fetch_path(parent)
+
+        val['group_key'] = group_key
+        val['parent'] = parent
 
         if notes is not None:
             val['notes'] = notes
@@ -146,6 +152,9 @@ class PathForms(object):
         val = {'desc': desc}
         self.groups[group_key].append(key)
         fileroot = self.fetch_path(parent)
+
+        val['group_key'] = group_key
+        val['parent'] = parent
 
         if notes is not None:
             val['notes'] = notes
@@ -184,7 +193,8 @@ class PathForms(object):
 
     def register_fourway_list(self, key, group_key, parent, desc,
                  notes=None, status=None, paramfile="params.ini", tag="",
-                 modenum=None, register_modes=True, register_pickles=False):
+                 modenum=None, register_modes=True, register_pickles=False,
+                 register_corrsvd=True):
         r"""make a database set for map pair cleaning runs
         a typical run and key pairs might be:
         X_with_Y;map       sec_X_cleaned_clean_map_I_with_Y_#modes.npy
@@ -199,6 +209,9 @@ class PathForms(object):
         val = {'desc': desc}
         self.groups[group_key].append(key)
         fileroot = self.fetch_path(parent)
+
+        val['group_key'] = group_key
+        val['parent'] = parent
 
         if notes is not None:
             val['notes'] = notes
@@ -237,16 +250,18 @@ class PathForms(object):
                 filelist[pairmodes] = "%smodes_clean_map_I%s" % \
                                       (prefix, suffix)
 
-        for (left, right) in corrpairs:
-            pairname = "%s_with_%s" % (left, right)
-            paircorr = pairname + ";fore_corr"
-            pair_svd = pairname + ";SVD"
-            listindex.extend([paircorr, pair_svd])
-            filelist[paircorr] = "%sforeground_corr_pair_%s%s_with_%s.pkl" % \
-                                  (fileroot, tag, left, right)
+        if register_corrsvd:
+            for (left, right) in corrpairs:
+                pairname = "%s_with_%s" % (left, right)
+                paircorr = pairname + ";fore_corr"
+                pair_svd = pairname + ";SVD"
+                listindex.extend([paircorr, pair_svd])
+                filelist[paircorr] = \
+                        "%sforeground_corr_pair_%s%s_with_%s.pkl" % \
+                        (fileroot, tag, left, right)
 
-            filelist[pair_svd] = "%sSVD_pair_%s%s_with_%s.pkl" % \
-                                  (fileroot, tag, left, right)
+                filelist[pair_svd] = "%sSVD_pair_%s%s_with_%s.pkl" % \
+                                      (fileroot, tag, left, right)
 
         if register_pickles:
             listindex.extend(['pkl_pair0', 'pkl_pair1', 'pkl_pair2',

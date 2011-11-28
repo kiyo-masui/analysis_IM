@@ -117,7 +117,8 @@ def make_cube_movie(cubename, colorbar_title, frame_dir,
     #argument = frame_dir + tag + '.%03d.png'
     argument = frame_dir + tag + '.%03d.jpeg'
     outfile = outputdir + tag + filetag_suffix + orientation + '.mp4'
-    subprocess.check_call(('ffmpeg', '-r', '10', '-y', '-i',
+    subprocess.check_call(('ffmpeg', '-vb', '2500000', '-r', '10',
+                           '-y', '-i',
                             argument, outfile))
 
     for fileindex in range(len(runlist)):

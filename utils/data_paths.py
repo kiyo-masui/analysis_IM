@@ -397,6 +397,12 @@ class DataPath(object):
         retstring = "### `%s`\n" % dbkey
         retstring += "* __Description__: %s\n" % dbentry['desc']
 
+        if 'parent' in dbentry:
+            retstring += "* __Parent path key__: `%s`\n" % dbentry['parent']
+
+        if 'group_key' in dbentry:
+            retstring += "* __Group key__: `%s`\n" % dbentry['group_key']
+
         if 'status' in dbentry:
             retstring += "* __Status__: %s\n" % dbentry['status']
 

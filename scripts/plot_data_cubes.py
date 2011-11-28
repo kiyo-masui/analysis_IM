@@ -14,19 +14,24 @@ def plot_gbt_mapset(outputdir="/cita/d/www/home/eswitzer/movies/"):
     #                 outputdir=outputdir, skip_noise=True)
     #pc.plot_gbt_maps('GBT_15hr_map_proposal', transverse=False,
     #                 outputdir=outputdir, skip_noise=True)
-    #pc.plot_gbt_maps('GBT_15hr_map', outputdir=outputdir, transverse=True)
-    pc.plot_gbt_maps('GBT_15hr_map', outputdir=outputdir, transverse=False)
-    #pc.plot_gbt_maps('GBT_22hr_map', outputdir=outputdir, transverse=True)
-    pc.plot_gbt_maps('GBT_22hr_map', outputdir=outputdir, transverse=False)
-    #pc.plot_gbt_maps('GBT_1hr_map', outputdir=outputdir, transverse=True)
-    #pc.plot_gbt_maps('GBT_1hr_map', outputdir=outputdir, transverse=False)
+    ##pc.plot_gbt_maps('GBT_15hr_map', outputdir=outputdir, transverse=True)
+    #pc.plot_gbt_maps('GBT_15hr_map', outputdir=outputdir, transverse=False)
+    ##pc.plot_gbt_maps('GBT_22hr_map', outputdir=outputdir, transverse=True)
+    #pc.plot_gbt_maps('GBT_22hr_map', outputdir=outputdir, transverse=False)
+    ##pc.plot_gbt_maps('GBT_1hr_map', outputdir=outputdir, transverse=True)
+    pc.plot_gbt_maps('GBT_1hr_map', outputdir=outputdir, transverse=False)
 
 
 def plot_gbt_simset(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/"):
     datapath_db = data_paths.DataPath()
 
-    # sim_15hr_beam
     keyname = "sim_%s" % fieldname
+    filename = datapath_db.fetch(keyname, pick='1')
+    pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
+                        sigmarange=3., outputdir=outputdir, multiplier=1000.,
+                        transverse=False, filetag_suffix="_"+fieldname)
+
+    keyname = "sim_%s_beam" % fieldname
     filename = datapath_db.fetch(keyname, pick='1')
     pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
                         sigmarange=3., outputdir=outputdir, multiplier=1000.,
@@ -71,18 +76,25 @@ def plot_gbt_comb_modeset(fieldname, outputdir="/cita/d/www/home/eswitzer/movies
     datapath_db = data_paths.DataPath()
 
     for modenum in range(0, 55, 5):
-        keyname = "GBT_%s_combined_cleaned_%dmode_map" % (fieldname, modenum)
-        filename = datapath_db.fetch(keyname)
-        pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
-                        sigmarange=2.5, outputdir=outputdir, multiplier=1000.,
-                        transverse=False)
+        #keyname = "GBT_%s_combined_cleaned_%dmode_map" % (fieldname, modenum)
+        #filename = datapath_db.fetch(keyname)
+        #pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
+        #                sigmarange=2.5, outputdir=outputdir, multiplier=1000.,
+        #                transverse=False)
 
-        keyname = "GBT_%s_combined_cleaned_%dmode_weight" % \
+        keyname = "GBT_%s_combined_cleaned_%dmode_product" % \
                   (fieldname, modenum)
         filename = datapath_db.fetch(keyname)
-        pc.make_cube_movie(filename, "inverse variance weight", pc.cube_frame_dir,
-                        sigmarange=2.5, outputdir=outputdir, multiplier=1.,
+        pc.make_cube_movie(filename, "Cleaned map times weights", pc.cube_frame_dir,
+                        sigmarange=-1, outputdir=outputdir, multiplier=1000.,
                         transverse=False)
+
+        #keyname = "GBT_%s_combined_cleaned_%dmode_weight" % \
+        #          (fieldname, modenum)
+        #filename = datapath_db.fetch(keyname)
+        #pc.make_cube_movie(filename, "inverse variance weight", pc.cube_frame_dir,
+        #                sigmarange=2.5, outputdir=outputdir, multiplier=1.,
+        #                transverse=False)
 
 
 def plot_sim_scheme(outputdir="/cita/d/www/home/eswitzer/movies/"):
@@ -93,9 +105,11 @@ def plot_sim_scheme(outputdir="/cita/d/www/home/eswitzer/movies/"):
                     outputdir=outputdir, transverse=False)
 
 if __name__ == "__main__":
-    #plot_gbt_comb_modeset('15hr')
-    #plot_gbt_comb_modeset('22hr')
-    plot_gbt_simset('15hr')
     #plot_gbt_mapset()
+    plot_gbt_comb_modeset('15hr')
+    #plot_gbt_comb_modeset('22hr')
+    #plot_gbt_simset('15hr')
+    #plot_gbt_simset('22hr')
+
     #plot_gbt_diff_tests()
     #plot_sim_scheme()

@@ -109,7 +109,8 @@ dbcl.register_maprun(key, group_key, parent, field_tag, desc,
 key = 'GBT_1hr_map'
 parent = 'GBT_maps_Tabitha'
 desc = "1hr maps with Oct. 10 2011 calibration"
-field_tag = '1hr_none'
+#field_tag = '1hr_none'
+field_tag = '1hr_41-16'
 dbcl.register_maprun(key, group_key, parent, field_tag, desc,
                         notes=tcv_cal_note1, status=status)
 
@@ -127,16 +128,15 @@ dbcl.register_maprun(key, group_key, parent, field_tag, desc,
 #-----------------------------------------------------------------------------
 # paths to cleaned maps
 #-----------------------------------------------------------------------------
-pathname = dbcl.fetch_path('GBTDATA_CALINLIV') + 'wiggleZ/corr/test/'
-notes = 'made for the Aug. 1 proposal (Liviu)'
-dbcl.register_path('GBT_15hr_Liviu', pathname,
-                    "15hr maps with 15 modes removed", notes=notes)
+for fielditem in field_list:
+    pathname = '%s/GBT/cleaned_maps/%s/' % \
+                (dbcl.fetch_path('GBTDATA_ESWITZER'), fielditem)
+    notes = 'active development stream'
+    key = 'GBT_cleaned_%s_maps_Eric' % fielditem
+    desc = 'ERS cleaned %s maps' % fielditem
+    dbcl.register_path(key, pathname, desc, notes=notes)
 
-pathname = dbcl.fetch_path('GBTDATA_ESWITZER') + 'GBT/cleaned_maps/15hr/'
-notes = 'active development stream'
-dbcl.register_path('GBT_cleaned_15hr_maps_Eric', pathname,
-                    "ERS cleaned 15hr maps", notes=notes)
-
+# additional trials
 pathname = dbcl.fetch_path('GBTDATA_ESWITZER') + \
            'GBT/cleaned_maps/15hr_nomeansub/'
 notes = 'active development stream'
@@ -144,6 +144,11 @@ desc = 'cleaned 15hr maps without mean subtraction'
 dbcl.register_path('GBT_cleaned_nomeansub_15hr_maps_Eric', pathname,
                     desc, notes=notes)
 
+# proposal era
+pathname = dbcl.fetch_path('GBTDATA_CALINLIV') + 'wiggleZ/corr/test/'
+notes = 'made for the Aug. 1 proposal (Liviu)'
+dbcl.register_path('GBT_15hr_Liviu', pathname,
+                    "15hr maps with 15 modes removed", notes=notes)
 
 #-----------------------------------------------------------------------------
 # register the cleaned maps
@@ -153,21 +158,24 @@ def mode_clean_run(source_key, fieldname, mode_num, username,
     key = '%s_cleaned_%s%smode' % (source_key, tag, mode_num)
     group_key = 'GBTcleaned'
     parent = 'GBT_cleaned_%s_maps_%s' % (fieldname, username)
-    desc = "%s maps with %s modes removed" % (source_key, mode_num)
+    desc = "`%s` maps with %s modes removed" % (source_key, mode_num)
     dbcl.register_fourway_list(key, group_key, parent, desc,
                  notes=None, status=status, paramfile="params.ini", tag="",
                  modenum=mode_num, register_modes=True,
                  register_pickles=False)
 
-fieldname = '15hr'
-source_key = 'GBT_15hr_map'
-status = 'active development'
-for mode_num in range(0, 55, 5):
-    mode_clean_run(source_key, fieldname, mode_num, 'Eric',
-                   status=status, notes=notes)
+
+for fieldname in field_list:
+    source_key = 'GBT_%s_map' % fieldname
+    status = 'active development'
+    for mode_num in range(0, 55, 5):
+        mode_clean_run(source_key, fieldname, mode_num, 'Eric',
+                       status=status, notes=notes)
 # nomeansub
 
+# proposal era
 key = 'GBT_15hr_cleaned_Liviu_15mode'
+group_key = 'GBTcleaned'
 parent = 'GBT_15hr_Liviu'
 status = 'frozen'
 notes = 'made for the Aug. 1 proposal (Liviu)'
@@ -175,8 +183,52 @@ desc = '15hr maps with 15 modes removed'
 tag = "15hr_41-73_"
 dbcl.register_fourway_list(key, group_key, parent, desc,
                  notes=notes, status=status, paramfile=None, tag=tag,
-                 register_pickles=False, register_modes=False, modenum=None)
+                 register_pickles=False, register_modes=False, modenum=None,
+                 register_corrsvd=False)
 
+
+#-----------------------------------------------------------------------------
+# paths to combined maps
+#-----------------------------------------------------------------------------
+for fielditem in field_list:
+    pathname = '%s/GBT/combined_maps/%s/' % \
+                (dbcl.fetch_path('GBTDATA_ESWITZER'), fielditem)
+    notes = 'active development stream'
+    key = 'GBT_combined_%s_maps_Eric' % fielditem
+    desc = 'ERS combined %s maps' % fielditem
+    dbcl.register_path(key, pathname, desc, notes=notes)
+
+#-----------------------------------------------------------------------------
+# register the combined datasets
+#-----------------------------------------------------------------------------
+def register_moderemoved_run(field, num_modes):
+    key = 'GBT_%s_combined_cleaned_%smode_map' % (field, modenum)
+    group_key = 'GBTcleaned'
+    parent = 'GBT_combined_%s_maps_Eric' % field
+    filename = 'GBT_%s_map_cleaned_%smode_signal.npy' % (field, modenum)
+    desc = '%s field data with %d modes removed, combined' % (field, modenum)
+    notes = 'active development stream'
+    status = "in development"
+    dbcl.register_file(key, group_key, parent, filename, desc,
+                       notes=notes, status=status)
+
+    key = 'GBT_%s_combined_cleaned_%smode_product' % (field, modenum)
+    filename = 'GBT_%s_map_cleaned_%smode_product.npy' % (field, modenum)
+    desc = 'map times weights for %s field data with %d modes removed, combined' % \
+           (field, modenum)
+    dbcl.register_file(key, group_key, parent, filename, desc,
+                       notes=notes, status=status)
+
+    key = 'GBT_%s_combined_cleaned_%smode_weight' % (field, modenum)
+    filename = 'GBT_%s_map_cleaned_%smode_weight.npy' % (field, modenum)
+    desc = 'weights for %s field data with %d modes removed, combined' % \
+           (field, modenum)
+    dbcl.register_file(key, group_key, parent, filename, desc,
+                       notes=notes, status=status)
+
+for fielditem in field_list:
+    for modenum in range(0, 55, 5):
+        register_moderemoved_run(fielditem, modenum)
 
 #-----------------------------------------------------------------------------
 # paths to WiggleZ data

@@ -23,7 +23,7 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
     littleh = (cosmology.H0 / 100.0)
     comoving_distance = cosmology.comoving_distance(z_here) / littleh
     proper_distance = cosmology.proper_distance(z_here) / littleh
-    angular_scale = 10. / units.degree / proper_distance
+    angular_scale = 20. / units.degree / proper_distance
 
     fulltitle = "%s (freq = %3.1f MHz, z = %3.3f, Dc=%3.0f cMpc)" % \
                 (title, freq, z_here, comoving_distance)
@@ -75,10 +75,10 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
                   (5, 5. * aspect * 1.1))
     gplfile.write('set output "%s"\n' % outplot_file.name)
 
-    gplfile.write('set obj 10 circle at graph 0.9,.1 size %g front\n' % \
+    gplfile.write('set obj 10 circle at graph 0.9,.15 size %g front\n' % \
                     (fwhm / 2.))
     gplfile.write('set obj 10 lw 5 fill empty border rgb "purple"\n')
-    gplfile.write('set obj 11 rect at graph 0.9,.1 size %g, %g front\n' % \
+    gplfile.write('set obj 11 rect at graph 0.9,.15 size %g, %g front\n' % \
                    (angular_scale, angular_scale))
     gplfile.write('set obj 11 lw 3 fill empty border rgb "black"\n')
     #gplfile.write('set obj 10 fc rgb "blue"\n')
