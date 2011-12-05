@@ -182,3 +182,18 @@ class Corr21cm(RedshiftCorrelation, Map3d):
                                 refinement=refinement, zspace = False) * 0.001
 
         return cube
+
+    def get_kiyo_field_physical(self, refinement=1, density_only=False,
+                                no_mean=False, no_evolution=False):
+        r"""Fetch a realisation of the 21cm signal (NOTE: in K)
+        """
+        z1 = units.nu21 / self.nu_upper - 1.0
+        z2 = units.nu21 / self.nu_lower - 1.0
+
+        (cube, rsf) = self.realisation(z1, z2, self.x_width, self.y_width,
+                                self.nu_num, self.x_num, self.y_num,
+                                refinement=refinement, zspace = False,
+                                physical=True, density_only=density_only,
+                                no_mean=no_mean, no_evolution=no_evolution)
+
+        return (cube * 0.001, rsf * 0.001)

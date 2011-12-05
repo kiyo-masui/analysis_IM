@@ -562,9 +562,9 @@ class RedshiftCorrelation(object):
         return (df, vf) #, rfv)
 
 
-
     def realisation(self, z1, z2, thetax, thetay, numz, numx, numy,
-                    zspace=True, refinement=1):
+                    zspace=True, refinement=1, physical=False,
+                    density_only=False, no_mean=False, no_evolution=False):
         r"""Simulate a redshift-space volume.
 
         Generates a 3D (angle-angle-redshift) volume from the given
@@ -587,6 +587,12 @@ class RedshiftCorrelation(object):
             If True (default) redshift bins are equally spaced in
             redshift. Otherwise space equally in the scale factor
             (useful for generating an equal range in frequency).
+        density_only: boolean
+            no velocity contribution
+        no_mean: boolean
+            do not add the mean temperature
+        no_evolution: boolean
+            do not let b(z), D(z) etc. evolve: take their mean
 
         Returns
         -------
@@ -612,10 +618,10 @@ class RedshiftCorrelation(object):
         # now multiply by scaling for a finer sub-grid
         n = refinement*n
 
-        print "Generating cube: %f x %f x %f Mpc^3" % (d[0], d[1], d[2])
+        print "Generating cube: %f x %f x %f (%d, %d, %d) (h^-1 cMpc)^3" % \
+              (d[0], d[1], d[2], n[0], n[1], n[2])
 
         cube = self._realisation_dv(d, n)
-
 
         # Construct an array of the redshifts on each slice of the cube.
         comoving_inv = inverse_approx(self.cosmology.comoving_distance, z1, z2)
@@ -630,11 +636,22 @@ class RedshiftCorrelation(object):
         pz = self.prefactor(za)
 
         # Construct the observable and velocity fields.
-        df = cube[0] * (Dz * pz * bz)[:,np.newaxis,np.newaxis]
-        vf = cube[1] * (Dz * pz * fz)[:,np.newaxis,np.newaxis]
+        if not no_evolution:
+            df = cube[0] * (Dz * pz * bz)[:,np.newaxis,np.newaxis]
+            vf = cube[1] * (Dz * pz * fz)[:,np.newaxis,np.newaxis]
+        else:
+            gb = np.mean(Dz * pz * bz)
+            gf = np.mean(Dz * pz * fz)
+            df = cube[0] * gb
+            vf = cube[1] * gf
 
         # Construct the redshift space cube.
-        rsf = (df + vf) + mz[:,np.newaxis,np.newaxis]
+        rsf = df
+        if not density_only:
+            rsf += vf
+
+        if not no_mean:
+            rsf += mz[:,np.newaxis,np.newaxis]
 
         # Find the distances that correspond to a regular redshift
         # spacing (or regular spacing in a).
@@ -666,8 +683,10 @@ class RedshiftCorrelation(object):
             #if(zi > numz - 2):
             acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=2)
 
-
-        return acube #, rsf
+        if physical:
+            return acube, rsf
+        else:
+            return acube
 
 
     def angular_powerspectrum(self, la, za1, za2):

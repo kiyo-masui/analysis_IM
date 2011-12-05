@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 
 def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
-                        aspect, title, cbar_title, freq):
+                        aspect, title, cbar_title, freq, index):
     r"""plot a single map slice"""
 
     # set up the size calc
@@ -25,8 +25,8 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
     proper_distance = cosmology.proper_distance(z_here) / littleh
     angular_scale = 20. / units.degree / proper_distance
 
-    fulltitle = "%s (freq = %3.1f MHz, z = %3.3f, Dc=%3.0f cMpc)" % \
-                (title, freq, z_here, comoving_distance)
+    fulltitle = "%s (i = %d, freq = %3.1f MHz, z = %3.3f, Dc=%3.0f cMpc)" % \
+                (title, index, freq, z_here, comoving_distance)
     print fulltitle, repr(cube_slice.shape)
 
     beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792,

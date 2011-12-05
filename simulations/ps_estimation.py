@@ -9,10 +9,10 @@ def make_nd_at_ind(arr, nd, ind):
 
 
 def blackman_nd(shape):
-    
+
     nd = len(shape)
     b = np.ones(shape)
-    
+
     for i, l in enumerate(shape):
         b *= make_nd_at_ind(np.blackman(l), nd, i)
 
@@ -21,10 +21,10 @@ def blackman_nd(shape):
 
 def ps(arr, width = None, bw = 3, kmodes = True, window = True):
     """Calculate the radially average power spectrum of an nD fields.
-    
+
     The array must have the same length (physically
     and in pixel number) along each axis.
-    
+
     Parameters
     ----------
     arr : np.ndarray
@@ -48,16 +48,16 @@ def ps(arr, width = None, bw = 3, kmodes = True, window = True):
     kvals: np.ndarray
         1D arrays containing the lower bounds of the bins in k.
     """
-    
+
     return crossps(arr, None, width=width, bw=bw, kmodes=kmodes, window=window)
 
 
 def crossps(arr1, arr2, width = None, bw = 3, kmodes = True, window = True):
     """Calculate the radially average cross-power spectrum of a two nD fields.
-    
+
     The arrays must be identical and have the same length (physically
     and in pixel number) along each axis.
-    
+
     Parameters
     ----------
     arr1, arr2 : np.ndarray
@@ -82,7 +82,7 @@ def crossps(arr1, arr2, width = None, bw = 3, kmodes = True, window = True):
     kvals: np.ndarray
         1D arrays containing the lower bounds of the bins in k.
     """
-    
+
     if window:
         w = blackman_nd(arr1.shape)
 
@@ -111,12 +111,11 @@ def crossps(arr1, arr2, width = None, bw = 3, kmodes = True, window = True):
         return ps, kv
     else:
         return ps
-    
 
 
 def ps_azimuth(img, width = None, bwperp = 3, bwpar = 3, kmodes = True, window = True):
     r"""Calculate the 2-D azimuthally averaged power spectrum of a 3D field.
-    
+
     The azimuthal axis is assumed to be axis 0. Generally, this is useful when
     looking at redshift distorted fields, as it gives P(kpar, kperp).
 
@@ -145,14 +144,14 @@ def ps_azimuth(img, width = None, bwperp = 3, bwpar = 3, kmodes = True, window =
         1D arrays containing the lower bounds of the bins in each
         direction,
     """
-    
+
     return (crossps_azimuth(img, None, width = width, bwperp = bwperp,
                            bwpar = bwpar, kmodes = kmodes, window = window))
 
 
 def crossps_azimuth(img1, img2, width = None, bwperp = 3, bwpar = 3, kmodes = True, window = True):
     """Calculate the 2-D azimuthally averaged cross-power spectrum of a two 3D fields.
-    
+
     The azimuthal axis is assumed to be axis 0. Generally, this is useful when
     looking at redshift distorted fields, as it gives P(kpar, kperp).
 
@@ -182,7 +181,7 @@ def crossps_azimuth(img1, img2, width = None, bwperp = 3, bwpar = 3, kmodes = Tr
         1D arrays containing the lower bounds of the bins in each
         direction,
     """
-    
+
     if window:
         w0 = np.blackman(img1.shape[0])[:,np.newaxis,np.newaxis]
         w1 = np.blackman(img1.shape[1])[np.newaxis,:,np.newaxis]
@@ -230,8 +229,3 @@ def crossps_azimuth(img1, img2, width = None, bwperp = 3, bwpar = 3, kmodes = Tr
         return tp, kpar, kperp
     else:
         return tp
-    
-
-    
-
-    

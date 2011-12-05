@@ -19,7 +19,8 @@ def gnuplot_radec_single(plotitem):
     outfilename = fileprefix + str('.%03d' % index) + '.jpeg'
 
     plot_slice.gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis,
-                            vaxis, xylabels, aspect, title, cbar_title, freq)
+                            vaxis, xylabels, aspect, title, cbar_title,
+                            freq, index)
 
 
 def make_cube_movie(cubename, colorbar_title, frame_dir,

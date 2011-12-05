@@ -30,11 +30,12 @@ def realize_simulation(template_map, streaming=True, seed=None, refinement=1):
     if seed is not None:
         random.seed(seed)
 
-    return simobj.get_kiyo_field(refinement=refinement)
+    return simobj.get_kiyo_field_physical(refinement=refinement)
 
 
-def make_simulation_set(template_file, outfile_raw, outfile_beam,
-                        outfile_beam_plus_data, verbose=True, streaming=True):
+def make_simulation_set(template_file, outfile_physical,
+                        outfile_raw, outfile_beam, outfile_beam_plus_data,
+                        verbose=True, streaming=True):
     """Produce simulated GBT data volumes of three types:
     (from dimensions of a given template file)
     1. the raw simulation
@@ -46,11 +47,15 @@ def make_simulation_set(template_file, outfile_raw, outfile_beam,
     #gbtsim = realize_simulation(freq_axis, ra_axis, dec_axis,
     #                            streaming=streaming, verbose=verbose)
     template_map = algebra.make_vect(algebra.load(template_file))
-    gbtsim = realize_simulation(template_map, streaming=streaming)
+    (gbtsim, gbtphys) = realize_simulation(template_map, streaming=streaming)
+
+    phys_map = algebra.make_vect(gbtsim, axis_names=('freq', 'ra', 'dec'))
+    phys_map.copy_axis_info(template_map)
 
     sim_map = algebra.make_vect(gbtsim, axis_names=('freq', 'ra', 'dec'))
     sim_map.copy_axis_info(template_map)
     algebra.save(outfile_raw, sim_map)
+    algebra.save(outfile_physical, phys_map)
 
     beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792,
                  0.281176247549, 0.270856788455, 0.26745856078,
@@ -68,13 +73,16 @@ def make_simulation_set(template_file, outfile_raw, outfile_beam,
 
 
 def wrap_sim(runitem):
-    (template_mapname, outfile_raw, outfile_beam, outfile_beam_plus_data, streaming) = runitem
+    (template_mapname, outfile_physical, outfile_raw, outfile_beam, \
+                                outfile_beam_plus_data, streaming) = runitem
+
     print "using template: " + template_mapname
+    print "using physical-space cube file: " + outfile_physical
     print "using raw output cube file: " + outfile_raw
     print "using raw output cube file conv. by beam: " + outfile_beam
     print "using raw output cube file conv. by beam plus data: " + outfile_beam_plus_data
 
-    make_simulation_set(template_mapname, outfile_raw, outfile_beam,
+    make_simulation_set(template_mapname, outfile_physical, outfile_raw, outfile_beam,
                         outfile_beam_plus_data, streaming=streaming)
 
 
@@ -93,8 +101,9 @@ def test_scheme(template_file, sim_filename1, sim_filename2):
     algebra.save(sim_filename1, sim_map1)
     algebra.save(sim_filename2, sim_map2)
 
-def generate_sim(template_key, output_key, output_beam_key,
-                 output_beam_plus_data_key, streaming=True, parallel=True):
+def generate_sim(template_key, output_physical_key, output_key,
+                 output_beam_key, output_beam_plus_data_key,
+                 streaming=True, parallel=True):
     """generate simulations
     here, assuming the sec A of the set is the template map
     """
@@ -103,6 +112,9 @@ def generate_sim(template_key, output_key, output_beam_key,
     template_mapname = datapath_db.fetch(template_key, pick='A;clean_map',
                                          purpose="template for sim. output",
                                          intend_read=True)
+
+    physlist = datapath_db.fetch(output_physical_key, intend_write=True,
+                                purpose="output sim+", silent=True)
 
     rawlist = datapath_db.fetch(output_key, intend_write=True,
                                 purpose="output sim+", silent=True)
@@ -113,8 +125,9 @@ def generate_sim(template_key, output_key, output_beam_key,
     bpdlist = datapath_db.fetch(output_beam_plus_data_key, intend_write=True,
                                 purpose="output sim+beam+data", silent=True)
 
-    runlist = [(template_mapname, rawlist[1][index], beamlist[1][index],
-                bpdlist[1][index], streaming) for index in rawlist[0]]
+    runlist = [(template_mapname, physlist[1][index], rawlist[1][index],
+                beamlist[1][index], bpdlist[1][index], streaming)
+                for index in rawlist[0]]
 
     #sys.exit()
     if parallel:
@@ -133,11 +146,12 @@ def generate_simset(fieldname, streaming=False):
     else:
         tag= "sim"
 
+    output_physical_key = '%s_%s_physical' % (tag, fieldname)
     output_key = '%s_%s' % (tag, fieldname)
     output_beam_key = '%s_%s_beam' % (tag, fieldname)
     output_beam_plus_data_key = '%s_%s_beam_plus_data' % (tag, fieldname)
 
-    generate_sim(template_key, output_key,
+    generate_sim(template_key, output_physical_key, output_key,
                  output_beam_key, output_beam_plus_data_key,
                  streaming=streaming, parallel=True)
 

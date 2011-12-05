@@ -500,6 +500,21 @@ class DataPath(object):
                          prepend="git_")
 
 
+    def fetch_parent(self, dbkey, return_path=False):
+        r"""Fetch the parent key associated with a file database entry
+        if `return_path` return the directory instead of the key
+        """
+        dbentry = self._pathdict[dbkey]
+
+        if 'parent' in dbentry:
+            parent_key = dbentry['parent']
+            if return_path:
+                return self.fetch(parent_key, silent=True)
+            else:
+                return parent_key
+        else:
+            print "%s has no parent directory field" % dbkey
+
     def fetch(self, dbkey, pick=None, intend_read=False, intend_write=False,
               purpose="", silent=False):
         r"""The access function for this database class:
