@@ -71,21 +71,7 @@ def inv_diag_from_chol(np.ndarray[DTYPE_t, ndim=2, mode='c'] chol not None,
     
     cdef int ii, jj, kk, n=chol.shape[0]
     cdef DTYPE_t tmp
-    # Workspace array, that I need for efficient indexing. `inv_col[kk]` could
-    # everwhere be replaced by `chol[kk,ii]`.
-    #cdef np.ndarray[DTYPE_t, ndim=1, mode='c'] inv_col
-    #inv_col = sp.empty(n, dtype=DTYPE)
-    # Replace the cholesky factor by its own inverse, back substituting one
-    # column at a time.
-    #for ii in range(n - 1, -1, -1):
-    #    inv_col[ii] = 1. / chol[ii,ii]
-    #    chol[ii,ii] = inv_col[ii]
-    #    for jj in range(ii - 1, -1, -1):
-    #        tmp = 0.
-    #        for kk in range(jj + 1, ii + 1):
-    #            tmp += chol[jj,kk] * inv_col[kk]
-    #        inv_col[jj] = -tmp / chol[jj, jj]
-    #        chol[jj, ii] = inv_col[jj]
+    # Replace the cholesky factor by its own inverse.
     tinv_(&n, <DTYPE_t **> chol.data, &n)
     # Square the appropriate parts of the factor's inverse to get the inverse
     # diagonal of the factored matrix.
