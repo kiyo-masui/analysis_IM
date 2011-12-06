@@ -20,8 +20,9 @@ class Corr21cm(RedshiftCorrelation, Map3d):
     add_mean = False
 
     def __init__(self, ps = None, redshift = 0.0, **kwargs):
+        from os.path import join, dirname
         if ps == None:
-            from os.path import join, dirname
+
             psfile = join(dirname(__file__),"data/ps_z1.5.dat")
             redshift = 1.5
 
