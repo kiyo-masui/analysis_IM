@@ -129,8 +129,8 @@ cc_average_cal_states = True
 #cc_weights = (0.5, 0.5)
 #cc_weights = (0.0, 1.0)
 
-from map import dirty_map
-pipe_modules.append(dirty_map.DirtyMapMaker)
+#from map import dirty_map
+#pipe_modules.append(dirty_map.DirtyMapMaker)
 dm_input_root = tc_output_root
 dm_file_middles = file_middles
 dm_input_end = '.fits'
@@ -156,14 +156,14 @@ dm_noise_model = 'disjoint_scans'
 dm_polarizations = ('I',)
 dm_noise_parameters_input_root = 'None'
 
-from map import clean_map
-pipe_modules.append(clean_map.CleanMapMaker)
+#from map import clean_map
+#pipe_modules.append(clean_map.CleanMapMaker)
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
 cm_polarizations = ('I',)
 
-from time_stream import subtract_map_data
-pipe_modules.append(subtract_map_data.Subtract)
+#from time_stream import subtract_map_data
+#pipe_modules.append(subtract_map_data.Subtract)
 sm_input_root = tc_output_root
 sm_file_middles = file_middles
 sm_input_end = '.fits'
@@ -178,8 +178,8 @@ sm_solve_for_gain = True
 sm_gain_output_end = '_gain.pickle'
 sm_interpolation = 'linear'
 
-from time_stream import reflag
-pipe_modules.append(reflag.ReFlag)
+#from time_stream import reflag
+#pipe_modules.append(reflag.ReFlag)
 sf_input_root = tc_output_root
 sf_file_middles = file_middles
 sf_input_end = '.fits'
@@ -192,8 +192,8 @@ sf_thres = 5.0
 sf_subtracted_input_root = sm_output_root
 sf_subtracted_output_root = base_dir + 'reflag_sub/'
 
-from noise import measure_noise
-pipe_modules.append(measure_noise.Measure)
+#from noise import measure_noise
+#pipe_modules.append(measure_noise.Measure)
 mn_input_root = sf_subtracted_input_root
 mn_file_middles = file_middles
 mn_input_end = '.fits'
@@ -203,24 +203,24 @@ mn_model = "scan_var"
 
 #### Make sub map A ####
 
-from map import dirty_map
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
+#from map import dirty_map
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
 dmA_file_middles = middles_a
 dmA_input_root = sf_output_root
 dmA_output_root = base_dir + 'maps/' + "sec_A_" + map_prefix
 
 dmA_noise_parameters_input_root = mn_output_root
 
-from map import clean_map
-pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+#from map import clean_map
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
 cmA_input_root = dmA_output_root
 cmA_output_root = dmA_output_root
 cmA_save_noise_diag = True
 
 #### Make sub map B ####
 
-from map import dirty_map
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+#from map import dirty_map
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
 dmB_file_middles = middles_b
 dmB_input_root = sf_output_root
 dmB_output_root = base_dir + 'maps/' + "sec_B_" + map_prefix
