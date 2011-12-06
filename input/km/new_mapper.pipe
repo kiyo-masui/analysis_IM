@@ -13,6 +13,9 @@ file_middles = tuple(dir_data.get_data_files(range(41,90), field='15hr',
 #file_middles = tuple(dir_data.get_data_files(range(75,90), field='15hr', 
 #                                             project="GBT10B_036", 
 #											 type='ralongmap'))
+#file_middles = ("GBT10B_036/52_wigglez15hrst_ralongmap_202-209",)
+
+
 n_files = len(file_middles)
 middles_a = file_middles[:n_files//4]
 middles_b = file_middles[n_files//4:2*n_files//4]
@@ -25,7 +28,7 @@ prefix = ''
 map_prefix = '' + field + '_' + '41-90' + '_'
 
 pipe_modules = []
-pipe_processes = 20
+pipe_processes = 24
 
 from time_stream import flag_data
 #pipe_modules.append(flag_data.FlagData)
@@ -125,13 +128,14 @@ dm_field_centre = (217.9, 2.0)
 dm_map_shape = (64, 32)
 dm_pixel_spacing = .075
 dm_time_block = 'file'
+dm_n_files_group = 0
 dm_frequency_correlations = 'None'
 dm_number_frequency_modes = 0
 dm_noise_parameter_file = ''
 dm_deweight_time_mean = True
 dm_deweight_time_slope = True
 
-from map import clean_map
+#from map import clean_map
 #pipe_modules.append(clean_map.CleanMapMaker)
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
@@ -150,8 +154,8 @@ sm_scans = ()
 sm_IFs = ()
 
 sm_pols = ()
-sm_map_file = base_dir + 'maps/' + map_prefix + 'clean_map_I_736.npy'
-sm_solve_for_gain = True
+sm_map_file = base_dir + 'maps/' + map_prefix + 'clean_map_I_737.npy'
+sm_solve_for_gain = False
 sm_gain_output_end = '_gain.pickle'
 sm_interpolation = 'linear'
 
@@ -172,16 +176,42 @@ sf_subtracted_output_root = base_dir + 'reflag_sub/'
 from noise import measure_noise
 pipe_modules.append(measure_noise.Measure)
 mn_input_root = sf_subtracted_input_root
-mn_file_middles = file_middles
+mn_file_middles = file_middles[300:]
 mn_input_end = '.fits'
 mn_output_root = base_dir + 'noise_measurments/'
 mn_output_filename = "noise_parameters.shelve"
+mn_save_spectra_plots = True
+mn_time_block = 'scan'
 mn_scans = ()
 mn_IFs = ()
 
-mn_parameters = ["channel_var", "freq_modes_over_f_1", "freq_modes_over_f_2",
+mn_parameters = ["channel_var", "freq_modes_over_f_0",
+                 "freq_modes_over_f_1", "freq_modes_over_f_2",
                  "freq_modes_over_f_3", "freq_modes_over_f_4",
                  "freq_modes_over_f_5", "freq_modes_over_f_6",
                  "freq_modes_over_f_7", "freq_modes_over_f_8"]
+
+from map import dirty_map
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dm2_', 'dm_')))
+dm2_input_root = sf_output_root
+dm2_file_middles = file_middles
+dm2_input_end = '.fits'
+dm2_output_root = base_dir + 'maps/sec_' + map_prefix
+dm2_scans = ()
+dm2_IFs = (0,)
+
+dm2_polarizations = ('I',)
+dm2_field_centre = (217.9, 2.0)
+dm2_map_shape = (64, 32)
+dm2_pixel_spacing = .075
+dm2_time_block = 'scan'
+dm2_n_files_group = 120
+dm2_frequency_correlations = 'measured'
+dm2_number_frequency_modes = 3
+dm2_number_frequency_modes_discard = 1
+dm2_noise_parameter_file = (base_dir
+                            + 'noise_measurments/noise_parameters.shelve')
+dm2_deweight_time_mean = True
+dm2_deweight_time_slope = True
 
 

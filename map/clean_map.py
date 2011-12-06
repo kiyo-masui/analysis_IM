@@ -10,6 +10,7 @@ from core import algebra, hist
 from kiyopy import parse_ini
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
+import _cholesky as _c
 
 
 params_init = {'input_root' : './',
@@ -201,4 +202,41 @@ class CleanMapMaker(object) :
             #            all_out_fname_list)
             #h_fname = params['output_root'] + "history.hist"
             #history.write(h_fname)
+
+
+def solve(noise_inv, dirty_map, return_noise_diag=False):
+    """Solve for the clean map.
+
+    Matrix and vector passed in as algebra objects with no block diagonality.
+    The system is solved using a GPU accelerated cholesky decomposition.
+    Optionally, the diagonal on the noise matrix is returned.
+    """
+    
+    # Put into the 2D matrix shape.
+    expanded = noise_inv.view()
+    side_size = noise_inv.shape[0] * noise_inv.shape[1] * noise_inv.shape[2]
+    expanded.shape = (side_size,) * 2
+    # Allowcate memory for the cholesky.
+    tri_copy = sp.empty((side_size,) * 2, dtype=float)
+    # Copy the upper triangular data.
+    _c.up_tri_copy(expanded, tri_copy)
+    # Cholesky decompose it.
+    _c.call_cholesky(tri_copy)
+    # Solve for the clean map.
+    flat_map = dirty_map.view()
+    flat_map.shape = (flat_map.size,)
+    clean_map = linalg.cho_solve((tri_copy, False), flat_map)
+    # Reshape and cast as a map.
+    clean_map.shape = dirty_map.shape
+    clean_map = algebra.as_alg_like(clean_map, dirty_map)
+    if not return_noise_diag:
+        return clean_map
+    else:
+        noise_diag = sp.empty(side_size, dtype=float)
+        _c.inv_diag_from_chol(tri_copy, noise_diag)
+        noise_diag.shape = dirty_map.shape
+        noise_diag = algebra.as_alg_like(noise_diag, dirty_map)
+        return clean_map, noise_diag
+
+
 

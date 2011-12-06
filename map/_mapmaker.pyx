@@ -1,9 +1,6 @@
 """Module holds fast optimized code for the map maker."""
 
 import numpy as np
-
-# XXX
-import core.algebra as al
 import scipy as sp
 
 # Cython import
@@ -205,4 +202,5 @@ def update_map_noise_independant_chan(
                         this_dec = pointing_inds_transpose[kk,pp,1]
                         tmp2 = tmp1 * pointing_weights[kk,pp]
                         map_noise_inv[ra_ind,dec_ind,this_ra,this_dec] += tmp2
+
 

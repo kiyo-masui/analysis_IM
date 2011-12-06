@@ -832,7 +832,7 @@ class TestEngine(unittest.TestCase):
         Maker.pol = 0
         Maker.band = 0
         # Replace the data reader with mock data generator.
-        def iterate_data():
+        def iterate_data(file_middles):
             for ii in xrange(n_data):
                 yield Data.get_all_trimmed(ii)
         Maker.iterate_data = iterate_data
@@ -869,6 +869,7 @@ class TestEngine(unittest.TestCase):
                            dtype=float)
         cov_inv = al.make_mat(cov_inv, axis_names=('freq', 'ra', 'dec',
             'freq', 'ra', 'dec'), row_axes=(0, 1, 2), col_axes=(3, 4, 5))
+        cov_inv[...] = 0
         Maker.cov_inv = cov_inv
         # Run the engine of the map maker.
         start = time_module.clock()

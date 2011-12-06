@@ -175,6 +175,7 @@ class NoisePower(object) :
             # Calculate the raw power spectrum.
             power_mat, window_function = calculate_full_power_mat(full_data, 
                                                 mask, deconvolve=deconvolve)
+
             # Get rid of the extra cal and polarization axes.
             power_mat = power_mat[:,0,0,:,:]
             window_function = window_function[:,0,0,:,:]
@@ -214,7 +215,6 @@ class NoisePower(object) :
         else:
             return total_power_mat, total_thermal_expectation
         
-
 
 def ps_freq_axis(dt, n):
     """Calculate the frequency axis for a power spectrum.
@@ -291,10 +291,19 @@ def make_masked_time_stream(Blocks, ntime=None, window=None,
     n_data_times = 0
     for Data in Blocks :
         Data.calc_time()
-        min_time = min(min_time, min(Data.time))
-        max_time = max(min_time, max(Data.time))
-        mean_time += sp.sum(Data.time)
-        n_data_times += len(Data.time)
+        # Often the start or the end of a scan is completly masked.  Make sure
+        # we don't start till the first unmasked time and end at the last
+        # unmasked time.
+        time_unmask = sp.alltrue(ma.getmaskarray(Data.data), -1)
+        time_unmask = sp.alltrue(time_unmask, -1)
+        time_unmask = sp.alltrue(time_unmask, -1)
+        if sp.alltrue(time_unmask):
+            continue
+        time_unmask = sp.logical_not(time_unmask)
+        min_time = min(min_time, min(Data.time[time_unmask]))
+        max_time = max(min_time, max(Data.time[time_unmask]))
+        mean_time += sp.sum(Data.time[time_unmask])
+        n_data_times += len(Data.time[time_unmask])
         # Ensure that the time sampling is uniform.
         if not (sp.allclose(abs(sp.diff(Data.time)), dt, rtol=0.1)
                 and sp.allclose(abs(sp.mean(sp.diff(Data.time))), dt,
@@ -307,8 +316,13 @@ def make_masked_time_stream(Blocks, ntime=None, window=None,
             msg = ("All data blocks must have the same shape except the time "
                    "axis.")
             raise ce.DataError(msg)
+    if n_data_times == 0:
+        n_data_times = 1
     mean_time /= n_data_times
     # Calculate the time axis.
+    if min_time > max_time:
+        min_time = 0
+        max_time = 6 * dt
     if not ntime :
         ntime = (max_time - min_time) // dt + 1
     elif ntime < 0:
@@ -348,20 +362,42 @@ def make_masked_time_stream(Blocks, ntime=None, window=None,
         if subtract_slope:
             Data.data -= (total_slope 
                           * (Data.time[:,None,None,None] - mean_time))
+        # Find the first and last unmasked times.
+        time_unmask = sp.alltrue(ma.getmaskarray(Data.data), -1)
+        time_unmask = sp.alltrue(time_unmask, -1)
+        time_unmask = sp.alltrue(time_unmask, -1)
+        if sp.alltrue(time_unmask):
+            continue
+        time_unmask = sp.logical_not(time_unmask)
+        unmasked_ind, = sp.where(time_unmask)
+        first_ind = min(unmasked_ind)
+        last_ind = max(unmasked_ind)
+        # Ensure that the time sampling is uniform.
+        if not (sp.allclose(abs(sp.diff(Data.time)), dt, rtol=0.1)
+                and sp.allclose(abs(sp.mean(sp.diff(Data.time))), dt,
+                                rtol=0.001)) :
+            msg = ("Time sampling not uniformly spaced or Data Blocks don't "
+                   "agree on sampling.")
+            raise ce.DataError(msg)
+        # Ensure the shapes are right.
+        if Data.dims[1:] != back_shape :
+            msg = ("All data blocks must have the same shape except the time "
+                   "axis.")
         # Apply an offset to the time in case the start of the Data Block
         # doesn't line up with the time array perfectly.
-        offset = time[sp.argmin(abs(time - Data.time[0]))] - Data.time[0]
+        offset = (time[sp.argmin(abs(time - Data.time[first_ind]))]
+                  - Data.time[first_ind])
         # Generate window function.
         if window:
-            window_function = sig.get_window(window, Data.dims[0])
-        for ii in range(Data.dims[0]) :
+            window_function = sig.get_window(window, last_ind - first_ind + 1)
+        for ii in range(first_ind, last_ind + 1) :
             ind = sp.argmin(abs(time - (Data.time[ii] + offset)))
             if abs(time[ind] - (Data.time[ii])) < 0.5*dt :
                 if sp.any(mask[ind, ...]) :
                     msg = "Overlapping times in Data Blocks."
                     raise ce.DataError(msg)
                 if window:
-                    window_value = window_function[ii]
+                    window_value = window_function[ii - first_ind]
                 else :
                     window_value = 1.0
                 time_stream[ind, ...] = (window_value 
@@ -523,6 +559,9 @@ def overf_power_spectrum(amp, index, f0, dt, n):
     """Calculates the theoredical f**`index` power spectrum.
     """
     
+    # Sometimes the fitting routines do something wierd that causes
+    # an overflow from a rediculous index.  Limit the index.
+    index = max(index, -20)
     # Get the frequencies represented in the FFT.
     df = 1.0/dt/n
     freq = sp.arange(n, dtype=float)
@@ -531,7 +570,8 @@ def overf_power_spectrum(amp, index, f0, dt, n):
     # 0th mode is meaningless.  Set to unity to avoid errors.
     freq[0] = 1
     # Make the power spectrum.
-    power = amp*(freq/f0)**index
+    power = (freq/f0)**index
+    power *= amp
     # Set the mean mode explicitly to 0.
     power[0] = 0
     return power
@@ -547,7 +587,7 @@ def generate_overf_noise(amp, index, f0, dt, n):
     noise = fft.ifft(fft.fft(white_noise)*sp.sqrt(power_spectrum)).real
     return noise
 
-def calculate_full_power_mat(full_data, mask, deconvolve=True):
+def calculate_full_power_mat(full_data, mask, deconvolve=True, normalize=True):
     n_time = full_data.shape[0]
     n_pol = full_data.shape[1]
     n_cal = full_data.shape[2]
@@ -578,24 +618,60 @@ def calculate_full_power_mat(full_data, mask, deconvolve=True):
         else:
             p = calculate_power(full_data1[:,:,:,[ii],:], full_data2, axis=0)
             # Normalize from windowing.
-            power_mat[:,:,:,[ii],:] = p / window_norms
-        w /= window_norms
+            if normalize:
+                p /= window_norms
+            power_mat[:,:,:,[ii],:] = p
+        if normalize:
+            w /= window_norms
         window_function[:,:,:,[ii],:] = w
     return power_mat, window_function
 
 def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True,
-                   subtract_slope=False) :
+                   subtract_slope=False, normalize=True, split_scans=False) :
     """Calculate the full power spectrum of a data set with channel
     correlations.
     
     Only one cal state and pol state assumed.
     """
     
-    full_data, mask, dt, channel_means = make_masked_time_stream(Blocks, 
-        n_time, window=window, return_means=True,
-        subtract_slope=subtract_slope)
-    power_mat, window_function = calculate_full_power_mat(full_data, mask, 
-                                                         deconvolve=deconvolve)
+    if split_scans:
+        if n_time < 0:
+            nt = 0
+            for Data in Blocks:
+                nt = max(nt, Data.dims[0])
+            time_min = -n_time * nt
+            n_block = 1
+            while n_block < time_min/20.0:
+                n_block *= 2
+            n_time = (time_min//n_block  + 1) * n_block
+        back_dims = Blocks[0].dims[1:]
+        n_chan = back_dims[-1]
+        power_mat = sp.zeros((n_time,) + back_dims + (n_chan,), dtype=float)
+        window_function = sp.zeros((n_time,) + back_dims + (n_chan,),
+                                   dtype=float)
+        channel_means = sp.zeros(back_dims, dtype=float)
+        for ii, Data in enumerate(Blocks):
+            this_data, this_mask, this_dt, this_means = \
+                    make_masked_time_stream((Data,), n_time, window=window,
+                                            return_means=True, 
+                                            subtract_slope=subtract_slope)
+            channel_means += this_means
+            if ii == 0:
+                dt = this_dt
+            else:
+                if not sp.allclose(dt, this_dt, rtol=0.001):
+                    raise RuntimeError("Time sapling doesn't line up.")
+            this_power, this_window = calculate_full_power_mat(this_data, 
+                        this_mask, deconvolve=deconvolve, normalize=normalize)
+            power_mat += this_power / len(Blocks)
+            window_function += this_window / len(Blocks)
+        channel_means /= len(Blocks)
+    else:
+        full_data, mask, dt, channel_means = make_masked_time_stream(Blocks, 
+            n_time, window=window, return_means=True,
+            subtract_slope=subtract_slope)
+        power_mat, window_function = calculate_full_power_mat(full_data, mask, 
+                        deconvolve=deconvolve, normalize=normalize)
     return power_mat, window_function, dt, channel_means
 
 

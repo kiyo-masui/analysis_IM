@@ -16,7 +16,8 @@ import matplotlib.pyplot as plt
 from core import data_block, utils
 import measure_noise as mn
 import noise_power
-from map import dirty_map
+from map.constants import T_infinity, T_small
+
 
 #class TestModule(unittest.TestCase) :
 class TestModule(object) :
@@ -39,6 +40,7 @@ class TestModule(object) :
 
 
 class TestMeasures(unittest.TestCase) :
+#class TestMeasures(object) :
     
     def setUp(self) :
         nf = 20
@@ -94,7 +96,7 @@ class TestMeasures(unittest.TestCase) :
         for p in parameters.itervalues():
             variance = p['channel_var']
             right_ans = sp.arange(1, nf+1)**2
-            right_ans[3] = dirty_map.T_infinity
+            right_ans[3] = T_infinity
             self.assertTrue(sp.allclose(variance,
                                         right_ans, rtol=0.1))
 
@@ -206,6 +208,79 @@ class TestMeasures(unittest.TestCase) :
                 self.assertEqual(measured_general_ind, 0)
                 self.assertEqual(measured_corner, 0)
 
+    def test_gets_modes_by_scan(self):
+        nf = self.nf
+        nt = self.nt
+        dt = self.dt
+        bw = self.bw
+        nb = self.nb
+        # Give every channel a different thermal noise floor.
+        thermal_norm = 1.0 + 1.0/nf*sp.arange(nf)  # K**2/Hz
+        self.data *= sp.sqrt(thermal_norm * bw * 2)
+        n_time = self.data.shape[0]
+        # Now make a 1/f like noise component in a few frequency modes.
+        n_modes = 3
+        index = -0.8 * (2.0 - sp.arange(n_modes, dtype=float)/n_modes)
+        amp = 1.2 * (3.**(n_modes - 1.
+                          - sp.arange(n_modes, dtype=float))) # K**2/Hz
+        f_0 = 1.0 # Hz
+        modes = sp.empty((n_modes, nf))
+        for ii in range(n_modes):
+            correlated_overf = noise_power.generate_overf_noise(amp[ii], 
+                                        index[ii], f_0, dt, n_time)
+            # Generate the frequency mode.  They should all be orthonormal.
+            mode = sp.sin(2.*sp.pi*(ii + 1)*sp.arange(nf, dtype=float)/nf
+                          + 6.4 * (ii + 3))
+            mode /= sp.sqrt(sp.sum(mode**2))
+            modes[ii] = mode
+            self.data += correlated_overf[:,None,None,None] * mode
+        # Add a subdominant general 1/f noise to all channels.
+        general_amp = 0.1
+        general_index = -0.9
+        general_cross_over = f_0 * general_amp**(-1./general_index)
+        for ii in range(nf):
+            tmp_a = general_amp * thermal_norm[ii]
+            correlated_overf = noise_power.generate_overf_noise(tmp_a, 
+                                        general_index, f_0, dt, n_time)
+            self.data[:,0,:,ii] += correlated_overf[:,None]
+        # Now put the data into the form of the real data.
+        Blocks = self.make_blocks()
+        # Measure all the noise parameters.
+        model_name = 'freq_modes_over_f_' + str(n_modes)
+        parameters = mn.measure_noise_parameters(Blocks, [model_name],
+                                                 split_scans=True)
+        for pol, pol_params in parameters.iteritems():
+            
+            for ii in range(n_modes):
+                mode_noise = pol_params[model_name]['over_f_mode_' + str(ii)]
+                self.assertTrue(sp.allclose(mode_noise['amplitude'], amp[ii],
+                                            rtol=0.5))
+                self.assertTrue(sp.allclose(mode_noise['index'], index[ii],
+                                            atol=0.2))
+                thermal_proj = sp.sum(thermal_norm * modes[ii,:]**2)
+                self.assertTrue(sp.allclose(mode_noise['thermal'], thermal_proj,
+                                            rtol=0.5))
+                self.assertTrue(abs(sp.dot(mode_noise['mode'], modes[ii,:]))
+                                > 0.95)
+            thermal = pol_params[model_name]['thermal']
+            loss = float(nf - n_modes) / nf
+            self.assertTrue(sp.allclose(thermal, thermal_norm * loss,
+                                        rtol=0.4))
+            measured_general_ind = pol_params[model_name]['all_channel_index']
+            measured_corner = pol_params[model_name]['all_channel_corner_f']
+            if pol == 1:
+                self.assertTrue(sp.allclose(measured_general_ind,
+                                            general_index, atol=0.4))
+                #Only need logarithmic accuracy on the corner.
+                self.assertTrue(sp.allclose(sp.log(measured_corner),
+                                            sp.log(general_cross_over),
+                                            atol=1.5))
+            elif pol == 3:
+                self.assertEqual(measured_general_ind, 0)
+                self.assertEqual(measured_corner, 0)
+
+
+
     def test_all_masked(self):
         Blocks = self.make_blocks()
         for Data in Blocks:
@@ -218,9 +293,9 @@ class TestMeasures(unittest.TestCase) :
                 self.assertTrue(sp.allclose(mode_noise['amplitude'], 0))
                 self.assertTrue(sp.allclose(mode_noise['index'], 0))
                 self.assertTrue(sp.allclose(mode_noise['thermal'],
-                                            dirty_map.T_infinity))
+                                            T_infinity))
             thermal = pol_params[model_name]['thermal']
-            self.assertTrue(sp.allclose(thermal, dirty_map.T_infinity))
+            self.assertTrue(sp.allclose(thermal, T_infinity))
             measured_general_ind = pol_params[model_name]['all_channel_index']
             measured_corner = pol_params[model_name]['all_channel_corner_f']
             self.assertTrue(sp.allclose(measured_general_ind, 0))
@@ -237,14 +312,14 @@ class TestMeasures(unittest.TestCase) :
             for ii in range(3):
                 mode_noise = pol_params[model_name]['over_f_mode_' + str(ii)]
                 self.assertTrue(sp.allclose(mode_noise['thermal'], self.dt,
-                                            rtol=0.2))
+                                            rtol=0.5))
                 self.assertTrue(sp.allclose(mode_noise['mode'][6], 0,
                                             atol=1.e-10))
                 self.assertTrue(sp.allclose(mode_noise['mode'][13], 0,
                                             atol=1.e-10))
             expected = sp.ones(self.nf, dtype=float) * self.dt
-            expected[6] = dirty_map.T_infinity
-            expected[13] = dirty_map.T_infinity
+            expected[6] = T_infinity
+            expected[13] = T_infinity
             thermal = pol_params[model_name]['thermal']
             # weak test since the above modes may have favoured a few channels.
             self.assertTrue(sp.allclose(thermal, expected, rtol=0.8))
