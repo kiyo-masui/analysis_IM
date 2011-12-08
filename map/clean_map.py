@@ -56,6 +56,9 @@ class CleanMapMaker(object) :
                               repr(band) + '.npy')
                 noise_fname = (in_root + 'noise_inv_' + pol_str + "_" +
                                repr(band) + '.npy')
+                if self.feedback > 1:
+                    print "Using dirty map: " + dmap_fname
+                    print "Using noise inverse: " + noise_fname
                 all_in_fname_list.append(
                     kiyopy.utils.abbreviate_file_path(dmap_fname))
                 all_in_fname_list.append(
@@ -176,14 +179,19 @@ class CleanMapMaker(object) :
                             print ""
                             sys.stdout.flush()
                 elif noise_inv.ndim == 6 :
-                    raise NotImplementedError("Full noise matrix not yet "
-                                              "implemented.  Best we can do is"
-                                              " block diagonal in frequency.")
+                    if save_noise_diag:
+                        clean_map, noise_diag = solve(noise_inv, dirty_map,
+                                                True, feedback=self.feedback)
+                    else:
+                        clean_map = solve(noise_inv, dirty_map, False,
+                                          feedback=self.feedback)
                 else :
                     raise ce.DataError("Noise matrix has bad shape.")
                 # Write the clean map to file.
                 out_fname = (params['output_root'] + 'clean_map_'
                              + pol_str + "_" + repr(band) + '.npy')
+                if self.feedback > 1:
+                    print "Writing clean map to: " + out_fname
                 algebra.save(out_fname, clean_map)
                 all_out_fname_list.append(
                     kiyopy.utils.abbreviate_file_path(out_fname))
@@ -193,8 +201,8 @@ class CleanMapMaker(object) :
                     algebra.save(noise_diag_fname, noise_diag)
                     all_out_fname_list.append(
                         kiyopy.utils.abbreviate_file_path(noise_diag_fname))
-            # This needs to be added to the dirty map maker before I can add it
-            # here.
+            # This needs to be added to the new dirty map maker before I can
+            # add it here.
             # Finally update the history object.
             #history = hist.read(in_root + 'history.hist')
             #history.add('Read map and noise files:', all_in_fname_list)
@@ -204,7 +212,7 @@ class CleanMapMaker(object) :
             #history.write(h_fname)
 
 
-def solve(noise_inv, dirty_map, return_noise_diag=False):
+def solve(noise_inv, dirty_map, return_noise_diag=False, feedback=0):
     """Solve for the clean map.
 
     Matrix and vector passed in as algebra objects with no block diagonality.
@@ -216,15 +224,19 @@ def solve(noise_inv, dirty_map, return_noise_diag=False):
     expanded = noise_inv.view()
     side_size = noise_inv.shape[0] * noise_inv.shape[1] * noise_inv.shape[2]
     expanded.shape = (side_size,) * 2
-    # Allowcate memory for the cholesky.
-    tri_copy = sp.empty((side_size,) * 2, dtype=float)
-    # Copy the upper triangular data.
-    _c.up_tri_copy(expanded, tri_copy)
+    # Allowcate memory for the cholesky and copy the upper triangular data.
+    if feedback > 1:
+        print "Copying matrix."
+    tri_copy = _c.up_tri_copy(expanded)
     # Cholesky decompose it.
+    if feedback > 1:
+        print "Cholesky decomposition."
     _c.call_cholesky(tri_copy)
     # Solve for the clean map.
     flat_map = dirty_map.view()
     flat_map.shape = (flat_map.size,)
+    if feedback > 1:
+        print "Solving for clean map."
     clean_map = linalg.cho_solve((tri_copy, False), flat_map)
     # Reshape and cast as a map.
     clean_map.shape = dirty_map.shape
@@ -232,6 +244,8 @@ def solve(noise_inv, dirty_map, return_noise_diag=False):
     if not return_noise_diag:
         return clean_map
     else:
+        if feedback > 1:
+            print "Getting noise diagonal."
         noise_diag = sp.empty(side_size, dtype=float)
         _c.inv_diag_from_chol(tri_copy, noise_diag)
         noise_diag.shape = dirty_map.shape

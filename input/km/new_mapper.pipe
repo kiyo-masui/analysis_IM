@@ -140,7 +140,7 @@ dm_deweight_time_slope = True
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
 cm_polarizations = ('I',)
-cm_bands = (736,)
+cm_bands = (737,)
 cm_save_noise_diag = True
 
 from time_stream import subtract_map_data
@@ -173,8 +173,8 @@ sf_thres = 5.0
 sf_subtracted_input_root = sm_output_root
 sf_subtracted_output_root = base_dir + 'reflag_sub/'
 
-from noise import measure_noise
-pipe_modules.append(measure_noise.Measure)
+#from noise import measure_noise
+#pipe_modules.append(measure_noise.Measure)
 mn_input_root = sf_subtracted_input_root
 mn_file_middles = file_middles[300:]
 mn_input_end = '.fits'
@@ -191,7 +191,7 @@ mn_parameters = ["channel_var", "freq_modes_over_f_0",
                  "freq_modes_over_f_5", "freq_modes_over_f_6",
                  "freq_modes_over_f_7", "freq_modes_over_f_8"]
 
-from map import dirty_map
+#from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dm2_', 'dm_')))
 dm2_input_root = sf_output_root
 dm2_file_middles = file_middles
@@ -214,4 +214,11 @@ dm2_noise_parameter_file = (base_dir
 dm2_deweight_time_mean = True
 dm2_deweight_time_slope = True
 
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm2_', 'cm_')))
+cm2_input_root = dm2_output_root
+cm2_output_root = cm2_input_root
+cm2_polarizations = ('I',)
+cm2_bands = (737,)
+cm2_save_noise_diag = True
 

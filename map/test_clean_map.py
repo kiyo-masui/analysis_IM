@@ -18,9 +18,9 @@ class TestSolver(unittest.TestCase):
 
     def setUp(self):
         # Make a positive definite noise matrix, clean map, and dirty_map.
-        self.nra = 5
-        self.ndec = 10
-        self.nf = 7
+        self.nra = 10
+        self.ndec = 5
+        self.nf = 20
         self.shape = (self.nf, self.nra, self.ndec)
         self.size = self.nra * self.ndec * self.nf
         # Clean map.
@@ -45,8 +45,7 @@ class TestSolver(unittest.TestCase):
         
     def test_tri_copy(self):
         self.noise_inv.shape = (self.size, self.size)
-        tri_noise_inv = sp.empty_like(self.noise_inv)
-        _c.up_tri_copy(self.noise_inv, tri_noise_inv)
+        tri_noise_inv = _c.up_tri_copy(self.noise_inv)
         for ii in range(self.size):
             self.assertTrue(sp.allclose(tri_noise_inv[ii,ii:],
                                         self.noise_inv[ii,ii:]))
@@ -56,8 +55,7 @@ class TestSolver(unittest.TestCase):
         noise_mem = al.open_memmap("testout.npy", mode='w+',
                                    shape=self.noise_inv.shape)
         noise_mem[...] = self.noise_inv
-        tri_noise_inv = sp.empty_like(self.noise_inv)
-        _c.up_tri_copy(noise_mem, tri_noise_inv)
+        tri_noise_inv = _c.up_tri_copy(noise_mem)
         for ii in range(self.size):
             self.assertTrue(sp.allclose(tri_noise_inv[ii,ii:],
                                         self.noise_inv[ii,ii:]))
