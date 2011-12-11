@@ -4,14 +4,15 @@
         FIX THE VOLUME NORMALIZATION!
         calculate the full window function instead of just the diagonal
             i, j -> delta k -> nearest index k
+        make plots of the real data's 3D power
 """
 import numpy as np
 import math
 from core import algebra
-from utils import radialprofile
 from utils import data_paths
 from simulations import ps_estimation
 from simulations import corr21cm
+import copy
 
 
 def radius_array(input_array):
@@ -28,7 +29,7 @@ def radius_array(input_array):
 
     scale_array = np.rollaxis(scale_array, 0, scale_array.ndim)
 
-    return np.sum(scale_array**2., axis=-1)**0.5
+    return np.sum(scale_array ** 2., axis=-1) ** 0.5
 
 
 def crossps(arr1, arr2, weight1, weight2, window=True, unitless=True):
@@ -75,12 +76,12 @@ def crossps(arr1, arr2, weight1, weight2, window=True, unitless=True):
         n_axis = arr1.shape[axis_index]
         axis_name = arr1.axes[axis_index]
         axis_vector = arr1.get_axis(axis_name)
-        delta_axis = abs(axis_vector[1]-axis_vector[0])
+        delta_axis = abs(axis_vector[1] - axis_vector[0])
         width[axis_index] = delta_axis
 
         k_axis = np.fft.fftshift(np.fft.fftfreq(n_axis, d=delta_axis))
         k_axis *= 2. * math.pi
-        delta_k_axis = abs(k_axis[1]-k_axis[0])
+        delta_k_axis = abs(k_axis[1] - k_axis[0])
 
         k_name = k_axes[axis_index]
         info[k_name + "_delta"] = delta_k_axis
@@ -126,22 +127,22 @@ def binpwrspec(input_array, truncate=True, nbins=40, logbins=True):
     if logbins:
         bins = np.logspace(math.log10(radius_sorted[1]),
                            math.log10(max_r),
-                           num=(nbins+1), endpoint=True)
+                           num=(nbins + 1), endpoint=True)
 
         bin_left, bin_right = bins[:-1], bins[1:]
-        bin_center = 10**(0.5*(np.log10(bin_left) +
+        bin_center = 10 ** (0.5 * (np.log10(bin_left) +
                                np.log10(bin_right)))
     else:
         bins = np.linspace(radius_sorted[1], max_r,
-                           num=(nbins+1), endpoint=True)
+                           num=(nbins + 1), endpoint=True)
 
         bin_left, bin_right = bins[:-1], bins[1:]
-        bin_center = 0.5*(np.log10(bin_left) +
-                          np.log10(bin_right))
+        bin_center = 0.5 * (np.log10(bin_left) +
+                            np.log10(bin_right))
 
-    counts_histo, bin_edges = np.histogram(radius_sorted, bins)
-    binsum_histo, bin_edges = np.histogram(radius_sorted, bins,
-                                           weights=arr_sorted)
+    counts_histo = np.histogram(radius_sorted, bins)[0]
+    binsum_histo = np.histogram(radius_sorted, bins,
+                                weights=arr_sorted)[0]
 
     binavg = binsum_histo / counts_histo.astype(float)
 
@@ -149,11 +150,12 @@ def binpwrspec(input_array, truncate=True, nbins=40, logbins=True):
 
 
 def test_with_simulation(unitless=True):
+    """Test the power spectral estimator using simulations"""
     datapath_db = data_paths.DataPath()
-    filename = datapath_db.fetch('sim_15hr_physical', intend_read=True,
-                                 pick='0')
-    zfilename = datapath_db.fetch('sim_15hr', intend_read=True,
-                                 pick='0')
+    filename = datapath_db.fetch('simideal_15hr_physical', intend_read=True,
+                                 pick='1')
+    zfilename = datapath_db.fetch('simideal_15hr', intend_read=True,
+                                 pick='1')
     print filename
     cube1 = algebra.make_vect(algebra.load(filename))
     cube2 = algebra.make_vect(algebra.load(filename))
@@ -167,7 +169,7 @@ def test_with_simulation(unitless=True):
                                window=True, unitless=unitless)
     print "binning the power spectrum"
     bin_left, bin_center, bin_right, counts_histo, binavg = \
-                        binpwrspec(pwrspec3d_signal, truncate=True)
+                        binpwrspec(pwrspec3d_signal, truncate=False)
 
     #volume = 1.
     #for axis_name in cube1.axes:
@@ -180,16 +182,16 @@ def test_with_simulation(unitless=True):
     simobj = corr21cm.Corr21cm.like_kiyo_map(zspace_cube)
     pwrspec_input = simobj.get_pwrspec(bin_center)
     if unitless:
-        pwrspec_input *= bin_center**3./2./math.pi/math.pi
+        pwrspec_input *= bin_center ** 3. / 2. / math.pi / math.pi
 
-    for bl, bc, br, ct, pk, th in zip(bin_left, bin_center,
-                                  bin_right, counts_histo, binavg,
-                                  pwrspec_input):
-        print bl, bc, br, ct, pk, th
+    for specdata in zip(bin_left, bin_center,
+                        bin_right, counts_histo, binavg,
+                        pwrspec_input):
+        print ("%10.15g" * 6) % specdata
 
 
 def test_with_random(unitless=True):
-    import copy
+    """Test the power spectral estimator using a random noise cube"""
 
     nside = 256
     delta = 0.23
@@ -207,7 +209,6 @@ def test_with_random(unitless=True):
     weight1 = algebra.ones_like(cube1)
     weight2 = algebra.ones_like(cube2)
 
-
     print "finding the signal power spectrum"
     pwrspec3d_signal = crossps(cube1, cube2, weight1, weight2,
                                window=True, unitless=unitless)
@@ -216,15 +217,17 @@ def test_with_random(unitless=True):
                         binpwrspec(pwrspec3d_signal, truncate=True)
 
     if unitless:
-        pwrspec_input = bin_center**3./2./math.pi/math.pi*delta**3.
+        pwrspec_input = bin_center ** 3. / 2. / math.pi / math.pi
     else:
-        pwrspec_input = np.ones_like(bin_center)*delta**3.
+        pwrspec_input = np.ones_like(bin_center)
 
-    for bl, bc, br, ct, pk, th in zip(bin_left, bin_center,
-                                  bin_right, counts_histo, binavg,
-                                  pwrspec_input):
-        print bl, bc, br, ct, pk, th
+    pwrspec_input *= delta ** 3.
+
+    for specdata in zip(bin_left, bin_center,
+                        bin_right, counts_histo, binavg,
+                        pwrspec_input):
+        print ("%10.15g" * 6) % specdata
 
 
 if __name__ == '__main__':
-    test_with_simulation(unitless=False)
+    test_with_simulation(unitless=True)
