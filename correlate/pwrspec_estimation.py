@@ -4,6 +4,8 @@
         calculate the full window function instead of just the diagonal
             i, j -> delta k -> nearest index k
         make plots of the real data's 3D power
+        make uniform noise unit test
+        make radius array unit test (anisotropic axes)
 """
 import numpy as np
 import math
@@ -11,6 +13,7 @@ from core import algebra
 from utils import data_paths
 from simulations import ps_estimation
 from simulations import corr21cm
+import multiprocessing
 import copy
 
 
@@ -150,6 +153,8 @@ def suggest_bins(input_array, truncate=True, nbins=40, logbins=True,
         bins = np.linspace(radius_sorted[1], max_r,
                            num=(nbins + 1), endpoint=True)
 
+    print "%d bins from %10.15g to %10.15g" % (nbins, radius_sorted[1], max_r)
+
     return bins
 
 
@@ -195,8 +200,8 @@ def binpwrspec(input_array, bins, radius_arr=None):
 
 
 def calculate_xspec(cube1, cube2, weight1, weight2,
-                    window=True, truncate=False, nbins=40,
-                    unitless=True, logbins=True):
+                    window=True, unitless=True, bins=None,
+                    truncate=False, nbins=40, logbins=True):
 
     print "finding the signal power spectrum"
     pwrspec3d_signal = crossps(cube1, cube2, weight1, weight2,
@@ -209,8 +214,9 @@ def calculate_xspec(cube1, cube2, weight1, weight2,
                                          radius_arr=radius_arr)
 
     print "binning the power spectrum"
-    bins = suggest_bins(pwrspec3d_signal, truncate=truncate, logbins=logbins,
-                        nbins=nbins, radius_arr=radius_arr)
+    if bins is None:
+        bins = suggest_bins(pwrspec3d_signal, truncate=truncate, logbins=logbins,
+                            nbins=nbins, radius_arr=radius_arr)
 
     counts_histo, binavg = binpwrspec(pwrspec3d_signal, bins,
                                       radius_arr=radius_arr)
@@ -218,6 +224,90 @@ def calculate_xspec(cube1, cube2, weight1, weight2,
     bin_left, bin_center, bin_right = bin_edges(bins, log=logbins)
 
     return bin_left, bin_center, bin_right, counts_histo, binavg
+
+
+def calculate_xspec_file(cube1_file, cube2_file, bins,
+                    weight1_file=None, weight2_file=None,
+                    window=True, unitless=True):
+    """TODO: merge this with the code above"""
+
+    cube1 = algebra.make_vect(algebra.load(cube1_file))
+    cube2 = algebra.make_vect(algebra.load(cube2_file))
+
+    if weight1_file is None:
+        weight1 = algebra.ones_like(cube1)
+    else:
+        weight1 = algebra.make_vect(algebra.load(weight1_file))
+
+    if weight2_file is None:
+        weight2 = algebra.ones_like(cube2)
+    else:
+        weight2 = algebra.make_vect(algebra.load(weight2_file))
+
+    return calculate_xspec(cube1, cube2, weight1, weight2, bins=bins,
+                           window=window, unitless=unitless)
+
+
+def wrap_xspec(param):
+    """helper for multiprocessing.map; should toast"""
+    (cube1_file, cube2_file, \
+     weight1_file, weight2_file, \
+     bins, window, unitless) = param
+
+    return calculate_xspec_file(cube1_file, cube2_file, bins,
+                                weight1_file=weight1_file,
+                                weight2_file=weight2_file,
+                                window=window, unitless=unitless)
+
+
+def test_with_agg_simulation(unitless=True, parallel=True):
+    """Test the power spectral estimator using simulations"""
+    datapath_db = data_paths.DataPath()
+    filename = datapath_db.fetch('simideal_15hr_physical', intend_read=True)
+    zfilename = datapath_db.fetch('simideal_15hr', intend_read=True,
+                                 pick='1')
+
+    nbins=40
+    bins = np.logspace(math.log10(0.00702349679605685),
+                       math.log10(2.81187396154818),
+                       num=(nbins + 1), endpoint=True)
+
+    # give no weights; just use Blackman window
+    runlist = [(filename[1][index], filename[1][index], None, None, bins,
+                True, unitless) for index in filename[0]]
+
+    if parallel:
+        pool = multiprocessing.Pool(processes=multiprocessing.cpu_count()-4)
+        results = pool.map(wrap_xspec, runlist)
+    else:
+        for runitem in runlist:
+            wrap_xspec(runitem)
+
+    zspace_cube = algebra.make_vect(algebra.load(zfilename))
+    simobj = corr21cm.Corr21cm.like_kiyo_map(zspace_cube)
+    bin_left, bin_center, bin_right = bin_edges(bins, log=True)
+    pwrspec_input = simobj.get_pwrspec(bin_center)
+    if unitless:
+        pwrspec_input *= bin_center ** 3. / 2. / math.pi / math.pi
+
+    agg_array = np.zeros((bin_center.size, len(filename[0])))
+    counter = 0
+    for spec_output in results:
+        (bin_left, bin_center, bin_right, counts_histo, binavg) = spec_output
+        agg_array[:,counter] = binavg
+        counter += 1
+        #for specdata in zip(bin_left, bin_center,
+        #                    bin_right, counts_histo, binavg,
+        #                    pwrspec_input):
+        #    print ("%10.15g " * 6) % specdata
+
+    meanbin = np.mean(agg_array, axis=1)
+    stdbin = np.std(agg_array, axis=1)
+
+    for specdata in zip(bin_left, bin_center,
+                        bin_right, counts_histo, meanbin, stdbin,
+                        pwrspec_input):
+        print ("%10.15g " * 7) % specdata
 
 
 def test_with_simulation(unitless=True):
@@ -228,17 +318,15 @@ def test_with_simulation(unitless=True):
     zfilename = datapath_db.fetch('simideal_15hr', intend_read=True,
                                  pick='1')
     print filename
-    cube1 = algebra.make_vect(algebra.load(filename))
-    cube2 = algebra.make_vect(algebra.load(filename))
-    zspace_cube = algebra.make_vect(algebra.load(zfilename))
 
-    weight1 = algebra.ones_like(cube1)
-    weight2 = algebra.ones_like(cube2)
+    nbins=40
+    bins = np.logspace(math.log10(0.00702349679605685),
+                       math.log10(2.81187396154818),
+                       num=(nbins + 1), endpoint=True)
 
     bin_left, bin_center, bin_right, counts_histo, binavg = \
-                    calculate_xspec(cube1, cube2, weight1, weight2,
-                                    window=True, truncate=False, nbins=40,
-                                    unitless=unitless, logbins=True)
+                    calculate_xspec_file(filename, filename, bins,
+                                    window=True, unitless=unitless)
 
     #volume = 1.
     #for axis_name in cube1.axes:
@@ -248,6 +336,7 @@ def test_with_simulation(unitless=True):
     #k_vec = np.logspace(math.log10(1.e-2),
     #                    math.log10(5.),
     #                    num=55, endpoint=True)
+    zspace_cube = algebra.make_vect(algebra.load(zfilename))
     simobj = corr21cm.Corr21cm.like_kiyo_map(zspace_cube)
     pwrspec_input = simobj.get_pwrspec(bin_center)
     if unitless:
@@ -297,5 +386,6 @@ def test_with_random(unitless=True):
 
 
 if __name__ == '__main__':
-    #test_with_simulation(unitless=True)
-    test_with_random(unitless=True)
+    #test_with_agg_simulation(unitless=True)
+    test_with_simulation(unitless=True)
+    #test_with_random(unitless=True)
