@@ -1,7 +1,6 @@
 """
     TODO:
         test that the array, weight shapes and axes are compatible
-        FIX THE VOLUME NORMALIZATION!
         calculate the full window function instead of just the diagonal
             i, j -> delta k -> nearest index k
         make plots of the real data's 3D power
@@ -32,7 +31,7 @@ def radius_array(input_array):
     return np.sum(scale_array ** 2., axis=-1) ** 0.5
 
 
-def crossps(arr1, arr2, weight1, weight2, window=True, unitless=True):
+def crossps(arr1, arr2, weight1, weight2, window=True):
     """Calculate the radially average cross-power spectrum of a two nD fields.
 
     The arrays must be identical and have the same length (physically
@@ -45,8 +44,6 @@ def crossps(arr1, arr2, weight1, weight2, window=True, unitless=True):
         None then return the standard (auto-)power spectrum.
     window: boolean
         Apply an additional Blackman window
-    unitless: boolean
-        Multiply by e.g. k^3 / 2 pi^2 in 3D
     """
     if window:
         blackman_window = ps_estimation.blackman_nd(arr1.shape)
@@ -92,25 +89,46 @@ def crossps(arr1, arr2, weight1, weight2, window=True, unitless=True):
     xspec_arr.info = info
     #print xspec_arr.get_axis("k_dec")
 
-    if unitless:
-        radius = radius_array(xspec_arr)
-        # multiply by surface area in ndim sphere / 2pi^ndim
-        factor = 2. * math.pi ** (ndim / 2.) / math.gamma(ndim / 2.)
-        factor /= (2. * math.pi) ** ndim
-        xspec_arr *= radius ** ndim * factor
-
     xspec_arr *= width.prod()
 
     return xspec_arr
 
 
-def binpwrspec(input_array, truncate=True, nbins=40, logbins=True):
-    """Bin the points in an array by radius
+def make_unitless(xspec_arr, radius_arr=None):
+    """multiply by  surface area in ndim sphere / 2pi^ndim * |k|^D
+    (e.g. k^3 / 2 pi^2 in 3D)
     """
-    radius = radius_array(input_array)
-    sort_ind = np.argsort(radius.flat)
-    radius_sorted = radius.flat[sort_ind]
-    arr_sorted = input_array.flat[sort_ind]
+    if radius_arr is None:
+        radius_arr = radius_array(xspec_arr)
+
+    ndim = xspec_arr.ndim
+    factor = 2. * math.pi ** (ndim / 2.) / math.gamma(ndim / 2.)
+    factor /= (2. * math.pi) ** ndim
+    return xspec_arr * radius_arr ** ndim * factor
+
+
+def suggest_bins(input_array, truncate=True, nbins=40, logbins=True,
+                 radius_arr=None):
+    """Bin the points in an array by radius
+
+    Parameters
+    ----------
+    input_array: np.ndarray
+        array over which to bin
+    truncate: boolean
+        maximum radius is the smallest dimension of the array
+    nbins: scalar
+        number of bins to use if not given some in advance
+    logbins: boolean
+        generate a log-spaced binning
+    radius_arr: np.ndarray
+        optional array of |k| to avoid recalculation
+    TODO: throw out bins where the counts/bin are too low
+    """
+    if radius_arr is None:
+        radius_arr = radius_array(input_array)
+
+    radius_sorted = np.sort(radius_arr.flat)
 
     if truncate:
         axis_range = np.zeros((input_array.ndim))
@@ -128,23 +146,76 @@ def binpwrspec(input_array, truncate=True, nbins=40, logbins=True):
         bins = np.logspace(math.log10(radius_sorted[1]),
                            math.log10(max_r),
                            num=(nbins + 1), endpoint=True)
-
-        bin_left, bin_right = bins[:-1], bins[1:]
-        bin_center = 10 ** (0.5 * (np.log10(bin_left) +
-                               np.log10(bin_right)))
     else:
         bins = np.linspace(radius_sorted[1], max_r,
                            num=(nbins + 1), endpoint=True)
 
-        bin_left, bin_right = bins[:-1], bins[1:]
-        bin_center = 0.5 * (np.log10(bin_left) +
-                            np.log10(bin_right))
+    return bins
 
-    counts_histo = np.histogram(radius_sorted, bins)[0]
-    binsum_histo = np.histogram(radius_sorted, bins,
-                                weights=arr_sorted)[0]
+
+def bin_edges(bins, log=False):
+    """report the bin edges and centers using the same convention as
+    np.histogram. `log` reports the log-center
+    """
+    bin_left, bin_right = bins[:-1], bins[1:]
+    if log:
+        bin_center = 10 ** (0.5 * (np.log10(bin_left) +
+                               np.log10(bin_right)))
+    else:
+        bin_center = 0.5 * (bin_left + bin_right)
+
+    return bin_left, bin_center, bin_right
+
+
+def binpwrspec(input_array, bins, radius_arr=None):
+    """Bin the points in an array by radius
+
+    Parameters
+    ----------
+    input_array: np.ndarray
+        array over which to bin
+    bins: np.ndarray
+        the bins
+    radius_arr: np.ndarray
+        optional array of |k| to avoid recalculation
+    """
+    if radius_arr is None:
+        radius_arr = radius_array(input_array)
+
+    radius_flat = radius_arr.flat
+    arr_flat = input_array.flat
+
+    counts_histo = np.histogram(radius_flat, bins)[0]
+    binsum_histo = np.histogram(radius_flat, bins,
+                                weights=arr_flat)[0]
 
     binavg = binsum_histo / counts_histo.astype(float)
+
+    return counts_histo, binavg
+
+
+def calculate_xspec(cube1, cube2, weight1, weight2,
+                    window=True, truncate=False, nbins=40,
+                    unitless=True, logbins=True):
+
+    print "finding the signal power spectrum"
+    pwrspec3d_signal = crossps(cube1, cube2, weight1, weight2,
+                               window=window)
+    radius_arr = radius_array(pwrspec3d_signal)
+
+    if unitless:
+        print "making the power spectrum unitless"
+        pwrspec3d_signal = make_unitless(pwrspec3d_signal,
+                                         radius_arr=radius_arr)
+
+    print "binning the power spectrum"
+    bins = suggest_bins(pwrspec3d_signal, truncate=truncate, logbins=logbins,
+                        nbins=nbins, radius_arr=radius_arr)
+
+    counts_histo, binavg = binpwrspec(pwrspec3d_signal, bins,
+                                      radius_arr=radius_arr)
+
+    bin_left, bin_center, bin_right = bin_edges(bins, log=logbins)
 
     return bin_left, bin_center, bin_right, counts_histo, binavg
 
@@ -164,12 +235,10 @@ def test_with_simulation(unitless=True):
     weight1 = algebra.ones_like(cube1)
     weight2 = algebra.ones_like(cube2)
 
-    print "finding the signal power spectrum"
-    pwrspec3d_signal = crossps(cube1, cube2, weight1, weight2,
-                               window=True, unitless=unitless)
-    print "binning the power spectrum"
     bin_left, bin_center, bin_right, counts_histo, binavg = \
-                        binpwrspec(pwrspec3d_signal, truncate=False)
+                    calculate_xspec(cube1, cube2, weight1, weight2,
+                                    window=True, truncate=False, nbins=40,
+                                    unitless=unitless, logbins=True)
 
     #volume = 1.
     #for axis_name in cube1.axes:
@@ -187,7 +256,7 @@ def test_with_simulation(unitless=True):
     for specdata in zip(bin_left, bin_center,
                         bin_right, counts_histo, binavg,
                         pwrspec_input):
-        print ("%10.15g" * 6) % specdata
+        print ("%10.15g " * 6) % specdata
 
 
 def test_with_random(unitless=True):
@@ -209,12 +278,10 @@ def test_with_random(unitless=True):
     weight1 = algebra.ones_like(cube1)
     weight2 = algebra.ones_like(cube2)
 
-    print "finding the signal power spectrum"
-    pwrspec3d_signal = crossps(cube1, cube2, weight1, weight2,
-                               window=True, unitless=unitless)
-    print "binning the power spectrum"
     bin_left, bin_center, bin_right, counts_histo, binavg = \
-                        binpwrspec(pwrspec3d_signal, truncate=True)
+                    calculate_xspec(cube1, cube2, weight1, weight2,
+                                    window=True, truncate=False, nbins=40,
+                                    unitless=unitless, logbins=True)
 
     if unitless:
         pwrspec_input = bin_center ** 3. / 2. / math.pi / math.pi
@@ -226,8 +293,9 @@ def test_with_random(unitless=True):
     for specdata in zip(bin_left, bin_center,
                         bin_right, counts_histo, binavg,
                         pwrspec_input):
-        print ("%10.15g" * 6) % specdata
+        print ("%10.15g " * 6) % specdata
 
 
 if __name__ == '__main__':
-    test_with_simulation(unitless=True)
+    #test_with_simulation(unitless=True)
+    test_with_random(unitless=True)
