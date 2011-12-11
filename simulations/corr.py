@@ -7,7 +7,7 @@ import math
 
 from os.path import dirname, join, exists
 
-from utils import sphbessel, integrate, units, fftutil
+from utils import integrate, units, fftutil
 from utils import cubicspline as cs
 
 from utils.cosmology import Cosmology
@@ -151,7 +151,7 @@ class RedshiftCorrelation(object):
         return rc
 
 
-    def powerspectrum(self, kpar, kperp, z1 = None, z2 = None):
+    def full_powerspectrum(self, kpar, kperp, z1 = None, z2 = None):
         r"""A vectorized routine for calculating the redshift space powerspectrum.
 
         Parameters
@@ -192,9 +192,47 @@ class RedshiftCorrelation(object):
         else:
             ps = (b1*b2*self.ps_dd(k) + mu2 * self.ps_dv(k) * (f1*b2 + f2*b1) + mu2**2 * f1*f2 * self.ps_vv(k))
 
-
         return D1*D2*pf1*pf2*ps
 
+
+    def powerspectrum_1D(self, k_vec, z1, z2, numz):
+        r"""A vectorized routine for calculating the redshift space powerspectrum.
+
+        Parameters
+        ----------
+        k_vec: array_like
+            The magnitude of the k-vector
+        redshift: scalar
+            Redshift at which to evaluate other parameters
+
+        Returns
+        -------
+        ps: array_like
+            The redshift space power spectrum at the given k-vector and redshift.
+
+        Note that this uses the same ps_vv as the realisation generator until
+        the full dd, dv, vv calculation is ready.
+
+        TODO: evaluate this using the same weight function in z as the data.
+        """
+        c1 = self.cosmology.comoving_distance(z1)
+        c2 = self.cosmology.comoving_distance(z2)
+        # Construct an array of the redshifts on each slice of the cube.
+        comoving_inv = inverse_approx(self.cosmology.comoving_distance, z1, z2)
+        da = np.linspace(c1, c2, numz+1, endpoint=True)
+        za = comoving_inv(da)
+
+        # Calculate the bias and growth factors for each slice of the cube.
+        mz = self.mean(za)
+        bz = self.bias_z(za)
+        fz = self.growth_rate(za)
+        Dz = self.growth_factor(za) / self.growth_factor(self.ps_redshift)
+        pz = self.prefactor(za)
+
+        dfactor = np.mean(Dz * pz * bz)
+        vfactor = np.mean(Dz * pz * fz)
+
+        return self.ps_vv(k_vec) * dfactor * dfactor
 
 
     def redshiftspace_correlation(self, pi, sigma, z1 = None, z2 = None):
@@ -298,7 +336,6 @@ class RedshiftCorrelation(object):
                 8.0 / 35.0 * xvv_4 * pl4) * D1 * D2 * pf1 * pf2
 
 
-
     def angular_correlation(self, theta, z1, z2):
         r"""Angular correlation function (in a flat-sky approximation).
 
@@ -321,7 +358,6 @@ class RedshiftCorrelation(object):
         pi = self.cosmology.comoving_distance(z2) - self.cosmology.comoving_distance(z1)
 
         return self.redshiftspace_correlation(pi, sigma, z1, z2)
-
 
 
     def _load_cache(self, fname):
@@ -374,8 +410,6 @@ class RedshiftCorrelation(object):
         rnum : integer
             The number of points to generate (using a log spacing).
         """
-
-
         ra  = np.logspace(np.log10(rmin), np.log10(rmax), rnum)
 
         vv0 = _integrate(ra, 0, self.ps_vv)
@@ -563,7 +597,7 @@ class RedshiftCorrelation(object):
 
 
     def realisation(self, z1, z2, thetax, thetay, numz, numx, numy,
-                    zspace=True, refinement=1, physical=False,
+                    zspace=True, refinement=1, report_physical=False,
                     density_only=False, no_mean=False, no_evolution=False):
         r"""Simulate a redshift-space volume.
 
@@ -640,10 +674,8 @@ class RedshiftCorrelation(object):
             df = cube[0] * (Dz * pz * bz)[:,np.newaxis,np.newaxis]
             vf = cube[1] * (Dz * pz * fz)[:,np.newaxis,np.newaxis]
         else:
-            gb = np.mean(Dz * pz * bz)
-            gf = np.mean(Dz * pz * fz)
-            df = cube[0] * gb
-            vf = cube[1] * gf
+            df = cube[0] * np.mean(Dz * pz * bz)
+            vf = cube[1] * np.mean(Dz * pz * fz)
 
         # Construct the redshift space cube.
         rsf = df
@@ -683,8 +715,8 @@ class RedshiftCorrelation(object):
             #if(zi > numz - 2):
             acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=2)
 
-        if physical:
-            return acube, rsf
+        if report_physical:
+            return acube, rsf, d
         else:
             return acube
 
@@ -704,6 +736,7 @@ class RedshiftCorrelation(object):
         arr : array_like
             The values of C_l(z1, z2)
         """
+        import sphbessel
 
         def _ps_single(l, z1, z2):
             if not self._vv_only:

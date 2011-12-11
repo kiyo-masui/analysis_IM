@@ -183,6 +183,15 @@ class Corr21cm(RedshiftCorrelation, Map3d):
 
         return cube
 
+    def get_pwrspec(self, k_vec):
+        r"""Fetch the power spectrum of the signal
+        The effective redshift is found by averaging over 256 redshifts...
+        """
+        z1 = units.nu21 / self.nu_upper - 1.0
+        z2 = units.nu21 / self.nu_lower - 1.0
+
+        return self.powerspectrum_1D(k_vec, z1, z2, 256) * 1.e-6
+
     def get_kiyo_field_physical(self, refinement=1, density_only=False,
                                 no_mean=False, no_evolution=False):
         r"""Fetch a realisation of the 21cm signal (NOTE: in K)
@@ -190,10 +199,10 @@ class Corr21cm(RedshiftCorrelation, Map3d):
         z1 = units.nu21 / self.nu_upper - 1.0
         z2 = units.nu21 / self.nu_lower - 1.0
 
-        (cube, rsf) = self.realisation(z1, z2, self.x_width, self.y_width,
+        (cube, rsf, d) = self.realisation(z1, z2, self.x_width, self.y_width,
                                 self.nu_num, self.x_num, self.y_num,
                                 refinement=refinement, zspace = False,
-                                physical=True, density_only=density_only,
+                                report_physical=True, density_only=density_only,
                                 no_mean=no_mean, no_evolution=no_evolution)
 
-        return (cube * 0.001, rsf * 0.001)
+        return (cube * 0.001, rsf * 0.001, d)

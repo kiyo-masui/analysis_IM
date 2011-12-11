@@ -13,7 +13,8 @@ import matplotlib.pyplot as plt
 
 
 def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
-                        aspect, title, cbar_title, freq, index):
+                        aspect, title, cbar_title, freq, index,
+                        eps_outfile=None):
     r"""plot a single map slice"""
 
     # set up the size calc
@@ -73,7 +74,11 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
     #gplfile.write("set terminal postscript eps enhanced color\n")
     gplfile.write("set terminal postscript eps color size %g, %g\n" % \
                   (5, 5. * aspect * 1.1))
-    gplfile.write('set output "%s"\n' % outplot_file.name)
+
+    if not eps_outfile:
+        eps_outfile = outplot_file.name
+
+    gplfile.write('set output "%s"\n' % eps_outfile)
 
     gplfile.write('set obj 10 circle at graph 0.9,.15 size %g front\n' % \
                     (fwhm / 2.))
@@ -100,9 +105,11 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
     input_data_file.close()
 
     # consider adding -flatten to avoid transparency
-    subprocess.check_call(('convert', '-density', '300', '-trim', '+repage',
-                           '-border', '40x40', '-bordercolor', 'white',
-                            outplot_file.name, outfilename))
+    if not eps_outfile:
+        subprocess.check_call(('convert', '-density', '300', '-trim', '+repage',
+                               '-border', '40x40', '-bordercolor', 'white',
+                                outplot_file.name, outfilename))
+
     outplot_file.close()
 
 

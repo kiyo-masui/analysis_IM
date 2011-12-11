@@ -13,7 +13,7 @@ from numpy import random
 
 
 # TODO: confirm ra=x, dec=y (thetax = 5, thetay = 3 in 15hr)
-def realize_simulation(template_map, streaming=True, seed=None, refinement=1):
+def realize_simulation(template_map, scenario=None, seed=None, refinement=1):
     """do basic handling to call Richard's simulation code
     here we use 300 h km/s from WiggleZ for streaming dispersion
     Notes on foreground calls for the future (also copy param member func.):
@@ -22,38 +22,62 @@ def realize_simulation(template_map, streaming=True, seed=None, refinement=1):
     ps = pointsource.DiMatteo()
     psf = ps.getfield()
     """
-    if streaming:
-        simobj = corr21cm.Corr21cm.like_kiyo_map(template_map, sigma_v=300.*0.72)
-    else:
-        simobj = corr21cm.Corr21cm.like_kiyo_map(template_map)
-
     if seed is not None:
         random.seed(seed)
 
-    return simobj.get_kiyo_field_physical(refinement=refinement)
+    if scenario is None:
+        print "running standard simulation"
+        simobj = corr21cm.Corr21cm.like_kiyo_map(template_map)
+        maps = simobj.get_kiyo_field_physical(refinement=refinement)
+
+    else:
+        if scenario == "streaming":
+            print "running streaming simulation"
+            simobj = corr21cm.Corr21cm.like_kiyo_map(template_map,
+                                                     sigma_v=300.*0.72)
+            maps = simobj.get_kiyo_field_physical(refinement=refinement)
+
+        if scenario == "ideal":
+            print "running ideal simulation"
+            simobj = corr21cm.Corr21cm.like_kiyo_map(template_map)
+            maps = simobj.get_kiyo_field_physical(refinement=refinement,
+                                density_only=True,
+                                no_mean=True,
+                                no_evolution=True)
+
+    return maps
 
 
 def make_simulation_set(template_file, outfile_physical,
                         outfile_raw, outfile_beam, outfile_beam_plus_data,
-                        verbose=True, streaming=True):
+                        verbose=True, scenario=None):
     """Produce simulated GBT data volumes of three types:
     (from dimensions of a given template file)
-    1. the raw simulation
+    0. the simulation in a physical volume
+    1. the raw simulation in z
     2. the simulation convolved by the instrumental beam
     3. the simulation convolved by the instrumental beam plus the template
     """
-    #(freq_axis, ra_axis, dec_axis, gbt_map_shape, gbt_map) = \
-    #    template_map_axes(template_file)
-    #gbtsim = realize_simulation(freq_axis, ra_axis, dec_axis,
-    #                            streaming=streaming, verbose=verbose)
     template_map = algebra.make_vect(algebra.load(template_file))
-    (gbtsim, gbtphys) = realize_simulation(template_map, streaming=streaming)
+    (gbtsim, gbtphys, physdim) = realize_simulation(template_map,
+                                                    scenario=scenario)
 
-    phys_map = algebra.make_vect(gbtsim, axis_names=('freq', 'ra', 'dec'))
-    phys_map.copy_axis_info(template_map)
+    phys_map = algebra.make_vect(gbtphys, axis_names=('freq', 'ra', 'dec'))
+    pshp = phys_map.shape
+    # TODO: should this be more sophisticated? N-1 or N?
+    info = {'freq_delta': abs(physdim[0])/float(pshp[0]-1),
+            'ra_delta': abs(physdim[1])/float(pshp[1]-1),
+            'dec_delta': abs(physdim[2])/float(pshp[2]-1),
+            'freq_centre': abs(physdim[0])/2.,
+            'ra_centre': abs(physdim[1])/2.,
+            'dec_centre': abs(physdim[2])/2.,
+            'axes': ('freq', 'ra', 'dec'),
+            'type': 'vect'}
+    phys_map.info = info
 
     sim_map = algebra.make_vect(gbtsim, axis_names=('freq', 'ra', 'dec'))
     sim_map.copy_axis_info(template_map)
+
     algebra.save(outfile_raw, sim_map)
     algebra.save(outfile_physical, phys_map)
 
@@ -74,7 +98,7 @@ def make_simulation_set(template_file, outfile_physical,
 
 def wrap_sim(runitem):
     (template_mapname, outfile_physical, outfile_raw, outfile_beam, \
-                                outfile_beam_plus_data, streaming) = runitem
+                                outfile_beam_plus_data, scenario) = runitem
 
     print "using template: " + template_mapname
     print "using physical-space cube file: " + outfile_physical
@@ -83,15 +107,15 @@ def wrap_sim(runitem):
     print "using raw output cube file conv. by beam plus data: " + outfile_beam_plus_data
 
     make_simulation_set(template_mapname, outfile_physical, outfile_raw, outfile_beam,
-                        outfile_beam_plus_data, streaming=streaming)
+                        outfile_beam_plus_data, scenario=scenario)
 
 
 def test_scheme(template_file, sim_filename1, sim_filename2):
     r"""look at some differences between maps"""
     template_map = algebra.make_vect(algebra.load(template_file))
-    gbtsim1 = realize_simulation(template_map, streaming=True,
+    gbtsim1 = realize_simulation(template_map, scenario='streaming',
                                 seed=5489, refinement=1.)
-    gbtsim2 = realize_simulation(template_map, streaming=False,
+    gbtsim2 = realize_simulation(template_map,
                                     seed=5489, refinement=1.)
 
     sim_map1 = algebra.make_vect(gbtsim1, axis_names=('freq', 'ra', 'dec'))
@@ -103,7 +127,7 @@ def test_scheme(template_file, sim_filename1, sim_filename2):
 
 def generate_sim(template_key, output_physical_key, output_key,
                  output_beam_key, output_beam_plus_data_key,
-                 streaming=True, parallel=True):
+                 scenario=None, parallel=True):
     """generate simulations
     here, assuming the sec A of the set is the template map
     """
@@ -126,25 +150,29 @@ def generate_sim(template_key, output_physical_key, output_key,
                                 purpose="output sim+beam+data", silent=True)
 
     runlist = [(template_mapname, physlist[1][index], rawlist[1][index],
-                beamlist[1][index], bpdlist[1][index], streaming)
+                beamlist[1][index], bpdlist[1][index], scenario)
                 for index in rawlist[0]]
 
     #sys.exit()
     if parallel:
-        pool = multiprocessing.Pool(processes=multiprocessing.cpu_count()-3)
+        pool = multiprocessing.Pool(processes=multiprocessing.cpu_count()-4)
         pool.map(wrap_sim, runlist)
     else:
         for runitem in runlist:
             wrap_sim(runitem)
 
 
-def generate_simset(fieldname, streaming=False):
+def generate_simset(fieldname, scenario=None):
     template_key = 'GBT_%s_map' % fieldname
 
-    if streaming:
-        tag = "simvel"
-    else:
+    if scenario is None:
         tag= "sim"
+    else:
+        if scenario == "streaming":
+            tag = "simvel"
+
+        if scenario == "ideal":
+            tag = "simideal"
 
     output_physical_key = '%s_%s_physical' % (tag, fieldname)
     output_key = '%s_%s' % (tag, fieldname)
@@ -153,13 +181,14 @@ def generate_simset(fieldname, streaming=False):
 
     generate_sim(template_key, output_physical_key, output_key,
                  output_beam_key, output_beam_plus_data_key,
-                 streaming=streaming, parallel=True)
+                 scenario=scenario, parallel=True)
 
 
 def generate_full_simset(fieldlist):
     for fieldname in fieldlist:
-        generate_simset(fieldname, streaming=False)
-        generate_simset(fieldname, streaming=True)
+        generate_simset(fieldname, scenario="ideal")
+        generate_simset(fieldname)
+        generate_simset(fieldname, scenario="streaming")
 
 
 def run_scheme_test():
@@ -171,5 +200,6 @@ def run_scheme_test():
 
 if __name__ == '__main__':
     #generate_full_simset(['15hr', '22hr', '1hr'])
-    generate_full_simset(['15hr', '22hr'])
+    #generate_full_simset(['15hr', '22hr'])
+    generate_full_simset(['15hr'])
     #run_scheme_test()
