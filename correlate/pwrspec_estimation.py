@@ -11,7 +11,6 @@ import numpy as np
 import math
 from core import algebra
 from utils import data_paths
-from simulations import ps_estimation
 from simulations import corr21cm
 import multiprocessing
 import copy
@@ -19,7 +18,7 @@ import copy
 
 def radius_array(input_array):
     """Find the Euclidian distance of all the points in an array using their
-    axis meta-data. e.g. x_axis[0]^2 + y_axis[0]^2
+    axis meta-data. e.g. x_axis[0]^2 + y_axis[0]^2. (n-dim)
     """
     index_array = np.indices(input_array.shape)
     scale_array = np.zeros(index_array.shape)
@@ -34,7 +33,25 @@ def radius_array(input_array):
     return np.sum(scale_array ** 2., axis=-1) ** 0.5
 
 
-def crossps(arr1, arr2, weight1, weight2, window=True):
+def window_nd(shape, name="blackman"):
+    """define a window function in n-dim
+    `name` options: blackman, bartlett, hamming, hanning, kaiser
+    """
+    print "using a %s window" % name
+    ndim = len(shape)
+    window = np.ones(shape)
+
+    for index, l in enumerate(shape):
+        sl = ([np.newaxis]*index) + [slice(None)] + \
+             ([np.newaxis]) * (ndim - index - 1)
+        window_func = getattr(np, name)
+        arr = window_func(l)
+        window *= arr[sl]
+
+    return window
+
+
+def crossps(arr1, arr2, weight1, weight2, window="blackman"):
     """Calculate the radially average cross-power spectrum of a two nD fields.
 
     The arrays must be identical and have the same length (physically
@@ -46,12 +63,12 @@ def crossps(arr1, arr2, weight1, weight2, window=True):
         The cubes to calculate the cross-power spectrum of. If arr2 is
         None then return the standard (auto-)power spectrum.
     window: boolean
-        Apply an additional Blackman window
+        Apply an additional named window
     """
     if window:
-        blackman_window = ps_estimation.blackman_nd(arr1.shape)
-        weight1 *= blackman_window
-        weight2 *= blackman_window
+        window_function = window_nd(arr1.shape, name=window)
+        weight1 *= window_function
+        weight2 *= window_function
 
     arr1 *= weight1
     arr2 *= weight2
@@ -173,7 +190,7 @@ def bin_edges(bins, log=False):
 
 
 def binpwrspec(input_array, bins, radius_arr=None):
-    """Bin the points in an array by radius
+    """Bin the points in an array by radius (n-dim)
 
     Parameters
     ----------
@@ -200,7 +217,7 @@ def binpwrspec(input_array, bins, radius_arr=None):
 
 
 def calculate_xspec(cube1, cube2, weight1, weight2,
-                    window=True, unitless=True, bins=None,
+                    window="blackman", unitless=True, bins=None,
                     truncate=False, nbins=40, logbins=True):
 
     print "finding the signal power spectrum"
@@ -228,7 +245,7 @@ def calculate_xspec(cube1, cube2, weight1, weight2,
 
 def calculate_xspec_file(cube1_file, cube2_file, bins,
                     weight1_file=None, weight2_file=None,
-                    window=True, unitless=True):
+                    window="blackman", unitless=True):
     """TODO: merge this with the code above"""
 
     cube1 = algebra.make_vect(algebra.load(cube1_file))
@@ -244,6 +261,7 @@ def calculate_xspec_file(cube1_file, cube2_file, bins,
     else:
         weight2 = algebra.make_vect(algebra.load(weight2_file))
 
+    print cube1.shape, cube2.shape, weight1.shape, weight2.shape
     return calculate_xspec(cube1, cube2, weight1, weight2, bins=bins,
                            window=window, unitless=unitless)
 
@@ -272,7 +290,7 @@ def test_with_agg_simulation(unitless=True, parallel=True):
                        math.log10(2.81187396154818),
                        num=(nbins + 1), endpoint=True)
 
-    # give no weights; just use Blackman window
+    # give no weights; just use window
     runlist = [(filename[1][index], filename[1][index], None, None, bins,
                 True, unitless) for index in filename[0]]
 
@@ -326,12 +344,8 @@ def test_with_simulation(unitless=True):
 
     bin_left, bin_center, bin_right, counts_histo, binavg = \
                     calculate_xspec_file(filename, filename, bins,
-                                    window=True, unitless=unitless)
+                                    window="hamming", unitless=unitless)
 
-    #volume = 1.
-    #for axis_name in cube1.axes:
-    #    axis_vector = cube1.get_axis(axis_name)
-    #    volume *= abs(axis_vector[1]-axis_vector[0])
 
     #k_vec = np.logspace(math.log10(1.e-2),
     #                    math.log10(5.),
@@ -351,15 +365,13 @@ def test_with_simulation(unitless=True):
 def test_with_random(unitless=True):
     """Test the power spectral estimator using a random noise cube"""
 
-    nside = 256
-    delta = 0.23
-
+    delta = 1.33333
     cube1 = algebra.make_vect(np.random.normal(0, 1,
-                                size=(nside, nside, nside)))
+                                size=(257, 124, 68)))
 
     info = {'axes': ["freq", "ra", "dec"], 'type': 'vect',
-            'freq_delta': delta, 'freq_centre': 0.,
-            'ra_delta': delta, 'ra_centre': 0.,
+            'freq_delta': delta/3.78, 'freq_centre': 0.,
+            'ra_delta': delta/1.63, 'ra_centre': 0.,
             'dec_delta': delta, 'dec_centre': 0.}
     cube1.info = info
     cube2 = copy.deepcopy(cube1)
@@ -369,7 +381,7 @@ def test_with_random(unitless=True):
 
     bin_left, bin_center, bin_right, counts_histo, binavg = \
                     calculate_xspec(cube1, cube2, weight1, weight2,
-                                    window=True, truncate=False, nbins=40,
+                                    window="blackman", truncate=False, nbins=40,
                                     unitless=unitless, logbins=True)
 
     if unitless:
@@ -377,7 +389,12 @@ def test_with_random(unitless=True):
     else:
         pwrspec_input = np.ones_like(bin_center)
 
-    pwrspec_input *= delta ** 3.
+    volume = 1.
+    for axis_name in cube1.axes:
+        axis_vector = cube1.get_axis(axis_name)
+        volume *= abs(axis_vector[1]-axis_vector[0])
+
+    pwrspec_input *= volume
 
     for specdata in zip(bin_left, bin_center,
                         bin_right, counts_histo, binavg,
@@ -388,4 +405,4 @@ def test_with_random(unitless=True):
 if __name__ == '__main__':
     #test_with_agg_simulation(unitless=True)
     test_with_simulation(unitless=True)
-    #test_with_random(unitless=True)
+    #test_with_random(unitless=False)
