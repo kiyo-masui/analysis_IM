@@ -642,12 +642,12 @@ class RedshiftCorrelation(object):
         # Make cube pixelisation finer, such that angular cube will
         # have sufficient resolution on the closest face.
         d = np.array([c2-c1, thetax * d2 * units.degree, thetay * d2 * units.degree])
-        #n = np.array([numz, int(c2 / c1 * numx), int(c2 / c1 * numy)])
         n = np.array([numz, int(d2 / d1 * numx), int(d2 / d1 * numy)])
 
+        # TODO: should c1, c2 be resized here?
         # Enlarge cube size by 1 in each dimension, so raytraced cube
         # sits exactly within the gridded points.
-        d = d * (n + 1) / n
+        d = d * (n + 1).astype(float) / n.astype(float)
         n = n + 1
         # now multiply by scaling for a finer sub-grid
         n = refinement*n
@@ -707,16 +707,15 @@ class RedshiftCorrelation(object):
         # Iterate over redshift slices, constructing the coordinates
         # and interpolating into the 3d cube.
         for i in range(numz):
-            zi = (xa[i] - c1) / (c2-c1) * numz
-            tgrid2[0,:,:] = zi
-            tgrid2[1,:,:] = (tgridx * da[i])  / d[1] * numx + 0.5*n[1]
-            tgrid2[2,:,:] = (tgridy * da[i])  / d[2] * numy + 0.5*n[2]
+            tgrid2[0,:,:] = (xa[i] - c1) / (c2-c1) * n[0]
+            tgrid2[1,:,:] = (tgridx * da[i])  / d[1] * n[1] + 0.5*n[1]
+            tgrid2[2,:,:] = (tgridy * da[i])  / d[2] * n[2] + 0.5*n[2]
 
             #if(zi > numz - 2):
             acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=2)
 
         if report_physical:
-            return acube, rsf, d
+            return acube, rsf, (c1, c2, d[1], d[2])
         else:
             return acube
 

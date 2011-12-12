@@ -65,12 +65,12 @@ def make_simulation_set(template_file, outfile_physical,
     phys_map = algebra.make_vect(gbtphys, axis_names=('freq', 'ra', 'dec'))
     pshp = phys_map.shape
     # TODO: should this be more sophisticated? N-1 or N?
-    info = {'freq_delta': abs(physdim[0])/float(pshp[0]-1),
-            'ra_delta': abs(physdim[1])/float(pshp[1]-1),
-            'dec_delta': abs(physdim[2])/float(pshp[2]-1),
-            'freq_centre': abs(physdim[0])/2.,
-            'ra_centre': abs(physdim[1])/2.,
-            'dec_centre': abs(physdim[2])/2.,
+    info = {'freq_delta': abs(physdim[0] - physdim[1]) / float(pshp[0]),
+            'ra_delta': abs(physdim[2]) / float(pshp[1]),
+            'dec_delta': abs(physdim[3]) / float(pshp[2]),
+            'freq_centre': abs(physdim[0] + physdim[1]) / 2.,
+            'ra_centre': abs(physdim[2]) / 2.,
+            'dec_centre': abs(physdim[3]) / 2.,
             'axes': ('freq', 'ra', 'dec'),
             'type': 'vect'}
     phys_map.info = info
@@ -200,6 +200,6 @@ def run_scheme_test():
 
 if __name__ == '__main__':
     #generate_full_simset(['15hr', '22hr', '1hr'])
-    #generate_full_simset(['15hr', '22hr'])
-    generate_full_simset(['15hr'])
+    generate_full_simset(['15hr', '22hr'])
+    #generate_full_simset(['15hr'])
     #run_scheme_test()
