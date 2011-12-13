@@ -28,7 +28,7 @@ nra_d = 20
 ndec_d = 20
 map_size_d = 6.0
 
-dt_d = 0.2
+dt_d = 0.1
 BW_d = 1./2./dt_d
 
 
@@ -122,8 +122,8 @@ class DataMaker(object):
         ra = sp.sin(pa*sp.pi/180)*drifting + sp.cos(pa*sp.pi/180)*scanning
         dec = sp.cos(pa*sp.pi/180)*drifting - sp.sin(pa*sp.pi/180)*scanning
         # Add maps centres and the some offset jitter.
-        ra += 21 + (((sp.pi * (number+3)) % 1.0) - 0.5) * 1.0
-        dec += 0 + (((sp.pi * (number+7)) % 1.0) - 0.5) * 1.0
+        ra += 21 + (((sp.pi * (number+3)) % 1.0) - 0.5) * 0.3
+        dec += 0 + (((sp.pi * (number+7)) % 1.0) - 0.5) * 0.3
         return ra, dec
 
     def get_map(self):
@@ -356,12 +356,61 @@ class TestClasses(unittest.TestCase):
         Noise2.add_mask(mask_inds)
         Noise2.deweight_time_slope()
         Noise2.add_correlated_over_f(0.01, -1.2, 0.1)
-        Noise2.freq_mode_noise += dirty_map.T_infinity
+        Noise2.freq_mode_noise += dirty_map.T_large
         Noise2.finalize()
         N2 = Noise2.get_inverse()
         N2_m = N2.view()
         N2_m.shape = (nt, nt)
         self.assertTrue(sp.allclose(N2, N1))
+
+    def deactivated_test_numerical_stability(self):
+        nf = 20
+        nt = 150
+        dt = 0.3
+        BW = 1. / dt / 2.
+        time_stream = sp.zeros((nf, nt))
+        time_stream = al.make_vect(time_stream, axis_names=("freq", "time"))
+        time = dt * (sp.arange(nt) + 50)
+        N = dirty_map.Noise(time_stream, time)
+        # Thermal.
+        thermal = sp.zeros(nf, dtype=float) + 0.0003 * BW * 2.
+        N.add_thermal(thermal)  # K**2
+        # Mask.
+        mask_f = []
+        mask_t = []
+        # Mask out a whole time.
+        mask_f += range(nf)
+        mask_t += [74] * nf
+        # Mask out a channel.
+        mask_f += [13] * nt
+        mask_t += range(nt)
+        # Mask out a few more points.
+        mask_f += [7, 15, 9, 7]
+        mask_t += [87, 123, 54, 130]
+        N.add_mask((sp.array(mask_f, dtype=int), sp.array(mask_t, dtype=int)))
+        # Time mean and slope.
+        #N.deweight_time_mean()
+        #N.deweight_time_slope()
+        # Correlated modes.
+        f_0 = 1.
+        amps = [0.01, 0.001, 0.0001]
+        index = [-2.5, -1.7, -1.2]
+        for ii in range(3):
+            mode = sp.arange(nf, dtype=float)
+            mode += 5 * nf * ii
+            mode *= ii * 2. * sp.pi / nf
+            mode = sp.cos(mode)
+            mode /= sp.sqrt(sp.sum(mode**2))
+            N.add_over_f_freq_mode(amps[ii], index[ii], f_0, 
+                                   0.0003 * BW * 2., mode)
+        # All freq modes over_f.
+        N.add_all_chan_low(thermal, -0.9, 0.01)
+        N.finalize()
+        N_mat = N.get_inverse()
+        N_mat.shape = (nf * nt,) * 2
+        e, v = linalg.eigh(N_mat)
+        print sp.amax(e) / sp.amin(e)
+
 
     def test_uncoupled_channels(self):
         time_stream, ra, dec, az, el, time, mask_inds = \
@@ -475,6 +524,7 @@ class TestClasses(unittest.TestCase):
 
 
 class TestEngine(unittest.TestCase):
+#class TestEngine(object):
 
     def test_over_f(self):
         """Test with over f dominated noise."""
@@ -556,7 +606,7 @@ class TestEngine(unittest.TestCase):
         nra = 5
         ndec = 5
         map_size = 0.6
-        scan_size = 0.7
+        scan_size = 0.5
         thermal_var = 0.00005 * BW_d * 2 * (5. + sp.arange(nf)/nf) / 5.
         over_f_pars = [(.00003, -1.4, 1., 0.00001)]
         # Spectra needs to be pretty steep since we cut it off 1 octave after
@@ -978,6 +1028,7 @@ class TestPreprocessor(unittest.TestCase):
 
 
 class TestModuleIO(unittest.TestCase):
+#class TestModuleIO(object):
     
     def setUp(self):
 

@@ -268,7 +268,11 @@ class Reader(object) :
                 # to the data block.
                 for field, axis in fields_and_axes.iteritems() :
                     # See if this fits file has the key we are looking for.
-                    if not field in self.fitsdata._names :
+                    try:
+                        names = self.fitsdata.names
+                    except AttributeError:
+                        names = self.fitsdata._names
+                    if not field in names :
                         continue
                     # First get the 'FITS' format string.
                     field_format = self.hdulist[1].columns.formats[
