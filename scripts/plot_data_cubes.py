@@ -25,13 +25,15 @@ def plot_gbt_mapset(outputdir="/cita/d/www/home/eswitzer/movies/"):
 def plot_gbt_simset(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/"):
     datapath_db = data_paths.DataPath()
 
-    keyname = "sim_%s" % fieldname
+    #keyname = "sim_%s" % fieldname
+    keyname = "simideal_%s" % fieldname
     filename = datapath_db.fetch(keyname, pick='1')
     pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
                         sigmarange=3., outputdir=outputdir, multiplier=1000.,
                         transverse=False, filetag_suffix="_"+fieldname)
 
-    keyname = "sim_%s_beam" % fieldname
+    #keyname = "sim_%s_beam" % fieldname
+    keyname = "simideal_%s_beam" % fieldname
     filename = datapath_db.fetch(keyname, pick='1')
     pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
                         sigmarange=3., outputdir=outputdir, multiplier=1000.,
@@ -104,12 +106,30 @@ def plot_sim_scheme(outputdir="/cita/d/www/home/eswitzer/movies/"):
                     fractional=False, diff_filename="./sim_difference.npy",
                     outputdir=outputdir, transverse=False)
 
+
+def plot_manual(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/"):
+    datapath_db = data_paths.DataPath()
+    file2 = './physical_cube.npy'
+
+    keyname = "simideal_%s_physical" % fieldname
+    filename = datapath_db.fetch(keyname, pick='1')
+    pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
+                        sigmarange=[-1,1], outputdir=outputdir, multiplier=1000.,
+                        transverse=False, filetag_suffix="_"+fieldname,
+                        physical=True)
+    pc.make_cube_movie(file2, "Temperature (mK)", pc.cube_frame_dir,
+                        sigmarange=[-1,1], outputdir=outputdir, multiplier=1000.,
+                        transverse=False, filetag_suffix="_"+fieldname,
+                        physical=True)
+
 if __name__ == "__main__":
     #plot_gbt_mapset()
     #plot_gbt_comb_modeset('15hr')
     #plot_gbt_comb_modeset('22hr')
-    plot_gbt_simset('15hr')
+    #plot_gbt_simset('15hr')
     #plot_gbt_simset('22hr')
 
     #plot_gbt_diff_tests()
     #plot_sim_scheme()
+
+    plot_manual('15hr')

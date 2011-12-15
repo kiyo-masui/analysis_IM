@@ -598,7 +598,8 @@ class RedshiftCorrelation(object):
 
     def realisation(self, z1, z2, thetax, thetay, numz, numx, numy,
                     zspace=True, refinement=1, report_physical=False,
-                    density_only=False, no_mean=False, no_evolution=False):
+                    density_only=False, no_mean=False, no_evolution=False,
+                    buffer=5):
         r"""Simulate a redshift-space volume.
 
         Generates a 3D (angle-angle-redshift) volume from the given
@@ -627,6 +628,9 @@ class RedshiftCorrelation(object):
             do not add the mean temperature
         no_evolution: boolean
             do not let b(z), D(z) etc. evolve: take their mean
+        buffer: integer
+            number of pixels over which to buffer the physical region for
+            interpolation onto freq, ra, dec; match spline order?
 
         Returns
         -------
@@ -638,22 +642,24 @@ class RedshiftCorrelation(object):
         d2 = self.cosmology.proper_distance(z2)
         c1 = self.cosmology.comoving_distance(z1)
         c2 = self.cosmology.comoving_distance(z2)
+        c_center = (c1 + c2) / 2.
 
         # Make cube pixelisation finer, such that angular cube will
         # have sufficient resolution on the closest face.
         d = np.array([c2-c1, thetax * d2 * units.degree, thetay * d2 * units.degree])
         n = np.array([numz, int(d2 / d1 * numx), int(d2 / d1 * numy)])
 
-        # TODO: should c1, c2 be resized here?
         # Enlarge cube size by 1 in each dimension, so raytraced cube
         # sits exactly within the gridded points.
-        d = d * (n + 1).astype(float) / n.astype(float)
-        n = n + 1
+        d = d * (n + buffer).astype(float) / n.astype(float)
+        c1 = c_center - (c_center - c1)*(n[0] + buffer) / float(n[0])
+        c2 = c_center + (c2 - c_center)*(n[0] + buffer) / float(n[0])
+        n = n + buffer
         # now multiply by scaling for a finer sub-grid
         n = refinement*n
 
-        print "Generating cube: %f x %f x %f (%d, %d, %d) (h^-1 cMpc)^3" % \
-              (d[0], d[1], d[2], n[0], n[1], n[2])
+        print "Generating cube: (%f to %f) x %f x %f (%d, %d, %d) (h^-1 cMpc)^3" % \
+              (c1, c2, d[1], d[2], n[0], n[1], n[2])
 
         cube = self._realisation_dv(d, n)
 
@@ -708,11 +714,14 @@ class RedshiftCorrelation(object):
         # and interpolating into the 3d cube. Note that the multipliers scale
         # from 0 to 1, or from i=0 to i=N-1
         for i in range(numz):
-            tgrid2[0,:,:] = (xa[i] - c1) / (c2-c1) * (n[0]-1.)
-            tgrid2[1,:,:] = (tgridx * da[i])  / d[1] * (n[1]-1.) + 0.5*(n[1]-1.)
-            tgrid2[2,:,:] = (tgridy * da[i])  / d[2] * (n[2]-1.) + 0.5*(n[2]-1.)
+            tgrid2[0,:,:] = (xa[i] - c1) / (c2-c1) * (n[0] - 1.)
+            tgrid2[1,:,:] = (tgridx * da[i]) / d[1] * (n[1] - 1.) + \
+                            0.5*(n[1] - 1.)
+            tgrid2[2,:,:] = (tgridy * da[i]) / d[2] * (n[2] - 1.) + \
+                            0.5*(n[2] - 1.)
 
             #if(zi > numz - 2):
+            # TODO: what order here?; do end-to-end P(k) study
             #acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=2)
             acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=1)
 

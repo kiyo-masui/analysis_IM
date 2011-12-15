@@ -64,15 +64,25 @@ def make_simulation_set(template_file, outfile_physical,
 
     phys_map = algebra.make_vect(gbtphys, axis_names=('freq', 'ra', 'dec'))
     pshp = phys_map.shape
-    # TODO: should this be more sophisticated? N-1 or N?
-    info = {'freq_delta': abs(physdim[0] - physdim[1]) / float(pshp[0]),
-            'ra_delta': abs(physdim[2]) / float(pshp[1]),
-            'dec_delta': abs(physdim[3]) / float(pshp[2]),
-            'freq_centre': abs(physdim[0] + physdim[1]) / 2.,
-            'ra_centre': abs(physdim[2]) / 2.,
-            'dec_centre': abs(physdim[3]) / 2.,
-            'axes': ('freq', 'ra', 'dec'),
-            'type': 'vect'}
+
+    # define the axes of the physical map; several alternatives are commented
+    info = {}
+    info['axes'] = ('freq', 'ra', 'dec')
+    info['type'] = 'vect'
+    info['freq_delta'] = abs(physdim[0] - physdim[1]) / float(pshp[0] - 1)
+    info['freq_centre'] = physdim[0] + info['freq_delta'] * float(pshp[0] // 2)
+    #        'freq_centre': abs(physdim[0] + physdim[1]) / 2.,
+
+    info['ra_delta'] = abs(physdim[2]) / float(pshp[1] - 1)
+    #info['ra_centre'] = info['ra_delta'] * float(pshp[1] // 2)
+    #        'ra_centre': abs(physdim[2]) / 2.,
+    info['ra_centre'] = 0.
+
+    info['dec_delta'] = abs(physdim[3]) / float(pshp[2] - 1)
+    #info['dec_centre'] = info['dec_delta'] * float(pshp[2] // 2)
+    #        'dec_centre': abs(physdim[3]) / 2.,
+    info['dec_centre'] = 0.
+
     phys_map.info = info
 
     sim_map = algebra.make_vect(gbtsim, axis_names=('freq', 'ra', 'dec'))
@@ -199,7 +209,7 @@ def run_scheme_test():
 
 
 if __name__ == '__main__':
-    #generate_full_simset(['15hr', '22hr', '1hr'])
-    generate_full_simset(['15hr', '22hr'])
+    generate_full_simset(['15hr', '22hr', '1hr'])
+    #generate_full_simset(['15hr', '22hr'])
     #generate_full_simset(['15hr'])
     #run_scheme_test()

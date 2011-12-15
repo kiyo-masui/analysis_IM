@@ -13,30 +13,37 @@ import matplotlib.pyplot as plt
 
 
 def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
-                        aspect, title, cbar_title, freq, index,
-                        eps_outfile=None):
-    r"""plot a single map slice"""
+                        aspect, title, cbar_title, slice_label, index,
+                        eps_outfile=None, physical=False):
+    r"""plot a single map slice
+    Here, slice_label is the value of the value over which the slice is fixed
+        for physical=False, this is the frequency of the slice in MHz
+        for physical=True, this is the comoving distance to the slice
+    """
 
-    # set up the size calc
-    cosmology = Cosmology()
+    if not physical:
+        z_here = cc.freq_21cm_MHz / slice_label - 1.
+        cosmology = Cosmology()
+        littleh = (cosmology.H0 / 100.0)
+        comoving_distance = cosmology.comoving_distance(z_here) / littleh
+        proper_distance = cosmology.proper_distance(z_here) / littleh
+        angular_scale = 20. / units.degree / proper_distance
 
-    z_here = cc.freq_21cm_MHz / freq - 1.
-    littleh = (cosmology.H0 / 100.0)
-    comoving_distance = cosmology.comoving_distance(z_here) / littleh
-    proper_distance = cosmology.proper_distance(z_here) / littleh
-    angular_scale = 20. / units.degree / proper_distance
+        fulltitle = "%s (i = %d, freq = %3.1f MHz, z = %3.3f, Dc=%3.0f cMpc)" % \
+                (title, index, slice_label, z_here, comoving_distance)
 
-    fulltitle = "%s (i = %d, freq = %3.1f MHz, z = %3.3f, Dc=%3.0f cMpc)" % \
-                (title, index, freq, z_here, comoving_distance)
+        beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792,
+                     0.281176247549, 0.270856788455, 0.26745856078,
+                     0.258910010848, 0.249188429031])
+        freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
+                                 dtype=float)
+        beam_fwhm = interp1d(freq_data, beam_data)
+        fwhm = beam_fwhm(slice_label)
+    else:
+        fulltitle = "%s (i = %d, Dc = %10.3f cMpc)" % \
+                (title, index, slice_label)
+
     print fulltitle, repr(cube_slice.shape)
-
-    beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792,
-                 0.281176247549, 0.270856788455, 0.26745856078,
-                 0.258910010848, 0.249188429031])
-    freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
-                             dtype=float)
-    beam_fwhm = interp1d(freq_data, beam_data)
-    fwhm = beam_fwhm(freq)
 
     input_data_file = tempfile.NamedTemporaryFile()
     gplfile = tempfile.NamedTemporaryFile(suffix=".gpl")
@@ -58,14 +65,11 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
 
     input_data_file.flush()
 
-    # TODO: set uniform colobar range
     gplfile.write("set view map\n")
     gplfile.write("set xrange [%g:%g]\n" % xminmax)
     gplfile.write("set yrange [%g:%g]\n" % yminmax)
     gplfile.write("set cbrange [%g:%g]\n" % cminmax)
-    #gplfile.write("set size %g, %g\n" % (0.9, 0.9*aspect))
     gplfile.write("set size ratio -1\n")
-    #gplfile.write("set size square\n")
     gplfile.write("set nokey\n")
     gplfile.write("set tics out\n")
     gplfile.write('set xlabel "%s"\n' % xylabels[0])
@@ -73,7 +77,6 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
     gplfile.write('set title "%s"\n' % fulltitle)
     gplfile.write('set cblabel "%s"\n' % cbar_title)
     gplfile.write('set rmargin 10\n')
-    #gplfile.write("set terminal postscript eps enhanced color\n")
     gplfile.write("set terminal postscript eps color size %g, %g\n" % \
                   (5, 5. * aspect * 1.1))
 
@@ -82,22 +85,16 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
     else:
         gplfile.write('set output "%s"\n' % eps_outfile)
 
-    gplfile.write('set obj 10 circle at graph 0.9,.15 size %g front\n' % \
-                    (fwhm / 2.))
-    gplfile.write('set obj 10 lw 5 fill empty border rgb "purple"\n')
-    gplfile.write('set obj 11 rect at graph 0.9,.15 size %g, %g front\n' % \
-                   (angular_scale, angular_scale))
-    gplfile.write('set obj 11 lw 3 fill empty border rgb "black"\n')
-    #gplfile.write('set obj 10 fc rgb "blue"\n')
+    if not physical:
+        gplfile.write('set obj 10 circle at graph 0.9,.15 size %g front\n' % \
+                       (fwhm / 2.))
+        gplfile.write('set obj 10 lw 5 fill empty border rgb "purple"\n')
+        plfile.write('set obj 11 rect at graph 0.9,.15 size %g, %g front\n' % \
+                      (angular_scale, angular_scale))
+        gplfile.write('set obj 11 lw 3 fill empty border rgb "black"\n')
 
-    # can also positive nops_allcF maxcolors 0 gamma 1.5 gray
-    #gplfile.write("set palette color\n")
     gplfile.write("set palette rgbformulae 22, 13, -31\n")
 
-    #gplfile.write("set pm3d map\n")
-    #gplfile.write("set pm3d interpolate 5,5\n")
-    #gplfile.write('splot "%s" matrix using 1:2:3 with pm3d\n' % \
-    #                input_data_file.name)
     gplfile.write('plot "%s" using 1:2:3 with image\n' % input_data_file.name)
     gplfile.flush()
 
@@ -106,7 +103,6 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
     gplfile.close()
     input_data_file.close()
 
-    # consider adding -flatten to avoid transparency
     if eps_outfile is None:
         subprocess.check_call(('convert', '-density', '300', '-trim', '+repage',
                                '-border', '40x40', '-bordercolor', 'white',
@@ -118,7 +114,7 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
 def plot_single(plotitem):
     """plot a single map slice; helper function for process pool"""
     (index, cube_slice, xaxis, yaxis, vaxis, xylabels, aspect, \
-            title, cbar_title, fileprefix, freq) = plotitem
+            title, cbar_title, fileprefix, slice_label) = plotitem
     print title, repr(cube_slice.shape)
     plt.figure(figsize=(7, 3.3))
     cplot = plt.contourf(xaxis, yaxis, np.transpose(cube_slice), vaxis)

@@ -14,20 +14,20 @@ cube_frame_dir = "/scratch/eswitzer/cube_frames/"
 def gnuplot_radec_single(plotitem):
     """plot a single map slice; helper function for process pool"""
     (index, cube_slice, xaxis, yaxis, vaxis, xylabels, aspect, \
-            title, cbar_title, fileprefix, freq) = plotitem
+            title, cbar_title, fileprefix, freq, physical) = plotitem
 
     outfilename = fileprefix + str('.%03d' % index) + '.jpeg'
 
     plot_slice.gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis,
                             vaxis, xylabels, aspect, title, cbar_title,
-                            freq, index)
+                            freq, index, physical=physical)
 
 
 def make_cube_movie(cubename, colorbar_title, frame_dir,
                     filetag_suffix="",
                     outputdir="./", sigmarange=6., ignore=None, multiplier=1.,
                     transverse=False, title=None, sigmacut=None,
-                    logscale=False):
+                    logscale=False, physical=False):
     """Make a stack of spatial slice maps and animate them
     transverse plots along RA and freq and image plane is in Dec
     First mask any points that exceed `sigmacut`, and then report the extent of
@@ -93,10 +93,10 @@ def make_cube_movie(cubename, colorbar_title, frame_dir,
     print "using range: [%g, %g]" % (np.min(color_axis), np.max(color_axis))
 
     freq_axis = cube.get_axis('freq')
-    freq_axis /= 1.e6  # convert to MHz
     (ra_axis, dec_axis) = (cube.get_axis('ra'), cube.get_axis('dec'))
 
     runlist = []
+    # TODO: make transverse work with gnuplot
     if transverse:
         for decind in range(cube.shape[2]):
             fulltitle = title + " (dec = %3.1f)" % (dec_axis[decind])
@@ -105,15 +105,23 @@ def make_cube_movie(cubename, colorbar_title, frame_dir,
                             fulltitle, colorbar_title, fileprefix, 800.))
     else:
         for freqind in range(cube.shape[0]):
-            runlist.append((freqind, cube[freqind, :, :], ra_axis,
-                            dec_axis, color_axis, ["RA", "Dec"], 1.,
-                            title, colorbar_title, fileprefix,
-                            freq_axis[freqind]))
+            if physical:
+                runlist.append((freqind, cube[freqind, :, :], ra_axis,
+                                dec_axis, color_axis,
+                                ["x (RA, cMpc/h)", "y (Dec, cMpc/h)"], 1.,
+                                title, colorbar_title, fileprefix,
+                                freq_axis[freqind], physical))
+            else:
+                # convert to MHz
+                runlist.append((freqind, cube[freqind, :, :], ra_axis,
+                                dec_axis, color_axis, ["RA", "Dec"], 1.,
+                                title, colorbar_title, fileprefix,
+                                freq_axis[freqind] / 1.e6, physical))
 
     pool = multiprocessing.Pool(processes=(multiprocessing.cpu_count() - 4))
     #pool.map(plot_single, runlist)
     pool.map(gnuplot_radec_single, runlist)
-    #gnuplot_radec_single(runlist[0])
+    #gnuplot_radec_single(runlist[0])  # for troubleshooting
 
     #argument = frame_dir + tag + '.%03d.png'
     argument = frame_dir + tag + '.%03d.jpeg'
