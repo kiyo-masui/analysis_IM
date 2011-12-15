@@ -75,10 +75,10 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
     gplfile.write("set terminal postscript eps color size %g, %g\n" % \
                   (5, 5. * aspect * 1.1))
 
-    if not eps_outfile:
-        eps_outfile = outplot_file.name
-
-    gplfile.write('set output "%s"\n' % eps_outfile)
+    if eps_outfile is None:
+        gplfile.write('set output "%s"\n' % outplot_file.name)
+    else:
+        gplfile.write('set output "%s"\n' % eps_outfile)
 
     gplfile.write('set obj 10 circle at graph 0.9,.15 size %g front\n' % \
                     (fwhm / 2.))
@@ -105,7 +105,8 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
     input_data_file.close()
 
     # consider adding -flatten to avoid transparency
-    if not eps_outfile:
+    if eps_outfile is None:
+        print outplot_file.name
         subprocess.check_call(('convert', '-density', '300', '-trim', '+repage',
                                '-border', '40x40', '-bordercolor', 'white',
                                 outplot_file.name, outfilename))

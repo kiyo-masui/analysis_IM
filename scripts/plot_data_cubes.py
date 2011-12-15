@@ -106,9 +106,9 @@ def plot_sim_scheme(outputdir="/cita/d/www/home/eswitzer/movies/"):
 
 if __name__ == "__main__":
     #plot_gbt_mapset()
-    plot_gbt_comb_modeset('15hr')
+    #plot_gbt_comb_modeset('15hr')
     #plot_gbt_comb_modeset('22hr')
-    #plot_gbt_simset('15hr')
+    plot_gbt_simset('15hr')
     #plot_gbt_simset('22hr')
 
     #plot_gbt_diff_tests()

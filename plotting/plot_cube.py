@@ -193,7 +193,7 @@ def make_cube_slice(cubename, outfilename, slice_index, colorbar_title,
     freq_axis /= 1.e6  # convert to MHz
     (ra_axis, dec_axis) = (cube.get_axis('ra'), cube.get_axis('dec'))
 
-    plot_slice.gnuplot_radec_slice("placeholder.png", cube[slice_index, :, :],
+    plot_slice.gnuplot_radec_slice("placeholder.jpeg", cube[slice_index, :, :],
                             ra_axis, dec_axis, color_axis,
                             ["RA", "Dec"], 1., title, colorbar_title,
                             freq_axis[slice_index], slice_index,
