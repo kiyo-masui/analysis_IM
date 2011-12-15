@@ -42,8 +42,10 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
     gplfile = tempfile.NamedTemporaryFile(suffix=".gpl")
     outplot_file = tempfile.NamedTemporaryFile(suffix=".eps")
 
-    xminmax = (np.min(xaxis), np.max(xaxis))
-    yminmax = (np.min(yaxis), np.max(yaxis))
+    deltax = abs(xaxis[1] - xaxis[0])
+    deltay = abs(yaxis[1] - yaxis[0])
+    xminmax = (np.min(xaxis) - 0.5 * deltax, np.max(xaxis) + 0.5 * deltax)
+    yminmax = (np.min(yaxis) - 0.5 * deltay, np.max(yaxis) + 0.5 * deltay)
     cminmax = (np.min(vaxis), np.max(vaxis))
     aspect = (yminmax[1] - yminmax[0]) / (xminmax[1] - xminmax[0])
 
@@ -106,7 +108,6 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
 
     # consider adding -flatten to avoid transparency
     if eps_outfile is None:
-        print outplot_file.name
         subprocess.check_call(('convert', '-density', '300', '-trim', '+repage',
                                '-border', '40x40', '-bordercolor', 'white',
                                 outplot_file.name, outfilename))

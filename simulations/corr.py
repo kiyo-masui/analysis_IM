@@ -696,8 +696,8 @@ class RedshiftCorrelation(object):
         xa = self.cosmology.comoving_distance(za)
 
         # Construct the angular offsets into cube
-        tx = np.linspace(-thetax / 2, thetax / 2, numx) * units.degree
-        ty = np.linspace(-thetay / 2, thetay / 2, numy) * units.degree
+        tx = np.linspace(-thetax / 2., thetax / 2., numx) * units.degree
+        ty = np.linspace(-thetay / 2., thetay / 2., numy) * units.degree
 
         #tgridx, tgridy = np.meshgrid(tx, ty)
         tgridy, tgridx = np.meshgrid(ty, tx)
@@ -705,14 +705,16 @@ class RedshiftCorrelation(object):
         acube = np.zeros((numz, numx, numy))
 
         # Iterate over redshift slices, constructing the coordinates
-        # and interpolating into the 3d cube.
+        # and interpolating into the 3d cube. Note that the multipliers scale
+        # from 0 to 1, or from i=0 to i=N-1
         for i in range(numz):
-            tgrid2[0,:,:] = (xa[i] - c1) / (c2-c1) * n[0]
-            tgrid2[1,:,:] = (tgridx * da[i])  / d[1] * n[1] + 0.5*n[1]
-            tgrid2[2,:,:] = (tgridy * da[i])  / d[2] * n[2] + 0.5*n[2]
+            tgrid2[0,:,:] = (xa[i] - c1) / (c2-c1) * (n[0]-1.)
+            tgrid2[1,:,:] = (tgridx * da[i])  / d[1] * (n[1]-1.) + 0.5*(n[1]-1.)
+            tgrid2[2,:,:] = (tgridy * da[i])  / d[2] * (n[2]-1.) + 0.5*(n[2]-1.)
 
             #if(zi > numz - 2):
-            acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=2)
+            #acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=2)
+            acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=1)
 
         if report_physical:
             return acube, rsf, (c1, c2, d[1], d[2])
