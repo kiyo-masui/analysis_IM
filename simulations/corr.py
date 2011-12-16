@@ -590,7 +590,8 @@ class RedshiftCorrelation(object):
         df = vf0
 
         # Construct the line of sight velocity field.
-        vf = np.fft.irfftn(mu2arr * np.fft.rfftn(vf0))
+        # TODO: is the s=rfv._n the correct thing here?
+        vf = np.fft.irfftn(mu2arr * np.fft.rfftn(vf0), s=rfv._n)
 
         #return (df, vf, rfv, kvec)
         return (df, vf) #, rfv)
@@ -647,6 +648,9 @@ class RedshiftCorrelation(object):
         # Make cube pixelisation finer, such that angular cube will
         # have sufficient resolution on the closest face.
         d = np.array([c2-c1, thetax * d2 * units.degree, thetay * d2 * units.degree])
+        # Note that the ratio of deltas in Ra, Dec in degrees may
+        # be different than the Ra, Dec in physical coordinates due to
+        # rounding onto this grid
         n = np.array([numz, int(d2 / d1 * numx), int(d2 / d1 * numy)])
 
         # Enlarge cube size by 1 in each dimension, so raytraced cube
@@ -662,7 +666,8 @@ class RedshiftCorrelation(object):
               (c1, c2, d[1], d[2], n[0], n[1], n[2])
 
         cube = self._realisation_dv(d, n)
-        # TODO: note that _realisation_dv can change the dimensions; resolve
+        # TODO: this is probably unnecessary now (realisation used to change
+        # shape through irfftn)
         n = cube[0].shape
 
         # Construct an array of the redshifts on each slice of the cube.

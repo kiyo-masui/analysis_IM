@@ -28,9 +28,8 @@ def physical_grid(input_array, refinement=1, pad=5):
     nu_lower, nu_upper = freq_axis.min(), freq_axis.max()
     ra_fact = sp.cos(sp.pi * input_array.info['dec_centre'] / 180.0)
     thetax, thetay = np.ptp(ra_axis), np.ptp(dec_axis)
-    #thetax *= ra_fact
+    thetax *= ra_fact
     (numz, numx, numy) = input_array.shape
-    print thetax / numx, thetay / numy
 
     cosmology = Cosmology()
     z1 = units.nu21 / nu_upper - 1.0
@@ -47,6 +46,9 @@ def physical_grid(input_array, refinement=1, pad=5):
                          thetax * d2 * units.degree,
                          thetay * d2 * units.degree])
 
+    # Note that the ratio of deltas in Ra, Dec in degrees may
+    # be different than the Ra, Dec in physical coordinates due to
+    # rounding onto this grid
     n = np.array([numz, int(d2 / d1 * numx), int(d2 / d1 * numy)])
 
     # Enlarge cube size by `pad` in each dimension, so raytraced cube
