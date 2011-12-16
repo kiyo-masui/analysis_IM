@@ -1,16 +1,119 @@
-"""Calculate the radial average of a 2-d image. Code stolen from:
-
-http://www.astrobetter.com/wiki/tiki-index.php?page=python_radial_profiles
-
-and modified to crudely have a controllable bin width.
-"""
-
+# TODO: consider moving azimuthalAverage and _nd version to the attic
 import numpy as np
+import math
+from core import algebra
 
-def azimuthalAverage(image, center=None, bw = 3):
+
+def radius_array(input_array):
+    """Find the Euclidian distance of all the points in an array using their
+    axis meta-data. e.g. x_axis[0]^2 + y_axis[0]^2. (n-dim)
+    """
+    index_array = np.indices(input_array.shape)
+    scale_array = np.zeros(index_array.shape)
+
+    for axis_index in range(input_array.ndim):
+        axis_name = input_array.axes[axis_index]
+        axis = input_array.get_axis(axis_name)
+        scale_array[axis_index, ...] = axis[index_array[axis_index, ...]]
+
+    scale_array = np.rollaxis(scale_array, 0, scale_array.ndim)
+
+    return np.sum(scale_array ** 2., axis=-1) ** 0.5
+
+
+def suggest_bins(input_array, truncate=True, nbins=40, logbins=True,
+                 radius_arr=None):
+    """Bin the points in an array by radius
+
+    Parameters
+    ----------
+    input_array: np.ndarray
+        array over which to bin
+    truncate: boolean
+        maximum radius is the smallest dimension of the array
+    nbins: scalar
+        number of bins to use if not given some in advance
+    logbins: boolean
+        generate a log-spaced binning
+    radius_arr: np.ndarray
+        optional array of |k| to avoid recalculation
+    TODO: throw out bins where the counts/bin are too low
+    """
+    if radius_arr is None:
+        radius_arr = radius_array(input_array)
+
+    radius_sorted = np.sort(radius_arr.flat)
+
+    if truncate:
+        axis_range = np.zeros((input_array.ndim))
+        for axis_index in range(input_array.ndim):
+            axis_name = input_array.axes[axis_index]
+            axis = input_array.get_axis(axis_name)
+            axis_range[axis_index] = axis.max()
+
+        max_r = axis_range.min()
+    else:
+        max_r = radius_sorted[-1]
+
+    # ignore the bin at k=0 (index 0 in sorted)
+    if logbins:
+        bins = np.logspace(math.log10(radius_sorted[1]),
+                           math.log10(max_r),
+                           num=(nbins + 1), endpoint=True)
+    else:
+        bins = np.linspace(radius_sorted[1], max_r,
+                           num=(nbins + 1), endpoint=True)
+
+    print "%d bins from %10.15g to %10.15g" % (nbins, radius_sorted[1], max_r)
+
+    return bins
+
+
+def bin_edges(bins, log=False):
+    """report the bin edges and centers using the same convention as
+    np.histogram. `log` reports the log-center
+    """
+    bin_left, bin_right = bins[:-1], bins[1:]
+    if log:
+        bin_center = 10 ** (0.5 * (np.log10(bin_left) +
+                               np.log10(bin_right)))
+    else:
+        bin_center = 0.5 * (bin_left + bin_right)
+
+    return bin_left, bin_center, bin_right
+
+
+def bin_an_array(input_array, bins, radius_arr=None):
+    """Bin the points in an array by radius (n-dim)
+
+    Parameters
+    ----------
+    input_array: np.ndarray
+        array over which to bin
+    bins: np.ndarray
+        the bins
+    radius_arr: np.ndarray
+        optional array of |k| to avoid recalculation
+    """
+    if radius_arr is None:
+        radius_arr = radius_array(input_array)
+
+    radius_flat = radius_arr.flat
+    arr_flat = input_array.flat
+
+    counts_histo = np.histogram(radius_flat, bins)[0]
+    binsum_histo = np.histogram(radius_flat, bins,
+                                weights=arr_flat)[0]
+
+    binavg = binsum_histo / counts_histo.astype(float)
+
+    return counts_histo, binavg
+
+
+def azimuthal_average(image, center=None, bw = 3):
     """
     Calculate the azimuthally averaged radial profile.
-    
+
     Parameters
     ----------
     image : np.ndarray
@@ -26,7 +129,8 @@ def azimuthalAverage(image, center=None, bw = 3):
         The lower limit of the bin radius.
     radial_prof : np.ndarray
         The radial averaged profile.
-    
+
+    http://www.astrobetter.com/wiki/tiki-index.php?page=python_radial_profiles
     """
     # Calculate the indices from the image
     y, x = np.indices(image.shape)
@@ -66,8 +170,6 @@ def azimuthalAverage(image, center=None, bw = 3):
     rind = np.insert(rind, 0, -1)
     nr = rind[1:] - rind[:-1]        # number of radius bin
 
-
-    
     # Cumulative sum to figure out sums for each radius bin
     csim = np.cumsum(i_sorted, dtype=image.dtype)
     csim = np.insert(csim, 0, 0.0)
@@ -78,12 +180,10 @@ def azimuthalAverage(image, center=None, bw = 3):
     return bl, radial_prof
 
 
-
-
-def azimuthalAverage_nd(image, center=None, bw = 3):
+def azimuthal_average_nd(image, center=None, bw = 3):
     """
     Calculate the azimuthally averaged radial profile.
-    
+
     Parameters
     ----------
     image : np.ndarray
@@ -99,7 +199,6 @@ def azimuthalAverage_nd(image, center=None, bw = 3):
         The lower limit of the bin radius.
     radial_prof : np.ndarray
         The radial averaged profile.
-    
     """
     # Calculate the indices from the image
     ia = np.indices(image.shape)
@@ -141,8 +240,6 @@ def azimuthalAverage_nd(image, center=None, bw = 3):
     rind = np.insert(rind, 0, -1)
     nr = rind[1:] - rind[:-1]        # number of radius bin
 
-
-    
     # Cumulative sum to figure out sums for each radius bin
     csim = np.cumsum(i_sorted, dtype=image.dtype)
     csim = np.insert(csim, 0, 0.0)

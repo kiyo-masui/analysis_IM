@@ -15,41 +15,8 @@ from simulations import corr21cm
 import multiprocessing
 import copy
 from map import physical_gridding
-
-
-def radius_array(input_array):
-    """Find the Euclidian distance of all the points in an array using their
-    axis meta-data. e.g. x_axis[0]^2 + y_axis[0]^2. (n-dim)
-    """
-    index_array = np.indices(input_array.shape)
-    scale_array = np.zeros(index_array.shape)
-
-    for axis_index in range(input_array.ndim):
-        axis_name = input_array.axes[axis_index]
-        axis = input_array.get_axis(axis_name)
-        scale_array[axis_index, ...] = axis[index_array[axis_index, ...]]
-
-    scale_array = np.rollaxis(scale_array, 0, scale_array.ndim)
-
-    return np.sum(scale_array ** 2., axis=-1) ** 0.5
-
-
-def window_nd(shape, name="blackman"):
-    """define a window function in n-dim
-    `name` options: blackman, bartlett, hamming, hanning, kaiser
-    """
-    print "using a %s window" % name
-    ndim = len(shape)
-    window = np.ones(shape)
-
-    for index, l in enumerate(shape):
-        sl = ([np.newaxis]*index) + [slice(None)] + \
-             ([np.newaxis]) * (ndim - index - 1)
-        window_func = getattr(np, name)
-        arr = window_func(l)
-        window *= arr[sl]
-
-    return window
+from utils import fftutil
+from utils import radialprofile
 
 
 def cross_power_est(arr1, arr2, weight1, weight2, window="blackman"):
@@ -67,7 +34,7 @@ def cross_power_est(arr1, arr2, weight1, weight2, window="blackman"):
         Apply an additional named window
     """
     if window:
-        window_function = window_nd(arr1.shape, name=window)
+        window_function = fftutil.window_nd(arr1.shape, name=window)
         weight1 *= window_function
         weight2 *= window_function
 
@@ -120,101 +87,12 @@ def make_unitless(xspec_arr, radius_arr=None):
     (e.g. k^3 / 2 pi^2 in 3D)
     """
     if radius_arr is None:
-        radius_arr = radius_array(xspec_arr)
+        radius_arr = radialprofile.radius_array(xspec_arr)
 
     ndim = xspec_arr.ndim
     factor = 2. * math.pi ** (ndim / 2.) / math.gamma(ndim / 2.)
     factor /= (2. * math.pi) ** ndim
     return xspec_arr * radius_arr ** ndim * factor
-
-
-def suggest_bins(input_array, truncate=True, nbins=40, logbins=True,
-                 radius_arr=None):
-    """Bin the points in an array by radius
-
-    Parameters
-    ----------
-    input_array: np.ndarray
-        array over which to bin
-    truncate: boolean
-        maximum radius is the smallest dimension of the array
-    nbins: scalar
-        number of bins to use if not given some in advance
-    logbins: boolean
-        generate a log-spaced binning
-    radius_arr: np.ndarray
-        optional array of |k| to avoid recalculation
-    TODO: throw out bins where the counts/bin are too low
-    """
-    if radius_arr is None:
-        radius_arr = radius_array(input_array)
-
-    radius_sorted = np.sort(radius_arr.flat)
-
-    if truncate:
-        axis_range = np.zeros((input_array.ndim))
-        for axis_index in range(input_array.ndim):
-            axis_name = input_array.axes[axis_index]
-            axis = input_array.get_axis(axis_name)
-            axis_range[axis_index] = axis.max()
-
-        max_r = axis_range.min()
-    else:
-        max_r = radius_sorted[-1]
-
-    # ignore the bin at k=0 (index 0 in sorted)
-    if logbins:
-        bins = np.logspace(math.log10(radius_sorted[1]),
-                           math.log10(max_r),
-                           num=(nbins + 1), endpoint=True)
-    else:
-        bins = np.linspace(radius_sorted[1], max_r,
-                           num=(nbins + 1), endpoint=True)
-
-    print "%d bins from %10.15g to %10.15g" % (nbins, radius_sorted[1], max_r)
-
-    return bins
-
-
-def bin_edges(bins, log=False):
-    """report the bin edges and centers using the same convention as
-    np.histogram. `log` reports the log-center
-    """
-    bin_left, bin_right = bins[:-1], bins[1:]
-    if log:
-        bin_center = 10 ** (0.5 * (np.log10(bin_left) +
-                               np.log10(bin_right)))
-    else:
-        bin_center = 0.5 * (bin_left + bin_right)
-
-    return bin_left, bin_center, bin_right
-
-
-def binpwrspec(input_array, bins, radius_arr=None):
-    """Bin the points in an array by radius (n-dim)
-
-    Parameters
-    ----------
-    input_array: np.ndarray
-        array over which to bin
-    bins: np.ndarray
-        the bins
-    radius_arr: np.ndarray
-        optional array of |k| to avoid recalculation
-    """
-    if radius_arr is None:
-        radius_arr = radius_array(input_array)
-
-    radius_flat = radius_arr.flat
-    arr_flat = input_array.flat
-
-    counts_histo = np.histogram(radius_flat, bins)[0]
-    binsum_histo = np.histogram(radius_flat, bins,
-                                weights=arr_flat)[0]
-
-    binavg = binsum_histo / counts_histo.astype(float)
-
-    return counts_histo, binavg
 
 
 def calculate_xspec(cube1, cube2, weight1, weight2,
@@ -224,7 +102,7 @@ def calculate_xspec(cube1, cube2, weight1, weight2,
     print "finding the signal power spectrum"
     pwrspec3d_signal = cross_power_est(cube1, cube2, weight1, weight2,
                                window=window)
-    radius_arr = radius_array(pwrspec3d_signal)
+    radius_arr = radialprofile.radius_array(pwrspec3d_signal)
 
     if unitless:
         print "making the power spectrum unitless"
@@ -233,13 +111,16 @@ def calculate_xspec(cube1, cube2, weight1, weight2,
 
     print "binning the power spectrum"
     if bins is None:
-        bins = suggest_bins(pwrspec3d_signal, truncate=truncate, logbins=logbins,
-                            nbins=nbins, radius_arr=radius_arr)
+        bins = radialprofile.suggest_bins(pwrspec3d_signal,
+                                          truncate=truncate,
+                                          logbins=logbins,
+                                          nbins=nbins,
+                                          radius_arr=radius_arr)
 
-    counts_histo, binavg = binpwrspec(pwrspec3d_signal, bins,
-                                      radius_arr=radius_arr)
+    counts_histo, binavg = radialprofile.bin_an_array(pwrspec3d_signal, bins,
+                                                      radius_arr=radius_arr)
 
-    bin_left, bin_center, bin_right = bin_edges(bins, log=logbins)
+    bin_left, bin_center, bin_right = radialprofile.bin_edges(bins, log=logbins)
 
     return bin_left, bin_center, bin_right, counts_histo, binavg
 
@@ -304,7 +185,7 @@ def test_with_agg_simulation(unitless=True, parallel=True):
 
     zspace_cube = algebra.make_vect(algebra.load(zfilename))
     simobj = corr21cm.Corr21cm.like_kiyo_map(zspace_cube)
-    bin_left, bin_center, bin_right = bin_edges(bins, log=True)
+    bin_left, bin_center, bin_right = radialprofile.bin_edges(bins, log=True)
     pwrspec_input = simobj.get_pwrspec(bin_center)
     if unitless:
         pwrspec_input *= bin_center ** 3. / 2. / math.pi / math.pi
@@ -429,7 +310,7 @@ def generate_windows(window="blackman"):
                                  pick='1')
     print filename
     pcube = algebra.make_vect(algebra.load(filename))
-    pwindow = algebra.make_vect(window_nd(pcube.shape, name=window),
+    pwindow = algebra.make_vect(fftutil.window_nd(pcube.shape, name=window),
                                 axis_names=('freq', 'ra', 'dec'))
     pwindow.copy_axis_info(pcube)
     print pwindow.shape
@@ -441,7 +322,7 @@ def generate_windows(window="blackman"):
                                  pick='1')
     print filename
     ocube = algebra.make_vect(algebra.load(filename))
-    owindow = algebra.make_vect(window_nd(ocube.shape, name=window),
+    owindow = algebra.make_vect(fftutil.window_nd(ocube.shape, name=window),
                                 axis_names=('freq', 'ra', 'dec'))
     owindow.copy_axis_info(ocube)
     print owindow.shape
