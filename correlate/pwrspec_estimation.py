@@ -14,6 +14,7 @@ from utils import data_paths
 from simulations import corr21cm
 import multiprocessing
 import copy
+from map import physical_gridding
 
 
 def radius_array(input_array):
@@ -331,20 +332,39 @@ def test_with_agg_simulation(unitless=True, parallel=True):
 def test_with_simulation(unitless=True):
     """Test the power spectral estimator using simulations"""
     datapath_db = data_paths.DataPath()
-    filename = datapath_db.fetch('simideal_15hr_physical', intend_read=True,
+    pfilename = datapath_db.fetch('simideal_15hr_physical', intend_read=True,
                                  pick='1')
     zfilename = datapath_db.fetch('simideal_15hr', intend_read=True,
                                  pick='1')
-    print filename
+    print pfilename
+    ofilename = "./physical_cube.npy"
+    obfilename = "./physical_cube_beam.npy"
+    pwindowfile = "./physical_window.npy"
+    owindowfile = "./observed_window.npy"
 
     nbins=40
     bins = np.logspace(math.log10(0.00702349679605685),
                        math.log10(2.81187396154818),
                        num=(nbins + 1), endpoint=True)
 
-    bin_left, bin_center, bin_right, counts_histo, binavg = \
-                    calculate_xspec_file(filename, filename, bins,
-                                    window="hamming", unitless=unitless)
+    bin_left, bin_center, bin_right, pcounts_histo, pbinavg = \
+                    calculate_xspec_file(pfilename, pfilename, bins,
+                                    weight1_file=owindowfile,
+                                    weight2_file=owindowfile,
+                                    window=None, unitless=unitless)
+
+    bin_left, bin_center, bin_right, ocounts_histo, obinavg = \
+                    calculate_xspec_file(ofilename, ofilename, bins,
+                                    weight1_file=owindowfile,
+                                    weight2_file=owindowfile,
+                                    window=None, unitless=unitless)
+
+
+    bin_left, bin_center, bin_right, obcounts_histo, obbinavg = \
+                    calculate_xspec_file(obfilename, obfilename, bins,
+                                    weight1_file=owindowfile,
+                                    weight2_file=owindowfile,
+                                    window=None, unitless=unitless)
 
 
     #k_vec = np.logspace(math.log10(1.e-2),
@@ -357,9 +377,9 @@ def test_with_simulation(unitless=True):
         pwrspec_input *= bin_center ** 3. / 2. / math.pi / math.pi
 
     for specdata in zip(bin_left, bin_center,
-                        bin_right, counts_histo, binavg,
+                        bin_right, pcounts_histo, obinavg, obbinavg, pbinavg,
                         pwrspec_input):
-        print ("%10.15g " * 6) % specdata
+        print ("%10.15g " * 8) % specdata
 
 
 def test_with_random(unitless=True):
@@ -402,7 +422,37 @@ def test_with_random(unitless=True):
         print ("%10.15g " * 6) % specdata
 
 
+def generate_windows(window="blackman"):
+    datapath_db = data_paths.DataPath()
+    # first generate a window for the full physical volume
+    filename = datapath_db.fetch('simideal_15hr_physical', intend_read=True,
+                                 pick='1')
+    print filename
+    pcube = algebra.make_vect(algebra.load(filename))
+    pwindow = algebra.make_vect(window_nd(pcube.shape, name=window),
+                                axis_names=('freq', 'ra', 'dec'))
+    pwindow.copy_axis_info(pcube)
+    print pwindow.shape
+    algebra.save("physical_window.npy", pwindow)
+
+    # now generate one for the observed region and project onto the physical
+    # volume.
+    filename = datapath_db.fetch('simideal_15hr_beam', intend_read=True,
+                                 pick='1')
+    print filename
+    ocube = algebra.make_vect(algebra.load(filename))
+    owindow = algebra.make_vect(window_nd(ocube.shape, name=window),
+                                axis_names=('freq', 'ra', 'dec'))
+    owindow.copy_axis_info(ocube)
+    print owindow.shape
+    print owindow.axes
+    pwindow = physical_gridding.physical_grid(owindow, refinement=2)
+    print pwindow.shape
+    algebra.save("observed_window.npy", pwindow)
+
+
 if __name__ == '__main__':
+    #generate_windows()
     #test_with_agg_simulation(unitless=True)
     test_with_simulation(unitless=True)
     #test_with_random(unitless=False)

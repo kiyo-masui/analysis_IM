@@ -599,7 +599,7 @@ class RedshiftCorrelation(object):
     def realisation(self, z1, z2, thetax, thetay, numz, numx, numy,
                     zspace=True, refinement=1, report_physical=False,
                     density_only=False, no_mean=False, no_evolution=False,
-                    buffer=5):
+                    pad=5):
         r"""Simulate a redshift-space volume.
 
         Generates a 3D (angle-angle-redshift) volume from the given
@@ -628,8 +628,8 @@ class RedshiftCorrelation(object):
             do not add the mean temperature
         no_evolution: boolean
             do not let b(z), D(z) etc. evolve: take their mean
-        buffer: integer
-            number of pixels over which to buffer the physical region for
+        pad: integer
+            number of pixels over which to pad the physical region for
             interpolation onto freq, ra, dec; match spline order?
 
         Returns
@@ -651,10 +651,10 @@ class RedshiftCorrelation(object):
 
         # Enlarge cube size by 1 in each dimension, so raytraced cube
         # sits exactly within the gridded points.
-        d = d * (n + buffer).astype(float) / n.astype(float)
-        c1 = c_center - (c_center - c1)*(n[0] + buffer) / float(n[0])
-        c2 = c_center + (c2 - c_center)*(n[0] + buffer) / float(n[0])
-        n = n + buffer
+        d = d * (n + pad).astype(float) / n.astype(float)
+        c1 = c_center - (c_center - c1)*(n[0] + pad) / float(n[0])
+        c2 = c_center + (c2 - c_center)*(n[0] + pad) / float(n[0])
+        n = n + pad
         # now multiply by scaling for a finer sub-grid
         n = refinement*n
 
@@ -662,6 +662,8 @@ class RedshiftCorrelation(object):
               (c1, c2, d[1], d[2], n[0], n[1], n[2])
 
         cube = self._realisation_dv(d, n)
+        # TODO: note that _realisation_dv can change the dimensions; resolve
+        n = cube[0].shape
 
         # Construct an array of the redshifts on each slice of the cube.
         comoving_inv = inverse_approx(self.cosmology.comoving_distance, z1, z2)

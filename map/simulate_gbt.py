@@ -13,7 +13,7 @@ from numpy import random
 
 
 # TODO: confirm ra=x, dec=y (thetax = 5, thetay = 3 in 15hr)
-def realize_simulation(template_map, scenario=None, seed=None, refinement=1):
+def realize_simulation(template_map, scenario=None, seed=None, refinement=2):
     """do basic handling to call Richard's simulation code
     here we use 300 h km/s from WiggleZ for streaming dispersion
     Notes on foreground calls for the future (also copy param member func.):
@@ -209,7 +209,7 @@ def run_scheme_test():
 
 
 if __name__ == '__main__':
-    generate_full_simset(['15hr', '22hr', '1hr'])
+    #generate_full_simset(['15hr', '22hr', '1hr'])
     #generate_full_simset(['15hr', '22hr'])
-    #generate_full_simset(['15hr'])
+    generate_full_simset(['15hr'])
     #run_scheme_test()

@@ -1,5 +1,5 @@
 import numpy as np
-
+import scipy as sp
 from utils import units
 
 
@@ -102,7 +102,8 @@ class Map3d(object):
         ra_axis = mapobj.get_axis('ra')
         dec_axis = mapobj.get_axis('dec')
 
-        c.x_width = max(ra_axis) - min(ra_axis)
+        ra_fact = sp.cos(sp.pi * mapobj.info['dec_centre'] / 180.0)
+        c.x_width = (max(ra_axis) - min(ra_axis)) * ra_fact
         c.y_width = max(dec_axis) - min(dec_axis)
         (c.x_num, c.y_num) = (len(ra_axis), len(dec_axis))
 

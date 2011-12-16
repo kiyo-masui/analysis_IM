@@ -89,7 +89,7 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
         gplfile.write('set obj 10 circle at graph 0.9,.15 size %g front\n' % \
                        (fwhm / 2.))
         gplfile.write('set obj 10 lw 5 fill empty border rgb "purple"\n')
-        plfile.write('set obj 11 rect at graph 0.9,.15 size %g, %g front\n' % \
+        gplfile.write('set obj 11 rect at graph 0.9,.15 size %g, %g front\n' % \
                       (angular_scale, angular_scale))
         gplfile.write('set obj 11 lw 3 fill empty border rgb "black"\n')
 

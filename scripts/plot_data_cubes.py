@@ -114,13 +114,29 @@ def plot_manual(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/"):
     keyname = "simideal_%s_physical" % fieldname
     filename = datapath_db.fetch(keyname, pick='1')
     pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
-                        sigmarange=[-1,1], outputdir=outputdir, multiplier=1000.,
+                        sigmarange=3., outputdir=outputdir, multiplier=1000.,
                         transverse=False, filetag_suffix="_"+fieldname,
                         physical=True)
     pc.make_cube_movie(file2, "Temperature (mK)", pc.cube_frame_dir,
-                        sigmarange=[-1,1], outputdir=outputdir, multiplier=1000.,
+                        sigmarange=3., outputdir=outputdir, multiplier=1000.,
                         transverse=False, filetag_suffix="_"+fieldname,
                         physical=True)
+
+
+def plot_window(outputdir="/cita/d/www/home/eswitzer/movies/"):
+    file1 = './observed_window.npy'
+    file2 = './physical_window.npy'
+    fieldname = '15hr'
+
+    pc.make_cube_movie(file1, "Window", pc.cube_frame_dir,
+                        sigmarange=-1, outputdir=outputdir, multiplier=1000.,
+                        transverse=False, filetag_suffix="_"+fieldname,
+                        physical=True)
+    pc.make_cube_movie(file2, "Window", pc.cube_frame_dir,
+                        sigmarange=-1, outputdir=outputdir, multiplier=1000.,
+                        transverse=False, filetag_suffix="_"+fieldname,
+                        physical=True)
+
 
 if __name__ == "__main__":
     #plot_gbt_mapset()
@@ -132,4 +148,5 @@ if __name__ == "__main__":
     #plot_gbt_diff_tests()
     #plot_sim_scheme()
 
-    plot_manual('15hr')
+    #plot_manual('15hr')
+    plot_window()
