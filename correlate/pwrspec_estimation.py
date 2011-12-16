@@ -52,7 +52,7 @@ def window_nd(shape, name="blackman"):
     return window
 
 
-def crossps(arr1, arr2, weight1, weight2, window="blackman"):
+def cross_power_est(arr1, arr2, weight1, weight2, window="blackman"):
     """Calculate the radially average cross-power spectrum of a two nD fields.
 
     The arrays must be identical and have the same length (physically
@@ -71,12 +71,12 @@ def crossps(arr1, arr2, weight1, weight2, window="blackman"):
         weight1 *= window_function
         weight2 *= window_function
 
-    arr1 *= weight1
-    arr2 *= weight2
+    warr1 = arr1 * weight1
+    warr2 = arr2 * weight2
     ndim = arr1.ndim
 
-    fft_arr1 = np.fft.fftshift(np.fft.fftn(arr1))
-    fft_arr2 = np.fft.fftshift(np.fft.fftn(arr2))
+    fft_arr1 = np.fft.fftshift(np.fft.fftn(warr1))
+    fft_arr2 = np.fft.fftshift(np.fft.fftn(warr2))
     xspec = fft_arr1 * fft_arr2.conj()
     xspec = xspec.real
 
@@ -222,7 +222,7 @@ def calculate_xspec(cube1, cube2, weight1, weight2,
                     truncate=False, nbins=40, logbins=True):
 
     print "finding the signal power spectrum"
-    pwrspec3d_signal = crossps(cube1, cube2, weight1, weight2,
+    pwrspec3d_signal = cross_power_est(cube1, cube2, weight1, weight2,
                                window=window)
     radius_arr = radius_array(pwrspec3d_signal)
 
