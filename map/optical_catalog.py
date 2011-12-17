@@ -207,14 +207,11 @@ def bin_wigglez(fieldname, template_file):
     return
 
 
-def randomize_catalog_redshifts(catalog, fieldname):
+def randomize_catalog_redshifts(catalog, nzilookupfile):
     """
     re-draw the redshifts of a catalog from N(z) according to observation
     priority -- from Chris Blake
     """
-    nzilookupfile = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/wiggleZ_catalogs/"
-    nzilookupfile += fieldname + "hr/"
-    nzilookupfile += "nzpri_reg" + fieldname + "_tzuchingcats.dat"
     ndtype = [('CDF', float), ("z0", float), ("z1", float), ("z2", float),
               ("z3", float),  ("z4", float), ("z5", float)]
     nzilookup = np.genfromtxt(nzilookupfile, dtype=ndtype, skiprows=1)
@@ -239,43 +236,53 @@ def randomize_catalog_redshifts(catalog, fieldname):
 
 # TODO: remove A/B split in averaging? probably not needed
 def estimate_selection_function(fieldname, template_file,
-                                catalog_shelvefile="randcatdata.shelve",
+                                catalog_shelvefile="./randcatdata.shelve",
                                 generate_rancat_shelve=True):
     """Estimate the selection function using random draws in C. Blake N(z)
     PDFs.
-    fieldname is the identifier for the field; "01", "15", or "22" hr
-    template_file -- numpy template to use for the axes of the output
-    catalog_shevefile is a keyword giving the name of a intermediate (binary)
-        catalog format -- this speeds the computation.
-    generate_rancat_shelve -- if the catalog shelve is already generated, set
+
+    Parameters:
+    -----------
+    fieldname: string
+        name of field, e.g. "15hr", "22hr" or "1hr"
+    template_file: string
+        file (not db key) to use to grab dimensions for the binnins
+    catalog_shevefile: string keyword
+        the name of a intermediate (binary) catalog format
+        this speeds the computation.
+    generate_rancat_shelve: boolean
+        if the catalog shelve is already generated, set
         this to False and it will use the pre-existing database
     """
-    root_data = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/"
-    binned_data = root_data + "binned_wiggleZ/"
-    root_catalogs = root_data + "wiggleZ_catalogs/"
-    catalog_subdir = fieldname + "hr/"
+    datapath_db = data_paths.DataPath()
 
-    outfile_selection = binned_data + "reg" + fieldname + "montecarlo.npy"
-    n_rand_cats = 1000
+    db_key = "WiggleZ_%s_montecarlo" % fieldname
+    outfile_selection = datapath_db.fetch(db_key, intend_write=True,
+                           purpose="WiggleZ MC selection function")
+
+    db_key = "WiggleZ_%s_mock_catalog" % fieldname
+    infile_mock = datapath_db.fetch(db_key, intend_read=True,
+                           purpose="WiggleZ real data catalog", silent=True)
+
+    db_key = "WiggleZ_%s_priority_table" % fieldname
+    priority_file = datapath_db.fetch(db_key, intend_read=True,
+                           purpose="WiggleZ mock cat priority file", silent=True)
+
+    n_rand_cats = len(infile_mock[0])
     chunking_size = 10  # break the averaging into pooled multiprocess jobs
-    #num_chunks = 9000
-    #num_chunks = 20000
-    num_chunks = 60000
-
-    rootrand = root_catalogs + catalog_subdir + "reg" + fieldname + "rand"
-    randlist = [(repr(index), (rootrand + "%03d.dat" % index))
-                for index in range(0, n_rand_cats)]
+    num_chunks = 100 # 9000 for testing, 60000 for production
 
     # read the WiggleZ catalog and convert redshift axis to frequency
-    randdata = shelve.open(binned_data + catalog_shelvefile)
+    randdata = shelve.open(catalog_shelvefile)
     if generate_rancat_shelve:
         ndtype = [('RA', float), ('Dec', float), ('z', float),
                   ('r-mag', float), ('ijack', int), ('sec', int)]
-        #randdata = {}
-        for entry in randlist:
-            print "loading: " + entry[1]
-            randdata[entry[0]] = np.genfromtxt(entry[1], dtype=ndtype,
+        for index in infile_mock[0]:
+            filename = infile_mock[1][index]
+            print "loading: " + filename
+            randdata[index] = np.genfromtxt(filename, dtype=ndtype,
                                                skiprows=1)
+        print "done generating random catalog shelve lookup"
 
     (freq_axis, ra_axis, dec_axis, template_shape, template_map) = \
         template_map_axes(filename=template_file)
@@ -292,10 +299,10 @@ def estimate_selection_function(fieldname, template_file,
             # TODO: do we need deep copy here, or paranoid?
             rancat_a = randomize_catalog_redshifts(
                             copy.deepcopy(randdata[repr(ran_a)]),
-                            fieldname)
+                            priority_file)
             rancat_b = randomize_catalog_redshifts(
                             copy.deepcopy(randdata[repr(ran_b)]),
-                            fieldname)
+                            priority_file)
             runlist_a.append((ran_a, rancat_a, freq_axis, ra_axis, dec_axis))
             runlist_b.append((ran_b, rancat_b, freq_axis, ra_axis, dec_axis))
 
@@ -306,6 +313,7 @@ def estimate_selection_function(fieldname, template_file,
         pool = multiprocessing.Pool(processes=(multiprocessing.cpu_count() - 3))
         resultsA = pool.map(wrap_bin_catalog_data, runlist_a)
         resultsB = pool.map(wrap_bin_catalog_data, runlist_b)
+        pool.close()
 
         for resultitem in resultsA:
             chunk_sel_func_a += resultitem
@@ -321,7 +329,7 @@ def estimate_selection_function(fieldname, template_file,
 
         print np.std((sel_func_a - sel_func_b) / float(iternum + 1)), \
               np.mean(sel_func_a) / float(iternum + 1), \
-              np.mean(sel_func_b) / float(iternum + 1)
+              np.mean(sel_func_b) / float(iternum + 1), iternum
 
     selection_function = (sel_func_a +
                           sel_func_b) / 2. / float(num_chunks)
@@ -335,59 +343,14 @@ def estimate_selection_function(fieldname, template_file,
     algebra.save(outfile_selection, map_wigglez_selection)
 
 
-def generate_sel_15hr_22hr_gbtregion():
-    """generate selection functions for the 15hr and 22hr field based on GBT
-    map template for those regions
-    """
-    calinliv_dir = '/mnt/raid-project/gmrt/calinliv/wiggleZ/'
-
-    root_template = calinliv_dir + "corr/test/"
-    template_mapname = root_template + \
-                    'sec_A_15hr_41-73_cleaned_clean_map_I_with_B.npy'
-
-    bin_wigglez("15", template_mapname)
-
-    root_template = calinliv_dir + "corr/84_ABCD_all_15_modes/"
-    template_mapname = root_template + \
-                    'sec_A_22hr_41-84_cleaned_clean_map_I_with_C.npy'
-
-    bin_wigglez("22", template_mapname)
-
-
-def generate_MCsel_15hr_gbtregion():
-    """generate selection functions for the 22hr field using a Monte Carlo
-    over random source positions, consistently with priority zones from
-    C. Blake
-    """
-
-    calinliv_dir = '/mnt/raid-project/gmrt/calinliv/wiggleZ/'
-    root_template = calinliv_dir + "corr/test/"
-    template_mapname = root_template + \
-                    'sec_A_15hr_41-73_cleaned_clean_map_I_with_B.npy'
-
-    estimate_selection_function('15', template_mapname,
-                                catalog_shelvefile="randcatdata15.shelve",
-                                generate_rancat_shelve=True)
-
-
-def generate_MCsel_22hr_gbtregion():
-    """generate selection functions for the 22hr field using a Monte Carlo
-    over random source positions, consistently with priority zones from
-    C. Blake
-    """
-
-    calinliv_dir = '/mnt/raid-project/gmrt/calinliv/wiggleZ/'
-    root_template = calinliv_dir + "corr/84_ABCD_all_15_modes/"
-    template_mapname = root_template + \
-                    'sec_A_22hr_41-84_cleaned_clean_map_I_with_C.npy'
-
-    estimate_selection_function('22', template_mapname,
-                                catalog_shelvefile="randcatdata22.shelve",
-                                generate_rancat_shelve=False)
-
-
 if __name__ == '__main__':
-    bin_wigglez('15hr','/mnt/raid-project/gmrt/tcv/maps/sec_A_15hr_41-90_clean_map_I.npy')
-    #generate_MCsel_15hr_gbtregion()
-    #generate_MCsel_22hr_gbtregion()
-    #generate_GBT_sel_15hr_22hr_gbtregion()
+    template_15hr = '/mnt/raid-project/gmrt/tcv/maps/sec_A_15hr_41-90_clean_map_I.npy'
+    template_22hr = '/mnt/raid-project/gmrt/tcv/maps/sec_A_22hr_41-90_clean_map_I.npy'
+    template_1hr = '/mnt/raid-project/gmrt/tcv/maps/sec_A_1hr_41-16_clean_map_I.npy'
+
+    #bin_wigglez('15hr', template_15hr)
+    #bin_wigglez('22hr', template_22hr)
+    #bin_wigglez('1hr', template_1hr)
+    estimate_selection_function('15hr', template_15hr,
+                                catalog_shelvefile="./rand15hrcatdata.shelve",
+                                generate_rancat_shelve=False)
