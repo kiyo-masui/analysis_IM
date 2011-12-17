@@ -16,7 +16,7 @@ import multiprocessing
 import copy
 from map import physical_gridding
 from utils import fftutil
-from utils import radialprofile
+from utils import binning
 
 
 def cross_power_est(arr1, arr2, weight1, weight2, window="blackman"):
@@ -87,7 +87,7 @@ def make_unitless(xspec_arr, radius_arr=None):
     (e.g. k^3 / 2 pi^2 in 3D)
     """
     if radius_arr is None:
-        radius_arr = radialprofile.radius_array(xspec_arr)
+        radius_arr = binning.radius_array(xspec_arr)
 
     ndim = xspec_arr.ndim
     factor = 2. * math.pi ** (ndim / 2.) / math.gamma(ndim / 2.)
@@ -102,7 +102,7 @@ def calculate_xspec(cube1, cube2, weight1, weight2,
     print "finding the signal power spectrum"
     pwrspec3d_signal = cross_power_est(cube1, cube2, weight1, weight2,
                                window=window)
-    radius_arr = radialprofile.radius_array(pwrspec3d_signal)
+    radius_arr = binning.radius_array(pwrspec3d_signal)
 
     if unitless:
         print "making the power spectrum unitless"
@@ -111,16 +111,16 @@ def calculate_xspec(cube1, cube2, weight1, weight2,
 
     print "binning the power spectrum"
     if bins is None:
-        bins = radialprofile.suggest_bins(pwrspec3d_signal,
+        bins = binning.suggest_bins(pwrspec3d_signal,
                                           truncate=truncate,
                                           logbins=logbins,
                                           nbins=nbins,
                                           radius_arr=radius_arr)
 
-    counts_histo, binavg = radialprofile.bin_an_array(pwrspec3d_signal, bins,
+    counts_histo, binavg = binning.bin_an_array(pwrspec3d_signal, bins,
                                                       radius_arr=radius_arr)
 
-    bin_left, bin_center, bin_right = radialprofile.bin_edges(bins, log=logbins)
+    bin_left, bin_center, bin_right = binning.bin_edges(bins, log=logbins)
 
     return bin_left, bin_center, bin_right, counts_histo, binavg
 
@@ -185,7 +185,7 @@ def test_with_agg_simulation(unitless=True, parallel=True):
 
     zspace_cube = algebra.make_vect(algebra.load(zfilename))
     simobj = corr21cm.Corr21cm.like_kiyo_map(zspace_cube)
-    bin_left, bin_center, bin_right = radialprofile.bin_edges(bins, log=True)
+    bin_left, bin_center, bin_right = binning.bin_edges(bins, log=True)
     pwrspec_input = simobj.get_pwrspec(bin_center)
     if unitless:
         pwrspec_input *= bin_center ** 3. / 2. / math.pi / math.pi

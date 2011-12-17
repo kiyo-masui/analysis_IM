@@ -209,7 +209,7 @@ def run_scheme_test():
 
 
 if __name__ == '__main__':
-    #generate_full_simset(['15hr', '22hr', '1hr'])
+    generate_full_simset(['15hr', '22hr', '1hr'])
     #generate_full_simset(['15hr', '22hr'])
-    generate_full_simset(['15hr'])
+    #generate_full_simset(['15hr'])
     #run_scheme_test()

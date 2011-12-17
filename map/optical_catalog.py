@@ -15,85 +15,9 @@ import multiprocessing
 import copy
 from core import algebra
 from core import constants as cc
+from utils import binning
 # TODO: make better parameter passing for catalog binning
 # TODO: put ranges of other fields in docstring
-
-
-def find_edges(axis, delta=False):
-    """
-    service function for bin_catalog_data which
-    finds the bin edges for the histogram
-    """
-    if not delta:
-        delta = axis[1] - axis[0]
-
-    edges = np.array(axis) - delta / 2.
-    return np.append(edges, edges[-1] + delta)
-
-
-def print_edges(sample, edges, name):
-    """print bin edges for a catalog
-    """
-    print "Binning %s from range (%5.3g, %5.3g) into (%5.3g, %5.3g)" % (
-           name, min(sample), max(sample), min(edges), max(edges))
-
-
-def histogram3d(sample, xedges, yedges, zedges):
-    """Make a 3D histogram from the sample and edge specification
-    indices in the sample: 0=x, 1=y, 2=z;
-    histogramdd was having problems with the galaxy catalogs
-    """
-    numcatalog = sample.size
-    x_size = xedges.size - 1
-    y_size = yedges.size - 1
-    z_size = zedges.size - 1
-    box_index = np.zeros(numcatalog)
-    count_array = np.zeros((x_size + 1) * (y_size + 1) * (z_size + 1))
-    # the final array to return is the value within the bin
-    count_cube = np.zeros((x_size, y_size, z_size))
-
-    # find which bin each galaxies lies in
-    x_index = np.digitize(sample[:, 0], xedges)
-    y_index = np.digitize(sample[:, 1], yedges)
-    z_index = np.digitize(sample[:, 2], zedges)
-
-    # digitize puts values outside of the bins either to 0 or len(bins)
-    x_out = np.logical_or((x_index == 0), (x_index == (x_size + 1)))
-    y_out = np.logical_or((y_index == 0), (y_index == (y_size + 1)))
-    z_out = np.logical_or((z_index == 0), (z_index == (z_size + 1)))
-    # now flag all those point which are inside the region
-    box_in = np.logical_not(np.logical_or(np.logical_or(x_out, y_out), z_out))
-
-    # the 0th bin center is recorded in the digitized index=1, so shift
-    # also throw out points that are not in the volume
-    x_index = x_index[box_in] - 1
-    y_index = y_index[box_in] - 1
-    z_index = z_index[box_in] - 1
-
-    box_index = x_index + y_index * x_size + z_index * x_size * y_size
-
-    # note that bincount will only count up to the largest object in the list,
-    # which may be smaller than the dimension of the full count cube
-    try:
-        count_array[0:max(box_index) + 1] = np.bincount(box_index)
-
-        # make the x y and z axes which index the bincount output
-        count_index = np.arange(x_size * y_size * z_size)
-        zind = count_index / (x_size * y_size)
-        yind = (count_index - x_size * y_size * zind) / x_size
-        xind = count_index - x_size * y_size * zind - x_size * yind
-
-        #count_cube[xind, yind, zind] = count_array[xind + yind * x_size +
-        #                                           zind * x_size * y_size]
-        count_cube[xind, yind, zind] = count_array[count_index]
-        #split_indices = cartesian((np.arange(z_size),
-        #                           np.arange(y_size),
-        #                           np.arange(x_size)))
-        #count_cube[split_indices] = count_array[count_index]
-    except MemoryError:
-        print "histogram3d: all points out of the volume"
-
-    return count_cube
 
 
 def bin_catalog_data(catalog, freq_axis, ra_axis,
@@ -109,16 +33,16 @@ def bin_catalog_data(catalog, freq_axis, ra_axis,
     sample[:, 1] = catalog['RA']
     sample[:, 2] = catalog['Dec']
 
-    freq_edges = find_edges(freq_axis)
-    ra_edges = find_edges(ra_axis)
-    dec_edges = find_edges(dec_axis)
+    freq_edges = binning.find_edges(freq_axis)
+    ra_edges = binning.find_edges(ra_axis)
+    dec_edges = binning.find_edges(dec_axis)
 
     if verbose:
         #print len(freq_axis), len(ra_axis), len(dec_axis)
         #print len(freq_edges), len(ra_edges), len(dec_edges)
-        print_edges(sample[:, 0], freq_edges, "frequency")
-        print_edges(sample[:, 1], ra_edges, "RA")
-        print_edges(sample[:, 2], dec_edges, "Dec")
+        binning.print_edges(sample[:, 0], freq_edges, "frequency")
+        binning.print_edges(sample[:, 1], ra_edges, "RA")
+        binning.print_edges(sample[:, 2], dec_edges, "Dec")
 
     #print sample, freq_edges, ra_edges, dec_edges
 
@@ -200,13 +124,15 @@ def bin_wigglez(fieldname, template_file):
         template_map_axes(filename=template_file)
 
     realmap_binning = bin_catalog_file(infile_data, freq_axis,
-                                          ra_axis, dec_axis, skip_header=1)
+                                       ra_axis, dec_axis, skip_header=1)
+
     map_wigglez = algebra.make_vect(realmap_binning,
                                     axis_names=('freq', 'ra', 'dec'))
+
     map_wigglez.copy_axis_info(template_map)
     algebra.save(outfile_data, map_wigglez)
 
-    selection_function = np.zeros(template_map.shape)
+    selection_function = np.zeros_like(template_map)
     for (randindex, randfile) in randlist:
         random_binning = bin_catalog_file(randfile, freq_axis, ra_axis,
                                              dec_axis, skip_header=1)
@@ -369,74 +295,6 @@ def estimate_selection_function(fieldname, template_file,
     map_wigglez_selection.copy_axis_info(template_map)
     print np.min(map_wigglez_selection), np.max(map_wigglez_selection)
     algebra.save(outfile_selection, map_wigglez_selection)
-
-
-class CatalogGriddingTest(unittest.TestCase):
-    """Unit test class for catalog gridding
-    """
-
-    def test_simple(self):
-        """bin a simple 3x3x3 array
-        """
-
-        parent_axis = np.array([0.25, 0.75, 1.25])
-        edges = find_edges(parent_axis)
-        self.assertTrue(np.array_equal(edges, [0., 0.5, 1., 1.5]))
-
-        # test a sample (with some outliers)
-        sample = np.array([[0., 0., 0.],
-                           [0.75, 0., 0.],
-                           [1.25, 0., 0.],
-                           [1.75, 0., 0.],
-                           [0., 0., 0.],
-                           [0.75, 0.75, 0.75],
-                           [1.25, 1.25, 1.25]])
-
-        result = histogram3d(sample, edges, edges, edges)
-        alternate, histo_edges = np.histogramdd(sample,
-                                                bins=[edges, edges, edges])
-
-        answer = np.array([[[2,  0,  0],
-                            [0,  0,  0],
-                            [0,  0,  0]],
-                           [[1,  0,  0],
-                            [0,  1,  0],
-                            [0,  0,  0]],
-                           [[1,  0,  0],
-                            [0,  0,  0],
-                            [0,  0,  1]]])
-
-        self.assertTrue(np.array_equal(answer, result))
-        self.assertTrue(np.array_equal(alternate, result))
-
-        # test the case where no points are in the volume
-        sample2 = np.array([[-1., -1., -1.]])
-        result2 = histogram3d(sample2, edges, edges, edges)
-        alternate2, histo_edges = np.histogramdd(sample2,
-                                                bins=[edges, edges, edges])
-
-        answer2 = np.zeros((3, 3, 3), dtype=int)
-        self.assertTrue(np.array_equal(answer2, result2))
-        self.assertTrue(np.array_equal(alternate2, result2))
-
-    def test_timing(self):
-        """compare the timing of histogram3d and histogramdd"""
-        # TODO: compare sum of two histogram methods;
-        # edge cases do not seem to match
-        # TODO: speed up histogram3d class
-        edges = np.array([0., 0.25, 0.75, 1.])
-        sample = np.random.rand(1e7, 3)
-
-        # profiling tools do not seem to work well with numpy
-        start = time.clock()
-        result = histogram3d(sample, edges, edges, edges)
-        end = time.clock()
-        print (end - start) / 1000.
-        alternate, histo_edges = np.histogramdd(sample,
-                                                bins=[edges, edges, edges])
-        endalt = time.clock()
-        print (endalt - end) / 1000.
-        print result - alternate
 
 
 def generate_sel_15hr_22hr_gbtregion():

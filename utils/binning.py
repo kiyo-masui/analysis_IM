@@ -1,4 +1,5 @@
 # TODO: consider moving azimuthalAverage and _nd version to the attic
+# TODO: rerun unit test on histogram3d, develop unit tests for all funcs
 import numpy as np
 import math
 from core import algebra
@@ -108,6 +109,83 @@ def bin_an_array(input_array, bins, radius_arr=None):
     binavg = binsum_histo / counts_histo.astype(float)
 
     return counts_histo, binavg
+
+
+def find_edges(axis, delta=None):
+    """
+    service function for bin_catalog_data which
+    finds the bin edges for the histogram
+    """
+    if delta is None:
+        delta = axis[1] - axis[0]
+
+    edges = np.array(axis) - delta / 2.
+    return np.append(edges, edges[-1] + delta)
+
+
+def print_edges(sample, edges, name):
+    """print bin edges for a catalog
+    """
+    print "Binning %s from range (%5.3g, %5.3g) into (%5.3g, %5.3g)" % (
+           name, min(sample), max(sample), min(edges), max(edges))
+
+
+def histogram3d(sample, xedges, yedges, zedges):
+    """Make a 3D histogram from the sample and edge specification
+    indices in the sample: 0=x, 1=y, 2=z;
+    histogramdd was having problems with the galaxy catalogs
+    """
+    numcatalog = sample.size
+    x_size = xedges.size - 1
+    y_size = yedges.size - 1
+    z_size = zedges.size - 1
+    box_index = np.zeros(numcatalog)
+    count_array = np.zeros((x_size + 1) * (y_size + 1) * (z_size + 1))
+    # the final array to return is the value within the bin
+    count_cube = np.zeros((x_size, y_size, z_size))
+
+    # find which bin each galaxies lies in
+    x_index = np.digitize(sample[:, 0], xedges)
+    y_index = np.digitize(sample[:, 1], yedges)
+    z_index = np.digitize(sample[:, 2], zedges)
+
+    # digitize puts values outside of the bins either to 0 or len(bins)
+    x_out = np.logical_or((x_index == 0), (x_index == (x_size + 1)))
+    y_out = np.logical_or((y_index == 0), (y_index == (y_size + 1)))
+    z_out = np.logical_or((z_index == 0), (z_index == (z_size + 1)))
+    # now flag all those point which are inside the region
+    box_in = np.logical_not(np.logical_or(np.logical_or(x_out, y_out), z_out))
+
+    # the 0th bin center is recorded in the digitized index=1, so shift
+    # also throw out points that are not in the volume
+    x_index = x_index[box_in] - 1
+    y_index = y_index[box_in] - 1
+    z_index = z_index[box_in] - 1
+
+    box_index = x_index + y_index * x_size + z_index * x_size * y_size
+
+    # note that bincount will only count up to the largest object in the list,
+    # which may be smaller than the dimension of the full count cube
+    try:
+        count_array[0:max(box_index) + 1] = np.bincount(box_index)
+
+        # make the x y and z axes which index the bincount output
+        count_index = np.arange(x_size * y_size * z_size)
+        zind = count_index / (x_size * y_size)
+        yind = (count_index - x_size * y_size * zind) / x_size
+        xind = count_index - x_size * y_size * zind - x_size * yind
+
+        #count_cube[xind, yind, zind] = count_array[xind + yind * x_size +
+        #                                           zind * x_size * y_size]
+        count_cube[xind, yind, zind] = count_array[count_index]
+        #split_indices = cartesian((np.arange(z_size),
+        #                           np.arange(y_size),
+        #                           np.arange(x_size)))
+        #count_cube[split_indices] = count_array[count_index]
+    except MemoryError:
+        print "histogram3d: all points out of the volume"
+
+    return count_cube
 
 
 def azimuthal_average(image, center=None, bw = 3):
@@ -248,3 +326,71 @@ def azimuthal_average_nd(image, center=None, bw = 3):
     radial_prof = tbin / nr
 
     return bl, radial_prof
+
+
+class CatalogGriddingTest(unittest.TestCase):
+    """Unit test class for catalog gridding
+    """
+
+    def test_simple(self):
+        """bin a simple 3x3x3 array
+        """
+
+        parent_axis = np.array([0.25, 0.75, 1.25])
+        edges = find_edges(parent_axis)
+        self.assertTrue(np.array_equal(edges, [0., 0.5, 1., 1.5]))
+
+        # test a sample (with some outliers)
+        sample = np.array([[0., 0., 0.],
+                           [0.75, 0., 0.],
+                           [1.25, 0., 0.],
+                           [1.75, 0., 0.],
+                           [0., 0., 0.],
+                           [0.75, 0.75, 0.75],
+                           [1.25, 1.25, 1.25]])
+
+        result = histogram3d(sample, edges, edges, edges)
+        alternate, histo_edges = np.histogramdd(sample,
+                                                bins=[edges, edges, edges])
+
+        answer = np.array([[[2,  0,  0],
+                            [0,  0,  0],
+                            [0,  0,  0]],
+                           [[1,  0,  0],
+                            [0,  1,  0],
+                            [0,  0,  0]],
+                           [[1,  0,  0],
+                            [0,  0,  0],
+                            [0,  0,  1]]])
+
+        self.assertTrue(np.array_equal(answer, result))
+        self.assertTrue(np.array_equal(alternate, result))
+
+        # test the case where no points are in the volume
+        sample2 = np.array([[-1., -1., -1.]])
+        result2 = histogram3d(sample2, edges, edges, edges)
+        alternate2, histo_edges = np.histogramdd(sample2,
+                                                bins=[edges, edges, edges])
+
+        answer2 = np.zeros((3, 3, 3), dtype=int)
+        self.assertTrue(np.array_equal(answer2, result2))
+        self.assertTrue(np.array_equal(alternate2, result2))
+
+    def test_timing(self):
+        """compare the timing of histogram3d and histogramdd"""
+        # TODO: compare sum of two histogram methods;
+        # edge cases do not seem to match
+        # TODO: speed up histogram3d class
+        edges = np.array([0., 0.25, 0.75, 1.])
+        sample = np.random.rand(1e7, 3)
+
+        # profiling tools do not seem to work well with numpy
+        start = time.clock()
+        result = histogram3d(sample, edges, edges, edges)
+        end = time.clock()
+        print (end - start) / 1000.
+        alternate, histo_edges = np.histogramdd(sample,
+                                                bins=[edges, edges, edges])
+        endalt = time.clock()
+        print (endalt - end) / 1000.
+        print result - alternate
