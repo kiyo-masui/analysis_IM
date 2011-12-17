@@ -69,7 +69,6 @@ def bin_catalog_file(filename, freq_axis, ra_axis,
 
     # TODO: numpy seems to be an old version that does not have the skip_header
     # argument here! skiprows is identical
-    print filename
     catalog = np.genfromtxt(filename, dtype=ndtype, skiprows=skip_header)
 
     if verbose:
@@ -177,7 +176,8 @@ def bin_wigglez(fieldname, template_file):
     # should only be used in the limit of a small number of realizations of
     # random catalogs. (note: n_random + 1)
     selection_function += realmap_binning
-    selection_function /= float(len(infile_mock) + 1)
+    selection_function /= float(len(infile_mock[0]) + 1)
+    print np.mean(selection_function)
 
     map_wigglez_selection = algebra.make_vect(selection_function,
                                               axis_names=('freq', 'ra', 'dec'))
@@ -270,7 +270,7 @@ def estimate_selection_function(fieldname, template_file,
 
     n_rand_cats = len(infile_mock[0])
     chunking_size = 10  # break the averaging into pooled multiprocess jobs
-    num_chunks = 100 # 9000 for testing, 60000 for production
+    num_chunks = 9000 # 9000 for testing, 60000 for production
 
     # read the WiggleZ catalog and convert redshift axis to frequency
     randdata = shelve.open(catalog_shelvefile)
@@ -333,7 +333,6 @@ def estimate_selection_function(fieldname, template_file,
 
     selection_function = (sel_func_a +
                           sel_func_b) / 2. / float(num_chunks)
-    print np.mean(selection_function)
     randdata.close()
 
     map_wigglez_selection = algebra.make_vect(selection_function,
