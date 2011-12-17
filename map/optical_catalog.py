@@ -7,7 +7,6 @@ http://astronomy.swin.edu.au/~cblake/tzuching.html
     freq range is 676. to 947.
 """
 import numpy as np
-import unittest
 import time
 import shelve
 import random
@@ -16,8 +15,8 @@ import copy
 from core import algebra
 from core import constants as cc
 from utils import binning
+from utils import data_paths
 # TODO: make better parameter passing for catalog binning
-# TODO: put ranges of other fields in docstring
 
 
 def bin_catalog_data(catalog, freq_axis, ra_axis,
@@ -46,7 +45,7 @@ def bin_catalog_data(catalog, freq_axis, ra_axis,
 
     #print sample, freq_edges, ra_edges, dec_edges
 
-    count_cube = histogram3d(sample, freq_edges, ra_edges, dec_edges)
+    count_cube = binning.histogram3d(sample, freq_edges, ra_edges, dec_edges)
     #count_cube, edges = np.histogramdd(sample,
     #                                    bins=[freq_edges,
     #                                          ra_edges, dec_edges])
@@ -55,23 +54,29 @@ def bin_catalog_data(catalog, freq_axis, ra_axis,
 
 
 def bin_catalog_file(filename, freq_axis, ra_axis,
-                     dec_axis, skip_header=None, verbose=True):
+                     dec_axis, skip_header=None, verbose=True, mock=False):
     """Bin the catalog given in `filename` using the given freq, ra, and dec
     axes.
     """
 
     # read the WiggleZ catalog and convert redshift axis to frequency
-    ndtype = [('RA', float), ('Dec', float), ('z', float),
-              ('r-mag', float), ('ijack', int)]
+    if mock:
+        ndtype = [('RA', float), ('Dec', float), ('z', float),
+                  ('r-mag', float), ('ijack', int), ('ipri', int)]
+    else:
+        ndtype = [('RA', float), ('Dec', float), ('z', float),
+                  ('r-mag', float), ('ijack', int)]
+
     # TODO: numpy seems to be an old version that does not have the skip_header
     # argument here! skiprows is identical
-    output = np.genfromtxt(filename, dtype=ndtype, skiprows=skip_header)
+    print filename
+    catalog = np.genfromtxt(filename, dtype=ndtype, skiprows=skip_header)
 
     if verbose:
-        print filename + ": " + repr(output.dtype.names) + \
-              ", n_records = " + repr(output.size)
+        print filename + ": " + repr(catalog.dtype.names) + \
+              ", n_records = " + repr(catalog.size)
 
-    return bin_catalog_data(output, freq_axis, ra_axis, dec_axis,
+    return bin_catalog_data(catalog, freq_axis, ra_axis, dec_axis,
                             verbose=verbose)
 
 
@@ -96,33 +101,51 @@ def template_map_axes(filename):
 
 # TODO: need printoptions?
 def bin_wigglez(fieldname, template_file):
-    """process the WiggleZ optical catalog, binning against a template map
+    """Process the WiggleZ optical catalog, binning against a template map
     given by the template_file.
+
+    Parameters:
+    -----------
+    fieldname: string
+        name of field, e.g. "15hr", "22hr" or "1hr"
+    template_file: string
+        file (not db key) to use to grab dimensions for the binnins
     """
-
     #np.set_printoptions(threshold=np.nan)
-    root_data = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/"
-    binned_data = root_data + "binned_wiggleZ/"
-    root_catalogs = root_data + "wiggleZ_catalogs/"
-    catalog_subdir = fieldname + "hr/"
-    n_rand_cats = 1000
-    n_to_save = 100
 
-    outfile_data = binned_data + "reg" + fieldname + "data.npy"
-    outfile_selection = binned_data + "reg" + fieldname + "selection.npy"
-    outfile_separable = binned_data + "reg" + fieldname + "separable.npy"
-    outfile_rand = binned_data + "reg" + fieldname + "rand"
+    datapath_db = data_paths.DataPath()
 
-    infile_data = root_catalogs + catalog_subdir + "reg" + \
-                  fieldname + "data.dat"
-    rootrand = root_catalogs + catalog_subdir + "reg" + fieldname + "rand"
+    # gather names of the input catalogs
+    db_key = "WiggleZ_%s_catalog_data" % fieldname
+    infile_data = datapath_db.fetch(db_key, intend_read=True,
+                           purpose="WiggleZ real data catalog")
 
-    randlist = [(index, (rootrand + "%03d.dat" % index))
-                for index in range(0, n_rand_cats)]
+    db_key = "WiggleZ_%s_mock_catalog" % fieldname
+    infile_mock = datapath_db.fetch(db_key, intend_read=True,
+                           purpose="WiggleZ real data catalog", silent=True)
 
+    # gather names of all the output files
+    db_key = "WiggleZ_%s_binned_data" % fieldname
+    outfile_data = datapath_db.fetch(db_key, intend_write=True,
+                           purpose="binned WiggleZ data")
+
+    db_key = "WiggleZ_%s_selection" % fieldname
+    outfile_selection = datapath_db.fetch(db_key, intend_write=True,
+                           purpose="WiggleZ selection function")
+
+    db_key = "WiggleZ_%s_separable_selection" % fieldname
+    outfile_separable = datapath_db.fetch(db_key, intend_write=True,
+                           purpose="WiggleZ separable selection function")
+
+    db_key = "WiggleZ_%s_mock" % fieldname
+    outfile_mock = datapath_db.fetch(db_key, intend_write=True,
+                           purpose="WiggleZ mock catalog outputs", silent=True)
+
+    # gather axis information from the template file
     (freq_axis, ra_axis, dec_axis, template_shape, template_map) = \
         template_map_axes(filename=template_file)
 
+    # bin the real WiggleZ catalog
     realmap_binning = bin_catalog_file(infile_data, freq_axis,
                                        ra_axis, dec_axis, skip_header=1)
 
@@ -132,41 +155,56 @@ def bin_wigglez(fieldname, template_file):
     map_wigglez.copy_axis_info(template_map)
     algebra.save(outfile_data, map_wigglez)
 
-    selection_function = np.zeros_like(template_map)
-    for (randindex, randfile) in randlist:
-        random_binning = bin_catalog_file(randfile, freq_axis, ra_axis,
-                                             dec_axis, skip_header=1)
-        selection_function += random_binning
-        if randindex < n_to_save:
-            map_wigglez_random = algebra.make_vect(random_binning,
-                                         axis_names=('freq', 'ra', 'dec'))
-            map_wigglez_random.copy_axis_info(template_map)
-            algebra.save(outfile_rand + str(randindex).zfill(3) + ".npy",
-                         map_wigglez_random)
+    # bin the mock catalogs
+    selection_function = np.zeros(template_map.shape)
+
+    for mockindex in infile_mock[0]:
+        mockfile = infile_mock[1][mockindex]
+        mock_binning = bin_catalog_file(mockfile, freq_axis, ra_axis,
+                                             dec_axis, skip_header=1,
+                                             mock=True)
+        selection_function += mock_binning
+        if mockindex in outfile_mock[0]:
+            map_wigglez_mock = algebra.make_vect(mock_binning,
+                                axis_names=('freq', 'ra', 'dec'))
+
+            map_wigglez_mock.copy_axis_info(template_map)
+
+            algebra.save(outfile_mock[1][mockindex], map_wigglez_mock)
 
     # adding the real map back to the selection function is a kludge which
     # ensures the selection function is not zero where there is real data; this
     # should only be used in the limit of a small number of realizations of
     # random catalogs. (note: n_random + 1)
     selection_function += realmap_binning
-    selection_function /= float(n_rand_cats + 1)
+    selection_function /= float(len(infile_mock) + 1)
 
     map_wigglez_selection = algebra.make_vect(selection_function,
                                               axis_names=('freq', 'ra', 'dec'))
+
     map_wigglez_selection.copy_axis_info(template_map)
+
     algebra.save(outfile_selection, map_wigglez_selection)
 
     # now assume separability of the selection function
     spatial_selection = np.sum(selection_function, axis=0)  # 2D array
+
     freq_selection = np.apply_over_axes(np.sum,
                                         selection_function, [1, 2])  # 1D
+
     separable_selection = (freq_selection * spatial_selection)  # back to 3D
+
     separable_selection /= np.sum(freq_selection.flatten())
+
 
     map_wigglez_separable = algebra.make_vect(separable_selection,
                                               axis_names=('freq', 'ra', 'dec'))
+
     map_wigglez_separable.copy_axis_info(template_map)
+
     algebra.save(outfile_separable, map_wigglez_separable)
+
+    return
 
 
 def randomize_catalog_redshifts(catalog, fieldname):
@@ -349,7 +387,7 @@ def generate_MCsel_22hr_gbtregion():
 
 
 if __name__ == '__main__':
-    #bin_wigglez()
-    generate_MCsel_15hr_gbtregion()
+    bin_wigglez('15hr','/mnt/raid-project/gmrt/tcv/maps/sec_A_15hr_41-90_clean_map_I.npy')
+    #generate_MCsel_15hr_gbtregion()
     #generate_MCsel_22hr_gbtregion()
     #generate_GBT_sel_15hr_22hr_gbtregion()

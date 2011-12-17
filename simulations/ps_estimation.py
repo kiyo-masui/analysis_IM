@@ -1,6 +1,6 @@
 import numpy as np
 
-from utils import radialprofile
+from utils import binning
 
 
 def make_nd_at_ind(arr, nd, ind):
@@ -97,7 +97,7 @@ def crossps(arr1, arr2, width = None, bw = 3, kmodes = True, window = True):
     else:
         fq = np.abs(np.fft.fftshift(np.fft.fftn(arr1)))**2
 
-    kv, ps = radialprofile.azimuthalAverage_nd(fq)
+    kv, ps = binning.azimuthalAverage_nd(fq)
 
 
     if width != None:
@@ -211,7 +211,7 @@ def crossps_azimuth(img1, img2, width = None, bwperp = 3, bwpar = 3, kmodes = Tr
         sl = np.mean(fqh[bwpar*i:bwpar*(i+1),:,:], axis=0)
         ta[i,:,:] = sl
 
-        kperp, tp[i,:] = radialprofile.azimuthalAverage(sl, bw = bwperp)
+        kperp, tp[i,:] = binning.azimuthalAverage(sl, bw = bwperp)
 
     kpar = (np.arange(binspar)) * bwpar * 2*np.pi
     kperp *= 2*np.pi
