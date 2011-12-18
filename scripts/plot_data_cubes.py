@@ -141,29 +141,29 @@ def plot_window(outputdir="/cita/d/www/home/eswitzer/movies/"):
 def plot_wigglez(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/"):
     datapath_db = data_paths.DataPath()
 
-    db_key = "WiggleZ_%s_binned_data" % fieldname
-    filename = datapath_db.fetch(db_key)
-    pc.make_cube_movie(filename, "counts", pc.cube_frame_dir,
-                        sigmarange=-1, outputdir=outputdir, multiplier=1.,
-                        transverse=False, filetag_suffix="_"+fieldname)
+    #db_key = "WiggleZ_%s_binned_data" % fieldname
+    #filename = datapath_db.fetch(db_key)
+    #pc.make_cube_movie(filename, "counts", pc.cube_frame_dir,
+    #                    sigmarange=-1, outputdir=outputdir, multiplier=1.,
+    #                    transverse=False, filetag_suffix="_"+fieldname)
 
-    db_key = "WiggleZ_%s_selection" % fieldname
-    filename = datapath_db.fetch(db_key)
-    pc.make_cube_movie(filename, "selection", pc.cube_frame_dir,
-                        sigmarange=-1, outputdir=outputdir, multiplier=1.,
-                        transverse=False, filetag_suffix="_"+fieldname)
-
-    db_key = "WiggleZ_%s_separable_selection" % fieldname
-    filename = datapath_db.fetch(db_key)
-    pc.make_cube_movie(filename, "selection", pc.cube_frame_dir,
-                        sigmarange=-1, outputdir=outputdir, multiplier=1.,
-                        transverse=False, filetag_suffix="_"+fieldname)
-
-    #db_key = "WiggleZ_%s_montecarlo" % fieldname
+    #db_key = "WiggleZ_%s_selection" % fieldname
     #filename = datapath_db.fetch(db_key)
     #pc.make_cube_movie(filename, "selection", pc.cube_frame_dir,
     #                    sigmarange=-1, outputdir=outputdir, multiplier=1.,
     #                    transverse=False, filetag_suffix="_"+fieldname)
+
+    #db_key = "WiggleZ_%s_separable_selection" % fieldname
+    #filename = datapath_db.fetch(db_key)
+    #pc.make_cube_movie(filename, "selection", pc.cube_frame_dir,
+    #                    sigmarange=-1, outputdir=outputdir, multiplier=1.,
+    #                    transverse=False, filetag_suffix="_"+fieldname)
+
+    db_key = "WiggleZ_%s_montecarlo" % fieldname
+    filename = datapath_db.fetch(db_key)
+    pc.make_cube_movie(filename, "selection", pc.cube_frame_dir,
+                        sigmarange=-1, outputdir=outputdir, multiplier=1.,
+                        transverse=False, filetag_suffix="_"+fieldname)
 
 
 if __name__ == "__main__":
@@ -178,6 +178,6 @@ if __name__ == "__main__":
 
     #plot_manual('15hr')
     #plot_window()
-    #plot_wigglez('15hr')
+    plot_wigglez('15hr')
     #plot_wigglez('22hr')
-    plot_wigglez('1hr')
+    #plot_wigglez('1hr')

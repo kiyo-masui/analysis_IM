@@ -7,10 +7,9 @@ http://astronomy.swin.edu.au/~cblake/tzuching.html
     freq range is 676. to 947.
 """
 import numpy as np
-import time
 import shelve
 import random
-import multiprocessing
+import multiprocessing as mp
 import copy
 from core import algebra
 from core import constants as cc
@@ -196,7 +195,6 @@ def bin_wigglez(fieldname, template_file):
 
     separable_selection /= np.sum(freq_selection.flatten())
 
-
     map_wigglez_separable = algebra.make_vect(separable_selection,
                                               axis_names=('freq', 'ra', 'dec'))
 
@@ -262,15 +260,15 @@ def estimate_selection_function(fieldname, template_file,
 
     db_key = "WiggleZ_%s_mock_catalog" % fieldname
     infile_mock = datapath_db.fetch(db_key, intend_read=True,
-                           purpose="WiggleZ real data catalog", silent=True)
+                             purpose="WiggleZ real data catalog", silent=True)
 
     db_key = "WiggleZ_%s_priority_table" % fieldname
     priority_file = datapath_db.fetch(db_key, intend_read=True,
-                           purpose="WiggleZ mock cat priority file", silent=True)
+                        purpose="WiggleZ mock cat priority file", silent=True)
 
     n_rand_cats = len(infile_mock[0])
     chunking_size = 10  # break the averaging into pooled multiprocess jobs
-    num_chunks = 9000 # 9000 for testing, 60000 for production
+    num_chunks = 60000   # 9000 for testing, 60000 for production
 
     # read the WiggleZ catalog and convert redshift axis to frequency
     randdata = shelve.open(catalog_shelvefile)
@@ -310,19 +308,19 @@ def estimate_selection_function(fieldname, template_file,
         chunk_sel_func_b = np.zeros(template_shape)
 
         # leave 3 processors free to be nice
-        pool = multiprocessing.Pool(processes=(multiprocessing.cpu_count() - 3))
-        resultsA = pool.map(wrap_bin_catalog_data, runlist_a)
-        resultsB = pool.map(wrap_bin_catalog_data, runlist_b)
+        pool = mp.Pool(processes=(mp.cpu_count() - 3))
+        results_a = pool.map(wrap_bin_catalog_data, runlist_a)
+        results_b = pool.map(wrap_bin_catalog_data, runlist_b)
         pool.close()
 
-        for resultitem in resultsA:
+        for resultitem in results_a:
             chunk_sel_func_a += resultitem
 
-        for resultitem in resultsB:
+        for resultitem in results_b:
             chunk_sel_func_b += resultitem
 
-        chunk_sel_func_a /= float(len(resultsA))
-        chunk_sel_func_b /= float(len(resultsB))
+        chunk_sel_func_a /= float(len(results_a))
+        chunk_sel_func_b /= float(len(results_b))
 
         sel_func_a += chunk_sel_func_a
         sel_func_b += chunk_sel_func_b
@@ -343,9 +341,10 @@ def estimate_selection_function(fieldname, template_file,
 
 
 if __name__ == '__main__':
-    template_15hr = '/mnt/raid-project/gmrt/tcv/maps/sec_A_15hr_41-90_clean_map_I.npy'
-    template_22hr = '/mnt/raid-project/gmrt/tcv/maps/sec_A_22hr_41-90_clean_map_I.npy'
-    template_1hr = '/mnt/raid-project/gmrt/tcv/maps/sec_A_1hr_41-16_clean_map_I.npy'
+    map_root = '/mnt/raid-project/gmrt/tcv/maps/'
+    template_15hr = map_root + 'sec_A_15hr_41-90_clean_map_I.npy'
+    template_22hr = map_root + 'sec_A_22hr_41-90_clean_map_I.npy'
+    template_1hr = map_root + 'sec_A_1hr_41-16_clean_map_I.npy'
 
     #bin_wigglez('15hr', template_15hr)
     #bin_wigglez('22hr', template_22hr)

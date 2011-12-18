@@ -7,10 +7,13 @@ import scipy as sp
 import numpy.ma as ma
 from core import algebra
 from map import beam
+from map import physical_gridding as pg
 from kiyopy import parse_ini
 import kiyopy.utils
 from utils import file_tools as ft
 from correlate import corr_estimation
+from correlate import pwrspec_estimation as pe
+from utils import data_paths
 # TODO: move single map operations to a separate class
 
 params_init = {
@@ -100,17 +103,29 @@ class MapPair(ft.ClassPersistence):
         super(MapPair, self).__init__()
         # variable names that define the object (for loading and saving)
         self.varlist = ['map1', 'map2', 'noise_inv1', 'noise_inv2', 'freq']
+        self.varlist = ['phys_map1', 'phys_map2',
+                        'phys_noise_inv1', 'phys_noise_inv2']
         self.varlist.extend(['counts', 'modes1', 'modes2'])
         self.varlist.extend(['left_modes', 'right_modes'])
         self.varlist.extend(['map1_name', 'map2_name'])
+
+        self.datapath_db = data_paths.DataPath()
 
         if ((len(args) == 0) and ("shelve_filename" in kwargs)):
             shelve_filename = kwargs['shelve_filename']
             self.load_variables(shelve_filename)
         else:
-            (self.map1, self.map2) = (args[0], args[1])
-            (self.noise_inv1, self.noise_inv2) = (args[2], args[3])
+            self.map1 = self.datapath_db.fetch_multi(args[0])
+            self.map2 = self.datapath_db.fetch_multi(args[1])
+            self.noise_inv1 = self.datapath_db.fetch_multi(args[2])
+            self.noise_inv2 = self.datapath_db.fetch_multi(args[3])
             self.freq = args[4]
+
+            # set the physical-dimension maps to None
+            self.phys_map1 = None
+            self.phys_map2 = None
+            self.phys_noise_inv1 = None
+            self.phys_noise_inv2 = None
 
             # Give infinite noise to unconsidered frequencies
             noise_dimensions = self.noise_inv1.shape[0]
@@ -168,6 +183,24 @@ class MapPair(ft.ClassPersistence):
         if ((not found1) or (not found2)):
             print "Maps section can only be named A, B, C, D, E, F, G, or H."
             raise
+
+    def make_physical(self, refinement=1, pad=5):
+        r"""Project the maps and weights into physical coordinates
+        refinement allows the physical bins to be e.g. =2 times finer
+        pad puts a number of padded pixels on all sides of the physical vol.
+        """
+
+        self.phys_map1 = pg.physical_grid(self.map1,
+                                          refinement=refinement, pad=pad)
+        self.phys_map2 = pg.physical_grid(self.map2,
+                                          refinement=refinement, pad=pad)
+
+        self.phys_noise_inv1 = pg.physical_grid(self.noise_inv1,
+                                          refinement=refinement, pad=pad)
+        self.phys_noise_inv2 = pg.physical_grid(self.noise_inv2,
+                                          refinement=refinement, pad=pad)
+
+        return
 
     def degrade_resolution(self):
         r"""Convolves the maps down to the lowest resolution.
@@ -312,6 +345,23 @@ class MapPair(ft.ClassPersistence):
                     map2[freq, ira, jdec] -= amp * mode_vector
                     outmap_right[mode_index, ira, jdec] = amp
         self.right_modes = outmap_right
+
+    # TODO: add documentation
+    def pwrspec_1D(self, window=None, unitless=True, bins=None,
+                    truncate=False, nbins=40, logbins=True,
+                    refinement=2, pad=5):
+        r"""calculate the 1D power spectrum
+        """
+
+        self.make_physical(refinement=refinement, pad=pad)
+
+        xspec = pe.calculate_xspec(self.phys_map1, self.phys_map2,
+                                   self.phys_noise_inv1, self.phys_noise_inv2,
+                                   window=window, unitless=unitless,
+                                   bins=bins, truncate=False, nbins=nbins,
+                                   logbins=logbins)
+
+        return xspec
 
     def correlate(self, lags=(), speedup=False, verbose=False):
         r"""Calculate the cross correlation function of the maps.

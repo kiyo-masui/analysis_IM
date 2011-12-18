@@ -1,5 +1,6 @@
 """DataPath class specification"""
 import sys
+import copy
 import time
 import datetime
 import urllib2
@@ -8,7 +9,7 @@ import getpass
 import ast
 import re
 from utils import file_tools as ft
-# TODO: parse [ENV_VAR] in path string
+from core import algebra
 
 
 def print_dictionary(dict_in, handle, key_list=None, prepend=""):
@@ -514,6 +515,39 @@ class DataPath(object):
                 return parent_key
         else:
             print "%s has no parent directory field" % dbkey
+
+    def fetch_multi(self, data_obj, db_token="db:", silent=False):
+        r"""Handle various sorts of file pointers/data
+        if `data_obj`
+            is an array, return a deep copy of it
+            is a string:
+                if it begins with "db:" -- string after db is a db key
+                otherwise assume it is a file and try to open it
+        """
+        if isinstance(data_obj, str):
+            if data_obj[0:len(db_token)] == db_token:
+                db_key = data_obj[len(db_token):]
+                db_key = db_key.split(":")
+                # if it is a file set, split into main and 'pick' entry
+                if len(db_key) == 2:
+                    main_db = db_key[0]
+                    pick_db = db_key[1]
+                else:
+                    main_db = db_key[0]
+                    pick_db = None
+                filename = self.fetch(main_db, pick=pick_db,
+                                      intend_read=True, silent=silent)
+            else:
+                filename = data_obj
+                prefix = "non-db filename "
+                ft.path_properties(filename, intend_read=True, is_file=True,
+                                   prefix=prefix, silent=silent)
+
+            ret_data = algebra.make_vect(algebra.load(filename))
+        else:
+            ret_data = copy.deepcopy(data_obj)
+
+        return ret_data
 
     def fetch(self, dbkey, pick=None, intend_read=False, intend_write=False,
               purpose="", silent=False):

@@ -60,6 +60,9 @@ def physical_grid(input_array, refinement=1, pad=5):
     # now multiply by scaling for a finer sub-grid
     n = refinement * n
 
+    print "converting from obs. to physical coord refinement=%s, pad=%s" % \
+                      (refinement, pad)
+
     print "(%d, %d, %d)->(%f to %f) x %f x %f (%d, %d, %d) (h^-1 cMpc)^3" % \
                       (numz, numx, numy, c1, c2, \
                        phys_dim[1], phys_dim[2], \
@@ -104,8 +107,8 @@ def physical_grid(input_array, refinement=1, pad=5):
 
     for i in range(n[0]):
         # nua[0] = nu_upper, nua[1] = nu_lower
-        print nua[i], freq_axis[0], freq_axis[-1], (nua[i] - freq_axis[0]) / \
-                                        (freq_axis[-1] - freq_axis[0]) * numz
+        #print nua[i], freq_axis[0], freq_axis[-1], (nua[i] - freq_axis[0]) / \
+        #                                (freq_axis[-1] - freq_axis[0]) * numz
 
         interpol_grid[0, :, :] = (nua[i] - freq_axis[0]) / \
                                (freq_axis[-1] - freq_axis[0]) * numz
