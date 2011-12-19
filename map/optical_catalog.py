@@ -98,7 +98,7 @@ def template_map_axes(filename):
 
 
 # TODO: need printoptions?
-def bin_wigglez(fieldname, template_file):
+def bin_wigglez(fieldname, template_file, complete=False):
     """Process the WiggleZ optical catalog, binning against a template map
     given by the template_file.
 
@@ -107,11 +107,17 @@ def bin_wigglez(fieldname, template_file):
     fieldname: string
         name of field, e.g. "15hr", "22hr" or "1hr"
     template_file: string
-        file (not db key) to use to grab dimensions for the binnins
+        file (not db key) to use to grab dimensions for the binning
+    complete: boolean keyword
+        use the complete WiggleZ regions
     """
     #np.set_printoptions(threshold=np.nan)
 
     datapath_db = data_paths.DataPath()
+    if complete:
+        ctag = "complete_"
+    else:
+        ctag = ""
 
     # gather names of the input catalogs
     db_key = "WiggleZ_%s_catalog_data" % fieldname
@@ -123,19 +129,19 @@ def bin_wigglez(fieldname, template_file):
                            purpose="WiggleZ real data catalog", silent=True)
 
     # gather names of all the output files
-    db_key = "WiggleZ_%s_binned_data" % fieldname
+    db_key = "WiggleZ_%s_%sbinned_data" % (fieldname, ctag)
     outfile_data = datapath_db.fetch(db_key, intend_write=True,
                            purpose="binned WiggleZ data")
 
-    db_key = "WiggleZ_%s_selection" % fieldname
+    db_key = "WiggleZ_%s_%sselection" % (fieldname, ctag)
     outfile_selection = datapath_db.fetch(db_key, intend_write=True,
                            purpose="WiggleZ selection function")
 
-    db_key = "WiggleZ_%s_separable_selection" % fieldname
+    db_key = "WiggleZ_%s_%sseparable_selection" % (fieldname, ctag)
     outfile_separable = datapath_db.fetch(db_key, intend_write=True,
                            purpose="WiggleZ separable selection function")
 
-    db_key = "WiggleZ_%s_mock" % fieldname
+    db_key = "WiggleZ_%s_%smock" % (fieldname, ctag)
     outfile_mock = datapath_db.fetch(db_key, intend_write=True,
                            purpose="WiggleZ mock catalog outputs", silent=True)
 
@@ -235,7 +241,8 @@ def randomize_catalog_redshifts(catalog, nzilookupfile):
 # TODO: remove A/B split in averaging? probably not needed
 def estimate_selection_function(fieldname, template_file,
                                 catalog_shelvefile="./randcatdata.shelve",
-                                generate_rancat_shelve=True):
+                                generate_rancat_shelve=True,
+                                complete=False):
     """Estimate the selection function using random draws in C. Blake N(z)
     PDFs.
 
@@ -251,10 +258,16 @@ def estimate_selection_function(fieldname, template_file,
     generate_rancat_shelve: boolean
         if the catalog shelve is already generated, set
         this to False and it will use the pre-existing database
+    complete: boolean keyword
+        use the complete WiggleZ regions
     """
     datapath_db = data_paths.DataPath()
+    if complete:
+        ctag = "complete_"
+    else:
+        ctag = ""
 
-    db_key = "WiggleZ_%s_montecarlo" % fieldname
+    db_key = "WiggleZ_%s_%smontecarlo" % (fieldname, ctag)
     outfile_selection = datapath_db.fetch(db_key, intend_write=True,
                            purpose="WiggleZ MC selection function")
 
@@ -340,15 +353,36 @@ def estimate_selection_function(fieldname, template_file,
     algebra.save(outfile_selection, map_wigglez_selection)
 
 
-if __name__ == '__main__':
+def generate_wigglez_in_GBT():
     map_root = '/mnt/raid-project/gmrt/tcv/maps/'
     template_15hr = map_root + 'sec_A_15hr_41-90_clean_map_I.npy'
     template_22hr = map_root + 'sec_A_22hr_41-90_clean_map_I.npy'
     template_1hr = map_root + 'sec_A_1hr_41-16_clean_map_I.npy'
 
-    #bin_wigglez('15hr', template_15hr)
-    #bin_wigglez('22hr', template_22hr)
-    #bin_wigglez('1hr', template_1hr)
+    bin_wigglez('15hr', template_15hr)
+    bin_wigglez('22hr', template_22hr)
+    bin_wigglez('1hr', template_1hr)
+
+
+def generate_complete_wigglez():
+    template_15hr = 'templates/wigglez_15hr_complete.npy'
+    template_22hr = 'templates/wigglez_22hr_complete.npy'
+    template_1hr = 'templates/wigglez_1hr_complete.npy'
+
+    bin_wigglez('15hr', template_15hr, complete=True)
+    bin_wigglez('22hr', template_22hr, complete=True)
+    bin_wigglez('1hr', template_1hr, complete=True)
+
+
+def montecarlo_selection():
+    map_root = '/mnt/raid-project/gmrt/tcv/maps/'
+    template_15hr = map_root + 'sec_A_15hr_41-90_clean_map_I.npy'
+    template_22hr = map_root + 'sec_A_22hr_41-90_clean_map_I.npy'
+    template_1hr = map_root + 'sec_A_1hr_41-16_clean_map_I.npy'
+
     estimate_selection_function('15hr', template_15hr,
                                 catalog_shelvefile="./rand15hrcatdata.shelve",
                                 generate_rancat_shelve=False)
+
+if __name__ == '__main__':
+    generate_complete_wigglez()

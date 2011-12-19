@@ -7,14 +7,17 @@ import multiprocessing
 from map import physical_gridding
 from utils import binning
 from correlate import map_pair as mp
+from correlate import pwrspec_estimation as pe
+import sys
 
 def wrap_xspec(param):
     """helper for multiprocessing.map; should toast"""
     (cube1_file, cube2_file, \
      weight1_file, weight2_file, \
      bins, window, unitless) = param
+    print cube1_file
 
-    return calculate_xspec_file(cube1_file, cube2_file, bins,
+    return pe.calculate_xspec_file(cube1_file, cube2_file, bins,
                                 weight1_file=weight1_file,
                                 weight2_file=weight2_file,
                                 window=window, unitless=unitless)
@@ -23,8 +26,11 @@ def wrap_xspec(param):
 def test_with_agg_simulation(unitless=True, parallel=True):
     """Test the power spectral estimator using simulations"""
     datapath_db = data_paths.DataPath()
-    filename = datapath_db.fetch('simideal_15hr_physical', intend_read=True)
-    zfilename = datapath_db.fetch('simideal_15hr', intend_read=True,
+    #filename = datapath_db.fetch('simideal_15hr_physical', intend_read=True)
+    #zfilename = datapath_db.fetch('simideal_15hr', intend_read=True,
+    #                             pick='1')
+    filename = datapath_db.fetch('sim_15hr_physical', intend_read=True)
+    zfilename = datapath_db.fetch('sim_15hr', intend_read=True,
                                  pick='1')
 
     nbins=40
@@ -34,7 +40,7 @@ def test_with_agg_simulation(unitless=True, parallel=True):
 
     # give no weights; just use window
     runlist = [(filename[1][index], filename[1][index], None, None, bins,
-                True, unitless) for index in filename[0]]
+                'blackman', unitless) for index in filename[0]]
 
     if parallel:
         pool = multiprocessing.Pool(processes=multiprocessing.cpu_count()-4)
@@ -81,7 +87,7 @@ def test_with_simulation(unitless=True):
     ofilename = "./physical_cube.npy"
     obfilename = "./physical_cube_beam.npy"
     pwindowfile = "./physical_window.npy"
-    owindowfile = "./observed_window.npy"
+    owindowfile = "./observed_window_physreg.npy"
 
     nbins=40
     bins = np.logspace(math.log10(0.00702349679605685),
@@ -89,20 +95,20 @@ def test_with_simulation(unitless=True):
                        num=(nbins + 1), endpoint=True)
 
     bin_left, bin_center, bin_right, pcounts_histo, pbinavg = \
-                    calculate_xspec_file(pfilename, pfilename, bins,
+                    pe.calculate_xspec_file(pfilename, pfilename, bins,
                                     weight1_file=owindowfile,
                                     weight2_file=owindowfile,
                                     window=None, unitless=unitless)
 
     bin_left, bin_center, bin_right, ocounts_histo, obinavg = \
-                    calculate_xspec_file(ofilename, ofilename, bins,
+                    pe.calculate_xspec_file(ofilename, ofilename, bins,
                                     weight1_file=owindowfile,
                                     weight2_file=owindowfile,
                                     window=None, unitless=unitless)
 
 
     bin_left, bin_center, bin_right, obcounts_histo, obbinavg = \
-                    calculate_xspec_file(obfilename, obfilename, bins,
+                    pe.calculate_xspec_file(obfilename, obfilename, bins,
                                     weight1_file=owindowfile,
                                     weight2_file=owindowfile,
                                     window=None, unitless=unitless)
@@ -123,14 +129,48 @@ def test_with_simulation(unitless=True):
         print ("%10.15g " * 8) % specdata
 
 
+#def test_with_map_pair(map1_key, map2_key, weight1_key, weight2_key, freq
+#                       outfilename, unitless=True):
 def test_with_map_pair(unitless=True):
     """Test the power spectral estimator using simulations"""
     datapath_db = data_paths.DataPath()
-    simpair = mp.MapPair("db:simideal_15hr:1",
-                         "db:simideal_15hr:1",
-                         "./observed_window.npy",
-                         "./observed_window.npy",
-                         range(256))
+
+    cutlist = [6, 7, 8, 15, 16, 18, 19, 20, 21, 22, 37, 103, 104, 105, 106,
+               107, 108, 130, 131, 132, 133, 134, 237, 244, 254, 255]
+
+    augmented = [177, 194, 195, 196, 197, 198, 201, 204, 209, 213, 229]
+    for entry in augmented:
+        cutlist.append(entry)
+
+    badweights = [133, 189, 192, 193, 194, 195, 196, 197, 198, 208, 209, 213,
+                  233]
+    for entry in badweights:
+        cutlist.append(entry)
+
+    freq = range(256)
+    for entry in cutlist:
+        try:
+            freq.remove(entry)
+        except ValueError:
+            print "can't cut %d" % entry
+
+    print "%d of %d freq slices removed" % (len(cutlist), len(freq))
+    print freq
+
+    #simpair = mp.MapPair("db:simideal_15hr:1",
+    #                     "db:simideal_15hr:1",
+    #                     "./observed_window.npy",
+    #                     "./observed_window.npy",
+    #                     freq)
+
+    simpair = mp.MapPair("db:simideal_15hr_beam:1",
+                         "db:simideal_15hr_beam:1",
+                         "db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv",
+                         "db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv",
+                         freq)
+
+    #simpair.subtract_weighted_mean()
+    simpair.degrade_resolution()
 
     nbins=40
     bins = np.logspace(math.log10(0.00702349679605685),
@@ -146,6 +186,6 @@ def test_with_map_pair(unitless=True):
 
 
 if __name__ == '__main__':
-    #test_with_agg_simulation(unitless=True)
-    test_with_map_pair(unitless=True)
+    test_with_agg_simulation(unitless=True)
+    #test_with_map_pair(unitless=True)
     #test_with_simulation(unitless=True)

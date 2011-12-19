@@ -4,6 +4,7 @@ r"""Program that calculates the correlation function across frequency slices.
 import time
 import sys
 import scipy as sp
+import numpy as np
 import numpy.ma as ma
 from core import algebra
 from map import beam
@@ -128,11 +129,7 @@ class MapPair(ft.ClassPersistence):
             self.phys_noise_inv2 = None
 
             # Give infinite noise to unconsidered frequencies
-            noise_dimensions = self.noise_inv1.shape[0]
-            for noise_index in range(noise_dimensions):
-                if not noise_index in self.freq:
-                    self.noise_inv1[noise_index, ...] = 0
-                    self.noise_inv2[noise_index, ...] = 0
+            self.sanitize()
 
             # Set attributes.
             self.counts = 0
@@ -183,6 +180,28 @@ class MapPair(ft.ClassPersistence):
         if ((not found1) or (not found2)):
             print "Maps section can only be named A, B, C, D, E, F, G, or H."
             raise
+
+    def sanitize(self):
+        r"""set weights to zero in funny regions"""
+        (self.map1, self.noise_inv1) = self.sanitize_single(self.map1,
+                                                       self.noise_inv1)
+
+        (self.map2, self.noise_inv2) = self.sanitize_single(self.map2,
+                                                       self.noise_inv2)
+
+    def sanitize_single(self, map, weightmap):
+        weightmap[np.isnan(weightmap)] = 0.
+        weightmap[np.isinf(weightmap)] = 0.
+        weightmap[np.isnan(map)] = 0.
+        weightmap[np.isinf(map)] = 0.
+        weightmap[weightmap < 1.e-20] = 0.
+
+        weight_dimensions = weightmap.shape[0]
+        for freq_index in range(weight_dimensions):
+            if not freq_index in self.freq:
+                weightmap[freq_index, ...] = 0
+
+        return (map, weightmap)
 
     def make_physical(self, refinement=1, pad=5):
         r"""Project the maps and weights into physical coordinates
