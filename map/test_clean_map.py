@@ -34,7 +34,8 @@ class TestSolver(unittest.TestCase):
         noise_inv = al.make_mat(noise_inv, axis_names=('freq', 'ra', 'dec')*2,
                                 row_axes=(0, 1, 2), col_axes=(3, 4, 5))
         rand_mat = rand.randn(*((self.size,) * 2))
-        rand_mat = sp.dot(rand_mat, rand_mat.transpose())
+        information_factor = 1.e6  # K**-2
+        rand_mat = sp.dot(rand_mat, rand_mat.transpose()) * information_factor
         noise_inv.flat[...] = rand_mat.flat
         # Dirty map.
         dirty_map = al.partial_dot(noise_inv, clean_map)
@@ -71,8 +72,8 @@ class TestSolver(unittest.TestCase):
 
     def test_solve(self):
         noise_cpy = self.noise_inv.copy()
-        new_clean_map, noise_diag = clean_map.solve(self.noise_inv,
-                                                    self.dirty_map, True)
+        new_clean_map, noise_diag, chol = clean_map.solve(self.noise_inv,
+                                                          self.dirty_map, True)
         self.assertTrue(sp.allclose(self.noise_inv, noise_cpy))
         self.assertTrue(sp.allclose(new_clean_map, self.clean_map))
         # Test the noise diagonal.

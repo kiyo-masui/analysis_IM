@@ -28,9 +28,9 @@ prefix = ''
 map_prefix = '' + field + '_' + '41-90' + '_'
 
 pipe_modules = []
-pipe_processes = 18
+pipe_processes = 24
 
-from time_stream import flag_data
+#from time_stream import flag_data
 #pipe_modules.append(flag_data.FlagData)
 fd_input_root = data_dir
 fd_file_middles = file_middles
@@ -44,11 +44,11 @@ fd_IFs = ()
 fd_perform_hanning = False
 fd_rotate = True
 fd_cal_scale = True
-fd_sigma_thres = 6
+fd_sigma_thres = 4.
 fd_badness_thres = 0.1
-fd_time_cut = 40
+fd_time_cut = 10.
 
-from time_stream import rebin_freq
+#from time_stream import rebin_freq
 #pipe_modules.append(rebin_freq.RebinFreq)
 rf_input_root = fd_output_root
 rf_file_middles = file_middles
@@ -62,7 +62,7 @@ rf_channel_width = 0.
 rf_n_bins_combined = 32
 rf_mean_instead_median = True
 
-from time_stream import rebin_time
+#from time_stream import rebin_time
 #pipe_modules.append(rebin_time.RebinTime)
 rt_input_root = rf_output_root
 rt_file_middles = file_middles
@@ -74,7 +74,7 @@ rt_IFs = ()
 
 rt_n_bins_combined = 2
 
-from time_stream import split_bands
+#from time_stream import split_bands
 #pipe_modules.append(split_bands.SplitBands)
 sb_input_root = rt_output_root
 sb_file_middles = file_middles
@@ -89,7 +89,7 @@ sb_n_bands = 1
 sb_n_bins_band = 40
 sb_offset = 4 + 2 * sb_n_bins_band
 
-from time_stream import calibrate
+#from time_stream import calibrate
 #pipe_modules.append(calibrate.Calibrate)
 cl_input_root = sb_output_root
 cl_file_middles = file_middles
@@ -101,7 +101,7 @@ cl_IFs = ()
 
 cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
 
-from time_stream import rotate_pol
+#from time_stream import rotate_pol
 #pipe_modules.append(rotate_pol.RotatePol)
 rp_input_root = cl_output_root
 rp_file_middles = file_middles
@@ -114,7 +114,7 @@ rp_IFs = ()
 rp_new_pols = (1,)
 rp_average_cals = True
 
-from map import dirty_map
+#from map import dirty_map
 #pipe_modules.append(dirty_map.DirtyMapMaker)
 dm_input_root = rp_output_root
 dm_file_middles = file_middles
@@ -143,7 +143,7 @@ cm_polarizations = ('I',)
 cm_bands = (737,)
 cm_save_noise_diag = True
 
-from time_stream import subtract_map_data
+#from time_stream import subtract_map_data
 #pipe_modules.append(subtract_map_data.Subtract)
 sm_input_root = rp_output_root
 sm_file_middles = file_middles
@@ -159,7 +159,7 @@ sm_solve_for_gain = False
 sm_gain_output_end = '_gain.pickle'
 sm_interpolation = 'linear'
 
-from time_stream import reflag
+#from time_stream import reflag
 #pipe_modules.append(reflag.ReFlag)
 sf_input_root = rp_output_root
 sf_file_middles = file_middles
@@ -169,14 +169,15 @@ sf_output_end = '.fits'
 sf_scans = ()
 sf_IFs = ()
 
-sf_thres = 5.0
+sf_thres = 3.0
+sf_max_noise_factor = 4.0
 sf_subtracted_input_root = sm_output_root
 sf_subtracted_output_root = base_dir + 'reflag_sub/'
 
-#from noise import measure_noise
-#pipe_modules.append(measure_noise.Measure)
+from noise import measure_noise
+pipe_modules.append(measure_noise.Measure)
 mn_input_root = sf_subtracted_input_root
-mn_file_middles = file_middles[300:]
+mn_file_middles = file_middles
 mn_input_end = '.fits'
 mn_output_root = base_dir + 'noise_measurments/'
 mn_output_filename = "noise_parameters.shelve"
@@ -191,13 +192,14 @@ mn_parameters = ["channel_var", "freq_modes_over_f_0",
                  "freq_modes_over_f_5", "freq_modes_over_f_6",
                  "freq_modes_over_f_7", "freq_modes_over_f_8"]
 
-from map import dirty_map
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dm2_', 'dm_')))
+#from map import dirty_map
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dm2_', 'dm_')))
 dm2_input_root = sf_output_root
 dm2_file_middles = file_middles
 dm2_input_end = '.fits'
-#dm2_output_root = base_dir + 'maps/test_' + map_prefix
-dm2_output_root = base_dir + 'maps/sec_' + map_prefix
+dm2_output_root = base_dir + 'maps/test_' + map_prefix
+#dm2_output_root = base_dir + 'maps/test2_' + map_prefix
+#dm2_output_root = base_dir + 'maps/sec_' + map_prefix
 dm2_scans = ()
 dm2_IFs = (0,)
 
@@ -206,7 +208,8 @@ dm2_field_centre = (217.9, 2.0)
 dm2_map_shape = (64, 32)
 dm2_pixel_spacing = .075
 dm2_time_block = 'scan'
-dm2_n_files_group = 420
+#dm2_n_files_group = 420  # prawn
+dm2_n_files_group = 300  # tpb nodes.
 #dm2_n_files_group = 120
 dm2_frequency_correlations = 'measured'
 dm2_number_frequency_modes = 3
@@ -216,11 +219,23 @@ dm2_noise_parameter_file = (base_dir
 dm2_deweight_time_mean = True
 dm2_deweight_time_slope = True
 
-from map import clean_map
-pipe_modules.append((clean_map.CleanMapMaker, ('cm2_', 'cm_')))
+#from map import clean_map
+#pipe_modules.append((clean_map.CleanMapMaker, ('cm2_', 'cm_')))
 cm2_input_root = dm2_output_root
 cm2_output_root = cm2_input_root
 cm2_polarizations = ('I',)
 cm2_bands = (737,)
-cm2_save_noise_diag = True
+cm2_save_noise_diag = False
+cm2_save_cholesky = True
+
+
+
+#from map import clean_map
+#pipe_modules.append((clean_map.CleanMapMaker, ('cm2_', 'cm_')))
+cm2_input_root = base_dir + 'maps/test2_' + map_prefix
+cm2_output_root = cm2_input_root
+cm2_polarizations = ('I',)
+cm2_bands = (737,)
+cm2_save_noise_diag = False
+cm2_save_cholesky = True
 

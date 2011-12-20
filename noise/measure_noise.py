@@ -491,11 +491,12 @@ def fit_overf_const(power, window, freq):
     # Instead of fitting for the index directly, we sue another parameter that
     # does not admit index >= -0.2.  This avoids a degeneracy with thermal when
     # index = 0.
-    # Also force the amplitudes to be positive by squaring.
+    # Also force the amplitudes to be positive by squaring and give them a
+    # minimum value.
     def model(params):
-        a = params[0]**2
+        a = params[0]**2 + T_small
         i = -(params[1]**2 + min_index)
-        t = params[2]**2
+        t = params[2]**2 + T_small
         spec = npow.overf_power_spectrum(a, i, f_0, dt, n_time)
         spec += t
         spec = npow.convolve_power(spec, window)
@@ -526,7 +527,7 @@ def fit_overf_const(power, window, freq):
         # Derivative with respect to the amplitude parameter.
         spec[0,:] = -2.0 * a * p_law
         # Derivative with respect to the index parameter.
-        spec[1,:] = a**2 * p_law * sp.log(f/f_0) * 2.0 * i
+        spec[1,:] = (a**2 + T_small) * p_law * sp.log(f/f_0) * 2.0 * i
         # Derivative with respect to the thermal parameter.
         spec[2,:] = -2.0 * t
         # Get rid of the mean mode.
@@ -572,9 +573,9 @@ def fit_overf_const(power, window, freq):
     #if ier not in (1, 2, 3, 4):
     #    raise RuntimeError("Could not find a solution. " + repr(params))
     # Unpack results and return.
-    amp = params[0]**2
+    amp = params[0]**2 + T_small
     index = -(params[1]**2 + min_index)
-    thermal = params[2]**2
+    thermal = params[2]**2 + T_small
     return amp, index, f_0, thermal
 
 

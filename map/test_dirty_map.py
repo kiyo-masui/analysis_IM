@@ -356,16 +356,16 @@ class TestClasses(unittest.TestCase):
         Noise2.add_mask(mask_inds)
         Noise2.deweight_time_slope()
         Noise2.add_correlated_over_f(0.01, -1.2, 0.1)
-        Noise2.freq_mode_noise += dirty_map.T_large
+        Noise2.freq_mode_noise += dirty_map.T_medium
         Noise2.finalize()
         N2 = Noise2.get_inverse()
         N2_m = N2.view()
         N2_m.shape = (nt, nt)
         self.assertTrue(sp.allclose(N2, N1))
 
-    def deactivated_test_numerical_stability(self):
-        nf = 20
-        nt = 150
+    def test_numerical_stability(self):
+        nf = 15
+        nt = 100
         dt = 0.3
         BW = 1. / dt / 2.
         time_stream = sp.zeros((nf, nt))
@@ -385,12 +385,12 @@ class TestClasses(unittest.TestCase):
         mask_f += [13] * nt
         mask_t += range(nt)
         # Mask out a few more points.
-        mask_f += [7, 15, 9, 7]
-        mask_t += [87, 123, 54, 130]
+        mask_f += [7, 14, 9, 7]
+        mask_t += [87, 42, 54, 95]
         N.add_mask((sp.array(mask_f, dtype=int), sp.array(mask_t, dtype=int)))
         # Time mean and slope.
-        #N.deweight_time_mean()
-        #N.deweight_time_slope()
+        N.deweight_time_mean()
+        N.deweight_time_slope()
         # Correlated modes.
         f_0 = 1.
         amps = [0.01, 0.001, 0.0001]
@@ -409,8 +409,8 @@ class TestClasses(unittest.TestCase):
         N_mat = N.get_inverse()
         N_mat.shape = (nf * nt,) * 2
         e, v = linalg.eigh(N_mat)
-        print sp.amax(e) / sp.amin(e)
-
+        self.assertTrue(sp.amin(e) > 0)
+        #print sp.amax(e) / sp.amin(e)
 
     def test_uncoupled_channels(self):
         time_stream, ra, dec, az, el, time, mask_inds = \
@@ -534,14 +534,14 @@ class TestEngine(unittest.TestCase):
         ndec = 10
         map_size = 1.2
         scan_size = 1.3
-        # These parameters.ers are teetering on the edge of numerical stability.
+        # These parameters are teetering on the edge of numerical stability.
         thermal_var = 0.00005 * BW_d * 2
         over_f_pars = (0.0001, -0.95, 5.0)
         
         Data = DataMaker(nscans=6, nt_scan=50, nf=nf, nra=nra,
                  ndec=ndec, scan_size=scan_size, map_size=map_size,
                  thermal=thermal_var, correlated_noise=over_f_pars,
-                 random_mean=0., random_slope=0.,
+                 random_mean=0.01, random_slope=0.01,
                  add_ground=False)
         new_map, map_diffs, nor = self.make_map(Data, 20)
         expected_map = new_map - map_diffs
@@ -590,7 +590,7 @@ class TestEngine(unittest.TestCase):
         Data = DataMaker(nscans=6, nt_scan=20, nf=nf, nra=nra,
                  ndec=ndec, scan_size=scan_size, map_size=map_size,
                  thermal=thermal_var, correlated_noise=None,
-                 random_mean=10., random_slope=10.,
+                 random_mean=0.01, random_slope=0.01,
                  add_ground=False, freq_mode_noise=over_f_pars,
                  universal_over_f=universal_pars)
         new_map, map_diffs, nor = self.make_map(Data, 80)
@@ -616,7 +616,7 @@ class TestEngine(unittest.TestCase):
         Data = DataMaker(nscans=6, nt_scan=20, nf=nf, nra=nra,
                  ndec=ndec, scan_size=scan_size, map_size=map_size,
                  thermal=thermal_var, correlated_noise=None,
-                 random_mean=10., random_slope=10.,
+                 random_mean=0.01, random_slope=0.01,
                  add_ground=False, freq_mode_noise=over_f_pars,
                  universal_over_f=universal_pars)
         new_map, map_diffs, nor = self.make_map(Data, 80)
@@ -642,7 +642,7 @@ class TestEngine(unittest.TestCase):
         Data = DataMaker(nscans=6, nt_scan=20, nf=nf, nra=nra,
                  ndec=ndec, scan_size=scan_size, map_size=map_size,
                  thermal=thermal_var, correlated_noise=None,
-                 random_mean=10., random_slope=10.,
+                 random_mean=0.01, random_slope=0.01,
                  add_ground=False, freq_mode_noise=over_f_pars,
                  universal_over_f=universal_pars)
         new_map, map_diffs, nor = self.make_map(Data, 80, 
@@ -667,7 +667,7 @@ class TestEngine(unittest.TestCase):
         Data = DataMaker(nscans=6, nt_scan=20, nf=nf, nra=nra,
                  ndec=ndec, scan_size=scan_size, map_size=map_size,
                  thermal=thermal_var, correlated_noise=None,
-                 random_mean=10., random_slope=10.,
+                 random_mean=0.01, random_slope=0.01,
                  add_ground=False, freq_mode_noise=over_f_noise,
                  universal_over_f=universal_pars)
         new_map, map_diffs, nor = self.make_map(Data, 80, 
@@ -692,7 +692,7 @@ class TestEngine(unittest.TestCase):
         Data = DataMaker(nscans=6, nt_scan=20, nf=nf, nra=nra,
                  ndec=ndec, scan_size=scan_size, map_size=map_size,
                  thermal=thermal_var, correlated_noise=None,
-                 random_mean=10., random_slope=10.,
+                 random_mean=0.01, random_slope=0.01,
                  add_ground=False, freq_mode_noise=over_f_noise,
                  universal_over_f=universal_pars)
         new_map, map_diffs, nor = self.make_map(Data, 80, 
@@ -715,7 +715,7 @@ class TestEngine(unittest.TestCase):
         Data = DataMaker(nscans=2, nt_scan=10, nf=nf, nra=nra,
                  ndec=ndec, scan_size=scan_size, map_size=map_size,
                  thermal=thermal_var, correlated_noise=over_f_pars,
-                 random_mean=100., random_slope=0.,
+                 random_mean=0.01, random_slope=0.,
                  add_ground=False)
         new_map, map_diffs, nor = self.make_map(Data, 40)
         expected_map = new_map - map_diffs
@@ -737,7 +737,7 @@ class TestEngine(unittest.TestCase):
         Data = DataMaker(nscans=2, nt_scan=10, nf=nf, nra=nra,
                  ndec=ndec, scan_size=scan_size, map_size=map_size,
                  thermal=thermal_var, correlated_noise=over_f_pars,
-                 random_mean=100000., random_slope=0.,
+                 random_mean=100., random_slope=0.,
                  add_ground=False)
         new_map, map_diffs, nor = self.make_map(Data, 40)
         expected_map = new_map - map_diffs
@@ -758,7 +758,7 @@ class TestEngine(unittest.TestCase):
         Data = DataMaker(nscans=2, nt_scan=10, nf=nf, nra=nra,
                  ndec=ndec, scan_size=scan_size, map_size=map_size,
                  thermal=thermal_var, correlated_noise=over_f_pars,
-                 random_mean=0., random_slope=100.,
+                 random_mean=0., random_slope=0.01,
                  add_ground=False)
         new_map, map_diffs, nor = self.make_map(Data, 40)
         expected_map = new_map - map_diffs
@@ -780,7 +780,7 @@ class TestEngine(unittest.TestCase):
         Data = DataMaker(nscans=8, nt_scan=150, nf=nf, nra=nra,
                  ndec=ndec, scan_size=scan_size, map_size=map_size,
                  thermal=thermal_var, correlated_noise=over_f_pars,
-                 random_mean=10., random_slope=10.,
+                 random_mean=0.1, random_slope=0.1,
                  add_ground=False)
         t, t2 = self.make_map(Data, 1, True)
         print "Took %7.2f core seconds and %7.2f real seconds." % (t, t2)
@@ -799,7 +799,7 @@ class TestEngine(unittest.TestCase):
         Data = DataMaker(nscans=2, nt_scan=10, nf=nf, nra=nra,
                  ndec=ndec, scan_size=scan_size, map_size=map_size,
                  thermal=thermal_var, correlated_noise=over_f_pars,
-                 random_mean=0., random_slope=100000.,
+                 random_mean=0., random_slope=100.,
                  add_ground=False)
         new_map, map_diffs, nor = self.make_map(Data, 40)
         expected_map = new_map - map_diffs
@@ -823,7 +823,7 @@ class TestEngine(unittest.TestCase):
         Data = DataMaker(nscans=3, nt_scan=400, nf=nf, nra=nra,
                  ndec=ndec, scan_size=scan_size, map_size=map_size,
                  thermal=thermal_var, correlated_noise=over_f_pars,
-                 random_mean=10., random_slope=10.,
+                 random_mean=0.01, random_slope=0.01,
                  add_ground=False)
         # This will fail if the noise matrix is singular.
         new_map, map_diffs, nor = self.make_map(Data, 6)
@@ -1027,8 +1027,8 @@ class TestPreprocessor(unittest.TestCase):
             self.assertTrue(time_stream[f_ind + 1, t_ind] > 40)
 
 
-class TestModuleIO(unittest.TestCase):
-#class TestModuleIO(object):
+#class TestModuleIO(unittest.TestCase):
+class TestModuleIO(object):
     
     def setUp(self):
 

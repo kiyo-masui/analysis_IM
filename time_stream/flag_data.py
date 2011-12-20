@@ -33,7 +33,7 @@ class FlagData(base_single.BaseSingle) :
                    'rotate' : False,
                    # Any frequency with variance > sigma_thres sigmas will be 
                    # flagged (recursively).
-                   'sigma_thres' : 6,
+                   'sigma_thres' : 6.,
                    # A Data that has more than badness_thres frequencies flagged
                    # (as a %) will be considered bad.
                    'badness_thres' : 0.1,
