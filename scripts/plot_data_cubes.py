@@ -138,28 +138,33 @@ def plot_window(outputdir="/cita/d/www/home/eswitzer/movies/"):
                         physical=True)
 
 
-def plot_wigglez(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/"):
+def plot_wigglez(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/",
+                 complete=False):
     datapath_db = data_paths.DataPath()
+    if complete:
+        ctag = "complete_"
+    else:
+        ctag = ""
 
-    #db_key = "WiggleZ_%s_binned_data" % fieldname
+    #db_key = "WiggleZ_%s_%sbinned_data" % (fieldname, ctag)
     #filename = datapath_db.fetch(db_key)
     #pc.make_cube_movie(filename, "counts", pc.cube_frame_dir,
     #                    sigmarange=-1, outputdir=outputdir, multiplier=1.,
     #                    transverse=False, filetag_suffix="_"+fieldname)
 
-    #db_key = "WiggleZ_%s_selection" % fieldname
+    #db_key = "WiggleZ_%s_%sselection" % (fieldname, ctag)
     #filename = datapath_db.fetch(db_key)
     #pc.make_cube_movie(filename, "selection", pc.cube_frame_dir,
     #                    sigmarange=-1, outputdir=outputdir, multiplier=1.,
     #                    transverse=False, filetag_suffix="_"+fieldname)
 
-    #db_key = "WiggleZ_%s_separable_selection" % fieldname
+    #db_key = "WiggleZ_%s_%sseparable_selection" % (fieldname, ctag)
     #filename = datapath_db.fetch(db_key)
     #pc.make_cube_movie(filename, "selection", pc.cube_frame_dir,
     #                    sigmarange=-1, outputdir=outputdir, multiplier=1.,
     #                    transverse=False, filetag_suffix="_"+fieldname)
 
-    db_key = "WiggleZ_%s_montecarlo" % fieldname
+    db_key = "WiggleZ_%s_%smontecarlo" % (fieldname, ctag)
     filename = datapath_db.fetch(db_key)
     pc.make_cube_movie(filename, "selection", pc.cube_frame_dir,
                         sigmarange=-1, outputdir=outputdir, multiplier=1.,
@@ -178,6 +183,8 @@ if __name__ == "__main__":
 
     #plot_manual('15hr')
     #plot_window()
-    plot_wigglez('15hr')
+    plot_wigglez('15hr', complete=False)
+    #plot_wigglez('22hr', complete=True)
+    #plot_wigglez('1hr', complete=True)
     #plot_wigglez('22hr')
     #plot_wigglez('1hr')

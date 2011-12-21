@@ -37,8 +37,14 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
                      0.258910010848, 0.249188429031])
         freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
                                  dtype=float)
+
         beam_fwhm = interp1d(freq_data, beam_data)
-        fwhm = beam_fwhm(slice_label)
+        if (slice_label <= freq_data.min()) or \
+           (slice_label >= freq_data.max()):
+            fwhm = 0.
+        else:
+            fwhm = beam_fwhm(slice_label)
+
     else:
         fulltitle = "%s (i = %d, Dc = %10.3f cMpc)" % \
                 (title, index, slice_label)

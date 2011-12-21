@@ -281,7 +281,7 @@ def estimate_selection_function(fieldname, template_file,
 
     n_rand_cats = len(infile_mock[0])
     chunking_size = 10  # break the averaging into pooled multiprocess jobs
-    num_chunks = 60000   # 9000 for testing, 60000 for production
+    num_chunks = 90000   # 9000 for testing, 60000 for production
 
     # read the WiggleZ catalog and convert redshift axis to frequency
     randdata = shelve.open(catalog_shelvefile)
@@ -380,9 +380,14 @@ def montecarlo_selection():
     template_22hr = map_root + 'sec_A_22hr_41-90_clean_map_I.npy'
     template_1hr = map_root + 'sec_A_1hr_41-16_clean_map_I.npy'
 
-    estimate_selection_function('15hr', template_15hr,
-                                catalog_shelvefile="./rand15hrcatdata.shelve",
-                                generate_rancat_shelve=False)
+    #estimate_selection_function('15hr', template_15hr,
+    ##                            catalog_shelvefile="./rand15hrcatdata.shelve",
+    #                            generate_rancat_shelve=False)
+
+    estimate_selection_function('22hr', template_22hr,
+                                catalog_shelvefile="./rand22hrcatdata.shelve",
+                                generate_rancat_shelve=True)
 
 if __name__ == '__main__':
-    generate_complete_wigglez()
+    #generate_complete_wigglez()
+    montecarlo_selection()
