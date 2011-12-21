@@ -9,6 +9,7 @@ from utils import binning
 from correlate import map_pair as mp
 from correlate import pwrspec_estimation as pe
 import sys
+from utils import batch_handler
 
 def wrap_xspec(param):
     """helper for multiprocessing.map; should toast"""
@@ -129,9 +130,7 @@ def test_with_simulation(unitless=True):
         print ("%10.15g " * 8) % specdata
 
 
-#def test_with_map_pair(map1_key, map2_key, weight1_key, weight2_key, freq
-#                       outfilename, unitless=True):
-def test_with_map_pair(unitless=True):
+def test_with_map_pair(sim_key, sim_index, unitless=True):
     """Test the power spectral estimator using simulations"""
     datapath_db = data_paths.DataPath()
 
@@ -157,14 +156,10 @@ def test_with_map_pair(unitless=True):
     print "%d of %d freq slices removed" % (len(cutlist), len(freq))
     print freq
 
-    #simpair = mp.MapPair("db:simideal_15hr:1",
-    #                     "db:simideal_15hr:1",
-    #                     "./observed_window.npy",
-    #                     "./observed_window.npy",
-    #                     freq)
-
-    simpair = mp.MapPair("db:simideal_15hr_beam:1",
-                         "db:simideal_15hr_beam:1",
+    # could also use ./observed_window.npy as the weight
+    map1_key = "db:%s:%s" % (sim_key, sim_index)
+    simpair = mp.MapPair(map1_key,
+                         map1_key,
                          "db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv",
                          "db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv",
                          freq)
@@ -177,15 +172,24 @@ def test_with_map_pair(unitless=True):
                        math.log10(2.81187396154818),
                        num=(nbins + 1), endpoint=True)
 
-    bin_left, bin_center, bin_right, counts_histo, binavg = \
-                    simpair.pwrspec_1D(bins=bins, unitless=unitless)
+    retval = simpair.pwrspec_1D(bins=bins, unitless=unitless)
+    #bin_left, bin_center, bin_right, counts_histo, binavg = \
+    #                simpair.pwrspec_1D(bins=bins, unitless=unitless)
 
-    for specdata in zip(bin_left, bin_center,
-                        bin_right, counts_histo, binavg):
-        print ("%10.15g " * 5) % specdata
+    #for specdata in zip(bin_left, bin_center,
+    #                    bin_right, counts_histo, binavg):
+    #    print ("%10.15g " * 5) % specdata
 
+def test_batch_sim_run():
+    caller = batch_handler.MemoizeBatch("correlate.pwrspec_simulations.test_with_map_pair", "./testdata/",
+                                        generate=True, verbose=True)
+    for index in range(10):
+        caller.execute("simideal_15hr_beam", index, unitless=True)
+
+    caller.multiprocess_stack()
 
 if __name__ == '__main__':
-    test_with_agg_simulation(unitless=True)
+    #test_with_agg_simulation(unitless=True)
     #test_with_map_pair(unitless=True)
     #test_with_simulation(unitless=True)
+    test_batch_sim_run()

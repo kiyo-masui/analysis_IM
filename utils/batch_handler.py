@@ -6,10 +6,10 @@ import re
 import shelve
 
 
-def print_call(args):
+def print_call(args_package):
     r"""Print the function and its arguments and the file in which the outputs
     are saved in the cache directory."""
-    (signature, directory, funcname, args, kwargs) = args
+    (signature, directory, funcname, args, kwargs) = args_package
 
     kwlist = []
     for item in kwargs:
@@ -33,12 +33,11 @@ def print_call(args):
 
 
 def function_wrapper(args_package):
-    r"""this wrapper supports MemoizeBatch and circumvents the fact that
-    multiprocessing pool's map can not handle class functions or generic
-    function arguments to calls in that pool. Note that we also save the data
-    here as opposed to handing it back to multiprocessing. This is to prevent
-    the outputs from a potentially large number of function calls from being
-    saved in memory.
+    r"""A free-standing function wrapper that supports MemoizeBatch
+    (Why? Multiprocessing pool's map can not handle class functions or generic
+    function arguments to calls in that pool.)
+    Data are saved here rather than handed back to avoid the scenario where
+    all of the output from a batch run is held in memory.
     """
     (signature, directory, funcname, args, kwargs) = args_package
 
@@ -78,23 +77,23 @@ class MemoizeBatch(object):
     problem is that one code typically does all the loops for the batch
     processing -> dump to files, and the a second code reads the files to make
     a final product. There is overhead in naming the files and also in the fact
-    that the batch caller loops are typically quite different from the loops
+    that the batch caller loops are often structurally different from the loops
     over parameters in the final consumer.
 
     This class circumvents these issues by assigning an md5 hash to the
     arguments and writing a file by that name. If those arguments have been
-    alled, it can retrieve the output. Note that these have different md5
+    called, it can retrieve the output. Note that these have different md5
     signatures for func(arg=True): call func(arg=True) and call func()
     (even though the result will be the same.)
 
     To specify the batch of parameters to run over, initialize the class with
-    `generate=True`. Then when execute is called, it stacks up the list of
+    `generate=True`. Then when execute() is called, it stacks up the list of
     parameters in the call in `self.call_stack`. To perform the computation,
     call one of the call_stack handlers (either multiprocess_stack or
     pbsprocess_stack) to parallelize the function call.
 
     To use the cached values, initialize the class with `generate=False`
-    (default) and then call execute in the same way as above, and the cached
+    (default) and then call execute in the same way as above. The cached
     results will be returned by looking up the hash for the arguments.
 
     Example to generate the cache table:
@@ -122,7 +121,8 @@ class MemoizeBatch(object):
     ('ok2', 4, 'e', 'r')
 
     """
-    def __init__(self, funcname, directory, generate=False, regenerate=False):
+    def __init__(self, funcname, directory, generate=False, regenerate=False,
+                 verbose=False):
         r"""
         Parameters:
         -----------
@@ -139,6 +139,7 @@ class MemoizeBatch(object):
         self.call_stack = []
         self.generate = generate
         self.regenerate = regenerate
+        self.verbose = verbose
 
     def execute(self, *args, **kwargs):
         argpkl = pickle.dumps((self.funcname, args,
@@ -147,9 +148,11 @@ class MemoizeBatch(object):
 
         if self.generate or self.regenerate:
         # TODO: if not regenerate, check to see if the result exists
-
-            self.call_stack.append((arghash, self.directory,
-                                    self.funcname, args, kwargs))
+            args_package = (arghash, self.directory,
+                            self.funcname, args, kwargs)
+            self.call_stack.append(args_package)
+            if self.verbose:
+                print_call(args_package)
 
             retval = arghash
         else:
@@ -194,7 +197,6 @@ def trial_function(thing1, thing2, arg1="e", arg2="r"):
 if __name__ == "__main__":
     import doctest
 
-    # run some tests
     OPTIONFLAGS = (doctest.ELLIPSIS |
                    doctest.NORMALIZE_WHITESPACE)
     doctest.testmod(optionflags=OPTIONFLAGS)
