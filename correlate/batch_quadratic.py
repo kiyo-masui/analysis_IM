@@ -68,7 +68,7 @@ def call_xspec_run(map1_key, map2_key,
     return retval
 
 
-def test_batch_sim_run():
+def batch_sim_run():
     datapath_db = data_paths.DataPath()
 
     outpath = datapath_db.fetch("quadratic_batch_simulations")
@@ -89,10 +89,49 @@ def test_batch_sim_run():
                        noiseinv1_key, noiseinv2_key)
 
     caller.multiprocess_stack()
-    #for specdata in zip(bin_left, bin_center,
-    #                    bin_right, counts_histo, binavg):
-    #    print ("%10.15g " * 5) % specdata
+
+
+def batch_data_run():
+    datapath_db = data_paths.DataPath()
+
+    outpath = datapath_db.fetch("quadratic_batch_data")
+    print "writing to: " + outpath
+
+    funcname = "correlate.batch_quadratic.call_xspec_run"
+    caller = batch_handler.MemoizeBatch(funcname, outpath,
+                                        generate=True, verbose=True)
+
+    for mode_num in range(0,55,5):
+        map1_key = "GBT_15hr_map_cleaned_%dmode" % mode_num
+        map2_key = "GBT_15hr_map_cleaned_%dmode" % mode_num
+        noise1_key = "GBT_15hr_map_cleaned_%dmode" % mode_num
+        noise2_key = "GBT_15hr_map_cleaned_%dmode" % mode_num
+
+        (pairlist, pairdict) = \
+                data_paths.cross_maps(map1_key, map2_key,
+                              noise1_key, noise2_key,
+                              map_suffix=";map",
+                              noise_inv_suffix=";noise_inv",
+                              cross_sym="_x_",
+                              pair_former="GBTauto_cross_pairs",
+                              ignore=['param'],
+                              tag1prefix=map1_key + "_",
+                              tag2prefix=map2_key + "_",
+                              verbose=False)
+
+        for item in pairdict.keys():
+            pairrun = pairdict[item]
+            print pairrun['tag1']
+            print pairrun['map1']
+            print pairrun['noise_inv1']
+            print pairdict[item].keys()
+
+            caller.execute(pairrun['map1'], pairrun['map1'],
+                           pairrun['noise_inv1'], pairrun['noise_inv2'])
+
+    caller.multiprocess_stack()
 
 if __name__ == '__main__':
-    test_batch_sim_run()
+    batch_data_run()
+    #batch_sim_run()
 

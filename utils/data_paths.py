@@ -46,7 +46,7 @@ def GBTauto_cross_pairs(list1, list2, cross_sym="_with_"):
     r"""given the list of map tags, produce a list of paired tuples
 
     list1 = ['A_with_B', 'A_with_C', ..., 'B_with_A', ...]
-    list1 = ['A_with_B', 'A_with_C', ..., 'B_with_A', ...]
+    list2 = ['A_with_B', 'A_with_C', ..., 'B_with_A', ...]
     gives:
     [('A_with_B', 'B_with_A'), ('A_with_C', 'C_with_A')
      ('A_with_D', 'D_with_A'), ('B_with_C', 'C_with_B')
