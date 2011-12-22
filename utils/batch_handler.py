@@ -42,6 +42,7 @@ def function_wrapper(args_package):
     funcattr = None
     funcsplit = funcname.split(".")
 
+    # consider http://docs.python.org/dev/library/importlib.html
     if len(funcsplit) > 1:
         mod = __import__(".".join(funcsplit[0:-1]))
         for comp in funcsplit[1:-1]:
@@ -138,6 +139,8 @@ class MemoizeBatch(object):
         self.verbose = verbose
 
     def execute(self, *args, **kwargs):
+        # also see stackoverflow's: computing-an-md5-hash-of-a-data-structure
+        # based on: how-to-memoize-kwargs
         argpkl = pickle.dumps((self.funcname, args,
                                tuple(sorted(kwargs.items()))), -1)
         arghash = hashlib.md5(argpkl).hexdigest()
@@ -161,15 +164,23 @@ class MemoizeBatch(object):
 
         return retval
 
-    def multiprocess_stack(self, save_cpu=4):
+    def multiprocess_stack(self, save_cpu=4, debug=False):
         r"""process the call stack built up by 'execute' calls using
         multiprocessing.
         `save_cpu` is the number of CPUs to leave free
+        `debug` runs one process at a time because of funny logging/exception
+        handling in multiprocessing
         """
-        num_cpus = multiprocessing.cpu_count() - save_cpu
-        pool = multiprocessing.Pool(processes=num_cpus)
-        result = pool.map(function_wrapper, self.call_stack)
-        pool.close()
+        if debug:
+            results = []
+            for item in self.call_stack:
+                results.append(function_wrapper(item))
+        else:
+            num_cpus = multiprocessing.cpu_count() - save_cpu
+            pool = multiprocessing.Pool(processes=num_cpus)
+            result = pool.map(function_wrapper, self.call_stack)
+            pool.close()
+
         print result
 
     def pbsprocess_stack(self):

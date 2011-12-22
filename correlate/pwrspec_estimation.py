@@ -84,7 +84,7 @@ def make_unitless(xspec_arr, radius_arr=None, ndim=None):
     if radius_arr is None:
         radius_arr = binning.radius_array(xspec_arr)
 
-    if ndim is None
+    if ndim is None:
         ndim = xspec_arr.ndim
 
     factor = 2. * math.pi ** (ndim / 2.) / math.gamma(ndim / 2.)
@@ -119,12 +119,12 @@ def calculate_xspec(cube1, cube2, weight1, weight2,
 
     print "calculating the 2D histogram"
     # TODO: do better independent binning; for now:
-    bins_x = bins
-    bins_y = bins
-    counts_histo_2d, binavg_2d = bin_an_array_2d(pwrspec3d_signal,
-                                                 radius_arr_perp,
-                                                 radius_arr_parallel,
-                                                 bins_x, bins_y)
+    bins_x = copy.deepcopy(bins)
+    bins_y = copy.deepcopy(bins)
+    counts_histo_2d, binavg_2d = binning.bin_an_array_2d(pwrspec3d_signal,
+                                                         radius_arr_perp,
+                                                         radius_arr_parallel,
+                                                         bins_x, bins_y)
 
     if unitless:
         print "making the power spectrum unitless (before 1D calc)"
@@ -144,14 +144,14 @@ def calculate_xspec(cube1, cube2, weight1, weight2,
     bin_left, bin_center, bin_right = binning.bin_edges(bins, log=logbins)
 
     pwrspec2d_product = {}
-    pwrspec1d_product['bin_x_left'] = bin_left_x
-    pwrspec1d_product['bin_x_center'] = bin_center_x
-    pwrspec1d_product['bin_x_right'] = bin_right_x
-    pwrspec1d_product['bin_y_left'] = bin_left_y
-    pwrspec1d_product['bin_y_center'] = bin_center_y
-    pwrspec1d_product['bin_y_right'] = bin_right_y
-    pwrspec1d_product['counts_histo'] = counts_histo_2d
-    pwrspec1d_product['binavg'] = binavg_2d
+    pwrspec2d_product['bin_x_left'] = bin_left_x
+    pwrspec2d_product['bin_x_center'] = bin_center_x
+    pwrspec2d_product['bin_x_right'] = bin_right_x
+    pwrspec2d_product['bin_y_left'] = bin_left_y
+    pwrspec2d_product['bin_y_center'] = bin_center_y
+    pwrspec2d_product['bin_y_right'] = bin_right_y
+    pwrspec2d_product['counts_histo'] = counts_histo_2d
+    pwrspec2d_product['binavg'] = binavg_2d
 
     pwrspec1d_product = {}
     pwrspec1d_product['bin_left'] = bin_left

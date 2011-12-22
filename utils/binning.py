@@ -133,12 +133,14 @@ def bin_an_array_2d(input_array, radius_array_x, radius_array_y,
     bins_x and bins_y: np.ndarray
         the bins in x and y
     """
-    radius_flat_x = radius_array_x.flat
-    radius_flat_y = radius_array_y.flat
-    arr_flat = input_array.flat
+    radius_flat_x = radius_array_x.flatten()
+    radius_flat_y = radius_array_y.flatten()
+    arr_flat = input_array.flatten()
 
-    counts_histo = np.histogram2d(radius_flat_x, radius_flat_y, bins)[0]
-    binsum_histo = np.histogram2d(radius_flat_x, radius_flat_y, bins,
+    counts_histo = np.histogram2d(radius_flat_x, radius_flat_y,
+                                  bins=(bins_x, bins_y))[0]
+    binsum_histo = np.histogram2d(radius_flat_x, radius_flat_y,
+                                  bins=(bins_x, bins_y),
                                   weights=arr_flat)[0]
 
     binavg = binsum_histo / counts_histo.astype(float)
