@@ -117,6 +117,11 @@ def calculate_xspec(cube1, cube2, weight1, weight2,
                                           nbins=nbins,
                                           radius_arr=radius_arr)
 
+    if unitless:
+        print "making the power spectrum unitless"
+        pwrspec3d_signal = make_unitless(pwrspec3d_signal,
+                                         radius_arr=radius_arr)
+
     print "calculating the 2D histogram"
     # TODO: do better independent binning; for now:
     bins_x = copy.deepcopy(bins)
@@ -125,11 +130,6 @@ def calculate_xspec(cube1, cube2, weight1, weight2,
                                                          radius_arr_perp,
                                                          radius_arr_parallel,
                                                          bins_x, bins_y)
-
-    if unitless:
-        print "making the power spectrum unitless (before 1D calc)"
-        pwrspec3d_signal = make_unitless(pwrspec3d_signal,
-                                         radius_arr=radius_arr)
 
     print "calculating the 1D histogram"
     counts_histo, binavg = binning.bin_an_array(pwrspec3d_signal, bins,
@@ -227,6 +227,75 @@ def test_with_random(unitless=True):
                         bin_right, counts_histo, binavg,
                         pwrspec_input):
         print ("%10.15g " * 6) % specdata
+
+
+def summarize_1d_agg_pwrspec(pwr_1d, filename):
+    r"""Summarize the 1D power spectrum from a list of one-dimensional power
+    spectrum outputs.
+    """
+    pwrshp_1d = pwr_1d[0]['binavg'].shape
+    n_runs = len(pwr_1d)
+
+    pwrmat_1d = np.zeros((n_runs, pwrshp_1d[0]))
+    for index in range(n_runs):
+        pwrmat_1d[index, :] = pwr_1d[index]['binavg']
+
+    mean_1d = np.mean(pwrmat_1d, axis=0)
+    std_1d = np.std(pwrmat_1d, axis=0)
+
+    # assume that they all have the same binning
+    bin_left = pwr_1d[0]['bin_left']
+    bin_center = pwr_1d[0]['bin_center']
+    bin_right = pwr_1d[0]['bin_right']
+    counts_histo = pwr_1d[0]['counts_histo']
+
+    outfile = open(filename, "w")
+    for specdata in zip(bin_left, bin_center,
+                        bin_right, counts_histo, mean_1d, std_1d):
+        outfile.write(("%10.15g " * 6 + "\n") % specdata)
+
+    outfile.close()
+    return
+
+
+def summarize_2d_agg_pwrspec(pwr_2d, filename):
+    r"""Summarize the 1D power spectrum from a list of one-dimensional power
+    spectrum outputs.
+    writes: 2d power estimator and its error and counts maps
+    """
+    pwrshp_2d = pwr_2d[0]['binavg'].shape
+    n_runs = len(pwr_2d)
+
+    pwrmat_2d = np.zeros((n_runs, pwrshp_2d[0], pwrshp_2d[1]))
+    for index in range(n_runs):
+        pwrmat_2d[index, :, :] = pwr_2d[index]['binavg']
+
+    mean_2d = np.mean(pwrmat_2d, axis=0)
+    std_2d = np.std(pwrmat_2d, axis=0)
+
+    mean_2d[np.isnan(mean_2d)] = 0.
+    std_2d[np.isnan(std_2d)] = 0.
+
+    bin_x_left = np.log10(pwr_2d[0]['bin_x_left'])
+    bin_x_center = np.log10(pwr_2d[0]['bin_x_center'])
+    bin_x_right = np.log10(pwr_2d[0]['bin_x_right'])
+    bin_y_left = np.log10(pwr_2d[0]['bin_y_left'])
+    bin_y_center = np.log10(pwr_2d[0]['bin_y_center'])
+    bin_y_right = np.log10(pwr_2d[0]['bin_y_right'])
+    counts_histo = pwr_2d[0]['counts_histo']
+
+    outfile = open(filename, "w")
+    for xind in range(len(bin_x_center)):
+        for yind in range(len(bin_y_center)):
+            outstr = ("%10.15g " * 9 + "\n") % \
+                    (bin_x_left[xind], bin_x_center[xind], bin_x_right[xind], \
+                     bin_y_left[yind], bin_y_center[yind], bin_y_right[yind], \
+                     counts_histo[xind, yind], \
+                     mean_2d[xind, yind], std_2d[xind, yind])
+            outfile.write(outstr)
+
+    outfile.close()
+    return
 
 
 if __name__ == '__main__':

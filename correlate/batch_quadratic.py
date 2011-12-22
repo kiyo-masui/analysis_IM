@@ -101,7 +101,7 @@ def batch_data_run():
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
 
-    for mode_num in range(0,55,5):
+    for mode_num in range(0, 55, 5):
         map1_key = "GBT_15hr_map_cleaned_%dmode" % mode_num
         map2_key = "GBT_15hr_map_cleaned_%dmode" % mode_num
         noise1_key = "GBT_15hr_map_cleaned_%dmode" % mode_num
@@ -121,17 +121,18 @@ def batch_data_run():
 
         for item in pairdict.keys():
             pairrun = pairdict[item]
-            print pairrun['tag1']
             print pairrun['map1']
             print pairrun['noise_inv1']
+            print pairrun['map2']
+            print pairrun['noise_inv2']
             print pairdict[item].keys()
 
-            caller.execute(pairrun['map1'], pairrun['map1'],
+            caller.execute(pairrun['map1'], pairrun['map2'],
                            pairrun['noise_inv1'], pairrun['noise_inv2'])
 
     caller.multiprocess_stack()
 
 if __name__ == '__main__':
-    batch_data_run()
-    #batch_sim_run()
+    #batch_data_run()
+    batch_sim_run()
 
