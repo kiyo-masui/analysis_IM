@@ -11,17 +11,13 @@ def print_call(args_package):
     are saved in the cache directory."""
     (signature, directory, funcname, args, kwargs) = args_package
 
-    kwlist = []
-    for item in kwargs:
-        kwlist.append("%s=%s" % (item, repr(kwargs[item])))
+    #kwlist = []
+    #for item in kwargs:
+    #    kwlist.append("%s=%s" % (item, repr(kwargs[item])))
 
+    kwlist = ["%s=%s" % (item, repr(kwargs[item])) for item in kwargs]
     kwstring = ", ".join(kwlist)
-
-    arglist = []
-    for item in args:
-        arglist.append(repr(item))
-
-    argstring = ", ".join(arglist)
+    argstring = ", ".join([repr(item) for item in args])
 
     filename = "%s/%s.shelve" % (directory, signature)
     filename = re.sub('/+', '/', filename)

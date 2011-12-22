@@ -366,9 +366,9 @@ class MapPair(ft.ClassPersistence):
         self.right_modes = outmap_right
 
     # TODO: add documentation
-    def pwrspec_1D(self, window=None, unitless=True, bins=None,
+    def pwrspec_summary(self, window=None, unitless=True, bins=None,
                     truncate=False, nbins=40, logbins=True,
-                    refinement=2, pad=5):
+                    refinement=2, pad=5, return_3d=False):
         r"""calculate the 1D power spectrum
         """
 
@@ -378,7 +378,7 @@ class MapPair(ft.ClassPersistence):
                                    self.phys_noise_inv1, self.phys_noise_inv2,
                                    window=window, unitless=unitless,
                                    bins=bins, truncate=False, nbins=nbins,
-                                   logbins=logbins)
+                                   logbins=logbins, return_3d=return_3d)
 
         return xspec
 

@@ -77,14 +77,16 @@ def cross_power_est(arr1, arr2, weight1, weight2, window="blackman"):
     return xspec_arr
 
 
-def make_unitless(xspec_arr, radius_arr=None):
+def make_unitless(xspec_arr, radius_arr=None, ndim=None):
     """multiply by  surface area in ndim sphere / 2pi^ndim * |k|^D
     (e.g. k^3 / 2 pi^2 in 3D)
     """
     if radius_arr is None:
         radius_arr = binning.radius_array(xspec_arr)
 
-    ndim = xspec_arr.ndim
+    if ndim is None
+        ndim = xspec_arr.ndim
+
     factor = 2. * math.pi ** (ndim / 2.) / math.gamma(ndim / 2.)
     factor /= (2. * math.pi) ** ndim
     return xspec_arr * radius_arr ** ndim * factor
@@ -92,19 +94,22 @@ def make_unitless(xspec_arr, radius_arr=None):
 
 def calculate_xspec(cube1, cube2, weight1, weight2,
                     window="blackman", unitless=True, bins=None,
-                    truncate=False, nbins=40, logbins=True):
+                    truncate=False, nbins=40, logbins=True, return_3d=False):
 
     print "finding the signal power spectrum"
     pwrspec3d_signal = cross_power_est(cube1, cube2, weight1, weight2,
                                window=window)
+
     radius_arr = binning.radius_array(pwrspec3d_signal)
 
-    if unitless:
-        print "making the power spectrum unitless"
-        pwrspec3d_signal = make_unitless(pwrspec3d_signal,
-                                         radius_arr=radius_arr)
+    # find the k_perp by not including k_nu in the distance
+    radius_arr_perp = binning.radius_array(pwrspec3d_signal,
+                                           zero_axes=[0])
 
-    print "binning the power spectrum"
+    # find the k_perp by not including k_RA,Dec in the distance
+    radius_arr_parallel = binning.radius_array(pwrspec3d_signal,
+                                               zero_axes=[1, 2])
+
     if bins is None:
         bins = binning.suggest_bins(pwrspec3d_signal,
                                           truncate=truncate,
@@ -112,12 +117,53 @@ def calculate_xspec(cube1, cube2, weight1, weight2,
                                           nbins=nbins,
                                           radius_arr=radius_arr)
 
+    print "calculating the 2D histogram"
+    # TODO: do better independent binning; for now:
+    bins_x = bins
+    bins_y = bins
+    counts_histo_2d, binavg_2d = bin_an_array_2d(pwrspec3d_signal,
+                                                 radius_arr_perp,
+                                                 radius_arr_parallel,
+                                                 bins_x, bins_y)
+
+    if unitless:
+        print "making the power spectrum unitless (before 1D calc)"
+        pwrspec3d_signal = make_unitless(pwrspec3d_signal,
+                                         radius_arr=radius_arr)
+
+    print "calculating the 1D histogram"
     counts_histo, binavg = binning.bin_an_array(pwrspec3d_signal, bins,
-                                                      radius_arr=radius_arr)
+                                                radius_arr=radius_arr)
+
+    bin_left_x, bin_center_x, bin_right_x = binning.bin_edges(bins_x,
+                                                              log=logbins)
+
+    bin_left_y, bin_center_y, bin_right_y = binning.bin_edges(bins_y,
+                                                              log=logbins)
 
     bin_left, bin_center, bin_right = binning.bin_edges(bins, log=logbins)
 
-    return bin_left, bin_center, bin_right, counts_histo, binavg
+    pwrspec2d_product = {}
+    pwrspec1d_product['bin_x_left'] = bin_left_x
+    pwrspec1d_product['bin_x_center'] = bin_center_x
+    pwrspec1d_product['bin_x_right'] = bin_right_x
+    pwrspec1d_product['bin_y_left'] = bin_left_y
+    pwrspec1d_product['bin_y_center'] = bin_center_y
+    pwrspec1d_product['bin_y_right'] = bin_right_y
+    pwrspec1d_product['counts_histo'] = counts_histo_2d
+    pwrspec1d_product['binavg'] = binavg_2d
+
+    pwrspec1d_product = {}
+    pwrspec1d_product['bin_left'] = bin_left
+    pwrspec1d_product['bin_center'] = bin_center
+    pwrspec1d_product['bin_right'] = bin_right
+    pwrspec1d_product['counts_histo'] = counts_histo
+    pwrspec1d_product['binavg'] = binavg
+
+    if not return_3d:
+        return pwrspec2d_product, pwrspec1d_product
+    else:
+        return pwrspec3d_signal, pwrspec2d_product, pwrspec1d_product
 
 
 def calculate_xspec_file(cube1_file, cube2_file, bins,

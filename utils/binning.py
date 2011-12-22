@@ -6,9 +6,12 @@ from core import algebra
 import unittest
 
 
-def radius_array(input_array):
+def radius_array(input_array, zero_axes=[]):
     """Find the Euclidian distance of all the points in an array using their
     axis meta-data. e.g. x_axis[0]^2 + y_axis[0]^2. (n-dim)
+    optionally give the list of axes to set to zero -- for example, in 3D:
+    zero_axes = [0] leaves the x^2 out of x^2+y^2+z^2
+    zero_axes = [1,2] leave the y^2 and z^2 out of x^2+y^2+z^2 (e.g. x^2)
     """
     index_array = np.indices(input_array.shape)
     scale_array = np.zeros(index_array.shape)
@@ -16,6 +19,9 @@ def radius_array(input_array):
     for axis_index in range(input_array.ndim):
         axis_name = input_array.axes[axis_index]
         axis = input_array.get_axis(axis_name)
+        if axis_index in zero_axes:
+            axis = np.zeros_like(axis)
+
         scale_array[axis_index, ...] = axis[index_array[axis_index, ...]]
 
     scale_array = np.rollaxis(scale_array, 0, scale_array.ndim)
@@ -106,6 +112,34 @@ def bin_an_array(input_array, bins, radius_arr=None):
     counts_histo = np.histogram(radius_flat, bins)[0]
     binsum_histo = np.histogram(radius_flat, bins,
                                 weights=arr_flat)[0]
+
+    binavg = binsum_histo / counts_histo.astype(float)
+
+    return counts_histo, binavg
+
+
+def bin_an_array_2d(input_array, radius_array_x, radius_array_y,
+                    bins_x, bins_y):
+    """Bin the points in an array by radius (n-dim)
+
+    Parameters
+    ----------
+    input_array: np.ndarray
+        array over which to bin
+    radius_array_x: np.ndarray
+        array of the x-vectors at each point in the series
+    radius_array_y: np.ndarray
+        array of the y-vectors at each point in the series
+    bins_x and bins_y: np.ndarray
+        the bins in x and y
+    """
+    radius_flat_x = radius_array_x.flat
+    radius_flat_y = radius_array_y.flat
+    arr_flat = input_array.flat
+
+    counts_histo = np.histogram2d(radius_flat_x, radius_flat_y, bins)[0]
+    binsum_histo = np.histogram2d(radius_flat_x, radius_flat_y, bins,
+                                  weights=arr_flat)[0]
 
     binavg = binsum_histo / counts_histo.astype(float)
 
