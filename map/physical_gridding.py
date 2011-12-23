@@ -7,7 +7,7 @@ from simulations import corr
 from utils.cosmology import Cosmology
 
 
-def physical_grid(input_array, refinement=1, pad=5):
+def physical_grid(input_array, refinement=2, pad=5, order=2):
     r"""Project from freq, ra, dec into physical coordinates
 
     Parameters
@@ -120,7 +120,7 @@ def physical_grid(input_array, refinement=1, pad=5):
 
         phys_map[i, :, :] = sp.ndimage.map_coordinates(input_array,
                                                        interpol_grid,
-                                                       order=2)
+                                                       order=order)
 
         interpol_grid[1, :, :] = np.logical_or(interpol_grid[1, :, :] > numx,
                                              interpol_grid[1, :, :] < 0)

@@ -183,8 +183,8 @@ if __name__ == "__main__":
 
     #plot_manual('15hr')
     #plot_window()
-    plot_wigglez('15hr', complete=False)
-    #plot_wigglez('22hr', complete=True)
+    #plot_wigglez('15hr', complete=False)
+    plot_wigglez('22hr', complete=False)
     #plot_wigglez('1hr', complete=True)
     #plot_wigglez('22hr')
     #plot_wigglez('1hr')

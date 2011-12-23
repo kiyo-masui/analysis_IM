@@ -5,7 +5,6 @@ import numpy as np
 import math
 from core import algebra
 from utils import data_paths
-from simulations import corr21cm
 import multiprocessing
 from map import physical_gridding
 from utils import binning
@@ -18,7 +17,9 @@ from utils import batch_handler
 def call_xspec_run(map1_key, map2_key,
                    noiseinv1_key, noiseinv2_key,
                    subtract_mean=False, degrade_resolution=False,
-                   unitless=True, return_3d=False):
+                   unitless=True, return_3d=False,
+                   truncate=False, window=None, n_modes=None,
+                   refinement=2, pad=5, order=2):
     r"""a free-standing function which calls the xspec analysis
     batteries included
     """
@@ -63,12 +64,20 @@ def call_xspec_run(map1_key, map2_key,
     if degrade_resolution:
         simpair.degrade_resolution()
 
-    retval = simpair.pwrspec_summary(bins=bins, unitless=unitless,
-                                     return_3d=return_3d)
+    if n_modes is not None:
+        print "mode subtraction not implemented yet"
+
+    retval = simpair.pwrspec_summary(window=window, unitless=unitless,
+                                     bins=bins, truncate=truncate,
+                                     refinement=refinement, pad=pad,
+                                     order=order, return_3d=return_3d)
     return retval
 
 
-def batch_sim_run():
+def batch_sim_run(sim_key, subtract_mean=False, degrade_resolution=False,
+                  unitless=True, return_3d=False,
+                  truncate=False, window=None, n_modes=None,
+                  refinement=2, pad=5, order=2):
     datapath_db = data_paths.DataPath()
 
     outpath = datapath_db.fetch("quadratic_batch_simulations")
@@ -78,7 +87,6 @@ def batch_sim_run():
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
     for index in range(100):
-        sim_key = "simideal_15hr_beam"
         map1_key = "db:%s:%s" % (sim_key, index)
         map2_key = "db:%s:%s" % (sim_key, index)
         noiseinv1_key = "db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv"
@@ -86,12 +94,23 @@ def batch_sim_run():
         # could also use ./observed_window.npy as the weight
 
         caller.execute(map1_key, map2_key,
-                       noiseinv1_key, noiseinv2_key)
+                       noiseinv1_key, noiseinv2_key,
+                       subtract_mean=subtract_mean,
+                       degrade_resolution=degrade_resolution,
+                       unitless=unitless,
+                       return_3d=return_3d,
+                       truncate=truncate,
+                       window=window, n_modes=n_modes,
+                       refinement=refinement,
+                       pad=pad, order=order)
 
     caller.multiprocess_stack()
 
 
-def batch_data_run():
+def batch_data_run(subtract_mean=False, degrade_resolution=False,
+                  unitless=True, return_3d=False,
+                  truncate=False, window=None, n_modes=None,
+                  refinement=2, pad=5, order=2):
     datapath_db = data_paths.DataPath()
 
     outpath = datapath_db.fetch("quadratic_batch_data")
@@ -128,11 +147,26 @@ def batch_data_run():
             print pairdict[item].keys()
 
             caller.execute(pairrun['map1'], pairrun['map2'],
-                           pairrun['noise_inv1'], pairrun['noise_inv2'])
+                           pairrun['noise_inv1'], pairrun['noise_inv2'],
+                           subtract_mean=subtract_mean,
+                           degrade_resolution=degrade_resolution,
+                           unitless=unitless,
+                           return_3d=return_3d,
+                           truncate=truncate,
+                           window=window, n_modes=n_modes,
+                           refinement=refinement,
+                           pad=pad, order=order)
 
     caller.multiprocess_stack()
 
 if __name__ == '__main__':
-    #batch_data_run()
-    batch_sim_run()
-
+    # real data
+    batch_data_run()
+    # ideal simulations without beam
+    batch_sim_run("simideal_15hr")
+    # vv + evo sims without beam
+    batch_sim_run("sim_15hr")
+    # vv + evo sims with beam
+    batch_sim_run("sim_15hr_beam")
+    # vv + evo sims with treatments
+    batch_sim_run("sim_15hr_beam", degrade_resolution=True, subtract_mean=True)

@@ -242,6 +242,8 @@ def summarize_1d_agg_pwrspec(pwr_1d, filename):
 
     mean_1d = np.mean(pwrmat_1d, axis=0)
     std_1d = np.std(pwrmat_1d, axis=0)
+    corrmat_1d = np.corrcoef(np.transpose(pwrmat_1d))
+    print corrmat_1d.shape
 
     # assume that they all have the same binning
     bin_left = pwr_1d[0]['bin_left']

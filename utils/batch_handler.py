@@ -77,7 +77,11 @@ class MemoizeBatch(object):
     arguments and writing a file by that name. If those arguments have been
     called, it can retrieve the output. Note that these have different md5
     signatures for func(arg=True): call func(arg=True) and call func()
-    (even though the result will be the same.)
+    (even though the result will be the same.) Also, dictionaries should not
+    be given as arguments because they are not sorted. Simplejson has
+    sort_keys=True but can not serialize numpy. Consider a more general
+    argument serialization that uses numpy .tolist() and json, or does a
+    nested sort and uses pickle.
 
     To specify the batch of parameters to run over, initialize the class with
     `generate=True`. Then when execute() is called, it stacks up the list of

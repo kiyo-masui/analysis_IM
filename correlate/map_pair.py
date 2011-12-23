@@ -183,6 +183,7 @@ class MapPair(ft.ClassPersistence):
 
     def sanitize(self):
         r"""set weights to zero in funny regions"""
+        print "sanitizing the input arrays and weights"
         (self.map1, self.noise_inv1) = self.sanitize_single(self.map1,
                                                        self.noise_inv1)
 
@@ -203,21 +204,25 @@ class MapPair(ft.ClassPersistence):
 
         return (map, weightmap)
 
-    def make_physical(self, refinement=1, pad=5):
+    def make_physical(self, refinement=1, pad=5, order=2):
         r"""Project the maps and weights into physical coordinates
         refinement allows the physical bins to be e.g. =2 times finer
         pad puts a number of padded pixels on all sides of the physical vol.
         """
 
         self.phys_map1 = pg.physical_grid(self.map1,
-                                          refinement=refinement, pad=pad)
+                                          refinement=refinement,
+                                          pad=pad, order=order)
         self.phys_map2 = pg.physical_grid(self.map2,
-                                          refinement=refinement, pad=pad)
+                                          refinement=refinement,
+                                          pad=pad, order=order)
 
         self.phys_noise_inv1 = pg.physical_grid(self.noise_inv1,
-                                          refinement=refinement, pad=pad)
+                                          refinement=refinement,
+                                          pad=pad, order=order)
         self.phys_noise_inv2 = pg.physical_grid(self.noise_inv2,
-                                          refinement=refinement, pad=pad)
+                                          refinement=refinement,
+                                          pad=pad, order=order)
 
         return
 
@@ -227,6 +232,7 @@ class MapPair(ft.ClassPersistence):
         Also convolves the noise, making sure to deweight pixels near the edge
         as well.  Converts noise to factorizable form by averaging.
         """
+        print "degrading the resolution to a common beam"
         noise1 = self.noise_inv1
         noise2 = self.noise_inv2
 
@@ -265,6 +271,7 @@ class MapPair(ft.ClassPersistence):
         frequency times a function of pixel by taking means over the original
         weights.
         """
+        print "making the noise factorizable"
 
         def make_factorizable(noise):
             r"""factorize the noise"""
@@ -295,6 +302,7 @@ class MapPair(ft.ClassPersistence):
 
     def subtract_weighted_mean(self):
         r"""Subtracts the weighted mean from each frequency slice."""
+        print "subtracting the weighted mean from each slice"
         means1 = sp.sum(sp.sum(self.noise_inv1 * self.map1, -1), -1)
         means1 /= sp.sum(sp.sum(self.noise_inv1, -1), -1)
         means1.shape += (1, 1)
@@ -368,11 +376,11 @@ class MapPair(ft.ClassPersistence):
     # TODO: add documentation
     def pwrspec_summary(self, window=None, unitless=True, bins=None,
                     truncate=False, nbins=40, logbins=True,
-                    refinement=2, pad=5, return_3d=False):
+                    refinement=2, pad=5, order=2, return_3d=False):
         r"""calculate the 1D power spectrum
         """
 
-        self.make_physical(refinement=refinement, pad=pad)
+        self.make_physical(refinement=refinement, pad=pad, order=order)
 
         xspec = pe.calculate_xspec(self.phys_map1, self.phys_map2,
                                    self.phys_noise_inv1, self.phys_noise_inv2,
