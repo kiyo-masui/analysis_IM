@@ -229,7 +229,7 @@ def test_with_random(unitless=True):
         print ("%10.15g " * 6) % specdata
 
 
-def summarize_1d_agg_pwrspec(pwr_1d, filename):
+def summarize_1d_agg_pwrspec(pwr_1d, filename, corr_file=None):
     r"""Summarize the 1D power spectrum from a list of one-dimensional power
     spectrum outputs.
     """
@@ -243,7 +243,6 @@ def summarize_1d_agg_pwrspec(pwr_1d, filename):
     mean_1d = np.mean(pwrmat_1d, axis=0)
     std_1d = np.std(pwrmat_1d, axis=0)
     corrmat_1d = np.corrcoef(np.transpose(pwrmat_1d))
-    print corrmat_1d.shape
 
     # assume that they all have the same binning
     bin_left = pwr_1d[0]['bin_left']
@@ -255,8 +254,19 @@ def summarize_1d_agg_pwrspec(pwr_1d, filename):
     for specdata in zip(bin_left, bin_center,
                         bin_right, counts_histo, mean_1d, std_1d):
         outfile.write(("%10.15g " * 6 + "\n") % specdata)
-
     outfile.close()
+
+    if corr_file is not None:
+        outfile = open(corr_file, "w")
+        for xind in range(len(bin_center)):
+            for yind in range(len(bin_center)):
+                outstr = ("%10.15g " * 7 + "\n") % \
+                        (bin_left[xind], bin_center[xind], bin_right[xind], \
+                         bin_left[yind], bin_center[yind], bin_right[yind], \
+                         corrmat_1d[xind, yind])
+                outfile.write(outstr)
+
+        outfile.close()
     return
 
 
@@ -299,6 +309,71 @@ def summarize_2d_agg_pwrspec(pwr_2d, filename):
     outfile.close()
     return
 
+
+def convert_2d_to_1d_driver(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d):
+    """take a 2D power spectrum and the counts matrix (number of modex per k
+    cell) and return the binned 1D power spectrum
+    pwr_2d is the 2D power
+    counts_2d is the counts matrix
+    bin_kx is the x-axis
+    bin_ky is the x-axis
+    bin_1d is the k vector over which to return the result
+    """
+    # find |k| across the array
+    index_array = np.indices(pwr_2d.shape)
+    scale_array = np.zeros(index_array.shape)
+    scale_array[0, ...] = bin_kx[index_array[0, ...]]
+    scale_array[1, ...] = bin_ky[index_array[1, ...]]
+    scale_array = np.rollaxis(scale_array, 0, scale_array.ndim)
+    radius_array = np.sum(scale_array ** 2., axis=-1) ** 0.5
+
+    radius_flat = radius_array.flatten()
+    pwr_2d_flat = pwr_2d.flatten()
+    counts_2d_flat = counts_2d.flatten()
+
+    count_pwr_prod = counts_2d_flat*pwr_2d_flat
+    count_pwr_prod[np.isnan(count_pwr_prod)] = 0
+    count_pwr_prod[np.isinf(count_pwr_prod)] = 0
+    count_pwr_prod[counts_2d_flat == 0] = 0
+
+    counts_histo = np.histogram(radius_flat, bin_1d,
+                                weights=counts_2d_flat)[0]
+    binsum_histo = np.histogram(radius_flat, bin_1d,
+                                weights=count_pwr_prod)[0]
+
+    binavg = binsum_histo / counts_histo.astype(float)
+
+    return counts_histo, binavg
+
+def convert_2d_to_1d(pwrspec2d_product, logbins=True, bins=None):
+    """if bins is not given, just use the x axis"""
+    nxbins = len(pwrspec2d_product['bin_x_center'])
+    bins_kx = np.zeros(nxbins + 1)
+    bins_kx[0: -1] = pwrspec2d_product['bin_x_left']
+    bins_kx[-1] = pwrspec2d_product['bin_x_right'][-1]
+
+    nybins = len(pwrspec2d_product['bin_y_center'])
+    bins_ky = np.zeros(nybins + 1)
+    bins_ky[0: -1] = pwrspec2d_product['bin_y_left']
+    bins_ky[-1] = pwrspec2d_product['bin_y_right'][-1]
+
+    if bins is None:
+        bins = bins_kx
+
+    entry = {}
+    (entry['counts_histo'], entry['binavg']) = \
+                                              convert_2d_to_1d_driver(pwrspec2d_product['binavg'],
+                                              pwrspec2d_product['counts_histo'],
+                                              pwrspec2d_product['bin_x_center'],
+                                              pwrspec2d_product['bin_y_center'],
+                                              bins)
+
+    bin_left, bin_center, bin_right = binning.bin_edges(bins, log=logbins)
+    entry['bin_left'] = bin_left
+    entry['bin_center'] = bin_center
+    entry['bin_right'] = bin_right
+
+    return entry
 
 if __name__ == '__main__':
     test_with_random(unitless=False)

@@ -22,7 +22,8 @@ def gather_batch_sim_run(sim_key, subtract_mean=False, degrade_resolution=False,
     datapath_db = data_paths.DataPath()
     n_runs = 100
 
-    outpath = datapath_db.fetch("quadratic_batch_simulations")
+    #outpath = datapath_db.fetch("quadratic_batch_simulations")
+    outpath = "/mnt/raid-project/gmrt/eswitzer/quadratic_products/simulations_v1"
     print "reading from to: " + outpath
 
     funcname = "correlate.batch_quadratic.call_xspec_run"
@@ -30,6 +31,7 @@ def gather_batch_sim_run(sim_key, subtract_mean=False, degrade_resolution=False,
                                         verbose=True)
 
     pwr_1d = []
+    pwr_1d_from_2d = []
     pwr_2d = []
     for index in range(n_runs):
         map1_key = "db:%s:%s" % (sim_key, index)
@@ -49,10 +51,18 @@ def gather_batch_sim_run(sim_key, subtract_mean=False, degrade_resolution=False,
                                                refinement=refinement,
                                                pad=pad, order=order)
 
+        pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwrspec2d_product))
+
         pwr_2d.append(pwrspec2d_product)
         pwr_1d.append(pwrspec1d_product)
 
-    pe.summarize_1d_agg_pwrspec(pwr_1d, "pwr_map_pair_realmask_beam_avg.dat")
+    pe.summarize_1d_agg_pwrspec(pwr_1d_from_2d,
+                                "pwr_map_pair_realmask_beam_avg_from2d.dat",
+                                corr_file="pwr_map_pair_realmask_beam_corr_from2d.dat")
+
+    pe.summarize_1d_agg_pwrspec(pwr_1d, "pwr_map_pair_realmask_beam_avg.dat",
+                                corr_file="pwr_map_pair_realmask_beam_corr.dat")
+
     pe.summarize_2d_agg_pwrspec(pwr_2d, "pwr_map_pair_realmask_beam_avg_2d.dat")
 
 if __name__ == '__main__':
