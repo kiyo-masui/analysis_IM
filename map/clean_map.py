@@ -10,7 +10,6 @@ from core import algebra, hist
 from kiyopy import parse_ini
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
-import _cholesky as _c
 
 
 params_init = {'input_root' : './',
@@ -227,6 +226,9 @@ def solve(noise_inv, dirty_map, return_noise_diag=False, feedback=0):
     Optionally, the diagonal on the noise matrix is returned.
     """
     
+    # Import the cython stuff locally so some clean maps can be made on any
+    # machine.
+    import _cholesky as _c
     # Put into the 2D matrix shape.
     expanded = noise_inv.view()
     side_size = noise_inv.shape[0] * noise_inv.shape[1] * noise_inv.shape[2]

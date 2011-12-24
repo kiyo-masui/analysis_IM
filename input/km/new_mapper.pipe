@@ -74,24 +74,9 @@ rt_IFs = ()
 
 rt_n_bins_combined = 2
 
-#from time_stream import split_bands
-#pipe_modules.append(split_bands.SplitBands)
-sb_input_root = rt_output_root
-sb_file_middles = file_middles
-sb_input_end = '.fits'
-sb_output_root = base_dir + 'band_split/' + prefix
-sb_output_end = '.fits'
-sb_scans = ()
-sb_IFs = ()
-
-# 128 bins -> 3 bands of 40, starting at 4 ending at 124.
-sb_n_bands = 1
-sb_n_bins_band = 40
-sb_offset = 4 + 2 * sb_n_bins_band
-
 #from time_stream import calibrate
 #pipe_modules.append(calibrate.Calibrate)
-cl_input_root = sb_output_root
+cl_input_root = rt_output_root
 cl_file_middles = file_middles
 cl_input_end = '.fits'
 cl_output_root = base_dir + 'calibrated/' + prefix
@@ -127,7 +112,7 @@ dm_polarizations = ('I',)
 dm_field_centre = (217.9, 2.0)
 dm_map_shape = (64, 32)
 dm_pixel_spacing = .075
-dm_time_block = 'file'
+dm_time_block = 'scan'
 dm_n_files_group = 0
 dm_frequency_correlations = 'None'
 dm_number_frequency_modes = 0
@@ -140,7 +125,7 @@ dm_deweight_time_slope = True
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
 cm_polarizations = ('I',)
-cm_bands = (737,)
+cm_bands = (752, 846)
 cm_save_noise_diag = True
 
 #from time_stream import subtract_map_data
@@ -174,9 +159,40 @@ sf_max_noise_factor = 4.0
 sf_subtracted_input_root = sm_output_root
 sf_subtracted_output_root = base_dir + 'reflag_sub/'
 
+#from time_stream import split_bands
+#pipe_modules.append(split_bands.SplitBands)
+sb_input_root = sf_output_root
+sb_file_middles = file_middles
+sb_input_end = '.fits'
+sb_output_root = base_dir + 'band_split/' + prefix
+sb_output_end = '.fits'
+sb_scans = ()
+sb_IFs = ()
+
+# 128 bins -> 3 bands of 40, starting at 4 ending at 124.
+sb_n_bands = 3
+sb_n_bins_band = 40
+#sb_offset = 4 + 2 * sb_n_bins_band
+sb_offset = 4
+
+#from time_stream import split_bands
+#pipe_modules.append((split_bands.SplitBands, ('sbs_', 'sb_')))
+sbs_input_root = sf_subtracted_output_root
+sbs_file_middles = file_middles
+sbs_input_end = '.fits'
+sbs_output_root = base_dir + 'band_split_subtracted/' + prefix
+sbs_output_end = '.fits'
+sbs_scans = ()
+sbs_IFs = ()
+
+# 128 bins -> 3 bands of 40, starting at 4 ending at 124.
+sbs_n_bands = sb_n_bands
+sbs_n_bins_band = sb_n_bins_band
+sbs_offset = sb_offset
+
 from noise import measure_noise
 pipe_modules.append(measure_noise.Measure)
-mn_input_root = sf_subtracted_input_root
+mn_input_root = sbs_output_root
 mn_file_middles = file_middles
 mn_input_end = '.fits'
 mn_output_root = base_dir + 'noise_measurments/'
@@ -192,50 +208,143 @@ mn_parameters = ["channel_var", "freq_modes_over_f_0",
                  "freq_modes_over_f_5", "freq_modes_over_f_6",
                  "freq_modes_over_f_7", "freq_modes_over_f_8"]
 
-#from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dm2_', 'dm_')))
-dm2_input_root = sf_output_root
-dm2_file_middles = file_middles
-dm2_input_end = '.fits'
-dm2_output_root = base_dir + 'maps/test_' + map_prefix
-#dm2_output_root = base_dir + 'maps/test2_' + map_prefix
-#dm2_output_root = base_dir + 'maps/sec_' + map_prefix
-dm2_scans = ()
-dm2_IFs = (0,)
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
+dmA_input_root = sb_output_root
+dmA_file_middles = middles_a
+dmA_input_end = '.fits'
+#dmA_output_root = base_dir + 'maps/test_' + map_prefix
+#dmA_output_root = base_dir + 'maps/test2_' + map_prefix
+dmA_output_root = base_dir + 'maps/secA_' + map_prefix
+dmA_scans = ()
+dmA_IFs = ()
 
-dm2_polarizations = ('I',)
-dm2_field_centre = (217.9, 2.0)
-dm2_map_shape = (64, 32)
-dm2_pixel_spacing = .075
-dm2_time_block = 'scan'
-#dm2_n_files_group = 420  # prawn
-dm2_n_files_group = 300  # tpb nodes.
-#dm2_n_files_group = 120
-dm2_frequency_correlations = 'measured'
-dm2_number_frequency_modes = 3
-dm2_number_frequency_modes_discard = 1
-dm2_noise_parameter_file = (base_dir
+dmA_polarizations = ('I',)
+dmA_field_centre = (217.9, 2.0)
+dmA_map_shape = (64, 32)
+dmA_pixel_spacing = .075
+dmA_time_block = 'scan'
+#dmA_n_files_group = 420  # prawn
+dmA_n_files_group = 280  # tpb nodes.
+#dmA_n_files_group = 120
+dmA_frequency_correlations = 'measured'
+dmA_number_frequency_modes = 3
+dmA_number_frequency_modes_discard = 0
+dmA_noise_parameter_file = (base_dir
                             + 'noise_measurments/noise_parameters.shelve')
-dm2_deweight_time_mean = True
-dm2_deweight_time_slope = True
+dmA_deweight_time_mean = True
+dmA_deweight_time_slope = True
+
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+dmB_input_root = sb_output_root
+dmB_file_middles = middles_b
+dmB_input_end = '.fits'
+#dmB_output_root = base_dir + 'maps/test_' + map_prefix
+#dmB_output_root = base_dir + 'maps/test2_' + map_prefix
+dmB_output_root = base_dir + 'maps/secB_' + map_prefix
+dmB_scans = ()
+dmB_IFs = ()
+
+dmB_polarizations = ('I',)
+dmB_field_centre = (217.9, 2.0)
+dmB_map_shape = (64, 32)
+dmB_pixel_spacing = .075
+dmB_time_block = 'scan'
+#dmB_n_files_group = 420  # prawn
+dmB_n_files_group = 280  # tpb nodes.
+#dmB_n_files_group = 120
+dmB_frequency_correlations = 'measured'
+dmB_number_frequency_modes = 3
+dmB_number_frequency_modes_discard = 0
+dmB_noise_parameter_file = (base_dir
+                            + 'noise_measurments/noise_parameters.shelve')
+dmB_deweight_time_mean = True
+dmB_deweight_time_slope = True
+
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
+dmC_input_root = sb_output_root
+dmC_file_middles = middles_c
+dmC_input_end = '.fits'
+#dmC_output_root = base_dir + 'maps/test_' + map_prefix
+#dmC_output_root = base_dir + 'maps/test2_' + map_prefix
+dmC_output_root = base_dir + 'maps/secC_' + map_prefix
+dmC_scans = ()
+dmC_IFs = ()
+
+dmC_polarizations = ('I',)
+dmC_field_centre = (217.9, 2.0)
+dmC_map_shape = (64, 32)
+dmC_pixel_spacing = .075
+dmC_time_block = 'scan'
+#dmC_n_files_group = 420  # prawn
+dmC_n_files_group = 280  # tpb nodes.
+#dmC_n_files_group = 120
+dmC_frequency_correlations = 'measured'
+dmC_number_frequency_modes = 3
+dmC_number_frequency_modes_discard = 0
+dmC_noise_parameter_file = (base_dir
+                            + 'noise_measurments/noise_parameters.shelve')
+dmC_deweight_time_mean = True
+dmC_deweight_time_slope = True
+
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+dmD_input_root = sb_output_root
+dmD_file_middles = middles_d
+dmD_input_end = '.fits'
+#dmD_output_root = base_dir + 'maps/test_' + map_prefix
+#dmD_output_root = base_dir + 'maps/test2_' + map_prefix
+dmD_output_root = base_dir + 'maps/secD_' + map_prefix
+dmD_scans = ()
+dmD_IFs = ()
+
+dmD_polarizations = ('I',)
+dmD_field_centre = (217.9, 2.0)
+dmD_map_shape = (64, 32)
+dmD_pixel_spacing = .075
+dmD_time_block = 'scan'
+#dmD_n_files_group = 420  # prawn
+dmD_n_files_group = 280  # tpb nodes.
+#dmD_n_files_group = 120
+dmD_frequency_correlations = 'measured'
+dmD_number_frequency_modes = 3
+dmD_number_frequency_modes_discard = 0
+dmD_noise_parameter_file = (base_dir
+                            + 'noise_measurments/noise_parameters.shelve')
+dmD_deweight_time_mean = True
+dmD_deweight_time_slope = True
+
+
 
 #from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cm2_', 'cm_')))
-cm2_input_root = dm2_output_root
-cm2_output_root = cm2_input_root
-cm2_polarizations = ('I',)
-cm2_bands = (737,)
-cm2_save_noise_diag = False
-cm2_save_cholesky = True
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+cmA_input_root = dmA_output_root
+cmA_output_root = cmA_input_root
+cmA_polarizations = ('I',)
+cmA_bands = (752, 846)
+cmA_save_noise_diag = True
+cmA_save_cholesky = True
 
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+cmB_input_root = dmB_output_root
+cmB_output_root = cmB_input_root
+cmB_polarizations = ('I',)
+cmB_bands = (752, 846)
+cmB_save_noise_diag = True
+cmB_save_cholesky = False
 
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+cmC_input_root = dmC_output_root
+cmC_output_root = cmC_input_root
+cmC_polarizations = ('I',)
+cmC_bands = (752, 846)
+cmC_save_noise_diag = True
+cmC_save_cholesky = False
 
-#from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cm2_', 'cm_')))
-cm2_input_root = base_dir + 'maps/test2_' + map_prefix
-cm2_output_root = cm2_input_root
-cm2_polarizations = ('I',)
-cm2_bands = (737,)
-cm2_save_noise_diag = False
-cm2_save_cholesky = True
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
+cmD_input_root = dmD_output_root
+cmD_output_root = cmD_input_root
+cmD_polarizations = ('I',)
+cmD_bands = (752, 846)
+cmD_save_noise_diag = True
+cmD_save_cholesky = False
 

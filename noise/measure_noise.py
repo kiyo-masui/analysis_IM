@@ -137,7 +137,7 @@ class Measure(object) :
                 for ii in range(n_bands_proc):
                     for jj in range(n_pols):
                         a = h.add_subplot(n_bands_proc, n_pols, 
-                                          ii * n_bands_proc + jj)
+                                          ii * n_pols + jj)
                         a.set_xlabel("frequency (Hz)")
                         a.set_ylabel("power (K^2)")
                         pol_str = core.utils.polint2str(pols[jj])

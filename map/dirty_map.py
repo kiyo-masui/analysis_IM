@@ -484,11 +484,19 @@ class DirtyMapMaker(object):
                     pass
                 else:
                     raise ValueError("Invalid frequency correlations.")
-                # Things to do along the time axis.
+                # Things to do along the time axis.  With no frequency
+                # correlations, things are more stable.  Also, thermal noise
+                # estimate will be high, so you need to deweight things extra.
                 if params['deweight_time_mean']:
-                    N.deweight_time_mean()
+                    if params["frequency_correlations"] == 'None':
+                        N.deweight_time_mean(T_infinity)
+                    else:
+                        N.deweight_time_mean()
                 if params['deweight_time_slope']:
-                    N.deweight_time_slope()
+                    if params["frequency_correlations"] == 'None':
+                        N.deweight_time_slope(T_infinity)
+                    else:
+                        N.deweight_time_slope()
                 # Store all these for later.
                 pointing_list.append(P)
                 noise_list.append(N)
@@ -1022,7 +1030,7 @@ class Noise(object):
         self.initialize_diagonal()
         self.diagonal[mask_inds] = T_infinity
 
-    def deweight_time_mean(self):
+    def deweight_time_mean(self, T=T_medium):
         """Deweights time mean in each channel.
 
         This modifies the part of the noise matrix that is the same for each
@@ -1036,9 +1044,9 @@ class Noise(object):
         # eliminate mean information (will have to be done explicitly) as doing
         # so would kill numerical stability.
         self.time_mode_noise[start,...] = (sp.eye(self.n_chan, dtype=float) 
-                                           * T_medium * self.n_time)
+                                           * T * self.n_time)
 
-    def deweight_time_slope(self):
+    def deweight_time_slope(self, T=T_medium):
         """Deweights time slope in each channel.
         
         This modifies the part of the noise matrix that is the same for each
@@ -1050,7 +1058,7 @@ class Noise(object):
         mode *= 1.0 / sp.sqrt(sp.sum(mode**2)) 
         self.time_modes[start,:] = mode
         self.time_mode_noise[start,...] = (sp.eye(self.n_chan, dtype=float) 
-                                           * T_medium * self.n_time)
+                                           * T * self.n_time)
 
     def add_correlated_over_f(self, amp, index, f0):
         """Add 1/f noise that is perfectly correlated between frequencies.
@@ -1093,7 +1101,7 @@ class Noise(object):
         # If we are adding too much noise, we risk making the matrix singular.
         # XXX Add a factor of n_chan here, assuming the noise is distributed
         # across frequencies (use flaggers to enforce this).
-        if sp.mean(correlation_function) > T_large:
+        if sp.mean(correlation_function) > T_medium * self.n_chan:
             print "Freq mode mean:", sp.mean(correlation_function)
             raise NoiseError("Extremely high 1/f risks singular noise.")
         corr_func_interpolator = \
@@ -1146,7 +1154,7 @@ class Noise(object):
         # Loop through and fill the modes.
         for ii, f in enumerate(frequencies):
             this_amp_factor = (f / f_0)**index * df
-            if sp.any(this_amp_factor > f_large * self.n_time):
+            if sp.any(this_amp_factor > f_medium * self.n_time):
                 print "time mode amplitude:", this_amp_factor
                 raise NoiseError("Deweighting amplitude too high.")
             this_amps = this_amp_factor * amps
