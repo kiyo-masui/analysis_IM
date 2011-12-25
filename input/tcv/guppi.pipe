@@ -227,32 +227,32 @@ dmB_output_root = base_dir + 'maps/' + "sec_B_" + map_prefix
 
 dmB_noise_parameters_input_root = mn_output_root
 
-from map import clean_map
-pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+#from map import clean_map
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
 cmB_input_root = dmB_output_root
 cmB_output_root = dmB_output_root
 cmB_save_noise_diag = True
 
 #### Make sub map C ####
 
-from map import dirty_map
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
+#from map import dirty_map
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
 dmC_file_middles = middles_c
 dmC_input_root = sf_output_root
 dmC_output_root = base_dir + 'maps/' + "sec_C_" + map_prefix
 
 dmC_noise_parameters_input_root = mn_output_root
 
-from map import clean_map
-pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+#from map import clean_map
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
 cmC_input_root = dmC_output_root
 cmC_output_root = dmC_output_root
 cmC_save_noise_diag = True
 
 #### Make sub map D ####
 
-from map import dirty_map
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+#from map import dirty_map
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 dmD_file_middles = middles_d
 dmD_input_root = sf_output_root
 dmD_output_root = base_dir + 'maps/' + "sec_D_" + map_prefix
