@@ -256,6 +256,10 @@ def summarize_1d_agg_pwrspec(pwr_1d, filename, corr_file=None):
         outfile.write(("%10.15g " * 6 + "\n") % specdata)
     outfile.close()
 
+    bin_left = np.log10(bin_left)
+    bin_center = np.log10(bin_center)
+    bin_right = np.log10(bin_right)
+
     if corr_file is not None:
         outfile = open(corr_file, "w")
         for xind in range(len(bin_center)):
@@ -307,10 +311,12 @@ def summarize_2d_agg_pwrspec(pwr_2d, filename):
             outfile.write(outstr)
 
     outfile.close()
-    return
+
+    return mean_2d, std_2d
 
 
-def convert_2d_to_1d_driver(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d):
+def convert_2d_to_1d_driver(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
+                            transfer=None):
     """take a 2D power spectrum and the counts matrix (number of modex per k
     cell) and return the binned 1D power spectrum
     pwr_2d is the 2D power
@@ -319,6 +325,9 @@ def convert_2d_to_1d_driver(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d):
     bin_ky is the x-axis
     bin_1d is the k vector over which to return the result
     """
+    if transfer is not None:
+        pwr_2d /= transfer
+
     # find |k| across the array
     index_array = np.indices(pwr_2d.shape)
     scale_array = np.zeros(index_array.shape)
@@ -345,7 +354,7 @@ def convert_2d_to_1d_driver(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d):
 
     return counts_histo, binavg
 
-def convert_2d_to_1d(pwrspec2d_product, logbins=True, bins=None):
+def convert_2d_to_1d(pwrspec2d_product, logbins=True, bins=None, transfer=None):
     """if bins is not given, just use the x axis"""
     nxbins = len(pwrspec2d_product['bin_x_center'])
     bins_kx = np.zeros(nxbins + 1)
@@ -366,7 +375,7 @@ def convert_2d_to_1d(pwrspec2d_product, logbins=True, bins=None):
                                               pwrspec2d_product['counts_histo'],
                                               pwrspec2d_product['bin_x_center'],
                                               pwrspec2d_product['bin_y_center'],
-                                              bins)
+                                              bins, transfer=transfer)
 
     bin_left, bin_center, bin_right = binning.bin_edges(bins, log=logbins)
     entry['bin_left'] = bin_left
