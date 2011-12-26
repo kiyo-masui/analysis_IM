@@ -81,6 +81,50 @@ def call_xspec_run(map1_key, map2_key,
     return retval
 
 
+def call_phys_space_run(cube1_file, cube2_file,
+                       unitless=True, return_3d=False,
+                       truncate=False, window="blackman"):
+    """Directly call the power spectral estimation on some physical vol"""
+    # define the 1D spectral bins
+    nbins=40
+    bins = np.logspace(math.log10(0.00702349679605685),
+                       math.log10(2.81187396154818),
+                       num=(nbins + 1), endpoint=True)
+
+    retval = pe.calculate_xspec_file(cube1_file, cube2_file, bins,
+                    weight1_file=None, weight2_file=None,
+                    truncate=truncate, window=window,
+                    return_3d=return_3d, unitless=unitless)
+
+    return retval
+
+
+def batch_physical_sim_run(sim_key, unitless=True, return_3d=False,
+                           truncate=False, window="blackman"):
+    """Test the power spectral estimator using simulations"""
+    datapath_db = data_paths.DataPath()
+
+    outpath = datapath_db.fetch("quadratic_batch_simulations")
+    print "writing to: " + outpath
+    fileset = datapath_db.fetch(sim_key, intend_read=True)
+
+    funcname = "correlate.batch_quadratic.call_phys_space_run"
+    caller = batch_handler.MemoizeBatch(funcname, outpath,
+                                        generate=True, verbose=True)
+
+    for index in fileset[0]:
+        map1_file = fileset[1][index]
+        map2_file = fileset[1][index]
+
+        caller.execute(map1_file, map2_file,
+                       unitless=unitless,
+                       return_3d=return_3d,
+                       truncate=truncate,
+                       window=window)
+
+    caller.multiprocess_stack()
+
+
 def batch_sim_run(sim_key, subtract_mean=False, degrade_resolution=False,
                   unitless=True, return_3d=False,
                   truncate=False, window=None, n_modes=None,
@@ -167,13 +211,15 @@ def batch_data_run(subtract_mean=False, degrade_resolution=False,
     caller.multiprocess_stack()
 
 if __name__ == '__main__':
+    batch_physical_sim_run("simideal_15hr_physical")
+    batch_physical_sim_run("sim_15hr_physical")
     # real data
-    batch_data_run()
+    #batch_data_run()
     # ideal simulations without beam
-    batch_sim_run("simideal_15hr")
+    #batch_sim_run("simideal_15hr")
     # vv + evo sims without beam
-    batch_sim_run("sim_15hr")
+    #batch_sim_run("sim_15hr")
     # vv + evo sims with beam
-    batch_sim_run("sim_15hr_beam")
+    #batch_sim_run("sim_15hr_beam")
     # vv + evo sims with treatments
-    batch_sim_run("sim_15hr_beam", degrade_resolution=True, subtract_mean=True)
+    #batch_sim_run("sim_15hr_beam", degrade_resolution=True, subtract_mean=True)

@@ -168,8 +168,8 @@ def calculate_xspec(cube1, cube2, weight1, weight2,
 
 def calculate_xspec_file(cube1_file, cube2_file, bins,
                     weight1_file=None, weight2_file=None,
-                    window="blackman", unitless=True):
-    """TODO: merge this with the code above"""
+                    truncate=False, window="blackman",
+                    return_3d=False, unitless=True):
 
     cube1 = algebra.make_vect(algebra.load(cube1_file))
     cube2 = algebra.make_vect(algebra.load(cube2_file))
@@ -186,7 +186,8 @@ def calculate_xspec_file(cube1_file, cube2_file, bins,
 
     print cube1.shape, cube2.shape, weight1.shape, weight2.shape
     return calculate_xspec(cube1, cube2, weight1, weight2, bins=bins,
-                           window=window, unitless=unitless)
+                           window=window, unitless=unitless,
+                           truncate=truncate, return_3d=return_3d)
 
 
 def test_with_random(unitless=True):
