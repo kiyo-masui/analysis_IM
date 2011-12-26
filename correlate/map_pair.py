@@ -413,11 +413,11 @@ class MapPair(ft.ClassPersistence):
             The weighting of the correlation based on the maps' weights.
 
         """
-        corr_estimation.corr_est(self.map1, self.map2,
-                                 self.noise_inv1, self.noise_inv2,
-                                 self.freq, self.freq,
-                                 lags=lags, speedup=speedup,
-                                 verbose=verbose)
+        return corr_estimation.corr_est(self.map1, self.map2,
+                                        self.noise_inv1, self.noise_inv2,
+                                        self.freq, self.freq,
+                                        lags=lags, speedup=speedup,
+                                        verbose=verbose)
 
 
 if __name__ == '__main__':
