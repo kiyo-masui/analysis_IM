@@ -15,7 +15,7 @@ from core import algebra
 import multiprocessing
 from kiyopy import parse_ini
 import cPickle
-from correlate import correlation_functions as cf
+from correlate import corr_estimation as ce
 # TODO: convert batch params into ini files; move multiplier and cross-power to
 # batch param
 # TODO: make sure all methods here used counts/weights as-saved
@@ -67,11 +67,11 @@ def make_corr(filename, verbose=False, identifier=None, cross_power=False,
 
     frange = run_params["freq"]
     realrange = corr_shelve["freq_axis"]
-    corr_2d = cf.rebin_corr_freq_lag(corr, realrange[list(frange)],
+    corr_2d = ce.rebin_corr_freq_lag(corr, realrange[list(frange)],
                                      weights=corr_counts, return_fbins=True,
                                      nfbins=200)
 
-    corr_1d = cf.collapse_correlation_1d(corr_2d[0], corr_2d[2], real_lags,
+    corr_1d = ce.collapse_correlation_1d(corr_2d[0], corr_2d[2], real_lags,
                                          weights=corr_2d[1])
 
     if cross_power:
@@ -147,11 +147,11 @@ def make_autocorr(filename, identifier=None,
         # The corresponding real frequencies for that range.
         realrange = [pkl_obj.pairs[i].Map1.get_axis('freq')[f] for f in frange]
         # The 2D correlation.
-        corr_2d = cf.rebin_corr_freq_lag(corr, realrange, nfbins=200,
+        corr_2d = ce.rebin_corr_freq_lag(corr, realrange, nfbins=200,
                              weights=pkl_obj.pairs[i].counts, return_fbins=True)
         corr_2d_list.append(corr_2d[0])
         # The 1D correlation.
-        corr_1d = cf.collapse_correlation_1d(corr_2d[0], corr_2d[2],
+        corr_1d = ce.collapse_correlation_1d(corr_2d[0], corr_2d[2],
                                              real_lags, corr_2d[1])
         corr_1d_list.append(copy.deepcopy(corr_1d[0]))
         # The values for x_left, x_centre, x_right.

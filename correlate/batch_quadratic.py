@@ -28,10 +28,17 @@ def call_xspec_run(map1_key, map2_key,
     cutlist = [6, 7, 8, 15, 16, 18, 19, 20, 21, 22, 37, 103, 104, 105, 106,
                107, 108, 130, 131, 132, 133, 134, 237, 244, 254, 255]
 
+    # visual inspection for wacky data #1
     augmented = [177, 194, 195, 196, 197, 198, 201, 204, 209, 213, 229]
     for entry in augmented:
         cutlist.append(entry)
 
+    # visual inspection for wacky data #2
+    augmented = [80, 171, 175, 179, 182, 183, 187, 212, 218, 219]
+    for entry in augmented:
+        cutlist.append(entry)
+
+    # visual inspection of weights
     badweights = [133, 189, 192, 193, 194, 195, 196, 197, 198, 208, 209, 213,
                   233]
     for entry in badweights:

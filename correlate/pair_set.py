@@ -17,7 +17,7 @@ import time
 import scipy as sp
 from utils import file_tools as ft
 from utils import data_paths as dp
-from correlate import correlation_functions as cf
+from correlate import corr_estimation as ce
 from kiyopy import parse_ini
 import kiyopy.utils
 from core import algebra
@@ -194,7 +194,7 @@ class PairSet(ft.ClassPersistence):
                 (corr, counts) = ft.load_pickle(filename_corr)
 
                 # (vals, modes1, modes2)
-                svd_info = cf.get_freq_svd_modes(corr, len(self.freq_list))
+                svd_info = ce.get_freq_svd_modes(corr, len(self.freq_list))
                 ft.save_pickle(svd_info, filename_svd)
             else:
                 print "ERROR: in SVD, correlation functions not loaded"
