@@ -414,7 +414,7 @@ class MapPair(ft.ClassPersistence):
 
         """
         corr_estimation.corr_est(self.map1, self.map2,
-                                 self.noise1, self.noise2,
+                                 self.noise_inv1, self.noise_inv2,
                                  self.freq, self.freq,
                                  lags=lags, speedup=speedup,
                                  verbose=verbose)

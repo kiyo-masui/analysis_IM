@@ -97,7 +97,6 @@ def template_map_axes(filename):
     return (freq_axis, ra_axis, dec_axis, template_map.shape, template_map)
 
 
-# TODO: need printoptions?
 def bin_wigglez(fieldname, template_file, complete=False):
     """Process the WiggleZ optical catalog, binning against a template map
     given by the template_file.
@@ -207,6 +206,70 @@ def bin_wigglez(fieldname, template_file, complete=False):
     map_wigglez_separable.copy_axis_info(template_map)
 
     algebra.save(outfile_separable, map_wigglez_separable)
+
+    return
+
+
+def produce_delta_map(optical_file, optical_selection_file):
+    map_optical = algebra.make_vect(algebra.load(optical_file))
+    map_nbar = algebra.make_vect(algebra.load(optical_selection_file))
+    map_delta = map_optical / map_nbar - 1.
+
+    # TODO: also consider setting the nbar to zero outside of galaxies?
+    #map_delta[np.isinf(map_delta)] = 0.
+    #map_delta[np.isnan(map_delta)] = 0.
+    # if e.g. nbar is zero, then set the point as if there were no galaxies
+    # downstream, nbar=0 should coincide with zero weight anyway
+    #map_delta[np.isinf(map_delta)] = -1.
+    #map_delta[np.isnan(map_delta)] = -1.
+
+    return map_delta
+
+def bin_wigglez_delta(fieldname, selection_key, complete=False):
+    """Process the WiggleZ optical catalog, binning against a template map
+    given by the template_file.
+
+    Parameters:
+    -----------
+    fieldname: string
+        name of field, e.g. "15hr", "22hr" or "1hr"
+    complete: boolean keyword
+        use the complete WiggleZ regions
+    """
+    datapath_db = data_paths.DataPath()
+    if complete:
+        ctag = "complete_"
+    else:
+        ctag = ""
+
+    # gather names of all the input files
+    db_key = "WiggleZ_%s_%sbinned_data" % (fieldname, ctag)
+    infile_data = datapath_db.fetch(db_key, intend_read=True,
+                           purpose="binned WiggleZ data")
+
+    db_key = "WiggleZ_%s_%smock" % (fieldname, ctag)
+    infile_mock = datapath_db.fetch(db_key, intend_read=True,
+                           purpose="WiggleZ mock catalog", silent=True)
+
+    infile_selection = datapath_db.fetch(selection_key, intend_read=True,
+                           purpose="WiggleZ selection function")
+
+    # gather names of all the output files
+    db_key = "WiggleZ_%s_%sdelta_binned_data" % (fieldname, ctag)
+    outfile_data = datapath_db.fetch(db_key, intend_write=True,
+                           purpose="output binned WiggleZ data")
+
+    db_key = "WiggleZ_%s_%sdelta_mock" % (fieldname, ctag)
+    outfile_mock = datapath_db.fetch(db_key, intend_write=True,
+                           purpose="output WiggleZ mock catalog", silent=True)
+
+    # make the conversion
+    algebra.save(outfile_data, produce_delta_map(infile_data, infile_selection))
+
+    for mockindex in infile_mock[0]:
+        mockinfile = infile_mock[1][mockindex]
+        mockoutfile = outfile_mock[1][mockindex]
+        algebra.save(mockoutfile, produce_delta_map(mockinfile, infile_selection))
 
     return
 
@@ -390,4 +453,10 @@ def montecarlo_selection():
 
 if __name__ == '__main__':
     #generate_complete_wigglez()
-    montecarlo_selection()
+    #montecarlo_selection()
+    bin_wigglez_delta('15hr', 'WiggleZ_15hr_montecarlo', complete=False)
+    bin_wigglez_delta('15hr', 'WiggleZ_15hr_complete_separable_selection', complete=True)
+    bin_wigglez_delta('22hr', 'WiggleZ_22hr_separable_selection', complete=False)
+    bin_wigglez_delta('22hr', 'WiggleZ_22hr_complete_separable_selection', complete=True)
+    bin_wigglez_delta('1hr', 'WiggleZ_1hr_separable_selection', complete=False)
+    bin_wigglez_delta('1hr', 'WiggleZ_1hr_complete_separable_selection', complete=True)

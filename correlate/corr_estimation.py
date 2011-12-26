@@ -1,8 +1,8 @@
 """various functions to calculate and bin correlation functions"""
-import numpy as np
-from core import algebra
+import scipy as sp
 from numpy import linalg
-
+import time
+import copy
 
 def corr_est(map1, map2, noise1, noise2, freq1, freq2,
              lags=(), speedup=False, verbose=False):
