@@ -15,7 +15,7 @@ set rmargin 10
 set output "2d_counts.eps"
 set logscale cb
 set palette rgbformulae 22, 13, -31
-plot "pwr_map_pair_realmask_beam_avg_2d.dat" using 2:5:7 with image
+plot "sim_15hr_avg_2d.dat" using 2:5:7 with image
 
 # now make the power spectrum plots
 set cblabel "{/Symbol D}(k)^2 (K^2)"

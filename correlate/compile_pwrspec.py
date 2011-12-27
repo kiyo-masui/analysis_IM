@@ -14,17 +14,39 @@ from correlate import pwrspec_estimation as pe
 import sys
 from utils import batch_handler
 
-# TODO: do smarter loops using fetch lists
-def gather_batch_sim_run(sim_key, tag, subtract_mean=False, degrade_resolution=False,
-                  unitless=True, return_3d=False,
-                  truncate=False, window=None, n_modes=None,
-                  refinement=2, pad=5, order=2, transfer=None,
-                  outdir="./plot_data"):
-    datapath_db = data_paths.DataPath()
-    n_runs = 100
 
-    outpath = datapath_db.fetch("quadratic_batch_simulations")
-    #outpath = "/mnt/raid-project/gmrt/eswitzer/quadratic_products/simulations_v1"
+def summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
+                      tag, outdir="./plot_data"):
+    r"""call various power spectral aggregation functions to make 2D, 1D, etc.
+    P(k)s to plot.
+    """
+    fileout = outdir + "/" + tag + "_avg_from2d.dat"
+    corr_fileout = outdir + "/" + tag + "_corr_from2d.dat"
+    pe.summarize_1d_agg_pwrspec(pwr_1d_from_2d, fileout,
+                                corr_file=corr_fileout)
+
+    fileout = outdir + "/" + tag + "_avg.dat"
+    corr_fileout = outdir + "/" + tag + "_corr.dat"
+    pe.summarize_1d_agg_pwrspec(pwr_1d, fileout, corr_file=corr_fileout)
+
+    fileout = outdir + "/" + tag + "_avg_2d.dat"
+    pe.summarize_2d_agg_pwrspec(pwr_2d, fileout)
+
+    return
+
+
+# TODO: do smarter loops using fetch lists
+def gather_batch_sim_run(sim_key, tag, subtract_mean=False,
+                         degrade_resolution=False,
+                         unitless=True, return_3d=False,
+                         truncate=False, window=None, n_modes=None,
+                         refinement=2, pad=5, order=2, transfer=None,
+                         res_path=None):
+
+    if res_path is None:
+        datapath_db = data_paths.DataPath()
+        outpath = datapath_db.fetch("quadratic_batch_simulations")
+
     print "reading from to: " + outpath
 
     funcname = "correlate.batch_quadratic.call_xspec_run"
@@ -34,40 +56,32 @@ def gather_batch_sim_run(sim_key, tag, subtract_mean=False, degrade_resolution=F
     pwr_1d = []
     pwr_1d_from_2d = []
     pwr_2d = []
+    n_runs = 100
     for index in range(n_runs):
         map1_key = "db:%s:%s" % (sim_key, index)
         map2_key = "db:%s:%s" % (sim_key, index)
         noiseinv1_key = "db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv"
         noiseinv2_key = "db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv"
-        # could also use ./observed_window.npy as the weight
 
-        pwrspec2d_product, pwrspec1d_product = caller.execute(map1_key, map2_key,
-                                               noiseinv1_key, noiseinv2_key,
-                                               subtract_mean=subtract_mean,
-                                               degrade_resolution=degrade_resolution,
-                                               unitless=unitless,
-                                               return_3d=return_3d,
-                                               truncate=truncate,
-                                               window=window, n_modes=n_modes,
-                                               refinement=refinement,
-                                               pad=pad, order=order)
+        pwr2d_run, pwr1d_run = caller.execute(map1_key, map2_key,
+                                              noiseinv1_key, noiseinv2_key,
+                                              subtract_mean=subtract_mean,
+                                              degrade_resolution=degrade_resolution,
+                                              unitless=unitless,
+                                              return_3d=return_3d,
+                                              truncate=truncate,
+                                              window=window, n_modes=n_modes,
+                                              refinement=refinement,
+                                              pad=pad, order=order)
 
-        pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwrspec2d_product, transfer=transfer))
-        pwr_2d.append(pwrspec2d_product)
-        pwr_1d.append(pwrspec1d_product)
+        pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwr2d_run,
+                                                  transfer=transfer))
 
-    fileout = outdir + "/" + tag + "_avg_from2d.dat"
-    corr_fileout = outdir + "/" + tag + "_corr_from2d.dat"
-    pe.summarize_1d_agg_pwrspec(pwr_1d_from_2d, fileout,
-                                corr_file=corr_fileout)
+        pwr_2d.append(pwr2d_run)
+        pwr_1d.append(pwr1d_run)
 
-    fileout = outdir + "/" + tag + "_avg.dat"
-    corr_fileout = outdir + "/" + tag + "_corr.dat"
-    pe.summarize_1d_agg_pwrspec(pwr_1d, fileout,
-                                corr_file=corr_fileout)
-
-    fileout = outdir + "/" + tag + "_avg_2d.dat"
-    pe.summarize_2d_agg_pwrspec(pwr_2d, fileout)
+    summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, tag,
+                      outdir="./plot_data")
 
     return (pwr_1d, pwr_1d_from_2d, pwr_2d)
 
@@ -95,29 +109,20 @@ def gather_physical_sim_run(sim_key, tag, unitless=True, return_3d=False,
         map1_file = fileset[1][index]
         map2_file = fileset[1][index]
 
-        pwrspec2d_product, pwrspec1d_product = caller.execute(map1_file, map2_file,
+        pwr2d_run, pwr1d_run = caller.execute(map1_file, map2_file,
                                                unitless=unitless,
                                                return_3d=return_3d,
                                                truncate=truncate,
                                                window=window)
 
-        pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwrspec2d_product, transfer=transfer))
-        pwr_2d.append(pwrspec2d_product)
-        pwr_1d.append(pwrspec1d_product)
+        pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwr2d_run, transfer=transfer))
+        pwr_2d.append(pwr2d_run)
+        pwr_1d.append(pwr1d_run)
 
-    fileout = outdir + "/" + tag + "_avg_from2d.dat"
-    corr_fileout = outdir + "/" + tag + "_corr_from2d.dat"
-    pe.summarize_1d_agg_pwrspec(pwr_1d_from_2d, fileout,
-                                corr_file=corr_fileout)
+    summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, tag,
+                      outdir="./plot_data")
 
-    fileout = outdir + "/" + tag + "_avg.dat"
-    corr_fileout = outdir + "/" + tag + "_corr.dat"
-    pe.summarize_1d_agg_pwrspec(pwr_1d, fileout,
-                                corr_file=corr_fileout)
-
-    fileout = outdir + "/" + tag + "_avg_2d.dat"
-    pe.summarize_2d_agg_pwrspec(pwr_2d, fileout)
-
+    # now report the theory input curve over the same bins
     bin_left = pwr_1d[0]['bin_left']
     bin_center = pwr_1d[0]['bin_center']
     bin_right = pwr_1d[0]['bin_right']
@@ -146,10 +151,16 @@ def gather_batch_data_run(tag, subtract_mean=False, degrade_resolution=False,
                   unitless=True, return_3d=False,
                   truncate=False, window=None, n_modes=None,
                   refinement=2, pad=5, order=2, transfer=None,
-                  outdir="./plot_data"):
+                  outdir="./plot_data", sim=False):
     datapath_db = data_paths.DataPath()
 
-    outpath = datapath_db.fetch("quadratic_batch_data")
+    if sim:
+        mapsim = "sim_15hr"
+        outpath = datapath_db.fetch("quadratic_batch_simulations")
+    else:
+        mapsim = "GBT_15hr_map"
+        outpath = datapath_db.fetch("quadratic_batch_data")
+
     print "reading from to: " + outpath
 
     funcname = "correlate.batch_quadratic.call_xspec_run"
@@ -157,10 +168,10 @@ def gather_batch_data_run(tag, subtract_mean=False, degrade_resolution=False,
                                         verbose=True)
 
     for mode_num in range(0,55,5):
-        map1_key = "GBT_15hr_map_cleaned_%dmode" % mode_num
-        map2_key = "GBT_15hr_map_cleaned_%dmode" % mode_num
-        noise1_key = "GBT_15hr_map_cleaned_%dmode" % mode_num
-        noise2_key = "GBT_15hr_map_cleaned_%dmode" % mode_num
+        map1_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
+        map2_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
+        noise1_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
+        noise2_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
 
         (pairlist, pairdict) = \
                 data_paths.cross_maps(map1_key, map2_key,
@@ -202,18 +213,9 @@ def gather_batch_data_run(tag, subtract_mean=False, degrade_resolution=False,
             pwr_2d.append(pwr2d_run)
             pwr_1d.append(pwr1d_run)
 
-        fileout = outdir + "/" + tag + "_avg_data_%dmodes_from2d.dat" % mode_num
-        corr_fileout = outdir + "/" + tag + "_corr_data_%dmodes_from2d.dat" % mode_num
-        pe.summarize_1d_agg_pwrspec(pwr_1d_from_2d, fileout,
-                                corr_file=corr_fileout)
-
-        fileout = outdir + "/" + tag + "_avg_data_%dmodes.dat" % mode_num
-        corr_fileout = outdir + "/" + tag + "_corr_data_%dmodes.dat" % mode_num
-        pe.summarize_1d_agg_pwrspec(pwr_1d, fileout,
-                                corr_file=corr_fileout)
-
-        fileout = outdir + "/" + tag + "_avg_data_%dmodes_2d.dat" % mode_num
-        pe.summarize_2d_agg_pwrspec(pwr_2d, fileout)
+        mtag = tag + "_%dmodes" % mode_num
+        summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, mtag,
+                          outdir="./plot_data")
 
 
 def calculate_transfer_function(pwr_stack1, pwr_stack2, tag, outdir="./plot_data"):
@@ -246,9 +248,13 @@ def calculate_transfer_function(pwr_stack1, pwr_stack2, tag, outdir="./plot_data
 
 
 if __name__ == '__main__':
+    gather_batch_data_run("GBT15hr_sim", sim=True)
+    #sys.exit()
+
     sim_phys = gather_physical_sim_run("sim_15hr_physical", "sim_15hr_physical")
     simideal_phys = gather_physical_sim_run("simideal_15hr_physical", "simideal_15hr_physical")
-    sys.exit()
+    #sys.exit()
+
     simideal_15hr = gather_batch_sim_run("simideal_15hr", "simideal_15hr")
     sim_15hr = gather_batch_sim_run("sim_15hr", "sim_15hr")
     sim_15hr_beam = gather_batch_sim_run("sim_15hr_beam", "sim_15hr_beam")
@@ -261,6 +267,5 @@ if __name__ == '__main__':
                                                             "sim_15hr_beam_meanconv_corrected", degrade_resolution=True, subtract_mean=True,
                                                             transfer=trans_beam_meanconv)
 
-    gather_batch_data_run("GBT15hr_wbeam")
     gather_batch_data_run("GBT15hr", transfer=trans_beam_meanconv)
     #gather_batch_data_run("GBT15hr", transfer=trans_beam)
