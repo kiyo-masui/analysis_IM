@@ -166,10 +166,11 @@ def batch_data_run(subtract_mean=False, degrade_resolution=False,
 
     if sim:
         mapsim = "sim_15hr"
+        outpath = datapath_db.fetch("quadratic_batch_simulations")
     else:
         mapsim = "GBT_15hr_map"
+        outpath = datapath_db.fetch("quadratic_batch_data")
 
-    outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
 
     funcname = "correlate.batch_quadratic.call_xspec_run"
@@ -218,13 +219,13 @@ def batch_data_run(subtract_mean=False, degrade_resolution=False,
     caller.multiprocess_stack()
 
 if __name__ == '__main__':
-    #batch_physical_sim_run("simideal_15hr_physical")
-    #batch_physical_sim_run("sim_15hr_physical")
+    batch_physical_sim_run("simideal_15hr_physical")
+    batch_physical_sim_run("sim_15hr_physical")
 
     # real data
     #batch_data_run()
     # modeloss sim
-    batch_data_run(sim=True)
+    #batch_data_run(sim=True)
     # ideal simulations without beam
     #batch_sim_run("simideal_15hr")
     # vv + evo sims without beam

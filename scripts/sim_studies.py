@@ -53,7 +53,54 @@ def gather_batch_sim_run(sim_key, tag, subtract_mean=False, degrade_resolution=F
                                                pad=pad, order=order)
 
         pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwrspec2d_product, transfer=transfer))
+        pwr_2d.append(pwrspec2d_product)
+        pwr_1d.append(pwrspec1d_product)
 
+    fileout = outdir + "/" + tag + "_avg_from2d.dat"
+    corr_fileout = outdir + "/" + tag + "_corr_from2d.dat"
+    pe.summarize_1d_agg_pwrspec(pwr_1d_from_2d, fileout,
+                                corr_file=corr_fileout)
+
+    fileout = outdir + "/" + tag + "_avg.dat"
+    corr_fileout = outdir + "/" + tag + "_corr.dat"
+    pe.summarize_1d_agg_pwrspec(pwr_1d, fileout,
+                                corr_file=corr_fileout)
+
+    fileout = outdir + "/" + tag + "_avg_2d.dat"
+    pe.summarize_2d_agg_pwrspec(pwr_2d, fileout)
+
+    return (pwr_1d, pwr_1d_from_2d, pwr_2d)
+
+
+def gather_physical_sim_run(sim_key, tag, unitless=True, return_3d=False,
+                            truncate=False, window="blackman",
+                            outdir="./plot_data", transfer=None):
+    """Test the power spectral estimator using simulations"""
+    datapath_db = data_paths.DataPath()
+
+    outpath = datapath_db.fetch("quadratic_batch_simulations")
+    print "writing to: " + outpath
+    fileset = datapath_db.fetch(sim_key, intend_read=True)
+
+    funcname = "correlate.batch_quadratic.call_phys_space_run"
+    caller = batch_handler.MemoizeBatch(funcname, outpath,
+                                        generate=False, verbose=True)
+
+    pwr_1d = []
+    pwr_1d_from_2d = []
+    pwr_2d = []
+    print fileset[0]
+    for index in fileset[0]:
+        map1_file = fileset[1][index]
+        map2_file = fileset[1][index]
+
+        pwrspec2d_product, pwrspec1d_product = caller.execute(map1_file, map2_file,
+                                               unitless=unitless,
+                                               return_3d=return_3d,
+                                               truncate=truncate,
+                                               window=window)
+
+        pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwrspec2d_product, transfer=transfer))
         pwr_2d.append(pwrspec2d_product)
         pwr_1d.append(pwrspec1d_product)
 
@@ -176,6 +223,9 @@ def calculate_transfer_function(pwr_stack1, pwr_stack2, tag, outdir="./plot_data
     return trans_mean
 
 if __name__ == '__main__':
+    sim_phys = gather_physical_sim_run("sim_15hr_physical", "sim_15hr_physical")
+    simideal_phys = gather_physical_sim_run("simideal_15hr_physical", "simideal_15hr_physical")
+    sys.exit()
     simideal_15hr = gather_batch_sim_run("simideal_15hr", "simideal_15hr")
     sim_15hr = gather_batch_sim_run("sim_15hr", "sim_15hr")
     sim_15hr_beam = gather_batch_sim_run("sim_15hr_beam", "sim_15hr_beam")
