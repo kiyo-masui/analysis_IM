@@ -107,7 +107,7 @@ class PathForms(object):
         self._set_key(key, val)
 
     def register_file_set(self, key, group_key, parent, prefix, indices, desc,
-                 notes=None, status=None):
+                 notes=None, status=None, suffix=".npy"):
         r""" macro to assign big file series
         `parent` is the DB tag to the parent directory
         `prefix` is the file prefix before the series index
@@ -128,14 +128,14 @@ class PathForms(object):
             val['status'] = status
 
         minmax = repr(min(indices)) + ", " + repr(max(indices))
-        val['notes'] = '`%s%s[%s].npy`' % (fileroot, prefix, minmax)
+        val['notes'] = '`%s%s[%s]%s`' % (fileroot, prefix, minmax, suffix)
         val['status'] = status
 
         filelist = {}
         listindex = []
         for index in indices:
-            filelist[repr(index)] = '%s%s%03d.npy' % \
-                                    (fileroot, prefix, index)
+            filelist[repr(index)] = '%s%s%03d%s' % \
+                                    (fileroot, prefix, index, suffix)
             listindex.append(repr(index))
 
         val['filelist'] = filelist
@@ -194,11 +194,12 @@ class PathForms(object):
     def register_fourway_list(self, key, group_key, parent, desc,
                  notes=None, status=None, paramfile="params.ini", tag="",
                  modenum=None, register_modes=True, register_pickles=False,
-                 register_corrsvd=True):
+                 register_corrsvd=True, register_separate_weights=True):
         r"""make a database set for map pair cleaning runs
         a typical run and key pairs might be:
         X_with_Y;map       sec_X_cleaned_clean_map_I_with_Y_#modes.npy
         X_with_Y;noise_inv sec_X_cleaned_noise_inv_I_with_Y_#modes.npy
+        X_with_Y;weight    sec_X_cleaned_weight_I_with_Y_#modes.npy
         X_with_Y;modes     sec_X_modes_clean_map_I_with_Y_#modes.npy
         X_with_Y;fore_corr foreground_corr_pair_X_with_Y.pkl
         X_with_Y;SVD       SVD_pair_X_with_Y.pkl
@@ -243,6 +244,11 @@ class PathForms(object):
             suffix = "_with_%s%s.npy" % (right, modetag)
             filelist[pairmap] = "%scleaned_clean_map_I%s" % (prefix, suffix)
             filelist[pairnoise] = "%scleaned_noise_inv_I%s" % (prefix, suffix)
+
+            if register_separate_weights:
+                pairweight = pairname + ";weight"
+                listindex.extend([pairweight])
+                filelist[pairweight] = "%scleaned_weight_I%s" % (prefix, suffix)
 
             if register_modes:
                 pairmodes = pairname + ";modes"
