@@ -161,8 +161,13 @@ def batch_sim_run(sim_key, subtract_mean=False, degrade_resolution=False,
 def batch_data_run(subtract_mean=False, degrade_resolution=False,
                   unitless=True, return_3d=False,
                   truncate=False, window=None, n_modes=None,
-                  refinement=2, pad=5, order=2):
+                  refinement=2, pad=5, order=2, sim=False):
     datapath_db = data_paths.DataPath()
+
+    if sim:
+        mapsim = "sim_15hr"
+    else:
+        mapsim = "GBT_15hr_map"
 
     outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
@@ -172,10 +177,10 @@ def batch_data_run(subtract_mean=False, degrade_resolution=False,
                                         generate=True, verbose=True)
 
     for mode_num in range(0, 55, 5):
-        map1_key = "GBT_15hr_map_cleaned_%dmode" % mode_num
-        map2_key = "GBT_15hr_map_cleaned_%dmode" % mode_num
-        noise1_key = "GBT_15hr_map_cleaned_%dmode" % mode_num
-        noise2_key = "GBT_15hr_map_cleaned_%dmode" % mode_num
+        map1_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
+        map2_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
+        noise1_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
+        noise2_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
 
         (pairlist, pairdict) = \
                 data_paths.cross_maps(map1_key, map2_key,
@@ -187,7 +192,9 @@ def batch_data_run(subtract_mean=False, degrade_resolution=False,
                               ignore=['param'],
                               tag1prefix=map1_key + "_",
                               tag2prefix=map2_key + "_",
-                              verbose=False)
+                              verbose=True)
+
+        print pairlist, pairdict
 
         for item in pairdict.keys():
             pairrun = pairdict[item]
@@ -211,10 +218,13 @@ def batch_data_run(subtract_mean=False, degrade_resolution=False,
     caller.multiprocess_stack()
 
 if __name__ == '__main__':
-    batch_physical_sim_run("simideal_15hr_physical")
-    batch_physical_sim_run("sim_15hr_physical")
+    #batch_physical_sim_run("simideal_15hr_physical")
+    #batch_physical_sim_run("sim_15hr_physical")
+
     # real data
     #batch_data_run()
+    # modeloss sim
+    batch_data_run(sim=True)
     # ideal simulations without beam
     #batch_sim_run("simideal_15hr")
     # vv + evo sims without beam

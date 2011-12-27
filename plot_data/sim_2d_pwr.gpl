@@ -1,0 +1,60 @@
+set terminal postscript eps color enhanced "Helvetica" 17
+#set terminal postscript eps color enhanced fontfile "/opt/local/share/texmf-texlive-dist/fonts/type1/public/amsfonts/cm/cmff10.pfb"
+#set xlabel "{/CMFF10 \\077}"
+set view map
+set xrange [-2.15344661135655: 0.448995850120586]
+set yrange [-2.15344661135655: 0.448995850120586]
+set size ratio -1
+set nokey
+set tics out
+set xlabel "log(k_{{/Symbol \\136}} h cMpc^{-1})"
+set ylabel "log(k_{{/Symbol \174\174}} h cMpc^{-1})"
+set title "k-space coverage of the 15hr survey"
+set cblabel "Number of modes per k-cell"
+set rmargin 10
+set output "2d_counts.eps"
+set logscale cb
+set palette rgbformulae 22, 13, -31
+plot "pwr_map_pair_realmask_beam_avg_2d.dat" using 2:5:7 with image
+
+# now make the power spectrum plots
+set cblabel "{/Symbol D}(k)^2 (K^2)"
+set logscale cb
+
+set title "Density-only power spectrum"
+set output "simideal_15hr_avg_2d.eps"
+plot "simideal_15hr_avg_2d.dat" using 2:5:8 with image
+
+set title "Power spectrum with velocities and evolution"
+set output "sim_15hr_avg_2d.eps"
+plot "sim_15hr_avg_2d.dat" using 2:5:8 with image
+
+set title "Power spectrum with vv, evo., beam"
+set output "sim_15hr_beam_avg_2d.eps"
+plot "sim_15hr_beam_avg_2d.dat" using 2:5:8 with image
+
+set title "Power spectrum with vv, evo., beam, meansub, conv."
+set output "sim_15hr_beam_meanconv_avg_2d.eps"
+plot "sim_15hr_beam_meanconv_avg_2d.dat" using 2:5:8 with image
+
+# now make the transfer function plots
+set cblabel "B(k)^2"
+unset logscale cb
+set cbrange [0:1]
+
+set title "Beam and meansub, degrade trans."
+set output "trans_beam_meanconv.eps"
+plot "trans_beam_meanconv.dat" using 2:5:8 with image
+
+set title "Beam transfer function"
+set output "trans_beam.eps"
+plot "trans_beam.dat" using 2:5:8 with image
+
+# now make the correlation matrix
+set title "bin-bin correlation matrix (100 sims)"
+set output "bin_bin_corr.eps"
+set xlabel "log(|k| h cMpc^{-1})"
+set ylabel "log(|k| h cMpc^{-1})"
+set cbrange [-1:1]
+unset cblabel
+plot "sim_15hr_corr.dat" using 2:5:7 with image

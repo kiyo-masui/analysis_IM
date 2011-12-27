@@ -25,16 +25,16 @@ def plot_gbt_mapset(outputdir="/cita/d/www/home/eswitzer/movies/"):
 def plot_gbt_simset(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/"):
     datapath_db = data_paths.DataPath()
 
-    #keyname = "sim_%s" % fieldname
-    keyname = "simideal_%s" % fieldname
-    filename = datapath_db.fetch(keyname, pick='1')
+    keyname = "sim_%s" % fieldname
+    #keyname = "simideal_%s" % fieldname
+    filename = datapath_db.fetch(keyname, pick='0')
     pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
                         sigmarange=3., outputdir=outputdir, multiplier=1000.,
                         transverse=False, filetag_suffix="_"+fieldname)
 
-    #keyname = "sim_%s_beam" % fieldname
-    keyname = "simideal_%s_beam" % fieldname
-    filename = datapath_db.fetch(keyname, pick='1')
+    keyname = "sim_%s_beam" % fieldname
+    #keyname = "simideal_%s_beam" % fieldname
+    filename = datapath_db.fetch(keyname, pick='0')
     pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
                         sigmarange=3., outputdir=outputdir, multiplier=1000.,
                         transverse=False, filetag_suffix="_"+fieldname)
@@ -123,6 +123,13 @@ def plot_manual(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/"):
                         physical=True)
 
 
+def plot_individual(filename, outputdir="/cita/d/www/home/eswitzer/movies/"):
+    pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
+                        sigmarange=3., outputdir=outputdir, multiplier=1000.,
+                        transverse=False, filetag_suffix="_simloss",
+                        physical=True)
+
+
 def plot_window(outputdir="/cita/d/www/home/eswitzer/movies/"):
     file1 = './observed_window.npy'
     file2 = './physical_window.npy'
@@ -173,7 +180,7 @@ def plot_wigglez(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/",
 
 if __name__ == "__main__":
     #plot_gbt_mapset()
-    plot_gbt_comb_modeset('15hr')
+    #plot_gbt_comb_modeset('15hr')
     #plot_gbt_comb_modeset('22hr')
     #plot_gbt_simset('15hr')
     #plot_gbt_simset('22hr')
@@ -183,6 +190,7 @@ if __name__ == "__main__":
 
     #plot_manual('15hr')
     #plot_window()
+    plot_individual("/mnt/raid-project/gmrt/eswitzer/GBT/cleaned_maps/15hr_sim/sec_A_cleaned_clean_map_I_with_B_0modes.npy")
     #plot_wigglez('15hr', complete=False)
     #plot_wigglez('22hr', complete=False)
     #plot_wigglez('1hr', complete=True)
