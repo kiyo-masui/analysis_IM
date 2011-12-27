@@ -240,6 +240,7 @@ class PairSet(ft.ClassPersistence):
         n_modes = "%dmodes" % n_modes
         for pairitem in self.pairlist:
             pair = self.pairs[pairitem]
+            pair_nosim = self.pairs_nosim[pairitem]
             (tag1, tag2) = (pair.map1_name, pair.map2_name)
             map1_file = "%s/sec_%s_cleaned_clean_map_I_with_%s_%s.npy" % \
                             (self.output_root, tag1, tag2, n_modes)

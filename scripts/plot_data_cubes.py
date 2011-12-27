@@ -78,11 +78,11 @@ def plot_gbt_comb_modeset(fieldname, outputdir="/cita/d/www/home/eswitzer/movies
     datapath_db = data_paths.DataPath()
 
     for modenum in range(0, 55, 5):
-        #keyname = "GBT_%s_combined_cleaned_%dmode_map" % (fieldname, modenum)
-        #filename = datapath_db.fetch(keyname)
-        #pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
-        #                sigmarange=2.5, outputdir=outputdir, multiplier=1000.,
-        #                transverse=False)
+        keyname = "GBT_%s_combined_cleaned_%dmode_map" % (fieldname, modenum)
+        filename = datapath_db.fetch(keyname)
+        pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
+                        sigmarange=2.5, outputdir=outputdir, multiplier=1000.,
+                        transverse=False)
 
         keyname = "GBT_%s_combined_cleaned_%dmode_product" % \
                   (fieldname, modenum)
@@ -91,12 +91,12 @@ def plot_gbt_comb_modeset(fieldname, outputdir="/cita/d/www/home/eswitzer/movies
                         sigmarange=-1, outputdir=outputdir, multiplier=1000.,
                         transverse=False)
 
-        #keyname = "GBT_%s_combined_cleaned_%dmode_weight" % \
-        #          (fieldname, modenum)
-        #filename = datapath_db.fetch(keyname)
-        #pc.make_cube_movie(filename, "inverse variance weight", pc.cube_frame_dir,
-        #                sigmarange=2.5, outputdir=outputdir, multiplier=1.,
-        #                transverse=False)
+        keyname = "GBT_%s_combined_cleaned_%dmode_weight" % \
+                  (fieldname, modenum)
+        filename = datapath_db.fetch(keyname)
+        pc.make_cube_movie(filename, "inverse variance weight", pc.cube_frame_dir,
+                        sigmarange=2.5, outputdir=outputdir, multiplier=1.,
+                        transverse=False)
 
 
 def plot_sim_scheme(outputdir="/cita/d/www/home/eswitzer/movies/"):
@@ -173,7 +173,7 @@ def plot_wigglez(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/",
 
 if __name__ == "__main__":
     #plot_gbt_mapset()
-    #plot_gbt_comb_modeset('15hr')
+    plot_gbt_comb_modeset('15hr')
     #plot_gbt_comb_modeset('22hr')
     #plot_gbt_simset('15hr')
     #plot_gbt_simset('22hr')
@@ -183,7 +183,7 @@ if __name__ == "__main__":
 
     #plot_manual('15hr')
     #plot_window()
-    plot_wigglez('15hr', complete=False)
+    #plot_wigglez('15hr', complete=False)
     #plot_wigglez('22hr', complete=False)
     #plot_wigglez('1hr', complete=True)
     #plot_wigglez('22hr')
