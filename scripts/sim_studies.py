@@ -74,7 +74,8 @@ def gather_batch_sim_run(sim_key, tag, subtract_mean=False, degrade_resolution=F
 
 def gather_physical_sim_run(sim_key, tag, unitless=True, return_3d=False,
                             truncate=False, window="blackman",
-                            outdir="./plot_data", transfer=None):
+                            outdir="./plot_data", transfer=None,
+                            redshift_filekey='simideal_15hr'):
     """Test the power spectral estimator using simulations"""
     datapath_db = data_paths.DataPath()
 
@@ -116,6 +117,27 @@ def gather_physical_sim_run(sim_key, tag, unitless=True, return_3d=False,
 
     fileout = outdir + "/" + tag + "_avg_2d.dat"
     pe.summarize_2d_agg_pwrspec(pwr_2d, fileout)
+
+    bin_left = pwr_1d[0]['bin_left']
+    bin_center = pwr_1d[0]['bin_center']
+    bin_right = pwr_1d[0]['bin_right']
+
+    zfilename = datapath_db.fetch(redshift_filekey, intend_read=True,
+                                 pick='1')
+
+    fileout = outdir + "/" + "theory_power_spectrum.dat"
+
+    zspace_cube = algebra.make_vect(algebra.load(zfilename))
+    simobj = corr21cm.Corr21cm.like_kiyo_map(zspace_cube)
+    pwrspec_input = simobj.get_pwrspec(bin_center)
+    if unitless:
+        pwrspec_input *= bin_center ** 3. / 2. / math.pi / math.pi
+
+    outfile = open(fileout, "w")
+    for specdata in zip(bin_left, bin_center, bin_right, pwrspec_input):
+        outfile.write(("%10.15g " * 4 + "\n") % specdata)
+
+    outfile.close()
 
     return (pwr_1d, pwr_1d_from_2d, pwr_2d)
 
@@ -221,6 +243,7 @@ def calculate_transfer_function(pwr_stack1, pwr_stack2, tag, outdir="./plot_data
     trans_mean, trans_std = pe.summarize_2d_agg_pwrspec(trans_stack, fileout)
 
     return trans_mean
+
 
 if __name__ == '__main__':
     sim_phys = gather_physical_sim_run("sim_15hr_physical", "sim_15hr_physical")
