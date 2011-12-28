@@ -115,9 +115,6 @@ def gather_batch_data_run(tag, subtract_mean=False, degrade_resolution=False,
 
 
 if __name__ == '__main__':
-    transfer_functions = gather_batch_data_run("GBT15hr_sim", sim=True)
-
-
     gather_batch_data_run("GBT15hr")
     gather_batch_data_run("GBT15hr_beamcomp", transfer=trans_beam_meanconv)
     gather_batch_data_run("GBT15hr_modecomp", mode_transfer=transfer_functions)

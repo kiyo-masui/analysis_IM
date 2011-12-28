@@ -288,13 +288,13 @@ def summarize_1d_agg_pwrspec(pwr_1d, filename, corr_file=None,
     return mean_1d, std_1d
 
 
-def agg_stat_2d_pwrspec(pwr_2d):
-    pwrshp_2d = pwr_2d[0]['binavg'].shape
+def agg_stat_2d_pwrspec(pwr_2d, dataname='binavg'):
+    pwrshp_2d = pwr_2d[0][dataname].shape
     n_runs = len(pwr_2d)
 
     pwrmat_2d = np.zeros((n_runs, pwrshp_2d[0], pwrshp_2d[1]))
     for index in range(n_runs):
-        pwrmat_2d[index, :, :] = pwr_2d[index]['binavg']
+        pwrmat_2d[index, :, :] = pwr_2d[index][dataname]
 
     mean_2d = np.mean(pwrmat_2d, axis=0)
     std_2d = np.std(pwrmat_2d, axis=0)
@@ -302,14 +302,12 @@ def agg_stat_2d_pwrspec(pwr_2d):
     return (mean_2d, std_2d)
 
 
-def summarize_2d_agg_pwrspec(pwr_2d, filename):
+def summarize_2d_agg_pwrspec(pwr_2d, filename, dataname='binavg', resetnan=0.):
     r"""Summarize the 1D power spectrum from a list of one-dimensional power
     spectrum outputs.
     writes: 2d power estimator and its error and counts maps
     """
-    (mean_2d, std_2d) = agg_stat_2d_pwrspec(pwr_2d)
-    mean_2d[np.isnan(mean_2d)] = 0.
-    std_2d[np.isnan(std_2d)] = 0.
+    (mean_2d, std_2d) = agg_stat_2d_pwrspec(pwr_2d, dataname=dataname)
 
     bin_x_left = np.log10(pwr_2d[0]['bin_x_left'])
     bin_x_center = np.log10(pwr_2d[0]['bin_x_center'])
@@ -317,16 +315,18 @@ def summarize_2d_agg_pwrspec(pwr_2d, filename):
     bin_y_left = np.log10(pwr_2d[0]['bin_y_left'])
     bin_y_center = np.log10(pwr_2d[0]['bin_y_center'])
     bin_y_right = np.log10(pwr_2d[0]['bin_y_right'])
-    counts_histo = pwr_2d[0]['counts_histo']
 
+    plot_mean_2d = copy.deepcopy(mean_2d)
+    plot_std_2d = copy.deepcopy(std_2d)
+    plot_mean_2d[np.isnan(mean_2d)] = resetnan
+    plot_std_2d[np.isnan(std_2d)] = resetnan
     outfile = open(filename, "w")
     for xind in range(len(bin_x_center)):
         for yind in range(len(bin_y_center)):
-            outstr = ("%10.15g " * 9 + "\n") % \
+            outstr = ("%10.15g " * 8 + "\n") % \
                     (bin_x_left[xind], bin_x_center[xind], bin_x_right[xind], \
                      bin_y_left[yind], bin_y_center[yind], bin_y_right[yind], \
-                     counts_histo[xind, yind], \
-                     mean_2d[xind, yind], std_2d[xind, yind])
+                     plot_mean_2d[xind, yind], plot_std_2d[xind, yind])
             outfile.write(outstr)
 
     outfile.close()
@@ -341,17 +341,20 @@ def summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
     """
     fileout = outdir + "/" + tag + "_avg_from2d.dat"
     corr_fileout = outdir + "/" + tag + "_corr_from2d.dat"
-    pe.summarize_1d_agg_pwrspec(pwr_1d_from_2d, fileout,
+    summarize_1d_agg_pwrspec(pwr_1d_from_2d, fileout,
                                 corr_file=corr_fileout,
                                 mode_transfer=mode_transfer)
 
     fileout = outdir + "/" + tag + "_avg.dat"
     corr_fileout = outdir + "/" + tag + "_corr.dat"
-    pe.summarize_1d_agg_pwrspec(pwr_1d, fileout, corr_file=corr_fileout,
+    summarize_1d_agg_pwrspec(pwr_1d, fileout, corr_file=corr_fileout,
                                 mode_transfer=mode_transfer)
 
     fileout = outdir + "/" + tag + "_avg_2d.dat"
-    pe.summarize_2d_agg_pwrspec(pwr_2d, fileout)
+    summarize_2d_agg_pwrspec(pwr_2d, fileout, dataname = "binavg")
+
+    fileout = outdir + "/" + tag + "_avg_2d_counts.dat"
+    summarize_2d_agg_pwrspec(pwr_2d, fileout, dataname = "counts_histo")
 
     return
 
