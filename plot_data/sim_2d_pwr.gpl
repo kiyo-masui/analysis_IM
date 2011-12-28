@@ -50,6 +50,50 @@ set title "Beam transfer function"
 set output "trans_beam.eps"
 plot "trans_beam.dat" using 2:5:8 with image
 
+set title "Mode=0 transfer function"
+set output "trans_0modes.eps"
+plot "GBT15hr_sim_0modes_trans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=5 transfer function"
+set output "trans_5modes.eps"
+plot "GBT15hr_sim_5modes_trans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=10 transfer function"
+set output "trans_10modes.eps"
+plot "GBT15hr_sim_10modes_trans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=15 transfer function"
+set output "trans_15modes.eps"
+plot "GBT15hr_sim_15modes_trans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=20 transfer function"
+set output "trans_20modes.eps"
+plot "GBT15hr_sim_20modes_trans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=25 transfer function"
+set output "trans_25modes.eps"
+plot "GBT15hr_sim_25modes_trans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=30 transfer function"
+set output "trans_30modes.eps"
+plot "GBT15hr_sim_30modes_trans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=35 transfer function"
+set output "trans_35modes.eps"
+plot "GBT15hr_sim_35modes_trans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=40 transfer function"
+set output "trans_40modes.eps"
+plot "GBT15hr_sim_40modes_trans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=45 transfer function"
+set output "trans_45modes.eps"
+plot "GBT15hr_sim_45modes_trans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=50 transfer function"
+set output "trans_50modes.eps"
+plot "GBT15hr_sim_50modes_trans_altavg.dat" using 2:5:7 with image
+
 # now make the correlation matrix
 set title "bin-bin correlation matrix (100 sims)"
 set output "bin_bin_corr.eps"

@@ -13,150 +13,20 @@ from correlate import map_pair as mp
 from correlate import pwrspec_estimation as pe
 import sys
 from utils import batch_handler
-
-
-def summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
-                      tag, outdir="./plot_data"):
-    r"""call various power spectral aggregation functions to make 2D, 1D, etc.
-    P(k)s to plot.
-    """
-    fileout = outdir + "/" + tag + "_avg_from2d.dat"
-    corr_fileout = outdir + "/" + tag + "_corr_from2d.dat"
-    pe.summarize_1d_agg_pwrspec(pwr_1d_from_2d, fileout,
-                                corr_file=corr_fileout)
-
-    fileout = outdir + "/" + tag + "_avg.dat"
-    corr_fileout = outdir + "/" + tag + "_corr.dat"
-    pe.summarize_1d_agg_pwrspec(pwr_1d, fileout, corr_file=corr_fileout)
-
-    fileout = outdir + "/" + tag + "_avg_2d.dat"
-    pe.summarize_2d_agg_pwrspec(pwr_2d, fileout)
-
-    return
-
-
-# TODO: do smarter loops using fetch lists
-def gather_batch_sim_run(sim_key, tag, subtract_mean=False,
-                         degrade_resolution=False,
-                         unitless=True, return_3d=False,
-                         truncate=False, window=None, n_modes=None,
-                         refinement=2, pad=5, order=2, transfer=None,
-                         res_path=None):
-
-    if res_path is None:
-        datapath_db = data_paths.DataPath()
-        outpath = datapath_db.fetch("quadratic_batch_simulations")
-
-    print "reading from to: " + outpath
-
-    funcname = "correlate.batch_quadratic.call_xspec_run"
-    caller = batch_handler.MemoizeBatch(funcname, outpath,
-                                        verbose=True)
-
-    pwr_1d = []
-    pwr_1d_from_2d = []
-    pwr_2d = []
-    n_runs = 100
-    for index in range(n_runs):
-        map1_key = "db:%s:%s" % (sim_key, index)
-        map2_key = "db:%s:%s" % (sim_key, index)
-        noiseinv1_key = "db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv"
-        noiseinv2_key = "db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv"
-
-        pwr2d_run, pwr1d_run = caller.execute(map1_key, map2_key,
-                                              noiseinv1_key, noiseinv2_key,
-                                              subtract_mean=subtract_mean,
-                                              degrade_resolution=degrade_resolution,
-                                              unitless=unitless,
-                                              return_3d=return_3d,
-                                              truncate=truncate,
-                                              window=window, n_modes=n_modes,
-                                              refinement=refinement,
-                                              pad=pad, order=order)
-
-        pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwr2d_run,
-                                                  transfer=transfer))
-
-        pwr_2d.append(pwr2d_run)
-        pwr_1d.append(pwr1d_run)
-
-    summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, tag,
-                      outdir="./plot_data")
-
-    return (pwr_1d, pwr_1d_from_2d, pwr_2d)
-
-
-def gather_physical_sim_run(sim_key, tag, unitless=True, return_3d=False,
-                            truncate=False, window="blackman",
-                            outdir="./plot_data", transfer=None,
-                            redshift_filekey='simideal_15hr'):
-    """Test the power spectral estimator using simulations"""
-    datapath_db = data_paths.DataPath()
-
-    outpath = datapath_db.fetch("quadratic_batch_simulations")
-    print "writing to: " + outpath
-    fileset = datapath_db.fetch(sim_key, intend_read=True)
-
-    funcname = "correlate.batch_quadratic.call_phys_space_run"
-    caller = batch_handler.MemoizeBatch(funcname, outpath,
-                                        generate=False, verbose=True)
-
-    pwr_1d = []
-    pwr_1d_from_2d = []
-    pwr_2d = []
-    print fileset[0]
-    for index in fileset[0]:
-        map1_file = fileset[1][index]
-        map2_file = fileset[1][index]
-
-        pwr2d_run, pwr1d_run = caller.execute(map1_file, map2_file,
-                                               unitless=unitless,
-                                               return_3d=return_3d,
-                                               truncate=truncate,
-                                               window=window)
-
-        pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwr2d_run, transfer=transfer))
-        pwr_2d.append(pwr2d_run)
-        pwr_1d.append(pwr1d_run)
-
-    summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, tag,
-                      outdir="./plot_data")
-
-    # now report the theory input curve over the same bins
-    bin_left = pwr_1d[0]['bin_left']
-    bin_center = pwr_1d[0]['bin_center']
-    bin_right = pwr_1d[0]['bin_right']
-
-    zfilename = datapath_db.fetch(redshift_filekey, intend_read=True,
-                                 pick='1')
-
-    fileout = outdir + "/" + "theory_power_spectrum.dat"
-
-    zspace_cube = algebra.make_vect(algebra.load(zfilename))
-    simobj = corr21cm.Corr21cm.like_kiyo_map(zspace_cube)
-    pwrspec_input = simobj.get_pwrspec(bin_center)
-    if unitless:
-        pwrspec_input *= bin_center ** 3. / 2. / math.pi / math.pi
-
-    outfile = open(fileout, "w")
-    for specdata in zip(bin_left, bin_center, bin_right, pwrspec_input):
-        outfile.write(("%10.15g " * 4 + "\n") % specdata)
-
-    outfile.close()
-
-    return (pwr_1d, pwr_1d_from_2d, pwr_2d)
+import copy
 
 
 def gather_batch_data_run(tag, subtract_mean=False, degrade_resolution=False,
                   unitless=True, return_3d=False,
                   truncate=False, window=None, n_modes=None,
                   refinement=2, pad=5, order=2, transfer=None,
-                  outdir="./plot_data", sim=False):
+                  outdir="./plot_data", sim=False, mode_transfer=None):
     datapath_db = data_paths.DataPath()
 
     if sim:
         mapsim = "sim_15hr"
         outpath = datapath_db.fetch("quadratic_batch_simulations")
+        transfer_functions = {}
     else:
         mapsim = "GBT_15hr_map"
         outpath = datapath_db.fetch("quadratic_batch_data")
@@ -213,59 +83,47 @@ def gather_batch_data_run(tag, subtract_mean=False, degrade_resolution=False,
             pwr_2d.append(pwr2d_run)
             pwr_1d.append(pwr1d_run)
 
+        if sim:
+            if (mode_num == 0):
+                pwr_1d_zero_mode = copy.deepcopy(pwr_1d)
+                pwr_2d_zero_mode = copy.deepcopy(pwr_2d)
+
+            ttag = tag + "_%dmodes_2dtrans" % mode_num
+            trans2d_mode = calculate_2d_transfer_function(
+                                            pwr_2d, pwr_2d_zero_mode,
+                                            ttag)
+
+            ttag = tag + "_%dmodes_1dtrans" % mode_num
+            trans1d_mode = calculate_1d_transfer_function(
+                                            pwr_1d, pwr_1d_zero_mode,
+                                            ttag)
+
+            transfer_functions[mode_num] = (trans1d_mode, trans2d_mode)
+
         mtag = tag + "_%dmodes" % mode_num
-        summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, mtag,
-                          outdir="./plot_data")
+        if mode_transfer is not None:
+            transfunc = mode_transfer[mode_num][0]
+        else:
+            transfunc = None
 
+        pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, mtag,
+                          outdir="./plot_data",
+                          mode_transfer=transfunc)
 
-def calculate_transfer_function(pwr_stack1, pwr_stack2, tag, outdir="./plot_data"):
-    #n_runs = len(pwr_stack1)
-    #if n_runs != len(pwr_stack2):
-    #    print "These runs are incompatible (different number)."
-    #    sys.exit()
-    n_runs = 100
-
-    trans_stack = []
-    for index in range(n_runs):
-        entry = {}
-        entry['bin_x_left'] = pwr_stack1[2][index]['bin_x_left']
-        entry['bin_x_center'] = pwr_stack1[2][index]['bin_x_center']
-        entry['bin_x_right'] = pwr_stack1[2][index]['bin_x_right']
-        entry['bin_y_left'] = pwr_stack1[2][index]['bin_y_left']
-        entry['bin_y_center'] = pwr_stack1[2][index]['bin_y_center']
-        entry['bin_y_right'] = pwr_stack1[2][index]['bin_y_right']
-        entry['counts_histo'] = pwr_stack1[2][index]['counts_histo']
-
-        binavg1 = pwr_stack1[2][index]['binavg']
-        binavg2 = pwr_stack2[2][index]['binavg']
-        entry['binavg'] = binavg1/binavg2
-        trans_stack.append(entry)
-
-    fileout = outdir + "/" + tag + ".dat"
-    trans_mean, trans_std = pe.summarize_2d_agg_pwrspec(trans_stack, fileout)
-
-    return trans_mean
+    if sim:
+        return transfer_functions
 
 
 if __name__ == '__main__':
-    gather_batch_data_run("GBT15hr_sim", sim=True)
-    #sys.exit()
+    transfer_functions = gather_batch_data_run("GBT15hr_sim", sim=True)
 
-    sim_phys = gather_physical_sim_run("sim_15hr_physical", "sim_15hr_physical")
-    simideal_phys = gather_physical_sim_run("simideal_15hr_physical", "simideal_15hr_physical")
-    #sys.exit()
 
-    simideal_15hr = gather_batch_sim_run("simideal_15hr", "simideal_15hr")
-    sim_15hr = gather_batch_sim_run("sim_15hr", "sim_15hr")
-    sim_15hr_beam = gather_batch_sim_run("sim_15hr_beam", "sim_15hr_beam")
-    sim_15hr_beam_meanconv = gather_batch_sim_run("sim_15hr_beam", "sim_15hr_beam_meanconv", degrade_resolution=True, subtract_mean=True)
-    trans_beam_meanconv = calculate_transfer_function(sim_15hr_beam_meanconv, sim_15hr, "trans_beam_meanconv")
-
-    trans_beam = calculate_transfer_function(sim_15hr_beam, sim_15hr, "trans_beam")
-
-    sim_15hr_beam_meanconv_corrected = gather_batch_sim_run("sim_15hr_beam",
-                                                            "sim_15hr_beam_meanconv_corrected", degrade_resolution=True, subtract_mean=True,
-                                                            transfer=trans_beam_meanconv)
-
-    gather_batch_data_run("GBT15hr", transfer=trans_beam_meanconv)
+    gather_batch_data_run("GBT15hr")
+    gather_batch_data_run("GBT15hr_beamcomp", transfer=trans_beam_meanconv)
+    gather_batch_data_run("GBT15hr_modecomp", mode_transfer=transfer_functions)
+    gather_batch_data_run("GBT15hr_beammodecomp", transfer=trans_beam_meanconv,
+                          mode_transfer=transfer_functions)
     #gather_batch_data_run("GBT15hr", transfer=trans_beam)
+
+    sys.exit()
+

@@ -230,10 +230,7 @@ def test_with_random(unitless=True):
         print ("%10.15g " * 6) % specdata
 
 
-def summarize_1d_agg_pwrspec(pwr_1d, filename, corr_file=None):
-    r"""Summarize the 1D power spectrum from a list of one-dimensional power
-    spectrum outputs.
-    """
+def agg_stat_1d_pwrspec(pwr_1d):
     pwrshp_1d = pwr_1d[0]['binavg'].shape
     n_runs = len(pwr_1d)
 
@@ -244,6 +241,22 @@ def summarize_1d_agg_pwrspec(pwr_1d, filename, corr_file=None):
     mean_1d = np.mean(pwrmat_1d, axis=0)
     std_1d = np.std(pwrmat_1d, axis=0)
     corrmat_1d = np.corrcoef(np.transpose(pwrmat_1d))
+
+    return (mean_1d, std_1d, corrmat_1d)
+
+
+def summarize_1d_agg_pwrspec(pwr_1d, filename, corr_file=None,
+                             mode_transfer=None):
+    r"""Summarize the 1D power spectrum from a list of one-dimensional power
+    spectrum outputs.
+    """
+    (mean_1d, std_1d, corrmat_1d) = agg_stat_1d_pwrspec(pwr_1d)
+
+    # TODO: corr matrix does not have transfer function; fine but annoying
+    if mode_transfer is not None:
+        print mode_transfer
+        mean_1d /= mode_transfer
+        std_1d /= mode_transfer
 
     # assume that they all have the same binning
     bin_left = pwr_1d[0]['bin_left']
@@ -272,14 +285,10 @@ def summarize_1d_agg_pwrspec(pwr_1d, filename, corr_file=None):
                 outfile.write(outstr)
 
         outfile.close()
-    return
+    return mean_1d, std_1d
 
 
-def summarize_2d_agg_pwrspec(pwr_2d, filename):
-    r"""Summarize the 1D power spectrum from a list of one-dimensional power
-    spectrum outputs.
-    writes: 2d power estimator and its error and counts maps
-    """
+def agg_stat_2d_pwrspec(pwr_2d):
     pwrshp_2d = pwr_2d[0]['binavg'].shape
     n_runs = len(pwr_2d)
 
@@ -290,6 +299,15 @@ def summarize_2d_agg_pwrspec(pwr_2d, filename):
     mean_2d = np.mean(pwrmat_2d, axis=0)
     std_2d = np.std(pwrmat_2d, axis=0)
 
+    return (mean_2d, std_2d)
+
+
+def summarize_2d_agg_pwrspec(pwr_2d, filename):
+    r"""Summarize the 1D power spectrum from a list of one-dimensional power
+    spectrum outputs.
+    writes: 2d power estimator and its error and counts maps
+    """
+    (mean_2d, std_2d) = agg_stat_2d_pwrspec(pwr_2d)
     mean_2d[np.isnan(mean_2d)] = 0.
     std_2d[np.isnan(std_2d)] = 0.
 
@@ -314,6 +332,28 @@ def summarize_2d_agg_pwrspec(pwr_2d, filename):
     outfile.close()
 
     return mean_2d, std_2d
+
+
+def summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
+                      tag, outdir="./plot_data", mode_transfer=None):
+    r"""call various power spectral aggregation functions to make 2D, 1D, etc.
+    P(k)s to plot.
+    """
+    fileout = outdir + "/" + tag + "_avg_from2d.dat"
+    corr_fileout = outdir + "/" + tag + "_corr_from2d.dat"
+    pe.summarize_1d_agg_pwrspec(pwr_1d_from_2d, fileout,
+                                corr_file=corr_fileout,
+                                mode_transfer=mode_transfer)
+
+    fileout = outdir + "/" + tag + "_avg.dat"
+    corr_fileout = outdir + "/" + tag + "_corr.dat"
+    pe.summarize_1d_agg_pwrspec(pwr_1d, fileout, corr_file=corr_fileout,
+                                mode_transfer=mode_transfer)
+
+    fileout = outdir + "/" + tag + "_avg_2d.dat"
+    pe.summarize_2d_agg_pwrspec(pwr_2d, fileout)
+
+    return
 
 
 def convert_2d_to_1d_driver(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
