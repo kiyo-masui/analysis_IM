@@ -1,11 +1,16 @@
-"""manage batch runs"""
+"""manage batch runs and memoization
+The MemoizeBatch class is best for trivial parallelization
+The memoize_persistent decorator is best for memoized serial calls
+"""
 import multiprocessing
 import cPickle as pickle
 import hashlib
 import re
 import shelve
+import functools
 
 
+# TODO: do not print long arguments
 def print_call(args_package):
     r"""Print the function and its arguments and the file in which the outputs
     are saved in the cache directory."""
@@ -22,6 +27,39 @@ def print_call(args_package):
     print "%s(%s, %s) -> %s" % (funcname, argstring, kwstring, filename)
 
     return filename
+
+
+memoize_directory = "./data_test"
+def memoize_persistent(func):
+    def memoize(*args, **kwargs):
+        funcname = func.__name__
+        argpkl = pickle.dumps((funcname, args,
+                               tuple(sorted(kwargs.items()))), -1)
+        arghash = hashlib.md5(argpkl).hexdigest()
+
+        filename = print_call((arghash, memoize_directory,
+                               funcname, args, kwargs))
+
+        try:
+            input_shelve = shelve.open(filename, "r")
+            retval = input_shelve['result']
+            input_shelve.close()
+            print "used cached value %s" % filename
+        except:
+            print "no cache, recalculating %s" % filename
+            retval = func(*args, **kwargs)
+            outfile = shelve.open(filename, "n")
+            outfile["signature"] = arghash
+            outfile["filename"] = filename
+            outfile["funcname"] = funcname
+            outfile["args"] = args
+            outfile["kwargs"] = kwargs
+            outfile["result"] = retval
+            outfile.close()
+
+        return retval
+
+    return functools.update_wrapper(memoize, func)
 
 
 def function_wrapper(args_package):
@@ -201,9 +239,21 @@ def trial_function(thing1, thing2, arg1="e", arg2="r"):
     return thing1, thing2, arg1, arg2
 
 
+@memoize_persistent
+def useless_loop(x, arg1='a', arg2=2):
+    return (x, arg1, arg2)
+
+
 if __name__ == "__main__":
     import doctest
 
     OPTIONFLAGS = (doctest.ELLIPSIS |
                    doctest.NORMALIZE_WHITESPACE)
     doctest.testmod(optionflags=OPTIONFLAGS)
+
+    print useless_loop(10, arg1=3, arg2='b')
+    print useless_loop(10, arg2='b', arg1=4)
+    print useless_loop("w", arg2="ok")
+    print useless_loop(10)
+    print useless_loop("w")
+

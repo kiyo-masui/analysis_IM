@@ -246,17 +246,17 @@ def agg_stat_1d_pwrspec(pwr_1d):
 
 
 def summarize_1d_agg_pwrspec(pwr_1d, filename, corr_file=None,
-                             mode_transfer=None):
+                             apply_1d_transfer=None):
     r"""Summarize the 1D power spectrum from a list of one-dimensional power
     spectrum outputs.
     """
     (mean_1d, std_1d, corrmat_1d) = agg_stat_1d_pwrspec(pwr_1d)
 
     # TODO: corr matrix does not have transfer function; fine but annoying
-    if mode_transfer is not None:
-        print mode_transfer
-        mean_1d /= mode_transfer
-        std_1d /= mode_transfer
+    if apply_1d_transfer is not None:
+        print apply_1d_transfer
+        mean_1d /= apply_1d_transfer
+        std_1d /= apply_1d_transfer
 
     # assume that they all have the same binning
     bin_left = pwr_1d[0]['bin_left']
@@ -335,7 +335,7 @@ def summarize_2d_agg_pwrspec(pwr_2d, filename, dataname='binavg', resetnan=0.):
 
 
 def summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
-                      tag, outdir="./plot_data", mode_transfer=None):
+                      tag, outdir="./plot_data", apply_1d_transfer=None):
     r"""call various power spectral aggregation functions to make 2D, 1D, etc.
     P(k)s to plot.
     """
@@ -343,12 +343,12 @@ def summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
     corr_fileout = outdir + "/" + tag + "_corr_from2d.dat"
     summarize_1d_agg_pwrspec(pwr_1d_from_2d, fileout,
                                 corr_file=corr_fileout,
-                                mode_transfer=mode_transfer)
+                                apply_1d_transfer=apply_1d_transfer)
 
     fileout = outdir + "/" + tag + "_avg.dat"
     corr_fileout = outdir + "/" + tag + "_corr.dat"
     summarize_1d_agg_pwrspec(pwr_1d, fileout, corr_file=corr_fileout,
-                                mode_transfer=mode_transfer)
+                                apply_1d_transfer=apply_1d_transfer)
 
     fileout = outdir + "/" + tag + "_avg_2d.dat"
     summarize_2d_agg_pwrspec(pwr_2d, fileout, dataname = "binavg")

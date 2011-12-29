@@ -11,6 +11,7 @@ from map import physical_gridding
 from utils import binning
 from correlate import map_pair as mp
 from correlate import pwrspec_estimation as pe
+from correlate import compile_transfer as ct
 import sys
 from utils import batch_handler
 import copy
@@ -19,29 +20,24 @@ import copy
 def gather_batch_data_run(tag, subtract_mean=False, degrade_resolution=False,
                   unitless=True, return_3d=False,
                   truncate=False, window=None, n_modes=None,
-                  refinement=2, pad=5, order=2, transfer=None,
-                  outdir="./plot_data", sim=False, mode_transfer=None):
+                  refinement=2, pad=5, order=2, beam_transfer=None,
+                  outdir="./plot_data", mode_transfer_1d=None,
+                  mode_transfer_2d=None):
     datapath_db = data_paths.DataPath()
+    outpath = datapath_db.fetch("quadratic_batch_data")
 
-    if sim:
-        mapsim = "sim_15hr"
-        outpath = datapath_db.fetch("quadratic_batch_simulations")
-        transfer_functions = {}
-    else:
-        mapsim = "GBT_15hr_map"
-        outpath = datapath_db.fetch("quadratic_batch_data")
-
-    print "reading from to: " + outpath
+    print "reading from:" + outpath
 
     funcname = "correlate.batch_quadratic.call_xspec_run"
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         verbose=True)
 
     for mode_num in range(0,55,5):
-        map1_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
-        map2_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
-        noise1_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
-        noise2_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
+        maptag = "GBT_15hr_map"
+        map1_key = "%s_cleaned_%dmode" % (maptag, mode_num)
+        map2_key = "%s_cleaned_%dmode" % (maptag, mode_num)
+        noise1_key = "%s_cleaned_%dmode" % (maptag, mode_num)
+        noise2_key = "%s_cleaned_%dmode" % (maptag, mode_num)
 
         (pairlist, pairdict) = \
                 data_paths.cross_maps(map1_key, map2_key,
@@ -54,6 +50,17 @@ def gather_batch_data_run(tag, subtract_mean=False, degrade_resolution=False,
                               tag1prefix=map1_key + "_",
                               tag2prefix=map2_key + "_",
                               verbose=False)
+
+        transfer_2d = None
+
+        if (mode_transfer_2d is not None) and (beam_transfer is None):
+            transfer_2d = mode_transfer_2d[mode_num][1]
+
+        if (mode_transfer_2d is None) and (beam_transfer is not None):
+            transfer_2d = beam_transfer
+
+        if (mode_transfer_2d is not None) and (beam_transfer is not None):
+            transfer_2d = mode_transfer_2d[mode_num][1] * beam_transfer
 
         pwr_1d = []
         pwr_2d = []
@@ -79,47 +86,34 @@ def gather_batch_data_run(tag, subtract_mean=False, degrade_resolution=False,
                                                   pad=pad, order=order)
 
             pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwr2d_run,
-                                  transfer=transfer))
+                                  transfer=transfer_2d))
+
             pwr_2d.append(pwr2d_run)
             pwr_1d.append(pwr1d_run)
 
-        if sim:
-            if (mode_num == 0):
-                pwr_1d_zero_mode = copy.deepcopy(pwr_1d)
-                pwr_2d_zero_mode = copy.deepcopy(pwr_2d)
-
-            ttag = tag + "_%dmodes_2dtrans" % mode_num
-            trans2d_mode = calculate_2d_transfer_function(
-                                            pwr_2d, pwr_2d_zero_mode,
-                                            ttag)
-
-            ttag = tag + "_%dmodes_1dtrans" % mode_num
-            trans1d_mode = calculate_1d_transfer_function(
-                                            pwr_1d, pwr_1d_zero_mode,
-                                            ttag)
-
-            transfer_functions[mode_num] = (trans1d_mode, trans2d_mode)
-
         mtag = tag + "_%dmodes" % mode_num
-        if mode_transfer is not None:
-            transfunc = mode_transfer[mode_num][0]
+        if mode_transfer_1d is not None:
+            transfunc = mode_transfer_1d[mode_num][0]
         else:
             transfunc = None
 
         pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, mtag,
                           outdir="./plot_data",
-                          mode_transfer=transfunc)
-
-    if sim:
-        return transfer_functions
+                          apply_1d_transfer=transfunc)
 
 
 if __name__ == '__main__':
+    trans_beam_meanconv = ct.find_beam_trans()
+    transfer_functions = ct.find_modeloss_transfer()
+
     gather_batch_data_run("GBT15hr")
-    gather_batch_data_run("GBT15hr_beamcomp", transfer=trans_beam_meanconv)
-    gather_batch_data_run("GBT15hr_modecomp", mode_transfer=transfer_functions)
-    gather_batch_data_run("GBT15hr_beammodecomp", transfer=trans_beam_meanconv,
-                          mode_transfer=transfer_functions)
+    gather_batch_data_run("GBT15hr_beamcomp", beam_transfer=trans_beam_meanconv)
+    gather_batch_data_run("GBT15hr_modecomp", mode_transfer_1d=transfer_functions)
+    gather_batch_data_run("GBT15hr_beammodecomp", beam_transfer=trans_beam_meanconv,
+                          mode_transfer_1d=transfer_functions)
+    gather_batch_data_run("GBT15hr_2dmodecomp", mode_transfer_2d=transfer_functions)
+    gather_batch_data_run("GBT15hr_beam2dmodecomp", beam_transfer=trans_beam_meanconv,
+                          mode_transfer_2d=transfer_functions)
     #gather_batch_data_run("GBT15hr", transfer=trans_beam)
 
     sys.exit()
