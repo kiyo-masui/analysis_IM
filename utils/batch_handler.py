@@ -6,12 +6,12 @@ import multiprocessing
 import cPickle as pickle
 import hashlib
 import re
+import random
+import time
 import shelve
-import os
-import fcntl
-import new
 import functools
-import __builtin__
+import anydbm
+import os
 
 
 def short_repr(input, maxlen=256):
@@ -42,46 +42,10 @@ def print_call(args_package):
     return filename
 
 
-def _safe_close(self):
-    shelve.Shelf.close(self)
-    fcntl.flock(self.lockfile.fileno(), fcntl.LOCK_UN)
-    self.lockfile.close()
-
-
-# TODO: consider new class like
-# http://stackoverflow.com/questions/486490/python-shelve-module-question
-# rather than overriding shelve
-def safe_shelve(filename, flag='c', protocol=-1, writeback=False, block=True,
-                lockfilename=None):
-    """Open the sheve file, createing a lockfile at filename.lock.  If
-    block is False then a IOError will be raised if the lock cannot
-    be acquired
-    based on activestate: 576591-simple-shelve-with-linux-file-locking
-    """
-    if lockfilename == None:
-        lockfilename = filename + ".lock"
-
-    lockfile = __builtin__.open(lockfilename, 'w')
-
-    # accquire the lock
-    if flag == 'r':
-        lockflags = fcntl.LOCK_SH
-    else:
-        lockflags = fcntl.LOCK_EX
-    if not block:
-        lockflags = fcntl.LOCK_NB
-    fcntl.flock(lockfile.fileno(), lockflags)
-
-    # open the shelf and override its standard methods
-    shelf = shelve.open(filename, flag=flag, protocol=protocol, writeback=writeback)
-    shelf.close = new.instancemethod(_safe_close, shelf, shelve.Shelf)
-    shelf.lockfile = lockfile
-
-    return shelf
-
-
 memoize_directory = "/mnt/raid-project/gmrt/eswitzer/persistent_memoize/"
 def memoize_persistent(func):
+    r"""threadsafe shelve using flock was too annoying; here, just wait
+    """
     def memoize(*args, **kwargs):
         funcname = func.__name__
         argpkl = pickle.dumps((funcname, args,
@@ -90,18 +54,25 @@ def memoize_persistent(func):
 
         filename = print_call((arghash, memoize_directory,
                                funcname, args, kwargs))
+        done_filename = filename + ".done"
 
-        try:
-            #input_shelve = shelve.open(filename, "r")
-            input_shelve = safe_shelve(filename, "r")
-            retval = input_shelve['result']
-            input_shelve.close()
-            print "used cached value %s" % filename
-        except:
+        if os.access(filename, os.F_OK):
+            while(not os.access(done_filename, os.F_OK)):
+                time.sleep(0.1)
+                print "waiting for %s" % filename
+
+            try:
+                input_shelve = shelve.open(filename, "r", protocol=-1)
+                retval = input_shelve['result']
+                input_shelve.close()
+                print "used cached value %s" % filename
+            except:
+                raise ValueError
+        else:
             print "no cache, recalculating %s" % filename
+            outfile = shelve.open(filename, "n", protocol=-1)
+            start = time.time()
             retval = func(*args, **kwargs)
-            #outfile = shelve.open(filename, "n")
-            outfile = safe_shelve(filename, "n")
             outfile["signature"] = arghash
             outfile["filename"] = filename
             outfile["funcname"] = funcname
@@ -109,6 +80,9 @@ def memoize_persistent(func):
             outfile["kwargs"] = kwargs
             outfile["result"] = retval
             outfile.close()
+            donefile = open(done_filename, "w")
+            donefile.write("%10.15f\n" % (time.time() - start))
+            donefile.close()
 
         return retval
 
@@ -139,10 +113,12 @@ def function_wrapper(args_package):
     else:
         funcattr = globals()[funcsplit[0]]
 
+    # some voodoo to prevent lockfile collisions
+    time.sleep(random.uniform(0, 2.))
     result = funcattr(*args, **kwargs)
 
-    #outfile = shelve.open(filename, 'n')
-    outfile = safe_shelve(filename, 'n')
+    outfile = shelve.open(filename, 'n')
+    #outfile = safe_shelve(filename, 'n')
     outfile["signature"] = signature
     outfile["filename"] = filename
     outfile["funcname"] = funcname
@@ -250,8 +226,8 @@ class MemoizeBatch(object):
             # TODO: raise NotCalculated?
             # TODO: check args, kwargs with requested?
             filename = "%s/%s.shelve" % (self.directory, arghash)
-            #input_shelve = shelve.open(filename, "r")
-            input_shelve = safe_shelve(filename, "r")
+            input_shelve = shelve.open(filename, "r")
+            #input_shelve = safe_shelve(filename, "r")
             retval = input_shelve['result']
             input_shelve.close()
 
