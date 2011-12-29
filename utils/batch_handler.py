@@ -7,7 +7,11 @@ import cPickle as pickle
 import hashlib
 import re
 import shelve
+import os
+import fcntl
+import new
 import functools
+import __builtin__
 
 
 # TODO: do not print long arguments
@@ -29,7 +33,39 @@ def print_call(args_package):
     return filename
 
 
-memoize_directory = "./data_test"
+def _safe_close(self):
+    shelve.Shelf.close(self)
+    fcntl.flock(self.lckfile.fileno(), fcntl.LOCK_UN)
+    self.lckfile.close()
+
+
+def safe_shelve(filename, flag='c', protocol=-1, writeback=False, block=True,
+                lckfilename=None):
+    """Open the sheve file, createing a lockfile at filename.lck.  If
+    block is False then a IOError will be raised if the lock cannot
+    be acquired"""
+    if lckfilename == None:
+    lckfilename = filename + ".lck"
+    lckfile = __builtin__.open(lckfilename, 'w')
+
+    # Accquire the lock
+    if flag == 'r':
+    lockflags = fcntl.LOCK_SH
+    else:
+    lockflags = fcntl.LOCK_EX
+    if not block:
+        lockflags = fcntl.LOCK_NB
+    fcntl.flock(lckfile.fileno(), lockflags)
+
+    # Open the shelf and override its standard methods
+    shelf = shelve.open(filename, flag=flag, protocol=protocol, writeback=writeback)
+    shelf.close = new.instancemethod(_safe_close, shelf, shelve.Shelf)
+    shelf.lckfile = lckfile
+
+    return shelf
+
+
+memoize_directory = "/mnt/raid-project/gmrt/eswitzer/persistent_memoize/"
 def memoize_persistent(func):
     def memoize(*args, **kwargs):
         funcname = func.__name__

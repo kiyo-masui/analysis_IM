@@ -158,6 +158,42 @@ def batch_sim_run(sim_key, subtract_mean=False, degrade_resolution=False,
     caller.multiprocess_stack()
 
 
+def batch_wigglez_automock_run(mock_key, sel_key, subtract_mean=False,
+                               degrade_resolution=False,
+                               unitless=True, return_3d=False,
+                               truncate=False, window=None, n_modes=None,
+                               refinement=2, pad=5, order=2):
+
+    datapath_db = data_paths.DataPath()
+
+    outpath = datapath_db.fetch("quadratic_batch_data")
+    print "writing to: " + outpath
+    fileset = datapath_db.fetch(mock_key, silent=True, intend_read=True)
+
+    funcname = "correlate.batch_quadratic.call_xspec_run"
+    caller = batch_handler.MemoizeBatch(funcname, outpath,
+                                        generate=True, verbose=True)
+
+    for index in fileset[0]:
+        map1_key = "db:%s:%s" % (mock_key, index)
+        map2_key = "db:%s:%s" % (mock_key, index)
+        noiseinv1_key = "db:%s" % sel_key
+        noiseinv2_key = "db:%s" % sel_key
+
+        caller.execute(map1_key, map2_key,
+                       noiseinv1_key, noiseinv2_key,
+                       subtract_mean=subtract_mean,
+                       degrade_resolution=degrade_resolution,
+                       unitless=unitless,
+                       return_3d=return_3d,
+                       truncate=truncate,
+                       window=window, n_modes=n_modes,
+                       refinement=refinement,
+                       pad=pad, order=order)
+
+    caller.multiprocess_stack()
+
+
 def batch_data_run(subtract_mean=False, degrade_resolution=False,
                   unitless=True, return_3d=False,
                   truncate=False, window=None, n_modes=None,
@@ -218,9 +254,12 @@ def batch_data_run(subtract_mean=False, degrade_resolution=False,
 
     caller.multiprocess_stack()
 
+
 if __name__ == '__main__':
-    batch_physical_sim_run("simideal_15hr_physical")
-    batch_physical_sim_run("sim_15hr_physical")
+    batch_wigglez_automock_run("WiggleZ_15hr_mock", "WiggleZ_15hr_montecarlo")
+
+    #batch_physical_sim_run("simideal_15hr_physical")
+    #batch_physical_sim_run("sim_15hr_physical")
 
     # real data
     #batch_data_run()

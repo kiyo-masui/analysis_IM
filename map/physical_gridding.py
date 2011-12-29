@@ -5,8 +5,10 @@ from utils import data_paths
 from utils import units
 from simulations import corr
 from utils.cosmology import Cosmology
+from utils import batch_handler
 
 
+@batch_handler.memoize_persistent
 def physical_grid(input_array, refinement=2, pad=5, order=2):
     r"""Project from freq, ra, dec into physical coordinates
 
