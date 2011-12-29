@@ -14,15 +14,24 @@ import functools
 import __builtin__
 
 
+def short_repr(input, maxlen=256):
+    r"""return a repr() for something if it is short enough
+    could also use len(pickle.dumps()) to see if the object and not just its
+    repr is too big to bother printing.
+    """
+    reprout = repr(input)
+    return "BIG_ARG" if len(reprout) > maxlen else reprout
+
+
 # TODO: do not print long arguments
 def print_call(args_package):
     r"""Print the function and its arguments and the file in which the outputs
     are saved in the cache directory."""
     (signature, directory, funcname, args, kwargs) = args_package
 
-    kwlist = ["%s=%s" % (item, repr(kwargs[item])) for item in kwargs]
+    kwlist = ["%s=%s" % (item, short_repr(kwargs[item])) for item in kwargs]
     kwstring = ", ".join(kwlist)
-    argstring = ", ".join([repr(item) for item in args])
+    argstring = ", ".join([short_repr(item) for item in args])
 
     filename = "%s/%s.shelve" % (directory, signature)
     filename = re.sub('/+', '/', filename)
