@@ -238,8 +238,8 @@ def agg_stat_1d_pwrspec(pwr_1d):
     for index in range(n_runs):
         pwrmat_1d[index, :] = pwr_1d[index]['binavg']
 
-    mean_1d = np.mean(pwrmat_1d, axis=0)
-    std_1d = np.std(pwrmat_1d, axis=0)
+    mean_1d = np.mean(pwrmat_1d, axis=0, skipna=True)
+    std_1d = np.std(pwrmat_1d, axis=0, ddof=1, skipna=True)
     corrmat_1d = np.corrcoef(np.transpose(pwrmat_1d))
 
     return (mean_1d, std_1d, corrmat_1d)
@@ -296,8 +296,8 @@ def agg_stat_2d_pwrspec(pwr_2d, dataname='binavg'):
     for index in range(n_runs):
         pwrmat_2d[index, :, :] = pwr_2d[index][dataname]
 
-    mean_2d = np.mean(pwrmat_2d, axis=0)
-    std_2d = np.std(pwrmat_2d, axis=0)
+    mean_2d = np.mean(pwrmat_2d, axis=0, skipna=True)
+    std_2d = np.std(pwrmat_2d, axis=0, ddof=1, skipna=True)
 
     return (mean_2d, std_2d)
 

@@ -10,6 +10,7 @@ import multiprocessing
 from utils import data_paths
 import sys
 from numpy import random
+import struct
 
 
 # TODO: confirm ra=x, dec=y (thetax = 5, thetay = 3 in 15hr)
@@ -59,8 +60,14 @@ def make_simulation_set(template_file, outfile_physical,
     3. the simulation convolved by the instrumental beam plus the template
     """
     template_map = algebra.make_vect(algebra.load(template_file))
+
+    # The usual seed is not fine enough for parallel jobs
+    randsource = open("/dev/random", "rb")
+    seed = struct.unpack("I", randsource.read(4))[0]
+    #seed = abs(long(outfile_physical.__hash__()))
     (gbtsim, gbtphys, physdim) = realize_simulation(template_map,
-                                                    scenario=scenario)
+                                                    scenario=scenario,
+                                                    seed=seed)
 
     phys_map = algebra.make_vect(gbtphys, axis_names=('freq', 'ra', 'dec'))
     pshp = phys_map.shape

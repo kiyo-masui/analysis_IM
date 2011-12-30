@@ -51,7 +51,7 @@ def call_xspec_run(map1_key, map2_key,
         except ValueError:
             print "can't cut %d" % entry
 
-    print "%d of %d freq slices removed" % (len(cutlist), len(freq))
+    print "%d of %d freq slices removed" % (len(cutlist), 256)
     print freq
 
     # define the 1D spectral bins
@@ -195,9 +195,9 @@ def batch_wigglez_automock_run(mock_key, sel_key, subtract_mean=False,
 
 
 def batch_data_run(subtract_mean=False, degrade_resolution=False,
-                  unitless=True, return_3d=False,
-                  truncate=False, window=None, n_modes=None,
-                  refinement=2, pad=5, order=2, sim=False):
+                   unitless=True, return_3d=False,
+                   truncate=False, window=None, n_modes=None,
+                   refinement=2, pad=5, order=2, sim=False):
     datapath_db = data_paths.DataPath()
 
     if sim:
@@ -255,8 +255,62 @@ def batch_data_run(subtract_mean=False, degrade_resolution=False,
     caller.multiprocess_stack()
 
 
+def batch_GBTxwigglez_data_run(subtract_mean=False, degrade_resolution=False,
+                               unitless=True, return_3d=False,
+                               truncate=False, window=None, n_modes=None,
+                               refinement=2, pad=5, order=2):
+    datapath_db = data_paths.DataPath()
+
+    mapkey = "GBT_15hr_map"
+    outpath = datapath_db.fetch("quadratic_batch_data")
+
+    print "writing to: " + outpath
+
+    funcname = "correlate.batch_quadratic.call_xspec_run"
+    caller = batch_handler.MemoizeBatch(funcname, outpath,
+                                        generate=True, verbose=True)
+
+    for mode_num in range(0, 55, 5):
+        map1_key = "%s_cleaned_%dmode" % (mapkey, mode_num)
+        map2_key = "%s_cleaned_%dmode" % (mapkey, mode_num)
+        noise1_key = "%s_cleaned_%dmode" % (mapkey, mode_num)
+        noise2_key = "%s_cleaned_%dmode" % (mapkey, mode_num)
+
+        (pairlist, pairdict) = \
+                data_paths.cross_maps(map1_key, map2_key,
+                              noise1_key, noise2_key,
+                              map_suffix=";map",
+                              noise_inv_suffix=";noise_inv",
+                              cross_sym="_x_",
+                              pair_former="GBTauto_cross_pairs",
+                              ignore=['param'],
+                              tag1prefix=map1_key + "_",
+                              tag2prefix=map2_key + "_",
+                              verbose=True)
+
+        print pairlist, pairdict
+
+        for item in pairdict.keys():
+            pairrun = pairdict[item]
+            print pairrun['map1']
+            print pairrun['noise_inv1']
+            print pairdict[item].keys()
+
+            caller.execute(pairrun['map1'], "db:WiggleZ_15hr_binned_data",
+                           pairrun['noise_inv1'], "db:WiggleZ_15hr_montecarlo",
+                           subtract_mean=subtract_mean,
+                           degrade_resolution=degrade_resolution,
+                           unitless=unitless,
+                           return_3d=return_3d,
+                           truncate=truncate,
+                           window=window, n_modes=n_modes,
+                           refinement=refinement,
+                           pad=pad, order=order)
+
+    caller.multiprocess_stack()
+
+
 if __name__ == '__main__':
-    batch_wigglez_automock_run("WiggleZ_15hr_mock", "WiggleZ_15hr_montecarlo")
 
     #batch_physical_sim_run("simideal_15hr_physical")
     #batch_physical_sim_run("sim_15hr_physical")
@@ -266,10 +320,15 @@ if __name__ == '__main__':
     # modeloss sim
     #batch_data_run(sim=True)
     # ideal simulations without beam
-    #batch_sim_run("simideal_15hr")
+    batch_sim_run("simideal_15hr")
+    sys.exit()
     # vv + evo sims without beam
-    #batch_sim_run("sim_15hr")
+    batch_sim_run("sim_15hr")
     # vv + evo sims with beam
-    #batch_sim_run("sim_15hr_beam")
+    batch_sim_run("sim_15hr_beam")
     # vv + evo sims with treatments
-    #batch_sim_run("sim_15hr_beam", degrade_resolution=True, subtract_mean=True)
+    batch_sim_run("sim_15hr_beam", degrade_resolution=True, subtract_mean=True)
+
+    batch_wigglez_automock_run("WiggleZ_15hr_mock", "WiggleZ_15hr_montecarlo")
+    batch_wigglez_automock_run("WiggleZ_15hr_complete_mock", "WiggleZ_15hr_complete_separable_selection")
+    batch_GBTxwigglez_data_run()

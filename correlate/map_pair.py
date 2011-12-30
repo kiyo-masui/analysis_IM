@@ -210,19 +210,19 @@ class MapPair(ft.ClassPersistence):
         pad puts a number of padded pixels on all sides of the physical vol.
         """
 
-        self.phys_map1 = pg.physical_grid(self.map1,
+        self.phys_map1 = pg.physkiyo(pg.physical_grid(self.map1,
                                           refinement=refinement,
-                                          pad=pad, order=order)
-        self.phys_map2 = pg.physical_grid(self.map2,
+                                          pad=pad, order=order))
+        self.phys_map2 = pg.physkiyo(pg.physical_grid(self.map2,
                                           refinement=refinement,
-                                          pad=pad, order=order)
+                                          pad=pad, order=order))
 
-        self.phys_noise_inv1 = pg.physical_grid(self.noise_inv1,
+        self.phys_noise_inv1 = pg.physkiyo(pg.physical_grid(self.noise_inv1,
                                           refinement=refinement,
-                                          pad=pad, order=order)
-        self.phys_noise_inv2 = pg.physical_grid(self.noise_inv2,
+                                          pad=pad, order=order))
+        self.phys_noise_inv2 = pg.physkiyo(pg.physical_grid(self.noise_inv2,
                                           refinement=refinement,
-                                          pad=pad, order=order)
+                                          pad=pad, order=order))
 
         return
 

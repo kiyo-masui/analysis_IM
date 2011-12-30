@@ -70,8 +70,11 @@ def physical_grid(input_array, refinement=2, pad=5, order=2):
                        phys_dim[1], phys_dim[2], \
                        n[0], n[1], n[2])
 
-    phys_map = algebra.make_vect(np.zeros(n), axis_names=('freq', 'ra', 'dec'))
-    mask = np.ones_like(phys_map)
+    # this is wasteful in memory, but numpy can be pickled
+    phys_map_npy = np.zeros(n)
+    phys_map = algebra.make_vect(phys_map_npy, axis_names=('freq', 'ra', 'dec'))
+    #mask = np.ones_like(phys_map)
+    mask = np.ones_like(phys_map_npy)
 
     # TODO: should this be more sophisticated? N-1 or N?
     info = {}
@@ -120,9 +123,9 @@ def physical_grid(input_array, refinement=2, pad=5, order=2):
         interpol_grid[1, :, :] = gridx / angscale / thetax * numx + numx / 2
         interpol_grid[2, :, :] = gridy / angscale / thetay * numy + numy / 2
 
-        phys_map[i, :, :] = sp.ndimage.map_coordinates(input_array,
-                                                       interpol_grid,
-                                                       order=order)
+        phys_map_npy[i, :, :] = sp.ndimage.map_coordinates(input_array,
+                                                           interpol_grid,
+                                                           order=order)
 
         interpol_grid[1, :, :] = np.logical_or(interpol_grid[1, :, :] > numx,
                                              interpol_grid[1, :, :] < 0)
@@ -130,7 +133,14 @@ def physical_grid(input_array, refinement=2, pad=5, order=2):
                                              interpol_grid[1, :, :] < 0)
         mask = np.logical_not(np.logical_or(interpol_grid[1, :, :],
                                             interpol_grid[2, :, :]))
-        phys_map *= mask
+        phys_map_npy *= mask
+
+    return phys_map_npy, info
+
+
+def physkiyo(phys_grid_out):
+    phys_map = algebra.make_vect(phys_grid_out[0], axis_names=('freq', 'ra', 'dec'))
+    phys_map.info = phys_grid_out[1]
 
     return phys_map
 

@@ -13,15 +13,26 @@ import functools
 import anydbm
 import os
 
-
 def short_repr(input, maxlen=256):
     r"""return a repr() for something if it is short enough
     could also use len(pickle.dumps()) to see if the object and not just its
     repr is too big to bother printing.
     """
     reprout = repr(input)
-    return "BIG_ARG" if len(reprout) > maxlen else reprout
+    #return "BIG_ARG" if len(reprout) > maxlen else reprout
+    return repr(input)
 
+def rehasher(item):
+    r"""classed derived on numpy have a non-uniform way of being hashed, so
+    just call their tolist member"""
+    try:
+        infofield = tuple(sorted(item.info.items()))
+        fullarray = (item.tolist(), infofield)
+        rehashed = hashlib.sha224(pickle.dumps(fullarray)).hexdigest()
+    except:
+        rehashed = item
+
+    return rehashed
 
 # TODO: do not print long arguments
 def print_call(args_package):
@@ -45,22 +56,35 @@ def print_call(args_package):
 memoize_directory = "/mnt/raid-project/gmrt/eswitzer/persistent_memoize/"
 def memoize_persistent(func):
     r"""threadsafe shelve using flock was too annoying; here, just wait
+    note that shelve protocol=-1 does not handle Kiyo-style array metadata
+    There seems to be a race condition where two threads can open the same
+    shelve because of the finite time it takes to write the shelve. Currently
+    trying a simpler lock.
     """
     def memoize(*args, **kwargs):
         funcname = func.__name__
-        argpkl = pickle.dumps((funcname, args,
+        rehashed = [rehasher(item) for item in args]
+        argpkl = pickle.dumps((funcname, rehashed,
                                tuple(sorted(kwargs.items()))), -1)
-        arghash = hashlib.md5(argpkl).hexdigest()
+        arghash = hashlib.sha224(argpkl).hexdigest()
 
         filename = print_call((arghash, memoize_directory,
-                               funcname, args, kwargs))
+                               funcname, rehashed, kwargs))
         done_filename = filename + ".done"
+        busy_filename = filename + ".busy"
 
-        if os.access(filename, os.F_OK):
+        #if os.access(filename, os.F_OK):
+        if (os.access(done_filename, os.F_OK) or \
+            os.access(busy_filename, os.F_OK)):
+            printed = False
             while(not os.access(done_filename, os.F_OK)):
-                time.sleep(0.1)
-                print "waiting for %s" % filename
+                time.sleep(1.)
+                if not printed:
+                    print "waiting for %s" % filename
+                    printed = True
 
+            time.sleep(random.uniform(0, 2.))
+            print "ready to read %s" % filename
             try:
                 input_shelve = shelve.open(filename, "r", protocol=-1)
                 retval = input_shelve['result']
@@ -69,6 +93,9 @@ def memoize_persistent(func):
             except:
                 raise ValueError
         else:
+            busyfile = open(busy_filename, "w")
+            busyfile.write("working")
+            busyfile.close()
             print "no cache, recalculating %s" % filename
             outfile = shelve.open(filename, "n", protocol=-1)
             start = time.time()
@@ -76,13 +103,14 @@ def memoize_persistent(func):
             outfile["signature"] = arghash
             outfile["filename"] = filename
             outfile["funcname"] = funcname
-            outfile["args"] = args
+            outfile["args"] = rehashed
             outfile["kwargs"] = kwargs
             outfile["result"] = retval
             outfile.close()
             donefile = open(done_filename, "w")
             donefile.write("%10.15f\n" % (time.time() - start))
             donefile.close()
+            os.remove(busy_filename)
 
         return retval
 
@@ -117,8 +145,7 @@ def function_wrapper(args_package):
     time.sleep(random.uniform(0, 2.))
     result = funcattr(*args, **kwargs)
 
-    outfile = shelve.open(filename, 'n')
-    #outfile = safe_shelve(filename, 'n')
+    outfile = shelve.open(filename, 'n', protocol=-1)
     outfile["signature"] = signature
     outfile["filename"] = filename
     outfile["funcname"] = funcname
@@ -141,9 +168,9 @@ class MemoizeBatch(object):
     that the batch caller loops are often structurally different from the loops
     over parameters in the final consumer.
 
-    This class circumvents these issues by assigning an md5 hash to the
+    This class circumvents these issues by assigning an SHA hash to the
     arguments and writing a file by that name. If those arguments have been
-    called, it can retrieve the output. Note that these have different md5
+    called, it can retrieve the output. Note that these have different SHA
     signatures for func(arg=True): call func(arg=True) and call func()
     (even though the result will be the same.) Also, dictionaries should not
     be given as arguments because they are not sorted. Simplejson has
@@ -211,7 +238,7 @@ class MemoizeBatch(object):
         # based on: how-to-memoize-kwargs
         argpkl = pickle.dumps((self.funcname, args,
                                tuple(sorted(kwargs.items()))), -1)
-        arghash = hashlib.md5(argpkl).hexdigest()
+        arghash = hashlib.sha224(argpkl).hexdigest()
 
         if self.generate or self.regenerate:
         # TODO: if not regenerate, check to see if the result exists
@@ -226,8 +253,7 @@ class MemoizeBatch(object):
             # TODO: raise NotCalculated?
             # TODO: check args, kwargs with requested?
             filename = "%s/%s.shelve" % (self.directory, arghash)
-            input_shelve = shelve.open(filename, "r")
-            #input_shelve = safe_shelve(filename, "r")
+            input_shelve = shelve.open(filename, "r", protocol=-1)
             retval = input_shelve['result']
             input_shelve.close()
 
