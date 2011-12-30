@@ -244,10 +244,10 @@ def getpower_th(params):
 		t = (1.+(2./3.)*(f/b)+(1./5.)*(f/b)**2)
 		return t
 
-	b_opt = 1.2
-	t_opt = get_distortion(b_opt)
+	#b_opt = 1.2
+	#t_opt = get_distortion(b_opt)
 
-	b_opt = 1. 
+	b_opt = 1.2 
 	t_opt = 1.
 		
 	if params['optical']:
@@ -256,8 +256,11 @@ def getpower_th(params):
 		PKcamb[1] = PKcamb[1]*(PKcamb[0]**3)/2./3.1415926/3.1415926
 		return PKcamb
 
-	b_gbt = 1.7
-	t_gbt = get_distortion(b_gbt)
+	#b_gbt = 1.7
+	#t_gbt = get_distortion(b_gbt)
+
+	b_gbt = 1.35
+	t_gbt = 1
 
 	# Get the Tb
 	a3 = (1+z)**(-3)
