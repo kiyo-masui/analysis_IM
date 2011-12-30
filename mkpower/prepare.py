@@ -1,5 +1,23 @@
 #! /usr/bin/env python
+"""
+	This module used to convert the maps into fftbox
+	
+	----  Dec 11, 2011. Y.-CH. LI  ----
+	If the intensity map is already overdensity, the parameter 'mid' 
+	should have two elements:
+		middle part for intensity map name, and 
+		middle part for inverse noise map name.
+	The inverse noise map will be the weight for power spectrum estimation.
 
+	If the intensity map is not the overdensity, the parameter 'mid'
+	should have three elements:
+		middle part for intensity map name, 
+		middle part for inverse noise map name(or selection function), and
+		middle part for mock map name.
+		
+	
+"""
+import os
 import ctypes
 import scipy as sp
 import numpy as np
@@ -18,6 +36,8 @@ from sys import *
 import matplotlib.pyplot as plt
 import MakePower
 
+# public functions are defined in this module
+import functions
 
 pi = 3.1415926
 deg2rad = pi/180.
@@ -58,14 +78,18 @@ class Prepare(object):
 
 		# Make parent directory and write parameter file.
 		kiyopy.utils.mkparents(params['output_root'])
-		parse_ini.write_params(params, params['output_root']+'params.ini',prefix='pk_')
+		#parse_ini.write_params(params, 
+		#	params['output_root']+'params.ini',prefix='pk_')
 		hr = params['hr']
 		mid = params['mid']
 		last = params['last']
-		all_out_fname_list = []
-		all_in_fname_list = []
 		pol_str = params['polarizations'][0]
 		n_processes = params['processes']
+		out_root = params['output_root']
+
+		# make directions for fftbox saving
+		if os.path.exists(out_root+'fftbox/')==False:
+			os.mkdir(out_root+'fftbox/')
 		
 		#### Process ####
 		n_new = n_processes -1
@@ -98,11 +122,17 @@ class Prepare(object):
 						end = end + last[ii]
 					imap_fname = hr[ii] + mid[0] + end + '.npy'
 					nmap_fname = hr[ii] + mid[1] + end + '.npy'
-					#mock_fname = hr[ii] + 'mock_map_' + end + '.npy'
-					process_list[ii%n_new] = mp.Process(
-						target=self.process_map, 
-						args=(imap_fname, nmap_fname))
-						#args=(imap_fname, nmap_fname, mock_fname))
+
+					# prepare the mock maps for optical 
+					if len(mid)==3:
+						mock_fname = hr[ii] + mid[2] + end + '.npy'
+						process_list[ii%n_new] = mp.Process(
+							target=self.process_map, 
+							args=(imap_fname, nmap_fname, mock_fname))
+					else:
+						process_list[ii%n_new] = mp.Process(
+							target=self.process_map, 
+							args=(imap_fname, nmap_fname))
 					process_list[ii%n_new].start()
 		return 0
 
@@ -111,46 +141,46 @@ class Prepare(object):
 		out_root = params['output_root']
 		in_root = params['input_root']
 		
-		imap = algebra.load(in_root + imap_fname)
-		imap = algebra.make_vect(imap)
-		print imap.flatten().mean()
-		imap = imap - imap.flatten().mean()
-		if imap.axes != ('freq', 'ra', 'dec') :
-			raise ce.DataError('AXES ERROR!')
-
-		try:
-			nmap = algebra.load(in_root + nmap_fname)
-			nmap = algebra.make_vect(nmap)
-
-			bad = nmap<1.e-5*nmap.flatten().max()
-			nmap[bad] = 0.
-			non0 = nmap.nonzero()
-			#imap[non0] = imap[non0]/nmap[non0]
-		except IOError:
-			print 'NO Noise File :: Set Noise to One'
-			nmap = algebra.info_array(sp.ones(imap.shape))
-			nmap.axes = imap.axes
-			nmap = algebra.make_vect(nmap)
-		nmap.info = imap.info
-		if nmap.axes != ('freq', 'ra', 'dec') :
-			raise ce.DataError('AXES ERROR!')
-
 		if mock_fname != None:
-			mmap = algebra.info_array(
-				2.*np.random.rand(imap.shape[0],imap.shape[1], imap.shape[2])-0.5)
-			mmap.axes = imap.axes
-			mmap = algebra.make_vect(mmap)
-			box, nbox, mbox = self.fill(imap, nmap, mmap)
-			pkrm_nfname = out_root + 'fftbox_' +  mock_fname
-			algebra.save(pkrm_nfname, mbox)
+			imap, nmap, mmap = functions.getmap(
+				in_root+imap_fname, in_root+nmap_fname, in_root+mock_fname)
+			box , nbox, mbox = functions.fill(params, imap, nmap, mmap)
+			#print mmap.flatten().mean()
+			#print nmap.flatten().max()
+			#print box.flatten().max()
+
+			## get the overdencity
+			#alpha = box.flatten().sum()/mbox.flatten().sum()
+			#print alpha
+			#box = box - alpha*mbox
+			#box[nbox!=0] = box[nbox!=0]/nbox[nbox!=0]
+
+			## get the fkp weight
+			#nbox = nbox/(1.+nbox*1000)
+
+			pkrm_mfname = out_root + 'fftbox/' + 'fftbox_' +  mock_fname
+			np.save(pkrm_mfname, mbox)
+			#algebra.save(pkrm_nfname, mbox)
 		else:
-			box, nbox = self.fill(imap, nmap)
+			#box, nbox = self.fill(imap, nmap)
+			imap, nmap = functions.getmap(in_root+imap_fname, in_root+nmap_fname)
 
-		pkrm_fname = out_root + 'fftbox_' + imap_fname
-		algebra.save(pkrm_fname, box)
+			# subtract the mean value of the imaps
+			#print "--The mean value for imap is:",imap.flatten().mean(),"--"
+			imap = imap - imap.flatten().mean()
 
-		pkrm_nfname = out_root + 'fftbox_' +  nmap_fname
-		algebra.save(pkrm_nfname, nbox)
+			box , nbox = functions.fill(params, imap, nmap)
+
+			#nbox = nbox/(1.+3.e3*nbox)
+			#nbox = nbox/(1.+7.e-5*nbox)
+
+		pkrm_fname = out_root + 'fftbox/' + 'fftbox_' + imap_fname
+		np.save(pkrm_fname, box)
+		#algebra.save(pkrm_fname, box)
+
+		pkrm_nfname = out_root + 'fftbox/' + 'fftbox_' +  nmap_fname
+		np.save(pkrm_nfname, nbox)
+		#algebra.save(pkrm_nfname, nbox)
 
 #		print mmap.shape
 
@@ -163,90 +193,6 @@ class Prepare(object):
 		#print box.flatten().max()
 		#print box.flatten().min()
 
-
-	def fill(self, imap, nmap, mmap=None):
-		params = self.params
-		
-		mapshape = np.array(imap.shape)
-
-		r  = self.fq2r(imap.get_axis('freq'))
-		ra = imap.get_axis('ra')*deg2rad
-		de = imap.get_axis('dec')*deg2rad
-		ra0= ra[int(ra.shape[0]/2)]
-		ra = ra - ra0
-		dra= ra.ptp()/ra.shape[0]
-		dde= de.ptp()/de.shape[0]
-
-
-		#print r.min(), r.max()
-		#print self.xyz(ra.min(), de.min(), r.min())
-		#print self.xyz(ra.max(), de.min(), r.min())
-		#print self.xyz(ra.min(), de.max(), r.min())
-		#print self.xyz(ra.max(), de.max(), r.min())
-		#print self.xyz(ra.min(), de.min(), r.max())
-		#print self.xyz(ra.max(), de.min(), r.max())
-		#print self.xyz(ra.min(), de.max(), r.max())
-		#print self.xyz(ra.max(), de.max(), r.max())
-
-		###return 0
-
-		mapinf = [ra.min(), dra, de.min(), dde]
-		mapinf = np.array(mapinf)
-
-		box = algebra.info_array(sp.zeros(params['boxshape']))
-		box.axes = ('x','y','z')
-		box = algebra.make_vect(box)
-		
-		box_xrange = params['Xrange']
-		box_yrange = params['Yrange']
-		box_zrange = params['Zrange']
-		box_unit = params['boxunit']
-		box_disc = params['discrete']
-
-		box_x = np.arange(box_xrange[0], box_xrange[1], box_unit/box_disc)
-		box_y = np.arange(box_yrange[0], box_yrange[1], box_unit/box_disc)
-		box_z = np.arange(box_zrange[0], box_zrange[1], box_unit/box_disc)
-
-		#print box_x.shape
-		#print box_y.shape
-		#print box_z.shape
-
-		boxshape = np.array(box.shape)*box_disc
-
-		boxinf0 = [0, 0, 0]
-		boxinf0 = np.array(boxinf0)
-		boxinf1 = [boxshape[0], boxshape[1], boxshape[2]]
-		boxinf1 = np.array(boxinf1)
-
-		print "MapPrepare: Filling the FFT BOX"
-		MakePower.Filling(
-			imap, r, mapinf, box, boxinf0, boxinf1, box_x, box_y, box_z)
-
-
-		nbox = algebra.info_array(sp.zeros(params['boxshape']))
-		nbox.axes = ('x','y','z')
-		nbox = algebra.make_vect(nbox)
-
-		#nbox = algebra.info_array(sp.ones(params['boxshape']))
-		#nbox.axes = ('x','y','z')
-		#nbox = algebra.make_vect(nbox)
-
-		#print boxinf1
-		MakePower.Filling(
-			nmap, r, mapinf, nbox, boxinf0, boxinf1, box_x, box_y, box_z)
-
-
-		if mmap != None:
-			mbox = algebra.info_array(sp.zeros(params['boxshape']))
-			mbox.axes = ('x','y','z')
-			mbox = algebra.make_vect(mbox)
-			MakePower.Filling(
-				mmap, r, mapinf, mbox, boxinf0, boxinf1, box_x, box_y, box_z)
-			return box, nbox, mbox
-		else:
-			return box, nbox
-
-		#return imap, nmap
 
 	def pkrm(self, imap, nmap, fname, threshold=2.0):
 		freq = imap.get_axis('freq')/1.e6
@@ -288,45 +234,6 @@ class Prepare(object):
 			plt.savefig(fname, format='png')
 			plt.show()
 			#plt.ylim(-0.0001,0.0001)
-
-	def xyzv(self, ra, de, r, ra0=0.):
-		x = r*sin(0.5*pi-de)*cos(ra-ra0)
-		y = r*sin(0.5*pi-de)*sin(ra-ra0)
-		z = r*cos(0.5*pi-de)
-		v = r**2*sin(0.5*pi-de)
-		return x, y, z, v
-
-	def fq2r(self, freq, freq0=1.4e9 , c_H0 = 2.99e3, Omegam=0.27, Omegal=0.73):
-		"""change the freq to distence"""
-		zz =  freq0/freq - 1.
-		for i in range(0, zz.shape[0]):
-			zz[i] = c_H0*self.funcdl(zz[i], Omegam, Omegal)
-		return zz
-	
-	def discrete(self, array):
-		"""discrete the data pixel into small size"""
-		newarray = sp.zeros(self.params['discrete']*(array.shape[0]-1)+1)
-		for i in range(0, array.shape[0]-1):
-			delta = (array[i+1]-array[i])/float(self.params['discrete'])
-			for j in range(0, self.params['discrete']):
-				newarray[i*self.params['discrete']+j] = array[i] + j*delta
-		newarray[-1] = array[-1]
-		return newarray
-
-	def funcdl(self, z, omegam, omegal):
-		func = lambda z, omegam, omegal: \
-			((1.+z)**2*(1.+omegam*z)-z*(2.+z)*omegal)**(-0.5)
-		dl, dlerr = integrate.quad(func, 0, z, args=(omegam, omegal))
-	
-		if omegam+omegal>1. :
-			k = (omegam+omegal-1.)**(0.5)
-			return sin(k*dl)/k
-		elif omegam+omegal<1.:
-			k = (1.-omegam-omegal)**(0.5)
-			return sinh(k*dl)/k
-		elif omegam+omegal==1.:
-			return dl
-
 
 
 if __name__ == '__main__':

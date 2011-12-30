@@ -70,6 +70,7 @@ typedef struct{
 	double *k;
 	double *val2;
 	double *k2;
+	double kunit;
 }PK;
 
 int fillingf(FillConf *conf );

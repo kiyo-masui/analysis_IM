@@ -56,6 +56,8 @@ params_init = {
 	'Yrange' : (-6*15,6*15),
 	'Zrange' : (0.,6*15),
 
+	'resultf' : '',
+
 	'OmegaHI' : 1.e-3,
 	'Omegam' : 0.24,
 	'OmegaL' : 0.76,
@@ -63,7 +65,7 @@ params_init = {
 }
 prefix = 'nl_'
 def windowfunction(k, A):
-	return 1.e13*A[0]/(1. + (k/(1.e-3*A[1]))**2 + (k/(1.e-3*A[2]))**4)
+	return 1.e10*A[0]/(1. + (k/(1.e-3*A[1]))**2 + (k/(1.e-3*A[2]))**4)
 
 class TheoryPowerSpectrumMaker(object):
 	"""Calculate Power Spectrum"""
@@ -80,12 +82,14 @@ class TheoryPowerSpectrumMaker(object):
 		params = self.params
 		boxshape = params['boxshape']
 		boxunit = params['boxunit']
-		resultf = params['hr'][0]
-		if len(params['last']) != 0:
-			resultf = resultf + params['last'][0]
-		resultf = resultf + '-' + params['hr'][1]
-		if len(params['last']) != 0:
-			resultf = resultf + params['last'][1]
+		resultf = params['resultf']
+		if resultf=='':
+			resultf = params['hr'][0]
+			if len(params['last']) != 0:
+				resultf = resultf + params['last'][0]
+			resultf = resultf + '-' + params['hr'][1]
+			if len(params['last']) != 0:
+				resultf = resultf + params['last'][1]
 
 		# Make parent directory and write parameter file.
 		kiyopy.utils.mkparents(params['output_root'])
@@ -103,8 +107,8 @@ class TheoryPowerSpectrumMaker(object):
 		PKcamb = algebra.load(PKcamb_fname)
 
 		N = len(params['boxunitlist'])
-		yy = np.ndarray(shape=(N, 10))
-		xx = np.ndarray(shape=(N, 10))
+		yy = np.ndarray(shape=(N, 30))
+		xx = np.ndarray(shape=(N, 30))
 		for params['boxshape'], params['boxunit'], i\
 			in zip(params['boxshapelist'], params['boxunitlist'], range(N)):
 			params['plot'] = False
@@ -123,9 +127,11 @@ class TheoryPowerSpectrumMaker(object):
 			err = (y - windowfunction(x, A))**2/e**2
 			return err
 
+		print xx[0]
+		print yy[0]
 		non0 = yy[0].nonzero()
-		y = yy[0].take(non0)[0][:-10]
-		x = xx[0].take(non0)[0][:-10]
+		y = yy[0].take(non0)[0][:-15]
+		x = xx[0].take(non0)[0][:-15]
 		non0 = yy[-1].nonzero()
 		y = np.append(y, yy[-1].take(non0)[0][10:-4])
 		x = np.append(x, xx[-1].take(non0)[0][10:-4])
@@ -210,29 +216,29 @@ class TheoryPowerSpectrumMaker(object):
 		sp.save(out_root+'k_nonlPK_'+resultf, ki)
 
 		if self.plot==True:
-			#plt.figure(figsize=(6,6))
-			##print k
-			#plt.subplot('111')
+			plt.figure(figsize=(6,6))
+			#print k
+			plt.subplot('111')
 
-			##kj = sp.linspace(0,PKcamb[0][-1], num=500)
-			##KI = np.zeros(500)
-			##for j in sp.linspace(ki.min(),ki.max(), num=20):
-			##	for i in range(500):
-			##		KI[i] = K(j, kj[i])
-			##	#plt.plot(kj, KI, label=str(ki))
-			##	plt.plot(kj, KI, 'r-', linewidth=1)
+			kj = sp.linspace(0,PKcamb[0][-1], num=500)
+			KI = np.zeros(500)
+			for j in sp.linspace(ki.min(),ki.max(), num=20):
+				for i in range(500):
+					KI[i] = K(j, kj[i])
+				#plt.plot(kj, KI, label=str(ki))
+				plt.plot(kj, KI, 'r-', linewidth=1)
 
-			#plt.semilogy()
-			##plt.loglog()
-			##plt.ylim(ymin=1.e-0)	
-			#plt.xlim(xmin=0, xmax=ki.max())
-			#plt.title('Coupling Kernels')
-			#plt.xlabel('$k$')
-			#plt.ylabel('$K(k, k_i)$')
-			##plt.legend()
+			plt.semilogy()
+			#plt.loglog()
+			#plt.ylim(ymin=1.e-0)	
+			plt.xlim(xmin=0, xmax=ki.max())
+			plt.title('Coupling Kernels')
+			plt.xlabel('$k$')
+			plt.ylabel('$K(k, k_i)$')
+			plt.legend()
 
 
-			#plt.savefig(out_root+'Ki.eps', format='eps')
+			plt.savefig(out_root+'Ki.eps', format='eps')
 
 			plt.figure(figsize=(8,4))
 			plt.subplot('111')

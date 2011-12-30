@@ -2,7 +2,6 @@
 
 import scipy as sp
 import numpy as np
-#from numpy.fft import *
 import scipy.linalg as linalg
 
 from core import algebra, hist
@@ -16,6 +15,7 @@ import MakePower
 import matplotlib.pyplot as plt
 import fftw3 as FFTW
 
+import functions
 
 #dirty_map = algebra.load("15hr_41_dirty_map_I.npy")
 #dirty_map = algebra.make_vect(dirty_map)
@@ -44,6 +44,8 @@ params_init = {
 	'Yrange' : (-6*15,6*15),
 	'Zrange' : (0.,6*15),
 
+	'resultf' : '',
+
 	'hr' : (),
 	'mid' : (),
 	'polarizations' : (),
@@ -68,12 +70,7 @@ class WindowFunctionMaker(object):
 		params = self.params
 		boxshape = params['boxshape']
 		boxunit = params['boxunit']
-		resultf = params['hr'][0]
-		if len(params['last']) != 0:
-			resultf = resultf + params['last'][0]
-		resultf = resultf + '-' + params['hr'][1]
-		if len(params['last']) != 0:
-			resultf = resultf + params['last'][1]
+		resultf = functions.getresultf(params)
 		
 		FKPweight = params['FKPweight']
 		in_root = params['input_root']
@@ -89,7 +86,7 @@ class WindowFunctionMaker(object):
 			str(boxshape[0])+'x'+str(boxshape[1])+'x'+\
 			str(boxshape[2])+'x'+str(boxunit)+'_'+resultf
 
-		print WindowF_fname
+		print "Window Function Name:",WindowF_fname
 
 		try:
 			WindowF = sp.load(WindowF_fname+'.npy')
@@ -117,12 +114,7 @@ class WindowFunctionMaker(object):
 		params = self.params
 		boxshape = params['boxshape']
 		boxunit = params['boxunit']
-		resultf = params['hr'][0]
-		if len(params['last']) != 0:
-			resultf = resultf + params['last'][0]
-		resultf = resultf + '-' + params['hr'][1]
-		if len(params['last']) != 0:
-			resultf = resultf + params['last'][1]
+		resultf = functions.getresultf(params)
 		
 		FKPweight = params['FKPweight']
 		in_root = params['input_root']
@@ -145,70 +137,22 @@ class WindowFunctionMaker(object):
 		if len(params['last']) != 0:
 			end = end + params['last'][0]
 		imap_fname = in_root + hr_str + mid[0] + end + '.npy'
-		imap = algebra.load(imap_fname)
-		imap = algebra.make_vect(imap)
-		if imap.axes != ('freq', 'ra', 'dec') :
-			raise ce.DataError('AXES ERROR!')
 		nmap_fname = in_root + hr_str + mid[1] + end + '.npy'
-		try:
-			nmap = algebra.load(nmap_fname)
-			nmap = algebra.make_vect(nmap)
-
-			bad = nmap<1.e-5*nmap.flatten().max()
-			nmap[bad] = 0.
-			non0 = nmap.nonzero()
-			#imap[non0] = imap[non0]/nmap[non0]
-		except IOError:
-			print 'NO Noise File :: Set Noise to One'
-			nmap = algebra.info_array(sp.ones(imap.shape))
-			nmap.axes = imap.axes
-			nmap = algebra.make_vect(nmap)
-		nmap.info = imap.info
-		if FKPweight:
-			for i in range(nmap.shape[0]):
-				nmap[i] = 1./(1.+nmap[i]*fkpp)
-				#nmap[i] = nmap[i]/(1.+nmap[i]*fkpp)
-
+		imap, nmap = functions.getmap(imap_fname, nmap_fname)
 
 		hr_str = params['hr'][1]
 		end = pol_str
 		if len(params['last']) != 0:
 			end = end + params['last'][1]
+		imap_fname = in_root + hr_str + mid[0] + end + '.npy'
 		nmap_fname = in_root + hr_str + mid[1] + end + '.npy'
-		try:
-			nmap2 = algebra.load(nmap_fname)
-			nmap2 = algebra.make_vect(nmap2)
-	
-			bad = nmap2<1.e-5*nmap2.flatten().max()
-			nmap2[bad] = 0.
-			non0 = nmap2.nonzero()
-		except IOError:
-			print 'NO Noise File :: Set Noise to One'
-			nmap2 = algebra.info_array(sp.ones(imap.shape))
-			nmap2.axes = imap.axes
-			nmap2 = algebra.make_vect(nmap2)
-		if FKPweight:
-			for i in range(nmap.shape[0]):
-				nmap2[i] = 1./(1.+nmap2[i]*fkpp)
-				#nmap2[i] = nmap2[i]/(1.+nmap2[i]*fkpp)
+		imap, nmap2 = functions.getmap(imap_fname, nmap_fname)
 
+		weight, weight2 = functions.fill(params, nmap, nmap2)
 
-		weight, weight2 = self.fill(nmap, nmap2)
-
-		#MakePower.Filling(nmap, weight, r, ra, de, boxinf, mapinf)
-		#MakePower.Filling(nmap2, weight2, r, ra, de, boxinf, mapinf)
-		#weight_fname = in_root + 'Weight_' + resultf + '.npy'
-		#weight = algebra.load(weight_fname)
-		#weight = algebra.make_vect(weight)
-
-		#weight_fname = in_root + 'Weight2_' + resultf + '.npy'
-		#weight2 = algebra.load(weight_fname)
-		#weight2 = algebra.make_vect(weight2)
-		
 		normal = (weight**2).flatten().sum()
 		normal2 = (weight2**2).flatten().sum()
 		normal = sqrt(normal)*sqrt(normal2)
-
 
 		print "WindowFunctionMaker: FFTing "
 		inputa = np.zeros(params['boxshape'], dtype=complex)
@@ -230,8 +174,8 @@ class WindowFunctionMaker(object):
 		fftbox = (outputa*(outputb.conjugate())).real
 		fftbox = fftbox*V/normal
 
-		WindowF = np.zeros(40)
-		k = np.zeros(40)
+		WindowF = np.zeros(30)
+		k = np.logspace(log10(1./params['boxshape'][0]), log10(sqrt(3)), num=30)
 		WindowF2 = np.zeros(shape=(10, 10))
 		k2 = np.zeros(shape=(2, 10))
 		MakePower.Make(fftbox, WindowF, k, WindowF2, k2)
@@ -242,76 +186,6 @@ class WindowFunctionMaker(object):
 		#WindowF2 = WindowF2#/V
 
 		return WindowF, k
-
-	def fill(self, imap, nmap):
-		params = self.params
-		
-		mapshape = np.array(imap.shape)
-
-		r  = self.fq2r(imap.get_axis('freq'))
-		ra = imap.get_axis('ra')*deg2rad
-		de = imap.get_axis('dec')*deg2rad
-		ra0= ra[int(ra.shape[0]/2)]
-		ra = ra - ra0
-		dra= ra.ptp()/ra.shape[0]
-		dde= de.ptp()/de.shape[0]
-
-
-		#print r.min(), r.max()
-		#print self.xyz(ra.min(), de.min(), r.min())
-		#print self.xyz(ra.max(), de.min(), r.min())
-		#print self.xyz(ra.min(), de.max(), r.min())
-		#print self.xyz(ra.max(), de.max(), r.min())
-		#print self.xyz(ra.min(), de.min(), r.max())
-		#print self.xyz(ra.max(), de.min(), r.max())
-		#print self.xyz(ra.min(), de.max(), r.max())
-		#print self.xyz(ra.max(), de.max(), r.max())
-
-		###return 0
-
-		mapinf = [ra.min(), dra, de.min(), dde]
-		mapinf = np.array(mapinf)
-
-		box = algebra.info_array(sp.zeros(params['boxshape']))
-		box.axes = ('x','y','z')
-		box = algebra.make_vect(box)
-		
-		box_xrange = params['Xrange']
-		box_yrange = params['Yrange']
-		box_zrange = params['Zrange']
-		box_unit = params['boxunit']
-		box_disc = params['discrete']
-
-		box_x = np.arange(box_xrange[0], box_xrange[1], box_unit/box_disc)
-		box_y = np.arange(box_yrange[0], box_yrange[1], box_unit/box_disc)
-		box_z = np.arange(box_zrange[0], box_zrange[1], box_unit/box_disc)
-
-		#print box_x.shape
-		#print box_y.shape
-		#print box_z.shape
-
-		boxshape = np.array(box.shape)*box_disc
-
-		boxinf0 = [0, 0, 0]
-		boxinf0 = np.array(boxinf0)
-		boxinf1 = [boxshape[0], boxshape[1], boxshape[2]]
-		boxinf1 = np.array(boxinf1)
-
-		print "MapPrepare: Filling the FFT BOX"
-		MakePower.Filling(
-			imap, r, mapinf, box, boxinf0, boxinf1, box_x, box_y, box_z)
-
-
-		nbox = algebra.info_array(sp.zeros(params['boxshape']))
-		nbox.axes = ('x','y','z')
-		nbox = algebra.make_vect(nbox)
-
-
-		MakePower.Filling(
-			nmap, r, mapinf, nbox, boxinf0, boxinf1, box_x, box_y, box_z)
-
-		#return imap, nmap
-		return box, nbox
 
 	def xyz(self, ra, de, r, ra0=0.):
 		x = r*sin(0.5*pi-de)*cos(ra-ra0)

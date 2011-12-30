@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 import multiprocessing as mp
 import MakePower
 
+import functions
+
 pi = 3.1415926
 deg2rad = pi/180.
 
@@ -73,27 +75,14 @@ class JackKnifeErrorMap(object):
 			print 'Making JK Map for:' + hr_str[:-1]
 			#imap_fname = in_root + hr_str + 'dirty_map_' + pol_str + '.npy'
 			imap_fname = in_root + hr_str + mid[0] + end + '.npy'
-			imap = algebra.load(imap_fname)
-			imap = algebra.make_vect(imap)
-			imap = imap - imap.flatten().mean()
-			if imap.axes != ('freq', 'ra', 'dec') :
-				raise ce.DataError('AXES ERROR!')
-
-			imap_fname = in_root + hr_str + mid[1] + end + '.npy'
-			try:
-				nmap = algebra.load(imap_fname)
-				nmap = algebra.make_vect(nmap)
-				if nmap.axes != ('freq', 'ra', 'dec') :
-					raise ce.DataError('AXES ERROR!')
-			except IOError:
-				print 'NO Noise File :: Set Noise to One'
-				nmap = algebra.info_array(sp.ones(imap.shape))
-				nmap.axes = imap.axes
-				nmap = algebra.make_vect(nmap)
-			nmap.info = imap.info
-			if nmap.axes != ('freq', 'ra', 'dec') :
-				raise ce.DataError('AXES ERROR!')
-
+			nmap_fname = in_root + hr_str + mid[1] + end + '.npy'
+			if len(mid)==3:
+				mmap_fname = in_root + hr_str + mid[2] + end + '.npy'
+				imap, nmap, mmap = \
+					functions.getmap(imap_fname, nmap_fname, mmap_fname)
+			else:
+				imap, nmap = functions.getmap(imap_fname, nmap_fname)
+				
 			shape = np.array(imap.shape)
 			print shape
 			begin0=0
@@ -142,9 +131,9 @@ class JackKnifeErrorMap(object):
 			if n_new <=1:
 				for ii in range(n_map):
 					jkmap_fname = \
-						out_root+hr_str+'jk'+str(ii)+mid[0]+end+'.npy'
+						out_root+hr_str+'jk%03d'%ii+mid[0]+end+'.npy'
 					jknmap_fname = \
-						out_root+hr_str+'jk'+str(num)+mid[1]+end+'.npy'
+						out_root+hr_str+'jk%03d'%ii+mid[1]+end+'.npy'
 					
 					self.process_map(
 						list_abandon[ii], imap, nmap, jkmap_fname, jknmap_fname)
@@ -160,22 +149,36 @@ class JackKnifeErrorMap(object):
 								+ str(process_list[ii%n_new].exitcode))
 					if ii < n_map:
 						jkmap_fname = \
-							hr_str+'jk'+str(ii)+mid[0]+end+'.npy'
+							hr_str+'jk%03d'%ii+mid[0]+end+'.npy' 
 						jknmap_fname = \
-							hr_str+'jk'+str(ii)+mid[1]+end+'.npy'
-						process_list[ii%n_new] = mp.Process(
-							target=self.process_map, args=(list_abandon[ii],
-								imap, nmap, jkmap_fname, jknmap_fname))
+							hr_str+'jk%03d'%ii+mid[1]+end+'.npy' 
+						if len(mid)==3:
+							jkmmap_fname = \
+								hr_str+'jk%03d'%ii+mid[2]+end+'.npy' 
+							process_list[ii%n_new] = mp.Process(
+								target=self.process_map, args=(list_abandon[ii],
+									imap, nmap, jkmap_fname, jknmap_fname,
+									mmap, jkmmap_fname))
+						else:
+							process_list[ii%n_new] = mp.Process(
+								target=self.process_map, args=(list_abandon[ii],
+									imap, nmap, jkmap_fname, jknmap_fname))
 						process_list[ii%n_new].start()
 
 
 
 
-	def process_map(self, abandon, imap, nmap, jkmap_fname, jknmap_fname):
+	def process_map(self, abandon, imap, nmap, jkmap_fname, jknmap_fname, 
+		mmap=None, jkmmap_fname=None):
+		print jkmap_fname
+		print jknmap_fname
+		if mmap!=None:
+			print jkmmap_fname
 		params = self.params
 		out_root = params['output_root']
 		jkmap = imap.copy()
 		njkmap = nmap.copy()
+		mjkmap = mmap.copy()
 
 		begin0 = abandon[0]
 		stop0  = abandon[1]
@@ -189,11 +192,20 @@ class JackKnifeErrorMap(object):
 				for k in range(begin2, stop2):
 					jkmap[i][j][k] = 0.
 					njkmap[i][j][k] = 0.
+					if mmap!=None:
+						mjkmap[i][j][k] = 0.
 
-		box, nbox = self.fill(jkmap, njkmap)
+		if mmap!=None:
+			box, nbox, mbox = functions.fill(params, jkmap, njkmap, mjkmap)
+			np.save(out_root + 'fftbox/fftbox_' + jkmmap_fname, mbox)
+		else:
+			box, nbox = functions.fill(params, jkmap, njkmap)
 
-		algebra.save(out_root + 'fftbox_' + jkmap_fname, box)
-		algebra.save(out_root + 'fftbox_' + jknmap_fname, nbox)
+		np.save(out_root + 'fftbox/fftbox_' + jkmap_fname, box)
+		np.save(out_root + 'fftbox/fftbox_' + jknmap_fname, nbox)
+
+		#algebra.save(out_root + 'fftbox_' + jkmap_fname, box)
+		#algebra.save(out_root + 'fftbox_' + jknmap_fname, nbox)
 		
 	def fill(self, imap, nmap):
 		params = self.params

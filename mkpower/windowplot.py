@@ -16,6 +16,8 @@ import MakePower
 import matplotlib.pyplot as plt
 import fftw3 as FFTW
 
+import functions
+
 #dirty_map = algebra.load("15hr_41_dirty_map_I.npy")
 #dirty_map = algebra.make_vect(dirty_map)
 
@@ -38,6 +40,7 @@ params_init = {
 	'FKPweight' : False,
 	'boxshape' :((),),
 	'boxunit' : 4,
+	'resultf' : ''
 }
 prefix = 'wpt_'
 
@@ -57,12 +60,7 @@ class WindowFunctionPlot(object):
 		boxunit = params['boxunit']
 		input_root = params['input_root']
 
-		resultf = params['hr'][0]
-		if len(params['last']) != 0:
-			resultf = resultf + params['last'][0]
-		resultf = resultf + '-' + params['hr'][1]
-		if len(params['last']) != 0:
-			resultf = resultf + params['last'][1]
+		resultf = functions.getresultf(params)
 
 		FKPweight = params['FKPweight']
 

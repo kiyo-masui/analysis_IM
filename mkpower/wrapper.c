@@ -161,10 +161,11 @@ static PyObject * Make(PyObject *self, PyObject *args){
 	PyArrayObject *Pypk2;
 	PyArrayObject *Pyk2;
 
-	if(!PyArg_ParseTuple(args, "O!O!O!O!O!", 
+	if(!PyArg_ParseTuple(args, "O!O!O!O!O!d", 
 		&PyArray_Type, &Pyfftbox, 
 		&PyArray_Type, &Pypk, &PyArray_Type, &Pyk,
-		&PyArray_Type, &Pypk2, &PyArray_Type, &Pyk2))
+		&PyArray_Type, &Pypk2, &PyArray_Type, &Pyk2,
+		&pk->kunit))
 		return NULL;
 	fft->dim = Pyfftbox->nd;
 	//printf("%d \n", fft->dim);
@@ -181,6 +182,8 @@ static PyObject * Make(PyObject *self, PyObject *args){
 	pk->Nv = Pypk2->dimensions[1];
 	pk->val2 = (double*)Pypk2->data;
 	pk->k2 = (double*)Pyk2->data;
+	//printf("kunit = %f\n", pk->kunit);
+	//printf("knum = %d\n", pk->N);
 	makepk(fft, pk);
 	return Py_BuildValue("i", 0);
 }

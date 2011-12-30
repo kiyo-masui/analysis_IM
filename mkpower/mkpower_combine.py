@@ -18,15 +18,6 @@ import mkpower
 #from mpi4py import MPI
 
 
-#dirty_map = algebra.load("15hr_41_dirty_map_I.npy")
-#dirty_map = algebra.make_vect(dirty_map)
-
-#print dirty_map.mean()
-#print dirty_map.axes
-#
-#fq = dirty_map.get_axis('freq')/1.0e6
-#print fq.size, fq[0]
-
 pi = 3.1415926
 deg2rad = pi/180.
 
@@ -43,7 +34,8 @@ params_init = {
 	'last' : (),
 	'output_root' : '../../../powerresult/',
 
-	'cllist' : None,
+	'cldir' : '',
+	'cllist' : (),
 
 	'boxshape' : (128,128,128),
 	'boxunit' : 15., # in unit Mpc
@@ -52,21 +44,27 @@ params_init = {
 	'Yrange' : (-64*15,64*15),
 	'Zrange' : (0.,128*15),
 	'kbinNum' : 20,
-	'kmin' : None,
-	'kmax' : None,
+	'kmin' : -1,
+	'kmax' : -1,
 
 	'FKPweight' : False,
+	'FKPpk' : 1.e-3,
+	'jkerror' : False,
+	'sme' : True,
 }
 prefix = 'pkc_'
 
-class PowerSpectrumMaker(object):
+
+class PowerSpectrumMaker(mkpower.PowerSpectrumMaker):
 	"""Calculate The Power Spectrum"""
 	B = []
 	Bk = []
+	q = mp.JoinableQueue()
 
 	def __init__(self, parameter_file_or_dict=None, feedback=1):
 		# Read in the parameters.
-		self.params = parse_ini.parse(parameter_file_or_dict, params_init, prefix=prefix, feedback=feedback)
+		self.params = parse_ini.parse(parameter_file_or_dict, 
+			params_init, prefix=prefix, feedback=feedback)
 
 		self.feedback=feedback
 	
@@ -78,15 +76,8 @@ class PowerSpectrumMaker(object):
 
 		params = self.params
 		resultf = params['resultf']
-		#resultf = params['hr'][0]
-		#if len(params['last']) != 0:
-		#	resultf = resultf + params['last'][0]
-		#resultf = resultf + '-' + params['hr'][1]
-		#if len(params['last']) != 0:
-		#	resultf = resultf + params['last'][1]
 
 		# Make parent directory and write parameter file.
-		parse_ini.write_params(params, params['output_root']+'params.ini',prefix='pk_')
 		in_root = params['input_root']
 		out_root = params['output_root']
 		mid = params['mid']
@@ -94,12 +85,11 @@ class PowerSpectrumMaker(object):
 		FKPweight = params['FKPweight']
 		n_processes = params['processes']
 
-		if params['cllist']!=None:
+		if params['cllist']!=():
 			# Read in the bias calibration data
-			self.B = sp.load(params['input_root']+
-				'Bias_Be_'+params['resultf'][:-4]+'_12simmaps.npy')
-			self.Bk = sp.load(params['input_root']+
-				'Bias_k_'+params['resultf'][:-4]+'_12simmaps.npy')
+			#self.B = sp.load(params['cldir']+'b_each_bias.npy')
+			self.B = sp.load(params['cldir']+'b_bias.npy')
+			self.Bk = sp.load(params['cldir']+'k_bias.npy')
 			#print self.B
 
 
@@ -111,8 +101,6 @@ class PowerSpectrumMaker(object):
 		kmin = params['kmin']
 		kmax = params['kmax']
 		PK = np.zeros(shape=(n_map,kbn))
-
-		self.q = mp.JoinableQueue()
 
 		if n_new <= 0:
 			for ii in range(n_map):
@@ -135,21 +123,49 @@ class PowerSpectrumMaker(object):
 					process_list[ii%n_new].start()
 
 		if FKPweight:
-			sp.save(params['output_root']+\
-				'PKeach_fkp_' + resultf, PK)
+			if params['jkerror']:
+				sp.save(params['output_root']+resultf+'_p_each_jk_fkp', PK)
+			else:
+				sp.save(params['output_root']+resultf+'_p_each_fkp', PK)
 		else:
-			sp.save(params['output_root']+'PKeach_' + resultf, PK)
+			if params['jkerror']:
+				sp.save(params['output_root']+resultf+'_p_each_jk', PK)
+			else:
+				sp.save(params['output_root']+resultf+'_p_each', PK)
 		#PKmean = sp.load(params['input_root'] + 'PK.npy')
+		print PK
 		PKmean = PK.mean(axis=0)
-		PK[:] = (PK[:]-PKmean)**2
-		PKvar = np.sum(PK, axis=0)
-		PKvar = PKvar/n_map
-		PKvar = np.sqrt(PKvar)
+		PKvar = PK.std(axis=0)
+		if params['jkerror']:
+			print '\tJackKnife Error:'
+			PKvar = PKvar*sqrt((n_map-1))
+		elif params['sme']:
+			print '\tUsing the Standard Deviation of Sample Mean as error'
+			PKvar = PKvar/sqrt(n_map)
+		print PKvar
+			
+
+		#print 
+		#print '===power before cal==='
+		#print PKmean
+		#print PKvar
+		if params['cllist']!=():
+			#print 
+			#print '=== cal==='
+			#print self.B
+			PKmean = PKmean*self.B
+			PKvar  = PKvar*self.B
+		#print 
+		#print '===power after cal==='
+		#print PKmean
+		#print PKvar
+		print 
+		print '===power after cal==='
 		print PKmean
 		print PKvar
 
 		kunit = 2.*pi/(params['boxunit'])
-		if (kmin==None) or (kmax==None):
+		if (kmin==-1) or (kmax==-1):
 			k = np.logspace(
 				log10(1./params['boxshape'][0]), log10(sqrt(3)), num=kbn+1)
 		else:
@@ -158,39 +174,41 @@ class PowerSpectrumMaker(object):
 			k = np.logspace(log10(kmin), log10(kmax), num=kbn+1)
 		k = k*2.*pi/params['boxunit']
 		k = k[:-1]
-		sp.save(params['output_root']+\
-			'k_combined_' + resultf, k)
+		sp.save(params['output_root']+resultf+'_k_combined', k)
 		if FKPweight:
-			sp.save(params['output_root']+\
-				'PKvar_combined_fkp_' + resultf, PKvar)
-			sp.save(params['output_root']+\
-				'PK_combined_fkp_' + resultf, PKmean)
+			if params['jkerror']:
+				sp.save(params['output_root']+resultf+'_p_var_jk_fkp', PKvar)
+			else:
+				sp.save(params['output_root']+resultf+'_p_var_combined_fkp', PKvar)
+				sp.save(params['output_root']+resultf+'_p_combined_fkp', PKmean)
 		else:
-			sp.save(params['output_root']+\
-				'PKvar_combined_' + resultf, PKvar)
-			sp.save(params['output_root']+\
-				'PK_combined_' + resultf, PKmean)
+			if params['jkerror']:
+				sp.save(params['output_root']+resultf+'_p_var_jk', PKvar)
+			else:
+				sp.save(params['output_root']+resultf+'_p_var_combined', PKvar)
+				sp.save(params['output_root']+resultf+'_p_combined', PKmean)
 	
-	def findbias(self, hr, last, cllist, B):
-
-		def findidx(aa):
-			idx=('A', 'B', 'C', 'D')
-			for s in idx:
-				if aa.find(s)!=-1:
-					return s
-
-		bias = np.ones(B.shape[1])
-
-		for i in range(len(hr)):
-			idx = findidx(hr[i]) + findidx(last[i])
-			#print idx
-			clidx = cllist.index(idx)
-			bias = bias*np.sqrt(B[clidx])
-			#print bias
-			return bias
-
-
-		
+#	def findbias(self, hr, last, cllist, B):
+#
+#		def findidx(aa):
+#			idx=('A', 'B', 'C', 'D')
+#			for s in idx:
+#				if aa.find(s)!=-1:
+#					return s
+#			return 'NO'
+#
+#		bias = np.ones(B.shape[1])
+#
+#		for i in range(len(hr)):
+#			idx = findidx(hr[i]) + findidx(last[i])
+#			print idx
+#			if idx=='NONO':
+#				print 'no bias found'
+#				continue
+#			clidx = cllist.index(idx)
+#			bias = bias*np.sqrt(B[clidx])
+#			#print bias
+#		return bias
 
 
 	def process_map(self, mapnum, rank):
@@ -198,17 +216,16 @@ class PowerSpectrumMaker(object):
 		params['hr'] = (params['hrlist'][mapnum][0],params['hrlist'][mapnum][1])
 		params['last'] =(params['ltlist'][mapnum][0],params['ltlist'][mapnum][1])
 
-		if params['cllist']!=None:
-			bias = self.findbias(params['hr'], 
-				params['last'], params['cllist'], self.B)
+		PK, k, PK2, k2 = self.GetPower()
+		print PK
 
-		kiyopy.utils.mkparents(params['output_root'])
-		inifile = params['output_root']+ 'rank' + str(rank) +'params.ini'
-		parse_ini.write_params(params, inifile ,prefix='pk_')
-		PK = mkpower.PowerSpectrumMaker(
-			inifile, feedback=self.feedback).execute()
-		if params['cllist']!=None:
-			PK = PK*bias
+#		if params['cllist']!=():
+#			bias = self.findbias(params['hr'], 
+#				params['last'], params['cllist'], self.B)
+#
+#		if params['cllist']!=():
+#			PK = PK*bias
+
 		self.q.put_nowait(PK)
 
 #		jkbin = int(params['jknumber']/size)

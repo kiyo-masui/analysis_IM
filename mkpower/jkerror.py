@@ -15,6 +15,8 @@ from math import *
 from sys import *
 import matplotlib.pyplot as plt
 import mkpower
+import mkpower_combine
+import mkpower_wigglez
 from mpi4py import MPI
 
 
@@ -33,13 +35,21 @@ deg2rad = pi/180.
 params_init = {
 	'processes' : 1,
 	'plot' : False,
+	'resultf' : '',
+	'cllist' : (),
 	'input_root' : '../../../jkmap/map/',
 	'jknumber' : 9,
+	'hrlist' : (),
+	'ltlist' : (),
 	'hr' : ('15hr_40-41-43_','15hr_42_',),
 	'mid' : ('dirty_map_',),
 	'polarizations' : ('I',),
 	'last' : (),
 	'output_root' : '../../../powerresult/',
+
+	'jkerror' : True,
+	'kmin' : -1,
+	'kmax' : 1,
 
 	'boxshape' : (128,128,128),
 	'boxunit' : 15., # in unit Mpc
@@ -50,10 +60,11 @@ params_init = {
 	'kbinNum' : 20,
 
 	'FKPweight' : False,
+	'FKPpk' : 1.e-3,
 }
 prefix = 'jk_'
 
-class JackKnifeError(object):
+class JackKnifeError(mkpower_wigglez.PowerSpectrumMaker):
 	"""Calculate The JackKnifeErrot for Power Spectrum"""
 
 	def __init__(self, parameter_file_or_dict=None, feedback=1):
@@ -62,92 +73,90 @@ class JackKnifeError(object):
 
 		self.feedback=feedback
 	
-	def execute(self, nprocesses=1):
-		
-		comm = MPI.COMM_WORLD
-		rank = comm.Get_rank()
-		size = comm.Get_size()
-
-		params = self.params
-		resultf = params['hr'][0]
-		if len(params['last']) != 0:
-			resultf = resultf + params['last'][0]
-		resultf = resultf + '-' + params['hr'][1]
-		if len(params['last']) != 0:
-			resultf = resultf + params['last'][1]
-
-		# Make parent directory and write parameter file.
-		parse_ini.write_params(params, params['output_root']+'params.ini',prefix='pk_')
-		in_root = params['input_root']
-		out_root = params['output_root']
-		mid = params['mid']
-
-		FKPweight = params['FKPweight']
-		n_processes = params['processes']
-
-		#### Process ####
-		n_new = n_processes - 1
-		n_map = params['jknumber']
-
-		kbn = params['kbinNum']
-		PK = np.zeros(shape=(n_map,kbn))
-
-		self.q = mp.JoinableQueue()
-
-		if n_new <= 0:
-			for ii in range(n_map):
-				self.process_map(ii, PK[ii])
-		elif n_new > 32:
-			raise ValueError('Process limit is 32')
-		else:
-			process_list = range(n_new)
-			for ii in xrange(n_map + n_new):
-				if ii >= n_new:
-					PK[ii-n_new] = self.q.get()
-					process_list[ii%n_new].join()
-					if process_list[ii%n_new].exitcode != 0:
-						raise RuntimeError("A thred faild with exit code"
-							+ str(process_list[ii%n_new].exitcode))
-				if ii < n_map:
-					process_list[ii%n_new] = mp.Process(
-						target=self.process_map, 
-						args=(ii, ii%n_new))
-					process_list[ii%n_new].start()
-
-		if FKPweight:
-			sp.save(params['output_root']+\
-				'PKjk_fkp_' + resultf, PK)
-		else:
-			sp.save(params['output_root']+'PKjk_' + resultf, PK)
-		#PKmean = sp.load(params['input_root'] + 'PK.npy')
-		PKmean = PK.mean(axis=0)
-		PK[:] = (PK[:]-PKmean)**2
-		PKvar = np.sum(PK, axis=0)
-		PKvar = PKvar*(params['jknumber']-1)/params['jknumber']
-		PKvar = np.sqrt(PKvar)
-		print PKvar
-		if FKPweight:
-			sp.save(params['output_root']+\
-				'PKvar_fkp_' + resultf, PKvar)
-		else:
-			sp.save(params['output_root']+\
-				'PKvar_' + resultf, PKvar)
-
-
-
-
-	def process_map(self, jknum, rank):
-		params = self.params
-		mid = params['mid']
-		params['mid'] = ('jk'+str(jknum)+mid[0], 'jk'+str(jknum)+mid[1])
-
-		kiyopy.utils.mkparents(params['output_root'])
-		inifile = params['output_root']+ 'rank' + str(rank) +'params.ini'
-		parse_ini.write_params(params, inifile ,prefix='pk_')
-		PK = mkpower.PowerSpectrumMaker(
-			inifile, feedback=self.feedback).execute()
-		self.q.put_nowait(PK)
-
+#	def execute(self, nprocesses=1):
+#		
+#		comm = MPI.COMM_WORLD
+#		rank = comm.Get_rank()
+#		size = comm.Get_size()
+#
+#		params = self.params
+#		resultf = params['hr'][0]
+#		if len(params['last']) != 0:
+#			resultf = resultf + params['last'][0]
+#		resultf = resultf + '-' + params['hr'][1]
+#		if len(params['last']) != 0:
+#			resultf = resultf + params['last'][1]
+#
+#		# Make parent directory and write parameter file.
+#		parse_ini.write_params(params, params['output_root']+'params.ini',prefix='pk_')
+#		in_root = params['input_root']
+#		out_root = params['output_root']
+#		mid = params['mid']
+#
+#		FKPweight = params['FKPweight']
+#		n_processes = params['processes']
+#
+#		#### Process ####
+#		n_new = n_processes - 1
+#		n_map = params['jknumber']
+#
+#		kbn = params['kbinNum']
+#		PK = np.zeros(shape=(n_map,kbn))
+#
+#		self.q = mp.JoinableQueue()
+#
+#		if n_new <= 0:
+#			for ii in range(n_map):
+#				self.process_map(ii, PK[ii])
+#		elif n_new > 32:
+#			raise ValueError('Process limit is 32')
+#		else:
+#			process_list = range(n_new)
+#			for ii in xrange(n_map + n_new):
+#				if ii >= n_new:
+#					PK[ii-n_new] = self.q.get()
+#					process_list[ii%n_new].join()
+#					if process_list[ii%n_new].exitcode != 0:
+#						raise RuntimeError("A thred faild with exit code"
+#							+ str(process_list[ii%n_new].exitcode))
+#				if ii < n_map:
+#					process_list[ii%n_new] = mp.Process(
+#						target=self.process_map, 
+#						args=(ii, ii%n_new))
+#					process_list[ii%n_new].start()
+#
+#		if FKPweight:
+#			sp.save(params['output_root']+resultf+'_p_jk_fkp' , PK)
+#		else:
+#			sp.save(params['output_root']+resultf+'_p_jk' , PK)
+#
+#		#PKmean = sp.load(params['input_root'] + 'PK.npy')
+#		PKmean = PK.mean(axis=0)
+#		PK[:] = (PK[:]-PKmean)**2
+#		PKvar = np.sum(PK, axis=0)
+#		PKvar = PKvar*(params['jknumber']-1)/params['jknumber']
+#		PKvar = np.sqrt(PKvar)
+#		print PKvar
+#		if FKPweight:
+#			sp.save(params['output_root']+resultf+'_p_var_jk_fkp' , PKvar)
+#		else:
+#			sp.save(params['output_root']+resultf+'_p_var_jk' , PKvar)
+#
+#
+#
+#
+#	def process_map(self, jknum, rank):
+#		params = self.params
+#		mid = params['mid']
+#		params['mid'] = ('jk'+str(jknum)+mid[0], 'jk'+str(jknum)+mid[1])
+#
+#		kiyopy.utils.mkparents(params['output_root'])
+#		inifile = params['output_root']+ 'rank' + str(rank) +'params.ini'
+#		parse_ini.write_params(params, inifile ,prefix='pk_')
+#		PK = mkpower.PowerSpectrumMaker(
+#			inifile, feedback=self.feedback).execute()
+#		self.q.put_nowait(PK)
+#
 #		jkbin = int(params['jknumber']/size)
 #		jk = np.array(range(jkbin))
 #		jk = (rank*jkbin)+jk

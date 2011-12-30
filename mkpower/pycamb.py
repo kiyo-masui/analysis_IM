@@ -3,7 +3,7 @@
 import scipy as sp
 import numpy as np
 import scipy.linalg as linalg
-import os
+import os, shutil
 from math import *
 from sys import *
 import matplotlib.pyplot as plt
@@ -44,7 +44,7 @@ params_init = {
 	'omch2'          : 0.112,
 	'omnuh2'         : 0,
 	'omk'            : 0,
-	'hubble'         : 70.2,
+	'hubble'         : 72.0,
 	'w'              : -1,
 	'cs2_lam'        : 1,
 	'temp_cmb'           : 2.725,
@@ -129,7 +129,8 @@ class CAMB(object):
 
 	def __init__(self, parameter_file_or_dict=None, feedback=2):
 		# Read in the parameters.
-		self.params = parse_ini.parse(parameter_file_or_dict, params_init, prefix=prefix, feedback=feedback)
+		self.params = parse_ini.parse(parameter_file_or_dict, 
+			params_init, prefix=prefix, feedback=feedback)
 
 		self.feedback=feedback
 
@@ -140,7 +141,11 @@ class CAMB(object):
 		params['transfer_redshift(1)'] = params['transfer_redshift']
 
 
-		inifilename= params['output_root'] + 'params.ini'
+		#inidir = params['output_root'] + 'cambio/'
+		inidir = params['output_root']
+		if os.path.exists(inidir)==False:
+			os.mkdir(inidir)
+		inifilename= inidir + 'params.ini'
 		inifile = open(inifilename, 'w')
 		#parse_ini.write_params(params, inifile ,prefix='')
 		try:
@@ -151,10 +156,11 @@ class CAMB(object):
 		cambpath = os.getenv('CAMBPATH') + 'camb'
 
 		os.system(cambpath + ' ' + inifilename)
+		#os.chdir(params['output_root'])
 
 		P = []
 		k = []
-		fname = params['output_root'] + '_matterpower.dat'
+		fname = inidir + '_matterpower.dat'
 		f = open(fname, 'r')
 		data = f.readlines()
 		for line in data:
@@ -167,7 +173,7 @@ class CAMB(object):
 		PK = np.ndarray(shape=(2,len(k)))
 		PK[0] = k
 		PK[1] = P
-		sp.save(params['output_root']+'PKcamb', PK)
+		sp.save(params['output_root']+'../pk_camb', PK)
 
 
 		#plt.figure(figsize=(8,4))

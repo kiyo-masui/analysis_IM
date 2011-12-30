@@ -26,6 +26,8 @@ import fftw3 as FFTW
 from scipy.interpolate import interp1d
 from scipy.optimize import leastsq
 
+import functions
+
 params_init = {
 	'processes' : 1,
 	'plot' : True,
@@ -70,27 +72,21 @@ class BiasCalibrate(object):
 		params = self.params
 		out_root = params['output_root']
 		in_root = params['input_root']
-		resultf = params['resultf']
-		#resultf = params['hr'][0]
-		#if len(params['last']) != 0:
-		#	resultf = resultf + params['last'][0]
-		#resultf = resultf + '-' + params['hr'][1]
-		#if len(params['last']) != 0:
-		#	resultf = resultf + params['last'][1]
+		resultf = functions.getresultf(params)
 
 		FKPweight = params['FKPweight']
 
 
 		# Read the Power Spectrum Result
-		k = sp.load(in_root + 'k_combined_' + resultf + '.npy')
+		k = sp.load(in_root + resultf + '_k_combined'  + '.npy')
 		if FKPweight:
-			pkvar = sp.load(in_root + 'PKvar_combined_fkp_' + resultf + '.npy')
-			pk = sp.load(in_root + 'PK_combined_fkp_' + resultf + '.npy')
-			pke = sp.load(in_root + 'PKeach_fkp_' + resultf + '.npy')
+			pkvar = sp.load(in_root + resultf + '_p_var_combined_fkp' + '.npy')
+			pk    = sp.load(in_root + resultf + '_p_combined_fkp' + '.npy')
+			pke   = sp.load(in_root + resultf + '_p_each_fkp' + '.npy')
 		else:
-			pkvar = sp.load(in_root + 'PKvar_combined_' + resultf + '.npy')
-			pk = sp.load(in_root + 'PK_combined_' + resultf + '.npy')
-			pke = sp.load(in_root + 'PKeach_' + resultf + '.npy')
+			pkvar = sp.load(in_root + resultf + '_p_var_combined' + '.npy')
+			pk    = sp.load(in_root + resultf + '_p_combined' + '.npy')
+			pke   = sp.load(in_root + resultf + '_p_each' + '.npy')
 
 		non0 = pk.nonzero()
 		pk = pk.take(non0)[0]
@@ -102,8 +98,11 @@ class BiasCalibrate(object):
 
 		# Read the Pwer Spectrum without mode subtraction
 		simmap_root = params['simmap_root']
-		k0 = sp.load(simmap_root + 'k_combined_simmaps_with_beam.npy')
-		pk0= sp.load(simmap_root + 'PK_combined_simmaps_with_beam.npy')
+		k0 = sp.load(simmap_root + 'simmaps_k_combined.npy')
+		pk0= sp.load(simmap_root + 'simmaps_p_combined.npy')
+		#pk0= pk0*1.e6
+		#k0 = sp.load(simmap_root + 'simmaps_with_beam_k_combined.npy')
+		#pk0= sp.load(simmap_root + 'simmaps_with_beam_p_combined.npy')
 
 		# Test if k and k0 are match
 		if (k-k0).any():
@@ -159,9 +158,13 @@ class BiasCalibrate(object):
 		ki = np.logspace(log10(k.min()+0.001), log10(k.max()-0.001), num=300)
 		bias = B(ki)
 
-		sp.save(out_root + 'Bias_k_' + resultf, k)
-		sp.save(out_root + 'Bias_B_' + resultf, dpk)
-		sp.save(out_root + 'Bias_Be_' + resultf, dpke)
+		if params['cross']:
+			dpk = np.sqrt(dpk)
+			dpke= np.sqrt(dpke)
+
+		sp.save(out_root + 'k_bias', k)
+		sp.save(out_root + 'b_bias', dpk)
+		sp.save(out_root + 'b_each_bias', dpke)
 
 
 		if self.plot==True:
@@ -183,6 +186,8 @@ class BiasCalibrate(object):
 			plt.title('Power Spectrum Bias')
 			plt.xlabel('$k$')
 			plt.ylabel('$dP(k) (mk^{2}(h^{-1}Mpc)^3)$')
+
+			plt.savefig(out_root+'b_bias.eps', format='eps')
 			plt.show()
 
 	def getbias(self, pke, begin, end, pk0):
