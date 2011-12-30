@@ -58,6 +58,8 @@ params_init = {
 	'Xrange' : (1400,),
 	'Yrange' : (-6*15,6*15),
 	'Zrange' : (0.,6*15),
+
+	'cutlist': [],
 }
 prefix = 'pre_'
 
@@ -168,6 +170,11 @@ class Prepare(object):
 			# subtract the mean value of the imaps
 			#print "--The mean value for imap is:",imap.flatten().mean(),"--"
 			imap = imap - imap.flatten().mean()
+
+			# cut off some bad frequencies. 
+			if len(params['cutlist'])!=0:
+				print '\t:Bad frequencies cutting off'
+				nmap[params['cutlist']]=0
 
 			box , nbox = functions.fill(params, imap, nmap)
 

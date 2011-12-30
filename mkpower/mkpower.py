@@ -264,7 +264,7 @@ class PowerSpectrumMaker(object):
 		print "PowerMaker: FFTing "
 		inputa = np.zeros(params['boxshape'], dtype=complex)
 		outputa = np.zeros(params['boxshape'], dtype=complex)
-		fft = FFTW.Plan(inputa,outputa, direction='forward', flags=['measure'])
+		fft = FFTW.Plan(inputa,outputa,direction='forward', flags=['measure'])
 		inputa.imag = 0.
 		inputa.real = box
 		FFTW.execute(fft)
@@ -273,7 +273,7 @@ class PowerSpectrumMaker(object):
 
 		inputb = np.zeros(params['boxshape'], dtype=complex)
 		outputb = np.zeros(params['boxshape'], dtype=complex)
-		fft = FFTW.Plan(inputb,outputb, direction='forward', flags=['measure'])
+		fft = FFTW.Plan(inputb,outputb,direction='forward', flags=['measure'])
 		inputb.imag = 0.
 		inputb.real = box2
 		FFTW.execute(fft)
