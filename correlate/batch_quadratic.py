@@ -55,10 +55,13 @@ def call_xspec_run(map1_key, map2_key,
     print freq
 
     # define the 1D spectral bins
-    nbins=40
-    bins = np.logspace(math.log10(0.00702349679605685),
-                       math.log10(2.81187396154818),
-                       num=(nbins + 1), endpoint=True)
+    #nbins=40
+    #bins = np.logspace(math.log10(0.00702349679605685),
+    #                   math.log10(2.81187396154818),
+    #                   num=(nbins + 1), endpoint=True)
+    bins = np.logspace(math.log10(0.00765314),
+                       math.log10(2.49977141),
+                       num=35, endpoint=True)
 
     # initialize and calculate the xspec
     simpair = mp.MapPair(map1_key, map2_key,
@@ -86,10 +89,13 @@ def call_phys_space_run(cube1_file, cube2_file,
                        truncate=False, window="blackman"):
     """Directly call the power spectral estimation on some physical vol"""
     # define the 1D spectral bins
-    nbins=40
-    bins = np.logspace(math.log10(0.00702349679605685),
-                       math.log10(2.81187396154818),
-                       num=(nbins + 1), endpoint=True)
+    #nbins=40
+    #bins = np.logspace(math.log10(0.00702349679605685),
+    #                   math.log10(2.81187396154818),
+    #                   num=(nbins + 1), endpoint=True)
+    bins = np.logspace(math.log10(0.00765314),
+                       math.log10(2.49977141),
+                       num=35, endpoint=True)
 
     retval = pe.calculate_xspec_file(cube1_file, cube2_file, bins,
                     weight1_file=None, weight2_file=None,

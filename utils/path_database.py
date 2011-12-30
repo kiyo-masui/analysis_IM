@@ -67,9 +67,14 @@ notes = '15hr, 22hr, and 1hr maps made with the new calibration'
 dbcl.register_path('GBT_maps_Tabitha', pathname,
                     "Tabitha's map directory", notes=notes)
 
+pathname = dbcl.fetch_path('GBTDATA_KIYO') + "gbt_out/maps/"
+notes = '15hr, 22hr, and 1hr maps made with the new map-maker'
+dbcl.register_path('GBT_maps_Kiyo', pathname,
+                    "Kiyo's map directory", notes=notes)
+
 pathname = dbcl.fetch_path('GBTDATA_KIYO') + 'wiggleZ/maps/'
 notes = '15hr maps from the proposal era'
-dbcl.register_path('GBT_maps_Kiyo', pathname,
+dbcl.register_path('GBT_oldmaps_Kiyo', pathname,
                     "Kiyo's map directory", notes=notes)
 
 #-----------------------------------------------------------------------------
@@ -116,7 +121,7 @@ dbcl.register_maprun(key, group_key, parent, field_tag, desc,
 
 # older maps
 key = 'GBT_15hr_map_proposal'
-parent = 'GBT_maps_Kiyo'
+parent = 'GBT_oldmaps_Kiyo'
 desc = "15 hr maps with proposal-era calibrations"
 field_tag = '15hr_41-73'
 status = 'in development'
@@ -124,6 +129,33 @@ notes = 'this dataset is broken because the noise_inv was over-written \
 by something else at a later time'
 dbcl.register_maprun(key, group_key, parent, field_tag, desc,
                         notes=notes, status=status)
+
+#-----------------------------------------------------------------------------
+# paths to new maps
+#-----------------------------------------------------------------------------
+group_key = 'GBTmaps'
+status = 'in development'
+
+key = 'GBT_15hr_newmap737'
+parent = 'GBT_maps_Kiyo'
+desc = "new-style maps from Kiyo"
+field_tag = '15hr_41-90'
+dbcl.register_newmaprun(key, group_key, parent, field_tag, '737', desc,
+                        status=status)
+
+key = 'GBT_15hr_newmap799'
+parent = 'GBT_maps_Kiyo'
+desc = "new-style maps from Kiyo"
+field_tag = '15hr_41-90'
+dbcl.register_newmaprun(key, group_key, parent, field_tag, '799', desc,
+                        status=status)
+
+key = 'GBT_15hr_newmap862'
+parent = 'GBT_maps_Kiyo'
+desc = "new-style maps from Kiyo"
+field_tag = '15hr_41-90'
+dbcl.register_newmaprun(key, group_key, parent, field_tag, '862', desc,
+                        status=status)
 
 #-----------------------------------------------------------------------------
 # paths to cleaned maps
@@ -162,10 +194,15 @@ dbcl.register_path('GBT_15hr_Liviu', pathname,
 # register the cleaned maps
 #-----------------------------------------------------------------------------
 def mode_clean_run(source_key, fieldname, mode_num, username,
-                   tag="", status=None, notes=None):
+                   tag="", status=None, notes=None, sim=False):
+    if sim:
+        mapsim = "sims"
+    else:
+        mapsim = "maps"
+
     key = '%s_cleaned_%s%smode' % (source_key, tag, mode_num)
     group_key = 'GBTcleaned'
-    parent = 'GBT_cleaned_%s_maps_%s' % (fieldname, username)
+    parent = 'GBT_cleaned_%s_%s_%s' % (fieldname, mapsim, username)
     desc = "`%s` maps with %s modes removed" % (source_key, mode_num)
     dbcl.register_fourway_list(key, group_key, parent, desc,
                  notes=None, status=status, paramfile="params.ini", tag="",
@@ -174,12 +211,20 @@ def mode_clean_run(source_key, fieldname, mode_num, username,
 
 
 for fieldname in field_list:
+    notes = "the mean is removed, convolve to common beam, radial modes"
     source_key = 'GBT_%s_map' % fieldname
     status = 'active development'
     for mode_num in range(0, 55, 5):
         mode_clean_run(source_key, fieldname, mode_num, 'Eric',
                        status=status, notes=notes)
-# nomeansub
+
+for fieldname in field_list:
+    notes = "the mean is removed, convolve to common beam, radial modes"
+    source_key = 'sim_%s' % fieldname
+    status = 'active development'
+    for mode_num in range(0, 55, 5):
+        mode_clean_run(source_key, fieldname, mode_num, 'Eric',
+                       status=status, notes=notes, sim=True)
 
 # proposal era
 key = 'GBT_15hr_cleaned_Liviu_15mode'

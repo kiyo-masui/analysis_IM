@@ -3,42 +3,75 @@ simulations, etc.
 """
 from plotting import plot_cube as pc
 from utils import data_paths
+# TODO: reimplement transverse plotting
 
 def plot_gbt_mapset(outputdir="/cita/d/www/home/eswitzer/movies/"):
-    #pc.plot_gbt_maps('GBT_15hr_map_cleaned_20mode', outputdir=outputdir, transverse=False)
-    #pc.plot_gbt_maps('GBT_15hr_map_cleaned_0mode', outputdir=outputdir, transverse=False)
+    pc.plot_gbt_maps('GBT_15hr_map', outputdir=outputdir, transverse=False)
+    pc.plot_gbt_maps('GBT_22hr_map', outputdir=outputdir, transverse=False)
+    pc.plot_gbt_maps('GBT_1hr_map', outputdir=outputdir, transverse=False)
+    pc.plot_gbt_maps('GBT_15hr_map_proposal', transverse=False,
+                     outputdir=outputdir, skip_noise=True)
+
+def plot_gbt_newmapset(outputdir="/cita/d/www/home/eswitzer/movies/"):
+    pc.plot_gbt_maps('GBT_15hr_newmap737', outputdir=outputdir, transverse=False)
+    pc.plot_gbt_maps('GBT_15hr_newmap799', outputdir=outputdir, transverse=False)
+    pc.plot_gbt_maps('GBT_15hr_newmap862', outputdir=outputdir, transverse=False)
+
+def plot_cleaned_gbt15hr_mapset(outputdir="/cita/d/www/home/eswitzer/movies/"):
+    pc.plot_gbt_maps('GBT_15hr_map_cleaned_0mode', outputdir=outputdir, transverse=False)
+    pc.plot_gbt_maps('GBT_15hr_map_cleaned_5mode', outputdir=outputdir, transverse=False)
+    pc.plot_gbt_maps('GBT_15hr_map_cleaned_10mode', outputdir=outputdir, transverse=False)
+    pc.plot_gbt_maps('GBT_15hr_map_cleaned_15mode', outputdir=outputdir, transverse=False)
+    pc.plot_gbt_maps('GBT_15hr_map_cleaned_20mode', outputdir=outputdir, transverse=False)
+    pc.plot_gbt_maps('GBT_15hr_map_cleaned_25mode', outputdir=outputdir, transverse=False)
+    pc.plot_gbt_maps('GBT_15hr_map_cleaned_30mode', outputdir=outputdir, transverse=False)
+    pc.plot_gbt_maps('GBT_15hr_map_cleaned_35mode', outputdir=outputdir, transverse=False)
+    pc.plot_gbt_maps('GBT_15hr_map_cleaned_40mode', outputdir=outputdir, transverse=False)
+    pc.plot_gbt_maps('GBT_15hr_map_cleaned_45mode', outputdir=outputdir, transverse=False)
+    pc.plot_gbt_maps('GBT_15hr_map_cleaned_50mode', outputdir=outputdir, transverse=False)
     #pc.plot_gbt_maps('GBT_22hr_map_cleaned_20mode', outputdir=outputdir, transverse=False)
     #pc.plot_gbt_maps('GBT_22hr_map_cleaned_0mode', outputdir=outputdir, transverse=False)
-
-    #pc.plot_gbt_maps('GBT_15hr_map_proposal', transverse=True,
-    #                 outputdir=outputdir, skip_noise=True)
-    #pc.plot_gbt_maps('GBT_15hr_map_proposal', transverse=False,
-    #                 outputdir=outputdir, skip_noise=True)
-    ##pc.plot_gbt_maps('GBT_15hr_map', outputdir=outputdir, transverse=True)
-    #pc.plot_gbt_maps('GBT_15hr_map', outputdir=outputdir, transverse=False)
-    ##pc.plot_gbt_maps('GBT_22hr_map', outputdir=outputdir, transverse=True)
-    #pc.plot_gbt_maps('GBT_22hr_map', outputdir=outputdir, transverse=False)
-    ##pc.plot_gbt_maps('GBT_1hr_map', outputdir=outputdir, transverse=True)
-    pc.plot_gbt_maps('GBT_1hr_map', outputdir=outputdir, transverse=False)
-
 
 def plot_gbt_simset(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/"):
     datapath_db = data_paths.DataPath()
 
     keyname = "sim_%s" % fieldname
-    #keyname = "simideal_%s" % fieldname
     filename = datapath_db.fetch(keyname, pick='0')
     pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
                         sigmarange=3., outputdir=outputdir, multiplier=1000.,
                         transverse=False, filetag_suffix="_"+fieldname)
 
     keyname = "sim_%s_beam" % fieldname
-    #keyname = "simideal_%s_beam" % fieldname
     filename = datapath_db.fetch(keyname, pick='0')
     pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
                         sigmarange=3., outputdir=outputdir, multiplier=1000.,
                         transverse=False, filetag_suffix="_"+fieldname)
 
+    keyname = "simideal_%s" % fieldname
+    filename = datapath_db.fetch(keyname, pick='0')
+    pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
+                        sigmarange=3., outputdir=outputdir, multiplier=1000.,
+                        transverse=False, filetag_suffix="_"+fieldname)
+
+    keyname = "simideal_%s_beam" % fieldname
+    filename = datapath_db.fetch(keyname, pick='0')
+    pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
+                        sigmarange=3., outputdir=outputdir, multiplier=1000.,
+                        transverse=False, filetag_suffix="_"+fieldname)
+
+    keyname = "simideal_%s_physical" % fieldname
+    filename = datapath_db.fetch(keyname, pick='0')
+    pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
+                        sigmarange=3., outputdir=outputdir, multiplier=1000.,
+                        transverse=False, filetag_suffix="_"+fieldname,
+                        physical=True)
+
+    keyname = "sim_%s_physical" % fieldname
+    filename = datapath_db.fetch(keyname, pick='0')
+    pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
+                        sigmarange=3., outputdir=outputdir, multiplier=1000.,
+                        transverse=False, filetag_suffix="_"+fieldname,
+                        physical=True)
 
 def plot_gbt_diff_tests(outputdir="/cita/d/www/home/eswitzer/movies/",
                         transverse=True):
@@ -179,20 +212,26 @@ def plot_wigglez(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/",
 
 
 if __name__ == "__main__":
-    #plot_gbt_mapset()
-    #plot_gbt_comb_modeset('15hr')
-    #plot_gbt_comb_modeset('22hr')
     #plot_gbt_simset('15hr')
     #plot_gbt_simset('22hr')
+    #plot_gbt_mapset()
+    plot_gbt_newmapset()
 
-    #plot_gbt_diff_tests()
-    #plot_sim_scheme()
+    #plot_gbt_comb_modeset('15hr')
+    #plot_gbt_comb_modeset('22hr')
 
-    #plot_manual('15hr')
-    #plot_window()
-    plot_individual("/mnt/raid-project/gmrt/eswitzer/GBT/cleaned_maps/15hr_sim/sec_A_cleaned_clean_map_I_with_B_0modes.npy")
     #plot_wigglez('15hr', complete=False)
     #plot_wigglez('22hr', complete=False)
     #plot_wigglez('1hr', complete=True)
     #plot_wigglez('22hr')
     #plot_wigglez('1hr')
+
+    # phase this one out ... to many outputs
+    #plot_cleaned_gbt15hr_mapset()
+    # random odds and ends
+    #plot_individual("/mnt/raid-project/gmrt/eswitzer/GBT/cleaned_maps/15hr_sim/sec_A_cleaned_clean_map_I_with_B_0modes.npy")
+    #plot_window()
+    #plot_gbt_diff_tests()
+    #plot_sim_scheme()
+    #plot_manual('15hr')
+
