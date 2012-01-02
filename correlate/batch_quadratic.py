@@ -203,7 +203,7 @@ def batch_wigglez_automock_run(mock_key, sel_key, subtract_mean=False,
 def batch_data_run(subtract_mean=False, degrade_resolution=False,
                    unitless=True, return_3d=False,
                    truncate=False, window=None, n_modes=None,
-                   refinement=2, pad=5, order=2, sim=False):
+                   refinement=2, pad=5, order=2, sim=False, alt=""):
     datapath_db = data_paths.DataPath()
 
     if sim:
@@ -220,10 +220,10 @@ def batch_data_run(subtract_mean=False, degrade_resolution=False,
                                         generate=True, verbose=True)
 
     for mode_num in range(0, 55, 5):
-        map1_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
-        map2_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
-        noise1_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
-        noise2_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
+        map1_key = "%s_cleaned_%s%dmode" % (mapsim, alt, mode_num)
+        map2_key = "%s_cleaned_%s%dmode" % (mapsim, alt, mode_num)
+        noise1_key = "%s_cleaned_%s%dmode" % (mapsim, alt, mode_num)
+        noise2_key = "%s_cleaned_%s%dmode" % (mapsim, alt, mode_num)
 
         (pairlist, pairdict) = \
                 data_paths.cross_maps(map1_key, map2_key,
@@ -317,17 +317,29 @@ def batch_GBTxwigglez_data_run(subtract_mean=False, degrade_resolution=False,
 
 
 if __name__ == '__main__':
+    #batch_data_run(alt="nomeanconv_", subtract_mean=True)
+    #batch_data_run(alt="nomeanconv_")
 
-    #batch_physical_sim_run("simideal_15hr_physical")
-    #batch_physical_sim_run("sim_15hr_physical")
+    batch_data_run(alt="noconv_")
+    batch_data_run(alt="noconv_", subtract_mean=True)
+    batch_data_run(alt="noconv_", sim=True)
+    batch_data_run(alt="noconv_", sim=True, subtract_mean=True)
+
+    # vv + evo sims with treatments
+    batch_sim_run("sim_15hr_beam", degrade_resolution=False, subtract_mean=True)
+
+    sys.exit()
+    # modeloss sim
+    batch_data_run(sim=True)
+
+    batch_physical_sim_run("simideal_15hr_physical")
+    batch_physical_sim_run("sim_15hr_physical")
 
     # real data
-    #batch_data_run()
-    # modeloss sim
-    #batch_data_run(sim=True)
+    batch_data_run()
+
     # ideal simulations without beam
     batch_sim_run("simideal_15hr")
-    sys.exit()
     # vv + evo sims without beam
     batch_sim_run("sim_15hr")
     # vv + evo sims with beam
@@ -336,5 +348,7 @@ if __name__ == '__main__':
     batch_sim_run("sim_15hr_beam", degrade_resolution=True, subtract_mean=True)
 
     batch_wigglez_automock_run("WiggleZ_15hr_mock", "WiggleZ_15hr_montecarlo")
-    batch_wigglez_automock_run("WiggleZ_15hr_complete_mock", "WiggleZ_15hr_complete_separable_selection")
-    batch_GBTxwigglez_data_run()
+
+    # stuff that needs more work
+    #batch_wigglez_automock_run("WiggleZ_15hr_complete_mock", "WiggleZ_15hr_complete_separable_selection")
+    #batch_GBTxwigglez_data_run()

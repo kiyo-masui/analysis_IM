@@ -12,7 +12,7 @@ set ylabel "log(k_{{/Symbol \174\174}} h cMpc^{-1})"
 set title "k-space coverage of the 15hr survey"
 set cblabel "Number of modes per k-cell"
 set rmargin 10
-set output "2d_counts.eps"
+set output "sim/2d_counts.eps"
 set logscale cb
 set cbrange [1e-1: 1e6]
 set palette rgbformulae 22, 13, -31
@@ -28,19 +28,19 @@ set logscale cb
 set cbrange [*: *]
 
 set title "Density-only power spectrum"
-set output "simideal_15hr_avg_2d.eps"
+set output "sim/simideal_15hr_avg_2d.eps"
 plot "simideal_15hr_avg_2d.dat" using 2:5:7 with image
 
 set title "Power spectrum with velocities and evolution"
-set output "sim_15hr_avg_2d.eps"
+set output "sim/sim_15hr_avg_2d.eps"
 plot "sim_15hr_avg_2d.dat" using 2:5:7 with image
 
 set title "Power spectrum with vv, evo., beam"
-set output "sim_15hr_beam_avg_2d.eps"
+set output "sim/sim_15hr_beam_avg_2d.eps"
 plot "sim_15hr_beam_avg_2d.dat" using 2:5:7 with image
 
 set title "Power spectrum with vv, evo., beam, meansub, conv."
-set output "sim_15hr_beam_meanconv_avg_2d.eps"
+set output "sim/sim_15hr_beam_meanconv_avg_2d.eps"
 plot "sim_15hr_beam_meanconv_avg_2d.dat" using 2:5:7 with image
 
 # now make the transfer function plots
@@ -49,68 +49,118 @@ unset logscale cb
 set cbrange [0:1]
 
 set title "Beam and meansub, degrade trans."
-set output "trans_beam_meanconv.eps"
+set output "sim/trans_beam_meanconv.eps"
 plot "trans_beam_meanconv.dat" using 2:5:7 with image
 
+set title "Beam and meansub"
+set output "sim/trans_beam_mean.eps"
+plot "trans_beam_mean.dat" using 2:5:7 with image
+
 set title "Beam transfer function"
-set output "trans_beam.eps"
+set output "sim/trans_beam.eps"
 plot "trans_beam.dat" using 2:5:7 with image
 
 set title "Beam and meansub, degrade trans."
-set output "trans_beam_meanconv_altavg.eps"
+set output "sim/trans_beam_meanconv_altavg.eps"
 plot "trans_beam_meanconv_altavg.dat" using 2:5:7 with image
 
 set title "Beam transfer function"
-set output "trans_beam_altavg.eps"
+set output "sim/trans_beam_altavg.eps"
 plot "trans_beam_altavg.dat" using 2:5:7 with image
 
+# mode transfer functions
 set title "Mode=0 transfer function"
-set output "trans_0modes.eps"
+set output "convmeansub/trans_0modes.eps"
 plot "GBT15hr_sim_0modes_2dtrans_altavg.dat" using 2:5:7 with image
 
 set title "Mode=5 transfer function"
-set output "trans_5modes.eps"
+set output "convmeansub/trans_5modes.eps"
 plot "GBT15hr_sim_5modes_2dtrans_altavg.dat" using 2:5:7 with image
 
 set title "Mode=10 transfer function"
-set output "trans_10modes.eps"
+set output "convmeansub/trans_10modes.eps"
 plot "GBT15hr_sim_10modes_2dtrans_altavg.dat" using 2:5:7 with image
 
 set title "Mode=15 transfer function"
-set output "trans_15modes.eps"
+set output "convmeansub/trans_15modes.eps"
 plot "GBT15hr_sim_15modes_2dtrans_altavg.dat" using 2:5:7 with image
 
 set title "Mode=20 transfer function"
-set output "trans_20modes.eps"
+set output "convmeansub/trans_20modes.eps"
 plot "GBT15hr_sim_20modes_2dtrans_altavg.dat" using 2:5:7 with image
 
 set title "Mode=25 transfer function"
-set output "trans_25modes.eps"
+set output "convmeansub/trans_25modes.eps"
 plot "GBT15hr_sim_25modes_2dtrans_altavg.dat" using 2:5:7 with image
 
 set title "Mode=30 transfer function"
-set output "trans_30modes.eps"
+set output "convmeansub/trans_30modes.eps"
 plot "GBT15hr_sim_30modes_2dtrans_altavg.dat" using 2:5:7 with image
 
 set title "Mode=35 transfer function"
-set output "trans_35modes.eps"
+set output "convmeansub/trans_35modes.eps"
 plot "GBT15hr_sim_35modes_2dtrans_altavg.dat" using 2:5:7 with image
 
 set title "Mode=40 transfer function"
-set output "trans_40modes.eps"
+set output "convmeansub/trans_40modes.eps"
 plot "GBT15hr_sim_40modes_2dtrans_altavg.dat" using 2:5:7 with image
 
 set title "Mode=45 transfer function"
-set output "trans_45modes.eps"
+set output "convmeansub/trans_45modes.eps"
 plot "GBT15hr_sim_45modes_2dtrans_altavg.dat" using 2:5:7 with image
 
 set title "Mode=50 transfer function"
-set output "trans_50modes.eps"
+set output "convmeansub/trans_50modes.eps"
 plot "GBT15hr_sim_50modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+# now with _noconv
+set title "Mode=0 transfer function, no degrade"
+set output "noconv/trans_noconv_0modes.eps"
+plot "GBT15hr_sim_noconv_0modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=5 transfer function, no degrade"
+set output "noconv/trans_noconv_5modes.eps"
+plot "GBT15hr_sim_noconv_5modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=10 transfer function, no degrade"
+set output "noconv/trans_noconv_10modes.eps"
+plot "GBT15hr_sim_noconv_10modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=15 transfer function, no degrade"
+set output "noconv/trans_noconv_15modes.eps"
+plot "GBT15hr_sim_noconv_15modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=20 transfer function, no degrade"
+set output "noconv/trans_noconv_20modes.eps"
+plot "GBT15hr_sim_noconv_20modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=25 transfer function, no degrade"
+set output "noconv/trans_noconv_25modes.eps"
+plot "GBT15hr_sim_noconv_25modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=30 transfer function, no degrade"
+set output "noconv/trans_noconv_30modes.eps"
+plot "GBT15hr_sim_noconv_30modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=35 transfer function, no degrade"
+set output "noconv/trans_noconv_35modes.eps"
+plot "GBT15hr_sim_noconv_35modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=40 transfer function, no degrade"
+set output "noconv/trans_noconv_40modes.eps"
+plot "GBT15hr_sim_noconv_40modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=45 transfer function, no degrade"
+set output "noconv/trans_noconv_45modes.eps"
+plot "GBT15hr_sim_noconv_45modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=50 transfer function, no degrade"
+set output "noconv/trans_noconv_50modes.eps"
+plot "GBT15hr_sim_noconv_50modes_2dtrans_altavg.dat" using 2:5:7 with image
 
 # now make the correlation matrix
 set title "bin-bin correlation matrix (100 sims)"
-set output "bin_bin_corr.eps"
+set output "sim/bin_bin_corr.eps"
 set xlabel "log(|k| h cMpc^{-1})"
 set ylabel "log(|k| h cMpc^{-1})"
 set cbrange [-1:1]

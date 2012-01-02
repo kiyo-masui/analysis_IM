@@ -11,7 +11,7 @@ set style line 10 lt 2 lw 2 linecolor rgb "red"
 
 set size 1., 1.
 set terminal postscript eps enhanced color "Helvetica" 20
-set output "sim_pwr_variants.eps"
+set output "sim/sim_pwr_variants.eps"
 set logscale
 #set xrange[0.01:3]
 set xrange[0.005:2.8]
@@ -22,7 +22,7 @@ set yrange [1e-10: 1e-6]
 #set y2label "# modes available"
 #set y2range [1:1e9]
 #set y2tics
-set title "Comparing the impact of treatments in the power spectrum"
+set title "Recovering the power spectrum of simulations -- observed volume"
 set key at screen 0.6, 0.85
 #     "simideal_15hr_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 density only}" with yerrorbars
 #     "sim_15hr_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo.}" with yerrorbars
@@ -34,8 +34,8 @@ plot "simideal_15hr_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 density only}" w
      "sim_15hr_beam_meanconv_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo., beam, meansub, conv.}" with yerrorbars ls 4, \
      "sim_15hr_beam_meanconv_corrected_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 case above, corrected by 2D transfer}" with yerrorbars ls 10
 
-set output "sim_pwr_modeloss.eps"
-set title "Comparing the impact of treatments in the power spectrum"
+set output "sim/sim_pwr_modeloss.eps"
+set title "Impact of mode subtraction on the simulations"
 set key at screen 0.6, 0.85
 plot "sim_15hr_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo.}" with yerrorbars ls 2, \
      "sim_15hr_beam_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo., beam}" with yerrorbars ls 3, \
@@ -47,12 +47,12 @@ plot "sim_15hr_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo.}" with y
      "GBT15hr_sim_40modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 20 modes}" with points ls 1, \
      "GBT15hr_sim_50modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 20 modes}" with points ls 2
 
-set output "simtheory_pwr_variants.eps"
+set output "sim/simtheory_pwr_variants.eps"
 set y2label "# modes available"
 set y2range [1:5e8]
 set y2tics
 set yrange [1e-10:5e-6]
-set title "Comparing the impact of treatments in the power spectrum"
+set title "Recovering the input theory power spectrum"
 set key at screen 0.6, 0.85
 #     "simideal_15hr_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 density only}" with yerrorbars
 #     "sim_15hr_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo.}" with yerrorbars

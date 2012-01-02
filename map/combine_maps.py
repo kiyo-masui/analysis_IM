@@ -100,10 +100,36 @@ if __name__ == '__main__':
     fieldlist = ['15hr', '22hr']
     #fieldlist = ['22hr']
     #fieldlist = ['15hr']
+    #for field in fieldlist:
+    #    for mode_num in range (0, 55, 5):
+    #        source_key = 'GBT_%s_map_cleaned_%dmode' % (field, mode_num)
+    #        parent = 'GBT_combined_%s_maps_Eric' % field
+    #        combine_maps(source_key, parent)
 
+    #fieldlist = ['15hr']
+    #for field in fieldlist:
+    #    for mode_num in range (0, 55, 5):
+    #        source_key = 'sim_%s_cleaned_%dmode' % (field, mode_num)
+    #        parent = 'GBT_combined_%s_maps_Eric' % field
+    #        combine_maps(source_key, parent)
+
+    #fieldlist = ['15hr']
+    #for field in fieldlist:
+    #    for mode_num in range (0, 55, 5):
+    #        source_key = 'GBT_%s_map_cleaned_nomeanconv_%smode' % (field, mode_num)
+    #        parent = 'GBT_combined_%s_maps_Eric' % field
+    #        combine_maps(source_key, parent)
+
+    fieldlist = ['15hr']
     for field in fieldlist:
         for mode_num in range (0, 55, 5):
-            source_key = 'GBT_%s_map_cleaned_%dmode' % (field, mode_num)
+            source_key = 'GBT_%s_map_cleaned_noconv_%smode' % (field, mode_num)
             parent = 'GBT_combined_%s_maps_Eric' % field
             combine_maps(source_key, parent)
 
+    fieldlist = ['15hr']
+    for field in fieldlist:
+        for mode_num in range (0, 55, 5):
+            source_key = 'sim_%s_cleaned_noconv_%smode' % (field, mode_num)
+            parent = 'GBT_combined_%s_maps_Eric' % field
+            combine_maps(source_key, parent)

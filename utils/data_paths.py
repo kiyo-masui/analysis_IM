@@ -400,6 +400,8 @@ class DataPath(object):
 
         if 'parent' in dbentry:
             retstring += "* __Parent path key__: `%s`\n" % dbentry['parent']
+            retstring += "* __Parent path__: `%s`\n" % \
+                        self.fetch(dbentry['parent'], silent=True)
 
         if 'group_key' in dbentry:
             retstring += "* __Group key__: `%s`\n" % dbentry['group_key']
@@ -595,7 +597,7 @@ class DataPath(object):
 
         return pathout
 
-    def generate_path_webpage(self):
+    def generate_path_webpage(self, suppress_lists=90):
         r"""Write out a markdown file with the file database
         """
         localpath = "/cita/d/www/home/eswitzer/GBT_param/"
@@ -613,8 +615,53 @@ class DataPath(object):
                        self.runinfo)
         fileobj.write("* %d files registered; database size in memory = %s\n" %
                      self._db_size)
-        self.print_path_db_by_group(suppress_lists=90, fileobj=fileobj)
+        self.print_path_db_by_group(suppress_lists=suppress_lists,
+                                    fileobj=fileobj)
 
+        fileobj.close()
+
+    def generate_path_webpage_by_group(self, suppress_lists=45):
+        r"""Write out a markdown file with the file database
+        """
+        localpath = "/cita/d/www/home/eswitzer/GBT_param/"
+        localdb = localpath + "path_database.py"
+        dbwebpage = localpath + "path_database.txt"
+
+        print "writing markdown website to: " + dbwebpage
+        fileobj = open(dbwebpage, "w")
+
+        fileobj.write("Data path DB\n============\n\n")
+        fileobj.write("* specified by local path: `%s` and URL `%s`\n" %
+                      (localdb, self.db_url))
+        fileobj.write("* file hash table specified by `%s`\n" % self.hash_url)
+        fileobj.write("* website, checksums compiled: %s by %s\n" % \
+                       self.runinfo)
+        fileobj.write("* %d files registered; database size in memory = %s\n" %
+                     self._db_size)
+
+        fileobj.write("****\n")
+        for groupname in self._group_order:
+            groupfile = localpath + "path_database_group_" + groupname + ".txt"
+            grouplink = "[" + groupname + "](path_database_group_" + \
+                        groupname + ".html)"
+            fileobj.write("* %s\n" % grouplink)
+
+            print groupfile, grouplink
+
+            groupobj = open(groupfile, "w")
+
+            print "%s\n%s\n" % (groupname, "-" * len(groupname))
+            groupobj.write("****\n %s\n%s\n\n" % \
+                          (groupname, "-" * len(groupname)))
+
+            for dbkey in self._groups[groupname]:
+                dbstring = self.print_db_item(dbkey,
+                                              suppress_lists=suppress_lists)
+                groupobj.write(dbstring + "\n")
+
+            groupobj.close()
+
+        print "-" * 80
         fileobj.close()
 
     def generate_hashtable(self):
@@ -659,7 +706,8 @@ if __name__ == "__main__":
     # generate the path db markdown website
     datapath_db = DataPath()
     #datapath_db.generate_hashtable()
-    datapath_db.generate_path_webpage()
+    #datapath_db.generate_path_webpage()
+    datapath_db.generate_path_webpage_by_group()
 
     # run some tests
     OPTIONFLAGS = (doctest.ELLIPSIS |

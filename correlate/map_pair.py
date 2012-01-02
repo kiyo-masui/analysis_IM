@@ -312,7 +312,7 @@ class MapPair(ft.ClassPersistence):
         means2.shape += (1, 1)
         self.map2 -= means2
 
-        # Zero out all the infinit noise pixels (0 weight).
+        # Zero out all the infinite noise pixels (0 weight).
         self.map1[self.noise_inv1 < 1.e-20] = 0.
         self.map2[self.noise_inv2 < 1.e-20] = 0.
 

@@ -22,7 +22,7 @@ def gather_batch_data_run(tag, subtract_mean=False, degrade_resolution=False,
                   truncate=False, window=None, n_modes=None,
                   refinement=2, pad=5, order=2, beam_transfer=None,
                   outdir="./plot_data", mode_transfer_1d=None,
-                  mode_transfer_2d=None):
+                  mode_transfer_2d=None, alt=""):
     datapath_db = data_paths.DataPath()
     outpath = datapath_db.fetch("quadratic_batch_data")
 
@@ -34,10 +34,10 @@ def gather_batch_data_run(tag, subtract_mean=False, degrade_resolution=False,
 
     for mode_num in range(0,55,5):
         maptag = "GBT_15hr_map"
-        map1_key = "%s_cleaned_%dmode" % (maptag, mode_num)
-        map2_key = "%s_cleaned_%dmode" % (maptag, mode_num)
-        noise1_key = "%s_cleaned_%dmode" % (maptag, mode_num)
-        noise2_key = "%s_cleaned_%dmode" % (maptag, mode_num)
+        map1_key = "%s_cleaned_%s%dmode" % (maptag, alt, mode_num)
+        map2_key = "%s_cleaned_%s%dmode" % (maptag, alt, mode_num)
+        noise1_key = "%s_cleaned_%s%dmode" % (maptag, alt, mode_num)
+        noise2_key = "%s_cleaned_%s%dmode" % (maptag, alt, mode_num)
 
         (pairlist, pairdict) = \
                 data_paths.cross_maps(map1_key, map2_key,
@@ -103,17 +103,58 @@ def gather_batch_data_run(tag, subtract_mean=False, degrade_resolution=False,
 
 
 if __name__ == '__main__':
-    trans_beam_meanconv = ct.find_beam_trans()
+    # all of the beam, meansub and conv transfer functions
+    (trans_beam, trans_beam_mean, trans_beam_meanconv) = ct.find_beam_trans()
+
+    # the data with only mean subtraction
+    transfer_functions_noconv = ct.gather_batch_datasim_run("GBT15hr_sim_noconv",
+                                                     alt="noconv_")
+
+    gather_batch_data_run("GBT15hr_noconv", alt="noconv_",
+                          subtract_mean=True)
+
+    gather_batch_data_run("GBT15hr_noconv_beamcomp", alt="noconv_",
+                          beam_transfer=trans_beam_mean,
+                          subtract_mean=True)
+
+    gather_batch_data_run("GBT15hr_noconv_modecomp", alt="noconv_",
+                          subtract_mean=True,
+                          mode_transfer_1d=transfer_functions_noconv)
+
+    gather_batch_data_run("GBT15hr_noconv_beammodecomp", alt="noconv_",
+                          subtract_mean=True,
+                          beam_transfer=trans_beam_mean,
+                          mode_transfer_1d=transfer_functions_noconv)
+
+    gather_batch_data_run("GBT15hr_noconv_2dmodecomp", alt="noconv_",
+                          subtract_mean=True,
+                          mode_transfer_2d=transfer_functions_noconv)
+
+    gather_batch_data_run("GBT15hr_noconv_beam2dmodecomp", alt="noconv_",
+                          subtract_mean=True,
+                          beam_transfer=trans_beam_mean,
+                          mode_transfer_2d=transfer_functions_noconv)
+
+    #gather_batch_data_run("GBT15hr_nomeanconv", alt="nomeanconv_",
+    #                      subtract_mean=True)
+
+    # data with mean subtraction and degrading
     transfer_functions = ct.find_modeloss_transfer()
 
     gather_batch_data_run("GBT15hr")
+
     gather_batch_data_run("GBT15hr_beamcomp", beam_transfer=trans_beam_meanconv)
+
     gather_batch_data_run("GBT15hr_modecomp", mode_transfer_1d=transfer_functions)
+
     gather_batch_data_run("GBT15hr_beammodecomp", beam_transfer=trans_beam_meanconv,
                           mode_transfer_1d=transfer_functions)
+
     gather_batch_data_run("GBT15hr_2dmodecomp", mode_transfer_2d=transfer_functions)
+
     gather_batch_data_run("GBT15hr_beam2dmodecomp", beam_transfer=trans_beam_meanconv,
                           mode_transfer_2d=transfer_functions)
+
     #gather_batch_data_run("GBT15hr", transfer=trans_beam)
 
     sys.exit()

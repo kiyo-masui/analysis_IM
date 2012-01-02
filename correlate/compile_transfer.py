@@ -129,7 +129,7 @@ def gather_batch_datasim_run(tag, subtract_mean=False,
                              degrade_resolution=False, unitless=True,
                              return_3d=False, truncate=False, window=None,
                              n_modes=None, refinement=2, pad=5, order=2,
-                             outdir="./plot_data"):
+                             outdir="./plot_data", alt=""):
     datapath_db = data_paths.DataPath()
     outpath = datapath_db.fetch("quadratic_batch_simulations")
     print "reading from: " + outpath
@@ -141,10 +141,10 @@ def gather_batch_datasim_run(tag, subtract_mean=False,
     transfer_functions = {}
     for mode_num in range(0,55,5):
         mapsim = "sim_15hr"
-        map1_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
-        map2_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
-        noise1_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
-        noise2_key = "%s_cleaned_%dmode" % (mapsim, mode_num)
+        map1_key = "%s_cleaned_%s%dmode" % (mapsim, alt, mode_num)
+        map2_key = "%s_cleaned_%s%dmode" % (mapsim, alt, mode_num)
+        noise1_key = "%s_cleaned_%s%dmode" % (mapsim, alt, mode_num)
+        noise2_key = "%s_cleaned_%s%dmode" % (mapsim, alt, mode_num)
 
         (pairlist, pairdict) = \
                 data_paths.cross_maps(map1_key, map2_key,
@@ -304,6 +304,11 @@ def find_beam_trans(meanconv=True):
 
     sim_15hr_beam = gather_batch_sim_run("sim_15hr_beam", "sim_15hr_beam")
 
+    sim_15hr_beam_mean = gather_batch_sim_run("sim_15hr_beam",
+                                              "sim_15hr_beam_mean",
+                                              degrade_resolution=False,
+                                              subtract_mean=True)
+
     sim_15hr_beam_meanconv = gather_batch_sim_run("sim_15hr_beam",
                                                   "sim_15hr_beam_meanconv",
                                                   degrade_resolution=True,
@@ -312,6 +317,11 @@ def find_beam_trans(meanconv=True):
     trans_beam = calculate_2d_transfer_function(sim_15hr_beam[2],
                                                 sim_15hr[2],
                                                 "trans_beam")
+
+    trans_beam_mean = calculate_2d_transfer_function(
+                                                sim_15hr_beam_mean[2],
+                                                sim_15hr[2],
+                                                "trans_beam_mean")
 
     trans_beam_meanconv = calculate_2d_transfer_function(
                                                 sim_15hr_beam_meanconv[2],
@@ -326,10 +336,7 @@ def find_beam_trans(meanconv=True):
                                          subtract_mean=True,
                                          transfer=trans_beam_meanconv)
 
-    if meanconv:
-        return trans_beam_meanconv
-    else:
-        return trans_beam
+    return (trans_beam, trans_beam_mean, trans_beam_meanconv)
 
 
 def check_pipeline():
@@ -340,13 +347,12 @@ def check_pipeline():
     sim_phys = gather_physical_sim_run("sim_15hr_physical", "sim_15hr_physical")
 
 
-def find_modeloss_transfer():
+def find_modeloss_transfer(alt=""):
     # now gather the mode loss transfer functions
-    return gather_batch_datasim_run("GBT15hr_sim")
+    return gather_batch_datasim_run("GBT15hr_sim", alt=alt)
 
 
 if __name__ == '__main__':
     check_pipeline()
     find_beam_trans()
     find_modeloss_transfer()
-

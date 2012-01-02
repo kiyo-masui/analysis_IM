@@ -107,25 +107,31 @@ def plot_gbt_diff_tests(outputdir="/cita/d/www/home/eswitzer/movies/",
                         outputdir=outputdir, transverse=True)
 
 
-def plot_gbt_comb_modeset(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/"):
+# GBT_15hr_map_combined_cleaned_nomeanconv_0mode_map
+def plot_gbt_comb_modeset(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/",
+                          sim=False, alt="", convolve=False):
     datapath_db = data_paths.DataPath()
+    if sim:
+        mapbase = "sim_%s" % fieldname
+    else:
+        mapbase = "GBT_%s_map" % fieldname
 
     for modenum in range(0, 55, 5):
-        keyname = "GBT_%s_combined_cleaned_%dmode_map" % (fieldname, modenum)
+        keyname = "%s_combined_cleaned_%s%smode_map" % (mapbase, alt, modenum)
         filename = datapath_db.fetch(keyname)
         pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
                         sigmarange=2.5, outputdir=outputdir, multiplier=1000.,
-                        transverse=False)
+                        transverse=False, convolve=convolve)
 
-        keyname = "GBT_%s_combined_cleaned_%dmode_product" % \
-                  (fieldname, modenum)
+        keyname = "%s_combined_cleaned_%s%smode_product" % \
+                  (mapbase, alt, modenum)
         filename = datapath_db.fetch(keyname)
         pc.make_cube_movie(filename, "Cleaned map times weights", pc.cube_frame_dir,
                         sigmarange=-1, outputdir=outputdir, multiplier=1000.,
-                        transverse=False)
+                        transverse=False, convolve=convolve)
 
-        keyname = "GBT_%s_combined_cleaned_%dmode_weight" % \
-                  (fieldname, modenum)
+        keyname = "%s_combined_cleaned_%s%smode_weight" % \
+                  (mapbase, alt, modenum)
         filename = datapath_db.fetch(keyname)
         pc.make_cube_movie(filename, "inverse variance weight", pc.cube_frame_dir,
                         sigmarange=2.5, outputdir=outputdir, multiplier=1.,
@@ -215,8 +221,12 @@ if __name__ == "__main__":
     #plot_gbt_simset('15hr')
     #plot_gbt_simset('22hr')
     #plot_gbt_mapset()
-    plot_gbt_newmapset()
+    #plot_gbt_newmapset()
 
+    #plot_gbt_comb_modeset('15hr', alt="nomeanconv_", convolve=True)
+    plot_gbt_comb_modeset('15hr', alt="noconv_", convolve=False)
+    plot_gbt_comb_modeset('15hr', alt="noconv_", convolve=True)
+    plot_gbt_comb_modeset('15hr', alt="noconv_", sim=True, convolve=False)
     #plot_gbt_comb_modeset('15hr')
     #plot_gbt_comb_modeset('22hr')
 

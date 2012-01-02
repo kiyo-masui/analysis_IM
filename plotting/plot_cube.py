@@ -7,6 +7,7 @@ from core import algebra
 import multiprocessing
 from utils import data_paths
 from plotting import plot_slice
+import map.beam as beam
 
 cube_frame_dir = "/scratch/eswitzer/cube_frames/"
 
@@ -27,7 +28,7 @@ def make_cube_movie(cubename, colorbar_title, frame_dir,
                     filetag_suffix="",
                     outputdir="./", sigmarange=6., ignore=None, multiplier=1.,
                     transverse=False, title=None, sigmacut=None,
-                    logscale=False, physical=False):
+                    logscale=False, physical=False, convolve=False):
     """Make a stack of spatial slice maps and animate them
     transverse plots along RA and freq and image plane is in Dec
     First mask any points that exceed `sigmacut`, and then report the extent of
@@ -58,6 +59,19 @@ def make_cube_movie(cubename, colorbar_title, frame_dir,
 
     if ignore is not None:
         maskarray = ma.mask_or(maskarray, (cube == ignore))
+
+    convolved = ""
+    if convolve:
+        convolved = "_convolved"
+        beam_data = np.array([0.316148488246, 0.306805630985, 0.293729620792,
+                     0.281176247549, 0.270856788455, 0.26745856078,
+                     0.258910010848, 0.249188429031])
+        freq_data = np.array([695, 725, 755, 785, 815, 845, 875, 905],
+                             dtype=float)
+        freq_data *= 1.0e6
+
+        beamobj = beam.GaussianBeam(beam_data, freq_data)
+        cube = beamobj.apply(cube)
 
     if sigmacut:
         #np.set_printoptions(threshold=np.nan, precision=4)
@@ -125,7 +139,7 @@ def make_cube_movie(cubename, colorbar_title, frame_dir,
 
     #argument = frame_dir + tag + '.%03d.png'
     argument = frame_dir + tag + '.%03d.jpeg'
-    outfile = outputdir + tag + filetag_suffix + orientation + '.mp4'
+    outfile = outputdir + tag + filetag_suffix + orientation + convolved + '.mp4'
     subprocess.check_call(('ffmpeg', '-vb', '2500000', '-r', '10',
                            '-y', '-i',
                             argument, outfile))
