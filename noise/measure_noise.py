@@ -137,14 +137,15 @@ class Measure(object) :
                 for ii in range(n_bands_proc):
                     for jj in range(n_pols):
                         a = h.add_subplot(n_bands_proc, n_pols, 
-                                          ii * n_pols + jj)
+                                          ii * n_pols + jj + 1)
                         a.set_xlabel("frequency (Hz)")
                         a.set_ylabel("power (K^2)")
                         pol_str = core.utils.polint2str(pols[jj])
                         band = band_centres[ii]
                         a.set_title("Band %dMHz, polarization " % band
                                     + pol_str)
-                        #a.autoscale_view(tight=True)
+                        a.autoscale_view(tight=True)
+                h.subplots_adjust(hspace=0.4, left=0.2)
                 fig_f_name = params['output_root'] + file_middle + ".pdf"
                 utils.mkparents(fig_f_name)
                 h.savefig(fig_f_name)
@@ -170,7 +171,7 @@ def measure_noise_parameters(Blocks, parameters, split_scans=False,
     # Calculate the full correlated power spectrum.
     power_mat, window_function, dt, channel_means = npow.full_power_mat(
             Blocks, window="hanning", deconvolve=False, n_time=-1.05,
-            normalize=False, split_scans=split_scans)
+            normalize=False, split_scans=split_scans, subtract_slope=True)
     # This shouldn't be nessisary, since I've tried to keep things finite in
     # the above function.  However, leave it in for now just in case.
     if not sp.alltrue(sp.isfinite(power_mat)) :
@@ -253,7 +254,7 @@ def get_freq_modes_over_f(power_mat, window_function, frequency, n_modes,
     # Factor the matrix to get the most correlated modes.
     e, v = linalg.eigh(low_f_mat)
     # Make sure they are sorted.
-    if not sp.alltrue(sp.diff(e)[-n_modes:] >= 0):
+    if not sp.alltrue(sp.diff(e) >= 0):
         raise RuntimeError("Eigenvalues not sorted")
     # Power matrix striped of the biggest modes.
     reduced_power = sp.copy(power_mat)
@@ -322,7 +323,7 @@ def get_freq_modes_over_f(power_mat, window_function, frequency, n_modes,
     if plots:
         h = plt.gcf()
         a = h.add_subplot(*h.current_subplot)
-        norm = sp.mean(auto_spec_window)
+        norm = sp.mean(auto_spec_window).real
         auto_plot = auto_spec_mean / norm
         plotable = auto_plot > 0
         lines = a.loglog(frequency[plotable], auto_plot[plotable])

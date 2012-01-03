@@ -646,9 +646,9 @@ def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True,
             n_time = (time_min//n_block  + 1) * n_block
         back_dims = Blocks[0].dims[1:]
         n_chan = back_dims[-1]
-        power_mat = sp.zeros((n_time,) + back_dims + (n_chan,), dtype=float)
+        power_mat = sp.zeros((n_time,) + back_dims + (n_chan,), dtype=complex)
         window_function = sp.zeros((n_time,) + back_dims + (n_chan,),
-                                   dtype=float)
+                                   dtype=complex)
         channel_means = sp.zeros(back_dims, dtype=float)
         for ii, Data in enumerate(Blocks):
             this_data, this_mask, this_dt, this_means = \
@@ -660,7 +660,7 @@ def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True,
                 dt = this_dt
             else:
                 if not sp.allclose(dt, this_dt, rtol=0.001):
-                    raise RuntimeError("Time sapling doesn't line up.")
+                    raise RuntimeError("Time sampling doesn't line up.")
             this_power, this_window = calculate_full_power_mat(this_data, 
                         this_mask, deconvolve=deconvolve, normalize=normalize)
             power_mat += this_power / len(Blocks)

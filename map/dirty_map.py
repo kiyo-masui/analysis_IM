@@ -1101,8 +1101,8 @@ class Noise(object):
         # If we are adding too much noise, we risk making the matrix singular.
         # XXX Add a factor of n_chan here, assuming the noise is distributed
         # across frequencies (use flaggers to enforce this).
-        if sp.mean(correlation_function) > T_medium * self.n_chan:
-            print "Freq mode mean:", sp.mean(correlation_function)
+        if sp.amax(correlation_function) > T_large * self.n_chan:
+            print "Freq mode max:", sp.amax(correlation_function)
             raise NoiseError("Extremely high 1/f risks singular noise.")
         corr_func_interpolator = \
             interpolate.interp1d(sp.arange(n_lags)*dt, correlation_function)
@@ -1154,7 +1154,7 @@ class Noise(object):
         # Loop through and fill the modes.
         for ii, f in enumerate(frequencies):
             this_amp_factor = (f / f_0)**index * df
-            if sp.any(this_amp_factor > f_medium * self.n_time):
+            if sp.any(this_amp_factor > f_large * self.n_time):
                 print "time mode amplitude:", this_amp_factor
                 raise NoiseError("Deweighting amplitude too high.")
             this_amps = this_amp_factor * amps
