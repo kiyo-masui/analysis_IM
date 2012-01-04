@@ -1107,10 +1107,14 @@ class Noise(object):
         corr_func_interpolator = \
             interpolate.interp1d(sp.arange(n_lags)*dt, correlation_function)
         noise_mat = corr_func_interpolator(time_deltas)
-        # Add the thermal part to the diagonal.
-        BW = 1. / 2. / dt
-        noise_mat.flat[::self.n_time + 1] += thermal * BW * 2
         self.freq_mode_noise[start_mode,...] = noise_mat
+        # Add the thermal part to the diagonal.
+        # XXX This isn't strictly being done correctly, but to do better we
+        # need to measure the noise differently.
+        mode_norm = sp.sum(mode**2)  # Usually unity.
+        self.initialize_diagonal()
+        BW = 1. / 2. / dt
+        self.diagonal += mode[:,None]**2 * thermal * BW * 2 / mode_norm
 
     # XXX Might mess up numerical stability. Protection needs to be added.
     def deweight_freq_mode(self, mode):

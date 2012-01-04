@@ -266,8 +266,8 @@ dmA_polarizations = ('I',)
 dmA_field_centre = (217.9, 2.0)
 dmA_map_shape = (64, 32)
 dmA_pixel_spacing = .075
-#dmA_map_shape = (64, 32)
-#dmA_pixel_spacing = .075
+#dmA_map_shape = (78, 43)
+#dmA_pixel_spacing = 1.0627
 dmA_time_block = 'scan'
 #dmA_n_files_group = 420  # prawn
 dmA_n_files_group = 280  # tpb nodes.
@@ -297,7 +297,8 @@ cmA_input_root = dmA_output_root
 cmA_output_root = cmA_input_root
 
 cmA_polarizations = ('I',)
-cmA_bands = (737, 799, 862)
+#cmA_bands = (737, 799, 862)
+cmA_bands = (862,)
 cmA_save_noise_diag = True
 cmA_save_cholesky = False
 
