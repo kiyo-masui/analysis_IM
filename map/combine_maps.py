@@ -60,58 +60,61 @@ def combine_maps(source_key, outputdir_key, alt_weight=None,
     for mapind in range(0, len(signal_list)):
         prodmap.append(signal_list[mapind] * weight_list[mapind])
 
-    for mapind in range(1, len(signal_list)):
-        prodmap[0] += prodmap[mapind]
-        weight_list[0] += weight_list[mapind]
+    print "CHECK THESE: %d %d %d" % (len(signal_list), len(weight_list),
+                                     len(prodmap))
 
-    algebra.compressed_array_summary(weight_list[0], "weight map")
-    algebra.compressed_array_summary(prodmap[0], "product map")
+    cumulative_product = algebra.zeros_like(prodmap[0])
+    cumulative_weight = algebra.zeros_like(prodmap[0])
+    for mapind in range(0, len(signal_list)):
+        cumulative_product += prodmap[mapind]
+        cumulative_weight += weight_list[mapind]
 
-    newmap = prodmap[0] / weight_list[0]
+    algebra.compressed_array_summary(cumulative_weight, "weight map")
+    algebra.compressed_array_summary(cumulative_product, "product map")
 
-    newweights = weight_list[0]
-    prodmap = prodmap[0]
+    newmap = cumulative_product / cumulative_weight
 
-    newweights[newweights < 1.e-20] = 0.
-    prodmap[newweights < 1.e-20] = 0.
+    cumulative_weight[cumulative_weight < 1.e-20] = 0.
+    cumulative_product[cumulative_weight < 1.e-20] = 0.
 
     # if the new map is nan or inf, set it and the wieghts to zero
     nan_array = np.isnan(newmap)
     newmap[nan_array] = 0.
-    prodmap[nan_array] = 0.
-    newweights[nan_array] = 0.
+    cumulative_product[nan_array] = 0.
+    cumulative_weight[nan_array] = 0.
     inf_array = np.isinf(newmap)
     newmap[inf_array] = 0.
-    prodmap[inf_array] = 0.
-    newweights[inf_array] = 0.
+    cumulative_product[inf_array] = 0.
+    cumulative_weight[inf_array] = 0.
     algebra.compressed_array_summary(newmap, "new map")
-    algebra.compressed_array_summary(prodmap, "final map * weight")
-    algebra.compressed_array_summary(newweights, "final weight map")
+    algebra.compressed_array_summary(cumulative_product, "final map * weight")
+    algebra.compressed_array_summary(cumulative_weight, "final weight map")
 
     signal_out = "%s/%s_signal.npy" % (outputdir, source_key)
     prodmap_out = "%s/%s_product.npy" % (outputdir, source_key)
     weight_out = "%s/%s_weight.npy" % (outputdir, source_key)
     algebra.save(signal_out, newmap)
-    algebra.save(prodmap_out, prodmap)
-    algebra.save(weight_out, newweights)
+    algebra.save(prodmap_out, cumulative_product)
+    algebra.save(weight_out, cumulative_weight)
 
 
 if __name__ == '__main__':
-    fieldlist = ['15hr', '22hr']
+    #fieldlist = ['15hr', '22hr']
     #fieldlist = ['22hr']
-    #fieldlist = ['15hr']
-    #for field in fieldlist:
-    #    for mode_num in range (0, 55, 5):
-    #        source_key = 'GBT_%s_map_cleaned_%dmode' % (field, mode_num)
-    #        parent = 'GBT_combined_%s_maps_Eric' % field
-    #        combine_maps(source_key, parent)
 
-    #fieldlist = ['15hr']
-    #for field in fieldlist:
-    #    for mode_num in range (0, 55, 5):
-    #        source_key = 'sim_%s_cleaned_%dmode' % (field, mode_num)
-    #        parent = 'GBT_combined_%s_maps_Eric' % field
-    #        combine_maps(source_key, parent)
+    fieldlist = ['15hr']
+    for field in fieldlist:
+        for mode_num in range (0, 55, 5):
+            source_key = 'GBT_%s_map_cleaned_%dmode' % (field, mode_num)
+            parent = 'GBT_combined_%s_maps_Eric' % field
+            combine_maps(source_key, parent)
+
+    fieldlist = ['15hr']
+    for field in fieldlist:
+        for mode_num in range (0, 55, 5):
+            source_key = 'sim_%s_cleaned_%dmode' % (field, mode_num)
+            parent = 'GBT_combined_%s_maps_Eric' % field
+            combine_maps(source_key, parent)
 
     #fieldlist = ['15hr']
     #for field in fieldlist:
@@ -133,3 +136,10 @@ if __name__ == '__main__':
             source_key = 'sim_%s_cleaned_noconv_%smode' % (field, mode_num)
             parent = 'GBT_combined_%s_maps_Eric' % field
             combine_maps(source_key, parent)
+
+    #fieldlist = ['15hr']
+    #for field in fieldlist:
+    #    for mode_num in range (0, 55, 5):
+    #        source_key = 'GBT_%s_map_cleaned_newmap737_%smode' % (field, mode_num)
+    #        parent = 'GBT_combined_%s_maps_Eric' % field
+    #        combine_maps(source_key, parent)

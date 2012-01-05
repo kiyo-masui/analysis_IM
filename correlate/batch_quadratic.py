@@ -164,6 +164,111 @@ def batch_sim_run(sim_key, subtract_mean=False, degrade_resolution=False,
     caller.multiprocess_stack()
 
 
+def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
+                               wigglez_mock_key, wigglez_selection_key,
+                               subtract_mean=False, degrade_resolution=False,
+                               unitless=True, return_3d=False,
+                               truncate=False, window=None, n_modes=None,
+                               refinement=2, pad=5, order=2):
+    datapath_db = data_paths.DataPath()
+
+    outpath = datapath_db.fetch("quadratic_batch_data")
+    print "writing to: " + outpath
+
+    funcname = "correlate.batch_quadratic.call_xspec_run"
+    caller = batch_handler.MemoizeBatch(funcname, outpath,
+                                        generate=True, verbose=True)
+
+    # first find the xpower with the WiggleZ data itself
+
+    for mode_num in range(0, 55, 5):
+        map1_key = "db:%s_%dmode_map" % (gbt_map_key, mode_num)
+        map2_key = "db:%s" % wigglez_map_key
+        noiseinv1_key = "db:%s_%dmode_weight" % (gbt_map_key, mode_num)
+        noiseinv2_key = "db:%s" % wigglez_selection_key
+
+        caller.execute(map1_key, map2_key,
+                       noiseinv1_key, noiseinv2_key,
+                       subtract_mean=subtract_mean,
+                       degrade_resolution=degrade_resolution,
+                       unitless=unitless,
+                       return_3d=return_3d,
+                       truncate=truncate,
+                       window=window, n_modes=n_modes,
+                       refinement=refinement,
+                       pad=pad, order=order)
+
+    for mode_num in range(0, 55, 5):
+        for index in range(100):
+            map1_key = "db:%s_%dmode_map" % (gbt_map_key, mode_num)
+            map2_key = "db:%s:%d" % (wigglez_mock_key, index)
+            noiseinv1_key = "db:%s_%dmode_weight" % (gbt_map_key, mode_num)
+            noiseinv2_key = "db:%s" % wigglez_selection_key
+
+            caller.execute(map1_key, map2_key,
+                           noiseinv1_key, noiseinv2_key,
+                           subtract_mean=subtract_mean,
+                           degrade_resolution=degrade_resolution,
+                           unitless=unitless,
+                           return_3d=return_3d,
+                           truncate=truncate,
+                           window=window, n_modes=n_modes,
+                           refinement=refinement,
+                           pad=pad, order=order)
+
+    caller.multiprocess_stack()
+
+
+def batch_GBTxwigglez_trans_run(gbt_map_key, wigglez_selection_key,
+                               subtract_mean=False, degrade_resolution=False,
+                               unitless=True, return_3d=False,
+                               truncate=False, window=None, n_modes=None,
+                               refinement=2, pad=5, order=2):
+    datapath_db = data_paths.DataPath()
+
+    outpath = datapath_db.fetch("quadratic_batch_data")
+    print "writing to: " + outpath
+
+    funcname = "correlate.batch_quadratic.call_xspec_run"
+    caller = batch_handler.MemoizeBatch(funcname, outpath,
+                                        generate=True, verbose=True)
+
+    map1_key = "db:sim_15hr:0"
+    map2_key = "db:sim_15hr:0"
+    noiseinv1_key = "db:%s_0mode_weight" % (gbt_map_key)
+    noiseinv2_key = "db:%s" % wigglez_selection_key
+
+    caller.execute(map1_key, map2_key,
+                   noiseinv1_key, noiseinv2_key,
+                   subtract_mean=subtract_mean,
+                   degrade_resolution=degrade_resolution,
+                   unitless=unitless,
+                   return_3d=return_3d,
+                   truncate=truncate,
+                   window=window, n_modes=n_modes,
+                   refinement=refinement,
+                   pad=pad, order=order)
+
+    for mode_num in range(0, 55, 5):
+        map1_key = "db:sim_15hr_combined_cleaned_%dmode_map" % (mode_num)
+        map2_key = "db:sim_15hr:0"
+        noiseinv1_key = "db:%s_%dmode_weight" % (gbt_map_key, mode_num)
+        noiseinv2_key = "db:%s" % wigglez_selection_key
+
+        caller.execute(map1_key, map2_key,
+                       noiseinv1_key, noiseinv2_key,
+                       subtract_mean=subtract_mean,
+                       degrade_resolution=degrade_resolution,
+                       unitless=unitless,
+                       return_3d=return_3d,
+                       truncate=truncate,
+                       window=window, n_modes=n_modes,
+                       refinement=refinement,
+                       pad=pad, order=order)
+
+    caller.multiprocess_stack()
+
+
 def batch_wigglez_automock_run(mock_key, sel_key, subtract_mean=False,
                                degrade_resolution=False,
                                unitless=True, return_3d=False,
@@ -261,7 +366,7 @@ def batch_data_run(subtract_mean=False, degrade_resolution=False,
     caller.multiprocess_stack()
 
 
-def batch_GBTxwigglez_data_run(subtract_mean=False, degrade_resolution=False,
+def batch_GBTxwigglez_data_run_old(subtract_mean=False, degrade_resolution=False,
                                unitless=True, return_3d=False,
                                truncate=False, window=None, n_modes=None,
                                refinement=2, pad=5, order=2):
@@ -317,6 +422,15 @@ def batch_GBTxwigglez_data_run(subtract_mean=False, degrade_resolution=False,
 
 
 if __name__ == '__main__':
+    batch_GBTxwigglez_data_run("GBT_15hr_map_combined_cleaned_noconv",
+                               "WiggleZ_15hr_delta_binned_data",
+                               "WiggleZ_15hr_delta_mock",
+                               "WiggleZ_15hr_montecarlo")
+
+    sys.exit()
+    batch_GBTxwigglez_trans_run("GBT_15hr_map_combined_cleaned",
+                               "WiggleZ_15hr_montecarlo")
+
     #batch_data_run(alt="nomeanconv_", subtract_mean=True)
     #batch_data_run(alt="nomeanconv_")
 
@@ -328,7 +442,6 @@ if __name__ == '__main__':
     # vv + evo sims with treatments
     batch_sim_run("sim_15hr_beam", degrade_resolution=False, subtract_mean=True)
 
-    sys.exit()
     # modeloss sim
     batch_data_run(sim=True)
 

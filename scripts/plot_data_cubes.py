@@ -192,23 +192,29 @@ def plot_wigglez(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/",
     else:
         ctag = ""
 
-    #db_key = "WiggleZ_%s_%sbinned_data" % (fieldname, ctag)
-    #filename = datapath_db.fetch(db_key)
-    #pc.make_cube_movie(filename, "counts", pc.cube_frame_dir,
-    #                    sigmarange=-1, outputdir=outputdir, multiplier=1.,
-    #                    transverse=False, filetag_suffix="_"+fieldname)
+    db_key = "WiggleZ_%s_%sdelta_binned_data" % (fieldname, ctag)
+    filename = datapath_db.fetch(db_key)
+    pc.make_cube_movie(filename, "counts", pc.cube_frame_dir,
+                        sigmarange=-1, outputdir=outputdir, multiplier=1.,
+                        transverse=False, filetag_suffix="_"+fieldname)
 
-    #db_key = "WiggleZ_%s_%sselection" % (fieldname, ctag)
-    #filename = datapath_db.fetch(db_key)
-    #pc.make_cube_movie(filename, "selection", pc.cube_frame_dir,
-    #                    sigmarange=-1, outputdir=outputdir, multiplier=1.,
-    #                    transverse=False, filetag_suffix="_"+fieldname)
+    db_key = "WiggleZ_%s_%sbinned_data" % (fieldname, ctag)
+    filename = datapath_db.fetch(db_key)
+    pc.make_cube_movie(filename, "counts", pc.cube_frame_dir,
+                        sigmarange=-1, outputdir=outputdir, multiplier=1.,
+                        transverse=False, filetag_suffix="_"+fieldname)
 
-    #db_key = "WiggleZ_%s_%sseparable_selection" % (fieldname, ctag)
-    #filename = datapath_db.fetch(db_key)
-    #pc.make_cube_movie(filename, "selection", pc.cube_frame_dir,
-    #                    sigmarange=-1, outputdir=outputdir, multiplier=1.,
-    #                    transverse=False, filetag_suffix="_"+fieldname)
+    db_key = "WiggleZ_%s_%sselection" % (fieldname, ctag)
+    filename = datapath_db.fetch(db_key)
+    pc.make_cube_movie(filename, "selection", pc.cube_frame_dir,
+                        sigmarange=-1, outputdir=outputdir, multiplier=1.,
+                        transverse=False, filetag_suffix="_"+fieldname)
+
+    db_key = "WiggleZ_%s_%sseparable_selection" % (fieldname, ctag)
+    filename = datapath_db.fetch(db_key)
+    pc.make_cube_movie(filename, "selection", pc.cube_frame_dir,
+                        sigmarange=-1, outputdir=outputdir, multiplier=1.,
+                        transverse=False, filetag_suffix="_"+fieldname)
 
     db_key = "WiggleZ_%s_%smontecarlo" % (fieldname, ctag)
     filename = datapath_db.fetch(db_key)
@@ -224,13 +230,14 @@ if __name__ == "__main__":
     #plot_gbt_newmapset()
 
     #plot_gbt_comb_modeset('15hr', alt="nomeanconv_", convolve=True)
-    plot_gbt_comb_modeset('15hr', alt="noconv_", convolve=False)
-    plot_gbt_comb_modeset('15hr', alt="noconv_", convolve=True)
-    plot_gbt_comb_modeset('15hr', alt="noconv_", sim=True, convolve=False)
+    #plot_gbt_comb_modeset('15hr', alt="noconv_", convolve=False)
+    #plot_gbt_comb_modeset('15hr', alt="noconv_", convolve=True)
+    #plot_gbt_comb_modeset('15hr', alt="noconv_", sim=True, convolve=False)
+    #plot_gbt_comb_modeset('15hr', alt="newmap737_", sim=False, convolve=False)
     #plot_gbt_comb_modeset('15hr')
     #plot_gbt_comb_modeset('22hr')
 
-    #plot_wigglez('15hr', complete=False)
+    plot_wigglez('15hr', complete=False)
     #plot_wigglez('22hr', complete=False)
     #plot_wigglez('1hr', complete=True)
     #plot_wigglez('22hr')

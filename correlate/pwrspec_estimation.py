@@ -347,7 +347,8 @@ def summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
 
     fileout = outdir + "/" + tag + "_avg.dat"
     corr_fileout = outdir + "/" + tag + "_corr.dat"
-    summarize_1d_agg_pwrspec(pwr_1d, fileout, corr_file=corr_fileout,
+    mean1d, std1d = summarize_1d_agg_pwrspec(pwr_1d, fileout,
+                                             corr_file=corr_fileout,
                                 apply_1d_transfer=apply_1d_transfer)
 
     fileout = outdir + "/" + tag + "_avg_2d.dat"
@@ -356,7 +357,7 @@ def summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
     fileout = outdir + "/" + tag + "_avg_2d_counts.dat"
     summarize_2d_agg_pwrspec(pwr_2d, fileout, dataname = "counts_histo")
 
-    return
+    return mean1d, std1d
 
 
 def convert_2d_to_1d_driver(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
@@ -369,9 +370,6 @@ def convert_2d_to_1d_driver(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
     bin_ky is the x-axis
     bin_1d is the k vector over which to return the result
     """
-    if transfer is not None:
-        pwr_2d /= transfer
-
     # find |k| across the array
     index_array = np.indices(pwr_2d.shape)
     scale_array = np.zeros(index_array.shape)
@@ -383,6 +381,15 @@ def convert_2d_to_1d_driver(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
     radius_flat = radius_array.flatten()
     pwr_2d_flat = pwr_2d.flatten()
     counts_2d_flat = counts_2d.flatten()
+
+    if transfer is not None:
+        orig_counts = copy.deepcopy(counts_2d_flat)
+        trans_flat = transfer.flatten()
+        pwr_2d_flat /= trans_flat
+        counts_2d_flat *= trans_flat*trans_flat
+        counts_2d_flat[np.isnan(counts_2d_flat)] = 0
+        counts_2d_flat[np.isinf(counts_2d_flat)] = 0
+        counts_2d_flat[orig_counts == 0] = 0
 
     count_pwr_prod = counts_2d_flat*pwr_2d_flat
     count_pwr_prod[np.isnan(count_pwr_prod)] = 0

@@ -102,7 +102,132 @@ def gather_batch_data_run(tag, subtract_mean=False, degrade_resolution=False,
                           apply_1d_transfer=transfunc)
 
 
+def gather_batch_gbtxwigglez_data_run(tag, gbt_map_key, wigglez_map_key,
+                                      wigglez_mock_key, wigglez_selection_key,
+                                      subtract_mean=False,
+                                      degrade_resolution=False,
+                                      unitless=True, return_3d=False,
+                                      truncate=False, window=None, n_modes=None,
+                                      refinement=2, pad=5, order=2, beam_transfer=None,
+                                      outdir="./plot_data", mode_transfer_1d=None,
+                                      mode_transfer_2d=None):
+    datapath_db = data_paths.DataPath()
+    outpath = datapath_db.fetch("quadratic_batch_data")
+
+    print "reading from:" + outpath
+
+    funcname = "correlate.batch_quadratic.call_xspec_run"
+    caller = batch_handler.MemoizeBatch(funcname, outpath,
+                                        verbose=True)
+
+    transfer_2d = None
+
+    if (mode_transfer_2d is not None) and (beam_transfer is None):
+        transfer_2d = mode_transfer_2d[mode_num][1]
+
+    if (mode_transfer_2d is None) and (beam_transfer is not None):
+        transfer_2d = beam_transfer
+
+    if (mode_transfer_2d is not None) and (beam_transfer is not None):
+        transfer_2d = mode_transfer_2d[mode_num][1] * beam_transfer
+
+    for mode_num in range(0, 55, 5):
+        print mode_num
+        pwr_1d = []
+        pwr_2d = []
+        pwr_1d_from_2d = []
+        for index in range(100):
+            map1_key = "db:%s_%dmode_map" % (gbt_map_key, mode_num)
+            map2_key = "db:%s:%d" % (wigglez_mock_key, index)
+            noiseinv1_key = "db:%s_%dmode_weight" % (gbt_map_key, mode_num)
+            noiseinv2_key = "db:%s" % wigglez_selection_key
+
+            pwr2d_run, pwr1d_run = caller.execute(map1_key, map2_key,
+                           noiseinv1_key, noiseinv2_key,
+                           subtract_mean=subtract_mean,
+                           degrade_resolution=degrade_resolution,
+                           unitless=unitless,
+                           return_3d=return_3d,
+                           truncate=truncate,
+                           window=window, n_modes=n_modes,
+                           refinement=refinement,
+                           pad=pad, order=order)
+
+            pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwr2d_run,
+                                  transfer=transfer_2d))
+
+            pwr_2d.append(pwr2d_run)
+            pwr_1d.append(pwr1d_run)
+
+        mtag = tag + "_%dmodes_mock" % mode_num
+        if mode_transfer_1d is not None:
+            transfunc = mode_transfer_1d[mode_num][0]
+        else:
+            transfunc = None
+
+        mean1dmock, std1dmock = pe.summarize_pwrspec(pwr_1d,
+                          pwr_1d_from_2d, pwr_2d, mtag,
+                          outdir="./plot_data",
+                          apply_1d_transfer=transfunc)
+
+        # now recover the xspec with the real data
+        map1_key = "db:%s_%dmode_map" % (gbt_map_key, mode_num)
+        map2_key = "db:%s" % wigglez_map_key
+        noiseinv1_key = "db:%s_%dmode_weight" % (gbt_map_key, mode_num)
+        noiseinv2_key = "db:%s" % wigglez_selection_key
+
+        pwr2d_run, pwr1d_run = caller.execute(map1_key, map2_key,
+                       noiseinv1_key, noiseinv2_key,
+                       subtract_mean=subtract_mean,
+                       degrade_resolution=degrade_resolution,
+                       unitless=unitless,
+                       return_3d=return_3d,
+                       truncate=truncate,
+                       window=window, n_modes=n_modes,
+                       refinement=refinement,
+                       pad=pad, order=order)
+
+        pwr1d_from_2d = pe.convert_2d_to_1d(pwr2d_run, transfer=transfer_2d)
+
+        pwr_1d = pwr1d_run['binavg']
+        pwr_1d_from_2d = pwr1d_from_2d['binavg']
+        if mode_transfer_1d is not None:
+            pwr_1d /= mode_transfer_1d[mode_num][0]
+            pwr_1d_from_2d /= mode_transfer_1d[mode_num][0]
+
+        # assume that they all have the same binning
+        bin_left = pwr1d_run['bin_left']
+        bin_center = pwr1d_run['bin_center']
+        bin_right = pwr1d_run['bin_right']
+        counts_histo = pwr1d_run['counts_histo']
+
+        filename = "./plot_data/%s_%dmodes.dat" % (tag, mode_num)
+        outfile = open(filename, "w")
+        for specdata in zip(bin_left, bin_center,
+                            bin_right, counts_histo, pwr_1d, pwr_1d_from_2d,
+                            mean1dmock, std1dmock):
+            outfile.write(("%10.15g " * 8 + "\n") % specdata)
+        outfile.close()
+
+
 if __name__ == '__main__':
+    wigglez_transfer_functions = ct.find_wigglez_modeloss_transfer()
+
+
+    sys.exit()
+    gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_beammodecomp",
+                               "GBT_15hr_map_combined_cleaned",
+                               "WiggleZ_15hr_delta_binned_data",
+                               "WiggleZ_15hr_delta_mock",
+                               "WiggleZ_15hr_montecarlo",
+                               mode_transfer_1d = wigglez_transfer_functions)
+
+    gather_batch_gbtxwigglez_data_run("wigglez_x_GBT",
+                               "GBT_15hr_map_combined_cleaned",
+                               "WiggleZ_15hr_delta_binned_data",
+                               "WiggleZ_15hr_delta_mock",
+                               "WiggleZ_15hr_montecarlo")
+
     # all of the beam, meansub and conv transfer functions
     (trans_beam, trans_beam_mean, trans_beam_meanconv) = ct.find_beam_trans()
 
@@ -156,6 +281,4 @@ if __name__ == '__main__':
                           mode_transfer_2d=transfer_functions)
 
     #gather_batch_data_run("GBT15hr", transfer=trans_beam)
-
-    sys.exit()
 

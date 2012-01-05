@@ -216,8 +216,8 @@ def produce_delta_map(optical_file, optical_selection_file):
     map_delta = map_optical / map_nbar - 1.
 
     # TODO: also consider setting the nbar to zero outside of galaxies?
-    #map_delta[np.isinf(map_delta)] = 0.
-    #map_delta[np.isnan(map_delta)] = 0.
+    map_delta[np.isinf(map_delta)] = 0.
+    map_delta[np.isnan(map_delta)] = 0.
     # if e.g. nbar is zero, then set the point as if there were no galaxies
     # downstream, nbar=0 should coincide with zero weight anyway
     #map_delta[np.isinf(map_delta)] = -1.
@@ -455,8 +455,8 @@ if __name__ == '__main__':
     #generate_complete_wigglez()
     #montecarlo_selection()
     bin_wigglez_delta('15hr', 'WiggleZ_15hr_montecarlo', complete=False)
-    bin_wigglez_delta('15hr', 'WiggleZ_15hr_complete_separable_selection', complete=True)
-    bin_wigglez_delta('22hr', 'WiggleZ_22hr_separable_selection', complete=False)
-    bin_wigglez_delta('22hr', 'WiggleZ_22hr_complete_separable_selection', complete=True)
-    bin_wigglez_delta('1hr', 'WiggleZ_1hr_separable_selection', complete=False)
-    bin_wigglez_delta('1hr', 'WiggleZ_1hr_complete_separable_selection', complete=True)
+    #bin_wigglez_delta('15hr', 'WiggleZ_15hr_complete_separable_selection', complete=True)
+    #bin_wigglez_delta('22hr', 'WiggleZ_22hr_separable_selection', complete=False)
+    #bin_wigglez_delta('22hr', 'WiggleZ_22hr_complete_separable_selection', complete=True)
+    #bin_wigglez_delta('1hr', 'WiggleZ_1hr_separable_selection', complete=False)
+    #bin_wigglez_delta('1hr', 'WiggleZ_1hr_complete_separable_selection', complete=True)
