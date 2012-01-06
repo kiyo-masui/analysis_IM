@@ -617,7 +617,7 @@ class TestAlgUtils(unittest.TestCase) :
         # Test input sanitization.
         self.assertRaises(ValueError, v.slice_interpolate_weights, [0,1], 2.5)
         # Test bounds.
-        self.assertRaises(ValueError, v.slice_interpolate_weights, [1, 2], 
+        self.assertRaises(ce.DataError, v.slice_interpolate_weights, [1, 2], 
                           [2.5, 1.5])
         # Test linear interpolations in 1D.
         points, weights = v.slice_interpolate_weights(0, 2.5, 'linear')
@@ -665,6 +665,72 @@ class TestAlgUtils(unittest.TestCase) :
         v[3, :, 1] = sp.arange(2, dtype=float)*sp.pi
         self.assertTrue(sp.allclose(v.slice_interpolate((0, 2), (2.5, 1.1), 
                 'nearest'), sp.arange(2)*sp.pi))
+
+    def test_slice_interpolate_cubic(self) :
+        # Construct a 3D array that is a quadratic function.
+        data = sp.arange(60, dtype=float)
+        data.shape = (5, 4, 3)
+        vect = algebra.info_array(data)
+        vect = algebra.vect_array(vect,axis_names=('freq', 'a', 'b'))
+
+        v = vect
+        a = sp.arange(-2,3)**2
+        a.shape = (5, 1, 1)
+        b = sp.arange(-1,3)**2
+        b.shape = (1, 4, 1)
+        c = sp.arange(-1,2)**2
+        c.shape = (1, 1, 3)
+        v[:,:,:] = a + b + c
+        v.set_axis_info('freq', 0, 1)
+        v.set_axis_info('a', 1, 1)
+        v.set_axis_info('b', 0, 1)
+        
+        #### First test the weights.
+
+        # Test cubic conv interpolations in multi D.
+        points, weights = v.slice_interpolate_weights([0, 1, 2], 
+                                                      [0, 0, 0],
+                                                      'cubic')
+        self.assertTrue(1. in weights)
+        self.assertTrue(weights.tolist().count(0) == 63)
+        self.assertTrue(points[sp.where(weights==1)[0][0]][0] == 2)
+        self.assertTrue(points[sp.where(weights==1)[0][0]][1] == 1)
+        self.assertTrue(points[sp.where(weights==1)[0][0]][2] == 1)
+
+        points, weights = v.slice_interpolate_weights([0, 1, 2], 
+                                                      [1.5, 0.5, 0],
+                                                      'cubic')
+        self.assertTrue(points.shape[0] == 64)
+        self.assertTrue(weights.shape[0] == 64)
+
+        # Test full interpolation.
+        out = v.slice_interpolate([0, 1, 2], 
+                                  [0, 0, 0],
+                                  'cubic')
+        self.assertTrue(sp.allclose(out,0.0))
+
+        out = v.slice_interpolate([0, 1, 2], 
+                                  [-1.34, 0.55, 0.86],
+                                  'cubic')
+        self.assertTrue(sp.allclose(out,2.8377))
+
+        # Test partial interpolation.
+        out = v.slice_interpolate([0, 2], 
+                                  [1.4, -0.3],
+                                  'cubic')
+        out1 = v.slice_interpolate([0, 1, 2], 
+                                   [1.4, -1, -0.3],
+                                   'cubic')
+        out2 = v.slice_interpolate([0, 1, 2], 
+                                   [1.4, 0, -0.3],
+                                   'cubic')
+        out3 = v.slice_interpolate([0, 1, 2], 
+                                   [1.4, 1, -0.3],
+                                   'cubic')
+        out4 = v.slice_interpolate([0, 1, 2], 
+                                   [1.4, 2, -0.3],
+                                   'cubic')
+        self.assertTrue(sp.allclose(out,[out1,out2,out3,out4]))
 
 class TestMatUtilsSq(unittest.TestCase) :
 
