@@ -110,7 +110,7 @@ class ForegroundSCK(ForegroundMap):
                 larr = np.arange(nmin,nmax+1).astype(np.float64)
                 pl = lpn(nmax, np.cos(theta))[0][nmin:]
                 
-                return ((2*larr+1.0)*pl*self.angular_ps(larr)).sum() / (4*np.pi)
+                return ((2*larr+1.0)*pl*self.angular_powerspectrum(larr)).sum() / (4*np.pi)
 
             tarr = np.linspace(0, np.pi, 1000)
             cfarr = cf(tarr)

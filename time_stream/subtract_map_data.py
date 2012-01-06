@@ -46,7 +46,8 @@ class Subtract(base_single.BaseSingle) :
     def action(self, Data) :
         if (not self.params['solve_for_gain'] or
             self.params['gain_output_end'] is '') :
-            sub_map(Data, self.Map, self.params['solve_for_gain'])
+            sub_map(Data, self.Map, self.params['solve_for_gain'],
+                    interpolation=self.params['interpolation'])
         else :
             block_gain = {}
             Data.calc_freq()
@@ -113,6 +114,7 @@ def sub_map(Data, Maps, correlate=False, pols=(), make_plots=False,
         shape = Map.shape
         spacing = (Map.info['freq_delta'], Map.info['ra_delta'], 
                    Map.info['dec_delta'])
+        # Nearest code is depricated.  We could just use the general code.
         if interpolation == 'nearest' :
             # These indices are the length of the time axis. Integer indicies.
             ra_ind = map.tools.calc_inds(Data.ra, centre[1], shape[1],

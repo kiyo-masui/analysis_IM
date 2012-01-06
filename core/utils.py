@@ -90,7 +90,10 @@ def time2float(UT) :
     """Calculates float seconds from a time string.
 
     Convert a time string in format %Y-%m-%dT%H:%M:%S.partial to a float number
-    of seconds ignoring many corrections.  Works for array inputs."""
+    of seconds ignoring many corrections (such as leap seconds).  However it
+    should be internally consistant, and it should be safe to use this method
+    to convert to a float, do some operations, then use `float2time` to convert
+    back.  Works for array inputs."""
 
     if not isinstance(UT, sp.ndarray) :
         UT = sp.array([UT])
