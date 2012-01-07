@@ -11,6 +11,7 @@ from map import physical_gridding
 from utils import binning
 from correlate import map_pair as mp
 from correlate import pwrspec_estimation as pe
+from correlate import compile_wigglez_transfer as cwt
 from correlate import compile_transfer as ct
 import sys
 from utils import batch_handler
@@ -210,19 +211,21 @@ def gather_batch_gbtxwigglez_data_run(tag, gbt_map_key, wigglez_map_key,
         outfile.close()
 
 
-if __name__ == '__main__':
-    wigglez_transfer_functions_noconv = ct.gather_batch_gbtxwigglez_trans_run(
-                                    "sim_15hr_combined_cleaned_noconv",
-                                    "sim_15hr",
-                                    "GBT_15hr_map_combined_cleaned_noconv",
-                                    "WiggleZ_15hr_montecarlo")
+def process_wigglez():
+    (crosstrans_beam, crosstrans_beam_mean, crosstrans_beam_meanconv) = cwt.find_crossbeam_trans()
 
-    gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_beammodecomp_noconv",
-                               "GBT_15hr_map_combined_cleaned_noconv",
-                               "WiggleZ_15hr_delta_binned_data",
-                               "WiggleZ_15hr_delta_mock",
-                               "WiggleZ_15hr_montecarlo",
-                               mode_transfer_1d = wigglez_transfer_functions_noconv)
+    #wigglez_transfer_functions_noconv = cwt.gather_batch_gbtxwigglez_trans_run(
+    #                                "sim_15hr_combined_cleaned_noconv",
+    #                                "sim_15hr",
+    #                                "GBT_15hr_map_combined_cleaned_noconv",
+    #                                "WiggleZ_15hr_montecarlo")
+
+    #gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_beammodecomp_noconv",
+    #                           "GBT_15hr_map_combined_cleaned_noconv",
+    #                           "WiggleZ_15hr_delta_binned_data",
+    #                           "WiggleZ_15hr_delta_mock",
+    #                           "WiggleZ_15hr_montecarlo",
+    #                           mode_transfer_1d = wigglez_transfer_functions_noconv)
 
     gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_noconv",
                                "GBT_15hr_map_combined_cleaned_noconv",
@@ -230,9 +233,17 @@ if __name__ == '__main__':
                                "WiggleZ_15hr_delta_mock",
                                "WiggleZ_15hr_montecarlo")
 
+    gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_beamcomp_noconv",
+                               "GBT_15hr_map_combined_cleaned_noconv",
+                               "WiggleZ_15hr_delta_binned_data",
+                               "WiggleZ_15hr_delta_mock",
+                               "WiggleZ_15hr_montecarlo",
+                               beam_transfer=crosstrans_beam)
+
     sys.exit()
-    wigglez_transfer_functions_noconv = ct.gather_batch_gbtxwigglez_trans_run(
-                                    "sim_15hr_combined_cleaned",
+    # TODO: this should not be noconv
+    wigglez_transfer_functions = cwt.gather_batch_gbtxwigglez_trans_run(
+                                    "sim_15hr_combined_cleaned_noconv",
                                     "sim_15hr",
                                     "GBT_15hr_map_combined_cleaned",
                                     "WiggleZ_15hr_montecarlo")
@@ -250,6 +261,7 @@ if __name__ == '__main__':
                                "WiggleZ_15hr_delta_mock",
                                "WiggleZ_15hr_montecarlo")
 
+def process_autopower():
     # all of the beam, meansub and conv transfer functions
     (trans_beam, trans_beam_mean, trans_beam_meanconv) = ct.find_beam_trans()
 
@@ -304,3 +316,7 @@ if __name__ == '__main__':
 
     #gather_batch_data_run("GBT15hr", transfer=trans_beam)
 
+
+if __name__ == '__main__':
+    #process_wigglez()
+    process_autopower()

@@ -341,7 +341,7 @@ def summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
     """
     fileout = outdir + "/" + tag + "_avg_from2d.dat"
     corr_fileout = outdir + "/" + tag + "_corr_from2d.dat"
-    summarize_1d_agg_pwrspec(pwr_1d_from_2d, fileout,
+    mean1d_f2d, std1d_f2d = summarize_1d_agg_pwrspec(pwr_1d_from_2d, fileout,
                                 corr_file=corr_fileout,
                                 apply_1d_transfer=apply_1d_transfer)
 
@@ -357,7 +357,7 @@ def summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
     fileout = outdir + "/" + tag + "_avg_2d_counts.dat"
     summarize_2d_agg_pwrspec(pwr_2d, fileout, dataname = "counts_histo")
 
-    return mean1d, std1d
+    return mean1d_f2d, std1d_f2d
 
 
 def convert_2d_to_1d_driver(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
