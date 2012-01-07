@@ -30,6 +30,7 @@ set key at screen 0.6, 0.85
 #     "sim_15hr_beam_meanconv_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo., beam, meansub, conv.}" with yerrorbars
 plot "simideal_15hr_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 density only}" with yerrorbars ls 1, \
      "sim_15hr_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo.}" with yerrorbars ls 2, \
+     "simvel_15hr_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, streaming evo.}" with yerrorbars ls 5, \
      "sim_15hr_beam_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo., beam}" with yerrorbars ls 3, \
      "sim_15hr_beam_meanconv_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo., beam, meansub, conv.}" with yerrorbars ls 4, \
      "sim_15hr_beam_meanconv_corrected_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 case above, corrected by 2D transfer}" with yerrorbars ls 10
@@ -62,6 +63,7 @@ set key at screen 0.6, 0.85
 plot "theory_power_spectrum.dat" using 2:4 t "{/Helvetica=13 dd theory, no evo.}" with histeps ls 6, \
      "simideal_15hr_physical_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 density only}" with yerrorbars ls 4, \
      "sim_15hr_physical_avg.dat" using 2:5 t "{/Helvetica=13 dd, vv, evo}" with points ls 5, \
+     "simvel_15hr_physical_avg.dat" using 2:5 t "{/Helvetica=13 dd, vv, streaming, evo}" with points ls 2, \
      "sim_15hr_avg.dat" using 2:5 t "{/Helvetica=13 dd, vv, evo., obs. region}" with points ls 1, \
      "sim_15hr_physical_avg.dat" using 2:4 axes x2y2 t "{/Helvetica=13 # k modes (phys. subtrending)}" with histeps ls 8
 

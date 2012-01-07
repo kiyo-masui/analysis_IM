@@ -211,10 +211,32 @@ def gather_batch_gbtxwigglez_data_run(tag, gbt_map_key, wigglez_map_key,
 
 
 if __name__ == '__main__':
-    wigglez_transfer_functions = ct.find_wigglez_modeloss_transfer()
+    wigglez_transfer_functions_noconv = ct.gather_batch_gbtxwigglez_trans_run(
+                                    "sim_15hr_combined_cleaned_noconv",
+                                    "sim_15hr",
+                                    "GBT_15hr_map_combined_cleaned_noconv",
+                                    "WiggleZ_15hr_montecarlo")
 
+    gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_beammodecomp_noconv",
+                               "GBT_15hr_map_combined_cleaned_noconv",
+                               "WiggleZ_15hr_delta_binned_data",
+                               "WiggleZ_15hr_delta_mock",
+                               "WiggleZ_15hr_montecarlo",
+                               mode_transfer_1d = wigglez_transfer_functions_noconv)
+
+    gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_noconv",
+                               "GBT_15hr_map_combined_cleaned_noconv",
+                               "WiggleZ_15hr_delta_binned_data",
+                               "WiggleZ_15hr_delta_mock",
+                               "WiggleZ_15hr_montecarlo")
 
     sys.exit()
+    wigglez_transfer_functions_noconv = ct.gather_batch_gbtxwigglez_trans_run(
+                                    "sim_15hr_combined_cleaned",
+                                    "sim_15hr",
+                                    "GBT_15hr_map_combined_cleaned",
+                                    "WiggleZ_15hr_montecarlo")
+
     gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_beammodecomp",
                                "GBT_15hr_map_combined_cleaned",
                                "WiggleZ_15hr_delta_binned_data",

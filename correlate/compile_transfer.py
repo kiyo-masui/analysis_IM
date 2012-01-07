@@ -65,6 +65,60 @@ def gather_batch_sim_run(sim_key, tag, subtract_mean=False,
     return (pwr_1d, pwr_1d_from_2d, pwr_2d)
 
 
+def gather_batch_genericsim_run(simleft_key, simright_key,
+                         weightleft_key, weightright_key,
+                         tag, subtract_mean=False,
+                         degrade_resolution=False,
+                         unitless=True, return_3d=False,
+                         truncate=False, window=None, n_modes=None,
+                         refinement=2, pad=5, order=2, transfer=None,
+                         res_path=None):
+
+    if res_path is None:
+        datapath_db = data_paths.DataPath()
+        batchquad_path = datapath_db.fetch("quadratic_batch_simulations")
+
+    print "reading from: " + batchquad_path
+
+    funcname = "correlate.batch_quadratic.call_xspec_run"
+    caller = batch_handler.MemoizeBatch(funcname, batchquad_path,
+                                        verbose=True)
+
+    (simlist, simlistfiles) = datapath_db.fetch(simleft_key, silent=True,
+                                                intend_read=True)
+
+    pwr_1d = []
+    pwr_1d_from_2d = []
+    pwr_2d = []
+    for index in simlist:
+        map1_key = "db:%s:%s" % (simleft_key, index)
+        map2_key = "db:%s:%s" % (simright_key, index)
+        noiseinv1_key = "db:%s" % weightleft_key
+        noiseinv2_key = "db:%s" % weightright_key
+
+        pwr2d_run, pwr1d_run = caller.execute(map1_key, map2_key,
+                                              noiseinv1_key, noiseinv2_key,
+                                              subtract_mean=subtract_mean,
+                                              degrade_resolution=degrade_resolution,
+                                              unitless=unitless,
+                                              return_3d=return_3d,
+                                              truncate=truncate,
+                                              window=window, n_modes=n_modes,
+                                              refinement=refinement,
+                                              pad=pad, order=order)
+
+        pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwr2d_run,
+                                                  transfer=transfer))
+
+        pwr_2d.append(pwr2d_run)
+        pwr_1d.append(pwr1d_run)
+
+    pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, tag,
+                         outdir="./plot_data")
+
+    return (pwr_1d, pwr_1d_from_2d, pwr_2d)
+
+
 def gather_physical_sim_run(sim_key, tag, unitless=True, return_3d=False,
                             truncate=False, window="blackman",
                             outdir="./plot_data", transfer=None,
@@ -206,13 +260,15 @@ def gather_batch_datasim_run(tag, subtract_mean=False,
     return transfer_functions
 
 
-def gather_batch_gbtxwigglez_trans_run(gbt_map_key, wigglez_selection_key,
-                                      subtract_mean=False,
-                                      degrade_resolution=False,
-                                      unitless=True, return_3d=False,
-                                      truncate=False, window=None, n_modes=None,
-                                      refinement=2, pad=5, order=2,
-                                      outdir="./plot_data"):
+def gather_batch_gbtxwigglez_trans_run(sim_key, sim_zero_key,
+                                       gbt_map_key,
+                                       wigglez_selection_key,
+                                       subtract_mean=False,
+                                       degrade_resolution=False,
+                                       unitless=True, return_3d=False,
+                                       truncate=False, window=None, n_modes=None,
+                                       refinement=2, pad=5, order=2,
+                                       outdir="./plot_data"):
     datapath_db = data_paths.DataPath()
     outpath = datapath_db.fetch("quadratic_batch_data")
 
@@ -222,8 +278,8 @@ def gather_batch_gbtxwigglez_trans_run(gbt_map_key, wigglez_selection_key,
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         verbose=True)
 
-    map1_key = "db:sim_15hr:0"
-    map2_key = "db:sim_15hr:0"
+    map1_key = "db:%s:0" % sim_zero_key
+    map2_key = "db:%s:0" % sim_zero_key
     noiseinv1_key = "db:%s_0mode_weight" % (gbt_map_key)
     noiseinv2_key = "db:%s" % wigglez_selection_key
 
@@ -247,7 +303,7 @@ def gather_batch_gbtxwigglez_trans_run(gbt_map_key, wigglez_selection_key,
     transfer_functions = {}
     for mode_num in range(0, 55, 5):
         print mode_num
-        map1_key = "db:sim_15hr_combined_cleaned_%dmode_map" % (mode_num)
+        map1_key = "db:%s_%dmode_map" % (sim_key, mode_num)
         map2_key = "db:sim_15hr:0"
         noiseinv1_key = "db:%s_%dmode_weight" % (gbt_map_key, mode_num)
         noiseinv2_key = "db:%s" % wigglez_selection_key
@@ -380,7 +436,7 @@ def calculate_1d_transfer_function(pwr_stack1, pwr_stack2, tag, outdir="./plot_d
     return trans_alt
 
 
-def find_beam_trans(meanconv=True):
+def find_beam_trans():
     # derive the beam, preprocessing transfer function:
     sim_15hr = gather_batch_sim_run("sim_15hr", "sim_15hr")
 
@@ -421,27 +477,92 @@ def find_beam_trans(meanconv=True):
     return (trans_beam, trans_beam_mean, trans_beam_meanconv)
 
 
+def find_crossbeam_trans():
+    sim_15hr = gather_batch_genericsim_run("sim_15hr", "sim_15hr_delta",
+                         "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
+                         "WiggleZ_15hr_montecarlo", "sim_wigglezxGBT15hr")
+
+    sim_15hr_beam = gather_batch_genericsim_run("sim_15hr_beam", "sim_15hr_delta",
+                         "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
+                         "WiggleZ_15hr_montecarlo", "sim_wigglezxGBT15hr_beam")
+
+    sim_15hr_beam_mean = gather_batch_genericsim_run("sim_15hr_beam_meansub",
+                         "sim_15hr_delta",
+                         "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
+                         "WiggleZ_15hr_montecarlo",
+                         "sim_wigglezxGBT15hr_beam_meansub")
+
+    # TODO: should not use the noconv weight here... need to separate these
+    # better
+    sim_15hr_beam_meanconv = gather_batch_genericsim_run("sim_15hr_beam_meansubconv",
+                         "sim_15hr_delta",
+                         "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
+                         "WiggleZ_15hr_montecarlo",
+                         "sim_wigglezxGBT15hr_beam_meansubconv")
+
+    trans_beam = calculate_2d_transfer_function(sim_15hr_beam[2],
+                                                sim_15hr[2],
+                                                "crosstrans_beam")
+
+    trans_beam_mean = calculate_2d_transfer_function(
+                                                sim_15hr_beam_mean[2],
+                                                sim_15hr[2],
+                                                "crosstrans_beam_mean")
+
+    trans_beam_meanconv = calculate_2d_transfer_function(
+                                                sim_15hr_beam_meanconv[2],
+                                                sim_15hr[2],
+                                                "crosstrans_beam_meanconv")
+
+    # TODO: check that it makes sense by reconstructing the simulated power without
+    # these effects:
+    #sim_15hr_corr = gather_batch_sim_run("sim_15hr_beam",
+    #                                     "sim_15hr_beam_meanconv_corrected",
+    #                                     degrade_resolution=True,
+    #                                     subtract_mean=True,
+    #                                     transfer=trans_beam_meanconv)
+
+    return (trans_beam, trans_beam_mean, trans_beam_meanconv)
+
+
 def check_pipeline():
     # make plots of the ideal cases in the physical volume, with
     # simplified P(k), etc., as an overall check.
+    sim_15hr = gather_batch_sim_run("sim_15hr", "sim_15hr")
+
+    sim_15hr_phys = gather_physical_sim_run("sim_15hr_physical",
+                                            "sim_15hr_physical")
+
+    simvel_15hr = gather_batch_sim_run("simvel_15hr", "simvel_15hr")
+    simvel_15hr_phys = gather_physical_sim_run("simvel_15hr_physical",
+                                            "simvel_15hr_physical")
+
     simideal_15hr = gather_batch_sim_run("simideal_15hr", "simideal_15hr")
-    simideal_phys = gather_physical_sim_run("simideal_15hr_physical", "simideal_15hr_physical")
-    sim_phys = gather_physical_sim_run("sim_15hr_physical", "sim_15hr_physical")
+
+    simideal_15hr_phys = gather_physical_sim_run("simideal_15hr_physical",
+                                                 "simideal_15hr_physical")
+
+
+def wigglez_x_GBT():
+    gather_batch_genericsim_run("sim_15hr", "sim_15hr_delta",
+                         "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
+                         "WiggleZ_15hr_montecarlo", "sim_wigglezxGBT15hr")
+
+    gather_batch_genericsim_run("sim_15hr_beam", "sim_15hr_delta",
+                         "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
+                         "WiggleZ_15hr_montecarlo", "sim_wigglezxGBT15hr_beam")
 
 
 def find_modeloss_transfer(alt=""):
     # now gather the mode loss transfer functions
     return gather_batch_datasim_run("GBT15hr_sim", alt=alt)
 
-def find_wigglez_modeloss_transfer():
-    return gather_batch_gbtxwigglez_trans_run("GBT_15hr_map_combined_cleaned",
-                                               "WiggleZ_15hr_montecarlo")
 
 if __name__ == '__main__':
-    gather_batch_gbtxwigglez_trans_run("GBT_15hr_map_combined_cleaned",
-                               "WiggleZ_15hr_montecarlo")
-    check_pipeline()
-    find_beam_trans()
-    find_modeloss_transfer()
+    find_crossbeam_trans()
+    #wigglez_x_GBT()
+    #check_pipeline()
+    #find_beam_trans()
+    #find_modeloss_transfer()
     sys.exit()
 

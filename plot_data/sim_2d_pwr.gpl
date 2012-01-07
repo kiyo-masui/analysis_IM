@@ -68,6 +68,26 @@ set title "Beam transfer function"
 set output "sim/trans_beam_altavg.eps"
 plot "trans_beam_altavg.dat" using 2:5:7 with image
 
+set title "Crosspower: Beam and meansub, degrade trans."
+set output "sim/crosstrans_beam_meanconv.eps"
+plot "crosstrans_beam_meanconv.dat" using 2:5:7 with image
+
+set title "Crosspower: Beam and meansub"
+set output "sim/crosstrans_beam_mean.eps"
+plot "crosstrans_beam_mean.dat" using 2:5:7 with image
+
+set title "Crosspower: Beam transfer function"
+set output "sim/crosstrans_beam.eps"
+plot "crosstrans_beam.dat" using 2:5:7 with image
+
+set title "Crosspower: Beam and meansub, degrade trans."
+set output "sim/crosstrans_beam_meanconv_altavg.eps"
+plot "crosstrans_beam_meanconv_altavg.dat" using 2:5:7 with image
+
+set title "Crosspower: Beam transfer function"
+set output "sim/crosstrans_beam_altavg.eps"
+plot "crosstrans_beam_altavg.dat" using 2:5:7 with image
+
 # mode transfer functions
 set title "Mode=0 transfer function"
 set output "convmeansub/trans_0modes.eps"
