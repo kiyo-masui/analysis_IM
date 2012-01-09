@@ -197,10 +197,21 @@ class MapPair(ft.ClassPersistence):
         weightmap[np.isinf(map)] = 0.
         weightmap[weightmap < 1.e-20] = 0.
 
+        # This is not needed for sane maps, but some sims that to mean
+        # subtraction before this stage could have nans by accident.
+        # (np.nan * 0. is still np.nan)
+        # not setting map[weightmap < 1.e-20] = 0 because these could be
+        # "real" ares of the map which are mixed in through the common res.
+        # convolution.
+        map[np.isnan(map)] = 0.
+        map[np.isinf(map)] = 0.
+
         weight_dimensions = weightmap.shape[0]
         for freq_index in range(weight_dimensions):
             if not freq_index in self.freq:
                 weightmap[freq_index, ...] = 0
+
+        #map[weightmap < 1.e-20] = 0.
 
         return (map, weightmap)
 

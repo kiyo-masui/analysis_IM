@@ -35,14 +35,6 @@ def generate_proc_sim(input_file, weightfile, output_file,
     print "%s -> %s (beam, etc.)" % (input_file, output_file)
     simmap = algebra.make_vect(algebra.load(input_file))
 
-    if meansub:
-        print "performing mean subtraction"
-        noise_inv = algebra.make_vect(algebra.load(weightfile))
-        means = sp.sum(sp.sum(noise_inv * simmap, -1), -1)
-        means /= sp.sum(sp.sum(noise_inv, -1), -1)
-        means.shape += (1, 1)
-        simmap -= means
-
     if degrade:
         print "performing common resolution convolution"
         beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792,
@@ -55,6 +47,20 @@ def generate_proc_sim(input_file, weightfile, output_file,
         common_resolution = beam.GaussianBeam(beam_diff, freq_data)
         # Convolve to a common resolution.
         simmap = common_resolution.apply(simmap)
+
+    if meansub:
+        print "performing mean subtraction"
+        noise_inv = algebra.make_vect(algebra.load(weightfile))
+        means = sp.sum(sp.sum(noise_inv * simmap, -1), -1)
+        means /= sp.sum(sp.sum(noise_inv, -1), -1)
+        means.shape += (1, 1)
+        simmap -= means
+        # the weights will be zero in some places
+        simmap[noise_inv < 1.e-20] = 0.
+
+    # extra sanity?
+    simmap[np.isinf(simmap)] = 0.
+    simmap[np.isnan(simmap)] = 0.
 
     print "saving to" + output_file
     algebra.save(output_file, simmap)
@@ -106,9 +112,6 @@ def extend_full_simset(fieldlist):
         generate_aux_simset("sim_%s" % fieldname)
         generate_aux_simset("simideal_%s" % fieldname)
         generate_aux_simset("simvel_%s" % fieldname)
-        #generate_simset(fieldname, scenario="ideal")
-        #generate_simset(fieldname)
-        #generate_simset(fieldname, scenario="streaming")
 
 
 if __name__ == '__main__':

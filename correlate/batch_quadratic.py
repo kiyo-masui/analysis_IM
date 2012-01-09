@@ -509,44 +509,47 @@ def batch_GBTxwigglez_data_run_old(subtract_mean=False, degrade_resolution=False
     caller.multiprocess_stack()
 
 
-if __name__ == '__main__':
-    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned_noconv",
-                                "sim_15hr_delta",
-                                "sim_15hr",
-                                "GBT_15hr_map_combined_cleaned_noconv",
-                                "WiggleZ_15hr_montecarlo")
+def sim_autopower():
+    r"""run all of the auto-power theory cases
+    sim = dd, vv
+    simvel = dd, vv, streaming
+    ideal = dd only
+    1800 power spectra
+    """
 
-    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned",
-                                "sim_15hr_delta",
-                                "sim_15hr",
-                                "GBT_15hr_map_combined_cleaned",
-                                "WiggleZ_15hr_montecarlo")
+    # run autopower on the physical volumes
+    batch_physical_sim_run("sim_15hr_physical")
+    batch_physical_sim_run("simvel_15hr_physical")
+    batch_physical_sim_run("simideal_15hr_physical")
 
-    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned_noconv",
-                                "sim_15hr_delta",
-                                "sim_15hr_beam",
-                                "GBT_15hr_map_combined_cleaned_noconv",
-                                "WiggleZ_15hr_montecarlo")
+    # run autopower on the observed volumes
+    batch_sim_run("sim_15hr")
+    batch_sim_run("simvel_15hr")
+    batch_sim_run("simideal_15hr")
 
-    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned",
-                                "sim_15hr_delta",
-                                "sim_15hr_beam",
-                                "GBT_15hr_map_combined_cleaned",
-                                "WiggleZ_15hr_montecarlo")
-
-    sys.exit()
+    # run autopower on the observed volumes with beam applied
+    batch_sim_run("sim_15hr_beam")
+    batch_sim_run("simvel_15hr_beam")
     batch_sim_run("simideal_15hr_beam")
-    batch_sim_run("simideal_15hr_beam", degrade_resolution=True, subtract_mean=True)
-    batch_sim_run("simideal_15hr_beam", degrade_resolution=True, subtract_mean=False)
+
+    # run autopower on the observed volumes with beam and meansub applied
+    batch_sim_run("sim_15hr_beam", degrade_resolution=False, subtract_mean=True)
+    batch_sim_run("simvel_15hr_beam", degrade_resolution=False, subtract_mean=True)
     batch_sim_run("simideal_15hr_beam", degrade_resolution=False, subtract_mean=True)
 
-    batch_sim_run("simvel_15hr_beam", degrade_resolution=True, subtract_mean=False)
-    batch_sim_run("simvel_15hr_beam", degrade_resolution=False, subtract_mean=True)
-
-    batch_sim_run("sim_15hr_beam", degrade_resolution=False, subtract_mean=True)
+    # run autopower on the observed volumes with beam and conv applied
     batch_sim_run("sim_15hr_beam", degrade_resolution=True, subtract_mean=False)
+    batch_sim_run("simvel_15hr_beam", degrade_resolution=True, subtract_mean=False)
+    batch_sim_run("simideal_15hr_beam", degrade_resolution=True, subtract_mean=False)
 
-    sys.exit()
+    # run autopower on the observed volumes with beam, meansub and conv applied
+    batch_sim_run("sim_15hr_beam", degrade_resolution=True, subtract_mean=True)
+    batch_sim_run("simvel_15hr_beam", degrade_resolution=True, subtract_mean=True)
+    batch_sim_run("simideal_15hr_beam", degrade_resolution=True, subtract_mean=True)
+
+
+def sim_crosspower():
+    r"""Do not calculate the simideal case"""
     batch_genericsim_run("sim_15hr", "sim_15hr_delta",
                          "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
                          "WiggleZ_15hr_montecarlo")
@@ -587,14 +590,36 @@ if __name__ == '__main__':
                          "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
                          "WiggleZ_15hr_montecarlo")
 
+
+if __name__ == '__main__':
+    sim_crosspower()
     sys.exit()
-    # vv + streaming + evo sims without beam
-    batch_physical_sim_run("simvel_15hr_physical")
-    batch_sim_run("simvel_15hr")
-    # vv + streaming + evo sims with beam
-    batch_sim_run("simvel_15hr_beam")
-    # vv + streaming + evo sims with treatments
-    batch_sim_run("simvel_15hr_beam", degrade_resolution=True, subtract_mean=True)
+
+    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned_noconv",
+                                "sim_15hr_delta",
+                                "sim_15hr",
+                                "GBT_15hr_map_combined_cleaned_noconv",
+                                "WiggleZ_15hr_montecarlo")
+
+    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned",
+                                "sim_15hr_delta",
+                                "sim_15hr",
+                                "GBT_15hr_map_combined_cleaned",
+                                "WiggleZ_15hr_montecarlo")
+
+    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned_noconv",
+                                "sim_15hr_delta",
+                                "sim_15hr_beam",
+                                "GBT_15hr_map_combined_cleaned_noconv",
+                                "WiggleZ_15hr_montecarlo")
+
+    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned",
+                                "sim_15hr_delta",
+                                "sim_15hr_beam",
+                                "GBT_15hr_map_combined_cleaned",
+                                "WiggleZ_15hr_montecarlo")
+
+    sys.exit()
 
     # FINISH THIS CASE!!!!!
     batch_one_sided_trans_run("sim_15hr_combined_cleaned_noconv",
@@ -618,8 +643,6 @@ if __name__ == '__main__':
     batch_data_run(alt="noconv_", sim=True)
     batch_data_run(alt="noconv_", sim=True, subtract_mean=True)
 
-    # vv + evo sims with treatments
-    batch_sim_run("sim_15hr_beam", degrade_resolution=False, subtract_mean=True)
 
     # modeloss sim
     batch_data_run(sim=True)
@@ -627,17 +650,6 @@ if __name__ == '__main__':
 
     # real data
     batch_data_run()
-
-    batch_physical_sim_run("simideal_15hr_physical")
-    batch_physical_sim_run("sim_15hr_physical")
-    # ideal simulations without beam
-    batch_sim_run("simideal_15hr")
-    # vv + evo sims without beam
-    batch_sim_run("sim_15hr")
-    # vv + evo sims with beam
-    batch_sim_run("sim_15hr_beam")
-    # vv + evo sims with treatments
-    batch_sim_run("sim_15hr_beam", degrade_resolution=True, subtract_mean=True)
 
     batch_wigglez_automock_run("WiggleZ_15hr_mock", "WiggleZ_15hr_montecarlo")
 

@@ -35,43 +35,48 @@ def plot_cleaned_gbt15hr_mapset(outputdir="/cita/d/www/home/eswitzer/movies/"):
 def plot_gbt_simset(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/"):
     datapath_db = data_paths.DataPath()
 
-    keyname = "sim_%s" % fieldname
+    #keyname = "%s" % fieldname
+    #filename = datapath_db.fetch(keyname, pick='0')
+    #pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
+    #                    sigmarange=3., outputdir=outputdir, multiplier=1000.,
+    #                    transverse=False, filetag_suffix="_"+fieldname)
+
+    #keyname = "%s_beam" % fieldname
+    #filename = datapath_db.fetch(keyname, pick='0')
+    #pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
+    #                    sigmarange=3., outputdir=outputdir, multiplier=1000.,
+    #                    transverse=False, filetag_suffix="_"+fieldname)
+
+    #keyname = "%s_beam_conv" % fieldname
+    #filename = datapath_db.fetch(keyname, pick='0')
+    #pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
+    #                    sigmarange=3., outputdir=outputdir, multiplier=1000.,
+    #                    transverse=False, filetag_suffix="_"+fieldname)
+
+    keyname = "%s_beam_meansub" % fieldname
     filename = datapath_db.fetch(keyname, pick='0')
     pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
                         sigmarange=3., outputdir=outputdir, multiplier=1000.,
                         transverse=False, filetag_suffix="_"+fieldname)
 
-    keyname = "sim_%s_beam" % fieldname
+    keyname = "%s_beam_meansubconv" % fieldname
     filename = datapath_db.fetch(keyname, pick='0')
     pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
                         sigmarange=3., outputdir=outputdir, multiplier=1000.,
                         transverse=False, filetag_suffix="_"+fieldname)
 
-    keyname = "simideal_%s" % fieldname
-    filename = datapath_db.fetch(keyname, pick='0')
-    pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
-                        sigmarange=3., outputdir=outputdir, multiplier=1000.,
-                        transverse=False, filetag_suffix="_"+fieldname)
+    #keyname = "%s_delta" % fieldname
+    #filename = datapath_db.fetch(keyname, pick='0')
+    #pc.make_cube_movie(filename, "overdensity", pc.cube_frame_dir,
+    #                    sigmarange=3., outputdir=outputdir, multiplier=1.,
+    #                    transverse=False, filetag_suffix="_"+fieldname)
 
-    keyname = "simideal_%s_beam" % fieldname
-    filename = datapath_db.fetch(keyname, pick='0')
-    pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
-                        sigmarange=3., outputdir=outputdir, multiplier=1000.,
-                        transverse=False, filetag_suffix="_"+fieldname)
-
-    keyname = "simideal_%s_physical" % fieldname
-    filename = datapath_db.fetch(keyname, pick='0')
-    pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
-                        sigmarange=3., outputdir=outputdir, multiplier=1000.,
-                        transverse=False, filetag_suffix="_"+fieldname,
-                        physical=True)
-
-    keyname = "sim_%s_physical" % fieldname
-    filename = datapath_db.fetch(keyname, pick='0')
-    pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
-                        sigmarange=3., outputdir=outputdir, multiplier=1000.,
-                        transverse=False, filetag_suffix="_"+fieldname,
-                        physical=True)
+    #keyname = "%s_physical" % fieldname
+    #filename = datapath_db.fetch(keyname, pick='0')
+    #pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
+    #                    sigmarange=3., outputdir=outputdir, multiplier=1000.,
+    #                    transverse=False, filetag_suffix="_"+fieldname,
+    #                    physical=True)
 
 def plot_gbt_diff_tests(outputdir="/cita/d/www/home/eswitzer/movies/",
                         transverse=True):
@@ -224,7 +229,9 @@ def plot_wigglez(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/",
 
 
 if __name__ == "__main__":
-    #plot_gbt_simset('15hr')
+    plot_gbt_simset('sim_15hr')
+    plot_gbt_simset('simvel_15hr')
+    plot_gbt_simset('simideal_15hr')
     #plot_gbt_simset('22hr')
     #plot_gbt_mapset()
     #plot_gbt_newmapset()
@@ -237,7 +244,7 @@ if __name__ == "__main__":
     #plot_gbt_comb_modeset('15hr')
     #plot_gbt_comb_modeset('22hr')
 
-    plot_wigglez('15hr', complete=False)
+    #plot_wigglez('15hr', complete=False)
     #plot_wigglez('22hr', complete=False)
     #plot_wigglez('1hr', complete=True)
     #plot_wigglez('22hr')

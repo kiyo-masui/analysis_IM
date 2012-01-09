@@ -13,7 +13,7 @@ set size 1., 1.
 set terminal postscript eps enhanced color "Helvetica" 20
 set logscale
 set xlabel "|k| (h cMpc^{-1})"
-set ylabel "{/Symbol D}(k)^2 (K^2)"
+set ylabel "{/Symbol D}(k)^2 (K)"
 set title "GBT 15 hr, no compensation"
 set key at screen 0.5, 0.85
 
