@@ -255,7 +255,8 @@ def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
     caller.multiprocess_stack()
 
 
-def batch_GBTxwigglez_trans_run(sim_key, sim_zero_key, gbt_map_key,
+def batch_GBTxwigglez_trans_run(sim_key, sim_wigglez,
+                                base_sim_GBT, gbt_map_key,
                                 wigglez_selection_key,
                                 subtract_mean=False, degrade_resolution=False,
                                 unitless=True, return_3d=False,
@@ -270,8 +271,8 @@ def batch_GBTxwigglez_trans_run(sim_key, sim_zero_key, gbt_map_key,
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
 
-    map1_key = "db:%s:0" % sim_zero_key
-    map2_key = "db:%s:0" % sim_zero_key
+    map1_key = "db:%s:0" % base_sim_GBT
+    map2_key = "db:%s:0" % sim_wigglez
     noiseinv1_key = "db:%s_0mode_weight" % (gbt_map_key)
     noiseinv2_key = "db:%s" % wigglez_selection_key
 
@@ -288,7 +289,7 @@ def batch_GBTxwigglez_trans_run(sim_key, sim_zero_key, gbt_map_key,
 
     for mode_num in range(0, 55, 5):
         map1_key = "db:%s_%dmode_map" % (sim_key, mode_num)
-        map2_key = "db:%s:0" % sim_zero_key
+        map2_key = "db:%s:0" % sim_wigglez
         noiseinv1_key = "db:%s_%dmode_weight" % (gbt_map_key, mode_num)
         noiseinv2_key = "db:%s" % wigglez_selection_key
 
@@ -509,6 +510,43 @@ def batch_GBTxwigglez_data_run_old(subtract_mean=False, degrade_resolution=False
 
 
 if __name__ == '__main__':
+    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned_noconv",
+                                "sim_15hr_delta",
+                                "sim_15hr",
+                                "GBT_15hr_map_combined_cleaned_noconv",
+                                "WiggleZ_15hr_montecarlo")
+
+    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned",
+                                "sim_15hr_delta",
+                                "sim_15hr",
+                                "GBT_15hr_map_combined_cleaned",
+                                "WiggleZ_15hr_montecarlo")
+
+    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned_noconv",
+                                "sim_15hr_delta",
+                                "sim_15hr_beam",
+                                "GBT_15hr_map_combined_cleaned_noconv",
+                                "WiggleZ_15hr_montecarlo")
+
+    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned",
+                                "sim_15hr_delta",
+                                "sim_15hr_beam",
+                                "GBT_15hr_map_combined_cleaned",
+                                "WiggleZ_15hr_montecarlo")
+
+    sys.exit()
+    batch_sim_run("simideal_15hr_beam")
+    batch_sim_run("simideal_15hr_beam", degrade_resolution=True, subtract_mean=True)
+    batch_sim_run("simideal_15hr_beam", degrade_resolution=True, subtract_mean=False)
+    batch_sim_run("simideal_15hr_beam", degrade_resolution=False, subtract_mean=True)
+
+    batch_sim_run("simvel_15hr_beam", degrade_resolution=True, subtract_mean=False)
+    batch_sim_run("simvel_15hr_beam", degrade_resolution=False, subtract_mean=True)
+
+    batch_sim_run("sim_15hr_beam", degrade_resolution=False, subtract_mean=True)
+    batch_sim_run("sim_15hr_beam", degrade_resolution=True, subtract_mean=False)
+
+    sys.exit()
     batch_genericsim_run("sim_15hr", "sim_15hr_delta",
                          "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
                          "WiggleZ_15hr_montecarlo")
@@ -549,11 +587,6 @@ if __name__ == '__main__':
                          "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
                          "WiggleZ_15hr_montecarlo")
 
-    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned_noconv",
-                                "sim_15hr_delta",
-                                "GBT_15hr_map_combined_cleaned_noconv",
-                                "WiggleZ_15hr_montecarlo")
-
     sys.exit()
     # vv + streaming + evo sims without beam
     batch_physical_sim_run("simvel_15hr_physical")
@@ -566,14 +599,6 @@ if __name__ == '__main__':
     # FINISH THIS CASE!!!!!
     batch_one_sided_trans_run("sim_15hr_combined_cleaned_noconv",
                                 "GBT_15hr_map_combined_cleaned_noconv")
-
-    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned_noconv", "sim_15hr",
-                                "GBT_15hr_map_combined_cleaned_noconv",
-                                "WiggleZ_15hr_montecarlo")
-
-    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned", "sim_15hr",
-                                "GBT_15hr_map_combined_cleaned",
-                                "WiggleZ_15hr_montecarlo")
 
     batch_GBTxwigglez_data_run("GBT_15hr_map_combined_cleaned_noconv",
                                "WiggleZ_15hr_delta_binned_data",

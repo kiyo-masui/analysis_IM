@@ -22,8 +22,8 @@ set title "GBT 15 hr, no compensation"
 set key at screen 0.4, 0.85
 #set key below
 #set key bottom right
-plot "sim_15hr_beam_meanconv_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
-     "sim_15hr_beam_meanconv_avg.dat" using 2:5 notitle with histeps ls 6, \
+plot "simvel_15hr_beam_meanconv_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
+     "simvel_15hr_beam_meanconv_avg.dat" using 2:5 notitle with histeps ls 6, \
      "GBT15hr_15modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
      "GBT15hr_25modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
      "GBT15hr_50modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
@@ -31,8 +31,8 @@ plot "sim_15hr_beam_meanconv_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" wi
 set yrange [5e-11:1e-6]
 set output "noconv/data_pwr_variants_noconv_yichao.eps"
 set title "GBT 15 hr, no degrade convolution"
-plot "sim_15hr_beam_mean_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
-     "sim_15hr_beam_mean_avg.dat" using 2:5 notitle with histeps ls 6, \
+plot "simvel_15hr_beam_mean_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
+     "simvel_15hr_beam_mean_avg.dat" using 2:5 notitle with histeps ls 6, \
      "GBT15hr_noconv_15modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
      "GBT15hr_noconv_25modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
      "GBT15hr_noconv_50modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
@@ -49,8 +49,8 @@ plot "simvel_15hr_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorba
 set yrange [5e-11:1e-6]
 set output "noconv/data_pwr_variants_noconv_modecomp_yichao.eps"
 set title "GBT 15 hr, no degrade convolution, 1D mode compensated"
-plot "sim_15hr_beam_mean_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
-     "sim_15hr_beam_mean_avg.dat" using 2:5 notitle with histeps ls 6, \
+plot "simvel_15hr_beam_mean_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
+     "simvel_15hr_beam_mean_avg.dat" using 2:5 notitle with histeps ls 6, \
      "GBT15hr_noconv_modecomp_15modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
      "GBT15hr_noconv_modecomp_25modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
      "GBT15hr_noconv_modecomp_50modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
@@ -67,8 +67,8 @@ plot "simvel_15hr_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorba
 set yrange [5e-11:1e-6]
 set output "noconv/data_pwr_variants_noconv_2dmodecomp_yichao.eps"
 set title "GBT 15 hr, no degrade convolution, 2D mode compensated"
-plot "sim_15hr_beam_mean_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
-     "sim_15hr_beam_mean_avg.dat" using 2:5 notitle with histeps ls 6, \
+plot "simvel_15hr_beam_mean_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
+     "simvel_15hr_beam_mean_avg.dat" using 2:5 notitle with histeps ls 6, \
      "GBT15hr_noconv_2dmodecomp_15modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
      "GBT15hr_noconv_2dmodecomp_25modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
      "GBT15hr_noconv_2dmodecomp_50modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
@@ -85,8 +85,8 @@ plot "simvel_15hr_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorba
 set yrange [5e-11:1e-6]
 set output "convmeansub/data_pwr_variants_modecomp_yichao.eps"
 set title "GBT 15 hr, mode compensation"
-plot "sim_15hr_beam_meanconv_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
-     "sim_15hr_beam_meanconv_avg.dat" using 2:5 notitle with histeps ls 6, \
+plot "simvel_15hr_beam_meanconv_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
+     "simvel_15hr_beam_meanconv_avg.dat" using 2:5 notitle with histeps ls 6, \
      "GBT15hr_modecomp_15modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
      "GBT15hr_modecomp_25modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
      "GBT15hr_modecomp_50modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
@@ -94,8 +94,8 @@ plot "sim_15hr_beam_meanconv_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" wi
 set yrange [5e-11:1e-6]
 set output "convmeansub/data_pwr_variants_2dmodecomp_yichao.eps"
 set title "GBT 15 hr, 2D mode compensation"
-plot "sim_15hr_beam_meanconv_avg.dat" using 2:5:6 t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
-     "sim_15hr_beam_meanconv_avg.dat" using 2:5 notitle with histeps ls 6, \
+plot "simvel_15hr_beam_meanconv_avg.dat" using 2:5:6 t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
+     "simvel_15hr_beam_meanconv_avg.dat" using 2:5 notitle with histeps ls 6, \
      "GBT15hr_2dmodecomp_15modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
      "GBT15hr_2dmodecomp_25modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
      "GBT15hr_2dmodecomp_50modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3

@@ -143,19 +143,19 @@ def plot_all_simpwr(fileroot, basics_only=False):
                              "%s_beam_meanconv" % fileroot,
                              degrade_resolution=True, subtract_mean=True)
 
-        #gather_batch_sim_run("%s_beam" % fileroot,
-        #                     "%s_beam_mean" % fileroot,
-        #                     degrade_resolution=False, subtract_mean=True)
+        gather_batch_sim_run("%s_beam" % fileroot,
+                             "%s_beam_mean" % fileroot,
+                             degrade_resolution=False, subtract_mean=True)
 
-        #gather_batch_sim_run("%s_beam" % fileroot,
-        #                     "%s_beam_conv" % fileroot,
-        #                     degrade_resolution=True, subtract_mean=False)
+        gather_batch_sim_run("%s_beam" % fileroot,
+                             "%s_beam_conv" % fileroot,
+                             degrade_resolution=True, subtract_mean=False)
 
 
 if __name__ == '__main__':
     plot_all_simpwr("sim_15hr")
     plot_all_simpwr("simvel_15hr")
-    plot_all_simpwr("simideal_15hr", basics_only=True)
+    plot_all_simpwr("simideal_15hr")
     sys.exit()
 
 

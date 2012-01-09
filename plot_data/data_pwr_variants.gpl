@@ -25,8 +25,8 @@ set title "GBT 15 hr, no compensation"
 set key at screen 0.4, 0.85
 #set key below
 #set key bottom right
-plot "sim_15hr_beam_meanconv_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
-     "sim_15hr_beam_meanconv_avg.dat" using 2:5 notitle with histeps ls 6, \
+plot "simvel_15hr_beam_meanconv_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
+     "simvel_15hr_beam_meanconv_avg.dat" using 2:5 notitle with histeps ls 6, \
      "GBT15hr_10modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 10 modes}" with points ls 1, \
      "GBT15hr_20modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 20 modes}" with points ls 4, \
      "GBT15hr_30modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 30 modes}" with yerrorbars ls 2, \
@@ -35,8 +35,8 @@ plot "sim_15hr_beam_meanconv_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" wi
 
 set output "noconv/data_pwr_variants_noconv.eps"
 set title "GBT 15 hr, no degrade convolution"
-plot "sim_15hr_beam_mean_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
-     "sim_15hr_beam_mean_avg.dat" using 2:5 notitle with histeps ls 6, \
+plot "simvel_15hr_beam_mean_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
+     "simvel_15hr_beam_mean_avg.dat" using 2:5 notitle with histeps ls 6, \
      "GBT15hr_noconv_10modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 10 modes}" with points ls 1, \
      "GBT15hr_noconv_20modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 20 modes}" with points ls 4, \
      "GBT15hr_noconv_30modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 30 modes}" with yerrorbars ls 2, \
@@ -55,8 +55,8 @@ plot "simvel_15hr_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorba
 
 set output "noconv/data_pwr_variants_noconv_modecomp.eps"
 set title "GBT 15 hr, no degrade convolution, 1D mode compensated"
-plot "sim_15hr_beam_mean_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
-     "sim_15hr_beam_mean_avg.dat" using 2:5 notitle with histeps ls 6, \
+plot "simvel_15hr_beam_mean_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
+     "simvel_15hr_beam_mean_avg.dat" using 2:5 notitle with histeps ls 6, \
      "GBT15hr_noconv_modecomp_10modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 10 modes}" with points ls 1, \
      "GBT15hr_noconv_modecomp_20modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 20 modes}" with points ls 4, \
      "GBT15hr_noconv_modecomp_30modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 30 modes}" with yerrorbars ls 2, \
@@ -75,8 +75,8 @@ plot "simvel_15hr_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorba
 
 set output "noconv/data_pwr_variants_noconv_2dmodecomp.eps"
 set title "GBT 15 hr, no degrade convolution, 2D mode compensated"
-plot "sim_15hr_beam_mean_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
-     "sim_15hr_beam_mean_avg.dat" using 2:5 notitle with histeps ls 6, \
+plot "simvel_15hr_beam_mean_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
+     "simvel_15hr_beam_mean_avg.dat" using 2:5 notitle with histeps ls 6, \
      "GBT15hr_noconv_2dmodecomp_10modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 10 modes}" with points ls 1, \
      "GBT15hr_noconv_2dmodecomp_20modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 20 modes}" with points ls 4, \
      "GBT15hr_noconv_2dmodecomp_30modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 30 modes}" with yerrorbars ls 2, \
@@ -95,8 +95,8 @@ plot "simvel_15hr_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorba
 
 set output "convmeansub/data_pwr_variants_modecomp.eps"
 set title "GBT 15 hr, mode compensation"
-plot "sim_15hr_beam_meanconv_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
-     "sim_15hr_beam_meanconv_avg.dat" using 2:5 notitle with histeps ls 6, \
+plot "simvel_15hr_beam_meanconv_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
+     "simvel_15hr_beam_meanconv_avg.dat" using 2:5 notitle with histeps ls 6, \
      "GBT15hr_modecomp_10modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 10 modes}" with points ls 1, \
      "GBT15hr_modecomp_20modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 20 modes}" with points ls 4, \
      "GBT15hr_modecomp_30modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 30 modes}" with yerrorbars ls 2, \
@@ -105,8 +105,8 @@ plot "sim_15hr_beam_meanconv_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" wi
 
 set output "convmeansub/data_pwr_variants_2dmodecomp.eps"
 set title "GBT 15 hr, 2D mode compensation"
-plot "sim_15hr_beam_meanconv_avg.dat" using 2:5:6 t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
-     "sim_15hr_beam_meanconv_avg.dat" using 2:5 notitle with histeps ls 6, \
+plot "simvel_15hr_beam_meanconv_avg.dat" using 2:5:6 t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
+     "simvel_15hr_beam_meanconv_avg.dat" using 2:5 notitle with histeps ls 6, \
      "GBT15hr_2dmodecomp_10modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 10 modes}" with points ls 1, \
      "GBT15hr_2dmodecomp_20modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 20 modes}" with points ls 4, \
      "GBT15hr_2dmodecomp_30modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 30 modes}" with yerrorbars ls 2, \
@@ -146,8 +146,8 @@ plot "simvel_15hr_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorba
 #set output "data_pwr_variants_wbeam.eps"
 #set title "Comparing the impact of treatments in the power spectrum"
 #set yrange [1e-11:4e-6]
-#plot "sim_15hr_beam_meanconv_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
-#     "sim_15hr_beam_meanconv_avg.dat" using 2:5 notitle with histeps ls 6, \
+#plot "simvel_15hr_beam_meanconv_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
+#     "simvel_15hr_beam_meanconv_avg.dat" using 2:5 notitle with histeps ls 6, \
 #     "GBT15hr_10modes_avg.dat" using 2:5 t "{/Helvetica=13 10 modes}" with points ls 1, \
 #     "GBT15hr_20modes_avg.dat" using 2:5 t "{/Helvetica=13 20 modes}" with points ls 4, \
 #     "GBT15hr_30modes_avg.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 30 modes}" with yerrorbars ls 2, \
@@ -156,8 +156,8 @@ plot "simvel_15hr_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorba
 
 #set output "data_pwr_variants_nomeanconv.eps"
 #set title "GBT 15 hr, no mean removed or degrade convolution"
-#plot "sim_15hr_beam_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
-#     "sim_15hr_beam_avg.dat" using 2:5 notitle with histeps ls 6, \
+#plot "simvel_15hr_beam_avg.dat" using 2:5:($6) t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
+#     "simvel_15hr_beam_avg.dat" using 2:5 notitle with histeps ls 6, \
 #     "GBT15hr_nomeanconv_10modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 10 modes}" with points ls 1, \
 #     "GBT15hr_nomeanconv_20modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 20 modes}" with points ls 4, \
 #     "GBT15hr_nomeanconv_30modes_avg_from2d.dat" using 2:5:($6/sqrt(6)) t "{/Helvetica=13 30 modes}" with yerrorbars ls 2, \

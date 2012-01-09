@@ -241,8 +241,9 @@ def agg_stat_1d_pwrspec(pwr_1d):
     mean_1d = np.mean(pwrmat_1d, axis=0)
     std_1d = np.std(pwrmat_1d, axis=0, ddof=1)
     corrmat_1d = np.corrcoef(np.transpose(pwrmat_1d))
+    covmat_1d = np.cov(np.transpose(pwrmat_1d))
 
-    return (mean_1d, std_1d, corrmat_1d)
+    return (mean_1d, std_1d, corrmat_1d, covmat_1d)
 
 
 def summarize_1d_agg_pwrspec(pwr_1d, filename, corr_file=None,
@@ -250,7 +251,7 @@ def summarize_1d_agg_pwrspec(pwr_1d, filename, corr_file=None,
     r"""Summarize the 1D power spectrum from a list of one-dimensional power
     spectrum outputs.
     """
-    (mean_1d, std_1d, corrmat_1d) = agg_stat_1d_pwrspec(pwr_1d)
+    (mean_1d, std_1d, corrmat_1d, covmat_1d) = agg_stat_1d_pwrspec(pwr_1d)
 
     # TODO: corr matrix does not have transfer function; fine but annoying
     if apply_1d_transfer is not None:
@@ -285,7 +286,7 @@ def summarize_1d_agg_pwrspec(pwr_1d, filename, corr_file=None,
                 outfile.write(outstr)
 
         outfile.close()
-    return mean_1d, std_1d
+    return mean_1d, std_1d, covmat_1d
 
 
 def agg_stat_2d_pwrspec(pwr_2d, dataname='binavg'):
@@ -341,13 +342,13 @@ def summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
     """
     fileout = outdir + "/" + tag + "_avg_from2d.dat"
     corr_fileout = outdir + "/" + tag + "_corr_from2d.dat"
-    mean1d_f2d, std1d_f2d = summarize_1d_agg_pwrspec(pwr_1d_from_2d, fileout,
+    mean1d_f2d, std1d_f2d, cov1d_f2d = summarize_1d_agg_pwrspec(pwr_1d_from_2d, fileout,
                                 corr_file=corr_fileout,
                                 apply_1d_transfer=apply_1d_transfer)
 
     fileout = outdir + "/" + tag + "_avg.dat"
     corr_fileout = outdir + "/" + tag + "_corr.dat"
-    mean1d, std1d = summarize_1d_agg_pwrspec(pwr_1d, fileout,
+    mean1d, std1d, cov1d = summarize_1d_agg_pwrspec(pwr_1d, fileout,
                                              corr_file=corr_fileout,
                                 apply_1d_transfer=apply_1d_transfer)
 
@@ -357,7 +358,7 @@ def summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
     fileout = outdir + "/" + tag + "_avg_2d_counts.dat"
     summarize_2d_agg_pwrspec(pwr_2d, fileout, dataname = "counts_histo")
 
-    return mean1d_f2d, std1d_f2d
+    return mean1d_f2d, std1d_f2d, cov1d_f2d
 
 
 def convert_2d_to_1d_driver(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
