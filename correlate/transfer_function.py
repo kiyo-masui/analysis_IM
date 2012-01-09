@@ -57,7 +57,9 @@ def calculate_2d_transfer_function(pwr_stack1, pwr_stack2, tag, outdir="./plot_d
 
     outfile.close()
 
-    return trans_mean
+    # note that we are returning the alternate version of the transfer
+    # function: <filt>/<orig> vs <filt/orig>
+    return trans_alt
 
 
 def calculate_1d_transfer_function(pwr_stack1, pwr_stack2, tag, outdir="./plot_data"):
@@ -66,8 +68,8 @@ def calculate_1d_transfer_function(pwr_stack1, pwr_stack2, tag, outdir="./plot_d
         print "These runs are incompatible (different number)."
         sys.exit()
 
-    (mean1_1d, std1_1d, corrmat1_1d) = pe.agg_stat_1d_pwrspec(pwr_stack1)
-    (mean2_1d, std2_1d, corrmat2_1d) = pe.agg_stat_1d_pwrspec(pwr_stack2)
+    (mean1_1d, std1_1d, corrmat1_1d, covmat_1d) = pe.agg_stat_1d_pwrspec(pwr_stack1)
+    (mean2_1d, std2_1d, corrmat2_1d, covmat_1d) = pe.agg_stat_1d_pwrspec(pwr_stack2)
 
     trans_stack = []
     for index in range(n_runs):

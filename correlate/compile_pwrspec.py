@@ -122,10 +122,9 @@ def gather_batch_gbtxwigglez_data_run(tag, gbt_map_key, wigglez_map_key,
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         verbose=True)
 
-    transfer_2d = None
-
     for mode_num in range(0, 55, 5):
         print mode_num
+        transfer_2d = None
         if (mode_transfer_2d is not None) and (beam_transfer is None):
             transfer_2d = mode_transfer_2d[mode_num][2]
 
@@ -161,12 +160,12 @@ def gather_batch_gbtxwigglez_data_run(tag, gbt_map_key, wigglez_map_key,
             pwr_2d.append(pwr2d_run)
             pwr_1d.append(pwr1d_run)
 
-        mtag = tag + "_%dmodes_mock" % mode_num
         if mode_transfer_1d is not None:
             transfunc = mode_transfer_1d[mode_num][0]
         else:
             transfunc = None
 
+        mtag = tag + "_%dmodes_mock" % mode_num
         mean1dmock, std1dmock, covmock = pe.summarize_pwrspec(pwr_1d,
                           pwr_1d_from_2d, pwr_2d, mtag,
                           outdir="./plot_data",
@@ -222,116 +221,91 @@ def gather_batch_gbtxwigglez_data_run(tag, gbt_map_key, wigglez_map_key,
                                                 theory_curve[res_slice])
 
 
-def process_wigglez():
+def process_wigglez(noconv=True):
+
+    if noconv:
+        noconv_flag = "_noconv"
+    else:
+        noconv_flag = ""
+
     # TODO: REVERT ME?
     (crosstrans_beam, crosstrans_beam_mean, crosstrans_beam_meanconv) = cwt.find_crossbeam_trans()
 
     # the "theory curve"
+    # TODO: run this in the case with the common res convolution (impact in
+    # weight function)
+    #theory_curve = cwt.gather_batch_genericsim_run("sim_15hr", "sim_15hr_delta",
+    #                                "GBT_15hr_map_combined_cleaned%s_0mode_weight" % noconv_flag,
+    #                                       "WiggleZ_15hr_montecarlo",
+    #                                       "sim_wigglezxGBT15hr_theory_curve")
     theory_curve = cwt.gather_batch_genericsim_run("sim_15hr", "sim_15hr_delta",
-                                           "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
+                                    "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
                                            "WiggleZ_15hr_montecarlo",
                                            "sim_wigglezxGBT15hr_theory_curve")
     # pick the version from 3D->2D->1D
     theory_curve = theory_curve[1]
     (theory_curve, std_theory, corrmat_theory, covmat_theory) = pe.agg_stat_1d_pwrspec(theory_curve)
 
-    wigglez_transfer_functions_noconv_withbeam = cwt.gather_batch_gbtxwigglez_trans_run(
-                                    "WiggleZxGBT_withbeam_noconv",
-                                    "sim_15hr_combined_cleaned_noconv",
-                                    "sim_15hr_delta",
-                                    "sim_15hr",
-                                    "GBT_15hr_map_combined_cleaned_noconv",
-                                    "WiggleZ_15hr_montecarlo")
-
-    wigglez_transfer_functions_noconv_nobeam = cwt.gather_batch_gbtxwigglez_trans_run(
-                                    "WiggleZxGBT_nobeam_noconv",
-                                    "sim_15hr_combined_cleaned_noconv",
-                                    "sim_15hr_delta",
-                                    "sim_15hr_beam",
-                                    "GBT_15hr_map_combined_cleaned_noconv",
-                                    "WiggleZ_15hr_montecarlo")
-
     wigglez_transfer_functions_withbeam = cwt.gather_batch_gbtxwigglez_trans_run(
-                                    "WiggleZxGBT_withbeam",
-                                    "sim_15hr_combined_cleaned",
+                                    "WiggleZxGBT_withbeam%s" % noconv_flag,
+                                    "sim_15hr_combined_cleaned%s" % noconv_flag,
                                     "sim_15hr_delta",
                                     "sim_15hr",
-                                    "GBT_15hr_map_combined_cleaned",
+                                    "GBT_15hr_map_combined_cleaned%s" % noconv_flag,
                                     "WiggleZ_15hr_montecarlo")
 
     wigglez_transfer_functions_nobeam = cwt.gather_batch_gbtxwigglez_trans_run(
-                                    "WiggleZxGBT_nobeam",
-                                    "sim_15hr_combined_cleaned",
+                                    "WiggleZxGBT_nobeam%s" % noconv_flag,
+                                    "sim_15hr_combined_cleaned%s" % noconv_flag,
                                     "sim_15hr_delta",
                                     "sim_15hr_beam",
-                                    "GBT_15hr_map_combined_cleaned",
+                                    "GBT_15hr_map_combined_cleaned%s" % noconv_flag,
                                     "WiggleZ_15hr_montecarlo")
 
     # now find the cross-power spectra
-    gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_nocomp_noconv",
-                               "GBT_15hr_map_combined_cleaned_noconv",
+    gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_nocomp%s" % noconv_flag,
+                               "GBT_15hr_map_combined_cleaned%s" % noconv_flag,
                                "WiggleZ_15hr_delta_binned_data",
                                "WiggleZ_15hr_delta_mock",
                                "WiggleZ_15hr_montecarlo")
 
     # adding 2D beam compensation
-    gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_2dbeamcomp_noconv",
-                               "GBT_15hr_map_combined_cleaned_noconv",
+    gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_2dbeamcomp%s" % noconv_flag,
+                               "GBT_15hr_map_combined_cleaned%s" % noconv_flag,
                                "WiggleZ_15hr_delta_binned_data",
                                "WiggleZ_15hr_delta_mock",
                                "WiggleZ_15hr_montecarlo",
                                beam_transfer=crosstrans_beam)
 
     # adding 1D mode compensation
-    gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_2dbeam1dmodecomp_noconv",
-                               "GBT_15hr_map_combined_cleaned_noconv",
+    gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_2dbeam1dmodecomp%s" % noconv_flag,
+                               "GBT_15hr_map_combined_cleaned%s" % noconv_flag,
                                "WiggleZ_15hr_delta_binned_data",
                                "WiggleZ_15hr_delta_mock",
                                "WiggleZ_15hr_montecarlo",
                                theory_curve=theory_curve,
                                beam_transfer=crosstrans_beam,
-                               mode_transfer_1d = wigglez_transfer_functions_noconv_nobeam)
+                               mode_transfer_1d = wigglez_transfer_functions_nobeam)
 
     # try 2D mode compensation
-    gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_2dbeam2dmodecomp_noconv",
-                               "GBT_15hr_map_combined_cleaned_noconv",
+    gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_2dbeam2dmodecomp%s" % noconv_flag,
+                               "GBT_15hr_map_combined_cleaned%s" % noconv_flag,
                                "WiggleZ_15hr_delta_binned_data",
                                "WiggleZ_15hr_delta_mock",
                                "WiggleZ_15hr_montecarlo",
                                theory_curve=theory_curve,
                                beam_transfer=crosstrans_beam,
-                               mode_transfer_2d = wigglez_transfer_functions_noconv_nobeam)
+                               mode_transfer_2d = wigglez_transfer_functions_nobeam)
 
     # doing the whole compensation in 1D
-    gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_1dbeam1dmodecomp_noconv",
-                               "GBT_15hr_map_combined_cleaned_noconv",
+    gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_1dbeam1dmodecomp%s" % noconv_flag,
+                               "GBT_15hr_map_combined_cleaned%s" % noconv_flag,
                                "WiggleZ_15hr_delta_binned_data",
                                "WiggleZ_15hr_delta_mock",
                                "WiggleZ_15hr_montecarlo",
                                theory_curve=theory_curve,
-                               mode_transfer_1d = wigglez_transfer_functions_noconv_withbeam)
+                               mode_transfer_1d = wigglez_transfer_functions_withbeam)
 
-
-    sys.exit()
-    # TODO: this should not be noconv
-    wigglez_transfer_functions = cwt.gather_batch_gbtxwigglez_trans_run(
-                                    "sim_15hr_combined_cleaned_noconv",
-                                    "sim_15hr",
-                                    "GBT_15hr_map_combined_cleaned",
-                                    "WiggleZ_15hr_montecarlo")
-
-    gather_batch_gbtxwigglez_data_run("wigglez_x_GBT_beammodecomp",
-                               "GBT_15hr_map_combined_cleaned",
-                               "WiggleZ_15hr_delta_binned_data",
-                               "WiggleZ_15hr_delta_mock",
-                               "WiggleZ_15hr_montecarlo",
-                               mode_transfer_1d = wigglez_transfer_functions)
-
-    gather_batch_gbtxwigglez_data_run("wigglez_x_GBT",
-                               "GBT_15hr_map_combined_cleaned",
-                               "WiggleZ_15hr_delta_binned_data",
-                               "WiggleZ_15hr_delta_mock",
-                               "WiggleZ_15hr_montecarlo")
 
 def process_autopower():
     # all of the beam, meansub and conv transfer functions
@@ -341,18 +315,18 @@ def process_autopower():
     transfer_functions_noconv = ct.gather_batch_datasim_run("GBT15hr_sim_noconv",
                                                      alt="noconv_")
 
-    gather_batch_data_run("GBT15hr_noconv", alt="noconv_",
+    gather_batch_data_run("GBT15hr_noconv_nocomp", alt="noconv_",
                           subtract_mean=True)
 
-    gather_batch_data_run("GBT15hr_noconv_beamcomp", alt="noconv_",
+    gather_batch_data_run("GBT15hr_noconv_2dbeamcomp", alt="noconv_",
                           beam_transfer=trans_beam_mean,
                           subtract_mean=True)
 
-    gather_batch_data_run("GBT15hr_noconv_modecomp", alt="noconv_",
+    gather_batch_data_run("GBT15hr_noconv_1dmodecomp", alt="noconv_",
                           subtract_mean=True,
                           mode_transfer_1d=transfer_functions_noconv)
 
-    gather_batch_data_run("GBT15hr_noconv_beammodecomp", alt="noconv_",
+    gather_batch_data_run("GBT15hr_noconv_2dbeam1dmodecomp", alt="noconv_",
                           subtract_mean=True,
                           beam_transfer=trans_beam_mean,
                           mode_transfer_1d=transfer_functions_noconv)
@@ -361,7 +335,7 @@ def process_autopower():
                           subtract_mean=True,
                           mode_transfer_2d=transfer_functions_noconv)
 
-    gather_batch_data_run("GBT15hr_noconv_beam2dmodecomp", alt="noconv_",
+    gather_batch_data_run("GBT15hr_noconv_2dbeam2dmodecomp", alt="noconv_",
                           subtract_mean=True,
                           beam_transfer=trans_beam_mean,
                           mode_transfer_2d=transfer_functions_noconv)
@@ -372,18 +346,18 @@ def process_autopower():
     # data with mean subtraction and degrading
     transfer_functions = ct.find_modeloss_transfer()
 
-    gather_batch_data_run("GBT15hr")
+    gather_batch_data_run("GBT15hr_nocomp")
 
-    gather_batch_data_run("GBT15hr_beamcomp", beam_transfer=trans_beam_meanconv)
+    gather_batch_data_run("GBT15hr_2dbeamcomp", beam_transfer=trans_beam_meanconv)
 
-    gather_batch_data_run("GBT15hr_modecomp", mode_transfer_1d=transfer_functions)
+    gather_batch_data_run("GBT15hr_1dmodecomp", mode_transfer_1d=transfer_functions)
 
-    gather_batch_data_run("GBT15hr_beammodecomp", beam_transfer=trans_beam_meanconv,
+    gather_batch_data_run("GBT15hr_2dbeam1dmodecomp", beam_transfer=trans_beam_meanconv,
                           mode_transfer_1d=transfer_functions)
 
     gather_batch_data_run("GBT15hr_2dmodecomp", mode_transfer_2d=transfer_functions)
 
-    gather_batch_data_run("GBT15hr_beam2dmodecomp", beam_transfer=trans_beam_meanconv,
+    gather_batch_data_run("GBT15hr_2dbeam2dmodecomp", beam_transfer=trans_beam_meanconv,
                           mode_transfer_2d=transfer_functions)
 
     #gather_batch_data_run("GBT15hr", transfer=trans_beam)
@@ -391,4 +365,5 @@ def process_autopower():
 
 if __name__ == '__main__':
     process_wigglez()
+    #process_wigglez(noconv=False)
     #process_autopower()

@@ -230,13 +230,17 @@ def test_with_random(unitless=True):
         print ("%10.15g " * 6) % specdata
 
 
-def agg_stat_1d_pwrspec(pwr_1d):
+def agg_stat_1d_pwrspec(pwr_1d, apply_1d_transfer=None):
     pwrshp_1d = pwr_1d[0]['binavg'].shape
     n_runs = len(pwr_1d)
 
     pwrmat_1d = np.zeros((n_runs, pwrshp_1d[0]))
     for index in range(n_runs):
-        pwrmat_1d[index, :] = pwr_1d[index]['binavg']
+        if apply_1d_transfer is not None:
+            print apply_1d_transfer
+            pwrmat_1d[index, :] = pwr_1d[index]['binavg']/apply_1d_transfer
+        else:
+            pwrmat_1d[index, :] = pwr_1d[index]['binavg']
 
     mean_1d = np.mean(pwrmat_1d, axis=0)
     std_1d = np.std(pwrmat_1d, axis=0, ddof=1)
@@ -251,13 +255,8 @@ def summarize_1d_agg_pwrspec(pwr_1d, filename, corr_file=None,
     r"""Summarize the 1D power spectrum from a list of one-dimensional power
     spectrum outputs.
     """
-    (mean_1d, std_1d, corrmat_1d, covmat_1d) = agg_stat_1d_pwrspec(pwr_1d)
-
-    # TODO: corr matrix does not have transfer function; fine but annoying
-    if apply_1d_transfer is not None:
-        print apply_1d_transfer
-        mean_1d /= apply_1d_transfer
-        std_1d /= apply_1d_transfer
+    (mean_1d, std_1d, corrmat_1d, covmat_1d) = agg_stat_1d_pwrspec(pwr_1d,
+                                      apply_1d_transfer=apply_1d_transfer)
 
     # assume that they all have the same binning
     bin_left = pwr_1d[0]['bin_left']

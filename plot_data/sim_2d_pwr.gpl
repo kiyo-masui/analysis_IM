@@ -27,13 +27,17 @@ set cblabel "{/Symbol D}(k)^2 (K^2)"
 set logscale cb
 set cbrange [*: *]
 
+set title "Power spectrum with vv, evo."
+set output "sim/sim_15hr_avg_2d.eps"
+plot "sim_15hr_avg_2d.dat" using 2:5:7 with image
+
+set title "Power spectrum with vv, evo., streaming"
+set output "sim/simvel_15hr_avg_2d.eps"
+plot "simvel_15hr_avg_2d.dat" using 2:5:7 with image
+
 set title "Density-only power spectrum"
 set output "sim/simideal_15hr_avg_2d.eps"
 plot "simideal_15hr_avg_2d.dat" using 2:5:7 with image
-
-set title "Power spectrum with velocities and evolution"
-set output "sim/sim_15hr_avg_2d.eps"
-plot "sim_15hr_avg_2d.dat" using 2:5:7 with image
 
 set title "Power spectrum with vv, evo., beam"
 set output "sim/sim_15hr_beam_avg_2d.eps"
@@ -43,50 +47,67 @@ set title "Power spectrum with vv, evo., beam, meansub, conv."
 set output "sim/sim_15hr_beam_meanconv_avg_2d.eps"
 plot "sim_15hr_beam_meanconv_avg_2d.dat" using 2:5:7 with image
 
+set title "Power spectrum with vv, evo., streaming, beam"
+set output "sim/simvel_15hr_beam_avg_2d.eps"
+plot "simvel_15hr_beam_avg_2d.dat" using 2:5:7 with image
+
+set title "Power spectrum with vv, evo., streaming, beam, meansub, conv."
+set output "sim/simvel_15hr_beam_meanconv_avg_2d.eps"
+plot "simvel_15hr_beam_meanconv_avg_2d.dat" using 2:5:7 with image
+
 # now make the transfer function plots
 set cblabel "B(k)^2"
 unset logscale cb
 set cbrange [0:1]
 
-set title "Beam and meansub, degrade trans."
-set output "sim/trans_beam_meanconv.eps"
-plot "trans_beam_meanconv.dat" using 2:5:7 with image
+set title "Beam transfer function"
+set output "sim/trans_beam.eps"
+plot "trans_beam.dat" using 2:5:7 with image
+
+set title "Beam transfer function (alt. average)"
+set output "sim/trans_beam_altavg.eps"
+plot "trans_beam_altavg.dat" using 2:5:7 with image
 
 set title "Beam and meansub"
 set output "sim/trans_beam_mean.eps"
 plot "trans_beam_mean.dat" using 2:5:7 with image
 
-set title "Beam transfer function"
-set output "sim/trans_beam.eps"
-plot "trans_beam.dat" using 2:5:7 with image
+set title "Beam and meansub (alt. average)"
+set output "sim/trans_beam_mean_altavg.eps"
+plot "trans_beam_mean_altavg.dat" using 2:5:7 with image
 
 set title "Beam and meansub, degrade trans."
+set output "sim/trans_beam_meanconv.eps"
+plot "trans_beam_meanconv.dat" using 2:5:7 with image
+
+set title "Beam and meansub, degrade trans. (alt. average)"
 set output "sim/trans_beam_meanconv_altavg.eps"
 plot "trans_beam_meanconv_altavg.dat" using 2:5:7 with image
 
-set title "Beam transfer function"
-set output "sim/trans_beam_altavg.eps"
-plot "trans_beam_altavg.dat" using 2:5:7 with image
+# 2D cross-power transfer functions
+set title "Crosspower: Beam transfer function"
+set output "sim/crosstrans_beam.eps"
+plot "crosstrans_beam.dat" using 2:5:7 with image
 
-set title "Crosspower: Beam and meansub, degrade trans."
-set output "sim/crosstrans_beam_meanconv.eps"
-plot "crosstrans_beam_meanconv.dat" using 2:5:7 with image
+set title "Crosspower: Beam transfer function (alt. average)"
+set output "sim/crosstrans_beam_altavg.eps"
+plot "crosstrans_beam_altavg.dat" using 2:5:7 with image
 
 set title "Crosspower: Beam and meansub"
 set output "sim/crosstrans_beam_mean.eps"
 plot "crosstrans_beam_mean.dat" using 2:5:7 with image
 
-set title "Crosspower: Beam transfer function"
-set output "sim/crosstrans_beam.eps"
-plot "crosstrans_beam.dat" using 2:5:7 with image
+set title "Crosspower: Beam and meansub (alt. average)"
+set output "sim/crosstrans_beam_mean_altavg.eps"
+plot "crosstrans_beam_mean_altavg.dat" using 2:5:7 with image
 
 set title "Crosspower: Beam and meansub, degrade trans."
+set output "sim/crosstrans_beam_meanconv.eps"
+plot "crosstrans_beam_meanconv.dat" using 2:5:7 with image
+
+set title "Crosspower: Beam and meansub, degrade trans. (alt. average)"
 set output "sim/crosstrans_beam_meanconv_altavg.eps"
 plot "crosstrans_beam_meanconv_altavg.dat" using 2:5:7 with image
-
-set title "Crosspower: Beam transfer function"
-set output "sim/crosstrans_beam_altavg.eps"
-plot "crosstrans_beam_altavg.dat" using 2:5:7 with image
 
 # mode transfer functions
 set title "Mode=0 transfer function"

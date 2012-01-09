@@ -169,6 +169,7 @@ def gather_batch_genericsim_run(simleft_key, simright_key,
 
 
 def find_crossbeam_trans():
+    # TODO: should not use the noconv weight here... need to separate these
     sim_15hr = gather_batch_genericsim_run("sim_15hr", "sim_15hr_delta",
                          "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
                          "WiggleZ_15hr_montecarlo", "sim_wigglezxGBT15hr")
@@ -183,8 +184,6 @@ def find_crossbeam_trans():
                          "WiggleZ_15hr_montecarlo",
                          "sim_wigglezxGBT15hr_beam_meansub")
 
-    # TODO: should not use the noconv weight here... need to separate these
-    # better
     sim_15hr_beam_meanconv = gather_batch_genericsim_run("sim_15hr_beam_meansubconv",
                          "sim_15hr_delta",
                          "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
@@ -207,7 +206,7 @@ def find_crossbeam_trans():
 
     # TODO: check that it makes sense by reconstructing the simulated power without
     # these effects:
-    #sim_15hr_corr = gather_batch_sim_run("sim_15hr_beam",
+    #sim_15hr_corrected = gather_batch_sim_run("sim_15hr_beam",
     #                                     "sim_15hr_beam_meanconv_corrected",
     #                                     degrade_resolution=True,
     #                                     subtract_mean=True,
@@ -235,8 +234,6 @@ def wigglez_x_GBT():
 
 
 if __name__ == '__main__':
-    find_crossbeam_trans()
+    #find_crossbeam_trans()
     wigglez_x_GBT()
     sys.exit()
-
-
