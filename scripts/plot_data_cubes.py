@@ -18,19 +18,19 @@ def plot_gbt_newmapset(outputdir="/cita/d/www/home/eswitzer/movies/"):
     pc.plot_gbt_maps('GBT_15hr_newmap862', outputdir=outputdir, transverse=False)
 
 def plot_cleaned_gbt15hr_mapset(outputdir="/cita/d/www/home/eswitzer/movies/"):
-    pc.plot_gbt_maps('GBT_15hr_map_cleaned_0mode', outputdir=outputdir, transverse=False)
-    pc.plot_gbt_maps('GBT_15hr_map_cleaned_5mode', outputdir=outputdir, transverse=False)
-    pc.plot_gbt_maps('GBT_15hr_map_cleaned_10mode', outputdir=outputdir, transverse=False)
-    pc.plot_gbt_maps('GBT_15hr_map_cleaned_15mode', outputdir=outputdir, transverse=False)
-    pc.plot_gbt_maps('GBT_15hr_map_cleaned_20mode', outputdir=outputdir, transverse=False)
-    pc.plot_gbt_maps('GBT_15hr_map_cleaned_25mode', outputdir=outputdir, transverse=False)
-    pc.plot_gbt_maps('GBT_15hr_map_cleaned_30mode', outputdir=outputdir, transverse=False)
-    pc.plot_gbt_maps('GBT_15hr_map_cleaned_35mode', outputdir=outputdir, transverse=False)
-    pc.plot_gbt_maps('GBT_15hr_map_cleaned_40mode', outputdir=outputdir, transverse=False)
-    pc.plot_gbt_maps('GBT_15hr_map_cleaned_45mode', outputdir=outputdir, transverse=False)
-    pc.plot_gbt_maps('GBT_15hr_map_cleaned_50mode', outputdir=outputdir, transverse=False)
-    #pc.plot_gbt_maps('GBT_22hr_map_cleaned_20mode', outputdir=outputdir, transverse=False)
-    #pc.plot_gbt_maps('GBT_22hr_map_cleaned_0mode', outputdir=outputdir, transverse=False)
+    pc.plot_cleaned_maps('GBT_15hr_map_cleaned_noconv_25mode',
+                         outputdir=outputdir, transverse=False, convolve=True)
+    #pc.plot_cleaned_maps('GBT_15hr_map_cleaned_0mode', outputdir=outputdir, transverse=False)
+    #pc.plot_cleaned_maps('GBT_15hr_map_cleaned_5mode', outputdir=outputdir, transverse=False)
+    #pc.plot_cleaned_maps('GBT_15hr_map_cleaned_10mode', outputdir=outputdir, transverse=False)
+    #pc.plot_cleaned_maps('GBT_15hr_map_cleaned_15mode', outputdir=outputdir, transverse=False)
+    #pc.plot_cleaned_maps('GBT_15hr_map_cleaned_20mode', outputdir=outputdir, transverse=False)
+    #pc.plot_cleaned_maps('GBT_15hr_map_cleaned_25mode', outputdir=outputdir, transverse=False)
+    #pc.plot_cleaned_maps('GBT_15hr_map_cleaned_30mode', outputdir=outputdir, transverse=False)
+    #pc.plot_cleaned_maps('GBT_15hr_map_cleaned_35mode', outputdir=outputdir, transverse=False)
+    #pc.plot_cleaned_maps('GBT_15hr_map_cleaned_40mode', outputdir=outputdir, transverse=False)
+    #pc.plot_cleaned_maps('GBT_15hr_map_cleaned_45mode', outputdir=outputdir, transverse=False)
+    #pc.plot_cleaned_maps('GBT_15hr_map_cleaned_50mode', outputdir=outputdir, transverse=False)
 
 def plot_gbt_simset(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/"):
     datapath_db = data_paths.DataPath()
@@ -229,9 +229,10 @@ def plot_wigglez(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/",
 
 
 if __name__ == "__main__":
-    plot_gbt_simset('sim_15hr')
-    plot_gbt_simset('simvel_15hr')
-    plot_gbt_simset('simideal_15hr')
+    plot_cleaned_gbt15hr_mapset()
+    #plot_gbt_simset('sim_15hr')
+    #plot_gbt_simset('simvel_15hr')
+    #plot_gbt_simset('simideal_15hr')
     #plot_gbt_simset('22hr')
     #plot_gbt_mapset()
     #plot_gbt_newmapset()
@@ -250,8 +251,6 @@ if __name__ == "__main__":
     #plot_wigglez('22hr')
     #plot_wigglez('1hr')
 
-    # phase this one out ... to many outputs
-    #plot_cleaned_gbt15hr_mapset()
     # random odds and ends
     #plot_individual("/mnt/raid-project/gmrt/eswitzer/GBT/cleaned_maps/15hr_sim/sec_A_cleaned_clean_map_I_with_B_0modes.npy")
     #plot_window()

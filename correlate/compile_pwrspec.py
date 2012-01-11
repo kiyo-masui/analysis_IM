@@ -24,7 +24,7 @@ def gather_batch_data_run(tag, subtract_mean=False, degrade_resolution=False,
                   truncate=False, window=None, n_modes=None,
                   refinement=2, pad=5, order=2, beam_transfer=None,
                   outdir="./plot_data", mode_transfer_1d=None,
-                  mode_transfer_2d=None, alt=""):
+                  mode_transfer_2d=None, alt_sig="", alt_noise=""):
     datapath_db = data_paths.DataPath()
     outpath = datapath_db.fetch("quadratic_batch_data")
 
@@ -36,10 +36,10 @@ def gather_batch_data_run(tag, subtract_mean=False, degrade_resolution=False,
 
     for mode_num in range(0,55,5):
         maptag = "GBT_15hr_map"
-        map1_key = "%s_cleaned_%s%dmode" % (maptag, alt, mode_num)
-        map2_key = "%s_cleaned_%s%dmode" % (maptag, alt, mode_num)
-        noise1_key = "%s_cleaned_%s%dmode" % (maptag, alt, mode_num)
-        noise2_key = "%s_cleaned_%s%dmode" % (maptag, alt, mode_num)
+        map1_key = "%s_cleaned_%s%dmode" % (maptag, alt_sig, mode_num)
+        map2_key = "%s_cleaned_%s%dmode" % (maptag, alt_sig, mode_num)
+        noise1_key = "%s_cleaned_%s%dmode" % (maptag, alt_noise, mode_num)
+        noise2_key = "%s_cleaned_%s%dmode" % (maptag, alt_noise, mode_num)
 
         (pairlist, pairdict) = \
                 data_paths.cross_maps(map1_key, map2_key,
@@ -307,6 +307,34 @@ def process_wigglez(noconv=True):
                                mode_transfer_1d = wigglez_transfer_functions_withbeam)
 
 
+def process_autopower_noconvsig():
+    # all of the beam, meansub and conv transfer functions
+    (trans_beam, trans_beam_mean, trans_beam_meanconv) = ct.find_beam_trans()
+
+    # the data with only mean subtraction
+    transfer_functions_noconv = ct.gather_batch_datasim_run("GBT15hr_sim_noconv",
+                                                     alt="noconv_")
+
+    gather_batch_data_run("GBT15hr_noconvsig_nocomp", alt_sig="noconv_")
+
+    gather_batch_data_run("GBT15hr_noconvsig_2dbeamcomp", alt_sig="noconv_",
+                          beam_transfer=trans_beam_mean)
+
+    gather_batch_data_run("GBT15hr_noconvsig_1dmodecomp", alt_sig="noconv_",
+                          mode_transfer_1d=transfer_functions_noconv)
+
+    gather_batch_data_run("GBT15hr_noconvsig_2dbeam1dmodecomp", alt_sig="noconv_",
+                          beam_transfer=trans_beam_mean,
+                          mode_transfer_1d=transfer_functions_noconv)
+
+    gather_batch_data_run("GBT15hr_noconvsig_2dmodecomp", alt_sig="noconv_",
+                          mode_transfer_2d=transfer_functions_noconv)
+
+    gather_batch_data_run("GBT15hr_noconvsig_2dbeam2dmodecomp", alt_sig="noconv_",
+                          beam_transfer=trans_beam_mean,
+                          mode_transfer_2d=transfer_functions_noconv)
+
+# TODO: ADD alt_noise, alt_sig here
 def process_autopower():
     # all of the beam, meansub and conv transfer functions
     (trans_beam, trans_beam_mean, trans_beam_meanconv) = ct.find_beam_trans()
@@ -344,7 +372,7 @@ def process_autopower():
     #                      subtract_mean=True)
 
     # data with mean subtraction and degrading
-    transfer_functions = ct.find_modeloss_transfer()
+    transfer_functions = ct.gather_batch_datasim_run("GBT15hr_sim")
 
     gather_batch_data_run("GBT15hr_nocomp")
 
@@ -364,6 +392,7 @@ def process_autopower():
 
 
 if __name__ == '__main__':
-    process_wigglez()
+    process_autopower_noconvsig()
+    #process_wigglez()
     #process_wigglez(noconv=False)
     #process_autopower()

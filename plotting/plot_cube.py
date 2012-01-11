@@ -264,6 +264,56 @@ def plot_gbt_maps(keyname, transverse=False, skip_noise=False, skip_map=False,
                                title=title)
 
 
+def plot_cleaned_maps(source_key, alt_weight=None,
+                 signal='map', weight='noise_inv', divider_token=";",
+                 outputdir="/cita/d/www/home/eswitzer/movies/",
+                 convolve=False,
+                 transverse=False):
+    r"""
+    `source_key` is the file db key for the maps to combine
+    `signal` is the tag in the file db entry for the signal maps
+    `weight` is the tag in the file db entry for the N^-1 weights
+    `divider_token` is the token that divides the map section name
+            from the data type e.g. "A_with_B;noise_inv"
+    """
+    datapath_db = data_paths.DataPath()
+    source_fdb = datapath_db.fetch(source_key, intend_read=True,
+                                   silent=True)
+    source_fdict = source_fdb[1]
+
+    # accumulate all the files to combine
+    weightkeys = {}
+    signalkeys = {}
+    for filekey in source_fdb[0]:
+        if divider_token in filekey:
+            data_type = filekey.split(divider_token)[1]
+            map_section = filekey.split(divider_token)[0]
+
+            if data_type == signal:
+                signalkeys[map_section] = source_fdict[filekey]
+
+            if data_type == weight:
+                weightkeys[map_section] = source_fdict[filekey]
+
+    for mapkey in signalkeys:
+        signalfile = signalkeys[mapkey]
+        weightfile = weightkeys[mapkey]
+        print "loading pair: %s %s" % (signalfile, weightfile)
+
+        make_cube_movie(signalfile, "Temperature (mK)", cube_frame_dir,
+                        sigmarange=2.5, outputdir=outputdir, multiplier=1000.,
+                        transverse=transverse, convolve=convolve)
+
+        make_cube_movie(weightfile, "Inverse variance weight", cube_frame_dir,
+                        sigmarange=2.5, outputdir=outputdir, multiplier=1.,
+                        transverse=transverse)
+
+        #algebra.save(signal_out, newmap)
+        #make_cube_movie(filename, "Cleaned map times weights", cube_frame_dir,
+        #                sigmarange=-1, outputdir=outputdir, multiplier=1000.,
+        #                transverse=transverse, convolve=convolve)
+
+
 def plot_difference(filename1, filename2, title, sigmarange=6., sigmacut=None,
                     transverse=False, outputdir="./", multiplier=1000.,
                     logscale=False, fractional=False,

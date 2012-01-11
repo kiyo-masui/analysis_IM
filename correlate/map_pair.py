@@ -396,7 +396,7 @@ class MapPair(ft.ClassPersistence):
         xspec = pe.calculate_xspec(self.phys_map1, self.phys_map2,
                                    self.phys_noise_inv1, self.phys_noise_inv2,
                                    window=window, unitless=unitless,
-                                   bins=bins, truncate=False, nbins=nbins,
+                                   bins=bins, truncate=truncate, nbins=nbins,
                                    logbins=logbins, return_3d=return_3d)
 
         return xspec

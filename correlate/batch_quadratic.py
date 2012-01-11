@@ -307,11 +307,12 @@ def batch_GBTxwigglez_trans_run(sim_key, sim_wigglez,
     caller.multiprocess_stack()
 
 
-def batch_one_sided_trans_run(sim_key, gbt_map_key,
-                               subtract_mean=False, degrade_resolution=False,
-                               unitless=True, return_3d=False,
-                               truncate=False, window=None, n_modes=None,
-                               refinement=2, pad=5, order=2):
+def batch_one_sided_trans_run(modeloss_simkey, base_simkey,
+                              modeloss_weight_root,
+                              subtract_mean=False, degrade_resolution=False,
+                              unitless=True, return_3d=False,
+                              truncate=False, window=None, n_modes=None,
+                              refinement=2, pad=5, order=2):
     datapath_db = data_paths.DataPath()
 
     outpath = datapath_db.fetch("quadratic_batch_data")
@@ -321,10 +322,10 @@ def batch_one_sided_trans_run(sim_key, gbt_map_key,
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
 
-    map1_key = "db:sim_15hr:0"
-    map2_key = "db:sim_15hr:0"
-    noiseinv1_key = "db:%s_0mode_weight" % (gbt_map_key)
-    noiseinv2_key = "db:%s_0mode_weight" % (gbt_map_key)
+    map1_key = "db:%s:0" % base_simkey
+    map2_key = "db:%s:0" % base_simkey
+    noiseinv1_key = "db:%s_0mode_weight" % (modeloss_weight_root)
+    noiseinv2_key = "db:%s_0mode_ones" % (modeloss_weight_root)
 
     caller.execute(map1_key, map2_key,
                    noiseinv1_key, noiseinv2_key,
@@ -338,10 +339,10 @@ def batch_one_sided_trans_run(sim_key, gbt_map_key,
                    pad=pad, order=order)
 
     for mode_num in range(0, 55, 5):
-        map1_key = "db:%s_%dmode_map" % (sim_key, mode_num)
-        map2_key = "db:sim_15hr:0"
-        noiseinv1_key = "db:%s_%dmode_weight" % (gbt_map_key, mode_num)
-        noiseinv2_key = "db:%s_%dmode_weight" % (gbt_map_key, mode_num)
+        map1_key = "db:%s_%dmode_map" % (modeloss_simkey, mode_num)
+        map2_key = "db:%s:0" % base_simkey
+        noiseinv1_key = "db:%s_%dmode_weight" % (modeloss_weight_root, mode_num)
+        noiseinv2_key = "db:%s_%dmode_ones" % (modeloss_weight_root, mode_num)
 
         caller.execute(map1_key, map2_key,
                        noiseinv1_key, noiseinv2_key,
@@ -396,7 +397,8 @@ def batch_wigglez_automock_run(mock_key, sel_key, subtract_mean=False,
 def batch_data_run(subtract_mean=False, degrade_resolution=False,
                    unitless=True, return_3d=False,
                    truncate=False, window=None, n_modes=None,
-                   refinement=2, pad=5, order=2, sim=False, alt=""):
+                   refinement=2, pad=5, order=2, sim=False,
+                   alt_sig="", alt_noise=""):
     datapath_db = data_paths.DataPath()
 
     if sim:
@@ -413,10 +415,10 @@ def batch_data_run(subtract_mean=False, degrade_resolution=False,
                                         generate=True, verbose=True)
 
     for mode_num in range(0, 55, 5):
-        map1_key = "%s_cleaned_%s%dmode" % (mapsim, alt, mode_num)
-        map2_key = "%s_cleaned_%s%dmode" % (mapsim, alt, mode_num)
-        noise1_key = "%s_cleaned_%s%dmode" % (mapsim, alt, mode_num)
-        noise2_key = "%s_cleaned_%s%dmode" % (mapsim, alt, mode_num)
+        map1_key = "%s_cleaned_%s%dmode" % (mapsim, alt_sig, mode_num)
+        map2_key = "%s_cleaned_%s%dmode" % (mapsim, alt_sig, mode_num)
+        noise1_key = "%s_cleaned_%s%dmode" % (mapsim, alt_noise, mode_num)
+        noise2_key = "%s_cleaned_%s%dmode" % (mapsim, alt_noise, mode_num)
 
         (pairlist, pairdict) = \
                 data_paths.cross_maps(map1_key, map2_key,
@@ -591,9 +593,36 @@ def sim_crosspower():
                          "WiggleZ_15hr_montecarlo")
 
 
+def sim_one_sided_trans():
+    batch_one_sided_trans_run("sim_15hr_combined_cleaned", "sim_15hr",
+                              "GBT_15hr_map_combined_cleaned")
+    batch_one_sided_trans_run("sim_15hr_combined_cleaned_noconv", "sim_15hr",
+                              "GBT_15hr_map_combined_cleaned_noconv")
+    batch_one_sided_trans_run("sim_15hr_combined_cleaned", "sim_15hr_beam",
+                              "GBT_15hr_map_combined_cleaned")
+    batch_one_sided_trans_run("sim_15hr_combined_cleaned_noconv", "sim_15hr_beam",
+                              "GBT_15hr_map_combined_cleaned_noconv")
+    batch_one_sided_trans_run("sim_15hr_combined_cleaned", "sim_15hr_beam_meansubconv",
+                              "GBT_15hr_map_combined_cleaned")
+    batch_one_sided_trans_run("sim_15hr_combined_cleaned_noconv", "sim_15hr_beam_meansub",
+                              "GBT_15hr_map_combined_cleaned_noconv")
+
+
+def run_GBTxGBT():
+    batch_data_run(alt_sig="noconv_") # use the convolved noise
+    #batch_data_run(alt="nomeanconv_", subtract_mean=True)
+    #batch_data_run(alt="nomeanconv_")
+    #batch_data_run(alt="noconv_", subtract_mean=True)
+    #batch_data_run(alt="noconv_", sim=True)
+    #batch_data_run(alt="noconv_", sim=True, subtract_mean=True)
+    #batch_data_run(sim=True)
+    #batch_data_run()
+
+
 if __name__ == '__main__':
+    run_GBTxGBT()
+    sys.exit()
     sim_crosspower()
-    sys.exit()
 
     batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned_noconv",
                                 "sim_15hr_delta",
@@ -621,9 +650,6 @@ if __name__ == '__main__':
 
     sys.exit()
 
-    # FINISH THIS CASE!!!!!
-    batch_one_sided_trans_run("sim_15hr_combined_cleaned_noconv",
-                                "GBT_15hr_map_combined_cleaned_noconv")
 
     batch_GBTxwigglez_data_run("GBT_15hr_map_combined_cleaned_noconv",
                                "WiggleZ_15hr_delta_binned_data",
@@ -635,21 +661,6 @@ if __name__ == '__main__':
                                "WiggleZ_15hr_delta_mock",
                                "WiggleZ_15hr_montecarlo")
 
-    #batch_data_run(alt="nomeanconv_", subtract_mean=True)
-    #batch_data_run(alt="nomeanconv_")
-
-    batch_data_run(alt="noconv_")
-    batch_data_run(alt="noconv_", subtract_mean=True)
-    batch_data_run(alt="noconv_", sim=True)
-    batch_data_run(alt="noconv_", sim=True, subtract_mean=True)
-
-
-    # modeloss sim
-    batch_data_run(sim=True)
-
-
-    # real data
-    batch_data_run()
 
     batch_wigglez_automock_run("WiggleZ_15hr_mock", "WiggleZ_15hr_montecarlo")
 
