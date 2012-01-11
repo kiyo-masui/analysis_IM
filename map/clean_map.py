@@ -36,7 +36,7 @@ class CleanMapMaker(object) :
         # Make parent directory and write parameter file.
         kiyopy.utils.mkparents(params['output_root'])
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
-                               prefix='mm_')
+                               prefix=prefix)
         save_noise_diag = params['save_noise_diag']
         in_root = params['input_root']
         all_out_fname_list = []
