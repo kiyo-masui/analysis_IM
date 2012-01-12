@@ -198,12 +198,14 @@ def plot_svd_series_comparison(path_key1, path_key2):
 #plot_svd_series_comparison("GBT_cleaned_noconv_15hr_maps_Eric", "GBT_cleaned_noconv_15hr_sims_Eric")
 #plot_svd_series_comparison("GBT_cleaned_15hr_maps_Eric", "GBT_cleaned_15hr_sims_Eric")
 
-average_mode_amplitudes("GBT_cleaned_newmap737_15hr_maps_Eric")
-dot_mode_functions("GBT_cleaned_newmap737_15hr_maps_Eric", "GBT_cleaned_newmap737_15hr_maps_Eric")
-#average_mode_amplitudes("GBT_cleaned_15hr_maps_Eric")
-#average_mode_amplitudes("GBT_cleaned_noconv_15hr_maps_Eric")
-#dot_mode_functions("GBT_cleaned_noconv_15hr_maps_Eric", "GBT_cleaned_noconv_15hr_sims_Eric")
-#dot_mode_functions("GBT_cleaned_15hr_maps_Eric", "GBT_cleaned_15hr_sims_Eric")
+average_mode_amplitudes("GBT_cleaned_expt_15hr_maps_Eric")
+dot_mode_functions("GBT_cleaned_expt_15hr_maps_Eric", "GBT_cleaned_expt_15hr_maps_Eric")
+#average_mode_amplitudes("GBT_cleaned_newmap737_15hr_maps_Eric")
+#dot_mode_functions("GBT_cleaned_newmap737_15hr_maps_Eric", "GBT_cleaned_newmap737_15hr_maps_Eric")
+average_mode_amplitudes("GBT_cleaned_15hr_maps_Eric")
+average_mode_amplitudes("GBT_cleaned_noconv_15hr_maps_Eric")
+dot_mode_functions("GBT_cleaned_noconv_15hr_maps_Eric", "GBT_cleaned_noconv_15hr_sims_Eric")
+dot_mode_functions("GBT_cleaned_15hr_maps_Eric", "GBT_cleaned_15hr_sims_Eric")
 
 #process_mode_files("GBT_cleaned_15hr_maps_Eric")
 

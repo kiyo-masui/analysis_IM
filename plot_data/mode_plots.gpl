@@ -1,4 +1,4 @@
-set style line 1 lt 1 lw 2 linecolor rgb "blue"
+set style line 1 lt 1 lw 4 linecolor rgb "blue"
 set style line 2 lt 1 lw 2 linecolor rgb "green"
 set style line 3 lt 1 lw 4 linecolor rgb "red"
 set style line 4 lt 1 lw 4 linecolor rgb "black"
@@ -115,6 +115,35 @@ plot "GBT_cleaned_15hr_maps_Eric_mode_functions.txt" using ($1*7) with lines ls 
      "GBT_cleaned_noconv_15hr_sims_Eric_mode_functions.txt" using ($4*7+3) with lines ls 2, \
      "GBT_cleaned_15hr_maps_Eric_mode_functions.txt" using ($5*7+4) with lines ls 1, \
      "GBT_cleaned_noconv_15hr_sims_Eric_mode_functions.txt" using ($5*7+4) with lines ls 2
+
+set size 1., 1.
+set terminal postscript eps enhanced color "Helvetica" 20
+set output "modes/modes_vectors_expt.eps"
+set xlabel "freq index"
+set ylabel "amplitude"
+set title "SVD modes: impact of resolution degrading convolution"
+unset logscale
+set nokey
+plot "GBT_cleaned_expt_15hr_maps_Eric_mode_functions.txt" using ($1*7) with lines ls 1, \
+     "GBT_cleaned_noconv_15hr_maps_Eric_mode_functions.txt" using ($1*7) with lines ls 2, \
+     "GBT_cleaned_expt_15hr_maps_Eric_mode_functions.txt" using ($2*7+1) with lines ls 1, \
+     "GBT_cleaned_noconv_15hr_maps_Eric_mode_functions.txt" using ($2*7+1) with lines ls 2, \
+     "GBT_cleaned_expt_15hr_maps_Eric_mode_functions.txt" using ($3*7+2) with lines ls 1, \
+     "GBT_cleaned_noconv_15hr_maps_Eric_mode_functions.txt" using ($3*7+2) with lines ls 2, \
+     "GBT_cleaned_expt_15hr_maps_Eric_mode_functions.txt" using ($4*7+3) with lines ls 1, \
+     "GBT_cleaned_noconv_15hr_maps_Eric_mode_functions.txt" using ($4*7+3) with lines ls 2, \
+     "GBT_cleaned_expt_15hr_maps_Eric_mode_functions.txt" using ($5*7+4) with lines ls 1, \
+     "GBT_cleaned_noconv_15hr_maps_Eric_mode_functions.txt" using ($5*7+4) with lines ls 2, \
+     "GBT_cleaned_expt_15hr_maps_Eric_mode_functions.txt" using ($6*7+5) with lines ls 1, \
+     "GBT_cleaned_noconv_15hr_maps_Eric_mode_functions.txt" using ($6*7+5) with lines ls 2, \
+     "GBT_cleaned_expt_15hr_maps_Eric_mode_functions.txt" using ($7*7+6) with lines ls 1, \
+     "GBT_cleaned_noconv_15hr_maps_Eric_mode_functions.txt" using ($7*7+6) with lines ls 2, \
+     "GBT_cleaned_expt_15hr_maps_Eric_mode_functions.txt" using ($8*7+7) with lines ls 1, \
+     "GBT_cleaned_noconv_15hr_maps_Eric_mode_functions.txt" using ($8*7+7) with lines ls 2, \
+     "GBT_cleaned_expt_15hr_maps_Eric_mode_functions.txt" using ($9*7+8) with lines ls 1, \
+     "GBT_cleaned_noconv_15hr_maps_Eric_mode_functions.txt" using ($9*7+8) with lines ls 2, \
+     "GBT_cleaned_expt_15hr_maps_Eric_mode_functions.txt" using ($10*7+9) with lines ls 1, \
+     "GBT_cleaned_noconv_15hr_maps_Eric_mode_functions.txt" using ($10*7+9) with lines ls 2
 
 #set size 1., 1.
 #set terminal postscript eps enhanced color "Helvetica" 20

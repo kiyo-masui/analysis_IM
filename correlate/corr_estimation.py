@@ -1,8 +1,45 @@
 """various functions to calculate and bin correlation functions"""
+import numpy as np
 import scipy as sp
 from numpy import linalg
 import time
 import copy
+
+
+def freq_covariance(map1, map2, weight1, weight2, freq1, freq2):
+    r"""Calculate the weighted nu nu' covariance
+    This should be the same as the zero-lag bin of the full correlation
+    function calculation below.
+    """
+    input_map1 = map1[freq1, :, :]
+    input_map2 = map2[freq2, :, :]
+    input_weight1 = weight1[freq1, :, :]
+    input_weight2 = weight2[freq2, :, :]
+
+    map1shp = input_map1.shape
+    map2shp = input_map2.shape
+
+    map1_flat = np.reshape(input_map1, (map1shp[0], map1shp[1] * map1shp[2]))
+    weight1_flat = np.reshape(input_weight1, (map1shp[0], map1shp[1] * map1shp[2]))
+    map2_flat = np.reshape(input_map2, (map2shp[0], map2shp[1] * map2shp[2]))
+    weight2_flat = np.reshape(input_weight2, (map2shp[0], map2shp[1] * map2shp[2]))
+
+    wprod1 = map1_flat * weight1_flat
+    wprod2 = map2_flat * weight2_flat
+
+    # TODO: or should this be wprod2, wprod1^T?
+    quad_wprod = np.dot(wprod1, np.transpose(wprod2))
+    quad_weight = np.dot(weight1_flat, np.transpose(weight2_flat))
+
+    mask = (quad_weight < 1e-20)
+    quad_weight[mask] = 1.
+    quad_wprod /= quad_weight
+    quad_wprod[mask] = 0
+    quad_weight[mask] = 0
+
+    # downstream code selects the [..., 0] entry for "zero lag"
+    return quad_wprod[..., np.newaxis], quad_weight[..., np.newaxis]
+
 
 def corr_est(map1, map2, noise1, noise2, freq1, freq2,
              lags=(), speedup=False, verbose=False):
