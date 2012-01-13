@@ -28,7 +28,8 @@ import kiyopy.custom_exceptions as ce
 import kiyopy.utils
 from kiyopy import parse_ini
 import _mapmaker as _mapmaker_c
-from constants import T_infinity, T_small, T_large
+from constants import T_infinity, T_large, T_medium, T_small, T_sys
+from constants import f_medium, f_large
 
 prefix ='dm_'
 params_init = {# IO:
@@ -242,7 +243,12 @@ class DirtyMapMaker(object):
                 noise_entry = noise_entry["freq_modes_over_f_"
                                 + repr(self.params['number_frequency_modes'])]
                 if parameter_name == "thermal":
-                    return noise_entry["thermal"] * BW * 2
+                    thermal = noise_entry["thermal"] * BW * 2
+                    # Min is factor of 2 smaller than theoredical (since some
+                    # noise will be in the frequency modes).
+                    thermal_min = abs(T_sys * 2. * BW / self.delta_freq / 2.)
+                    thermal[thermal < thermal_min] = thermal_min
+                    return thermal
                 elif parameter_name[:12] == "over_f_mode_":
                     p = noise_entry[parameter_name]
                     # Factors of the band width applied in Noise object.
@@ -318,6 +324,7 @@ class DirtyMapMaker(object):
         if not band_inds:
             band_inds = range(n_bands)
         delta_freq = Blocks[0].field['CDELT1']
+        self.delta_freq = delta_freq
         band_centres = []
         for Data in Blocks:
             Data.calc_freq()
@@ -431,7 +438,10 @@ class DirtyMapMaker(object):
                 N.add_mask(mask_inds)
                 # The thermal part.
                 thermal_noise = self.get_noise_parameter("thermal")
-                N.add_thermal(thermal_noise)
+                try:
+                    N.add_thermal(thermal_noise)
+                except NoiseError:
+                    continue
                 # Frequency correlations.
                 if params['frequency_correlations'] == 'mean':
                     mean_overf = self.get_noise_parameter("mean_over_f")
@@ -442,41 +452,51 @@ class DirtyMapMaker(object):
                     # was seen to be nessisary from looking at the noise
                     # spectra.
                     n_modes_discard = params['number_frequency_modes_discard']
-                    for ii in range(n_modes_discard):
-                        mode_noise_params = self.get_noise_parameter(
-                                "over_f_mode_" + repr(ii))
-                        # Instead of completly discarding, multiply amplitude
-                        # by 10.
-                        #N.deweight_freq_mode(mode_noise_params[4])
-                        mode_noise_params = ((mode_noise_params[0] * 10,)
-                                             + mode_noise_params[1:])
-                        N.add_over_f_freq_mode(*mode_noise_params)
-                    # The remaining frequency modes are noise weighed
-                    # normally.
-                    n_modes = params['number_frequency_modes']
-                    for ii in range(n_modes_discard, n_modes):
-                        mode_noise_params = self.get_noise_parameter(
-                            "over_f_mode_" + repr(ii))
-                        N.add_over_f_freq_mode(*mode_noise_params)
-                    # All channel low frequency noise.
-                    all_chan_noise_params = self.get_noise_parameter(
-                            'all_channel')
-                    # In some cases the corner frequncy will be so high that
-                    # this scan will contain no information.
                     try:
+                        for ii in range(n_modes_discard):
+                            mode_noise_params = self.get_noise_parameter(
+                                    "over_f_mode_" + repr(ii))
+                            # Instead of completly discarding, multiply 
+                            # amplitude by 2.
+                            #N.deweight_freq_mode(mode_noise_params[4])
+                            mode_noise_params = ((mode_noise_params[0] * 2,)
+                                                 + mode_noise_params[1:])
+                            N.add_over_f_freq_mode(*mode_noise_params)
+                        # The remaining frequency modes are noise weighed
+                        # normally.
+                        n_modes = params['number_frequency_modes']
+                        for ii in range(n_modes_discard, n_modes):
+                            mode_noise_params = self.get_noise_parameter(
+                                "over_f_mode_" + repr(ii))
+                            N.add_over_f_freq_mode(*mode_noise_params)
+                        # All channel low frequency noise.
+                        all_chan_noise_params = self.get_noise_parameter(
+                                'all_channel')
+                        # In some cases the corner frequncy will be so high that
+                        # this scan will contain no information.
                         N.add_all_chan_low(*all_chan_noise_params)
                     except NoiseError:
-                        print "Too many time modes. Time block ignored."
+                        if self.feedback > 1:
+                            print ("Noise parameters risk numerical"
+                                   " instability. Data skipped.")
                         continue
                 elif params['frequency_correlations'] == 'None':
                     pass
                 else:
                     raise ValueError("Invalid frequency correlations.")
-                # Things to do along the time axis.
+                # Things to do along the time axis.  With no frequency
+                # correlations, things are more stable.  Also, thermal noise
+                # estimate will be high, so you need to deweight things extra.
                 if params['deweight_time_mean']:
-                    N.deweight_time_mean()
+                    if params["frequency_correlations"] == 'None':
+                        N.deweight_time_mean(T_large)
+                    else:
+                        N.deweight_time_mean(T_large)
                 if params['deweight_time_slope']:
-                    N.deweight_time_slope()
+                    if params["frequency_correlations"] == 'None':
+                        N.deweight_time_slope(T_large)
+                    else:
+                        N.deweight_time_slope(T_large)
                 # Store all these for later.
                 pointing_list.append(P)
                 noise_list.append(N)
@@ -538,6 +558,10 @@ class DirtyMapMaker(object):
             n_time_blocks = len(noise_list)
             # Initialize the queue of work to be done.
             index_queue = Queue()
+            # I'm using a Lock to write to the memory map, not because I need
+            # it but to hopefully keep simultaniouse writes from grinding
+            # things to a halt.
+            write_lock = threading.Lock()
             # Define a function that takes work off a queue and does it. 
             # Variable local to this function prefixed with 'thread_'.
             def thread_work():
@@ -571,8 +595,12 @@ class DirtyMapMaker(object):
                             thread_P.noise_to_map_domain(thread_N, 
                                     thread_f_ind, thread_ra_ind, 
                                     thread_cov_inv_row)
+                        # Use a lock to try to stagger the processes and make
+                        # them write at different times.
+                        write_lock.acquire()
                         cov_inv[thread_f_ind,thread_ra_ind,...] += \
                                 thread_cov_inv_row
+                        write_lock.release()
                         if (self.feedback > 1
                             and thread_ra_ind == self.n_ra - 1):
                             print thread_f_ind,
@@ -599,27 +627,19 @@ class DirtyMapMaker(object):
             if not index_queue.empty():
                 msg = "A thread had an error while building map covariance."
                 raise RuntimeError(msg)
+            if self.feedback > 1:
+                print
         # Now go through and make sure that the noise isn't singular by 
-        # adding a bit of information to untouched pixels.
+        # adding a bit of information to the diagonal.  This is equivalent to
+        # setting a prior that all pixels are 0 += sqrt(T_infinity). This does
+        # bias the map maker slightly, but really shouldn't matter.
         if self.uncorrelated_channels:
-            diag_slice = slice(None, None, 
-                               self.n_ra * self.n_dec + 1)
             cov_view = cov_inv.view()
             cov_view.shape = (self.n_chan, (self.n_ra * self.n_dec)**2)
-            cov_diag = cov_view[:,diag_slice]
-            untouched_inds = cov_diag < 1.0e-8 / T_infinity
-            tmp_add = sp.zeros(cov_diag.shape, dtype=float)
-            tmp_add[untouched_inds] = 1.0 / T_infinity
-            cov_view[:,diag_slice] += tmp_add
+            cov_view[:,::self.n_ra * self.n_dec + 1] += 1.0 / T_large
         else:
-            diag_slice = slice(None, None, 
-                               self.n_ra * self.n_dec * self.n_chan + 1)
-            cov_diag = cov_inv.flat[diag_slice]
-            untouched_inds = cov_diag < 1.0e-8 / T_infinity
-            tmp_add = sp.zeros(cov_diag.size, dtype=float)
-            tmp_add[untouched_inds] = 1.0 / T_infinity
-            cov_inv.flat[diag_slice] += tmp_add
-
+            cov_inv.flat[::self.n_chan * self.n_ra * self.n_dec + 1] += \
+                1.0 / T_large
 
 #### Classes ####
 
@@ -1010,7 +1030,7 @@ class Noise(object):
         self.initialize_diagonal()
         self.diagonal[mask_inds] = T_infinity
 
-    def deweight_time_mean(self):
+    def deweight_time_mean(self, T=T_medium):
         """Deweights time mean in each channel.
 
         This modifies the part of the noise matrix that is the same for each
@@ -1019,10 +1039,14 @@ class Noise(object):
         
         start = self.add_time_modes(1)
         self.time_modes[start,:] = 1.0 / sp.sqrt(self.n_time)
+        # We deweight by T_medium, enough such that the mean doesn't interfere
+        # with other modes in the map making, but not enough to actually
+        # eliminate mean information (will have to be done explicitly) as doing
+        # so would kill numerical stability.
         self.time_mode_noise[start,...] = (sp.eye(self.n_chan, dtype=float) 
-                                           * T_infinity * self.n_time)
+                                           * T * self.n_time)
 
-    def deweight_time_slope(self):
+    def deweight_time_slope(self, T=T_medium):
         """Deweights time slope in each channel.
         
         This modifies the part of the noise matrix that is the same for each
@@ -1034,7 +1058,7 @@ class Noise(object):
         mode *= 1.0 / sp.sqrt(sp.sum(mode**2)) 
         self.time_modes[start,:] = mode
         self.time_mode_noise[start,...] = (sp.eye(self.n_chan, dtype=float) 
-                                           * T_infinity * self.n_time)
+                                           * T * self.n_time)
 
     def add_correlated_over_f(self, amp, index, f0):
         """Add 1/f noise that is perfectly correlated between frequencies.
@@ -1063,6 +1087,12 @@ class Noise(object):
     def add_over_f_freq_mode(self, amp, index, f0, thermal, mode):
         """Add `1/f + const` noise to a given frequency mode."""
         
+        # Too steep a spectra will crash finialize.
+        # XXX The stability of this probably depends on n_time.
+        # Doesn't seem to fix things.
+        #if index < -3.5:
+        #    print "index", index
+        #    raise NoiseError("Too steep a noise spectrum.")
         time = self.time
         start_mode = self.add_freq_modes(1)
         self.freq_modes[start_mode,:] = mode
@@ -1074,14 +1104,30 @@ class Noise(object):
         # Calculate the correlation function at these lags.
         correlation_function = noise_power.calculate_overf_correlation(amp, 
             index, f0, dt, n_lags)
+        # If we are adding too much noise, we risk making the matrix singular.
+        # XXX Add a factor of n_chan here, assuming the noise is distributed
+        # across frequencies (use flaggers to enforce this).
+        if sp.amax(correlation_function) > T_large * self.n_chan:
+        #if sp.amax(correlation_function) > T_large:
+            print "Freq mode max:", sp.amax(correlation_function)
+            raise NoiseError("Extremely high 1/f risks singular noise.")
         corr_func_interpolator = \
             interpolate.interp1d(sp.arange(n_lags)*dt, correlation_function)
         noise_mat = corr_func_interpolator(time_deltas)
         # Add the thermal part to the diagonal.
+        # XXX This is acctually quite wrong.  The below is probably a bit
+        # better.
         BW = 1. / 2. / dt
         noise_mat.flat[::self.n_time + 1] += thermal * BW * 2
+        # XXX This isn't strictly being done correctly, but to do better we
+        # need to measure the noise differently.
+        #mode_norm = sp.sum(mode**2)  # Usually unity.
+        #self.initialize_diagonal()
+        #BW = 1. / 2. / dt
+        #self.diagonal += mode[:,None]**2 * thermal * BW * 2 / mode_norm
         self.freq_mode_noise[start_mode,...] = noise_mat
 
+    # XXX Might mess up numerical stability. Protection needs to be added.
     def deweight_freq_mode(self, mode):
         """Completly deweight a frequency mode."""
         
@@ -1090,7 +1136,7 @@ class Noise(object):
         start_mode = self.add_freq_modes(1)
         self.freq_modes[start_mode,:] = mode
         self.freq_mode_noise[start_mode,...]  = (sp.eye(n_time, dtype=float)
-                                                 * T_large * n_chan)
+                                                 * T_medium * n_chan)
 
     def add_all_chan_low(self, amps, index, f_0):
         """Deweight frequencies below, and a bit above 'f_0', 
@@ -1116,12 +1162,18 @@ class Noise(object):
         n_f = len(frequencies)
         n_modes = 2 * n_f
         if n_modes > self.n_time // 4:
+            print f_0, n_modes, self.n_time
             raise NoiseError("To many time modes to deweight.")
         # Add allowcate mememory for the new modes.
         start_mode = self.add_time_modes(n_modes)
         # Loop through and fill the modes.
         for ii, f in enumerate(frequencies):
-            this_amps = amps * (f / f_0)**index * df
+            this_amp_factor = (f / f_0)**index * df
+            if sp.any(this_amp_factor > f_large * self.n_time):
+            #if sp.any(this_amp_factor > f_large):
+                print "time mode amplitude:", this_amp_factor
+                raise NoiseError("Deweighting amplitude too high.")
+            this_amps = this_amp_factor * amps
             # The cosine (symetric) mode.
             cos_mode = sp.cos((ii+1) * time_normalized)
             norm_cos = sp.sqrt(sp.sum(cos_mode**2))

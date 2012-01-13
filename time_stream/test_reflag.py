@@ -6,6 +6,7 @@ import glob
 
 import scipy as sp
 import numpy.ma as ma
+import numpy.random as rand
 
 from core import fitsGBT
 import reflag
@@ -42,11 +43,22 @@ class TestFlag(unittest.TestCase) :
         self.assertEqual(ma.count_masked(self.Data.data), 3)
         self.assertEqual(ma.count_masked(self.DataSub.data), 3)
 
+    def test_channels(self):
+        self.Data.data[...] = 10
+        self.DataSub.data[...] = 10 + rand.rand(*self.Data.data.shape)
+        self.DataSub.data[:,:,:,123] = 10 + 6*rand.rand(
+                *self.Data.data.shape[:-1])
+        self.DataSub.data[:,:,:,54] += 10
+        reflag.flag(self.Data, self.DataSub, thres=2.0, max_noise_factor=3)
+        self.assertTrue(sp.all(self.Data.data.mask[:,:,:,123]))
+        self.assertFalse(sp.all(self.Data.data.mask[:,:,:,54]))
+
 class TestModule(unittest.TestCase) :
 
     def test_module(self) :
         params = {'sf_thres' : 3.0,
-                  'sf_subtracted_input_root' : './',
+                  'sf_max_noise_factor' : 3,
+                  'sf_subtracted_input_root' : './testdata/',
                   'sf_subtracted_output_root' : './subtracted_'
                  }
         reflag.ReFlag(params, feedback=0).execute()

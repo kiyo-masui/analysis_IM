@@ -10,13 +10,13 @@ from core import algebra, hist
 from kiyopy import parse_ini
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
-import _cholesky as _c
 
 
 params_init = {'input_root' : './',
                'polarizations' : ('I',),
                'output_root' : './',
                'save_noise_diag' : False,
+               'save_cholesky' : False,
                'bands' : ()
                }
 prefix = 'cm_'
@@ -180,11 +180,17 @@ class CleanMapMaker(object) :
                             sys.stdout.flush()
                 elif noise_inv.ndim == 6 :
                     if save_noise_diag:
-                        clean_map, noise_diag = solve(noise_inv, dirty_map,
-                                                True, feedback=self.feedback)
+                        clean_map, noise_diag, chol = solve(noise_inv,
+                                    dirty_map, True, feedback=self.feedback)
                     else:
-                        clean_map = solve(noise_inv, dirty_map, False,
+                        clean_map, chol = solve(noise_inv, dirty_map, False,
                                           feedback=self.feedback)
+                    if params['save_cholesky']:
+                        chol_fname = (params['output_root'] + 'chol_'
+                                      + pol_str + "_" + repr(band) + '.npy')
+                        sp.save(chol_fname, chol)
+                    # Delete the cholesky to recover memory.
+                    del chol
                 else :
                     raise ce.DataError("Noise matrix has bad shape.")
                 # Write the clean map to file.
@@ -220,6 +226,9 @@ def solve(noise_inv, dirty_map, return_noise_diag=False, feedback=0):
     Optionally, the diagonal on the noise matrix is returned.
     """
     
+    # Import the cython stuff locally so some clean maps can be made on any
+    # machine.
+    import _cholesky as _c
     # Put into the 2D matrix shape.
     expanded = noise_inv.view()
     side_size = noise_inv.shape[0] * noise_inv.shape[1] * noise_inv.shape[2]
@@ -237,12 +246,12 @@ def solve(noise_inv, dirty_map, return_noise_diag=False, feedback=0):
     flat_map.shape = (flat_map.size,)
     if feedback > 1:
         print "Solving for clean map."
-    clean_map = linalg.cho_solve((tri_copy, False), flat_map)
+    clean_map = _c.cho_solve(tri_copy, flat_map)
     # Reshape and cast as a map.
     clean_map.shape = dirty_map.shape
     clean_map = algebra.as_alg_like(clean_map, dirty_map)
     if not return_noise_diag:
-        return clean_map
+        return clean_map, tri_copy
     else:
         if feedback > 1:
             print "Getting noise diagonal."
@@ -250,7 +259,7 @@ def solve(noise_inv, dirty_map, return_noise_diag=False, feedback=0):
         _c.inv_diag_from_chol(tri_copy, noise_diag)
         noise_diag.shape = dirty_map.shape
         noise_diag = algebra.as_alg_like(noise_diag, dirty_map)
-        return clean_map, noise_diag
+        return clean_map, noise_diag, tri_copy
 
 
 

@@ -2,6 +2,7 @@
 
 import numpy as np
 import scipy as sp
+from constants import T_infinity
 
 # Cython import
 cimport numpy as np
@@ -16,27 +17,35 @@ DTYPE_num = np.NPY_FLOAT64
 ctypedef np.float_t DTYPE_t
 
 cdef extern void cholesky_(int *n, double **A, int *lda)
+cdef extern void test_cholesky_(int *n)
 cdef extern void tinv_(int *n, double **A, int *lda)
 
 cdef extern from "stdlib.h":
     void free(void* ptr)
     void* malloc(size_t size)
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
 def test_cholesky(n):
 
     cdef np.ndarray[DTYPE_t, ndim=2, mode='c'] matrix
     cdef int n1 = n
+    cdef int ii, jj
 
-    matrix = sp.eye(n)
-    matrix *= (sp.arange(n) + 1)**2
-    matrix[4, 3] = 10
-    print matrix
+    matrix = large_empty((n, n))
+    for ii in range(n):
+        for jj in range(ii, n):
+            matrix[ii, jj] = 0.5
+        matrix[ii, ii] += ii + 1.
     import time
-    st = time.clock()
+    st = time.time()
     cholesky_(&n1, <DTYPE_t **> matrix.data, &n1)
-    print matrix
-    print "Time was: ", time.clock() - st
+    print "Time was: ", time.time() - st
 
+def test_cholesky_f(n):
+    
+    cdef int n1 = n
+    test_cholesky_(&n1)
 
 cdef class memory_container:
     """Creates and holds a memory buffer.
@@ -141,3 +150,46 @@ def inv_diag_from_chol(np.ndarray[DTYPE_t, ndim=2, mode='c'] chol not None,
     for ii in range(n):
         for jj in range(ii, n):
             out[ii] += chol[ii,jj]**2
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def cho_solve(np.ndarray[DTYPE_t, ndim=2, mode='c'] chol not None,
+               np.ndarray[DTYPE_t, ndim=1, mode='c'] b not None):
+    """Use back and forward substitution to solve a system of equations.
+
+    `chol` is the upper triagular cholesky factor for the system we want to
+    solve.  This is to be used for map making and the physical limits defined
+    in `map.constants` are used.
+    """
+    
+    cdef long n = chol.shape[0]
+    if chol.shape[1] != n or b.shape[0] != n:
+        raise ValueError("Incompatible array dimensions")
+    cdef long ii, jj
+    cdef DTYPE_t tmp
+    # Limit of small information, about 0.1 K**-1. Modes with less information
+    # are ignored.
+    cdef DTYPE_t small = 1./sp.sqrt(T_infinity)
+    cdef np.ndarray[DTYPE_t, ndim=1, mode='c'] x
+    x = b.copy()
+    # Forward substitution.
+    for ii in range(n):
+        # Protect against very low information singular modes.
+        if chol[ii,ii] < small:
+            x[ii] = 0
+            continue
+        tmp = 0
+        for jj in range(0, ii):
+            tmp += x[jj] * chol[jj,ii]
+        x[ii] = (x[ii] - tmp) / chol[ii,ii]
+    # Back substitution.
+    for ii in range(n - 1, -1, -1):
+        # Protect against very low information singular modes.
+        if chol[ii,ii] < small:
+            x[ii] = 0
+            continue
+        tmp = 0
+        for jj in range(ii + 1, n):
+            tmp += x[jj] * chol[ii,jj]
+        x[ii] = (x[ii] - tmp) / chol[ii,ii]
+    return x

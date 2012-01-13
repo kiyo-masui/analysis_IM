@@ -137,14 +137,15 @@ class Measure(object) :
                 for ii in range(n_bands_proc):
                     for jj in range(n_pols):
                         a = h.add_subplot(n_bands_proc, n_pols, 
-                                          ii * n_bands_proc + jj)
+                                          ii * n_pols + jj + 1)
                         a.set_xlabel("frequency (Hz)")
                         a.set_ylabel("power (K^2)")
                         pol_str = core.utils.polint2str(pols[jj])
                         band = band_centres[ii]
                         a.set_title("Band %dMHz, polarization " % band
                                     + pol_str)
-                        #a.autoscale_view(tight=True)
+                        a.autoscale_view(tight=True)
+                h.subplots_adjust(hspace=0.4, left=0.2)
                 fig_f_name = params['output_root'] + file_middle + ".pdf"
                 utils.mkparents(fig_f_name)
                 h.savefig(fig_f_name)
@@ -170,7 +171,7 @@ def measure_noise_parameters(Blocks, parameters, split_scans=False,
     # Calculate the full correlated power spectrum.
     power_mat, window_function, dt, channel_means = npow.full_power_mat(
             Blocks, window="hanning", deconvolve=False, n_time=-1.05,
-            normalize=False, split_scans=split_scans)
+            normalize=False, split_scans=split_scans, subtract_slope=True)
     # This shouldn't be nessisary, since I've tried to keep things finite in
     # the above function.  However, leave it in for now just in case.
     if not sp.alltrue(sp.isfinite(power_mat)) :
@@ -253,7 +254,7 @@ def get_freq_modes_over_f(power_mat, window_function, frequency, n_modes,
     # Factor the matrix to get the most correlated modes.
     e, v = linalg.eigh(low_f_mat)
     # Make sure they are sorted.
-    if not sp.alltrue(sp.diff(e)[-n_modes:] >= 0):
+    if not sp.alltrue(sp.diff(e) >= 0):
         raise RuntimeError("Eigenvalues not sorted")
     # Power matrix striped of the biggest modes.
     reduced_power = sp.copy(power_mat)
@@ -322,7 +323,7 @@ def get_freq_modes_over_f(power_mat, window_function, frequency, n_modes,
     if plots:
         h = plt.gcf()
         a = h.add_subplot(*h.current_subplot)
-        norm = sp.mean(auto_spec_window)
+        norm = sp.mean(auto_spec_window).real
         auto_plot = auto_spec_mean / norm
         plotable = auto_plot > 0
         lines = a.loglog(frequency[plotable], auto_plot[plotable])
@@ -491,11 +492,12 @@ def fit_overf_const(power, window, freq):
     # Instead of fitting for the index directly, we sue another parameter that
     # does not admit index >= -0.2.  This avoids a degeneracy with thermal when
     # index = 0.
-    # Also force the amplitudes to be positive by squaring.
+    # Also force the amplitudes to be positive by squaring and give them a
+    # minimum value.
     def model(params):
-        a = params[0]**2
+        a = params[0]**2 + T_small
         i = -(params[1]**2 + min_index)
-        t = params[2]**2
+        t = params[2]**2 + T_small
         spec = npow.overf_power_spectrum(a, i, f_0, dt, n_time)
         spec += t
         spec = npow.convolve_power(spec, window)
@@ -526,7 +528,7 @@ def fit_overf_const(power, window, freq):
         # Derivative with respect to the amplitude parameter.
         spec[0,:] = -2.0 * a * p_law
         # Derivative with respect to the index parameter.
-        spec[1,:] = a**2 * p_law * sp.log(f/f_0) * 2.0 * i
+        spec[1,:] = (a**2 + T_small) * p_law * sp.log(f/f_0) * 2.0 * i
         # Derivative with respect to the thermal parameter.
         spec[2,:] = -2.0 * t
         # Get rid of the mean mode.
@@ -572,9 +574,9 @@ def fit_overf_const(power, window, freq):
     #if ier not in (1, 2, 3, 4):
     #    raise RuntimeError("Could not find a solution. " + repr(params))
     # Unpack results and return.
-    amp = params[0]**2
+    amp = params[0]**2 + T_small
     index = -(params[1]**2 + min_index)
-    thermal = params[2]**2
+    thermal = params[2]**2 + T_small
     return amp, index, f_0, thermal
 
 
