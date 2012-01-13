@@ -17,27 +17,35 @@ DTYPE_num = np.NPY_FLOAT64
 ctypedef np.float_t DTYPE_t
 
 cdef extern void cholesky_(int *n, double **A, int *lda)
+cdef extern void test_cholesky_(int *n)
 cdef extern void tinv_(int *n, double **A, int *lda)
 
 cdef extern from "stdlib.h":
     void free(void* ptr)
     void* malloc(size_t size)
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
 def test_cholesky(n):
 
     cdef np.ndarray[DTYPE_t, ndim=2, mode='c'] matrix
     cdef int n1 = n
+    cdef int ii, jj
 
-    matrix = sp.eye(n)
-    matrix *= (sp.arange(n) + 1)**2
-    matrix[4, 3] = 10
-    print matrix
+    matrix = large_empty((n, n))
+    for ii in range(n):
+        for jj in range(ii, n):
+            matrix[ii, jj] = 0.5
+        matrix[ii, ii] += ii + 1.
     import time
-    st = time.clock()
+    st = time.time()
     cholesky_(&n1, <DTYPE_t **> matrix.data, &n1)
-    print matrix
-    print "Time was: ", time.clock() - st
+    print "Time was: ", time.time() - st
 
+def test_cholesky_f(n):
+    
+    cdef int n1 = n
+    test_cholesky_(&n1)
 
 cdef class memory_container:
     """Creates and holds a memory buffer.

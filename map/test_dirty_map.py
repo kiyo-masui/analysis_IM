@@ -409,8 +409,8 @@ class TestClasses(unittest.TestCase):
         N_mat = N.get_inverse()
         N_mat.shape = (nf * nt,) * 2
         e, v = linalg.eigh(N_mat)
+        print sp.amax(e) / sp.amin(e)
         self.assertTrue(sp.amin(e) > 0)
-        #print sp.amax(e) / sp.amin(e)
 
     def test_uncoupled_channels(self):
         time_stream, ra, dec, az, el, time, mask_inds = \
@@ -523,8 +523,8 @@ class TestClasses(unittest.TestCase):
         print "Constructing map noise took %5.2f seconds." % (stop - start)
 
 
-class TestEngine(unittest.TestCase):
-#class TestEngine(object):
+#class TestEngine(unittest.TestCase):
+class TestEngine(object):
 
     def test_over_f(self):
         """Test with over f dominated noise."""

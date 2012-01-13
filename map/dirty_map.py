@@ -489,14 +489,14 @@ class DirtyMapMaker(object):
                 # estimate will be high, so you need to deweight things extra.
                 if params['deweight_time_mean']:
                     if params["frequency_correlations"] == 'None':
-                        N.deweight_time_mean(T_infinity)
+                        N.deweight_time_mean(T_large)
                     else:
-                        N.deweight_time_mean()
+                        N.deweight_time_mean(T_large)
                 if params['deweight_time_slope']:
                     if params["frequency_correlations"] == 'None':
-                        N.deweight_time_slope(T_infinity)
+                        N.deweight_time_slope(T_large)
                     else:
-                        N.deweight_time_slope()
+                        N.deweight_time_slope(T_large)
                 # Store all these for later.
                 pointing_list.append(P)
                 noise_list.append(N)
@@ -1087,6 +1087,12 @@ class Noise(object):
     def add_over_f_freq_mode(self, amp, index, f0, thermal, mode):
         """Add `1/f + const` noise to a given frequency mode."""
         
+        # Too steep a spectra will crash finialize.
+        # XXX The stability of this probably depends on n_time.
+        # Doesn't seem to fix things.
+        #if index < -3.5:
+        #    print "index", index
+        #    raise NoiseError("Too steep a noise spectrum.")
         time = self.time
         start_mode = self.add_freq_modes(1)
         self.freq_modes[start_mode,:] = mode
@@ -1102,19 +1108,24 @@ class Noise(object):
         # XXX Add a factor of n_chan here, assuming the noise is distributed
         # across frequencies (use flaggers to enforce this).
         if sp.amax(correlation_function) > T_large * self.n_chan:
+        #if sp.amax(correlation_function) > T_large:
             print "Freq mode max:", sp.amax(correlation_function)
             raise NoiseError("Extremely high 1/f risks singular noise.")
         corr_func_interpolator = \
             interpolate.interp1d(sp.arange(n_lags)*dt, correlation_function)
         noise_mat = corr_func_interpolator(time_deltas)
-        self.freq_mode_noise[start_mode,...] = noise_mat
         # Add the thermal part to the diagonal.
+        # XXX This is acctually quite wrong.  The below is probably a bit
+        # better.
+        BW = 1. / 2. / dt
+        noise_mat.flat[::self.n_time + 1] += thermal * BW * 2
         # XXX This isn't strictly being done correctly, but to do better we
         # need to measure the noise differently.
-        mode_norm = sp.sum(mode**2)  # Usually unity.
-        self.initialize_diagonal()
-        BW = 1. / 2. / dt
-        self.diagonal += mode[:,None]**2 * thermal * BW * 2 / mode_norm
+        #mode_norm = sp.sum(mode**2)  # Usually unity.
+        #self.initialize_diagonal()
+        #BW = 1. / 2. / dt
+        #self.diagonal += mode[:,None]**2 * thermal * BW * 2 / mode_norm
+        self.freq_mode_noise[start_mode,...] = noise_mat
 
     # XXX Might mess up numerical stability. Protection needs to be added.
     def deweight_freq_mode(self, mode):
@@ -1159,6 +1170,7 @@ class Noise(object):
         for ii, f in enumerate(frequencies):
             this_amp_factor = (f / f_0)**index * df
             if sp.any(this_amp_factor > f_large * self.n_time):
+            #if sp.any(this_amp_factor > f_large):
                 print "time mode amplitude:", this_amp_factor
                 raise NoiseError("Deweighting amplitude too high.")
             this_amps = this_amp_factor * amps

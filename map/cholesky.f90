@@ -1,5 +1,26 @@
 ! Cholesky and related subroutines.
 
+subroutine test_cholesky(n)
+  integer n, i, t0, tr
+  real, dimension(n,n) :: A
+  real t_start, t_total
+  
+  do i=1,n
+!    do j=i,n
+!      A(j,i)=0.5
+!    enddo
+    A(i:,i) = 0.5
+    A(i,i) = A(i,i) + i + 1
+  enddo
+  call system_clock(t0,tr)
+  t_start = t0*1./tr
+  call cholesky(n,A,n)
+  call system_clock(t0,tr)
+  t_total = t0*1./tr
+  t_total = t_total - t_start
+  print*, 'Time was: ', t_total
+end
+
 subroutine tolower(a,n) !! set upper triangle to zeros
 real a(n,n)
 do i=1,n

@@ -71,14 +71,14 @@ pipe_modules = []
 #from noise import measure_noise
 #pipe_modules.append(measure_noise.Measure)
 
-#from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
-from map import clean_map
-pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+#from map import clean_map
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
@@ -251,6 +251,12 @@ mn_parameters = ["channel_var", "freq_modes_over_f_0",
                  "freq_modes_over_f_5", "freq_modes_over_f_6",
                  "freq_modes_over_f_7", "freq_modes_over_f_8"]
 
+# Based upon Eric's preference, there is a new set of center/dim information.
+# 15hr: RA center = 217.8688, DEC center = 2.0, Pixel spacing = 0.0627, map shape = (78,43)
+# 22hr: RA center = 325.4190, DEC center = 0.0, Pixel spacing = 0.0627, map shape = (80,49)
+# 1hr: RA center = 13.0, DEC center = 1.85, Pixel spacing = 0.0627, map shape = (161,83) - adjusted to (140,81) due to memory limits.
+
+
 # dirty_map
 # Map A
 dmA_input_root = sb_output_root
@@ -263,18 +269,19 @@ dmA_scans = ()
 dmA_IFs = ()
 
 dmA_polarizations = ('I',)
-dmA_field_centre = (217.9, 2.0)
-dmA_map_shape = (64, 32)
-dmA_pixel_spacing = .075
-#dmA_map_shape = (78, 43)
+dmA_field_centre = (217.87, 2.0)
+#dmA_map_shape = (64, 32)
+#dmA_pixel_spacing = .075
+dmA_pixel_spacing = .0627
+dmA_map_shape = (78, 43)
 #dmA_pixel_spacing = 1.0627
 dmA_time_block = 'scan'
 #dmA_n_files_group = 420  # prawn
 dmA_n_files_group = 280  # tpb nodes.
 #dmA_n_files_group = 120
 dmA_frequency_correlations = 'measured'
-dmA_number_frequency_modes = 3
-#dmA_number_frequency_modes = 4  # Probably most appropriate.
+#dmA_number_frequency_modes = 3
+dmA_number_frequency_modes = 4  # Probably most appropriate.
 dmA_number_frequency_modes_discard = 0
 dmA_noise_parameter_file = (base_dir
                             + 'noise_measurments/noise_parameters.shelve')
@@ -298,8 +305,9 @@ cmA_output_root = cmA_input_root
 
 cmA_polarizations = ('I',)
 #cmA_bands = (737, 799, 862)
-cmA_bands = (862,)
-cmA_save_noise_diag = True
+cmA_bands = (737, 799)
+#cmA_save_noise_diag = True 
+cmA_save_noise_diag = False  # XXX
 cmA_save_cholesky = False
 
 # Other maps
@@ -366,10 +374,10 @@ dmD_deweight_time_mean = dmA_deweight_time_mean
 dmD_deweight_time_slope = dmA_deweight_time_slope
 
 
-cmb_polarizations = cmA_polarizations
-cmb_bands = cmA_bands
-cmb_save_noise_diag = cmA_save_noise_diag
-cmb_save_cholesky = cmA_save_cholesky
+cmB_polarizations = cmA_polarizations
+cmB_bands = cmA_bands
+cmB_save_noise_diag = cmA_save_noise_diag
+cmB_save_cholesky = cmA_save_cholesky
 
 cmC_polarizations = cmA_polarizations
 cmC_bands = cmA_bands
