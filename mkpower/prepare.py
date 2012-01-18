@@ -1,6 +1,20 @@
 #! /usr/bin/env python
 """
 	This module used to convert the maps into fftbox
+
+	----  Jan 15, 2012. Y.-CH. LI  ----
+	use 'imap_root', 'nmap_root' and 'mmap_root' instead of 'input_root'
+	in order to use maps located in different directions
+
+	----  Jan 08, 2012. Y.-CH. LI  ----
+	Modified the name system
+	use 'imap_list', 'nmap_list' and 'mmap_list' instead of 'hr'+'mid'+'last'
+
+	add key word 'submean'
+		if   'submean'==True:  it will subtracte the mean value of the maps
+		else 'submean'==False: it will not.
+	default value is False. 
+	For some simulation maps, This process is needed.
 	
 	----  Dec 11, 2011. Y.-CH. LI  ----
 	If the intensity map is already overdensity, the parameter 'mid' 
@@ -14,6 +28,8 @@
 		middle part for intensity map name, 
 		middle part for inverse noise map name(or selection function), and
 		middle part for mock map name.
+	
+
 		
 	
 """
@@ -45,12 +61,25 @@ deg2rad = pi/180.
 params_init = {
 	'processes' : 1,
 	'plot' : True,
-	'input_root' : '../newmaps/',
-	'hr' : ('15hr_40-41-43_','15hr_42_',),
-	'mid' : ('dirty_map_','noise_inv_diag_'),
-	'polarizations' : ('I',),
+
+	#'input_root' : '../newmaps/',
+	#'input_root_w' : '',
+	#'hr' : ('15hr_40-41-43_','15hr_42_',),
+	#'mid' : ('dirty_map_','noise_inv_diag_'),
+	#'last' : (),
+	#'polarizations' : ('I',),
+
+	'imap_root' : [],
+	'nmap_root' : [],
+	'mmap_root' : [],
+
+	'imap_list' : [],
+	'nmap_list' : [],
+	'mmap_list' : [],
+
+	'submean' : False,
+
 	'output_root' : './',
-	'last' : (),
 
 	'boxshape' : (60,12,6),
 	'boxunit' : 15., # in unit Mpc h-1
@@ -82,10 +111,15 @@ class Prepare(object):
 		kiyopy.utils.mkparents(params['output_root'])
 		#parse_ini.write_params(params, 
 		#	params['output_root']+'params.ini',prefix='pk_')
-		hr = params['hr']
-		mid = params['mid']
-		last = params['last']
-		pol_str = params['polarizations'][0]
+		#hr = params['hr']
+		#mid = params['mid']
+		#last = params['last']
+		#pol_str = params['polarizations'][0]
+
+		imap_list = params['imap_list']
+		nmap_list = params['nmap_list']
+		mmap_list = params['mmap_list']
+
 		n_processes = params['processes']
 		out_root = params['output_root']
 
@@ -95,19 +129,17 @@ class Prepare(object):
 		
 		#### Process ####
 		n_new = n_processes -1
-		n_map = len(hr)
+		n_map = len(imap_list)
 
 		if n_new <=0:
-			for hr_str, ii in zip(params['hr'],range(len(params['hr']))):
-				end = pol_str
-				if len(last)!=0:
-					end = end + last[ii]
-				#imap_fname = in_root + hr_str + 'dirty_map_' + pol_str + '.npy'
-				#imap_fname = in_root + hr_str + mid + pol_str + '.npy'
-				imap_fname = hr_str + mid[0] + end + '.npy'
-				nmap_fname = hr_str + mid[1] + end + '.npy'
-
-				self.process_map(imap_fname, nmap_fname)
+			for ii in range(len(params['imap_list'])):
+				imap_fname = imap_list[ii]
+				nmap_fname = nmap_list[ii]
+				if len(mmap_list)!=0:
+					mock_fname = mmap_list[ii]
+					self.process_map(ii, imap_fname, nmap_fname, mmap_fname)
+				else:
+					self.process_map(ii, imap_fname, nmap_fname)
 		elif n_new >32:
 			raise ValueError("Processes limit is 32")
 		else: 
@@ -119,34 +151,42 @@ class Prepare(object):
 						raise RuntimeError("A thred faild with exit code"
 							+ str(process_list[ii%n_new].exitcode))
 				if ii < n_map:
-					end = pol_str
-					if len(last)!=0:
-						end = end + last[ii]
-					imap_fname = hr[ii] + mid[0] + end + '.npy'
-					nmap_fname = hr[ii] + mid[1] + end + '.npy'
+					imap_fname = imap_list[ii]
+					nmap_fname = nmap_list[ii]
+					#end = pol_str
+					#if len(last)!=0:
+					#	end = end + last[ii]
+					#imap_fname = hr[ii] + mid[0] + end + '.npy'
+					#nmap_fname = hr[ii] + mid[1] + end + '.npy'
 
 					# prepare the mock maps for optical 
-					if len(mid)==3:
-						mock_fname = hr[ii] + mid[2] + end + '.npy'
+					#if len(mid)==3:
+					if len(mmap_list)!=0:
+						mock_fname = mmap_list[ii]
 						process_list[ii%n_new] = mp.Process(
 							target=self.process_map, 
-							args=(imap_fname, nmap_fname, mock_fname))
+							args=(ii, imap_fname, nmap_fname, mock_fname))
 					else:
 						process_list[ii%n_new] = mp.Process(
 							target=self.process_map, 
-							args=(imap_fname, nmap_fname))
+							args=(ii, imap_fname, nmap_fname))
 					process_list[ii%n_new].start()
 		return 0
 
-	def process_map(self, imap_fname, nmap_fname, mock_fname=None):
+	def process_map(self, index, imap_fname, nmap_fname, mock_fname=None):
 		params = self.params
 		out_root = params['output_root']
-		in_root = params['input_root']
+
+		imap_froot = params['imap_root'][index]
+		nmap_froot = params['nmap_root'][index]
 		
 		if mock_fname != None:
+			mmap_froot = params['mmap_root'][index]
 			imap, nmap, mmap = functions.getmap(
-				in_root+imap_fname, in_root+nmap_fname, in_root+mock_fname)
-			box , nbox, mbox = functions.fill(params, imap, nmap, mmap)
+				imap_froot + imap_fname, 
+				nmap_froot + nmap_fname,
+				mmap_froot + mock_fname)
+			box, nbox, mbox = functions.fill(params, imap, nmap, mmap)
 			#print mmap.flatten().mean()
 			#print nmap.flatten().max()
 			#print box.flatten().max()
@@ -165,11 +205,14 @@ class Prepare(object):
 			#algebra.save(pkrm_nfname, mbox)
 		else:
 			#box, nbox = self.fill(imap, nmap)
-			imap, nmap = functions.getmap(in_root+imap_fname, in_root+nmap_fname)
+			imap, nmap = functions.getmap(
+				imap_froot + imap_fname,
+				nmap_froot + nmap_fname)
 
 			# subtract the mean value of the imaps
-			#print "--The mean value for imap is:",imap.flatten().mean(),"--"
-			imap = imap - imap.flatten().mean()
+			if params['submean']==True:
+				print "Note: Subtracted mean: ",imap.flatten().mean()
+				imap = imap - imap.flatten().mean()
 
 			# cut off some bad frequencies. 
 			if len(params['cutlist'])!=0:

@@ -24,18 +24,26 @@ deg2rad = pi/180.
 params_init = {
 	'processes' : 1,
 	'plot' : False,
-	'input_root' : '../../../jkmap/map/',
-	'hrlist' : (),
-	'ltlist' : (),
 	'resultf' : '',
-	'hr' : ('15hr_40-41-43_','15hr_42_',),
-	'mid' : ('dirty_map_',),
-	'polarizations' : ('I',),
-	'last' : (),
+	'input_root' : '../../../jkmap/map/',
 	'output_root' : '../../../powerresult/',
 
+	'imap_list' : [],
+	'nmap_list' : [],
+	'mmap_list' : [],
+
+	'imap_pair' : [],
+	'nmap_pair' : [],
+	'mmap_pair' : [],
+
+	#'hrlist' : (),
+	#'ltlist' : (),
+	#'hr' : ('15hr_40-41-43_','15hr_42_',),
+	#'mid' : ('dirty_map_',),
+	#'polarizations' : ('I',),
+	#'last' : (),
+
 	'cldir' : '',
-	'cllist' : (),
 
 	'boxshape' : (128,128,128),
 	'boxunit' : 15., # in unit Mpc
@@ -80,22 +88,21 @@ class PowerSpectrumMaker(mkpower.PowerSpectrumMaker):
 		# Make parent directory and write parameter file.
 		in_root = params['input_root']
 		out_root = params['output_root']
-		mid = params['mid']
 
 		FKPweight = params['FKPweight']
 		n_processes = params['processes']
 
-		if params['cllist']!=():
+		if params['cldir']!='':
 			# Read in the bias calibration data
 			#self.B = sp.load(params['cldir']+'b_each_bias.npy')
-			self.B = sp.load(params['cldir']+'b_bias.npy')
+			self.B  = sp.load(params['cldir']+'b_bias.npy')
 			self.Bk = sp.load(params['cldir']+'k_bias.npy')
 			#print self.B
 
 
 		#### Process ####
 		n_new = n_processes - 1
-		n_map = len(params['hrlist'])
+		n_map = len(params['imap_list'])
 
 		kbn = params['kbinNum']
 		kmin = params['kmin']
@@ -149,7 +156,7 @@ class PowerSpectrumMaker(mkpower.PowerSpectrumMaker):
 		#print '===power before cal==='
 		#print PKmean
 		#print PKvar
-		if params['cllist']!=():
+		if params['cldir']!='':
 			#print 
 			#print '=== cal==='
 			#print self.B
@@ -213,18 +220,21 @@ class PowerSpectrumMaker(mkpower.PowerSpectrumMaker):
 
 	def process_map(self, mapnum, rank):
 		params = self.params
-		params['hr'] = (params['hrlist'][mapnum][0],params['hrlist'][mapnum][1])
-		params['last'] =(params['ltlist'][mapnum][0],params['ltlist'][mapnum][1])
+		#params['hr'] = (params['hrlist'][mapnum][0],params['hrlist'][mapnum][1])
+		#params['last'] =(params['ltlist'][mapnum][0],params['ltlist'][mapnum][1])
+		params['imap_pair']=(params['imap_list'][mapnum][0],
+									params['imap_list'][mapnum][1])
 
+		params['nmap_pair']=(params['nmap_list'][mapnum][0],
+									params['nmap_list'][mapnum][1])
+		if (len(params['mmap_list'])!=0):
+			params['mmap_pair']=(params['mmap_list'][mapnum][0],
+										params['mmap_list'][mapnum][1])
+			
 		PK, k, PK2, k2 = self.GetPower()
-		print PK
 
-#		if params['cllist']!=():
-#			bias = self.findbias(params['hr'], 
-#				params['last'], params['cllist'], self.B)
-#
-#		if params['cllist']!=():
-#			PK = PK*bias
+		print PK
+		print
 
 		self.q.put_nowait(PK)
 

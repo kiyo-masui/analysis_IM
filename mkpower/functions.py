@@ -163,12 +163,13 @@ def getresultf(params):
 	"""
 	resultf = params['resultf']
 	if resultf == '':                           	
-		resultf = params['hr'][0]                	
-		if len(params['last']) != 0:
-			resultf = resultf + params['last'][0]
-		resultf = resultf + '-' + params['hr'][1]
-		if len(params['last']) != 0:
-			resultf = resultf + params['last'][1]
+		resultf = 'testresult'
+		#resultf = params['hr'][0]                	
+		#if len(params['last']) != 0:
+		#	resultf = resultf + params['last'][0]
+		#resultf = resultf + '-' + params['hr'][1]
+		#if len(params['last']) != 0:
+		#	resultf = resultf + params['last'][1]
 	return resultf
 
 #----------------------------------------------------------------------#

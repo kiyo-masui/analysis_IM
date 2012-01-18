@@ -18,18 +18,24 @@ import fftw3 as FFTW
 
 import functions
 
-#params_init = {
-base_params_init = {
+params_init = {
 	'processes' : 1,
 	'plot' : True,
 	'saveweight' : False,
+	#'hr' : ('15hr_40-41-43_','15hr_42_',),
+	#'mid' : ('dirty_map_',),
+	#'polarizations' : ('I',),
+	#'last' : (),
+	
+	'imap_pair' : [],
+	'nmap_pair' : [],
+	'mmap_pair' : [],
+	
 	'input_root' : '../newmaps/',
-	'hr' : ('15hr_40-41-43_','15hr_42_',),
-	'mid' : ('dirty_map_',),
-	'polarizations' : ('I',),
-	'last' : (),
 	'output_root' : './',
 	'resultf' : '',
+
+	'cldir' : '',
 
 	'boxshape' : (60,12,6),
 	'boxunit' : 15., # in unit Mpc h-1
@@ -59,8 +65,8 @@ class PowerSpectrumMaker(object):
 
 	def __init__(self, parameter_file_or_dict=None, feedback=2):
 		# Read in the parameters.
-		params_init = dict(base_params_init)
-		params_init.update(self.params_init)
+		#params_init = dict(base_params_init)
+		#params_init.update(self.params_init)
 		self.params = parse_ini.parse(parameter_file_or_dict,
 			params_init, prefix=prefix, feedback=feedback)
 
@@ -73,15 +79,30 @@ class PowerSpectrumMaker(object):
 		params = self.params
 		out_root = params['output_root']
 		resultf = functions.getresultf(params)
+
 		OmegaHI = params['OmegaHI']
 		Omegam = params['Omegam']
 		OmegaL = params['OmegaL']
 		fkpp = params['FKPpk']
 		FKPweight = params['FKPweight']
 
-
 		PK, k, PK2, k2 = self.GetPower()
 
+		B = []
+		Bk= []
+		if (params['cldir']!=''):
+			B = sp.load(params['cldir']+'b_bias.npy')
+			Bk= sp.load(params['cldir']+'k_bias.npy')
+			PK= PK*B
+
+		shortnoise_fname = \
+			params['input_root'] + resultf + '_p_combined.npy'
+		try:
+			print '\t:Subtracte shortnoise!!'
+			shortnoise = np.load(shortnoise_fname)
+			PK = PK - shortnoise
+		except IOError:
+			print '\t:No shortnoise found!!'
 
 		non0 = PK.nonzero()
 		#print PK.min(), PK.max()
@@ -97,7 +118,7 @@ class PowerSpectrumMaker(object):
 			else:
 				sp.save(out_root+resultf+'_p', PK)
 				sp.save(out_root+resultf+'_k', k)
-				sp.save(out_root+resultf+'_p2', PK2)
+				#sp.save(out_root+resultf+'_p2', PK2)
 
 
 		if self.plot==True:
@@ -192,12 +213,12 @@ class PowerSpectrumMaker(object):
 
 	def GetRadioFFTbox(self):
 		params = self.params
-		resultf = params['hr'][0]
-		if len(params['last']) != 0:
-			resultf = resultf + params['last'][0]
-		resultf = resultf + '-' + params['hr'][1]
-		if len(params['last']) != 0:
-			resultf = resultf + params['last'][1]
+		#resultf = params['hr'][0]
+		#if len(params['last']) != 0:
+		#	resultf = resultf + params['last'][0]
+		#resultf = resultf + '-' + params['hr'][1]
+		#if len(params['last']) != 0:
+		#	resultf = resultf + params['last'][1]
 
 		# Make parent directory and write parameter file.
 		kiyopy.utils.mkparents(params['output_root'])
@@ -205,45 +226,35 @@ class PowerSpectrumMaker(object):
 		#	params['output_root']+'params.ini',prefix='pk_' )
 		in_root = params['input_root']
 		out_root = params['output_root']
-		mid = params['mid']
-		all_out_fname_list = []
-		all_in_fname_list = []
-		#OmegaHI = params['OmegaHI']
-		#Omegam = params['Omegam']
-		#OmegaL = params['OmegaL']
+
 		fkpp = params['FKPpk']
 		FKPweight = params['FKPweight']
 		
 		#### Process ####
-		pol_str = params['polarizations'][0]
-		hr_str = params['hr'][0]
-		end = pol_str
-		if len(params['last']) != 0:
-			end = end + params['last'][0]
-		box_fname  = in_root +'fftbox/'+'fftbox_'+hr_str+mid[0]+end+'.npy'
-		box = np.load(box_fname)
+		imap_pair = params['imap_pair']
+		nmap_pair = params['nmap_pair']
+		mmap_pair = params['mmap_pair']
 
-		nbox_fname = in_root+'fftbox/'+'fftbox_'+hr_str+mid[1]+end+'.npy'
+		box_fname  = in_root + 'fftbox/' + 'fftbox_' + imap_pair[0]
+		box  = np.load(box_fname)
+
+		nbox_fname = in_root + 'fftbox/' + 'fftbox_' + nmap_pair[0]
 		nbox = np.load(nbox_fname)
 
-		if len(mid)==3:
-			mbox_fname = in_root+'fftbox/'+'fftbox_'+hr_str+mid[2]+end+'.npy'
+		if len(params['mmap_pair'])!=0:
+			mbox_fname = in_root + 'fftbox/' + 'fftbox_' + mmap_pair[0]
 			mbox = np.load(mbox_fname)
 			box, nbox = self.GetDelta(box, nbox, mbox)
 
-		#Using map in different day 
-		hr_str = params['hr'][1]
-		end = pol_str
-		if len(params['last']) != 0:
-			end = end + params['last'][1]
-		box_fname  = in_root+'fftbox/'+'fftbox_'+hr_str+mid[0]+end+'.npy'
+		# Using map in different day 
+		box_fname  = in_root + 'fftbox/' + 'fftbox_' + imap_pair[1]
 		box2 = np.load(box_fname)
 
-		nbox_fname = in_root+'fftbox/'+'fftbox_'+hr_str+mid[1]+end+'.npy'
+		nbox_fname = in_root + 'fftbox/' + 'fftbox_' + nmap_pair[1]
 		nbox2 = np.load(nbox_fname)
 
-		if len(mid)==3:
-			mbox_fname = in_root+'fftbox/'+'fftbox_'+hr_str+mid[2]+end+'.npy'
+		if len(params['mmap_pair'])!=0:
+			mbox_fname = in_root + 'fftbox/' + 'fftbox_' + mmap_pair[1]
 			mbox2 = np.load(mbox_fname)
 			box2, nbox2 = self.GetDelta(box2, nbox2, mbox2)
 		

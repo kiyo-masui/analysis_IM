@@ -31,26 +31,7 @@ params_init = {
 	# the dirction where the figure will be saved in
 	'output_root' : './',
 
-	# parameters that used to make up the file name
-	# resultf == None:
-	# 		In this case, the result data must be the cross(auto) power spectrum 
-	# 		of two(two same) maps. The filename will make up by the parameter
-	# 		"hr" and "last".
-	# 		resultf = hr[0] + last[0] + '-' + hr[0] + last[0]
-	# 		If len(last)==0, it will ignore the 'last[]'
-	#
-	# 		for power spectrum, the data should be 
-	# 		'k_' + params['resultf'] + '.npy'
-	#  	'PK_' + params['resultf'] + '.npy'
-	# result == 'XXXX'
-	# 		In this case, the result data should be the result of more than two
-	#		maps. 
-	# 		for power spectrum, the data should be 
-	# 		'k_combined' + params['resultf'] + '.npy'
-	#  	'PK_combined' + params['resultf'] + '.npy'
 	'resultf': '',
-	'hr' : (),
-	'last' : (),
 
 	'jknumber' : 100.,
 	# set to import the FKP weighted power spectrum
@@ -105,12 +86,15 @@ class PowerSpectrumPlot(object):
 		kmax = params['kmax']
 
 		# import the power spectrum result
-		if params['resultf']=='':
+		try:
 			k  = sp.load(params['input_root']+resultf+'_k.npy')
 			PK = sp.load(params['input_root']+resultf+'_p.npy')
-		else:
-			k  = sp.load(params['input_root']+resultf+'_k_combined.npy')
-			PK = sp.load(params['input_root']+resultf+'_p_combined.npy')
+		except IOError:
+			try:
+				k  = sp.load(params['input_root']+resultf+'_k_combined.npy')
+				PK = sp.load(params['input_root']+resultf+'_p_combined.npy')
+			except IOError:
+				print 'Error: NO power to be plotted!!'
 
 		dk = sqrt(k[1]/k[0])
 		PK[PK<0]=0
@@ -148,7 +132,7 @@ class PowerSpectrumPlot(object):
 		Averageplot = True
 		try:
 			PKvar = sp.load(params['input_root']+resultf+'_p_var_combined.npy')
-			PKvar = PKvar*2
+			PKvar = PKvar #*2
 			PKerr_average = np.ndarray(shape=(2,len(non0[0])))
 			PKerr_average[0] = PKvar.take(non0)[0]
 			PKerr_average[1] = PKvar.take(non0)[0]
@@ -303,7 +287,7 @@ class PowerSpectrumPlot(object):
 		plt.ylim(ymin=ymin)	
 		#plt.xlim(xmin=0.01, xmax=0.9)
 		plt.xlim(xmin=k.min()-0.1*k.min(), xmax=k.max()+0.1*k.max())
-		plt.show()
+		#plt.show()
 
 		return 0
 
