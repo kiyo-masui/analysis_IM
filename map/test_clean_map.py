@@ -43,6 +43,17 @@ class TestSolver(unittest.TestCase):
         self.clean_map = clean_map
         self.noise_inv = noise_inv
         self.dirty_map = dirty_map
+
+    def eig(self):
+        noise_evalsinv, noise_evects = linalg.eigh(sp.reshape(self.noise_inv, 
+                                            (self.size, self.size)))
+        self.noise_evalsinv = al.make_mat(noise_evalsinv, axis_names=('mode',),
+                                     row_axes=(0,), col_axes=(0,))
+        self.noise_evects = al.make_mat(sp.reshape(noise_evects, 
+                                           (self.shape + (self.size,))),
+                                   axis_names=('freq', 'ra', 'dec', 'mode'),
+                                   row_axes=(0, 1, 2), col_axes=(3,))
+
         
     def test_tri_copy(self):
         self.noise_inv.shape = (self.size, self.size)
@@ -83,10 +94,39 @@ class TestSolver(unittest.TestCase):
         new_noise_diag.shape = self.shape
         self.assertTrue(sp.allclose(noise_diag, new_noise_diag))
 
+    def test_solve_eig(self):
+        # Eigen decomposition of the noise inverse.
+        self.eig()
+        # now to actually test.
+        noise_evects_copy = self.noise_evects.copy()
+        new_clean_map, noise_diag = clean_map.solve_from_eig(
+            self.noise_evalsinv, self.noise_evects, self.dirty_map, True,
+            feedback=0)
+        self.assertTrue(sp.allclose(new_clean_map, self.clean_map))
+        self.assertTrue(sp.allclose(self.noise_evects, noise_evects_copy))
+        expected_noise_diag = linalg.inv(sp.reshape(self.noise_inv, 
+                                                    (self.size, self.size)))
+        expected_noise_diag = expected_noise_diag.flat[::self.size + 1]
+        self.assertTrue(sp.allclose(expected_noise_diag, noise_diag.flat))
+
+    def test_solve_eig_bad_ind(self):
+        # Set all the information in one pixel to nil.
+        self.noise_inv[17,3,1,...] = 0
+        self.noise_inv[...,17,3,1] = 0
+        self.dirty_map = al.partial_dot(self.noise_inv, self.clean_map)
+        self.eig()
+        new_clean_map, noise_diag = clean_map.solve_from_eig(
+            self.noise_evalsinv, self.noise_evects, self.dirty_map, True,
+            feedback=0)
+        self.clean_map[17,3,1] = 0
+        self.assertTrue(sp.allclose(new_clean_map, self.clean_map))
+
+
     def tearDown(self):
         files = glob.glob("testout*")
         for file in files:
             os.remove(file)
+
 
 if __name__ == '__main__' :
     unittest.main()
