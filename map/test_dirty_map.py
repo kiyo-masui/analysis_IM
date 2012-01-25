@@ -303,6 +303,10 @@ class TestClasses(unittest.TestCase):
         #print tmp_eye
         noise_inv.shape = (nf_d, nt, nf_d, nt)
         self.assertTrue(sp.allclose(tmp_eye, sp.identity(nt*nf_d)))
+        # Check that the calculation of the diagonal is correct.
+        noise_inv_diag = Noise.get_inverse_diagonal()
+        self.assertTrue(sp.allclose(noise_inv_diag.flat, 
+                                    noise_inv.flat[::nf_d*nt + 1]))
         #### Test the noise weighting of the data.
         noise_weighted_data = Noise.weight_time_stream(time_stream)
         self.assertTrue(sp.allclose(noise_weighted_data, al.dot(noise_inv,

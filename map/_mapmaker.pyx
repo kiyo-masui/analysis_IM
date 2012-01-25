@@ -131,6 +131,60 @@ def update_map_noise_chan_ra_row(
                             tmp2 = tmp1 * pointing_weights[kk,pp]
                             map_noise_inv[dec_ind,jj,this_ra,this_dec] += tmp2
 
+def get_noise_inv_diag(
+    np.ndarray[DTYPE_t, ndim=2, mode='c'] diagonal_inv not None, 
+    np.ndarray[DTYPE_t, ndim=2, mode='c'] freq_modes not None, 
+    np.ndarray[DTYPE_t, ndim=2, mode='c'] time_modes not None, 
+    np.ndarray[DTYPE_t, ndim=4, mode='c'] freq_mode_update not None, 
+    np.ndarray[DTYPE_t, ndim=4, mode='c'] time_mode_update not None, 
+    np.ndarray[DTYPE_t, ndim=4, mode='c'] cross_update not None):
+
+    # Shapes.
+    cdef int n_chan = diagonal_inv.shape[0]
+    cdef int n_time = diagonal_inv.shape[1]
+    cdef int m = freq_modes.shape[0]
+    cdef int q = time_modes.shape[0]
+    # Indicies.
+    cdef int t_ind, f_ind
+    # Counters.
+    cdef int ii, jj
+    # Working floats.
+    cdef tmp
+    # Output.
+    cdef np.ndarray[DTYPE_t, ndim=2, mode='c'] noise_inv_diag
+    noise_inv_diag = sp.zeros((n_chan, n_time), dtype=DTYPE)
+    # First we construct the update term.
+    # Frequency modes.
+    for ii in range(m):
+        for jj in range(m):
+            for f_ind in range(n_chan):
+                tmp = freq_modes[jj,f_ind] * freq_modes[ii,f_ind]
+                for t_ind in range(n_time):
+                    noise_inv_diag[f_ind,t_ind] += (tmp 
+                            * freq_mode_update[ii,t_ind,jj,t_ind])
+    # Time modes.
+    for ii in range(q):
+        for jj in range(q):
+            for t_ind in range(n_time):
+                tmp = time_modes[ii,t_ind] * time_modes[jj,t_ind]
+                for f_ind in range(n_chan):
+                    noise_inv_diag[f_ind,t_ind] += (tmp 
+                            * time_mode_update[ii,f_ind,jj,f_ind])
+    # Cross terms.
+    for ii in range(m):
+        for jj in range(q):
+            for t_ind in range(n_time):
+                for f_ind in range(n_chan):
+                    tmp = freq_modes[ii,f_ind] * time_modes[jj,t_ind]
+                    noise_inv_diag[f_ind,t_ind] += 2. * (tmp 
+                            * cross_update[ii,t_ind,jj,f_ind])
+    # Multiply the update by the initial on both sides.
+    noise_inv_diag *= diagonal_inv**2
+    # Add the initial.
+    noise_inv_diag = diagonal_inv - noise_inv_diag
+    return noise_inv_diag
+
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def update_map_noise_independant_chan(

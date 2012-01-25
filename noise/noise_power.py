@@ -531,7 +531,7 @@ def convolve_power(power_spectrum, window_power, axis=-1):
     return true_power
 
 def calculate_overf_correlation(amp, index, f0, dt, n_lags):
-    """Calculates the correation function for a 1/f power spectrum.
+    """Calculates the correlation function for a 1/f power spectrum.
     """
     
     # Cast inputs as floats as I do a bunch of division.
@@ -539,41 +539,56 @@ def calculate_overf_correlation(amp, index, f0, dt, n_lags):
     f0 = float(f0)
     index = float(index)
     # Number of points used in calculation needs to be at least 10 times bigger
-    # than final number of point returned.  Need the frequency resolution for
-    # numerical accuracy.
-    n = 20*n_lags
+    # than final number of point returned.  This is so we are not affected by
+    # the periodicity of the correlation function.
+    buff_factor = 64
+    n = buff_factor * n_lags
     n_return = n_lags
-    # Generate the powerspectrum.
-    power = overf_power_spectrum(amp, index, f0, dt, n)
+    # Generate the power spectrum.
+    # Need to add a low frequency cut off, since there is an IR divergence.
+    # Choose to cut off at 1/2df (so we get a bit of slope mode).
+    power = overf_power_spectrum(amp, index, f0, dt, n,
+                                 cut_off=1./n_lags/dt/2.0)
     # FFT it to the correlation function.
     corr = fft.ifft(power)
-    corr = corr[:n_return].real
-    # Bump the whole thing up to the last lag is at 0 correlation (as opposed
-    # to being negitive).
-    corr -= corr[-1]
+    # Complex part should be zero.
+    corr = corr.real
+    # In previous versions of this function, we shifted the output function.
+    # however this screws up positive definiteness of the correlation matrix
+    # and is unnecessary if you have the IR cut off.
+    #corr -= corr[2 * n_return]
+    # Trim to return size.
+    corr = corr[:n_return]
     # To normalize, need to multiply by twice the bandwidth.
     corr *= 1.0/dt
     return corr
 
-def overf_power_spectrum(amp, index, f0, dt, n):
-    """Calculates the theoredical f**`index` power spectrum.
+def overf_power_spectrum(amp, index, f0, dt, n, cut_off=0):
+    """Calculates the theoretical f**`index` power spectrum.
     """
     
-    # Sometimes the fitting routines do something wierd that causes
-    # an overflow from a rediculous index.  Limit the index.
+    if cut_off < 0:
+        raise ValueError("Low frequency cut off must not be negative.")
+    # Sometimes the fitting routines do something weird that causes
+    # an overflow from a ridiculous index.  Limit the index.
     index = max(index, -20)
     # Get the frequencies represented in the FFT.
     df = 1.0/dt/n
     freq = sp.arange(n, dtype=float)
     freq[n//2+1:] -= freq[-1] + 1
     freq = abs(freq)*df
-    # 0th mode is meaningless.  Set to unity to avoid errors.
+    # 0th (mean) mode is meaningless has IR divergence.  Deal with it later (in
+    # the cut off.
     freq[0] = 1
     # Make the power spectrum.
     power = (freq/f0)**index
     power *= amp
-    # Set the mean mode explicitly to 0.
-    power[0] = 0
+    # Restore frequency of mean mode.
+    freq[0] = 0
+    # Find the power just above the cut off frequency.
+    p_cut = power[sp.amin(sp.where(freq > cut_off)[0])]
+    # Flatten off the power spectrum.
+    power[freq <= cut_off] = p_cut
     return power
 
 def generate_overf_noise(amp, index, f0, dt, n):

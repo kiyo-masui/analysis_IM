@@ -48,6 +48,9 @@ params_init = {# IO:
                # In pixels.
                'map_shape' : (5, 5),
                'pixel_spacing' : 0.5, # degrees
+               # Interpolation between pixel points.  Options are 'nearest',
+               # 'linear' and 'cubic'.
+               'interpolation' : 'linear',
                # How to treat the data.
                # How much data to include at a time (scan by scan or file by
                # file)
@@ -432,7 +435,8 @@ class DirtyMapMaker(object):
                 n_time = time_stream.shape[1]
                 if n_time < 5:
                     continue
-                P = Pointing(("ra", "dec"), (ra, dec), map, "linear")
+                P = Pointing(("ra", "dec"), (ra, dec), map,
+                             params['interpolation'])
                 # Now build up our noise model for this piece of data.
                 N = Noise(time_stream, time)
                 N.add_mask(mask_inds)
@@ -521,6 +525,7 @@ class DirtyMapMaker(object):
                         if self.feedback > 1:
                             sys.stdout.write('.')
                             sys.stdout.flush()
+
             # Start the worker threads.
             thread_list = []
             for ii in range(self.n_processes):
@@ -605,6 +610,7 @@ class DirtyMapMaker(object):
                             and thread_ra_ind == self.n_ra - 1):
                             print thread_f_ind,
                             sys.stdout.flush()
+
             # Start the worker threads.
             thread_list = []
             for ii in range(self.n_processes):
@@ -1088,31 +1094,27 @@ class Noise(object):
         """Add `1/f + const` noise to a given frequency mode."""
         
         # Too steep a spectra will crash finialize.
-        # XXX The stability of this probably depends on n_time.
-        # Doesn't seem to fix things.
-        #if index < -3.5:
-        #    print "index", index
-        #    raise NoiseError("Too steep a noise spectrum.")
         time = self.time
-        start_mode = self.add_freq_modes(1)
-        self.freq_modes[start_mode,:] = mode
         # Build the matrix.
         time_deltas = abs(time[:, None] - time)
         # Smallest time step.
         dt = sp.amin(abs(sp.diff(time)))
-        n_lags = sp.amax(time_deltas) // dt + 2
+        # Time step for calculating the correlation function.
+        # Over sample for precise interpolation.
+        dt_calc = dt / 4
+        n_lags = sp.amax(time_deltas) // dt_calc + 5
         # Calculate the correlation function at these lags.
         correlation_function = noise_power.calculate_overf_correlation(amp, 
-            index, f0, dt, n_lags)
+            index, f0, dt_calc, n_lags)
         # If we are adding too much noise, we risk making the matrix singular.
-        # XXX Add a factor of n_chan here, assuming the noise is distributed
-        # across frequencies (use flaggers to enforce this).
-        if sp.amax(correlation_function) > T_large * self.n_chan:
-        #if sp.amax(correlation_function) > T_large:
+        if sp.amax(correlation_function) > T_infinity:
             print "Freq mode max:", sp.amax(correlation_function)
             raise NoiseError("Extremely high 1/f risks singular noise.")
+        start_mode = self.add_freq_modes(1)
+        self.freq_modes[start_mode,:] = mode
         corr_func_interpolator = \
-            interpolate.interp1d(sp.arange(n_lags)*dt, correlation_function)
+            interpolate.interp1d(sp.arange(n_lags) * dt_calc,
+                                 correlation_function, kind='linear')
         noise_mat = corr_func_interpolator(time_deltas)
         # Add the thermal part to the diagonal.
         # XXX This is acctually quite wrong.  The below is probably a bit
@@ -1314,6 +1316,12 @@ class Noise(object):
             cross_update.flat[...] = \
                     update_matrix_inv[:m * n_time,m * n_time:].flat
             self.cross_update = cross_update
+            # Set flag so no more modifications to the matricies can occure.
+            self._finalized = True
+            # Check that the diagonal is positive to catch catastrophic
+            # inversion faileurs.
+            self.check_inv_pos_diagonal()
+
         else:
             # Ignore the channel correlations in the noise.  Ignore freq_modes.
             self._frequency_correlations = False
@@ -1344,16 +1352,34 @@ class Noise(object):
                                                    -1)
                 time_mode_update[ii,...] = linalg.inv(time_mode_update[ii,...])
             self.time_mode_update = time_mode_update
-        # Set flag so no more modifications to the matricies can occure.
-        self._finalized = True
+            # Set flag so no more modifications to the matricies can occure.
+            self._finalized = True
         # If desired, delete the noise matrices to recover memory.  Doing
         # this means the Noise cannot be 'unfinalized'.
         if not preserve_matrices:
             if hasattr(self, "freq_mode_noise"):
                 del self.freq_mode_noise
             del self.time_mode_noise
+
+
+    def check_inv_pos_diagonal(self, thres=-1./T_infinity):
+        """Checks the diagonal elements of the inverse for positiveness.
+        """
         
+        noise_inv_diag = self.get_inverse_diagonal()
+        if sp.any(noise_inv_diag < thres):
+            print (sp.sum(noise_inv_diag < 0), noise_inv_diag.size)
+            print (noise_inv_diag[noise_inv_diag < 0], sp.amax(noise_inv_diag))
+            raise NoiseError("Inverted noise has negitive entries on the "
+                             "diagonal.")
+
     # ---- Methods for using the Noise Matrix. ----
+
+    def get_inverse_diagonal(self):
+        self._assert_finalized()
+        return _mapmaker_c.get_noise_inv_diag(self.diagonal_inv,
+                    self.freq_modes, self.time_modes, self.freq_mode_update,
+                    self.time_mode_update, self.cross_update)
 
     def get_inverse(self):
         """Get the full noise inverse.
