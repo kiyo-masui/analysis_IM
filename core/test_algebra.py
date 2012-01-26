@@ -668,8 +668,8 @@ class TestAlgUtils(unittest.TestCase) :
 
     def test_slice_interpolate_cubic(self) :
         # Construct a 3D array that is a quadratic function.
-        data = sp.arange(60, dtype=float)
-        data.shape = (5, 4, 3)
+        data = sp.arange(140, dtype=float)
+        data.shape = (5, 4, 7)
         vect = algebra.info_array(data)
         vect = algebra.vect_array(vect,axis_names=('freq', 'a', 'b'))
 
@@ -678,12 +678,12 @@ class TestAlgUtils(unittest.TestCase) :
         a.shape = (5, 1, 1)
         b = sp.arange(-1,3)**2
         b.shape = (1, 4, 1)
-        c = sp.arange(-1,2)**2
-        c.shape = (1, 1, 3)
+        c = sp.arange(-1,6)**2
+        c.shape = (1, 1, 7)
         v[:,:,:] = a + b + c
         v.set_axis_info('freq', 0, 1)
         v.set_axis_info('a', 1, 1)
-        v.set_axis_info('b', 0, 1)
+        v.set_axis_info('b', 2, 1)
         
         #### First test the weights.
 

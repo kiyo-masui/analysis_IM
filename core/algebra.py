@@ -59,14 +59,14 @@ import os
 import sys
 import warnings
 from functools import wraps
+import operator
 
 import scipy as sp
 import numpy as np
 import numpy.lib.format as npfor
 from numpy.lib.utils import safe_eval
-import operator
 
-import cubic_conv_interpolation as cci
+import utils.cubic_conv_interpolation as cci
 
 # TODO:
 # when submitted as batch on Sunnyvale, the PYTHONPATH seems to get clobbered
@@ -850,7 +850,7 @@ class alg_object(object) :
             # Get the nodes needed and their weights.
             out = cci.interpolate(axes, self, pnt, x0, step_sizes)
         else:
-            # Get the contributing points and their wiehgts.
+            # Get the contributing points and their weights.
             points, weights = self.slice_interpolate_weights(axes, coord, kind)
             # Sum up the points
             q = points.shape[0]

@@ -9,7 +9,7 @@ import numpy.ma as ma
 
 import base_single
 import kiyopy.custom_exceptions as ce
-from core import utils
+import utils.misc as utils
 
 
 class RebinTime(base_single.BaseSingle) :

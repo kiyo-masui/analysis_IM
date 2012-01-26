@@ -26,7 +26,8 @@ site.addsitedir('/home/eswitzer/local/lib/python2.6/site-packages/')
 from kiyopy import parse_ini
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
-from core import utils, algebra
+from core import algebra
+import utils.misc as utils
 from core import handythread as ht
 import itertools
 import map.tools
