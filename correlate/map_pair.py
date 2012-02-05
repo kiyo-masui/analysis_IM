@@ -432,7 +432,8 @@ class MapPair(ft.ClassPersistence):
         #                                verbose=verbose)
 
         return corr_estimation.freq_covariance(self.map1, self.map2,
-                                               self.noise_inv1, self.noise_inv2,
+                                               self.noise_inv1,
+                                               self.noise_inv2,
                                                self.freq, self.freq)
 
 

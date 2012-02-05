@@ -240,14 +240,15 @@ class MemoizeBatch(object):
                                tuple(sorted(kwargs.items()))), -1)
         arghash = hashlib.sha224(argpkl).hexdigest()
 
+        args_package = (arghash, self.directory,
+                        self.funcname, args, kwargs)
+
+        if self.verbose:
+            print_call(args_package)
+
         if self.generate or self.regenerate:
         # TODO: if not regenerate, check to see if the result exists
-            args_package = (arghash, self.directory,
-                            self.funcname, args, kwargs)
             self.call_stack.append(args_package)
-            if self.verbose:
-                print_call(args_package)
-
             retval = arghash
         else:
             # TODO: raise NotCalculated?

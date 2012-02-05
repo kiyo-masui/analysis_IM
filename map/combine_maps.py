@@ -105,30 +105,57 @@ if __name__ == '__main__':
     #fieldlist = ['22hr']
     fieldlist = ['15hr']
 
-    for field in fieldlist:
-        for mode_num in range (0, 55, 5):
-            source_key = 'GBT_%s_map_cleaned_%dmode' % (field, mode_num)
-            parent = 'GBT_combined_%s_maps_Eric' % field
-            combine_maps(source_key, parent)
+    # fluxcal cleaned
+    #for field in fieldlist:
+    #    for mode_num in range (0, 55, 5):
+    #        source_key = 'GBT_%s_map_cleaned_fluxcal_%dmode' % (field, mode_num)
+    #        parent = 'GBT_combined_%s_maps_Eric' % field
+    #        combine_maps(source_key, parent)
 
-    for field in fieldlist:
-        for mode_num in range (0, 55, 5):
-            source_key = 'sim_%s_cleaned_%dmode' % (field, mode_num)
-            parent = 'GBT_combined_%s_maps_Eric' % field
-            combine_maps(source_key, parent)
+    #for field in fieldlist:
+    #    for mode_num in range (0, 55, 5):
+    #        source_key = 'GBT_%s_map_cleaned_noconv_fluxcal_%smode' % (field, mode_num)
+    #        parent = 'GBT_combined_%s_maps_Eric' % field
+    #        combine_maps(source_key, parent)
 
-    for field in fieldlist:
-        for mode_num in range (0, 55, 5):
-            source_key = 'GBT_%s_map_cleaned_noconv_%smode' % (field, mode_num)
-            parent = 'GBT_combined_%s_maps_Eric' % field
-            combine_maps(source_key, parent)
+    # sims with fluxcal cleaned
+    #for field in fieldlist:
+    #    for mode_num in range (0, 55, 5):
+    #        source_key = 'sim_%s_cleaned_fluxcal_%dmode' % (field, mode_num)
+    #        parent = 'GBT_combined_%s_maps_Eric' % field
+    #        combine_maps(source_key, parent)
 
-    for field in fieldlist:
-        for mode_num in range (0, 55, 5):
-            source_key = 'sim_%s_cleaned_noconv_%smode' % (field, mode_num)
-            parent = 'GBT_combined_%s_maps_Eric' % field
-            combine_maps(source_key, parent)
+    #for field in fieldlist:
+    #    for mode_num in range (0, 55, 5):
+    #        source_key = 'sim_%s_cleaned_noconv_fluxcal_%smode' % (field, mode_num)
+    #        parent = 'GBT_combined_%s_maps_Eric' % field
+    #        combine_maps(source_key, parent)
 
+    #for field in fieldlist:
+    #    for mode_num in range (0, 55, 5):
+    #        source_key = 'GBT_%s_map_cleaned_%dmode' % (field, mode_num)
+    #        parent = 'GBT_combined_%s_maps_Eric' % field
+    #        combine_maps(source_key, parent)
+
+    #for field in fieldlist:
+    #    for mode_num in range (0, 55, 5):
+    #        source_key = 'GBT_%s_map_cleaned_noconv_%smode' % (field, mode_num)
+    #        parent = 'GBT_combined_%s_maps_Eric' % field
+    #        combine_maps(source_key, parent)
+
+    #for field in fieldlist:
+    #    for mode_num in range (0, 55, 5):
+    #        source_key = 'sim_%s_cleaned_%dmode' % (field, mode_num)
+    #        parent = 'GBT_combined_%s_maps_Eric' % field
+    #        combine_maps(source_key, parent)
+
+    #for field in fieldlist:
+    #    for mode_num in range (0, 55, 5):
+    #        source_key = 'sim_%s_cleaned_noconv_%smode' % (field, mode_num)
+    #        parent = 'GBT_combined_%s_maps_Eric' % field
+    #        combine_maps(source_key, parent)
+
+    # old stuff
     #fieldlist = ['15hr']
     #for field in fieldlist:
     #    for mode_num in range (0, 55, 5):
@@ -136,9 +163,9 @@ if __name__ == '__main__':
     #        parent = 'GBT_combined_%s_maps_Eric' % field
     #        combine_maps(source_key, parent)
 
-    #fieldlist = ['15hr']
-    #for field in fieldlist:
-    #    for mode_num in range (0, 55, 5):
-    #        source_key = 'GBT_%s_map_cleaned_newmap737_%smode' % (field, mode_num)
-    #        parent = 'GBT_combined_%s_maps_Eric' % field
-    #        combine_maps(source_key, parent)
+    fieldlist = ['15hr']
+    for field in fieldlist:
+        for mode_num in range (0, 55, 5):
+            source_key = 'GBT_%s_map_cleaned_optimalmap_%smode' % (field, mode_num)
+            parent = 'GBT_combined_%s_maps_Eric' % field
+            combine_maps(source_key, parent)

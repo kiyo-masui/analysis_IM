@@ -14,6 +14,7 @@ import copy
 from utils import fftutil
 from utils import binning
 
+
 def cross_power_est(arr1, arr2, weight1, weight2, window="blackman"):
     """Calculate the radially average cross-power spectrum of a two nD fields.
 
@@ -198,8 +199,8 @@ def test_with_random(unitless=True):
                                 size=(257, 124, 68)))
 
     info = {'axes': ["freq", "ra", "dec"], 'type': 'vect',
-            'freq_delta': delta/3.78, 'freq_centre': 0.,
-            'ra_delta': delta/1.63, 'ra_centre': 0.,
+            'freq_delta': delta / 3.78, 'freq_centre': 0.,
+            'ra_delta': delta / 1.63, 'ra_centre': 0.,
             'dec_delta': delta, 'dec_centre': 0.}
     cube1.info = info
     cube2 = copy.deepcopy(cube1)
@@ -209,8 +210,11 @@ def test_with_random(unitless=True):
 
     bin_left, bin_center, bin_right, counts_histo, binavg = \
                     calculate_xspec(cube1, cube2, weight1, weight2,
-                                    window="blackman", truncate=False, nbins=40,
-                                    unitless=unitless, logbins=True)
+                                    window="blackman",
+                                    truncate=False,
+                                    nbins=40,
+                                    unitless=unitless,
+                                    logbins=True)
 
     if unitless:
         pwrspec_input = bin_center ** 3. / 2. / math.pi / math.pi
@@ -220,7 +224,7 @@ def test_with_random(unitless=True):
     volume = 1.
     for axis_name in cube1.axes:
         axis_vector = cube1.get_axis(axis_name)
-        volume *= abs(axis_vector[1]-axis_vector[0])
+        volume *= abs(axis_vector[1] - axis_vector[0])
 
     pwrspec_input *= volume
 
@@ -238,7 +242,7 @@ def agg_stat_1d_pwrspec(pwr_1d, apply_1d_transfer=None):
     for index in range(n_runs):
         if apply_1d_transfer is not None:
             print apply_1d_transfer
-            pwrmat_1d[index, :] = pwr_1d[index]['binavg']/apply_1d_transfer
+            pwrmat_1d[index, :] = pwr_1d[index]['binavg'] / apply_1d_transfer
         else:
             pwrmat_1d[index, :] = pwr_1d[index]['binavg']
 
@@ -341,21 +345,22 @@ def summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
     """
     fileout = outdir + "/" + tag + "_avg_from2d.dat"
     corr_fileout = outdir + "/" + tag + "_corr_from2d.dat"
-    mean1d_f2d, std1d_f2d, cov1d_f2d = summarize_1d_agg_pwrspec(pwr_1d_from_2d, fileout,
+    mean1d_f2d, std1d_f2d, cov1d_f2d = summarize_1d_agg_pwrspec(pwr_1d_from_2d,
+                                fileout,
                                 corr_file=corr_fileout,
                                 apply_1d_transfer=apply_1d_transfer)
 
     fileout = outdir + "/" + tag + "_avg.dat"
     corr_fileout = outdir + "/" + tag + "_corr.dat"
-    mean1d, std1d, cov1d = summarize_1d_agg_pwrspec(pwr_1d, fileout,
-                                             corr_file=corr_fileout,
-                                apply_1d_transfer=apply_1d_transfer)
+    #mean1d, std1d, cov1d = summarize_1d_agg_pwrspec(pwr_1d, fileout,
+    #                                         corr_file=corr_fileout,
+    #                            apply_1d_transfer=apply_1d_transfer)
 
     fileout = outdir + "/" + tag + "_avg_2d.dat"
-    summarize_2d_agg_pwrspec(pwr_2d, fileout, dataname = "binavg")
+    summarize_2d_agg_pwrspec(pwr_2d, fileout, dataname="binavg")
 
     fileout = outdir + "/" + tag + "_avg_2d_counts.dat"
-    summarize_2d_agg_pwrspec(pwr_2d, fileout, dataname = "counts_histo")
+    summarize_2d_agg_pwrspec(pwr_2d, fileout, dataname="counts_histo")
 
     return mean1d_f2d, std1d_f2d, cov1d_f2d
 
@@ -386,12 +391,12 @@ def convert_2d_to_1d_driver(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
         orig_counts = copy.deepcopy(counts_2d_flat)
         trans_flat = transfer.flatten()
         pwr_2d_flat /= trans_flat
-        counts_2d_flat *= trans_flat*trans_flat
+        counts_2d_flat *= trans_flat * trans_flat
         counts_2d_flat[np.isnan(counts_2d_flat)] = 0
         counts_2d_flat[np.isinf(counts_2d_flat)] = 0
         counts_2d_flat[orig_counts == 0] = 0
 
-    count_pwr_prod = counts_2d_flat*pwr_2d_flat
+    count_pwr_prod = counts_2d_flat * pwr_2d_flat
     count_pwr_prod[np.isnan(count_pwr_prod)] = 0
     count_pwr_prod[np.isinf(count_pwr_prod)] = 0
     count_pwr_prod[counts_2d_flat == 0] = 0
@@ -405,7 +410,9 @@ def convert_2d_to_1d_driver(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
 
     return counts_histo, binavg
 
-def convert_2d_to_1d(pwrspec2d_product, logbins=True, bins=None, transfer=None):
+
+def convert_2d_to_1d(pwrspec2d_product, logbins=True,
+                     bins=None, transfer=None):
     """if bins is not given, just use the x axis"""
     nxbins = len(pwrspec2d_product['bin_x_center'])
     bins_kx = np.zeros(nxbins + 1)
@@ -422,11 +429,11 @@ def convert_2d_to_1d(pwrspec2d_product, logbins=True, bins=None, transfer=None):
 
     entry = {}
     (entry['counts_histo'], entry['binavg']) = \
-                                              convert_2d_to_1d_driver(pwrspec2d_product['binavg'],
-                                              pwrspec2d_product['counts_histo'],
-                                              pwrspec2d_product['bin_x_center'],
-                                              pwrspec2d_product['bin_y_center'],
-                                              bins, transfer=transfer)
+                        convert_2d_to_1d_driver(pwrspec2d_product['binavg'],
+                        pwrspec2d_product['counts_histo'],
+                        pwrspec2d_product['bin_x_center'],
+                        pwrspec2d_product['bin_y_center'],
+                        bins, transfer=transfer)
 
     bin_left, bin_center, bin_right = binning.bin_edges(bins, log=logbins)
     entry['bin_left'] = bin_left

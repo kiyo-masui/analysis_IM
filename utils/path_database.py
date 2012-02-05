@@ -67,9 +67,24 @@ notes = '15hr, 22hr, and 1hr maps made with the new calibration'
 dbcl.register_path('GBT_maps_Tabitha', pathname,
                     "Tabitha's map directory", notes=notes)
 
+pathname = dbcl.fetch_path('GBTDATA_NBANAVAR') + "gbt_out/maps/4_section_maps/old_cal/"
+notes = 'calibration test maps: old calibration, old mapper'
+dbcl.register_path('GBT_maps_Nidhi_oldcal', pathname,
+                    "Nidhi's map directory", notes=notes)
+
+pathname = dbcl.fetch_path('GBTDATA_NBANAVAR') + "gbt_out/maps/4_section_maps/flux_cal/"
+notes = 'calibration test maps: old calibration, old mapper'
+dbcl.register_path('GBT_maps_Nidhi_fluxcal', pathname,
+                    "Nidhi's map directory", notes=notes)
+
 pathname = dbcl.fetch_path('GBTDATA_KIYO') + "gbt_out/maps/"
-notes = '15hr, 22hr, and 1hr maps made with the new map-maker'
+notes = 'optimal maps, proposal-era cal'
 dbcl.register_path('GBT_maps_Kiyo', pathname,
+                    "Kiyo's map directory", notes=notes)
+
+pathname = dbcl.fetch_path('GBTDATA_KIYO') + "gbt_out/maps/jan16.2012/"
+notes = 'optimal maps, proposal-era cal'
+dbcl.register_path('GBT_maps_Kiyo_16jan2012', pathname,
                     "Kiyo's map directory", notes=notes)
 
 pathname = dbcl.fetch_path('GBTDATA_KIYO') + 'wiggleZ/maps/'
@@ -136,26 +151,53 @@ dbcl.register_maprun(key, group_key, parent, field_tag, desc,
 group_key = 'GBTmaps'
 status = 'in development'
 
-key = 'GBT_15hr_newmap737'
+key = 'GBT_15hr_optimalmap737'
 parent = 'GBT_maps_Kiyo'
-desc = "new-style maps from Kiyo"
+desc = "optimal (section) maps from Kiyo"
 field_tag = '15hr_41-90'
-dbcl.register_newmaprun(key, group_key, parent, field_tag, '737', desc,
+dbcl.register_optimalmap_section_run(key, group_key, parent, field_tag, '737', desc,
                         status=status)
 
-key = 'GBT_15hr_newmap799'
+key = 'GBT_15hr_optimalmap799'
 parent = 'GBT_maps_Kiyo'
-desc = "new-style maps from Kiyo"
+desc = "optimal (section) maps from Kiyo"
 field_tag = '15hr_41-90'
-dbcl.register_newmaprun(key, group_key, parent, field_tag, '799', desc,
+dbcl.register_optimalmap_section_run(key, group_key, parent, field_tag, '799', desc,
                         status=status)
 
-key = 'GBT_15hr_newmap862'
+key = 'GBT_15hr_optimalmap862'
 parent = 'GBT_maps_Kiyo'
-desc = "new-style maps from Kiyo"
+desc = "optimal (section) maps from Kiyo"
 field_tag = '15hr_41-90'
-dbcl.register_newmaprun(key, group_key, parent, field_tag, '862', desc,
+dbcl.register_optimalmap_section_run(key, group_key, parent, field_tag, '862', desc,
                         status=status)
+
+key = 'GBT_15hr_optimalmap_glued'
+parent = 'GBT_maps_Kiyo_16jan2012'
+desc = "optimal maps glued into one cube"
+field_tag = '15hr_41-90'
+dbcl.register_optimalmap_glued_run(key, group_key, parent, field_tag, desc,
+                        status=status)
+
+#-----------------------------------------------------------------------------
+# paths to new maps
+#-----------------------------------------------------------------------------
+group_key = 'GBTmaps'
+status = 'in development'
+
+key = 'GBT_15hr_oldcal'
+parent = 'GBT_maps_Nidhi_oldcal'
+desc = "maps with old-style calibration for comparison"
+field_tag = '15hr_41-90'
+dbcl.register_maprun(key, group_key, parent, field_tag, desc,
+                     status=status)
+
+key = 'GBT_15hr_fluxcal'
+parent = 'GBT_maps_Nidhi_fluxcal'
+desc = "maps with flux cal only"
+field_tag = '15hr_41-90'
+dbcl.register_maprun(key, group_key, parent, field_tag, desc,
+                     status=status)
 
 #-----------------------------------------------------------------------------
 # paths to cleaned maps
@@ -169,6 +211,72 @@ for fielditem in field_list:
     dbcl.register_path(key, pathname, desc, notes=notes)
 
 for fielditem in field_list:
+    pathname = '%s/GBT/cleaned_maps/%s_oldcal/' % \
+                (dbcl.fetch_path('GBTDATA_ESWITZER'), fielditem)
+    notes = 'active development stream'
+    key = 'GBT_cleaned_oldcal_%s_maps_Eric' % fielditem
+    desc = 'ERS cleaned %s maps, old calibration' % fielditem
+    dbcl.register_path(key, pathname, desc, notes=notes)
+
+for fielditem in field_list:
+    pathname = '%s/GBT/cleaned_maps/%s_fluxcal/' % \
+                (dbcl.fetch_path('GBTDATA_ESWITZER'), fielditem)
+    notes = 'active development stream'
+    key = 'GBT_cleaned_fluxcal_%s_maps_Eric' % fielditem
+    desc = 'ERS cleaned %s maps, flux calibration only' % fielditem
+    dbcl.register_path(key, pathname, desc, notes=notes)
+
+# This is phased out, need mean sub, so see the noconv series
+#for fielditem in field_list:
+#    pathname = '%s/GBT/cleaned_maps/%s_nomeanconv/' % \
+#                (dbcl.fetch_path('GBTDATA_ESWITZER'), fielditem)
+#    notes = 'active development stream'
+#    key = 'GBT_cleaned_nomeanconv_%s_maps_Eric' % fielditem
+#    desc = 'ERS cleaned %s maps without mean subtraction/convolution' % fielditem
+#    dbcl.register_path(key, pathname, desc, notes=notes)
+
+for fielditem in field_list:
+    pathname = '%s/GBT/cleaned_maps/%s_noconv/' % \
+                (dbcl.fetch_path('GBTDATA_ESWITZER'), fielditem)
+    notes = 'active development stream'
+    key = 'GBT_cleaned_noconv_%s_maps_Eric' % fielditem
+    desc = 'ERS cleaned %s maps no degrading convolution' % fielditem
+    dbcl.register_path(key, pathname, desc, notes=notes)
+
+for fielditem in field_list:
+    pathname = '%s/GBT/cleaned_maps/%s_noconv_oldcal/' % \
+                (dbcl.fetch_path('GBTDATA_ESWITZER'), fielditem)
+    notes = 'active development stream'
+    key = 'GBT_cleaned_noconv_oldcal_%s_maps_Eric' % fielditem
+    desc = 'ERS cleaned %s oldcal maps no degrading convolution' % fielditem
+    dbcl.register_path(key, pathname, desc, notes=notes)
+
+for fielditem in field_list:
+    pathname = '%s/GBT/cleaned_maps/%s_noconv_fluxcal/' % \
+                (dbcl.fetch_path('GBTDATA_ESWITZER'), fielditem)
+    notes = 'active development stream'
+    key = 'GBT_cleaned_noconv_fluxcal_%s_maps_Eric' % fielditem
+    desc = 'ERS cleaned %s fluxcal maps no degrading convolution' % fielditem
+    dbcl.register_path(key, pathname, desc, notes=notes)
+
+for fielditem in field_list:
+    pathname = '%s/GBT/cleaned_maps/%s_expt/' % \
+                (dbcl.fetch_path('GBTDATA_ESWITZER'), fielditem)
+    notes = 'active development stream'
+    key = 'GBT_cleaned_expt_%s_maps_Eric' % fielditem
+    desc = 'ERS cleaned %s maps: experimental treatments...' % fielditem
+    dbcl.register_path(key, pathname, desc, notes=notes)
+
+for fielditem in field_list:
+    pathname = '%s/GBT/cleaned_maps/%s_optimalmap737/' % \
+                (dbcl.fetch_path('GBTDATA_ESWITZER'), fielditem)
+    notes = 'active development stream'
+    key = 'GBT_cleaned_optimalmap737_%s_maps_Eric' % fielditem
+    desc = 'ERS cleaned %s maps degrading convolution' % fielditem
+    dbcl.register_path(key, pathname, desc, notes=notes)
+
+# cleaned sims
+for fielditem in field_list:
     pathname = '%s/GBT/cleaned_maps/%s_sim/' % \
                 (dbcl.fetch_path('GBTDATA_ESWITZER'), fielditem)
     notes = 'active development stream'
@@ -176,13 +284,57 @@ for fielditem in field_list:
     desc = 'ERS cleaned %s sims (for the transfer function)' % fielditem
     dbcl.register_path(key, pathname, desc, notes=notes)
 
+for fielditem in field_list:
+    pathname = '%s/GBT/cleaned_maps/%s_sim_noconv/' % \
+                (dbcl.fetch_path('GBTDATA_ESWITZER'), fielditem)
+    notes = 'active development stream'
+    key = 'GBT_cleaned_noconv_%s_sims_Eric' % fielditem
+    desc = 'ERS cleaned %s sims (for the transfer function), no degrade' % fielditem
+    dbcl.register_path(key, pathname, desc, notes=notes)
+
+# cleaned sims -- old cal
+for fielditem in field_list:
+    pathname = '%s/GBT/cleaned_maps/%s_sim_oldcal/' % \
+                (dbcl.fetch_path('GBTDATA_ESWITZER'), fielditem)
+    notes = 'active development stream'
+    key = 'GBT_cleaned_oldcal_%s_sims_Eric' % fielditem
+    desc = 'ERS cleaned %s sims (for the transfer function) oldcal' % fielditem
+    dbcl.register_path(key, pathname, desc, notes=notes)
+
+for fielditem in field_list:
+    pathname = '%s/GBT/cleaned_maps/%s_sim_noconv_oldcal/' % \
+                (dbcl.fetch_path('GBTDATA_ESWITZER'), fielditem)
+    notes = 'active development stream'
+    key = 'GBT_cleaned_noconv_oldcal_%s_sims_Eric' % fielditem
+    desc = 'ERS cleaned %s sims (for the transfer function), no degrade, oldcal' % fielditem
+    dbcl.register_path(key, pathname, desc, notes=notes)
+
+# cleaned sims -- flux cal
+for fielditem in field_list:
+    pathname = '%s/GBT/cleaned_maps/%s_sim_fluxcal/' % \
+                (dbcl.fetch_path('GBTDATA_ESWITZER'), fielditem)
+    notes = 'active development stream'
+    key = 'GBT_cleaned_fluxcal_%s_sims_Eric' % fielditem
+    desc = 'ERS cleaned %s sims (for the transfer function) fluxcal' % fielditem
+    dbcl.register_path(key, pathname, desc, notes=notes)
+
+for fielditem in field_list:
+    pathname = '%s/GBT/cleaned_maps/%s_sim_noconv_fluxcal/' % \
+                (dbcl.fetch_path('GBTDATA_ESWITZER'), fielditem)
+    notes = 'active development stream'
+    key = 'GBT_cleaned_noconv_fluxcal_%s_sims_Eric' % fielditem
+    desc = 'ERS cleaned %s sims (for the transfer function), no degrade, fluxcal' % fielditem
+    dbcl.register_path(key, pathname, desc, notes=notes)
+
 # additional trials
-pathname = dbcl.fetch_path('GBTDATA_ESWITZER') + \
-           'GBT/cleaned_maps/15hr_nomeansub/'
-notes = 'active development stream'
-desc = 'cleaned 15hr maps without mean subtraction'
-dbcl.register_path('GBT_cleaned_nomeansub_15hr_maps_Eric', pathname,
-                    desc, notes=notes)
+
+# mean sub was needed; phased out
+#pathname = dbcl.fetch_path('GBTDATA_ESWITZER') + \
+#           'GBT/cleaned_maps/15hr_nomeansub/'
+#notes = 'active development stream'
+#desc = 'cleaned 15hr maps without mean subtraction'
+#dbcl.register_path('GBT_cleaned_nomeansub_15hr_maps_Eric', pathname,
+#                    desc, notes=notes)
 
 # proposal era
 pathname = dbcl.fetch_path('GBTDATA_CALINLIV') + 'wiggleZ/corr/test/'
@@ -194,15 +346,15 @@ dbcl.register_path('GBT_15hr_Liviu', pathname,
 # register the cleaned maps
 #-----------------------------------------------------------------------------
 def mode_clean_run(source_key, fieldname, mode_num, username,
-                   tag="", status=None, notes=None, sim=False):
+                   tag="", status=None, notes=None, sim=False, alt=""):
     if sim:
         mapsim = "sims"
     else:
         mapsim = "maps"
 
-    key = '%s_cleaned_%s%smode' % (source_key, tag, mode_num)
+    key = '%s_cleaned_%s%smode' % (source_key, alt, mode_num)
     group_key = 'GBTcleaned'
-    parent = 'GBT_cleaned_%s_%s_%s' % (fieldname, mapsim, username)
+    parent = 'GBT_cleaned_%s%s_%s_%s' % (alt, fieldname, mapsim, username)
     desc = "`%s` maps with %s modes removed" % (source_key, mode_num)
     dbcl.register_fourway_list(key, group_key, parent, desc,
                  notes=None, status=status, paramfile="params.ini", tag="",
@@ -218,6 +370,72 @@ for fieldname in field_list:
         mode_clean_run(source_key, fieldname, mode_num, 'Eric',
                        status=status, notes=notes)
 
+# phased out
+#for fieldname in field_list:
+#    notes = "radial modes, no mean subtraction or convolution"
+#    source_key = 'GBT_%s_map' % fieldname
+#    status = 'active development'
+#    for mode_num in range(0, 55, 5):
+#        mode_clean_run(source_key, fieldname, mode_num, 'Eric',
+#                       status=status, notes=notes, sim=False, alt="nomeanconv_")
+
+for fieldname in field_list:
+    notes = "the mean is removed, radial modes subtracted"
+    source_key = 'GBT_%s_map' % fieldname
+    status = 'active development'
+    for mode_num in range(0, 55, 5):
+        mode_clean_run(source_key, fieldname, mode_num, 'Eric',
+                       status=status, notes=notes, sim=False, alt="noconv_")
+
+for fieldname in field_list:
+    notes = "the mean is removed, convolved, radial modes subtracted, oldcal"
+    source_key = 'GBT_%s_map' % fieldname
+    status = 'active development'
+    for mode_num in range(0, 55, 5):
+        mode_clean_run(source_key, fieldname, mode_num, 'Eric',
+                       status=status, notes=notes, sim=False, alt="oldcal_")
+
+for fieldname in field_list:
+    notes = "the mean is removed, radial modes subtracted, oldcal"
+    source_key = 'GBT_%s_map' % fieldname
+    status = 'active development'
+    for mode_num in range(0, 55, 5):
+        mode_clean_run(source_key, fieldname, mode_num, 'Eric',
+                       status=status, notes=notes, sim=False, alt="noconv_oldcal_")
+
+for fieldname in field_list:
+    notes = "the mean is removed, convolved, radial modes subtracted, fluxcal"
+    source_key = 'GBT_%s_map' % fieldname
+    status = 'active development'
+    for mode_num in range(0, 55, 5):
+        mode_clean_run(source_key, fieldname, mode_num, 'Eric',
+                       status=status, notes=notes, sim=False, alt="fluxcal_")
+
+for fieldname in field_list:
+    notes = "the mean is removed, radial modes subtracted, fluxcal"
+    source_key = 'GBT_%s_map' % fieldname
+    status = 'active development'
+    for mode_num in range(0, 55, 5):
+        mode_clean_run(source_key, fieldname, mode_num, 'Eric',
+                       status=status, notes=notes, sim=False, alt="noconv_fluxcal_")
+
+for fieldname in field_list:
+    notes = "the mean is removed, radial modes subtracted; expt run"
+    source_key = 'GBT_%s_map' % fieldname
+    status = 'active development'
+    for mode_num in range(0, 55, 5):
+        mode_clean_run(source_key, fieldname, mode_num, 'Eric',
+                       status=status, notes=notes, sim=False, alt="expt_")
+
+for fieldname in field_list:
+    notes = "new optimal maps; the mean is removed, convolve, radial modes subtracted"
+    source_key = 'GBT_%s_map' % fieldname
+    status = 'active development'
+    for mode_num in range(0, 55, 5):
+        mode_clean_run(source_key, fieldname, mode_num, 'Eric',
+                       status=status, notes=notes, sim=False, alt="optimalmap737_")
+
+# sims
 for fieldname in field_list:
     notes = "the mean is removed, convolve to common beam, radial modes"
     source_key = 'sim_%s' % fieldname
@@ -225,6 +443,46 @@ for fieldname in field_list:
     for mode_num in range(0, 55, 5):
         mode_clean_run(source_key, fieldname, mode_num, 'Eric',
                        status=status, notes=notes, sim=True)
+
+for fieldname in field_list:
+    notes = "the mean is removed, radial modes subtracted"
+    source_key = 'sim_%s' % fieldname
+    status = 'active development'
+    for mode_num in range(0, 55, 5):
+        mode_clean_run(source_key, fieldname, mode_num, 'Eric',
+                       status=status, notes=notes, sim=True, alt="noconv_")
+
+for fieldname in field_list:
+    notes = "the mean is removed, convolve to common beam, radial modes subtracted, old cal"
+    source_key = 'sim_%s' % fieldname
+    status = 'active development'
+    for mode_num in range(0, 55, 5):
+        mode_clean_run(source_key, fieldname, mode_num, 'Eric',
+                       status=status, notes=notes, sim=True, alt="oldcal_")
+
+for fieldname in field_list:
+    notes = "the mean is removed, radial modes subtracted, old cal"
+    source_key = 'sim_%s' % fieldname
+    status = 'active development'
+    for mode_num in range(0, 55, 5):
+        mode_clean_run(source_key, fieldname, mode_num, 'Eric',
+                       status=status, notes=notes, sim=True, alt="noconv_oldcal_")
+
+for fieldname in field_list:
+    notes = "the mean is removed, convolve to common beam, radial modes subtracted, flux cal"
+    source_key = 'sim_%s' % fieldname
+    status = 'active development'
+    for mode_num in range(0, 55, 5):
+        mode_clean_run(source_key, fieldname, mode_num, 'Eric',
+                       status=status, notes=notes, sim=True, alt="fluxcal_")
+
+for fieldname in field_list:
+    notes = "the mean is removed, radial modes subtracted, flux cal"
+    source_key = 'sim_%s' % fieldname
+    status = 'active development'
+    for mode_num in range(0, 55, 5):
+        mode_clean_run(source_key, fieldname, mode_num, 'Eric',
+                       status=status, notes=notes, sim=True, alt="noconv_fluxcal_")
 
 # proposal era
 key = 'GBT_15hr_cleaned_Liviu_15mode'
@@ -254,34 +512,75 @@ for fielditem in field_list:
 #-----------------------------------------------------------------------------
 # register the combined datasets
 #-----------------------------------------------------------------------------
-def register_moderemoved_run(field, num_modes):
-    key = 'GBT_%s_combined_cleaned_%smode_map' % (field, modenum)
+def register_moderemoved_run(field, modenum, sim=False, alt=""):
+    if sim:
+        mapbase = "sim_%s" % fielditem
+    else:
+        mapbase = "GBT_%s_map" % fielditem
+
     group_key = 'GBTcleaned'
     parent = 'GBT_combined_%s_maps_Eric' % field
-    filename = 'GBT_%s_map_cleaned_%smode_signal.npy' % (field, modenum)
-    desc = '%s field data with %d modes removed, combined' % (field, modenum)
+
+    key = '%s_combined_cleaned_%s%smode_map' % (mapbase, alt, modenum)
+    filename = '%s_cleaned_%s%smode_signal.npy' % (mapbase, alt, modenum)
+    desc = '%s field data with %s%s modes removed, combined' % (field, alt, modenum)
     notes = 'active development stream'
     status = "in development"
     dbcl.register_file(key, group_key, parent, filename, desc,
                        notes=notes, status=status)
 
-    key = 'GBT_%s_combined_cleaned_%smode_product' % (field, modenum)
-    filename = 'GBT_%s_map_cleaned_%smode_product.npy' % (field, modenum)
-    desc = 'map times weights for %s field data with %d modes removed, combined' % \
-           (field, modenum)
+    key = '%s_combined_cleaned_%s%smode_product' % (mapbase, alt, modenum)
+    filename = '%s_cleaned_%s%smode_product.npy' % (mapbase, alt, modenum)
+    desc = 'map times weights for %s field data with %s%s modes removed, combined' % \
+           (field, alt, modenum)
     dbcl.register_file(key, group_key, parent, filename, desc,
                        notes=notes, status=status)
 
-    key = 'GBT_%s_combined_cleaned_%smode_weight' % (field, modenum)
-    filename = 'GBT_%s_map_cleaned_%smode_weight.npy' % (field, modenum)
-    desc = 'weights for %s field data with %d modes removed, combined' % \
-           (field, modenum)
+    key = '%s_combined_cleaned_%s%smode_weight' % (mapbase, alt, modenum)
+    filename = '%s_cleaned_%s%smode_weight.npy' % (mapbase, alt, modenum)
+    desc = 'weights for %s field data with %s%s modes removed, combined' % \
+           (field, alt, modenum)
+    dbcl.register_file(key, group_key, parent, filename, desc,
+                       notes=notes, status=status)
+
+    key = '%s_combined_cleaned_%s%smode_ones' % (mapbase, alt, modenum)
+    filename = '%s_cleaned_%s%smode_ones.npy' % (mapbase, alt, modenum)
+    desc = 'uniform weight placeholder: %s field data with %s%s modes removed, combined' % \
+           (field, alt, modenum)
     dbcl.register_file(key, group_key, parent, filename, desc,
                        notes=notes, status=status)
 
 for fielditem in field_list:
     for modenum in range(0, 55, 5):
-        register_moderemoved_run(fielditem, modenum)
+        register_moderemoved_run(fielditem, modenum, sim=False)
+        #register_moderemoved_run(fielditem, modenum, sim=False,
+        #                         alt="nomeanconv_")
+        register_moderemoved_run(fielditem, modenum, sim=False,
+                                 alt="noconv_")
+        register_moderemoved_run(fielditem, modenum, sim=False,
+                                 alt="oldcal_")
+        register_moderemoved_run(fielditem, modenum, sim=False,
+                                 alt="noconv_oldcal_")
+        register_moderemoved_run(fielditem, modenum, sim=False,
+                                 alt="fluxcal_")
+        register_moderemoved_run(fielditem, modenum, sim=False,
+                                 alt="noconv_fluxcal_")
+        register_moderemoved_run(fielditem, modenum, sim=False,
+                                 alt="expt_")
+        register_moderemoved_run(fielditem, modenum, sim=False,
+                                 alt="optimalmap737_")
+        # sims
+        register_moderemoved_run(fielditem, modenum, sim=True)
+        register_moderemoved_run(fielditem, modenum, sim=True,
+                                 alt="noconv_")
+        register_moderemoved_run(fielditem, modenum, sim=True,
+                                 alt="oldcal_")
+        register_moderemoved_run(fielditem, modenum, sim=True,
+                                 alt="noconv_oldcal_")
+        register_moderemoved_run(fielditem, modenum, sim=True,
+                                 alt="fluxcal_")
+        register_moderemoved_run(fielditem, modenum, sim=True,
+                                 alt="noconv_fluxcal_")
 
 #-----------------------------------------------------------------------------
 # paths to WiggleZ data
@@ -433,9 +732,33 @@ def register_sim(fieldname, tag="", basedesc="sim.; WiggleZ pwrspec",
     dbcl.register_file_set(key, group_key, parent, prefix, indices, desc,
                   notes=notes, status=status)
 
+    prefix = "sim%s_delta_" % tag
+    key = "sim%s_%s_delta" % (tag, fieldname)
+    desc = "%s %s; overdensity (divided by T_b(z))" % (fieldname, basedesc)
+    dbcl.register_file_set(key, group_key, parent, prefix, indices, desc,
+                  notes=notes, status=status)
+
     prefix = "sim%s_beam_" % tag
     key = "sim%s_%s_beam" % (tag, fieldname)
     desc = "%s %s; beam convolved" % (fieldname, basedesc)
+    dbcl.register_file_set(key, group_key, parent, prefix, indices, desc,
+                  notes=notes, status=status)
+
+    prefix = "sim%s_beam_meansub_" % tag
+    key = "sim%s_%s_beam_meansub" % (tag, fieldname)
+    desc = "%s %s; beam convolved, mean subtracted" % (fieldname, basedesc)
+    dbcl.register_file_set(key, group_key, parent, prefix, indices, desc,
+                  notes=notes, status=status)
+
+    prefix = "sim%s_beam_meansubconv_" % tag
+    key = "sim%s_%s_beam_meansubconv" % (tag, fieldname)
+    desc = "%s %s; beam convolved, mean subtracted, common res." % (fieldname, basedesc)
+    dbcl.register_file_set(key, group_key, parent, prefix, indices, desc,
+                  notes=notes, status=status)
+
+    prefix = "sim%s_beam_conv_" % tag
+    key = "sim%s_%s_beam_conv" % (tag, fieldname)
+    desc = "%s %s; beam convolved, common res." % (fieldname, basedesc)
     dbcl.register_file_set(key, group_key, parent, prefix, indices, desc,
                   notes=notes, status=status)
 

@@ -6,11 +6,12 @@ from utils import data_paths
 # TODO: reimplement transverse plotting
 
 def plot_gbt_mapset(outputdir="/cita/d/www/home/eswitzer/movies/"):
-    pc.plot_gbt_maps('GBT_15hr_map', outputdir=outputdir, transverse=False)
-    pc.plot_gbt_maps('GBT_22hr_map', outputdir=outputdir, transverse=False)
-    pc.plot_gbt_maps('GBT_1hr_map', outputdir=outputdir, transverse=False)
-    pc.plot_gbt_maps('GBT_15hr_map_proposal', transverse=False,
-                     outputdir=outputdir, skip_noise=True)
+    pc.plot_gbt_maps('GBT_15hr_oldcal', outputdir=outputdir, transverse=False)
+    #pc.plot_gbt_maps('GBT_15hr_map', outputdir=outputdir, transverse=False)
+    #pc.plot_gbt_maps('GBT_22hr_map', outputdir=outputdir, transverse=False)
+    #pc.plot_gbt_maps('GBT_1hr_map', outputdir=outputdir, transverse=False)
+    #pc.plot_gbt_maps('GBT_15hr_map_proposal', transverse=False,
+    #                 outputdir=outputdir, skip_noise=True)
 
 def plot_gbt_newmapset(outputdir="/cita/d/www/home/eswitzer/movies/"):
     pc.plot_gbt_maps('GBT_15hr_newmap737', outputdir=outputdir, transverse=False)
@@ -125,7 +126,7 @@ def plot_gbt_comb_modeset(fieldname, outputdir="/cita/d/www/home/eswitzer/movies
         keyname = "%s_combined_cleaned_%s%smode_map" % (mapbase, alt, modenum)
         filename = datapath_db.fetch(keyname)
         pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
-                        sigmarange=2.5, outputdir=outputdir, multiplier=1000.,
+                        sigmarange=1.5, outputdir=outputdir, multiplier=1000.,
                         transverse=False, convolve=convolve)
 
         keyname = "%s_combined_cleaned_%s%smode_product" % \
@@ -229,19 +230,24 @@ def plot_wigglez(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/",
 
 
 if __name__ == "__main__":
-    plot_cleaned_gbt15hr_mapset()
+    #plot_gbt_mapset()
+    #plot_cleaned_gbt15hr_mapset()
     #plot_gbt_simset('sim_15hr')
     #plot_gbt_simset('simvel_15hr')
     #plot_gbt_simset('simideal_15hr')
     #plot_gbt_simset('22hr')
-    #plot_gbt_mapset()
     #plot_gbt_newmapset()
+
+    #plot_gbt_comb_modeset('15hr', alt="noconv_oldcal_", convolve=False)
+    #plot_gbt_comb_modeset('15hr', alt="noconv_oldcal_", convolve=True)
+    #plot_gbt_comb_modeset('15hr', alt="oldcal_", convolve=False)
 
     #plot_gbt_comb_modeset('15hr', alt="nomeanconv_", convolve=True)
     #plot_gbt_comb_modeset('15hr', alt="noconv_", convolve=False)
     #plot_gbt_comb_modeset('15hr', alt="noconv_", convolve=True)
     #plot_gbt_comb_modeset('15hr', alt="noconv_", sim=True, convolve=False)
-    #plot_gbt_comb_modeset('15hr', alt="newmap737_", sim=False, convolve=False)
+    plot_gbt_comb_modeset('15hr', alt="optimalmap_", sim=False, convolve=False)
+    plot_gbt_comb_modeset('15hr', alt="optimalmap_", sim=False, convolve=True)
     #plot_gbt_comb_modeset('15hr')
     #plot_gbt_comb_modeset('22hr')
 

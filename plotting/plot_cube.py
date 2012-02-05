@@ -235,7 +235,7 @@ def plot_gbt_maps(keyname, transverse=False, skip_noise=False, skip_map=False,
             title = "Sec. %s, %s" % (section, keyname)
             make_cube_movie(filename,
                                "Temperature (mK)", cube_frame_dir,
-                               sigmarange=6.,
+                               sigmarange=3.,
                                outputdir=outputdir, multiplier=1000.,
                                transverse=transverse,
                                title=title)
@@ -245,7 +245,7 @@ def plot_gbt_maps(keyname, transverse=False, skip_noise=False, skip_map=False,
             title = "Sec. %s, %s (dirty)" % (section, keyname)
             make_cube_movie(filename,
                                "Temperature (mK)", cube_frame_dir,
-                               sigmarange=6.,
+                               sigmarange=3.,
                                outputdir=outputdir, multiplier=1000.,
                                transverse=transverse,
                                title=title)

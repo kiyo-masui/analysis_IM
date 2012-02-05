@@ -21,6 +21,17 @@ set key top
 plot "GBT_cleaned_noconv_15hr_maps_Eric_mode_amplitudes.txt" using 1 t "no degrade" with points ls 9, \
      "GBT_cleaned_15hr_maps_Eric_mode_amplitudes.txt" using 1 t "with degrade" with points ls 5
 
+set size 1., 1.
+set terminal postscript eps enhanced color "Helvetica" 20
+set output "modes/modes_amplitudes_withconv.eps"
+set xlabel "freq index"
+set ylabel "amplitude"
+set title "SVD mode amplitudes"
+set logscale y
+set xrange [-5:55]
+unset key
+plot "GBT_cleaned_15hr_maps_Eric_mode_amplitudes.txt" using 1 t "with degrade" with points ls 5
+
 
 set size 1., 1.
 set terminal postscript eps enhanced color "Helvetica" 20

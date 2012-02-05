@@ -609,7 +609,16 @@ def sim_one_sided_trans():
 
 
 def run_GBTxGBT():
-    batch_data_run(alt_sig="noconv_") # use the convolved noise
+    # autopower
+    batch_data_run(alt_sig="noconv_fluxcal_", alt_noise="noconv_fluxcal_")
+    batch_data_run(alt_sig="fluxcal_", alt_noise="fluxcal_")
+    # autopower signal loss:
+    batch_data_run(alt_sig="noconv_fluxcal_", alt_noise="noconv_fluxcal_", sim=True)
+    batch_data_run(alt_sig="fluxcal_", alt_noise="fluxcal_", sim=True)
+
+    #batch_data_run(alt_sig="noconv_") # use the convolved noise
+
+    # TODO: update these calls
     #batch_data_run(alt="nomeanconv_", subtract_mean=True)
     #batch_data_run(alt="nomeanconv_")
     #batch_data_run(alt="noconv_", subtract_mean=True)
@@ -620,7 +629,46 @@ def run_GBTxGBT():
 
 
 if __name__ == '__main__':
+    # WiggleZ xpower with old calibration
+    print "PHASEI"
+    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned_noconv_fluxcal",
+                                "sim_15hr_delta",
+                                "sim_15hr",
+                                "GBT_15hr_map_combined_cleaned_noconv_fluxcal",
+                                "WiggleZ_15hr_montecarlo")
+
+    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned_fluxcal",
+                                "sim_15hr_delta",
+                                "sim_15hr",
+                                "GBT_15hr_map_combined_cleaned_fluxcal",
+                                "WiggleZ_15hr_montecarlo")
+
+    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned_noconv_fluxcal",
+                                "sim_15hr_delta",
+                                "sim_15hr_beam",
+                                "GBT_15hr_map_combined_cleaned_noconv_fluxcal",
+                                "WiggleZ_15hr_montecarlo")
+
+    batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned_fluxcal",
+                                "sim_15hr_delta",
+                                "sim_15hr_beam",
+                                "GBT_15hr_map_combined_cleaned_fluxcal",
+                                "WiggleZ_15hr_montecarlo")
+
+    print "PHASEII"
     run_GBTxGBT()
+    # crosspower with old calibration
+    print "PHASEIII"
+    batch_GBTxwigglez_data_run("GBT_15hr_map_combined_cleaned_noconv_fluxcal",
+                               "WiggleZ_15hr_delta_binned_data",
+                               "WiggleZ_15hr_delta_mock",
+                               "WiggleZ_15hr_montecarlo")
+
+    batch_GBTxwigglez_data_run("GBT_15hr_map_combined_cleaned_fluxcal",
+                               "WiggleZ_15hr_delta_binned_data",
+                               "WiggleZ_15hr_delta_mock",
+                               "WiggleZ_15hr_montecarlo")
+
     sys.exit()
     sim_crosspower()
 

@@ -198,8 +198,8 @@ class PathForms(object):
     # /mnt/raid-project/gmrt/kiyo/gbt_out/maps/dec29.2011/secA_15hr_41-90_dirty_map_I_737.npy
     # /mnt/raid-project/gmrt/kiyo/gbt_out/maps/dec29.2011/secA_15hr_41-90_noise_diag_I_737.npy
     # /mnt/raid-project/gmrt/kiyo/gbt_out/maps/dec29.2011/secA_15hr_41-90_noise_inv_I_737.npy
-    def register_newmaprun(self, key, group_key, parent, field_tag, band, desc,
-                           notes=None, status=None):
+    def register_optimalmap_section_run(self, key, group_key, parent, field_tag, band, desc,
+                                        notes=None, status=None):
         r"""register all the files produced in a mapping run
         """
         val = {'desc': desc}
@@ -216,9 +216,9 @@ class PathForms(object):
             val['status'] = status
 
         sections = ['A', 'B', 'C', 'D']
-        suffixes = ['chol_I', 'clean_map_I', 'dirty_map_I',
+        suffixes = ['clean_map_I', 'dirty_map_I',
                     'noise_diag_I', 'noise_inv_I']
-        suffixdesc = ['chol', 'clean_map', 'dirty_map',
+        suffixdesc = ['clean_map', 'dirty_map',
                       'noise_diag', 'noise_inv']
 
         filelist = {}
@@ -237,6 +237,49 @@ class PathForms(object):
             print "registered map run set: " + repr(val)
 
         self._set_key(key, val)
+
+
+    #/mnt/raid-project/gmrt/kiyo/gbt_out/maps/jan16.2012/secA_15hr_41-90_clean_map_I_all.npy
+    #/mnt/raid-project/gmrt/kiyo/gbt_out/maps/jan16.2012/secA_15hr_41-90_noise_diag_I_all.npy
+    #/mnt/raid-project/gmrt/kiyo/gbt_out/maps/jan16.2012/secA_15hr_41-90_noise_inv_diag_I_all.npy
+    def register_optimalmap_glued_run(self, key, group_key, parent, field_tag, desc,
+                                        notes=None, status=None):
+        r"""register all the files produced in a mapping run
+        """
+        val = {'desc': desc}
+        self.groups[group_key].append(key)
+        fileroot = self.fetch_path(parent)
+
+        val['group_key'] = group_key
+        val['parent'] = parent
+
+        if notes is not None:
+            val['notes'] = notes
+
+        if status is not None:
+            val['status'] = status
+
+        sections = ['A', 'B', 'C', 'D']
+        suffixes = ['clean_map_I', 'noise_diag_I', 'noise_inv_diag_I']
+        suffixdesc = ['clean_map', 'noise_diag', 'noise_inv_diag']
+
+        filelist = {}
+        listindex = []
+
+        for sec in sections:
+            for (suffix, sdesc) in zip(suffixes, suffixdesc):
+                filekey = "%s;%s" % (sec, sdesc)
+                filelist[filekey] = "%ssec%s_%s_%s_all.npy" % \
+                                    (fileroot, sec, field_tag, suffix)
+                listindex.append(filekey)
+
+        val['listindex'] = listindex
+        val['filelist'] = filelist
+        if self.verbose:
+            print "registered glued optimal map run set: " + repr(val)
+
+        self._set_key(key, val)
+
 
     def register_fourway_list(self, key, group_key, parent, desc,
                  notes=None, status=None, paramfile="params.ini", tag="",
