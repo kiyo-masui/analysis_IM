@@ -10,7 +10,7 @@ import scipy
 import scipy.integrate as si
 import scipy.interpolate
 import scipy.optimize
-#import constants as cc
+from core import constants as cc
 
 
 def get_omega_k_0(**cosmo):
@@ -87,9 +87,9 @@ def hubble_distance_z(z, **cosmo):
 
 def _comoving_integrand(z, omega_M_0, omega_lambda_0, omega_k_0, h):
 
-    e_z = (omega_M_0 * (1+z) ** 3. +
-           omega_k_0 * (1+z) ** 2. +
-           omega_lambda_0)**0.5
+    e_z = (omega_M_0 * (1 + z) ** 3. +
+           omega_k_0 * (1 + z) ** 2. +
+           omega_lambda_0) ** 0.5
 
     H_0 = h * cc.H100_s
     H_z = H_0 * e_z
@@ -124,7 +124,7 @@ def comoving_distance(z, z0=0., **cosmo):
     Examples
     --------
 
-    >>> import cosmolopy.distance as cd
+    >>> from utils import distance as cd
     >>> cosmo = {'omega_M_0' : 0.3, 'omega_lambda_0' : 0.7, 'h' : 0.72}
     >>> cosmo = cd.set_omega_k_0(cosmo)
     >>> d_co = cd.comoving_distance(6., **cosmo)
@@ -159,7 +159,7 @@ def proper_motion_distance(z, **cosmo):
     Examples
     --------
 
-    >>> import cosmolopy.distance as cd
+    >>> from utils import distance as cd
     >>> cosmo = {'omega_M_0' : 0.3, 'omega_lambda_0' : 0.7, 'h' : 0.72}
     >>> cosmo = cd.set_omega_k_0(cosmo)
     >>> d_M = cd.proper_motion_distance(6., **cosmo)
@@ -186,7 +186,7 @@ def comoving_distance_transverse(z, **cosmo):
     Examples
     --------
 
-    >>> import cosmolopy.distance as cd
+    >>> from utils import distance as cd
     >>> cosmo = {'omega_M_0' : 0.3, 'omega_lambda_0' : 0.7, 'h' : 0.72}
     >>> cosmo = cd.set_omega_k_0(cosmo)
     >>> d_M = cd.comoving_distance_transverse(6., **cosmo)
@@ -214,6 +214,7 @@ def comoving_distance_transverse(z, **cosmo):
 
     return d_m
 
+
 def angular_diameter_distance(z, z0=0, **cosmo):
     """The angular-diameter distance (Mpc) to redshift z.
 
@@ -227,7 +228,7 @@ def angular_diameter_distance(z, z0=0, **cosmo):
     Examples
     --------
 
-    >>> import cosmolopy.distance as cd
+    >>> from utils import distance as cd
     >>> cosmo = {'omega_M_0' : 0.3, 'omega_lambda_0' : 0.7, 'h' : 0.72}
     >>> cosmo = cd.set_omega_k_0(cosmo)
     >>> d_a = cd.angular_diameter_distance(6., **cosmo)
@@ -248,10 +249,10 @@ def angular_diameter_distance(z, z0=0, **cosmo):
 
     d_h_0 = hubble_distance_z(0.0, **cosmo)
 
-    term1 = dm1 * numpy.sqrt(1. + omega_k * (dm2/d_h_0) ** 2.)
-    term2 = dm2 * numpy.sqrt(1. + omega_k * (dm1/d_h_0) ** 2.)
+    term1 = dm1 * numpy.sqrt(1. + omega_k * (dm2 / d_h_0) ** 2.)
+    term2 = dm2 * numpy.sqrt(1. + omega_k * (dm1 / d_h_0) ** 2.)
 
-    da12 = (term2 - term1) / (1 + z) # only for Omega_k > 0
+    da12 = (term2 - term1) / (1 + z)  # only for Omega_k > 0
 
     return da12
 
@@ -262,7 +263,7 @@ def luminosity_distance(z, **cosmo):
     See, for example, David Hogg's arXiv:astro-ph/9905116v4
     """
     da = angular_diameter_distance(z, **cosmo)
-    return da * (1+z) ** 2.
+    return da * (1 + z) ** 2.
 
 
 def diff_comoving_volume(z, **cosmo):
@@ -274,7 +275,7 @@ def diff_comoving_volume(z, **cosmo):
     Examples
     --------
 
-    >>> import cosmolopy.distance as cd
+    >>> from utils import distance as cd
     >>> cosmo = {'omega_M_0' : 0.3, 'omega_lambda_0' : 0.7, 'h' : 0.72}
     >>> cosmo = cd.set_omega_k_0(cosmo)
     >>> dVc = cd.diff_comoving_volume(6.0, **cosmo)
@@ -296,7 +297,7 @@ def comoving_volume(z, **cosmo):
     Examples
     --------
 
-    >>> import cosmolopy.distance as cd
+    >>> from utils import distance as cd
     >>> cosmo = {'omega_M_0' : 0.3, 'omega_lambda_0' : 0.7, 'h' : 0.72}
     >>> cosmo = cd.set_omega_k_0(cosmo)
     >>> Vc = cd.comoving_volume(6.0, **cosmo)
@@ -304,7 +305,7 @@ def comoving_volume(z, **cosmo):
     Vc = 2.16e+12 Mpc**3
 
 
-    >>> import cosmolopy.distance as cd
+    >>> from utils import distance as cd
     >>> cosmo = {'omega_M_0' : 0.3, 'omega_lambda_0' : 0.0, 'h' : 0.72}
     >>> cosmo = cd.set_omega_k_0(cosmo)
     >>> Vc = cd.comoving_volume(6.0, **cosmo)
@@ -354,8 +355,8 @@ def comoving_volume(z, **cosmo):
 
 def _lookback_integrand(z, omega_M_0, omega_lambda_0, omega_k_0, h):
 
-    e_z = (omega_M_0 * (1+z) ** 3. +
-           omega_k_0 * (1+z) ** 2. +
+    e_z = (omega_M_0 * (1 + z) ** 3. +
+           omega_k_0 * (1 + z) ** 2. +
            omega_lambda_0) ** 0.5
 
     H_0 = h * cc.H100_s
@@ -421,8 +422,8 @@ def age(z, use_flat=True, **cosmo):
     Examples
     --------
 
-    >>> import cosmolopy.distance as cd
-    >>> import cosmolopy.constants as cc
+    >>> from utils import distance as cd
+    >>> from core import constants as cc
     >>> cosmo = {'omega_M_0' : 0.3, 'omega_lambda_0' : 0.7, 'h' : 0.72}
     >>> cosmo = cd.set_omega_k_0(cosmo)
     >>> t = cd.age(6.0, **cosmo)
@@ -446,8 +447,8 @@ def age_flat(z, **cosmo):
     Examples
     --------
 
-    >>> import cosmolopy.distance as cd
-    >>> import cosmolopy.constants as cc
+    >>> from utils import distance as cd
+    >>> from core import constants as cc
     >>> cosmo = {'omega_M_0' : 0.3, 'omega_lambda_0' : 0.7, 'h' : 0.72}
     >>> cosmo = cd.set_omega_k_0(cosmo)
     >>> t = cd.age_flat(6.0, **cosmo)
@@ -464,10 +465,11 @@ def age_flat(z, **cosmo):
     om = cosmo['omega_M_0']
     lam = 1. - cosmo['omega_M_0']
     t_z = (2. *
-           numpy.arcsinh(numpy.sqrt(lam / om) * (1. + z) ** (-3./2.)) /
+           numpy.arcsinh(numpy.sqrt(lam / om) * (1. + z) ** (-3. / 2.)) /
            (cc.H100_s * cosmo['h'] * 3. * numpy.sqrt(lam)))
 
     return t_z
+
 
 def quick_distance_function(function, zmax=20., zmin=0., zstep=0.001,
                             return_inverse=False, k=3,
@@ -488,30 +490,26 @@ def quick_distance_function(function, zmax=20., zmin=0., zstep=0.001,
 
     Returns
     -------
-
     distfunc
-
     or
-
     distfunc, zfunc
 
     Examples
     --------
 
-    >>> import cosmolopy.distance as cd
-    >>> import cosmolopy.constants as cc
+    >>> from utils import distance as cd
+    >>> from core import constants as cc
     >>> cosmo = {'omega_M_0' : 0.3, 'omega_lambda_0' : 0.7, 'h' : 0.72}
     >>> cosmo = cd.set_omega_k_0(cosmo)
     >>> distfunc, redfunc = cd.quick_distance_function(cd.luminosity_distance, return_inverse=True, **cosmo)
     >>> d = distfunc(6.3333)
-    >>> z = redfunc(d)
-    >>> "%.1g" % (distfunc(6.3333)/cd.luminosity_distance(6.3333, **cosmo) - 1.0)
-    '-2e-16'
-    >>> "%.1g" % (z/6.3333 - 1.0)
-    '0'
+    >>> print "%.3g" % d[0]
+    5.98e+04
+    >>> print "%.3g" %redfunc(d)[0]
+    6.33
 
     """
-    z = numpy.linspace(zmin, zmax, math.ceil((zmax-zmin) / zstep))
+    z = numpy.linspace(zmin, zmax, math.ceil((zmax - zmin) / zstep))
     dists = function(z, **cosmo)
     distfunc = scipy.interpolate.InterpolatedUnivariateSpline(z, dists, k=k)
     if return_inverse:
@@ -543,8 +541,8 @@ def quick_age_function(zmax=20., zmin=0., zstep=0.001,
     Examples
     --------
 
-    >>> import cosmolopy.distance as cd
-    >>> import cosmolopy.constants as cc
+    >>> from utils import distance as cd
+    >>> from core import constants as cc
     >>> cosmo = {'omega_M_0' : 0.3, 'omega_lambda_0' : 0.7, 'h' : 0.72}
     >>> cosmo = cd.set_omega_k_0(cosmo)
     >>> agefunc = cd.quick_age_function(**cosmo)
@@ -576,15 +574,14 @@ def quick_redshift_age_function(zmax=20., zmin=0., zstep=0.001, **cosmo):
     Examples
     --------
 
-    >>> import cosmolopy.distance as cd
-    >>> import cosmolopy.constants as cc
+    >>> from utils import distance as cd
+    >>> from core import constants as cc
     >>> cosmo = {'omega_M_0' : 0.3, 'omega_lambda_0' : 0.7, 'h' : 0.72}
     >>> cosmo = cd.set_omega_k_0(cosmo)
     >>> redfunc = cd.quick_redshift_age_function(**cosmo)
     >>> z = redfunc(1.0 * cc.Gyr_s)
     >>> print "When age=1.0Gyr z=%.2f" % (z)
-    When age=1.0Gyr z=5.49
-
+    When age=1.0Gyr z=5.48
     """
     z = numpy.arange(zmin, zmax, zstep)
     z = z[::-1]
@@ -600,7 +597,7 @@ def light_travel_distance(z, z0=0, **cosmo):
     Examples
     --------
 
-    >>> import cosmolopy.distance as cd
+    >>> from utils import distance as cd
     >>> cosmo = {'omega_M_0' : 0.3, 'omega_lambda_0' : 0.7, 'h' : 0.72}
     >>> cosmo = cd.set_omega_k_0(cosmo)
     >>> dlookback = cd.light_travel_distance(3.0, 2.0, **cosmo)
@@ -619,17 +616,17 @@ def redshift_d_light(dl, z_guess=6.0, fmin_args={}, **cosmo):
     Examples
     --------
 
-    >>> import cosmolopy.distance as cd
-    >>> import cosmolopy.constants as cc
+    >>> from utils import distance as cd
+    >>> from core import constants as cc
     >>> cosmo = {'omega_M_0' : 0.3, 'omega_lambda_0' : 0.7, 'h' : 0.72}
     >>> cosmo = cd.set_omega_k_0(cosmo)
     >>> z = cd.redshift_d_light(10. * cc.c_light_Mpc_Gyr, **cosmo)
     Optimization terminated successfully.
-             Current function value: 0.000112
+             Current function value: 0.000113
              Iterations: 26
              Function evaluations: 52
     >>> print "Redshift for a lookback time of 10Gyr is z=%.3f" % (z)
-    Redshift for a lookback time of 10Gyr is z=2.025
+    Redshift for a lookback time of 10Gyr is z=2.029
 
     """
     dl_diff = lambda z: abs(dl - light_travel_distance(z, **cosmo)[0])
