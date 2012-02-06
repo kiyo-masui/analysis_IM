@@ -13,6 +13,49 @@ import scipy.optimize
 from core import constants as cc
 
 
+class Cosmology:
+    r"""A simple class to grab distances
+    """
+
+    units = 'cosmo'
+
+    #omega_b = 0.0458
+    omega_b = 0.04482
+    #omega_c = 0.229
+    omega_c = 0.22518
+    #omega_l = 0.7252
+    omega_l = 0.73
+
+    omega_g = 0.0
+    omega_n = 0.0
+
+    # H_0 given in km/s / Mpc
+    #H0 = 70.2
+    H0 = 72.
+
+    def _unit_distance(self):
+        # Select the appropriate distance unit
+        if self.units == 'astro':
+            return mega_parsec
+        elif self.units == 'cosmo':
+            return mega_parsec / (self.H0 / 100.0)
+        elif self.units == 'si':
+            return 1.0
+
+        raise Exception("Units not known")
+
+    def _unit_time(self):
+        # Select the appropriate time unit
+        if self.units == 'astro':
+            return mega_year
+        elif self.units == 'cosmo':
+            return mega_year
+        elif self.units == 'si':
+            return 1.0
+
+        raise Exception("Units not known")
+
+
 def get_omega_k_0(**cosmo):
     """'Spatial curvature density' omega_k_0 for a cosmology (if needed).
 
