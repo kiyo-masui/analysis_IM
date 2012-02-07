@@ -73,7 +73,7 @@ for i in range(0,freq_limit):
     m_tot[i,15] = M_total[3,2]
     m_tot[i,16] = M_total[3,3]
         
-prefix = '16'
+prefix = '18'
 #path = '$GBT10B_OUT/mueller_params/'
 suffix = '_mueller_matrix_from_inverted_params.txt'
 filename = prefix+suffix
