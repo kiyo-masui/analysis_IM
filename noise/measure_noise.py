@@ -15,7 +15,7 @@ import kiyopy.pickle_method
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
 import core.fitsGBT
-import core.utils
+import utils.misc
 from map.constants import T_infinity, T_small
 
 # XXX
@@ -140,7 +140,7 @@ class Measure(object) :
                                           ii * n_pols + jj + 1)
                         a.set_xlabel("frequency (Hz)")
                         a.set_ylabel("power (K^2)")
-                        pol_str = core.utils.polint2str(pols[jj])
+                        pol_str = utils.misc.polint2str(pols[jj])
                         band = band_centres[ii]
                         a.set_title("Band %dMHz, polarization " % band
                                     + pol_str)
