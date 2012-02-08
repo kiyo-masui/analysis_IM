@@ -66,7 +66,8 @@ import numpy as np
 import numpy.lib.format as npfor
 from numpy.lib.utils import safe_eval
 
-import utils.cubic_conv_interpolation as cci
+## change back
+import utils/cubic_conv_interpolation as cci
 
 # TODO:
 # when submitted as batch on Sunnyvale, the PYTHONPATH seems to get clobbered
@@ -795,8 +796,25 @@ class alg_object(object) :
                 step_sizes.append(self.info[ax_delta_name])
             x0 = sp.array(x0)
             step_sizes = sp.array(step_sizes)
+            # Get the maximum possible index in each dimension in axes.
+            max_inds = np.array(self.shape) - 1
+            max_needed_inds = []
+            for ax in axes:
+                max_needed_inds.append(max_inds[ax])
+            max_inds = np.array(max_needed_inds)
+            # If there are less than four elements along some dimension
+            # then raise an error since cubic conv won't work.
+            too_small_axes = []
+            for i in range(len(max_inds)):
+                if max_inds[i] < 3:
+                    too_small_axes.append(axes[i])
+            if not (len(too_small_axes) == 0):
+                msg = "Need at least 4 points for cubic interpolation " + \
+                      "on axis (axes): " + str(too_small_axes)
+                raise ce.DataError(msg)
             # Get the nodes needed and their weights.
-            points, weights = cci.interpolate_weights(axes, pnt, x0, step_sizes)
+            points, weights = cci.interpolate_weights(axes, pnt, x0, \
+                                  step_sizes, max_inds)
         else :
             message = "Unsupported interpolation algorithm: " + kind
             raise ValueError(message)
@@ -833,34 +851,17 @@ class alg_object(object) :
         if n != len(coord) :
             message = "axes and coord parameters must be same length."
             raise ValueError(message)
-        if kind == 'cubic':
-            # Make sure the given point is an array.
-            pnt = sp.array(coord)
-            # Get the array containing the first value in each dimension.
-            # And get the arrays of deltas for each dimension.
-            x0 = []
-            step_sizes = []
-            for ax in axes:
-                ax_name = self.axes[ax]
-                x0.append(self.get_axis(ax_name)[0])
-                ax_delta_name = ax_name + "_delta"
-                step_sizes.append(self.info[ax_delta_name])
-            x0 = sp.array(x0)
-            step_sizes = sp.array(step_sizes)
-            # Get the nodes needed and their weights.
-            out = cci.interpolate(axes, self, pnt, x0, step_sizes)
-        else:
-            # Get the contributing points and their weights.
-            points, weights = self.slice_interpolate_weights(axes, coord, kind)
-            # Sum up the points
-            q = points.shape[0]
-            out = 0.0
-            for ii in range(q) :
-                index = [slice(None)] * self.ndim
-                for jj, axis in enumerate(axes) :
-                    index[axis] = points[ii, jj]
-                index = tuple(index)
-                out += weights[ii] * self[index]
+        # Get the contributing points and their weights.
+        points, weights = self.slice_interpolate_weights(axes, coord, kind)
+        # Sum up the points
+        q = points.shape[0]
+        out = 0.0
+        for ii in range(q) :
+            index = [slice(None)] * self.ndim
+            for jj, axis in enumerate(axes) :
+                index[axis] = points[ii, jj]
+            index = tuple(index)
+            out += weights[ii] * self[index]
         return out
 
 
