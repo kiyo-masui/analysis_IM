@@ -66,8 +66,7 @@ import numpy as np
 import numpy.lib.format as npfor
 from numpy.lib.utils import safe_eval
 
-## change back
-import utils/cubic_conv_interpolation as cci
+import utils.cubic_conv_interpolation as cci
 
 # TODO:
 # when submitted as batch on Sunnyvale, the PYTHONPATH seems to get clobbered
