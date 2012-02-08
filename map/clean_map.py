@@ -310,7 +310,7 @@ def solve_from_eig(noise_evalsinv, noise_evects, dirty_map,
     # Copy the eigenvalues.
     noise_evalsinv = noise_evalsinv.copy()
     # Find poorly constrained modes and zero them out.
-    bad_inds = noise_evalsinv < 0.5  # K**-2
+    bad_inds = noise_evalsinv < 1./constants.T_huge**2
     n_bad = sp.sum(bad_inds)
     if feedback > 1:
         print ("Discarding %d modes of %d. %f percent." 
@@ -344,7 +344,7 @@ def solve_from_eig(noise_evalsinv, noise_evects, dirty_map,
             print "Getting noise diagonal."
         noise_diag = algebra.zeros_like(dirty_map)
         noise_evals = 1. / noise_evalsinv
-        noise_evals[bad_inds] = constants.T_infinity
+        noise_evals[bad_inds] = constants.T_huge**2
         for ii in xrange(nf):
             for jj in xrange(nr):
                 for kk in xrange(nd):

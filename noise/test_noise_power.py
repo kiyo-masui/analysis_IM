@@ -194,23 +194,7 @@ class TestUtils(unittest.TestCase):
         corr2 = npow.calculate_overf_correlation(10, -1.3, 1, dt2, n2)
         # Asside from finer sampling, only the short time scale stuff should
         # differ.
-        self.assertTrue(sp.allclose(sp.diff(corr1[0::10])[10:], 
-                                    sp.diff(corr2)[10:], rtol=1e-2))
-    
-    def test_overf_correlation_total_time(self):
-        n1 = 50000
-        dt1 = 0.01
-        BW1 = 1.0/2/dt1
-        corr1 = npow.calculate_overf_correlation(10.0 / BW1 / 2, -1.3, 1.0, 
-                                                      dt1, n1)
-        n2 = 5000
-        dt2 = 0.01
-        BW2 = 1.0/2/dt2
-        corr2 = npow.calculate_overf_correlation(10.0 / BW2 / 2, -1.3, 1.0,
-                                                    dt2, n2)
-        # The overlapping time scale parts should all be about the same.
-        self.assertTrue(sp.allclose(sp.diff(corr1)[:n2//2], 
-                                    sp.diff(corr2)[:n2//2], rtol=1e-2))
+        self.assertTrue(sp.allclose(corr1[0::10][10:], corr2[10:], rtol=1e-2))
     
     def test_overf_correlation_statistical(self):
         # Parameters

@@ -2,7 +2,7 @@
 
 import numpy as np
 import scipy as sp
-from constants import T_infinity
+from constants import T_huge
 
 # Cython import
 cimport numpy as np
@@ -169,7 +169,7 @@ def cho_solve(np.ndarray[DTYPE_t, ndim=2, mode='c'] chol not None,
     cdef DTYPE_t tmp
     # Limit of small information, about 0.1 K**-1. Modes with less information
     # are ignored.
-    cdef DTYPE_t small = 1./sp.sqrt(T_infinity)
+    cdef DTYPE_t small = 1./T_huge
     cdef np.ndarray[DTYPE_t, ndim=1, mode='c'] x
     x = b.copy()
     # Forward substitution.

@@ -68,12 +68,12 @@ pipe_modules = []
 #from time_stream import split_bands
 #pipe_modules.append((split_bands.SplitBands, ('sbs_', 'sb_')))
 
-#from noise import measure_noise
-#pipe_modules.append(measure_noise.Measure)
+from noise import measure_noise
+pipe_modules.append(measure_noise.Measure)
 
-from map import dirty_map
+#from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
@@ -93,6 +93,11 @@ pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
 #pipe_modules.append((glue_maps.GlueMaps, ('gmnB_', 'gm_')))
 #pipe_modules.append((glue_maps.GlueMaps, ('gmnC_', 'gm_')))
 #pipe_modules.append((glue_maps.GlueMaps, ('gmnD_', 'gm_')))
+
+#pipe_modules.append((glue_maps.GlueMaps, ('gmdA_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmdB_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmdC_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmdD_', 'gm_')))
 
 
 #### Parameters for the various modules. ####
@@ -341,6 +346,7 @@ gmA_input_root = cmA_input_root + "clean_map_"
 gmA_output_root = gmA_input_root
 gmA_polarizations = ('I',)
 gmA_bands = (737, 799, 862)
+gmA_mat_diag = False
 
 # Other maps
 gmB_input_root = cmB_input_root + "clean_map_"
@@ -358,6 +364,7 @@ gmnA_input_root = cmA_input_root + "noise_diag_"
 gmnA_output_root = gmnA_input_root
 gmnA_polarizations = ('I',)
 gmnA_bands = (737, 799, 862)
+gmnA_mat_diag = False
 
 # Other maps
 gmnB_input_root = cmB_input_root + "noise_diag_"
@@ -368,6 +375,24 @@ gmnC_output_root = gmnC_input_root
 
 gmnD_input_root = cmD_input_root + "noise_diag_"
 gmnD_output_root = gmnD_input_root
+
+# Gluing the noise inverse diagonals.
+# Map A
+gmdA_input_root = cmA_input_root + "noise_inv_"
+gmdA_output_root = cmA_input_root + "noise_inv_diag_"
+gmdA_polarizations = ('I',)
+gmdA_bands = (737, 799, 862)
+gmdA_mat_diag = True
+
+# Other maps
+gmdB_input_root = cmB_input_root + "noise_inv_"
+gmdB_output_root = cmB_input_root + "noise_inv_diag_"
+
+gmdC_input_root = cmC_input_root + "noise_inv_"
+gmdC_output_root = cmC_input_root + "noise_inv_diag_"
+
+gmdD_input_root = cmD_input_root + "noise_inv_"
+gmdD_output_root = cmD_input_root + "noise_inv_diag_"
 
 
 # Parameters that are set to be the same as the A case.
@@ -444,19 +469,38 @@ cmD_from_eig = cmA_from_eig
 
 gmB_polarizations = gmA_polarizations
 gmB_bands = gmA_bands
+gmB_mat_diag = gmA_mat_diag
 
 gmC_polarizations = gmA_polarizations
 gmC_bands = gmA_bands
+gmC_mat_diag = gmA_mat_diag
 
 gmD_polarizations = gmA_polarizations
 gmD_bands = gmA_bands
+gmC_mat_diag = gmA_mat_diag
 
 
 gmnB_polarizations = gmnA_polarizations
 gmnB_bands = gmnA_bands
+gmnB_mat_diag = gmnA_mat_diag
 
 gmnC_polarizations = gmnA_polarizations
 gmnC_bands = gmnA_bands
+gmnC_mat_diag = gmnA_mat_diag
 
 gmnD_polarizations = gmnA_polarizations
 gmnD_bands = gmnA_bands
+gmnD_mat_diag = gmnA_mat_diag
+
+
+gmdB_polarizations = gmdA_polarizations
+gmdB_bands = gmdA_bands
+gmdB_mat_diag = gmdA_mat_diag
+
+gmdC_polarizations = gmdA_polarizations
+gmdC_bands = gmdA_bands
+gmdC_mat_diag = gmdA_mat_diag
+
+gmdD_polarizations = gmdA_polarizations
+gmdD_bands = gmdA_bands
+gmdD_mat_diag = gmdA_mat_diag

@@ -12,7 +12,8 @@ import kiyopy.custom_exceptions as ce
 params_init = {'input_root' : './',
                'polarizations' : ('I',),
                'output_root' : './',
-               'bands' : ()
+               'bands' : (),
+               'mat_diag' : False
                }
 prefix = 'gm_'
 
@@ -48,8 +49,15 @@ class GlueMaps(object):
                               repr(band) + '.npy')
                 if self.feedback > 1:
                     print "Read using map: " + band_map_fname
-                band_map = al.load(band_map_fname)
-                band_map = al.make_vect(band_map)
+                if params['mat_diag']:
+                    if self.feedback > 1:
+                        print "Treating as a matrix, getting diagonal."
+                    band_map = al.open_memmap(band_map_fname, mode='r')
+                    band_map = al.make_mat(band_map)
+                    band_map = band_map.mat_diag()
+                else:
+                    band_map = al.load(band_map_fname)
+                    band_map = al.make_vect(band_map)
                 if band_map.axes != ('freq', 'ra', 'dec') :
                     msg = ("Expeced maps to have axes ('freq',"
                            "'ra', 'dec'), but it has axes: "

@@ -397,7 +397,7 @@ class TestClasses(unittest.TestCase):
         N.deweight_time_slope()
         # Correlated modes.
         f_0 = 1.
-        amps = [0.01, 0.001, 0.0001]
+        amps = [1, 0.01, 0.001]
         index = [-2.5, -1.7, -1.2]
         for ii in range(3):
             mode = sp.arange(nf, dtype=float)
@@ -413,7 +413,6 @@ class TestClasses(unittest.TestCase):
         N_mat = N.get_inverse()
         N_mat.shape = (nf * nt,) * 2
         e, v = linalg.eigh(N_mat)
-        print sp.amax(e) / sp.amin(e)
         self.assertTrue(sp.amin(e) > 0)
 
     def test_uncoupled_channels(self):
@@ -1007,7 +1006,7 @@ class TestPreprocessor(unittest.TestCase):
         time_stream, ra, dec, az, el, time, mask_inds = \
                 self.Maker.preprocess_data(self.Blocks)
         self.assertTrue(sp.allclose(self.Maker.channel_vars[[13,17]],
-                                    dirty_map.T_infinity))
+                                    dirty_map.T_infinity**2))
 
     def test_masked_inds(self):
         # Since the preprocessor moves stuff around, put a high value beside
