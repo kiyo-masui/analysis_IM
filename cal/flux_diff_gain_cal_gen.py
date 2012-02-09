@@ -1,9 +1,8 @@
 """Procedure to calculate only the flux and differential gain between XX and YY for each frequency from on-off scans of a calibrator such as 3C286.
 
-
-Need to update once complete.
-Run in analysis_IM: python cal/total_cal_gen_params.py input/tcv/mueller_gen_guppi.ini
-Note that the .ini file should indicate which session(s) and sourse you want to use. Script is run using data from a single source. The output is saved in a file called mueller_params_calc.txt
+Currently setup so that it uses all the onoff scans from a session for a particular calibrator and gets the best fit. 
+Run in analysis_IM: python cal/flux_diff_gain_cal_gen.py input/tcv/diff_gain_gen_guppi.ini
+Note that the .ini file should indicate which session(s) and sourse you want to use. Script is run using data from a single source. The output is saved in my data directory under the folder diff_gain_params as a .txt file with three columns (freq, XXGain, YYGain).
  """
 import os
 
@@ -51,32 +50,35 @@ class MuellerGen(object) :
         t = self.function
         
         for i in range(0,len(t),4):
-            t[i] = XG*(0.5*(1+sp.cos(2*theta[i]))*d[i,f]+sp.sin(2*theta[i])*d[i+1,f]+0.5*(1-sp.cos(2*theta[i]))*d[i+3,f])
+            t[i] = XG*d[i,f]
             t[i+1] = 0
             t[i+2] = 0
-            t[i+3] =YG*(0.5*(1-sp.cos(2*theta[i]))*d[i,f]-sp.sin(2*theta[i])*d[i+1,f]+0.5*(1+sp.cos(2*theta[i]))*d[i+3,f])
+            t[i+3] =YG*d[i+3,f]
         return t 
 
     def residuals(self, p,errors, f,freq_val):
+        theta = self.theta
 #        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*2 
 #        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*(2.28315426-0.000484307905*freq_val[f]) # Added linear fit for Jansky to Kelvin conversion.
-        Isrc = 19.74748409*pow((750.0/freq_val[f]),0.49899785)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C286
-#        Isrc = 25.15445092*pow((750.0/freq_val[f]),0.75578842)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for  3C48
+#        Isrc = 19.74748409*pow((750.0/freq_val[f]),0.49899785)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C286
+        Isrc = 25.15445092*pow((750.0/freq_val[f]),0.75578842)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for  3C48
 #        Isrc = 4.56303633*pow((750.0/freq_val[f]),0.59237327)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C67
         PAsrc = 33.0*sp.pi/180.0 # for 3C286, doesn't matter for unpolarized. 
-        Psrc = 0.07 #for 3C286 
-#        Psrc = 0 #for #3C48,3C67 
+#        Psrc = 0.07 #for 3C286 
+        Psrc = 0 #for #3C48,3C67 
         Qsrc = Isrc*Psrc*sp.cos(2*PAsrc) 
         Usrc = Isrc*Psrc*sp.sin(2*PAsrc) 
         Vsrc = 0
-        XXsrc = Isrc+Qsrc
-        YYsrc = Isrc-Qsrc
+        XXsrc0 = Isrc+Qsrc
+        YYsrc0 = Isrc-Qsrc
+#        XXsrc = (0.5*(1+sp.cos(2*theta[i]))*XXsrc0-sp.sin(2*theta[i])*Usrc+0.5*(1-sp.cos(2*theta[i]))*YYsrc0)
+#        YYsrc = (0.5*(1-sp.cos(2*theta[i]))*XXsrc0+sp.sin(2*theta[i])*Usrc+0.5*(1+sp.cos(2*theta[i]))*YYsrc0)
         source = sp.zeros(4*self.file_num)
         for i in range(0,len(source),4):
-            source[i] = XXsrc
+            source[i] = (0.5*(1+sp.cos(2*theta[i]))*XXsrc0-sp.sin(2*theta[i])*Usrc+0.5*(1-sp.cos(2*theta[i]))*YYsrc0)
             source[i+1] = 0
             source[i+2] = 0
-            source[i+3] = YYsrc
+            source[i+3] = (0.5*(1-sp.cos(2*theta[i]))*XXsrc0+sp.sin(2*theta[i])*Usrc+0.5*(1+sp.cos(2*theta[i]))*YYsrc0)
         err = (source-self.peval(p,f))/errors
         return err
     
@@ -90,9 +92,9 @@ class MuellerGen(object) :
         output_root = params['output_root']
         output_end = params['output_end']
         file_name = params['file_middles'][0].split('/')[1]
-        print file_name
+#        print file_name
         sess = file_name.split('_')[0]
-        print sess
+#        print sess
 
         self.file_num = len(params['file_middles']) # getting a variable for number of calibrator files being used
 

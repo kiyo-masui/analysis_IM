@@ -1,10 +1,13 @@
+import sys
 import pylab
 from numpy import *
 import scipy as sp
 
 prefix = '41'
 
-gain_params = loadtxt('diff_gain_calc.txt')
+filedir = sys.argv[1]
+
+gain_params = loadtxt(filedir+prefix+'_diff_gain_calc.txt')
 
 size = len(gain_params[:,0])
 #print mueller_params[0,:] #is a set of values for highest frequency
