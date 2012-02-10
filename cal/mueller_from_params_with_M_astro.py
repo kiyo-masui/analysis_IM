@@ -1,6 +1,4 @@
-"""Script for generating mueller matrix elements from mueller params (generated using any script), expected params are (in order): frequency, deltaG, alpha, psi, phi, epsilon, chi, and flux.
-Run from analysis_IM: python cal/mueller_from_params.py (note that it uses the file mueller_params_calc.txt that is currently in that folder). 
-"""
+"""Script for generating mueller matrix elements from mueller params generated using scripts that include the extra angle parameter. The parameters are (in order): frequency, deltaG, alpha, psi, phi, epsilon, flux and beta (the extra parameter)."""
 
 import scipy as sp
 import numpy.ma as ma
@@ -33,26 +31,27 @@ for i in range(0,freq_limit):
     ep = mp[i,5]
     ch = mp[i,6]*sp.pi/180
     flux = mp[i,7]     
+    be = mp[i,8]*sp.pi/180
     
     m_total[0,0,i] = flux
-    m_total[0,1,i] = flux*(0.5*dG*sp.cos(2*al)-2*ep*sp.sin(2*al)*sp.cos(ph-ch))
-    m_total[0,2,i] = flux*(0.5*dG*sp.sin(2*al)*sp.cos(ch)+2*ep*(sp.cos(al)*sp.cos(al)*sp.sin(ph)-sp.sin(al)*sp.sin(al)*sp.cos(ph-2*ch)))
+    m_total[0,1,i] = flux*(0.5*dG*sp.cos(2*al)-2*ep*sp.sin(2*al)*sp.cos(ph-ch))*sp.cos(be)-flux*(0.5*dG*sp.sin(2*al)*sp.cos(ch)+2*ep*(sp.cos(al)*sp.cos(al)*sp.sin(ph)-sp.sin(al)*sp.sin(al)*sp.cos(ph-2*ch)))*sp.sin(be)
+    m_total[0,2,i] = flux*(0.5*dG*sp.cos(2*al)-2*ep*sp.sin(2*al)*sp.cos(ph-ch))*sp.sin(be)+flux*(0.5*dG*sp.sin(2*al)*sp.cos(ch)+2*ep*(sp.cos(al)*sp.cos(al)*sp.sin(ph)-sp.sin(al)*sp.sin(al)*sp.cos(ph-2*ch)))*sp.cos(be)
     m_total[0,3,i] = flux*(0.5*dG*sp.sin(2*al)*sp.sin(ch)+2*ep*(sp.cos(al)*sp.cos(al)*sp.sin(ph)+sp.sin(al)*sp.sin(al)*sp.sin(ph-2*ch)))
     m_total[1,0,i] = flux*0.5*dG
-    m_total[1,1,i] = flux*sp.cos(2*al)
-    m_total[1,2,i] = flux*sp.sin(2*al)*sp.cos(ch)
+    m_total[1,1,i] = flux*sp.cos(2*al)*sp.cos(be)-flux*sp.sin(2*al)*sp.cos(ch)*sp.sin(be)
+    m_total[1,2,i] = flux*sp.cos(2*al)*sp.sin(be)+flux*sp.sin(2*al)*sp.cos(ch)*sp.cos(be)
     m_total[1,3,i] = flux*sp.sin(2*al)*sp.sin(ch)
     m_total[2,0,i] = flux*2*ep*sp.cos(ph+ps)
-    m_total[2,1,i] = -flux*sp.sin(2*al)*sp.cos(ps+ch)
-    m_total[2,2,i] = flux*(sp.cos(al)*sp.cos(al)*sp.cos(ps)-sp.sin(al)*sp.sin(al)*sp.cos(ps+2*ch))
+    m_total[2,1,i] = -flux*sp.sin(2*al)*sp.cos(ps+ch)*sp.cos(be)-flux*(sp.cos(al)*sp.cos(al)*sp.cos(ps)-sp.sin(al)*sp.sin(al)*sp.cos(ps+2*ch))*sp.sin(be)
+    m_total[2,2,i] = -flux*sp.sin(2*al)*sp.cos(ps+ch)*sp.sin(be)+flux*(sp.cos(al)*sp.cos(al)*sp.cos(ps)-sp.sin(al)*sp.sin(al)*sp.cos(ps+2*ch))*sp.cos(be)
     m_total[2,3,i] = flux*(-sp.cos(al)*sp.cos(al)*sp.sin(ps)-sp.sin(al)*sp.sin(al)*sp.sin(ps+2*ch))
     m_total[3,0,i] = flux*2*ep*sp.sin(ps+ph)
-    m_total[3,1,i] = -flux*sp.sin(2*al)*sp.sin(ps+ch)
-    m_total[3,2,i] = flux*(sp.cos(al)*sp.cos(al)*sp.sin(ps)-sp.sin(al)*sp.sin(al)*sp.sin(ps+2*ch))
+    m_total[3,1,i] = -flux*sp.sin(2*al)*sp.sin(ps+ch)*sp.cos(be)-flux*(sp.cos(al)*sp.cos(al)*sp.sin(ps)-sp.sin(al)*sp.sin(al)*sp.sin(ps+2*ch))*sp.sin(be)
+    m_total[3,2,i] = -flux*sp.sin(2*al)*sp.sin(ps+ch)*sp.sin(be)+flux*(sp.cos(al)*sp.cos(al)*sp.sin(ps)-sp.sin(al)*sp.sin(al)*sp.sin(ps+2*ch))*sp.cos(be)
     m_total[3,3,i] = flux*(sp.cos(al)*sp.cos(al)*sp.cos(ps)+sp.sin(al)*sp.sin(al)*sp.cos(ps+2*ch))
     M_total = sp.mat(m_total[:,:,i])
 #   print M_total
-#    M_total = M_total.I
+    M_total = M_total.I
 #   M_astron = sp.mat(m_astron[:,:,i])
 #   M_total = M_astron*M_total
     m_tot[i,0] = mp[i,0]
@@ -73,9 +72,9 @@ for i in range(0,freq_limit):
     m_tot[i,15] = M_total[3,2]
     m_tot[i,16] = M_total[3,3]
         
-prefix = '18'
+prefix = '41'
 #path = '$GBT10B_OUT/mueller_params/'
-suffix = '_mueller_matrix_from_inverted_params.txt'
+suffix = '_mueller_matrix_from_params_Mastro.txt'
 filename = prefix+suffix
 np.savetxt(filename, m_tot[:,:], delimiter=' ')
 

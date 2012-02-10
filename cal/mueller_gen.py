@@ -1,5 +1,7 @@
 """
-Procedure to calculate the Mueller parameters for each frequency from on-off scans of a calibrator such as 3C286."""
+Procedure to calculate the Mueller parameters for each frequency from on-off scans of a calibrator such as 3C286.
+This is the original Mueller Parameter generation code. It does not include a flux calibration element and treats the Stokes terms Q,U as additional parameters. It requires at least 3 sets of onoff scans to work, because it has 8 independent parameters and there are only 3 equations per scan instead of 4. 
+"""
 import os
 
 from scipy.optimize import *

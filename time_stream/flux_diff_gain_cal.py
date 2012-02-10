@@ -1,4 +1,4 @@
-"""Module that performs polarization and flux calibration."""
+"""Module that performs flux and differential gain calibration. Needs to be run in XY basis"""
 
 import scipy as sp
 import numpy.ma as ma
@@ -20,7 +20,7 @@ class Calibrate(base_single.BaseSingle) :
     # thing.
     # prefix is a few letters that are added to all parameter names that are
     # read from a configuration file.
-    prefix = 'tc_'
+    prefix = 'fgc_'
     # These are the parameters that should be read from file.  These are in
     # addition to the ones defined at the top of base_single.py.
     params_init = {'mueler_file' : 'default_fname' }
@@ -32,18 +32,8 @@ class Calibrate(base_single.BaseSingle) :
         # Call the base_single init.
        	base_single.BaseSingle.__init__(self, parameter_file_or_dict,
                                         feedback)
-#        print self.params
-        # Read in the mueler matrix file. Moved to action
-#        i = self.file_ind
-#        file_middle = self.params['file_middles'][i]
-#        sess_num = file_middle.split('_')[0]
-#        sess_num = int(sess_num)
-#        print sess_num
-#        mueler_file_name = self.params['mueler_file']+str(sess_num)+'_mueller_matrix_from_params.txt'
-#        self.mueler
-#        mueler_file_name = self.params['mueler_file']+'87_mueller_matrix_from_params.txt'
-#        self.mueler = mueller(mueler_file_name)
-    
+
+   
     # This function tells BaseSingle what science to do.  Data is a
     # core.data_block.DataBlock object.  It holds all the data for a single
     # scan and a single IF.  BaseSingle knows how to loop over all of these.
@@ -51,10 +41,10 @@ class Calibrate(base_single.BaseSingle) :
     def action(self, Data) :
 #        Data.calc_freq()
 #        frequency = Data.freq/1000000
-#        pl.plot(frequency,Data.data[0,0,0,:],label='I-init')
+#        pl.plot(frequency,Data.data[0,0,0,:],label='XX-init')
 #        pl.plot(frequency,Data.data[0,1,0,:],label='Q-init')
 #        pl.plot(frequency,Data.data[0,2,0,:],label='U-init')
-#        pl.plot(frequency,Data.data[0,3,0,:],label='V-init')
+#        pl.plot(frequency,Data.data[0,3,0,:],label='YY-init')
 
         # Main Action
         i = self.file_ind
@@ -66,21 +56,21 @@ class Calibrate(base_single.BaseSingle) :
             sess_num = '0'+str(sess_num)
         project = file_middle.split('/')[0]
 #        print sess_num
-        mueler_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_mueller_matrix_from_inverted_params.txt'
-        self.mueler = mueller(mueler_file_name)
-        calibrate_pol(Data, self.mueler)
-       	Data.add_history('Flux calibrated and Corrected for polarization leakage.', 
-               	         ('Mueller matrix file: ' + self.params['mueler_file'],))
+        fg_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_diff_gain_calc.txt'
+        self.flux_diff = flux_dg(fg_file_name)
+        calibrate_pol(Data, self.flux_diff)
+       	Data.add_history('Flux calibrated and Corrected for differential gain leakage.', 
+               	         ('Flux and Diff Gain file: ' + self.params['mueler_file'],))
         
-#        pl.plot(frequency,Data.data[0,0,0,:],label='I-mod')
+#        pl.plot(frequency,Data.data[0,0,0,:],label='XX-mod')
 #        pl.plot(frequency,Data.data[0,1,0,:],label='Q-mod')
 #        pl.plot(frequency,Data.data[0,2,0,:],label='U-mod')
-#        pl.plot(frequency,Data.data[0,3,0,:],label='V-mod')
+#        pl.plot(frequency,Data.data[0,3,0,:],label='YY-mod')
 #        pl.legend()
 #        pl.ylim(-20,130)
 #        pl.xlabel("Frequency (MHz)")
 #        pl.ylabel("Sample Data")
-#        title0 = str(Data.field['SCAN'])+'_caloff_pol_params_Mastro_'
+#        title0 = str(Data.field['SCAN'])+'_caloff_flux_diff_gain_'
 #        pl.savefig(title0+'Comparison_Test_for_3C286.png')
 #        pl.clf()
 
@@ -92,41 +82,18 @@ class Calibrate(base_single.BaseSingle) :
 # bin where 0 is the lowest frequency bin and 7 is the highest, and the 
 # first and second indices represent the mueller matrix for each frquency bin. 
 
-def mueller(mueler_file_name) :
-    mp = np.loadtxt(mueler_file_name)
-#     print mp
-#This is a file with first index being freq, second index being matrix element:
-# 0 = Freq, 1 = mII, 2 = mIQ, ... 16 = mVV
+def flux_dg(fg_file_name) :
+    mp = np.loadtxt(fg_file_name)
+#This is a file with first index being freq, second index being XX_gain, third index being YY_gain
 
-# Generates Mueller Matrix for use
     freq_limit = len(mp[:,0])
-#     print freq_limit
-    m_total = sp.zeros((4,4,freq_limit),float)
-    for i in range(0,freq_limit):
-        m_total[0,0,i] = mp[i,1]
-        m_total[0,1,i] = mp[i,2]
-        m_total[0,2,i] = mp[i,3]
-        m_total[0,3,i] = mp[i,4]
-        m_total[1,0,i] = mp[i,5]
-        m_total[1,1,i] = mp[i,6]
-        m_total[1,2,i] = mp[i,7]
-        m_total[1,3,i] = mp[i,8]
-        m_total[2,0,i] = mp[i,9]
-        m_total[2,1,i] = mp[i,10]
-        m_total[2,2,i] = mp[i,11]
-        m_total[2,3,i] = mp[i,12]
-        m_total[3,0,i] = mp[i,13]
-        m_total[3,1,i] = mp[i,14]
-        m_total[3,2,i] = mp[i,15]
-        m_total[3,3,i] = mp[i,16]
-        M_total = sp.mat(m_total[:,:,i])
-#        M_total = M_total.I
-#        print M_total
-        for j in range(0,4):
-            for k in range(0,4):
-                m_total[j,k,i] = M_total[j,k]
 
+    m_total = sp.zeros((2,freq_limit),float)
+    for i in range(0,freq_limit):
+        m_total[0,i] = mp[i,1]
+        m_total[1,i] = mp[i,2]
     return m_total
+
 def calibrate_pol(Data, m_total) :
     """Subtracts a Map out of Data."""
         
@@ -152,9 +119,9 @@ def calibrate_pol(Data, m_total) :
     if not Data.dims[1] == 4 :
        	raise ce.DataError('Require 4 polarizations.')
     # We expect polarizations to be in order IQUV.
-    if (Data.field['CRVAL4'][0] != 1 or Data.field['CRVAL4'][1] != 2 or
-        Data.field['CRVAL4'][2] != 3 or Data.field['CRVAL4'][3] != 4) :
-       	raise ce.DataError('Expected the polarization basis to be IQUV.')
+    if (Data.field['CRVAL4'][0] != -5 or Data.field['CRVAL4'][1] != -7 or
+        Data.field['CRVAL4'][2] != -8 or Data.field['CRVAL4'][3] != -6) :
+       	raise ce.DataError('Expected the polarization basis to be XY.')
 
     # A useful function that might need:
     Data.calc_freq()
@@ -172,23 +139,27 @@ def calibrate_pol(Data, m_total) :
 
     #Generate a sky matrix for this time index:
         m_sky = sp.zeros((4,4))
-        m_sky[0,0] = 1
+        m_sky[0,0] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180))
+        m_sky[0,1] = ma.sin(2*Data.PA[time_index]*sp.pi/180)
+        m_sky[0,3] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180))
+        m_sky[1,0] = -0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180)
         m_sky[1,1] = ma.cos(2*Data.PA[time_index]*sp.pi/180)
-        m_sky[1,2] = ma.sin(2*Data.PA[time_index]*sp.pi/180)
-        m_sky[2,1] = -ma.sin(2*Data.PA[time_index]*sp.pi/180)
-        m_sky[2,2] = ma.cos(2*Data.PA[time_index]*sp.pi/180)
-        m_sky[3,3] = 1
+        m_sky[1,3] = 0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180)
+        m_sky[2,2] = 1
+        m_sky[3,0] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180))
+        m_sky[3,1] = -ma.sin(2*Data.PA[time_index]*sp.pi/180)
+        m_sky[3,3] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180))
 
         M_sky = sp.mat(m_sky)
         M_sky = M_sky.I
 #        print M_sky
 
         for cal_index in range(0,Data.dims[2]):
-        # Determines the Mueller Matrix to use   
+        # Determines the Gains to use   
             for freq in range(0,Data.dims[3]):
 
      # Tells which mueller matrix to use. 
-               freq_limit = len(m_total[0,0,:])
+               freq_limit = len(m_total[0,:])
                frequency = int(Data.freq[freq]/1000)
 #               print frequency
                bin = int((900000-frequency)*freq_limit/200000)
@@ -199,25 +170,18 @@ def calibrate_pol(Data, m_total) :
 #               elif freq_limit == 260:
 #                   bin = 929-frequency
 #               print bin
-    # Converts files into matrix format 
-               STOKES = Data.data[time_index,:,cal_index,freq]       
-#               print STOKES
-               MUELLER = sp.mat(m_total[:,:,bin])
-#               print MUELLER
-
+    # Converts files into vector format 
+               XY_params = Data.data[time_index,:,cal_index,freq]       
     # Next there is a matrix multiplication that will generate 
-    # a new set of stokes values.
-               stokesmod = np.dot(MUELLER,STOKES)
-               stokesmod = np.dot(M_sky,stokesmod)
+    # a new set of xy values.
+               XY_params[0] = XY_params[0]*m_total[0,bin]
+               XY_params[3] = XY_params[3]*m_total[1,bin]
+               XY_params = np.dot(M_sky,XY_params)
 
-    # The next two lines should replace the lines above if just want to do flux calibration (no polarization calibration)
-#               stokesmod = STOKES
-#               stokesmod[0]=stokesmod[0]*MUELLER[0,0]
-#               print stokesmod
-
+    # Note the correction is only applied to XX and YY, but all terms are rotated to sky coordinates (PA rotation)
 
                for i in range(0,Data.dims[1]):
-                    Data.data[time_index,i,cal_index,freq] = stokesmod[i]	
+                    Data.data[time_index,i,cal_index,freq] = XY_params[i]	
 
     # At this point the polarization values should be adjusted. 
 

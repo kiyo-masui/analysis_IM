@@ -857,8 +857,8 @@ def get_freq_svd_modes(corr, n) :
     Rvectors = []
     for ii in range(n) :
         ind, = sp.where(abs(s) == hs[-ii-1])
-        if len(ind) > 1 :
-            raise NotImplementedError('2 eigenvalues bitwise equal.')
+#        if len(ind) > 1 :
+#            raise NotImplementedError('2 eigenvalues bitwise equal.')
         Lvectors.append(U[:,ind[0]])
         Rvectors.append(V[:,ind[0]])
 

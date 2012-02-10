@@ -1,6 +1,8 @@
 """Procedure to calculate the Mueller parameters for each frequency from on-off scans of a calibrator such as 3C286.
-This version tried to use an unparameterized Mueller matrix to generate corrections. It has more independent parameters to be solved for (16), requiring more onoff scans (4 sets) to work, and was found to be less accurate in testing. 
-"""
+This version generates the Mueller parameters using the Inverse Mueller matrix (so that it can be used with unpolarized source data). It has 7 independent parameters (beta is in this version, but is not used in the parameterization). It requires at least 2 sets of onoff scans (with quite different parallactic angles) to work, but I recommend trying to have 3 or 4 onoff scans to get the most accurate results.
+Run in analysis_IM: python cal/total_cal_gen_params.py input/tcv/mueller_gen_guppi.ini
+Note that the .ini file should indicate which session(s) and sourse you want to use. Script is run using data from a single source. The output is saved in a file called mueller_params_calc.txt
+ """
 import os
 
 from scipy.optimize import *
@@ -40,23 +42,63 @@ class MuellerGen(object) :
         self.feedback = feedback
 
     def peval(self,p,f):
+        d = self.d
+        dG = p[0]
+        al = ((p[1]+180)%360-180)*sp.pi/180
+        ps = ((p[2]+180)%360-180)*sp.pi/180
+        ph = ((p[3]+180)%360-180)*sp.pi/180
+        ep = p[4]
+        ch = ((p[5]+180)%360-180)*sp.pi/180
+        flux = p[6] #This is a variable for accounting for the difference in flux.
+        be = ((p[7]+180)%360-180)*sp.pi/180
         theta = self.theta
         t = self.function
-        d = self.d
+        m_tot = sp.zeros((4,4),float)
+        m_tot[0,0] = flux
+        m_IQ = flux*(0.5*dG*sp.cos(2.*al)-2.*ep*sp.cos(ph-ch)*sp.sin(2.*al))
+        m_IU = flux*(0.5*dG*sp.sin(2.*al)*sp.cos(ch)+2*ep*(sp.cos(al)*sp.cos(al)*sp.cos(ph)-sp.sin(al)*sp.sin(al)*sp.cos(ph-2.*ch)))
+        m_tot[0,1] = m_IQ
+        m_tot[0,2] = m_IU
+        m_tot[0,3] = flux*(0.5*dG*sp.sin(2.*al)*sp.sin(ch)+2*ep*(sp.cos(al)*sp.cos(al)*sp.sin(ph)+sp.sin(al)*sp.sin(al)*sp.sin(ph-2.*ch)))
+        m_tot[1,0] = flux*0.5*dG
+        m_QQ = flux*sp.cos(2.*al)
+        m_QU = flux*sp.sin(2*al)*sp.cos(ch)
+        m_tot[1,1] = m_QQ
+        m_tot[1,2] = m_QU
+        m_tot[1,3] = flux*sp.sin(2.*al)*sp.sin(ch)
+        m_tot[2,0] = flux*2*ep*sp.cos(ph+ps)
+        m_UQ = -flux*sp.sin(2*al)*sp.cos(ps+ch)
+        m_UU = flux*(sp.cos(al)*sp.cos(al)*sp.cos(ps)-sp.sin(al)*sp.sin(al)*sp.cos(ps+2.*ch))
+        m_tot[2,1] = m_UQ
+        m_tot[2,2] = m_UU
+        m_tot[2,3] = flux*(-sp.cos(al)*sp.cos(al)*sp.sin(ps)-sp.sin(al)*sp.sin(al)*sp.sin(ps+2.*ch))
+        m_tot[3,0] = flux*2*ep*sp.sin(ps+ph)
+        m_VQ = -flux*sp.sin(2*al)*sp.sin(ps+ch)
+        m_VU = flux*(sp.sin(ps)*sp.cos(al)*sp.cos(al)-sp.sin(al)*sp.sin(al)*sp.sin(ps+2.*ch))
+        m_tot[3,1] = m_VQ
+        m_tot[3,2] = m_VU
+        m_tot[3,3] = flux*(sp.cos(al)*sp.cos(al)*sp.cos(ps)+sp.sin(al)*sp.sin(al)*sp.cos(ps+2.*ch))
+        M_total = sp.mat(m_tot)
+        M_total = M_total.I
+
         for i in range(0,len(t),4):
-            t[i] = p[0]*d[i,f]+p[1]*d[i+1,f]+p[2]*d[i+2,f]+p[3]*d[i+3,f]
-            t[i+1] =(p[4]*sp.cos(2*theta[i])-p[8]*sp.sin(2*theta[i]))*d[i,f]+(p[5]*sp.cos(2*theta[i])-p[9]*sp.sin(2*theta[i]))*d[i+1,f]+(p[6]*sp.cos(2*theta[i])-p[10]*sp.sin(2*theta[i]))*d[i+2,f]+(p[7]*sp.cos(2*theta[i])-p[11]*sp.sin(2*theta[i]))*d[i+3,f]
-            t[i+2] =(p[4]*sp.sin(2*theta[i])+p[8]*sp.cos(2*theta[i]))*d[i,f]+(p[5]*sp.sin(2*theta[i])+p[9]*sp.cos(2*theta[i]))*d[i+1,f]+(p[6]*sp.sin(2*theta[i])+p[10]*sp.cos(2*theta[i]))*d[i+2,f]+(p[7]*sp.sin(2*theta[i])+p[11]*sp.cos(2*theta[i]))*d[i+3,f]
-            t[i+3] =p[12]*d[i,f]+p[13]*d[i+1,f]+p[14]*d[i+2,f]+p[15]*d[i+3,f]
+            t[i] = M_total[0,0]*d[i,f]+M_total[0,1]*d[i+1,f]+M_total[0,2]*d[i+2,f]+M_total[0,3]*d[i+3,f]
+            t[i+1] =(M_total[1,0]*sp.cos(2*theta[i])-M_total[2,0]*sp.sin(2*theta[i]))*d[i,f]+(M_total[1,1]*sp.cos(2*theta[i])-M_total[2,1]*sp.sin(2*theta[i]))*d[i+1,f]+(M_total[1,2]*sp.cos(2*theta[i])-M_total[2,2]*sp.sin(2*theta[i]))*d[i+2,f]+(M_total[1,3]*sp.cos(2*theta[i])-M_total[2,3]*sp.sin(2*theta[i]))*d[i+3,f]
+            t[i+2] =(M_total[1,0]*sp.sin(2*theta[i])+M_total[2,0]*sp.cos(2*theta[i]))*d[i,f]+(M_total[1,1]*sp.sin(2*theta[i])+M_total[2,1]*sp.cos(2*theta[i]))*d[i+1,f]+(M_total[1,2]*sp.sin(2*theta[i])+M_total[2,2]*sp.cos(2*theta[i]))*d[i+2,f]+(M_total[1,3]*sp.sin(2*theta[i])+M_total[2,3]*sp.cos(2*theta[i]))*d[i+3,f]
+            t[i+3] =M_total[3,0]*d[i,f]+M_total[3,1]*d[i+1,f]+M_total[3,2]*d[i+2,f]+M_total[3,3]*d[i+3,f]
         return t 
 
     def residuals(self, p,errors, f,freq_val):
-#        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*2 #2 is the approx KpJy number
-        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*(2.28315426-0.000484307905*freq_val[f]) # Added linear fit for Jansky to Kelvin conversion.
-        PAsrc = 33.0*sp.pi/180.0
-        Psrc = 0.07 # The fraction is about 7% for 3C286 at high frequencies, but not as stable at our frequencies.  
-        Qsrc = Isrc*Psrc*sp.cos(2*PAsrc)
-        Usrc = Isrc*Psrc*sp.sin(2*PAsrc)
+#        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*2 
+#        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*(2.28315426-0.000484307905*freq_val[f]) # Added linear fit for Jansky to Kelvin conversion.
+#        Isrc = 19.74748409*pow((750.0/freq_val[f]),0.49899785)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C286
+        Isrc = 25.15445092*pow((750.0/freq_val[f]),0.75578842)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for  3C48
+#        Isrc = 4.56303633*pow((750.0/freq_val[f]),0.59237327)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C67
+        PAsrc = 33.0*sp.pi/180.0 # for 3C286, doesn't matter for unpolarized. 
+#        Psrc = 0.07 #for 3C286 
+        Psrc = 0 #for #3C48,3C67 
+        Qsrc = Isrc*Psrc*sp.cos(2*PAsrc) 
+        Usrc = Isrc*Psrc*sp.sin(2*PAsrc) 
         Vsrc = 0
         source = sp.zeros(4*self.file_num)
         for i in range(0,len(source),4):
@@ -88,7 +130,7 @@ class MuellerGen(object) :
             Reader = core.fitsGBT.Reader(input_fname)
             n_scans = len(Reader.scan_set)
             Len_set = Reader.read(0,0,force_tuple=True)
-            session_nums[c] = file_middle.split('_')[0]
+#            session_nums[c] = file_middle.split('_')[0]
 #            print session_nums[c]
             for Data in Len_set :
                 freq_num = Data.dims[3] # Setting the frequency binning to match whatever it's been set to. 
@@ -235,12 +277,12 @@ class MuellerGen(object) :
                 if self.d[a,b] > 1000 :
                    self.d[a,b] = 1000
 
-        #The seven parameters are in order deltaG[0], alpha[1], psi[2], phi[3], epsilon[4], Qsrc[5], Usrc[6] chi[7] => the parameter vector is p
-        p0 = [1.0, 0.1, 0.1, 0.1, 0.1, 1.0, 0.1, 0.1, 0.1, 0.1, 1.0, 0.1, 0.1, 0.1, 0.1, 1.0] # guessed preliminary values
+        #The seven parameters are in order deltaG[0], alpha[1], psi[2], phi[3], epsilon[4], chi[5], flux[6]=> the parameter vector is p
+        p0 = [0.3,90.0,170.0,10.0,0.016,0.00,2.0,0.0] # guessed preliminary values
         error = sp.ones(4*self.file_num)
         #Note that error can be used to weight the equations if not all set to one.
 
-        p_val_out = sp.zeros((freq_len, 17))
+        p_val_out = sp.zeros((freq_len, 9))
  #       p_err_out = sp.zeros((freq_len, 17))
      
         for f in range(0,freq_len):   
@@ -248,31 +290,29 @@ class MuellerGen(object) :
             pval = plsq[0] # this is the 1-d array of results
 #            perr = plsq[1] # this is a 2d array representing the estimated covariance of the results. - Not working properly. 
 
-            Mueller = sp.mat([[pval[0],pval[1],pval[2],pval[3]],[pval[4],pval[5],pval[6],pval[7]],[pval[8],pval[9],pval[10],pval[11]],[pval[12],pval[13],pval[14],pval[15]]])
+#            Mueller = sp.mat([[pval[0],pval[1],pval[2],pval[3]],[pval[4],pval[5],pval[6],pval[7]],[pval[8],pval[9],pval[10],pval[11]],[pval[12],pval[13],pval[14],pval[15]]])
 #            Mueller = Mueller.I  
 #            print Mueller
+            pval[1]=(pval[1]+180)%360-180
+            pval[2]=(pval[2]+180)%360-180
+            pval[3]=(pval[3]+180)%360-180
+            pval[5]=(pval[5]+180)%360-180
+#            pval[7]=(pval[7]+180)%360-180
 
             p_val_out[f,0] = freq_val[f]
-            p_val_out[f,1] = Mueller[0,0]
-            p_val_out[f,2] = Mueller[0,1]
-            p_val_out[f,3] = Mueller[0,2]
-            p_val_out[f,4] = Mueller[0,3]
-            p_val_out[f,5] = Mueller[1,0]
-            p_val_out[f,6] = Mueller[1,1]
-            p_val_out[f,7] = Mueller[1,2]
-            p_val_out[f,8] = Mueller[1,3]
-            p_val_out[f,9] = Mueller[2,0]
-            p_val_out[f,10] = Mueller[2,1]
-            p_val_out[f,11] = Mueller[2,2]
-            p_val_out[f,12] = Mueller[2,3]
-            p_val_out[f,13] = Mueller[3,0]
-            p_val_out[f,14] = Mueller[3,1]
-            p_val_out[f,15] = Mueller[3,2]
-            p_val_out[f,16] = Mueller[3,3]
+            p_val_out[f,1] = pval[0]
+            p_val_out[f,2] = pval[1]
+            p_val_out[f,3] = pval[2]
+            p_val_out[f,4] = pval[3]
+            p_val_out[f,5] = pval[4]
+            p_val_out[f,6] = pval[5]
+            p_val_out[f,7] = pval[6]
+#            p_val_out[f,8] = pval[7]
 
-        sess_num = int(session_nums[0])
-        print sess_num
-        np.savetxt(output_root+str(sess_num)+'_flux_mueller_matrix_calc'+output_end, p_val_out, delimiter = ' ')
+#        sess_num = int(session_nums[0])
+#        print sess_num
+#        np.savetxt(output_root+str(sess_num)+'_flux_mueller_matrix_calc'+output_end, p_val_out, delimiter = ' ')
+        np.savetxt('mueller_params_calc.txt',p_val_out,delimiter = ' ')
 #        np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')
 
 #If this file is run from the command line, execute the main function.

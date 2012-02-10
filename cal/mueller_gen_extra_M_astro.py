@@ -1,7 +1,6 @@
 """
-Procedure to calculate the Mueller parameters for each frequency from on-off scans of a calibrator such as 3C286. 
-This version uses the parameterized Mueller Matrix, including flux, and has 7 independent parameters. This requires at least 2 sets of onoff scans with significantly different parallactic angles to solve. 
-"""
+Procedure to calculate the Mueller parameters for each frequency from on-off scans of a calibrator such as 3C286.
+This version uses the Mueller Matrix in parametric form, including an extra matrix that adds the beta terms in the parameterization. Given that it solves for 8 variables it needs at least 2 significantly different parallactic angles (or 2 separate sets of onoff scans), but better with more."""
 import os
 
 from scipy.optimize import *
@@ -25,6 +24,7 @@ params_init = {
                # Select data to process.
                "scans" : (),
                "IFs" : (),
+B
                "Guppi_test" : False,
                }
 prefix = 'tc_'
@@ -50,8 +50,9 @@ class MuellerGen(object) :
 #        Q = p[5]
 #        U = p[6]
 #       ch = 0
-        ch = ((p[5]+45)%180-45)*sp.pi/180
+        ch = ((p[5]+180)%360-180)*sp.pi/180
         flux = p[6] #This is a variable for accounting for the difference in flux.
+        be = ((p[7]+180)%360-180)*sp.pi/180
 #        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*2
         Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*(2.28315426-0.000484307905*freq_val[f]) # Added linear fit for Jansky to Kelvin conversion.
         PAsrc = 33.0*sp.pi/180.0
@@ -60,11 +61,24 @@ class MuellerGen(object) :
         Usrc = Isrc*Psrc*sp.sin(2*PAsrc)
         theta = self.theta
         t = self.function
+        mIQ = 0.5*dG*sp.cos(2.*al)-2.*ep*sp.cos(ph-ch)*sp.sin(2.*al)
+        mIU = 0.5*dG*sp.sin(2.*al)*sp.cos(ch)+2*ep*(sp.cos(al)*sp.cos(al)*sp.cos(ph)-sp.sin(al)*sp.sin(al)*sp.cos(ph-2.*ch))
+        mQQ = sp.cos(2.*al)
+        mQU = sp.sin(2*al)*sp.cos(ch)
+        mUQ = -sp.sin(2*al)*sp.cos(ps+ch)
+        mUU = sp.cos(al)*sp.cos(al)*sp.cos(ps)-sp.sin(al)*sp.sin(al)*sp.cos(ps+2*ch)
+        mVQ = -sp.sin(2*al)*sp.sin(ps+ch)
+        mVU = sp.sin(ps)*sp.cos(al)*sp.cos(al)-sp.sin(al)*sp.sin(al)*sp.sin(ps+2*ch)
+
         for i in range(0,len(t),4):
-            t[i] = flux*(1*Isrc+Qsrc*((0.5*dG*sp.cos(2.*al)-2.*ep*sp.cos(ph-ch)*sp.sin(2.*al))*sp.cos(2.*theta[i])-(0.5*dG*sp.sin(2.*al)*sp.cos(ch)+2*ep*(sp.cos(al)*sp.cos(al)*sp.cos(ph)-sp.sin(al)*sp.sin(al)*sp.cos(ph-2.*ch)))*sp.sin(2.*theta[i]))+Usrc*((0.5*dG*sp.cos(2.*al)-2.*ep*sp.sin(2.*al)*sp.cos(ph-ch))*sp.sin(2.*theta[i])+((0.5*dG*sp.sin(2.*al)*sp.cos(ch)+2*ep*(sp.cos(al)*sp.cos(al)*sp.cos(ph)-sp.sin(al)*sp.sin(al)*sp.cos(ph-2.*ch)))*sp.cos(2.*theta[i]))))
-            t[i+1] =flux*( 0.5*dG*Isrc + Qsrc*(sp.cos(2.*al)*sp.cos(2.*theta[i])-sp.sin(2*al)*sp.cos(ch)*sp.sin(2*theta[i]))+Usrc*(sp.cos(2*al)*sp.cos(2*theta[i])+sp.sin(2*al)*sp.cos(ch)*sp.sin(2*theta[i])))
-            t[i+2] = flux*(2*ep*sp.cos(ps+ph)*Isrc+Qsrc*(-sp.sin(2*al)*sp.cos(ps+ch)*sp.cos(2.*theta[i])-(sp.cos(al)*sp.cos(al)*sp.cos(ps)-sp.sin(al)*sp.sin(al)*sp.cos(ps+2*ch))*sp.sin(2*theta[i]))+Usrc*(-sp.sin(2*al)*sp.cos(ps+ch)*sp.cos(2*theta[i])+(sp.cos(al)*sp.cos(al)*sp.cos(ps)-sp.sin(al)*sp.sin(al)*sp.cos(ps+2*ch))*sp.sin(2*theta[i])))
-            t[i+3] = flux*(2*ep*sp.sin(ps+ph)*Isrc+Qsrc*(-sp.sin(2*al)*sp.sin(ps+ch)*sp.cos(2*theta[i])-(sp.sin(ps)*sp.cos(al)*sp.cos(al)-sp.sin(al)*sp.sin(al)*sp.sin(ps+2*ch))*sp.sin(2*theta[i]))+Usrc*(-sp.sin(2*al)*sp.sin(ps+ch)*sp.cos(2*theta[i])+(sp.sin(ps)*sp.cos(al)*sp.cos(al)-sp.sin(al)*sp.sin(al)*sp.sin(ps+2*ch))*sp.sin(2*theta[i])))
+#            t[i] = flux*(1*Isrc+Qsrc*(mIQ*sp.cos(2.*theta[i])-mIU*sp.sin(2.*theta[i]))+Usrc*(mIQ*sp.sin(2.*theta[i])+mIU*sp.cos(2.*theta[i])))            
+            t[i] = flux*(1*Isrc+Qsrc*((mIQ*sp.cos(be)-mIU*sp.sin(be))*sp.cos(2.*theta[i])-(mIQ*sp.sin(be)+mIU*sp.cos(be))*sp.sin(2.*theta[i]))+Usrc*((mIQ*sp.cos(be)-mIU*sp.sin(be))*sp.sin(2.*theta[i])+(mIQ*sp.sin(be)+mIU*sp.cos(be))*sp.cos(2.*theta[i])))            
+#            t[i+1] =flux*( 0.5*dG*Isrc + Qsrc*(mQQ*sp.cos(2.*theta[i])-mQU*sp.sin(2*theta[i]))+Usrc*(mQU*sp.cos(2*theta[i])+mQQ*sp.sin(2*theta[i])))
+            t[i+1] =flux*(0.5*dG*Isrc+Qsrc*((mQQ*sp.cos(be)-mQU*sp.sin(be))*sp.cos(2.*theta[i])-(mQQ*sp.sin(be)+mQU*sp.cos(be))*sp.sin(2.*theta[i]))+Usrc*((mQQ*sp.cos(be)-mQU*sp.sin(be))*sp.sin(2.*theta[i])+(mQQ*sp.sin(be)+mQU*sp.cos(be))*sp.cos(2.*theta[i])))
+#            t[i+2] = flux*(2*ep*sp.cos(ps+ph)*Isrc+Qsrc*(mUQ*sp.cos(2.*theta[i])-mUU*sp.sin(2*theta[i]))+Usrc*(mUU*sp.cos(2*theta[i])+mUQ*sp.sin(2*theta[i])))
+            t[i+2] = flux*(2*ep*sp.cos(ps+ph)*Isrc+Qsrc*((mUQ*sp.cos(be)-mUU*sp.sin(be))*sp.cos(2.*theta[i])-(mUQ*sp.sin(be)+mUU*sp.cos(be))*sp.sin(2.*theta[i]))+Usrc*((mUQ*sp.cos(be)-mUU*sp.sin(be))*sp.sin(2.*theta[i])+(mUQ*sp.sin(be)+mUU*sp.cos(be))*sp.cos(2.*theta[i])))
+#            t[i+3] = flux*(2*ep*sp.sin(ps+ph)*Isrc+Qsrc*(mVQ*sp.cos(2*theta[i])-mVU*sp.sin(2*theta[i]))+Usrc*(mVU*sp.cos(2*theta[i])+mVQ*sp.sin(2*theta[i])))
+            t[i+3] = flux*(2*ep*sp.sin(ps+ph)*Isrc+Qsrc*((mVQ*sp.cos(be)-mVU*sp.sin(be))*sp.cos(2.*theta[i])-(mVQ*sp.sin(be)+mVU*sp.cos(be))*sp.sin(2.*theta[i]))+Usrc*((mVQ*sp.cos(be)-mVU*sp.sin(be))*sp.sin(2.*theta[i])+(mVQ*sp.sin(be)+mVU*sp.cos(be))*sp.cos(2.*theta[i])))
         return t 
 
     def residuals(self, p, d, errors, f,freq_val):
@@ -233,11 +247,11 @@ class MuellerGen(object) :
 
 #        d[k,:] = sp.tan(2*33*sp.pi/180) # the 33 degrees here  is specific to 3C286, takes a different value for different calibrators
         #The seven parameters are in order deltaG[0], alpha[1], psi[2], phi[3], epsilon[4], Qsrc[5], Usrc[6] chi[7] => the parameter vector is p
-        p0 = [0.3, 90.0, 170.0, 10.0, 0.016, 0.0, 2.0] # preliminary values based on guesses and heiles generation.
+        p0 = [0.3, 90.0, 170.0, 10.0, 0.016, 0.0, 2.0, 0.0] # preliminary values based on guesses and heiles generation.
         error = sp.ones(4*self.file_num)
         #Note that error can be used to weight the equations if not all set to one.
 
-        p_val_out = sp.zeros((freq_len, 8))
+        p_val_out = sp.zeros((freq_len, 9))
 #        p_err_out = sp.zeros((freq_len, 7))
      
         for f in range(0,freq_len):   
@@ -250,6 +264,7 @@ class MuellerGen(object) :
             pval[2]=(pval[2]+180)%360-180
             pval[3]=(pval[3]+180)%360-180
             pval[5]=(pval[5]+180)%360-180
+            pval[7]=(pval[7]+180)%360-180
 
             p_val_out[f,0] = freq_val[f]
             p_val_out[f,1] = pval[0]
@@ -259,7 +274,7 @@ class MuellerGen(object) :
             p_val_out[f,5] = pval[4]
             p_val_out[f,6] = pval[5]
             p_val_out[f,7] = pval[6]
-#            p_val_out[f,8] = pval[7]
+            p_val_out[f,8] = pval[7]
 
 # Gets error values, note that this doesn't work if set chi to zero. 
 #            p_err_out[f,0] = freq_val[f]
