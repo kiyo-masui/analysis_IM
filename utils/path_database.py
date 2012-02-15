@@ -268,10 +268,10 @@ for fielditem in field_list:
     dbcl.register_path(key, pathname, desc, notes=notes)
 
 for fielditem in field_list:
-    pathname = '%s/GBT/cleaned_maps/%s_optimalmap737/' % \
+    pathname = '%s/GBT/cleaned_maps/%s_optimalmap/' % \
                 (dbcl.fetch_path('GBTDATA_ESWITZER'), fielditem)
     notes = 'active development stream'
-    key = 'GBT_cleaned_optimalmap737_%s_maps_Eric' % fielditem
+    key = 'GBT_cleaned_optimalmap_%s_maps_Eric' % fielditem
     desc = 'ERS cleaned %s maps degrading convolution' % fielditem
     dbcl.register_path(key, pathname, desc, notes=notes)
 
@@ -433,7 +433,7 @@ for fieldname in field_list:
     status = 'active development'
     for mode_num in range(0, 55, 5):
         mode_clean_run(source_key, fieldname, mode_num, 'Eric',
-                       status=status, notes=notes, sim=False, alt="optimalmap737_")
+                       status=status, notes=notes, sim=False, alt="optimalmap_")
 
 # sims
 for fieldname in field_list:
@@ -568,7 +568,7 @@ for fielditem in field_list:
         register_moderemoved_run(fielditem, modenum, sim=False,
                                  alt="expt_")
         register_moderemoved_run(fielditem, modenum, sim=False,
-                                 alt="optimalmap737_")
+                                 alt="optimalmap_")
         # sims
         register_moderemoved_run(fielditem, modenum, sim=True)
         register_moderemoved_run(fielditem, modenum, sim=True,

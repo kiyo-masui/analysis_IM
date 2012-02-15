@@ -261,7 +261,7 @@ class PathForms(object):
 
         sections = ['A', 'B', 'C', 'D']
         suffixes = ['clean_map_I', 'noise_diag_I', 'noise_inv_diag_I']
-        suffixdesc = ['clean_map', 'noise_diag', 'noise_inv_diag']
+        suffixdesc = ['clean_map', 'noise_diag', 'noise_inv']
 
         filelist = {}
         listindex = []
