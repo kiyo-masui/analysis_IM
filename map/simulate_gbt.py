@@ -11,6 +11,8 @@ from utils import data_paths
 import sys
 from numpy import random
 import struct
+from kiyopy import parse_ini
+import kiyopy.utils
 
 
 # TODO: confirm ra=x, dec=y (thetax = 5, thetay = 3 in 15hr)
@@ -26,20 +28,20 @@ def realize_simulation(template_map, scenario=None, seed=None, refinement=2):
     if seed is not None:
         random.seed(seed)
 
-    if scenario is None:
-        print "running standard simulation"
+    if scenario == "nostr":
+        print "running dd+vv and no streaming case"
         simobj = corr21cm.Corr21cm.like_kiyo_map(template_map)
         maps = simobj.get_kiyo_field_physical(refinement=refinement)
 
     else:
-        if scenario == "streaming":
-            print "running streaming simulation"
+        if scenario == "str":
+            print "running dd+vv and streaming simulation"
             simobj = corr21cm.Corr21cm.like_kiyo_map(template_map,
                                                      sigma_v=300.*0.72)
             maps = simobj.get_kiyo_field_physical(refinement=refinement)
 
         if scenario == "ideal":
-            print "running ideal simulation"
+            print "running dd-only and no mean simulation"
             simobj = corr21cm.Corr21cm.like_kiyo_map(template_map)
             maps = simobj.get_kiyo_field_physical(refinement=refinement,
                                 density_only=True,
@@ -127,96 +129,184 @@ def wrap_sim(runitem):
                         outfile_beam_plus_data, scenario=scenario)
 
 
-def test_scheme(template_file, sim_filename1, sim_filename2):
-    r"""look at some differences between maps"""
-    template_map = algebra.make_vect(algebra.load(template_file))
-    gbtsim1 = realize_simulation(template_map, scenario='streaming',
-                                seed=5489, refinement=1.)
-    gbtsim2 = realize_simulation(template_map,
-                                    seed=5489, refinement=1.)
+def generate_delta_sim(input_file, output_file):
+    r"""make the map with the temperature divided out (delta)"""
+    print "reading %s -> %s (dividing by T_b(z))" % (input_file, output_file)
 
-    sim_map1 = algebra.make_vect(gbtsim1, axis_names=('freq', 'ra', 'dec'))
-    sim_map2 = algebra.make_vect(gbtsim2, axis_names=('freq', 'ra', 'dec'))
-    sim_map1.copy_axis_info(template_map)
-    sim_map2.copy_axis_info(template_map)
-    algebra.save(sim_filename1, sim_map1)
-    algebra.save(sim_filename2, sim_map2)
+    simmap = algebra.make_vect(algebra.load(input_file))
+    freq_axis = simmap.get_axis('freq') / 1.e6
+    z_axis = units.nu21 / freq_axis - 1.0
 
-def generate_sim(template_key, output_physical_key, output_key,
-                 output_beam_key, output_beam_plus_data_key,
-                 scenario=None, parallel=True):
+    simobj = corr21cm.Corr21cm()
+    T_b = simobj.T_b(z_axis)*1e-3
+
+    simmap /= T_b[:, np.newaxis, np.newaxis]
+
+    print "saving to" + output_file
+    algebra.save(output_file, simmap)
+
+
+def generate_proc_sim(input_file, weightfile, output_file,
+                      meansub=False, degrade=False):
+    r"""make the maps with various combinations of beam conv/meansub"""
+    print "%s -> %s (beam, etc.)" % (input_file, output_file)
+    simmap = algebra.make_vect(algebra.load(input_file))
+
+    if degrade:
+        print "performing common resolution convolution"
+        beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792,
+                 0.281176247549, 0.270856788455, 0.26745856078,
+                 0.258910010848, 0.249188429031])
+        freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
+                             dtype=float)
+        freq_data *= 1.0e6
+        beam_diff = sp.sqrt(max(1.1 * beam_data) ** 2 - (beam_data) ** 2)
+        common_resolution = beam.GaussianBeam(beam_diff, freq_data)
+        # Convolve to a common resolution.
+        simmap = common_resolution.apply(simmap)
+
+    if meansub:
+        print "performing mean subtraction"
+        noise_inv = algebra.make_vect(algebra.load(weightfile))
+        means = sp.sum(sp.sum(noise_inv * simmap, -1), -1)
+        means /= sp.sum(sp.sum(noise_inv, -1), -1)
+        means.shape += (1, 1)
+        simmap -= means
+        # the weights will be zero in some places
+        simmap[noise_inv < 1.e-20] = 0.
+
+    # extra sanity?
+    simmap[np.isinf(simmap)] = 0.
+    simmap[np.isnan(simmap)] = 0.
+
+    print "saving to" + output_file
+    algebra.save(output_file, simmap)
+
+
+def generate_sim(params, parallel=True, silent=True, datapath_db=None):
     """generate simulations
     here, assuming the sec A of the set is the template map
     """
 
-    datapath_db = data_paths.DataPath()
-    template_mapname = datapath_db.fetch(template_key, pick='A;clean_map',
-                                         purpose="template for sim. output",
-                                         intend_read=True)
+    if datapath_db is None:
+        datapath_db = data_paths.DataPath()
 
-    physlist = datapath_db.fetch(output_physical_key, intend_write=True,
-                                purpose="output sim+", silent=True)
+    template_mapname = datapath_db.fetch_multi(params['template_key'])
 
-    rawlist = datapath_db.fetch(output_key, intend_write=True,
-                                purpose="output sim+", silent=True)
+    physlist = datapath_db.fetch(params['sim_physical_key'],
+                                 intend_write=True,
+                                 purpose="output sim+",
+                                 silent=silent)
 
-    beamlist = datapath_db.fetch(output_beam_key, intend_write=True,
-                                purpose="output sim+beam", silent=True)
+    rawlist = datapath_db.fetch(params['sim_key'],
+                                intend_write=True,
+                                purpose="output sim+",
+                                silent=silent)
 
-    bpdlist = datapath_db.fetch(output_beam_plus_data_key, intend_write=True,
-                                purpose="output sim+beam+data", silent=True)
+    beamlist = datapath_db.fetch(params['sim_beam_key'],
+                                 intend_write=True,
+                                 purpose="output sim+beam",
+                                 silent=silent)
 
+    bpdlist = datapath_db.fetch(params['sim_beam_plus_data_key'],
+                                intend_write=True,
+                                purpose="output sim+beam+data",
+                                silent=silent)
+
+    fglist = datapath_db.fetch(params['sim_beam_plus_fg_key'],
+                                intend_write=True,
+                                purpose="output sim+beam+fg",
+                                silent=silent)
+
+    # TODO: add fg to simulations
     runlist = [(template_mapname, physlist[1][index], rawlist[1][index],
-                beamlist[1][index], bpdlist[1][index], scenario)
+                beamlist[1][index], bpdlist[1][index],
+                params['pwrspec_scenario'])
                 for index in rawlist[0]]
 
     #sys.exit()
-    if parallel:
-        pool = multiprocessing.Pool(processes=multiprocessing.cpu_count()-4)
-        pool.map(wrap_sim, runlist)
-    else:
-        for runitem in runlist:
-            wrap_sim(runitem)
+    #if parallel:
+    #    pool = multiprocessing.Pool(processes=multiprocessing.cpu_count()-4)
+    #    pool.map(wrap_sim, runlist)
+    #else:
+    #    for runitem in runlist:
+    #        wrap_sim(runitem)
 
 
-def generate_simset(fieldname, scenario=None):
-    template_key = 'GBT_%s_map' % fieldname
+def generate_aux_simset(params, silent=False, datapath_db=None):
 
-    if scenario is None:
-        tag= "sim"
-    else:
-        if scenario == "streaming":
-            tag = "simvel"
+    if datapath_db is None:
+        datapath_db = data_paths.DataPath()
 
-        if scenario == "ideal":
-            tag = "simideal"
+    weightfile = datapath_db.fetch_multi(params['weight_key'],
+                                         silent=silent)
 
-    output_physical_key = '%s_%s_physical' % (tag, fieldname)
-    output_key = '%s_%s' % (tag, fieldname)
-    output_beam_key = '%s_%s_beam' % (tag, fieldname)
-    output_beam_plus_data_key = '%s_%s_beam_plus_data' % (tag, fieldname)
+    input_rawsimset = datapath_db.fetch(params['sim_key'],
+                                        intend_read=True, silent=silent)
 
-    generate_sim(template_key, output_physical_key, output_key,
-                 output_beam_key, output_beam_plus_data_key,
-                 scenario=scenario, parallel=True)
+    output_deltasimset = datapath_db.fetch(params['sim_delta_key'],
+                                           intend_write=True, silent=silent)
+
+    input_beamsimset = datapath_db.fetch(params['sim_beam_key'],
+                                         intend_read=True, silent=silent)
+
+    output_meansubsimset = datapath_db.fetch(params['sim_beam_meansub_key'],
+                                         intend_write=True, silent=silent)
+
+    output_convsimset = datapath_db.fetch(params['sim_beam_conv_key'],
+                                         intend_write=True, silent=silent)
+
+    output_meansubconvsimset = datapath_db.fetch(
+                                         params['sim_beam_meanconv_key'],
+                                         intend_write=True, silent=silent)
+
+    #for index in input_rawsimset[0]:
+    #    generate_delta_sim(input_rawsimset[1][index],
+    #                       output_deltasimset[1][index])
+
+    #    generate_proc_sim(input_beamsimset[1][index], weightfile,
+    #                      output_meansubsimset[1][index],
+    #                      meansub=True, degrade=False)
+
+    #    generate_proc_sim(input_beamsimset[1][index], weightfile,
+    #                      output_convsimset[1][index],
+    #                      meansub=False, degrade=True)
+
+    #    generate_proc_sim(input_beamsimset[1][index], weightfile,
+    #                      output_meansubconvsimset[1][index],
+    #                      meansub=True, degrade=True)
 
 
-def generate_full_simset(fieldlist):
-    for fieldname in fieldlist:
-        generate_simset(fieldname, scenario="ideal")
-        generate_simset(fieldname)
-        generate_simset(fieldname, scenario="streaming")
-
-
-def run_scheme_test():
-    template_file = "/mnt/raid-project/gmrt/tcv/maps/sec_A_15hr_41-90_clean_map_I.npy"
-    sim_filename1 = "sim_streaming1.npy"
-    sim_filename2 = "sim_streaming2.npy"
-    test_scheme(template_file, sim_filename1, sim_filename2)
-
+# cases: [15hr, 22hr, 1hr], [ideal, nostr, str]
+params_init = {
+               'output_root': '',
+               'sim_physical_key': '',
+               'sim_key': '',
+               'sim_beam_key': '',
+               'sim_beam_plus_fg_key': '',
+               'sim_beam_plus_data_key': '',
+               'sim_delta_key': '',
+               'sim_beam_meansub_key': '',
+               'sim_beam_conv_key': '',
+               'sim_beam_meansubconv_key': '',
+               'template_key': '',
+               'weight_key': '',
+               'pwrspec_scenario': '',
+               'omega_HI': ''
+               }
+prefix = 'sg_'
 
 if __name__ == '__main__':
-    generate_full_simset(['15hr', '22hr', '1hr'])
-    #generate_full_simset(['15hr', '22hr'])
-    #generate_full_simset(['15hr'])
-    #run_scheme_test()
+    params = parse_ini.parse(str(sys.argv[1]), params_init,
+                             prefix=prefix)
+    print params
+
+    datapath_db = data_paths.DataPath()
+    output_root = datapath_db.fetch(params['output_root'])
+
+    kiyopy.utils.mkparents(output_root)
+    parse_ini.write_params(params, output_root + 'params.ini',
+                           prefix=prefix)
+
+    generate_sim(params, parallel=True, datapath_db=datapath_db)
+    generate_aux_simset(params, datapath_db=datapath_db)

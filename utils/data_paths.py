@@ -195,12 +195,12 @@ class DataPath(object):
     DataPath: ... files registered; database size in memory ...
 
     # pick index '44' of the 15hr sims
-    >>> datapath_db.fetch("sim_15hr_beam", pick='44')
+    >>> datapath_db.fetch("sim_15hr_oldmap_ideal", pick='44')
     (sim_15hr_beam) => .../simulations/15hr/sim_beam_044.npy: ...
     '.../simulations/15hr/sim_beam_044.npy'
 
     # get the 15hr sim path
-    >>> datapath_db.fetch("sim_15hr_path")
+    >>> datapath_db.fetch("sim_15hr_oldmap_ideal_path")
     (sim_15hr_path) => .../simulations/15hr/: ...
     '.../simulations/15hr/'
 
@@ -387,6 +387,11 @@ class DataPath(object):
             if dbkey not in keylist_in_groups:
                 print "ERROR: " + dbkey + " is not in the group list"
                 sys.exit()
+
+    def print_db_item_desc(self, dbkey):
+        r"""print just the key: desc as a short summary"""
+        dbentry = self._pathdict[dbkey]
+        return "* `%s`: %s\n" % (dbkey, dbentry['desc'])
 
     def print_db_item(self, dbkey, suppress_lists=90, silent=False):
         r"""print a database entry to markdown format
@@ -651,8 +656,13 @@ class DataPath(object):
             groupobj = open(groupfile, "w")
 
             print "%s\n%s\n" % (groupname, "-" * len(groupname))
-            groupobj.write("****\n %s\n%s\n\n" % \
-                          (groupname, "-" * len(groupname)))
+            groupobj.write("## %s ##\n\n" % groupname)
+
+            for dbkey in self._groups[groupname]:
+                dbdesc = self.print_db_item_desc(dbkey)
+                groupobj.write(dbdesc)
+
+            groupobj.write("\n---------\n\n")
 
             for dbkey in self._groups[groupname]:
                 dbstring = self.print_db_item(dbkey,
