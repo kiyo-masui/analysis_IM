@@ -1,5 +1,6 @@
 """Make simulated signal realizations in the GBT survey volume"""
 import scipy as sp
+import numpy as np
 from simulations import corr21cm
 #from simulations import foregroundsck
 #from simulations import pointsource
@@ -13,6 +14,7 @@ from numpy import random
 import struct
 from kiyopy import parse_ini
 import kiyopy.utils
+from utils import units
 
 
 # TODO: confirm ra=x, dec=y (thetax = 5, thetay = 3 in 15hr)
@@ -191,16 +193,19 @@ def generate_sim(params, parallel=True, silent=True, datapath_db=None):
     if datapath_db is None:
         datapath_db = data_paths.DataPath()
 
-    template_mapname = datapath_db.fetch_multi(params['template_key'])
+    template_mapname = datapath_db.fetch(params['template_key'],
+                                         intend_read=True,
+                                         purpose="template_map",
+                                         silent=silent)
 
     physlist = datapath_db.fetch(params['sim_physical_key'],
                                  intend_write=True,
-                                 purpose="output sim+",
+                                 purpose="output sim (physical)",
                                  silent=silent)
 
     rawlist = datapath_db.fetch(params['sim_key'],
                                 intend_write=True,
-                                purpose="output sim+",
+                                purpose="output sim",
                                 silent=silent)
 
     beamlist = datapath_db.fetch(params['sim_beam_key'],
@@ -224,13 +229,14 @@ def generate_sim(params, parallel=True, silent=True, datapath_db=None):
                 params['pwrspec_scenario'])
                 for index in rawlist[0]]
 
+    print runlist
     #sys.exit()
-    #if parallel:
-    #    pool = multiprocessing.Pool(processes=multiprocessing.cpu_count()-4)
-    #    pool.map(wrap_sim, runlist)
-    #else:
-    #    for runitem in runlist:
-    #        wrap_sim(runitem)
+    if parallel:
+        pool = multiprocessing.Pool(processes=multiprocessing.cpu_count()-4)
+        pool.map(wrap_sim, runlist)
+    else:
+        for runitem in runlist:
+            wrap_sim(runitem)
 
 
 def generate_aux_simset(params, silent=False, datapath_db=None):
@@ -238,7 +244,9 @@ def generate_aux_simset(params, silent=False, datapath_db=None):
     if datapath_db is None:
         datapath_db = data_paths.DataPath()
 
-    weightfile = datapath_db.fetch_multi(params['weight_key'],
+    weightfile = datapath_db.fetch(params['weight_key'],
+                                         intend_read=True,
+                                         purpose="weight map",
                                          silent=silent)
 
     input_rawsimset = datapath_db.fetch(params['sim_key'],
@@ -257,24 +265,24 @@ def generate_aux_simset(params, silent=False, datapath_db=None):
                                          intend_write=True, silent=silent)
 
     output_meansubconvsimset = datapath_db.fetch(
-                                         params['sim_beam_meanconv_key'],
+                                         params['sim_beam_meansubconv_key'],
                                          intend_write=True, silent=silent)
 
-    #for index in input_rawsimset[0]:
-    #    generate_delta_sim(input_rawsimset[1][index],
-    #                       output_deltasimset[1][index])
+    for index in input_rawsimset[0]:
+        generate_delta_sim(input_rawsimset[1][index],
+                           output_deltasimset[1][index])
 
-    #    generate_proc_sim(input_beamsimset[1][index], weightfile,
-    #                      output_meansubsimset[1][index],
-    #                      meansub=True, degrade=False)
+        generate_proc_sim(input_beamsimset[1][index], weightfile,
+                          output_meansubsimset[1][index],
+                          meansub=True, degrade=False)
 
-    #    generate_proc_sim(input_beamsimset[1][index], weightfile,
-    #                      output_convsimset[1][index],
-    #                      meansub=False, degrade=True)
+        generate_proc_sim(input_beamsimset[1][index], weightfile,
+                          output_convsimset[1][index],
+                          meansub=False, degrade=True)
 
-    #    generate_proc_sim(input_beamsimset[1][index], weightfile,
-    #                      output_meansubconvsimset[1][index],
-    #                      meansub=True, degrade=True)
+        generate_proc_sim(input_beamsimset[1][index], weightfile,
+                          output_meansubconvsimset[1][index],
+                          meansub=True, degrade=True)
 
 
 # cases: [15hr, 22hr, 1hr], [ideal, nostr, str]
@@ -308,5 +316,5 @@ if __name__ == '__main__':
     parse_ini.write_params(params, output_root + 'params.ini',
                            prefix=prefix)
 
-    generate_sim(params, parallel=True, datapath_db=datapath_db)
+    #generate_sim(params, parallel=True, datapath_db=datapath_db)
     generate_aux_simset(params, datapath_db=datapath_db)

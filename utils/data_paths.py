@@ -327,8 +327,8 @@ class DataPath(object):
         their actual values
         """
         for groupname in self._group_order:
-            for dbkey in self._groups[groupname]:
-                dbentry = self._pathdict[dbkey]
+            for db_key in self._groups[groupname]:
+                dbentry = self._pathdict[db_key]
 
                 if 'filelist' in dbentry:
                     listindex = dbentry['listindex']
@@ -346,7 +346,7 @@ class DataPath(object):
                     pathname = ft.repl_bracketed_env(dbentry['path'])
                     dbentry['path'] = re.sub('/+', '/', pathname)
 
-                self._pathdict[dbkey] = dbentry
+                self._pathdict[db_key] = dbentry
 
     def load_hashdict(self, hash_url):
         r"""Load the file hash library
@@ -383,24 +383,24 @@ class DataPath(object):
                 print "ERROR: " + groupkey + " is not in the database"
                 sys.exit()
 
-        for dbkey in keylist:
-            if dbkey not in keylist_in_groups:
-                print "ERROR: " + dbkey + " is not in the group list"
+        for db_key in keylist:
+            if db_key not in keylist_in_groups:
+                print "ERROR: " + db_key + " is not in the group list"
                 sys.exit()
 
-    def print_db_item_desc(self, dbkey):
+    def print_db_item_desc(self, db_key):
         r"""print just the key: desc as a short summary"""
-        dbentry = self._pathdict[dbkey]
-        return "* `%s`: %s\n" % (dbkey, dbentry['desc'])
+        dbentry = self._pathdict[db_key]
+        return "* `%s`: %s\n" % (db_key, dbentry['desc'])
 
-    def print_db_item(self, dbkey, suppress_lists=90, silent=False):
+    def print_db_item(self, db_key, suppress_lists=90, silent=False):
         r"""print a database entry to markdown format
         'desc' and 'status' are requires keys in the file attributes
         suppress printing of lists of more than `suppress_lists` files
         `silent` only returns a string instead of printing
         """
-        dbentry = self._pathdict[dbkey]
-        retstring = "### `%s`\n" % dbkey
+        dbentry = self._pathdict[db_key]
+        retstring = "### `%s`\n" % db_key
         retstring += "* __Description__: %s\n" % dbentry['desc']
 
         if 'parent' in dbentry:
@@ -460,8 +460,8 @@ class DataPath(object):
         """
         print "-" * 80
 
-        for dbkey in self._pathdict:
-            dbstring = self.print_db_item(dbkey,
+        for db_key in self._pathdict:
+            dbstring = self.print_db_item(db_key,
                                           suppress_lists=suppress_lists)
             print dbstring
 
@@ -482,8 +482,8 @@ class DataPath(object):
                 fileobj.write("****\n %s\n%s\n\n" % \
                               (groupname, "-" * len(groupname)))
 
-            for dbkey in self._groups[groupname]:
-                dbstring = self.print_db_item(dbkey,
+            for db_key in self._groups[groupname]:
+                dbstring = self.print_db_item(db_key,
                                               suppress_lists=suppress_lists)
                 if fileobj:
                     fileobj.write(dbstring + "\n")
@@ -508,11 +508,11 @@ class DataPath(object):
                          prepend="git_")
 
 
-    def fetch_parent(self, dbkey, return_path=False):
+    def fetch_parent(self, db_key, return_path=False):
         r"""Fetch the parent key associated with a file database entry
         if `return_path` return the directory instead of the key
         """
-        dbentry = self._pathdict[dbkey]
+        dbentry = self._pathdict[db_key]
 
         if 'parent' in dbentry:
             parent_key = dbentry['parent']
@@ -521,7 +521,7 @@ class DataPath(object):
             else:
                 return parent_key
         else:
-            print "%s has no parent directory field" % dbkey
+            print "%s has no parent directory field" % db_key
 
     def fetch_multi(self, data_obj, db_token="db:", silent=False):
         r"""Handle various sorts of file pointers/data
@@ -534,16 +534,7 @@ class DataPath(object):
         if isinstance(data_obj, str):
             if data_obj[0:len(db_token)] == db_token:
                 db_key = data_obj[len(db_token):]
-                db_key = db_key.split(":")
-                # if it is a file set, split into main and 'pick' entry
-                if len(db_key) == 2:
-                    main_db = db_key[0]
-                    pick_db = db_key[1]
-                else:
-                    main_db = db_key[0]
-                    pick_db = None
-                filename = self.fetch(main_db, pick=pick_db,
-                                      intend_read=True, silent=silent)
+                filename = self.fetch(db_key, intend_read=True, silent=silent)
             else:
                 filename = data_obj
                 prefix = "non-db filename "
@@ -556,7 +547,7 @@ class DataPath(object):
 
         return ret_data
 
-    def fetch(self, dbkey, pick=None, intend_read=False, intend_write=False,
+    def fetch(self, db_key, pick=None, intend_read=False, intend_write=False,
               purpose="", silent=False):
         r"""The access function for this database class:
         Fetch the data for a requested key in the db.
@@ -570,8 +561,20 @@ class DataPath(object):
         `purpose` inputs a purpose for this file for logging
         `silent` does not print anything upon fetch unless error
         """
-        dbentry = self._pathdict[dbkey]
-        prefix = "%s (%s) " % (purpose, dbkey)
+        # if not given pick explicitly, try to extract it from the given key
+        # "key_to_db:pick_entry"
+        if not pick:
+            db_key = db_key.split(":")
+            if len(db_key) == 2:
+                main_db = db_key[0]
+                pick = db_key[1]
+            else:
+                main_db = db_key[0]
+                pick = None
+            db_key = main_db
+
+        dbentry = self._pathdict[db_key]
+        prefix = "%s (%s) " % (purpose, db_key)
 
         if 'file' in dbentry:
             pathout = dbentry['file']
@@ -658,14 +661,14 @@ class DataPath(object):
             print "%s\n%s\n" % (groupname, "-" * len(groupname))
             groupobj.write("## %s ##\n\n" % groupname)
 
-            for dbkey in self._groups[groupname]:
-                dbdesc = self.print_db_item_desc(dbkey)
+            for db_key in self._groups[groupname]:
+                dbdesc = self.print_db_item_desc(db_key)
                 groupobj.write(dbdesc)
 
             groupobj.write("\n---------\n\n")
 
-            for dbkey in self._groups[groupname]:
-                dbstring = self.print_db_item(dbkey,
+            for db_key in self._groups[groupname]:
+                dbstring = self.print_db_item(db_key,
                                               suppress_lists=suppress_lists)
                 groupobj.write(dbstring + "\n")
 
@@ -689,8 +692,8 @@ class DataPath(object):
                        self.runinfo)
 
         for groupname in self._group_order:
-            for dbkey in self._groups[groupname]:
-                dbentry = self._pathdict[dbkey]
+            for db_key in self._groups[groupname]:
+                dbentry = self._pathdict[db_key]
 
                 if 'filelist' in dbentry:
                     listindex = dbentry['listindex']
