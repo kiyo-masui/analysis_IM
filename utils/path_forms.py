@@ -281,16 +281,16 @@ class PathForms(object):
         self._set_key(key, val)
 
 
-    def register_fourway_list(self, key, group_key, parent, desc,
+    def register_fourway_list(self, key, group_key, parent, desc, modelist,
                  notes=None, status=None, paramfile="params.ini", tag="",
-                 modenum=None, register_modes=True, register_pickles=False,
+                 register_modes=True, register_pickles=False,
                  register_corrsvd=True, register_separate_weights=False):
         r"""make a database set for map pair cleaning runs
         a typical run and key pairs might be:
-        X_with_Y;map       sec_X_cleaned_clean_map_I_with_Y_#modes.npy
-        X_with_Y;noise_inv sec_X_cleaned_noise_inv_I_with_Y_#modes.npy
-        X_with_Y;weight    sec_X_cleaned_weight_I_with_Y_#modes.npy
-        X_with_Y;modes     sec_X_modes_clean_map_I_with_Y_#modes.npy
+        X_with_Y;map;#modes       sec_X_cleaned_clean_map_I_with_Y_#modes.npy
+        X_with_Y;noise_inv;#modes sec_X_cleaned_noise_inv_I_with_Y_#modes.npy
+        X_with_Y;weight;#modes    sec_X_cleaned_weight_I_with_Y_#modes.npy
+        X_with_Y;modes;#modes     sec_X_modes_clean_map_I_with_Y_#modes.npy
         X_with_Y;fore_corr foreground_corr_pair_X_with_Y.pkl
         X_with_Y;SVD       SVD_pair_X_with_Y.pkl
         param              params.ini
@@ -320,31 +320,28 @@ class PathForms(object):
         corrpairs = [('A', 'B'), ('A', 'C'), ('A', 'D'),
                      ('B', 'C'), ('B', 'D'), ('C', 'D')]
 
-        if modenum is not None:
-            modetag = "_%dmodes" % modenum
-        else:
-            modetag = ""
+        for mode_num in modelist:
+            modetag = "%dmodes" % mode_num
+            for (left, right) in pairs:
+                pairname = "%s_with_%s" % (left, right)
+                pairmap = pairname + ";map;%s" % modetag
+                pairnoise = pairname + ";noise_inv;%s" % modetag
+                listindex.extend([pairmap, pairnoise])
+                prefix = "%ssec_%s_%s" % (fileroot, left, tag)
+                suffix = "_with_%s_%s.npy" % (right, modetag)
+                filelist[pairmap] = "%scleaned_clean_map_I%s" % (prefix, suffix)
+                filelist[pairnoise] = "%scleaned_noise_inv_I%s" % (prefix, suffix)
 
-        for (left, right) in pairs:
-            pairname = "%s_with_%s" % (left, right)
-            pairmap = pairname + ";map"
-            pairnoise = pairname + ";noise_inv"
-            listindex.extend([pairmap, pairnoise])
-            prefix = "%ssec_%s_%s" % (fileroot, left, tag)
-            suffix = "_with_%s%s.npy" % (right, modetag)
-            filelist[pairmap] = "%scleaned_clean_map_I%s" % (prefix, suffix)
-            filelist[pairnoise] = "%scleaned_noise_inv_I%s" % (prefix, suffix)
+                if register_separate_weights:
+                    pairweight = pairname + ";weight;%s" % modetag
+                    listindex.extend([pairweight])
+                    filelist[pairweight] = "%scleaned_weight_I%s" % (prefix, suffix)
 
-            if register_separate_weights:
-                pairweight = pairname + ";weight"
-                listindex.extend([pairweight])
-                filelist[pairweight] = "%scleaned_weight_I%s" % (prefix, suffix)
-
-            if register_modes:
-                pairmodes = pairname + ";modes"
-                listindex.extend([pairmodes])
-                filelist[pairmodes] = "%smodes_clean_map_I%s" % \
-                                      (prefix, suffix)
+                if register_modes:
+                    pairmodes = pairname + ";modes;%s" % modetag
+                    listindex.extend([pairmodes])
+                    filelist[pairmodes] = "%smodes_clean_map_I%s" % \
+                                          (prefix, suffix)
 
         if register_corrsvd:
             for (left, right) in corrpairs:
@@ -359,17 +356,6 @@ class PathForms(object):
                 filelist[pair_svd] = "%sSVD_pair_%s%s_with_%s.pkl" % \
                                       (fileroot, tag, left, right)
 
-        if register_pickles:
-            listindex.extend(['pkl_pair0', 'pkl_pair1', 'pkl_pair2',
-                              'pkl_pair3', 'pkl_pair4', 'pkl_pair5'])
-            filelist['pkl_pair0'] = "map_pair_for_freq_slices_corr_0.pkl"
-            filelist['pkl_pair1'] = "map_pair_for_freq_slices_corr_1.pkl"
-            filelist['pkl_pair2'] = "map_pair_for_freq_slices_corr_2.pkl"
-            filelist['pkl_pair3'] = "map_pair_for_freq_slices_corr_3.pkl"
-            filelist['pkl_pair4'] = "map_pair_for_freq_slices_corr_4.pkl"
-            filelist['pkl_pair5'] = "map_pair_for_freq_slices_corr_5.pkl"
-            filelist['obj_pkl'] = "New_Slices_object.pkl"
-
         if paramfile is not None:
             listindex.append('param')
             filelist['param'] = fileroot + paramfile
@@ -380,3 +366,54 @@ class PathForms(object):
             print "registered fourway list: " + repr(val)
 
         self._set_key(key, val)
+
+    def register_combined_maprun(self, key, group_key, parent, desc,
+                                 modelist, notes=None, status=None):
+        r"""register all the files produced in a mapping run
+        """
+        val = {'desc': desc}
+        self.groups[group_key].append(key)
+        fileroot = self.fetch_path(parent)
+
+        val['group_key'] = group_key
+        val['parent'] = parent
+
+        if notes is not None:
+            val['notes'] = notes
+
+        if status is not None:
+            val['status'] = status
+
+        filelist = {}
+        listindex = []
+
+        for mode_num in modelist:
+            modetag = "%dmodes" % mode_num
+
+            filekey = 'map;%s' % modetag
+            filename = 'combined_clean_map_%s.npy' % modetag
+            filelist[filekey] = filename
+            listindex.append(filekey)
+
+            filekey = 'product;%s' % modetag
+            filename = 'combined_clean_product_%s.npy' % modetag
+            filelist[filekey] = filename
+            listindex.append(filekey)
+
+            filekey = 'weight;%s' % modetag
+            filename = 'combined_clean_weight_%s.npy' % modetag
+            filelist[filekey] = filename
+            listindex.append(filekey)
+
+            filekey = 'ones;%s' % modetag
+            filename = 'combined_clean_ones_%s.npy' % modetag
+            filelist[filekey] = filename
+            listindex.append(filekey)
+
+        val['listindex'] = listindex
+        val['filelist'] = filelist
+        if self.verbose:
+            print "registered combined map run set: " + repr(val)
+
+        self._set_key(key, val)
+
