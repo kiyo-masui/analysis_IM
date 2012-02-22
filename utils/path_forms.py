@@ -391,22 +391,22 @@ class PathForms(object):
             modetag = "%dmodes" % mode_num
 
             filekey = 'map;%s' % modetag
-            filename = 'combined_clean_map_%s.npy' % modetag
+            filename = '%scombined_clean_map_%s.npy' % (fileroot, modetag)
             filelist[filekey] = filename
             listindex.append(filekey)
 
             filekey = 'product;%s' % modetag
-            filename = 'combined_clean_product_%s.npy' % modetag
+            filename = '%scombined_clean_product_%s.npy' % (fileroot, modetag)
             filelist[filekey] = filename
             listindex.append(filekey)
 
             filekey = 'weight;%s' % modetag
-            filename = 'combined_clean_weight_%s.npy' % modetag
+            filename = '%scombined_clean_weight_%s.npy' % (fileroot, modetag)
             filelist[filekey] = filename
             listindex.append(filekey)
 
             filekey = 'ones;%s' % modetag
-            filename = 'combined_clean_ones_%s.npy' % modetag
+            filename = '%scombined_clean_ones_%s.npy' % (fileroot, modetag)
             filelist[filekey] = filename
             listindex.append(filekey)
 

@@ -109,8 +109,12 @@ using 3-5 sets of onoff scans from one point source (3C286, 3C48, or 3C67). \
 For details of which scans were used for each file, check with Tabitha. For \
 the 15hr and 22hr, sessions 41-90 in `10B_036` were used."
 
+tcv_cal_note3 = "Calibration is done with a new scheme of using XX, YY \
+separately from the calibration source to constrain the differential gain, \
+then the flux calibration is applied from source observations."
+
 group_key = 'GBTmaps'
-status = 'in development'
+status = 'static'
 
 key = 'GBT_15hr_map'
 parent = 'GBT_maps_Tabitha'
@@ -118,19 +122,29 @@ desc = "15hr maps with Oct. 10 2011 calibration"
 field_tag = '15hr_41-90'
 dbcl.register_maprun(key, group_key, parent, field_tag, desc,
                         notes=tcv_cal_note2, status=status)
+
 key = 'GBT_22hr_map'
 parent = 'GBT_maps_Tabitha'
 desc = "22hr maps with Oct. 10 2011 calibration"
 field_tag = '22hr_41-90'
 dbcl.register_maprun(key, group_key, parent, field_tag, desc,
                         notes=tcv_cal_note2, status=status)
+
 key = 'GBT_1hr_map'
 parent = 'GBT_maps_Tabitha'
 desc = "1hr maps with Oct. 10 2011 calibration"
-#field_tag = '1hr_none'
 field_tag = '1hr_41-16'
 dbcl.register_maprun(key, group_key, parent, field_tag, desc,
                         notes=tcv_cal_note1, status=status)
+
+# register Tabitha's new calibration
+key = 'GBT_15hr_map_fdgcal'
+parent = 'GBT_maps_Tabitha'
+desc = "15hr maps with Oct. 10 2011 calibration"
+field_tag = '15hr_41-90_fdg'
+status = 'in development'
+dbcl.register_maprun(key, group_key, parent, field_tag, desc,
+                        notes=tcv_cal_note3, status=status)
 
 #-----------------------------------------------------------------------------
 # register optimal maps; 'register_optimalmap_section_run',
@@ -141,26 +155,24 @@ dbcl.register_maprun(key, group_key, parent, field_tag, desc,
 group_key = 'GBTmaps'
 status = 'in development'
 
-key = 'GBT_15hr_optimalmap737'
-parent = 'GBT_maps_Kiyo'
-desc = "optimal (section) maps from Kiyo"
-field_tag = '15hr_41-90'
-dbcl.register_optimalmap_section_run(key, group_key, parent, field_tag, '737', desc,
-                        status=status)
-
-key = 'GBT_15hr_optimalmap799'
-parent = 'GBT_maps_Kiyo'
-desc = "optimal (section) maps from Kiyo"
-field_tag = '15hr_41-90'
-dbcl.register_optimalmap_section_run(key, group_key, parent, field_tag, '799', desc,
-                        status=status)
-
-key = 'GBT_15hr_optimalmap862'
-parent = 'GBT_maps_Kiyo'
-desc = "optimal (section) maps from Kiyo"
-field_tag = '15hr_41-90'
-dbcl.register_optimalmap_section_run(key, group_key, parent, field_tag, '862', desc,
-                        status=status)
+#key = 'GBT_15hr_optimalmap737'
+#parent = 'GBT_maps_Kiyo'
+#desc = "optimal (section) maps from Kiyo"
+#field_tag = '15hr_41-90'
+#dbcl.register_optimalmap_section_run(key, group_key, parent, field_tag, '737', desc,
+#                        status=status)
+#key = 'GBT_15hr_optimalmap799'
+#parent = 'GBT_maps_Kiyo'
+#desc = "optimal (section) maps from Kiyo"
+#field_tag = '15hr_41-90'
+#dbcl.register_optimalmap_section_run(key, group_key, parent, field_tag, '799', desc,
+#                        status=status)
+#key = 'GBT_15hr_optimalmap862'
+#parent = 'GBT_maps_Kiyo'
+#desc = "optimal (section) maps from Kiyo"
+#field_tag = '15hr_41-90'
+#dbcl.register_optimalmap_section_run(key, group_key, parent, field_tag, '862', desc,
+#                        status=status)
 
 key = 'GBT_15hr_optimalmap_glued'
 parent = 'GBT_maps_Kiyo_16jan2012'
@@ -170,27 +182,26 @@ dbcl.register_optimalmap_glued_run(key, group_key, parent, field_tag, desc,
                         status=status)
 
 #-----------------------------------------------------------------------------
-# register alternate calibrations; 'register_maprun'
+# register alternate calibrations from Nidhi; 'register_maprun'
 # unique information: map key, group key, mappath key, map field tag, map desc,
 # map notes, map status
 #-----------------------------------------------------------------------------
 group_key = 'GBTmaps'
 status = 'in development'
 
-key = 'GBT_15hr_oldcal'
+key = 'GBT_15hr_map_oldcal'
 parent = 'GBT_maps_Nidhi_oldcal'
 desc = "maps with old-style calibration for comparison"
 field_tag = '15hr_41-90'
 dbcl.register_maprun(key, group_key, parent, field_tag, desc,
                      status=status)
 
-key = 'GBT_15hr_fluxcal'
+key = 'GBT_15hr_map_fluxcal'
 parent = 'GBT_maps_Nidhi_fluxcal'
-desc = "maps with flux cal only"
+desc = "maps with fluxcal only"
 field_tag = '15hr_41-90'
 dbcl.register_maprun(key, group_key, parent, field_tag, desc,
                      status=status)
-
 
 #-----------------------------------------------------------------------------
 # functions to register the cleaned maps
@@ -208,12 +219,11 @@ def mode_clean_run(source_key, username, modelist,
     combined_key = '%s_combined' % key
     group_key = 'GBTcleaned'
     parent_key = '%s_path_%s' % (key, username)
-    status = "in development"
 
     pathname = '%s/GBT/cleaned_maps/%s%s%s/' % \
                 (dbcl.fetch_path('GBTDATA_ESWITZER'), source_key, mapsim, alt)
     if sim:
-        desc = '`%s` cleaned using map `%s`; %s' % (sim, source_key, extdesc)
+        desc = '`%s` (map index 000) cleaned using map `%s`; %s' % (sim, source_key, extdesc)
     else:
         desc = '`%s` cleaned ; %s' % (source_key, extdesc)
 
@@ -270,6 +280,11 @@ mapsimnoconv_mode_clean_run('GBT_15hr_map_oldcal', 'sim_15hr_oldmap_nostr_beam',
 notes = "Tabitha flux-only calibration calibration and old mapmaker"
 status = 'static'
 mapsimnoconv_mode_clean_run('GBT_15hr_map_fluxcal', 'sim_15hr_oldmap_nostr_beam',
+                             status=status, notes=notes)
+
+notes = "Tabitha XX,YY + flux calibration calibration and old mapmaker"
+status = 'development'
+mapsimnoconv_mode_clean_run('GBT_15hr_map_fdgcal', 'sim_15hr_oldmap_nostr_beam',
                              status=status, notes=notes)
 
 notes = "Tabitha flux+pol calibration calibration and new mapmaker"
@@ -392,6 +407,7 @@ for fielditem in field_list:
 #-----------------------------------------------------------------------------
 # register the simulations
 #-----------------------------------------------------------------------------
+# register the various preparations of the simulation
 def register_sim(fieldname, tag="", basedesc="sim.; WiggleZ pwrspec",
                  notes=None, status=None):
     # start by registering the parent directory
@@ -406,61 +422,25 @@ def register_sim(fieldname, tag="", basedesc="sim.; WiggleZ pwrspec",
     # register 100 simulations per case
     indices = range(0, 100)
 
-    prefix = "sim_physical_"
-    key = "sim_%s_%s_physical" % (fieldname, tag)
-    desc = "%s %s; physical coordinates" % (fieldname, basedesc)
-    dbcl.register_file_set(key, group_key, parent, prefix, indices, desc,
+    simcases = {"_physical": "physical coordinates",
+                "_temperature": "raw 21cm temperature map",
+                "_delta": "delta overdensity map (21cm/T_b)",
+                "_beam": "beam-convolved 21cm temperature map",
+                "_beam_meansub": "beam-convolved 21cm temperature map, mean subtracted",
+                "_beam_meansubconv": "beam-convolved 21cm temperature map, common-res. conv., mean subtracted",
+                "_beam_conv": "beam-convolved 21cm temperature map, common-res. conv.",
+                "_beam_plus_data": "beam-convolved 21cm temperature map plus real data",
+                "_beam_plus_fg": "beam-convolved 21cm temperature map plus fg model"
+               }
+
+    for prep in simcases:
+        prefix = "sim%s_" % prep
+        key = "sim_%s_%s%s" % (fieldname, tag, prep)
+        desc = "%s %s; %s" % (fieldname, basedesc, simcases[prep])
+        dbcl.register_file_set(key, group_key, parent, prefix, indices, desc,
                   notes=notes, status=status)
 
-    prefix = "sim_"
-    key = "sim_%s_%s" % (fieldname, tag)
-    desc = "%s %s" % (fieldname, basedesc)
-    dbcl.register_file_set(key, group_key, parent, prefix, indices, desc,
-                  notes=notes, status=status)
-
-    prefix = "sim_delta_"
-    key = "sim_%s_%s_delta" % (fieldname, tag)
-    desc = "%s %s; overdensity (divided by T_b(z))" % (fieldname, basedesc)
-    dbcl.register_file_set(key, group_key, parent, prefix, indices, desc,
-                  notes=notes, status=status)
-
-    prefix = "sim_beam_"
-    key = "sim_%s_%s_beam" % (fieldname, tag)
-    desc = "%s %s; beam convolved" % (fieldname, basedesc)
-    dbcl.register_file_set(key, group_key, parent, prefix, indices, desc,
-                  notes=notes, status=status)
-
-    prefix = "sim_beam_meansub_"
-    key = "sim_%s_%s_beam_meansub" % (fieldname, tag)
-    desc = "%s %s; beam convolved, mean subtracted" % (fieldname, basedesc)
-    dbcl.register_file_set(key, group_key, parent, prefix, indices, desc,
-                  notes=notes, status=status)
-
-    prefix = "sim_beam_meansubconv_"
-    key = "sim_%s_%s_beam_meansubconv" % (fieldname, tag)
-    desc = "%s %s; beam convolved, mean subtracted, common res." % (fieldname, basedesc)
-    dbcl.register_file_set(key, group_key, parent, prefix, indices, desc,
-                  notes=notes, status=status)
-
-    prefix = "sim_beam_conv_"
-    key = "sim_%s_%s_beam_conv" % (fieldname, tag)
-    desc = "%s %s; beam convolved, common res." % (fieldname, basedesc)
-    dbcl.register_file_set(key, group_key, parent, prefix, indices, desc,
-                  notes=notes, status=status)
-
-    prefix = "sim_beam_plus_data_"
-    key = "sim_%s_%s_beam_plus_data" % (fieldname, tag)
-    desc = "%s %s; beam convolved plus data" % (fieldname, basedesc)
-    dbcl.register_file_set(key, group_key, parent, prefix, indices, desc,
-                  notes=notes, status=status)
-
-    prefix = "sim_beam_plus_fg_"
-    key = "sim_%s_%s_beam_plus_fg" % (fieldname, tag)
-    desc = "%s %s; beam convolved plus foregrounds" % (fieldname, basedesc)
-    dbcl.register_file_set(key, group_key, parent, prefix, indices, desc,
-                  notes=notes, status=status)
-
-
+# register sims of the various preparations above for three power spectra
 def register_simset(treatment, fielditem, treatmentdesc):
     '''For each of the map treatments, register three classes of simulations:
     an ideal case with only P_dd, then P_ddvv and P_ddvvstreaming
@@ -481,11 +461,22 @@ def register_simset(treatment, fielditem, treatmentdesc):
     register_sim(fielditem, status=status, basedesc=basedesc,
                  tag=treatment + "_str")
 
+def register_strsim(treatment, fielditem, treatmentdesc):
+    '''For each of the map treatments, register three classes of simulations:
+    an ideal case with only P_dd, then P_ddvv and P_ddvvstreaming
+    '''
+    status = "code is stable"
+    basedesc = "sim.; WiggleZ pwrspec standard + streaming velocities"
+    basedesc += "; " + treatmentdesc
+    register_sim(fielditem, status=status, basedesc=basedesc,
+                 tag=treatment + "_str")
+
+# highest level of registering simulations by field/pixelization and omega_HI
 register_simset("oldmap", "15hr", "old-style map pixelization")
-register_simset("oldmap", "22hr", "old-style map pixelization")
-register_simset("oldmap", "1hr", "old-style map pixelization")
-register_simset("oldmap_HI5em4", "15hr", "old-style map pixelization, Omega_HI=5e-4")
-register_simset("optimalmap", "15hr", "optimal map pixelization")
+register_strsim("oldmap", "22hr", "old-style map pixelization")
+register_strsim("oldmap", "1hr", "old-style map pixelization")
+register_strsim("oldmap_HI5em4", "15hr", "old-style map pixelization, Omega_HI=5e-4")
+register_strsim("optimalmap", "15hr", "optimal map pixelization")
 
 #-----------------------------------------------------------------------------
 # register quadratic product output directories
