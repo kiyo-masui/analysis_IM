@@ -218,12 +218,6 @@ def generate_sim(params, parallel=True, silent=True, datapath_db=None):
                                 purpose="output sim+beam+data",
                                 silent=silent)
 
-    fglist = datapath_db.fetch(params['sim_beam_plus_fg_key'],
-                                intend_write=True,
-                                purpose="output sim+beam+fg",
-                                silent=silent)
-
-    # TODO: add fg to simulations
     runlist = [(template_mapname, physlist[1][index], rawlist[1][index],
                 beamlist[1][index], bpdlist[1][index],
                 params['pwrspec_scenario'])
@@ -266,6 +260,10 @@ def generate_aux_simset(params, silent=False, datapath_db=None):
 
     output_meansubconvsimset = datapath_db.fetch(
                                          params['sim_beam_meansubconv_key'],
+                                         intend_write=True, silent=silent)
+
+    # TODO: actually implement the foreground simulations
+    output_fgsimset = datapath_db.fetch(params['sim_beam_plus_fg_key'],
                                          intend_write=True, silent=silent)
 
     for index in input_rawsimset[0]:
