@@ -210,9 +210,12 @@ def calibrate_pol(Data, m_total) :
                stokesmod = np.dot(MUELLER,STOKES)
                stokesmod = np.dot(M_sky,stokesmod)
 
-    # The next two lines should replace the lines above if just want to do flux calibration (no polarization calibration)
-#               stokesmod = STOKES
+    # You always want to include the M_sky matrix transformation, but you if you just want the flux cal, coment out the MUELLER, STOKES dot product above and include the flux multiplication below instead. 
+
 #               stokesmod[0]=stokesmod[0]*MUELLER[0,0]
+#               stokesmod[1]=stokesmod[1]*MUELLER[0,0]
+#               stokesmod[2]=stokesmod[2]*MUELLER[0,0]
+#               stokesmod[3]=stokesmod[3]*MUELLER[0,0]
 #               print stokesmod
 
 
