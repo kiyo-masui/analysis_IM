@@ -124,24 +124,7 @@ tc_scans = ()
 tc_IFs = ()
 
 tc_mueler_file = base_dir + 'mueller_params/'
-
-### Combine Cal is not in Liviu's pipeline. ###
-
-#from time_stream import combine_cal
-# Comment this line to skip this step in pipeline
-#pipe_modules.append(combine_cal.CombineCal)
-cc_input_root =tc_output_root
-cc_file_middles = file_middles
-cc_input_end = '.fits'
-cc_output_root = base_dir + 'combined/'
-cc_output_end = '.fits'
-cc_scans = ()
-cc_IFs = ()
-
-cc_subtract_time_mean = False
-cc_average_cal_states = True
-#cc_weights = (0.5, 0.5)
-#cc_weights = (0.0, 1.0)
+tc_flux_cal_only = 'False'
 
 from map import dirty_map
 pipe_modules.append(dirty_map.DirtyMapMaker)
@@ -179,7 +162,7 @@ cm_polarizations = ('I','Q','U','V')
 
 #from time_stream import subtract_map_data
 #pipe_modules.append(subtract_map_data.Subtract)
-sm_input_root = rp_output_root
+sm_input_root = dm_input_root
 sm_file_middles = file_middles
 sm_input_end = '.fits'
 sm_output_root = base_dir + 'map_subtracted/'
@@ -195,7 +178,7 @@ sm_interpolation = 'linear'
 
 #from time_stream import reflag
 #pipe_modules.append(reflag.ReFlag)
-sf_input_root = rp_output_root
+sf_input_root = dm_input_root
 sf_file_middles = file_middles
 sf_input_end = '.fits'
 sf_output_root = base_dir + 'reflagged/'

@@ -23,7 +23,9 @@ class Calibrate(base_single.BaseSingle) :
     prefix = 'tc_'
     # These are the parameters that should be read from file.  These are in
     # addition to the ones defined at the top of base_single.py.
-    params_init = {'mueler_file' : 'default_fname' }
+    params_init = {'mueler_file' : 'default_fname' 
+                   'flux_cal_only' : 'False'
+                   }
     
     # The base single initialization method does a bunch of stuff, but we want
     # to add one thing.  We want to read a mueler matrix from file.
@@ -207,15 +209,17 @@ def calibrate_pol(Data, m_total) :
 
     # Next there is a matrix multiplication that will generate 
     # a new set of stokes values.
-               stokesmod = np.dot(MUELLER,STOKES)
+               
+               if self.params['flux_cal_only'] = 'False' : 
+                   stokesmod = np.dot(MUELLER,STOKES)
                stokesmod = np.dot(M_sky,stokesmod)
 
     # You always want to include the M_sky matrix transformation, but you if you just want the flux cal, coment out the MUELLER, STOKES dot product above and include the flux multiplication below instead. 
-
-#               stokesmod[0]=stokesmod[0]*MUELLER[0,0]
-#               stokesmod[1]=stokesmod[1]*MUELLER[0,0]
-#               stokesmod[2]=stokesmod[2]*MUELLER[0,0]
-#               stokesmod[3]=stokesmod[3]*MUELLER[0,0]
+               if self.params['flux_cal_only'] = 'True' :
+                   stokesmod[0]=stokesmod[0]*MUELLER[0,0]
+                   stokesmod[1]=stokesmod[1]*MUELLER[0,0]
+                   stokesmod[2]=stokesmod[2]*MUELLER[0,0]
+                   stokesmod[3]=stokesmod[3]*MUELLER[0,0]
 #               print stokesmod
 
 
