@@ -34,7 +34,7 @@ data_dir = os.getenv('GBT_DATA')
 #raw_data_dir = os.getenv('GBT10B_DATA')
 kiyo_dir = os.getenv('GBT10B_KM')
 prefix = ''
-map_prefix = '' + field +'_41-90_tc_'
+map_prefix = '' + field +'_41-90_flux_'
 IFs = ()
 
 
@@ -113,8 +113,8 @@ rp_IFs = ()
 rp_new_pols = (1,2,3,4)
 rp_average_cals = False
 
-#from time_stream import flux_pol_cal
-#pipe_modules.append(flux_pol_cal.Calibrate)
+from time_stream import flux_pol_cal
+pipe_modules.append(flux_pol_cal.Calibrate)
 tc_input_root = rp_output_root
 tc_file_middles = file_middles
 tc_input_end = '.fits'
@@ -124,7 +124,7 @@ tc_scans = ()
 tc_IFs = ()
 
 tc_mueler_file = base_dir + 'mueller_params/'
-tc_flux_cal_only = 'False'
+tc_flux_cal_only = 'True'
 
 from map import dirty_map
 pipe_modules.append(dirty_map.DirtyMapMaker)

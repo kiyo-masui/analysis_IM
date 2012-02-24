@@ -86,6 +86,7 @@ tc_IFs = ()
 
 #tc_mueler_file = base_dir + 'mueller_params/'
 tc_mueler_file = ''
+tc_flux_cal_only = 'False'
 
 #from time_stream import pol_cal
 # Comment this line to skip this step in pipline.

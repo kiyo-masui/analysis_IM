@@ -23,7 +23,7 @@ class Calibrate(base_single.BaseSingle) :
     prefix = 'tc_'
     # These are the parameters that should be read from file.  These are in
     # addition to the ones defined at the top of base_single.py.
-    params_init = {'mueler_file' : 'default_fname' 
+    params_init = {'mueler_file' : 'default_fname', 
                    'flux_cal_only' : 'False'
                    }
     
@@ -69,8 +69,9 @@ class Calibrate(base_single.BaseSingle) :
         project = file_middle.split('/')[0]
 #        print sess_num
         mueler_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_mueller_matrix_from_inverted_params.txt'
+        self.flux_status = self.params['flux_cal_only']
         self.mueler = mueller(mueler_file_name)
-        calibrate_pol(Data, self.mueler)
+        calibrate_pol(Data, self.mueler, self.flux_status)
        	Data.add_history('Flux calibrated and Corrected for polarization leakage.', 
                	         ('Mueller matrix file: ' + self.params['mueler_file'],))
         
@@ -129,7 +130,7 @@ def mueller(mueler_file_name) :
                 m_total[j,k,i] = M_total[j,k]
 
     return m_total
-def calibrate_pol(Data, m_total) :
+def calibrate_pol(Data, m_total,flux_status) :
     """Subtracts a Map out of Data."""
         
     # Data is a DataBlock object.  It holds everything you need to know about
@@ -209,13 +210,14 @@ def calibrate_pol(Data, m_total) :
 
     # Next there is a matrix multiplication that will generate 
     # a new set of stokes values.
+               stokesmod = STOKES
                
-               if self.params['flux_cal_only'] = 'False' : 
-                   stokesmod = np.dot(MUELLER,STOKES)
+               if flux_status == 'False' : 
+                   stokesmod = np.dot(MUELLER,stokesmod)
                stokesmod = np.dot(M_sky,stokesmod)
 
-    # You always want to include the M_sky matrix transformation, but you if you just want the flux cal, coment out the MUELLER, STOKES dot product above and include the flux multiplication below instead. 
-               if self.params['flux_cal_only'] = 'True' :
+# You always want to include the M_sky matrix transformation, but you if you just want the flux cal, coment out the MUELLER, STOKES dot product above and include the flux multiplication below instead. 
+               if flux_status == 'True' :
                    stokesmod[0]=stokesmod[0]*MUELLER[0,0]
                    stokesmod[1]=stokesmod[1]*MUELLER[0,0]
                    stokesmod[2]=stokesmod[2]*MUELLER[0,0]
