@@ -60,11 +60,11 @@ def rotate(Data, new_pols=(1,), average_cals=False) :
         elif tuple(new_pols) == (-5, -7, -8, -6) :
             new_data = ma.empty(Data.dims)
             new_data[:,[0],:,:] = (Data.data[:,[I_ind],:,:] 
-                                   - Data.data[:,[Q_ind],:,:])
+                                   + Data.data[:,[Q_ind],:,:])
             new_data[:,[1],:,:] = Data.data[:,[U_ind],:,:] 
             new_data[:,[2],:,:] = Data.data[:,[V_ind],:,:] 
             new_data[:,[3],:,:] = (Data.data[:,[I_ind],:,:] 
-                                   + Data.data[:,[Q_ind],:,:])
+                                   - Data.data[:,[Q_ind],:,:])
         else :
             msg = ("Converstion to " + str(tuple(new_pols)) + " from " 
                    + str(tuple(Data.field['CRVAL4'])) + " is not supported.")
@@ -82,7 +82,7 @@ def rotate(Data, new_pols=(1,), average_cals=False) :
             new_data = ma.empty(Data.dims)
             new_data[:,[0],:,:] = (Data.data[:,[xx_ind],:,:] + 
                                  Data.data[:,[yy_ind],:,:])/2.0
-            new_data[:,[1],:,:] = (-Data.data[:,[xx_ind],:,:] + 
+            new_data[:,[1],:,:] = (Data.data[:,[xx_ind],:,:] - 
                                  Data.data[:,[yy_ind],:,:])/2.0
             new_data[:,[2],:,:] = Data.data[:,[xy_ind],:,:] 
             new_data[:,[3],:,:] = Data.data[:,[yx_ind],:,:] 

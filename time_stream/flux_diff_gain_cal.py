@@ -39,12 +39,12 @@ class Calibrate(base_single.BaseSingle) :
     # scan and a single IF.  BaseSingle knows how to loop over all of these.
     # More on DataBlock objects in the calibrate function below.
     def action(self, Data) :
-#        Data.calc_freq()
-#        frequency = Data.freq/1000000
-#        pl.plot(frequency,Data.data[0,0,0,:],label='XX-init')
+        Data.calc_freq()
+        frequency = Data.freq/1000000
+        pl.plot(frequency,Data.data[0,0,0,:],label='XX-init')
 #        pl.plot(frequency,Data.data[0,1,0,:],label='Q-init')
 #        pl.plot(frequency,Data.data[0,2,0,:],label='U-init')
-#        pl.plot(frequency,Data.data[0,3,0,:],label='YY-init')
+        pl.plot(frequency,Data.data[0,3,0,:],label='YY-init')
 
         # Main Action
         i = self.file_ind
@@ -62,17 +62,17 @@ class Calibrate(base_single.BaseSingle) :
        	Data.add_history('Flux calibrated and Corrected for differential gain leakage.', 
                	         ('Flux and Diff Gain file: ' + self.params['mueler_file'],))
         
-#        pl.plot(frequency,Data.data[0,0,0,:],label='XX-mod')
+        pl.plot(frequency,Data.data[0,0,0,:],label='XX-mod')
 #        pl.plot(frequency,Data.data[0,1,0,:],label='Q-mod')
 #        pl.plot(frequency,Data.data[0,2,0,:],label='U-mod')
-#        pl.plot(frequency,Data.data[0,3,0,:],label='YY-mod')
-#        pl.legend()
-#        pl.ylim(-20,130)
-#        pl.xlabel("Frequency (MHz)")
-#        pl.ylabel("Sample Data")
-#        title0 = str(Data.field['SCAN'])+'_caloff_flux_diff_gain_'
-#        pl.savefig(title0+'Comparison_Test_for_3C286.png')
-#        pl.clf()
+        pl.plot(frequency,Data.data[0,3,0,:],label='YY-mod')
+        pl.legend()
+        pl.ylim(-20,130)
+        pl.xlabel("Frequency (MHz)")
+        pl.ylabel("Sample Data")
+        title0 = str(Data.field['SCAN'])+'_caloff_flux_diff_gain_'
+        pl.savefig(title0+'Comparison_Test.png')
+        pl.clf()
 
        	return Data
 
@@ -176,6 +176,8 @@ def calibrate_pol(Data, m_total) :
     # a new set of xy values.
                XY_params[0] = XY_params[0]*m_total[0,bin]
                XY_params[3] = XY_params[3]*m_total[1,bin]
+               XY_params[1] = XY_params[1]*sp.sqrt(m_total[0,bin]*m_total[1,bin])
+               YX_params[2] = YX_params[2]*sp.sqrt(m_total[0,bin]*m_total[1,bin])
                XY_params = np.dot(M_sky,XY_params)
 
     # Note the correction is only applied to XX and YY, but all terms are rotated to sky coordinates (PA rotation)

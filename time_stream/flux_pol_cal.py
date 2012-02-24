@@ -84,7 +84,7 @@ class Calibrate(base_single.BaseSingle) :
 #        pl.xlabel("Frequency (MHz)")
 #        pl.ylabel("Sample Data")
 #        title0 = str(Data.field['SCAN'])+'_caloff_pol_params_Mastro_'
-#        pl.savefig(title0+'Comparison_Test_for_3C286.png')
+#        pl.savefig(title0+'Comparison_Test.png')
 #        pl.clf()
 
        	return Data
