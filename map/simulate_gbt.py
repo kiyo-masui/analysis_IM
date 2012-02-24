@@ -314,5 +314,5 @@ if __name__ == '__main__':
     parse_ini.write_params(params, output_root + 'params.ini',
                            prefix=prefix)
 
-    #generate_sim(params, parallel=True, datapath_db=datapath_db)
+    generate_sim(params, parallel=True, datapath_db=datapath_db)
     generate_aux_simset(params, datapath_db=datapath_db)

@@ -24,7 +24,7 @@ def gnuplot_radec_single(plotitem):
                             freq, index, physical=physical)
 
 
-def make_cube_movie(cubename, colorbar_title, frame_dir,
+def make_cube_movie(source_key, colorbar_title, frame_dir,
                     filetag_suffix="",
                     outputdir="./", sigmarange=6., ignore=None, multiplier=1.,
                     transverse=False, title=None, sigmacut=None,
@@ -34,9 +34,13 @@ def make_cube_movie(cubename, colorbar_title, frame_dir,
     First mask any points that exceed `sigmacut`, and then report the extent of
     `sigmarange` away from the mean
     """
+    datapath_db = data_paths.DataPath()
     # set up the labels:
-    tag = ".".join(cubename.split(".")[:-1])  # extract root name
-    tag = tag.split("/")[-1]
+    tag = '_'.join(source_key.split(";"))
+    tag = '-'.join(tag.split(":"))
+    print tag
+    #tag = ".".join(cubename.split(".")[:-1])  # extract root name
+    #tag = tag.split("/")[-1]
     fileprefix = frame_dir + tag
     nlevels = 500
 
@@ -49,7 +53,8 @@ def make_cube_movie(cubename, colorbar_title, frame_dir,
         title = tag
 
     # prepare the data
-    cube = algebra.make_vect(algebra.load(cubename)) * multiplier
+    #cube = algebra.make_vect(algebra.load(cubename)) * multiplier
+    cube =  datapath_db.fetch_multi(source_key) * multiplier
     if logscale:
         cube = np.log10(cube)
 

@@ -5,6 +5,12 @@ from plotting import plot_cube as pc
 from utils import data_paths
 # TODO: reimplement transverse plotting
 
+def unique_list(listin):
+    seen = set()
+    seen_add = seen.add
+    uniq = [ x for x in listin if x not in seen and not seen_add(x)]
+    return sorted(uniq)
+
 def plot_gbt_mapset(outputdir="/cita/d/www/home/eswitzer/movies/"):
     pc.plot_gbt_maps('GBT_15hr_oldcal', outputdir=outputdir, transverse=False)
     #pc.plot_gbt_maps('GBT_15hr_map', outputdir=outputdir, transverse=False)
@@ -114,32 +120,32 @@ def plot_gbt_diff_tests(outputdir="/cita/d/www/home/eswitzer/movies/",
 
 
 # GBT_15hr_map_combined_cleaned_nomeanconv_0mode_map
-def plot_gbt_comb_modeset(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/",
-                          sim=False, alt="", convolve=False):
+def plot_gbt_comb_modeset(map_key, outputdir="/cita/d/www/home/eswitzer/movies/",
+                          convolve=False, divider_token=";"):
     datapath_db = data_paths.DataPath()
-    if sim:
-        mapbase = "sim_%s" % fieldname
-    else:
-        mapbase = "GBT_%s_map" % fieldname
+    input_fdb = datapath_db.fetch(map_key, intend_read=True, silent=False)
 
-    for modenum in range(0, 55, 5):
-        keyname = "%s_combined_cleaned_%s%smode_map" % (mapbase, alt, modenum)
-        filename = datapath_db.fetch(keyname)
-        pc.make_cube_movie(filename, "Temperature (mK)", pc.cube_frame_dir,
+    map_treatments = []
+    for filekey in input_fdb[0]:
+        keyparse = filekey.split(divider_token)
+        if len(keyparse) == 2:
+            map_treatments.append(keyparse[-1])
+
+    map_treatments = unique_list(map_treatments)
+
+    for treatment in map_treatments:
+        source_key = "db:%s:map;%s" % (map_key, treatment)
+        pc.make_cube_movie(source_key, "Temperature (mK)", pc.cube_frame_dir,
                         sigmarange=1.5, outputdir=outputdir, multiplier=1000.,
                         transverse=False, convolve=convolve)
 
-        keyname = "%s_combined_cleaned_%s%smode_product" % \
-                  (mapbase, alt, modenum)
-        filename = datapath_db.fetch(keyname)
-        pc.make_cube_movie(filename, "Cleaned map times weights", pc.cube_frame_dir,
+        source_key = "db:%s:product;%s" % (map_key, treatment)
+        pc.make_cube_movie(source_key, "Cleaned map times weights", pc.cube_frame_dir,
                         sigmarange=-1, outputdir=outputdir, multiplier=1000.,
                         transverse=False, convolve=convolve)
 
-        keyname = "%s_combined_cleaned_%s%smode_weight" % \
-                  (mapbase, alt, modenum)
-        filename = datapath_db.fetch(keyname)
-        pc.make_cube_movie(filename, "inverse variance weight", pc.cube_frame_dir,
+        source_key = "db:%s:weight;%s" % (map_key, treatment)
+        pc.make_cube_movie(source_key, "inverse variance weight", pc.cube_frame_dir,
                         sigmarange=2.5, outputdir=outputdir, multiplier=1.,
                         transverse=False)
 
@@ -238,18 +244,19 @@ if __name__ == "__main__":
     #plot_gbt_simset('22hr')
     #plot_gbt_newmapset()
 
-    #plot_gbt_comb_modeset('15hr', alt="noconv_oldcal_", convolve=False)
-    #plot_gbt_comb_modeset('15hr', alt="noconv_oldcal_", convolve=True)
-    #plot_gbt_comb_modeset('15hr', alt="oldcal_", convolve=False)
+    #plot_gbt_comb_modeset('GBT_15hr_map_fluxcal_cleaned_noconv_combined', convolve=False)
+    #plot_gbt_comb_modeset('GBT_15hr_map_fluxcal_cleaned_noconv_combined', convolve=True)
+    #plot_gbt_comb_modeset('GBT_15hr_map_fluxcal_cleaned_combined', convolve=False)
+    #plot_gbt_comb_modeset('GBT_15hr_map_fluxcal_cleaned_sims_noconv_combined', convolve=False)
+    #plot_gbt_comb_modeset('GBT_15hr_map_fluxcal_cleaned_sims_noconv_combined', convolve=True)
+    #plot_gbt_comb_modeset('GBT_15hr_map_fluxcal_cleaned_sims_combined', convolve=False)
 
-    #plot_gbt_comb_modeset('15hr', alt="nomeanconv_", convolve=True)
-    #plot_gbt_comb_modeset('15hr', alt="noconv_", convolve=False)
-    #plot_gbt_comb_modeset('15hr', alt="noconv_", convolve=True)
-    #plot_gbt_comb_modeset('15hr', alt="noconv_", sim=True, convolve=False)
-    plot_gbt_comb_modeset('15hr', alt="optimalmap_", sim=False, convolve=False)
-    plot_gbt_comb_modeset('15hr', alt="optimalmap_", sim=False, convolve=True)
-    #plot_gbt_comb_modeset('15hr')
-    #plot_gbt_comb_modeset('22hr')
+    plot_gbt_comb_modeset('GBT_15hr_map_fdgcal_cleaned_noconv_combined', convolve=False)
+    plot_gbt_comb_modeset('GBT_15hr_map_fdgcal_cleaned_noconv_combined', convolve=True)
+    plot_gbt_comb_modeset('GBT_15hr_map_fdgcal_cleaned_combined', convolve=False)
+    plot_gbt_comb_modeset('GBT_15hr_map_fdgcal_cleaned_sims_noconv_combined', convolve=False)
+    plot_gbt_comb_modeset('GBT_15hr_map_fdgcal_cleaned_sims_noconv_combined', convolve=True)
+    plot_gbt_comb_modeset('GBT_15hr_map_fdgcal_cleaned_sims_combined', convolve=False)
 
     #plot_wigglez('15hr', complete=False)
     #plot_wigglez('22hr', complete=False)

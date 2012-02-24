@@ -150,6 +150,28 @@ def combine_maps(source_key, combined_key,
                             fullcov=fullcov, datapath_db=datapath_db)
 
 if __name__ == '__main__':
+    combine_maps("GBT_15hr_map_fdgcal_cleaned",
+                 "GBT_15hr_map_fdgcal_cleaned_combined")
+
+    combine_maps("GBT_15hr_map_fdgcal_cleaned_sims",
+                 "GBT_15hr_map_fdgcal_cleaned_sims_combined")
+
+    combine_maps("GBT_15hr_map_fdgcal_cleaned_noconv",
+                 "GBT_15hr_map_fdgcal_cleaned_noconv_combined")
+
+    combine_maps("GBT_15hr_map_fdgcal_cleaned_sims_noconv",
+                 "GBT_15hr_map_fdgcal_cleaned_sims_noconv_combined")
+
+    sys.exit()
+    combine_maps("GBT_22hr_map_cleaned",
+                 "GBT_22hr_map_cleaned_combined")
+
+    combine_maps("GBT_1hr_map_cleaned",
+                 "GBT_1hr_map_cleaned_combined")
+
+    # ADD SIMS HERE
+
+    sys.exit()
     combine_maps("GBT_15hr_optimalmap_glued_cleaned",
                  "GBT_15hr_optimalmap_glued_cleaned_combined")
 
