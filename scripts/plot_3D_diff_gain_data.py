@@ -5,7 +5,7 @@ import scipy as sp
 
 prefix = ''
 
-#This is $GBT_OUT/mueller_params/
+#This is $GBT_OUT/diff_gain_params/
 filedir = sys.argv[1]
 suffix = '_diff_gain_calc.txt'
 

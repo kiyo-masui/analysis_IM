@@ -177,7 +177,7 @@ def calibrate_pol(Data, m_total) :
                XY_params[0] = XY_params[0]*m_total[0,bin]
                XY_params[3] = XY_params[3]*m_total[1,bin]
                XY_params[1] = XY_params[1]*sp.sqrt(m_total[0,bin]*m_total[1,bin])
-               YX_params[2] = YX_params[2]*sp.sqrt(m_total[0,bin]*m_total[1,bin])
+               XY_params[2] = XY_params[2]*sp.sqrt(m_total[0,bin]*m_total[1,bin])
                XY_params = np.dot(M_sky,XY_params)
 
     # Note the correction is only applied to XX and YY, but all terms are rotated to sky coordinates (PA rotation)
