@@ -298,11 +298,11 @@ class PairSet(ft.ClassPersistence):
                                                 algebra.load(filename_diag))
             else:
                 print "loading noise: " + filename
-                #noise_inv = algebra.make_mat(
-                #                    algebra.open_memmap(filename, mode='r'))
-                #self.noisefiledict[filename] = noise_inv.mat_diag()
-                self.noisefiledict[filename] = algebra.make_vect(
-                                               algebra.load(filename))
+                noise_inv = algebra.make_mat(
+                                    algebra.open_memmap(filename, mode='r'))
+                self.noisefiledict[filename] = noise_inv.mat_diag()
+                #self.noisefiledict[filename] = algebra.make_vect(
+                #                               algebra.load(filename))
                 algebra.save(filename_diag, self.noisefiledict[filename])
 
         return copy.deepcopy(self.noisefiledict[filename])

@@ -10,172 +10,112 @@ from utils import batch_handler
 
 
 def call_xspec_run(map1_key, map2_key,
-                   noiseinv1_key, noiseinv2_key,
-                   subtract_mean=False, degrade_resolution=False,
-                   unitless=True, return_3d=False,
-                   truncate=False, window=None, n_modes=None,
-                   refinement=2, pad=5, order=2):
+                   noiseinv1_key, noiseinv2_key
+                   inifile=None):
     r"""a free-standing function which calls the xspec analysis
-    batteries included
     """
+    params_init = {
+        "unitless": True,
+        "return_3d": False,
+        "truncate": False,
+        "window": None,
+        "refinement": 2,
+        "pad": 5,
+        "order": 2,
+        "freq_list": [],
+        "bins": np.logspace(math.log10(0.00765314), \
+                            math.log10(2.49977141), \
+                            num=35, endpoint=True)
+                   }
+    prefix = 'xs_'
 
-    # define the bad frequency list
-    cutlist = [6, 7, 8, 15, 16, 18, 19, 20, 21, 22, 37, 103, 104, 105, 106,
-               107, 108, 130, 131, 132, 133, 134, 237, 244, 254, 255]
-
-    # visual inspection for wacky data #1
-    augmented = [177, 194, 195, 196, 197, 198, 201, 204, 209, 213, 229]
-    for entry in augmented:
-        cutlist.append(entry)
-
-    # visual inspection for wacky data #2
-    augmented = [80, 171, 175, 179, 182, 183, 187, 212, 218, 219]
-    for entry in augmented:
-        cutlist.append(entry)
-
-    # visual inspection of weights
-    badweights = [133, 189, 192, 193, 194, 195, 196, 197, 198, 208, 209, 213,
-                  233]
-    for entry in badweights:
-        cutlist.append(entry)
-
-    freq = range(256)
-    for entry in cutlist:
-        try:
-            freq.remove(entry)
-        except ValueError:
-            print "can't cut %d" % entry
-
-    print "%d of %d freq slices removed" % (len(cutlist), 256)
-    print freq
-
-    # define the 1D spectral bins
-    #nbins=40
-    #bins = np.logspace(math.log10(0.00702349679605685),
-    #                   math.log10(2.81187396154818),
-    #                   num=(nbins + 1), endpoint=True)
-    bins = np.logspace(math.log10(0.00765314),
-                       math.log10(2.49977141),
-                       num=35, endpoint=True)
+    params = parse_ini.parse(inifile, params_init, prefix=prefix)
+    if inifile is None:
+        print "WARNING: no ini file for pwrspec estimation"
 
     # initialize and calculate the xspec
     simpair = mp.MapPair(map1_key, map2_key,
                          noiseinv1_key, noiseinv2_key,
-                         freq)
+                         params['freq_list'])
 
-    if subtract_mean:
-        simpair.subtract_weighted_mean()
+    retval = simpair.pwrspec_summary(window=params['window'],
+                                     unitless=params['unitless'],
+                                     bins=params['bins'],
+                                     truncate=params['truncate'],
+                                     refinement=params['refinement'],
+                                     pad=params['pad'],
+                                     order=params['order'],
+                                     return_3d=params['return_3d'])
 
-    if degrade_resolution:
-        simpair.degrade_resolution()
-
-    if n_modes is not None:
-        print "mode subtraction not implemented yet"
-
-    retval = simpair.pwrspec_summary(window=window, unitless=unitless,
-                                     bins=bins, truncate=truncate,
-                                     refinement=refinement, pad=pad,
-                                     order=order, return_3d=return_3d)
     return retval
 
 
 def call_phys_space_run(cube1_file, cube2_file,
-                       unitless=True, return_3d=False,
-                       truncate=False, window="blackman"):
+                        inifile=None):
     """Directly call the power spectral estimation on some physical vol"""
-    # define the 1D spectral bins
-    #nbins=40
-    #bins = np.logspace(math.log10(0.00702349679605685),
-    #                   math.log10(2.81187396154818),
-    #                   num=(nbins + 1), endpoint=True)
-    bins = np.logspace(math.log10(0.00765314),
-                       math.log10(2.49977141),
-                       num=35, endpoint=True)
+    params_init = {
+        "unitless": True,
+        "return_3d": False,
+        "truncate": False,
+        "window": "blackman"
+        "bins": np.logspace(math.log10(0.00765314), \
+                            math.log10(2.49977141), \
+                            num=35, endpoint=True)
+                   }
+    prefix = 'xs_'
 
-    retval = pe.calculate_xspec_file(cube1_file, cube2_file, bins,
+    params = parse_ini.parse(inifile, params_init, prefix=prefix)
+    if inifile is None:
+        print "WARNING: no ini file for pwrspec estimation"
+
+    retval = pe.calculate_xspec_file(cube1_file, cube2_file, params['bins'],
                     weight1_file=None, weight2_file=None,
-                    truncate=truncate, window=window,
-                    return_3d=return_3d, unitless=unitless)
+                    truncate=params['truncate'], window=params['window'],
+                    return_3d=params['return_3d'], unitless=params['unitless'])
 
     return retval
 
 
-def batch_physical_sim_run(sim_key, unitless=True, return_3d=False,
-                           truncate=False, window="blackman"):
+def batch_physical_sim_run(sim_key, inifile=None):
     """Test the power spectral estimator using simulations"""
     datapath_db = data_paths.DataPath()
 
-    outpath = datapath_db.fetch("quadratic_batch_simulations")
+    outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
-    fileset = datapath_db.fetch(sim_key, intend_read=True)
+    mock_cases = datapath_db.fileset_cases(sim_key, "realization")
 
     funcname = "correlate.batch_quadratic.call_phys_space_run"
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
 
-    for index in fileset[0]:
+    for index in mock_cases['realization']:
         map1_file = fileset[1][index]
         map2_file = fileset[1][index]
 
         caller.execute(map1_file, map2_file,
-                       unitless=unitless,
-                       return_3d=return_3d,
-                       truncate=truncate,
-                       window=window)
+                       inifile=inifile)
 
     caller.multiprocess_stack()
 
 
-def batch_sim_run(sim_key, subtract_mean=False, degrade_resolution=False,
-                  unitless=True, return_3d=False,
-                  truncate=False, window=None, n_modes=None,
-                  refinement=2, pad=5, order=2):
+def batch_sim_run(simleft_key, simright_key,
+                  weightleft_key, weightright_key,
+                  inifile=None):
+    r"""
+    typical weight matrix:
+    db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv"""
     datapath_db = data_paths.DataPath()
 
-    outpath = datapath_db.fetch("quadratic_batch_simulations")
-    print "writing to: " + outpath
-
-    funcname = "correlate.batch_quadratic.call_xspec_run"
-    caller = batch_handler.MemoizeBatch(funcname, outpath,
-                                        generate=True, verbose=True)
-    for index in range(100):
-        map1_key = "db:%s:%s" % (sim_key, index)
-        map2_key = "db:%s:%s" % (sim_key, index)
-        noiseinv1_key = "db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv"
-        noiseinv2_key = "db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv"
-        # could also use ./observed_window.npy as the weight
-
-        caller.execute(map1_key, map2_key,
-                       noiseinv1_key, noiseinv2_key,
-                       subtract_mean=subtract_mean,
-                       degrade_resolution=degrade_resolution,
-                       unitless=unitless,
-                       return_3d=return_3d,
-                       truncate=truncate,
-                       window=window, n_modes=n_modes,
-                       refinement=refinement,
-                       pad=pad, order=order)
-
-    caller.multiprocess_stack()
-
-
-def batch_genericsim_run(simleft_key, simright_key,
-                         weightleft_key, weightright_key,
-                         subtract_mean=False, degrade_resolution=False,
-                         unitless=True, return_3d=False,
-                         truncate=False, window=None, n_modes=None,
-                         refinement=2, pad=5, order=2):
-    datapath_db = data_paths.DataPath()
-
-    outpath = datapath_db.fetch("quadratic_batch_simulations")
+    outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
 
     funcname = "correlate.batch_quadratic.call_xspec_run"
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
 
-    fileset = datapath_db.fetch(simleft_key, silent=True, intend_read=True)
-    for index in fileset[0]:
+    mock_cases = datapath_db.fileset_cases(simleft_key, "realization")
+
+    for index in mock_cases['realization']:
         map1_key = "db:%s:%s" % (simleft_key, index)
         map2_key = "db:%s:%s" % (simright_key, index)
         noiseinv1_key = "db:%s" % weightleft_key
@@ -183,24 +123,14 @@ def batch_genericsim_run(simleft_key, simright_key,
 
         caller.execute(map1_key, map2_key,
                        noiseinv1_key, noiseinv2_key,
-                       subtract_mean=subtract_mean,
-                       degrade_resolution=degrade_resolution,
-                       unitless=unitless,
-                       return_3d=return_3d,
-                       truncate=truncate,
-                       window=window, n_modes=n_modes,
-                       refinement=refinement,
-                       pad=pad, order=order)
+                       inifile=inifile)
 
     caller.multiprocess_stack()
 
 
 def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
                                wigglez_mock_key, wigglez_selection_key,
-                               subtract_mean=False, degrade_resolution=False,
-                               unitless=True, return_3d=False,
-                               truncate=False, window=None, n_modes=None,
-                               refinement=2, pad=5, order=2):
+                               inifile=None):
     datapath_db = data_paths.DataPath()
 
     outpath = datapath_db.fetch("quadratic_batch_data")
@@ -210,42 +140,29 @@ def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
 
-    # first find the xpower with the WiggleZ data itself
+    map_cases = datapath_db.fileset_cases(gbt_map_key, "type;treatment")
+    mock_cases = datapath_db.fileset_cases(wigglez_mock_key, "realization")
 
-    for mode_num in range(0, 55, 5):
-        map1_key = "db:%s_%dmode_map" % (gbt_map_key, mode_num)
+    for treatment in map_cases['treatment']:
+        map1_key = "db:%s:map;%s" % (gbt_map_key, treatment)
         map2_key = "db:%s" % wigglez_map_key
-        noiseinv1_key = "db:%s_%dmode_weight" % (gbt_map_key, mode_num)
+        noiseinv1_key = "db:%s:weight;%s" % (gbt_map_key, treatment)
         noiseinv2_key = "db:%s" % wigglez_selection_key
 
         caller.execute(map1_key, map2_key,
                        noiseinv1_key, noiseinv2_key,
-                       subtract_mean=subtract_mean,
-                       degrade_resolution=degrade_resolution,
-                       unitless=unitless,
-                       return_3d=return_3d,
-                       truncate=truncate,
-                       window=window, n_modes=n_modes,
-                       refinement=refinement,
-                       pad=pad, order=order)
+                       inifile=inifile)
 
-    for mode_num in range(0, 55, 5):
-        for index in range(100):
-            map1_key = "db:%s_%dmode_map" % (gbt_map_key, mode_num)
+    for treatment in map_cases['treatment']:
+        for index in mock_cases['realization']:
+            map1_key = "db:%s:map;%s" % (gbt_map_key, treatment)
             map2_key = "db:%s:%d" % (wigglez_mock_key, index)
-            noiseinv1_key = "db:%s_%dmode_weight" % (gbt_map_key, mode_num)
+            noiseinv1_key = "db:%s:weight;%s" % (gbt_map_key, treatment)
             noiseinv2_key = "db:%s" % wigglez_selection_key
 
             caller.execute(map1_key, map2_key,
                            noiseinv1_key, noiseinv2_key,
-                           subtract_mean=subtract_mean,
-                           degrade_resolution=degrade_resolution,
-                           unitless=unitless,
-                           return_3d=return_3d,
-                           truncate=truncate,
-                           window=window, n_modes=n_modes,
-                           refinement=refinement,
-                           pad=pad, order=order)
+                           inifile=inifile)
 
     caller.multiprocess_stack()
 
@@ -253,10 +170,7 @@ def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
 def batch_GBTxwigglez_trans_run(sim_key, sim_wigglez,
                                 base_sim_GBT, gbt_map_key,
                                 wigglez_selection_key,
-                                subtract_mean=False, degrade_resolution=False,
-                                unitless=True, return_3d=False,
-                                truncate=False, window=None, n_modes=None,
-                                refinement=2, pad=5, order=2):
+                                inifile=None):
     datapath_db = data_paths.DataPath()
 
     outpath = datapath_db.fetch("quadratic_batch_data")
@@ -266,48 +180,33 @@ def batch_GBTxwigglez_trans_run(sim_key, sim_wigglez,
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
 
+    map_cases = datapath_db.fileset_cases(sim_key, "type;treatment")
+
     map1_key = "db:%s:0" % base_sim_GBT
     map2_key = "db:%s:0" % sim_wigglez
-    noiseinv1_key = "db:%s_0mode_weight" % (gbt_map_key)
+    noiseinv1_key = "db:%s:weight;0modes" % (gbt_map_key)
     noiseinv2_key = "db:%s" % wigglez_selection_key
 
     caller.execute(map1_key, map2_key,
                    noiseinv1_key, noiseinv2_key,
-                   subtract_mean=subtract_mean,
-                   degrade_resolution=degrade_resolution,
-                   unitless=unitless,
-                   return_3d=return_3d,
-                   truncate=truncate,
-                   window=window, n_modes=n_modes,
-                   refinement=refinement,
-                   pad=pad, order=order)
+                   inifile=inifile)
 
-    for mode_num in range(0, 55, 5):
-        map1_key = "db:%s_%dmode_map" % (sim_key, mode_num)
+    for treatment in map_cases['treatment']:
+        map1_key = "db:%s:map;%s" % (sim_key, treatment)
         map2_key = "db:%s:0" % sim_wigglez
-        noiseinv1_key = "db:%s_%dmode_weight" % (gbt_map_key, mode_num)
+        noiseinv1_key = "db:%s:weight;%s" % (gbt_map_key, treatment)
         noiseinv2_key = "db:%s" % wigglez_selection_key
 
         caller.execute(map1_key, map2_key,
                        noiseinv1_key, noiseinv2_key,
-                       subtract_mean=subtract_mean,
-                       degrade_resolution=degrade_resolution,
-                       unitless=unitless,
-                       return_3d=return_3d,
-                       truncate=truncate,
-                       window=window, n_modes=n_modes,
-                       refinement=refinement,
-                       pad=pad, order=order)
+                       inifile=inifile)
 
     caller.multiprocess_stack()
 
 
 def batch_one_sided_trans_run(modeloss_simkey, base_simkey,
                               modeloss_weight_root,
-                              subtract_mean=False, degrade_resolution=False,
-                              unitless=True, return_3d=False,
-                              truncate=False, window=None, n_modes=None,
-                              refinement=2, pad=5, order=2):
+                              inifile=None):
     datapath_db = data_paths.DataPath()
 
     outpath = datapath_db.fetch("quadratic_batch_data")
@@ -317,63 +216,48 @@ def batch_one_sided_trans_run(modeloss_simkey, base_simkey,
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
 
+    # TODO: this is not a generic loop based on new db structure
     map1_key = "db:%s:0" % base_simkey
     map2_key = "db:%s:0" % base_simkey
-    noiseinv1_key = "db:%s_0mode_weight" % (modeloss_weight_root)
-    noiseinv2_key = "db:%s_0mode_ones" % (modeloss_weight_root)
+    noiseinv1_key = "db:%s:weight;0modes" % (modeloss_weight_root)
+    noiseinv2_key = "db:%s:weight;0modes" % (modeloss_weight_root)
 
     caller.execute(map1_key, map2_key,
                    noiseinv1_key, noiseinv2_key,
-                   subtract_mean=subtract_mean,
-                   degrade_resolution=degrade_resolution,
-                   unitless=unitless,
-                   return_3d=return_3d,
-                   truncate=truncate,
-                   window=window, n_modes=n_modes,
-                   refinement=refinement,
-                   pad=pad, order=order)
+                   inifile=inifile)
 
-    for mode_num in range(0, 55, 5):
-        map1_key = "db:%s_%dmode_map" % (modeloss_simkey, mode_num)
+    map_cases = datapath_db.fileset_cases(sim_key, "type;treatment")
+    for treatment in map_cases['treatment']:
+        map1_key = "db:%s:map;%s" % (modeloss_simkey, treatment)
         map2_key = "db:%s:0" % base_simkey
 
-        noiseinv1_key = "db:%s_%dmode_weight" % (modeloss_weight_root, \
-                                                 mode_num)
+        noiseinv1_key = "db:%s:weight;%s" % (modeloss_weight_root, \
+                                                 treatment)
 
-        noiseinv2_key = "db:%s_%dmode_ones" % (modeloss_weight_root, \
-                                               mode_num)
+        noiseinv2_key = "db:%s:ones;%s" % (modeloss_weight_root, \
+                                               treatment)
 
         caller.execute(map1_key, map2_key,
                        noiseinv1_key, noiseinv2_key,
-                       subtract_mean=subtract_mean,
-                       degrade_resolution=degrade_resolution,
-                       unitless=unitless,
-                       return_3d=return_3d,
-                       truncate=truncate,
-                       window=window, n_modes=n_modes,
-                       refinement=refinement,
-                       pad=pad, order=order)
+                       inifile=inifile)
 
     caller.multiprocess_stack()
 
 
-def batch_wigglez_automock_run(mock_key, sel_key, subtract_mean=False,
-                               degrade_resolution=False,
-                               unitless=True, return_3d=False,
-                               truncate=False, window=None, n_modes=None,
-                               refinement=2, pad=5, order=2):
+def batch_wigglez_automock_run(mock_key, sel_key,
+                               inifile=None):
 
     datapath_db = data_paths.DataPath()
 
     outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
-    fileset = datapath_db.fetch(mock_key, silent=True, intend_read=True)
 
     funcname = "correlate.batch_quadratic.call_xspec_run"
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
 
-    for index in fileset[0]:
+    mock_cases = datapath_db.fileset_cases(mock_key, "realization")
+    for index in mock_cases['realization']:
         map1_key = "db:%s:%s" % (mock_key, index)
         map2_key = "db:%s:%s" % (mock_key, index)
         noiseinv1_key = "db:%s" % sel_key
@@ -381,131 +265,34 @@ def batch_wigglez_automock_run(mock_key, sel_key, subtract_mean=False,
 
         caller.execute(map1_key, map2_key,
                        noiseinv1_key, noiseinv2_key,
-                       subtract_mean=subtract_mean,
-                       degrade_resolution=degrade_resolution,
-                       unitless=unitless,
-                       return_3d=return_3d,
-                       truncate=truncate,
-                       window=window, n_modes=n_modes,
-                       refinement=refinement,
-                       pad=pad, order=order)
+                       inifile=inifile)
 
     caller.multiprocess_stack()
 
 
-def batch_data_run(subtract_mean=False, degrade_resolution=False,
-                   unitless=True, return_3d=False,
-                   truncate=False, window=None, n_modes=None,
-                   refinement=2, pad=5, order=2, sim=False,
-                   alt_sig="", alt_noise=""):
+def batch_data_run(map_key, inifile=None):
     datapath_db = data_paths.DataPath()
-
-    if sim:
-        mapsim = "sim_15hr"
-        outpath = datapath_db.fetch("quadratic_batch_simulations")
-    else:
-        mapsim = "GBT_15hr_map"
-        outpath = datapath_db.fetch("quadratic_batch_data")
-
-    print "writing to: " + outpath
-
-    funcname = "correlate.batch_quadratic.call_xspec_run"
-    caller = batch_handler.MemoizeBatch(funcname, outpath,
-                                        generate=True, verbose=True)
-
-    for mode_num in range(0, 55, 5):
-        map1_key = "%s_cleaned_%s%dmode" % (mapsim, alt_sig, mode_num)
-        map2_key = "%s_cleaned_%s%dmode" % (mapsim, alt_sig, mode_num)
-        noise1_key = "%s_cleaned_%s%dmode" % (mapsim, alt_noise, mode_num)
-        noise2_key = "%s_cleaned_%s%dmode" % (mapsim, alt_noise, mode_num)
-
-        (pairlist, pairdict) = \
-                data_paths.cross_maps(map1_key, map2_key,
-                              noise1_key, noise2_key,
-                              map_suffix=";map",
-                              noise_inv_suffix=";noise_inv",
-                              cross_sym="_x_",
-                              pair_former="GBTauto_cross_pairs",
-                              ignore=['param'],
-                              tag1prefix=map1_key + "_",
-                              tag2prefix=map2_key + "_",
-                              verbose=True)
-
-        print pairlist, pairdict
-
-        for item in pairdict.keys():
-            pairrun = pairdict[item]
-            print pairrun['map1']
-            print pairrun['noise_inv1']
-            print pairrun['map2']
-            print pairrun['noise_inv2']
-            print pairdict[item].keys()
-
-            caller.execute(pairrun['map1'], pairrun['map2'],
-                           pairrun['noise_inv1'], pairrun['noise_inv2'],
-                           subtract_mean=subtract_mean,
-                           degrade_resolution=degrade_resolution,
-                           unitless=unitless,
-                           return_3d=return_3d,
-                           truncate=truncate,
-                           window=window, n_modes=n_modes,
-                           refinement=refinement,
-                           pad=pad, order=order)
-
-    caller.multiprocess_stack()
-
-
-def batch_GBTxwigglez_data_run_old(subtract_mean=False,
-                                   degrade_resolution=False,
-                                   unitless=True, return_3d=False,
-                                   truncate=False, window=None, n_modes=None,
-                                   refinement=2, pad=5, order=2):
-    datapath_db = data_paths.DataPath()
-
-    mapkey = "GBT_15hr_map"
     outpath = datapath_db.fetch("quadratic_batch_data")
-
     print "writing to: " + outpath
 
     funcname = "correlate.batch_quadratic.call_xspec_run"
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
 
-    for mode_num in range(0, 55, 5):
-        map1_key = "%s_cleaned_%dmode" % (mapkey, mode_num)
-        map2_key = "%s_cleaned_%dmode" % (mapkey, mode_num)
-        noise1_key = "%s_cleaned_%dmode" % (mapkey, mode_num)
-        noise2_key = "%s_cleaned_%dmode" % (mapkey, mode_num)
+    map_cases = datapath_db.fileset_cases(map_key, "pair;type;treatment")
+    for treatment in map_cases['treatment']:
+        uniq_pairs = data_paths.GBTauto_cross_pairs(map_cases['pair'],
+                                                    map_cases['pair'],
+                                                    cross_sym="_with_")
 
-        (pairlist, pairdict) = \
-                data_paths.cross_maps(map1_key, map2_key,
-                              noise1_key, noise2_key,
-                              map_suffix=";map",
-                              noise_inv_suffix=";noise_inv",
-                              cross_sym="_x_",
-                              pair_former="GBTauto_cross_pairs",
-                              ignore=['param'],
-                              tag1prefix=map1_key + "_",
-                              tag2prefix=map2_key + "_",
-                              verbose=True)
+        for item in uniq_pairs:
+            map1_key = "db:%s:%s;map;%s" % (map_key, item[0], treatment)
+            map2_key = "db:%s:%s;map;%s" % (map_key, item[1], treatment)
+            noiseinv1_key = "db:%s:%s;weight;%s" % (map_key, item[0], treatment)
+            noiseinv2_key = "db:%s:%s;weight;%s" % (map_key, item[1], treatment)
 
-        print pairlist, pairdict
-
-        for item in pairdict.keys():
-            pairrun = pairdict[item]
-            print pairrun['map1']
-            print pairrun['noise_inv1']
-            print pairdict[item].keys()
-
-            caller.execute(pairrun['map1'], "db:WiggleZ_15hr_binned_data",
-                           pairrun['noise_inv1'], "db:WiggleZ_15hr_montecarlo",
-                           subtract_mean=subtract_mean,
-                           degrade_resolution=degrade_resolution,
-                           unitless=unitless,
-                           return_3d=return_3d,
-                           truncate=truncate,
-                           window=window, n_modes=n_modes,
-                           refinement=refinement,
-                           pad=pad, order=order)
+            caller.execute(map1_key, map2_key,
+                           noiseinv1_key, noiseinv2_key,
+                           inifile=inifile)
 
     caller.multiprocess_stack()
