@@ -98,11 +98,14 @@ class PowerSpectrumMaker(object):
 		shortnoise_fname = \
 			params['input_root'] + resultf + '_p_combined.npy'
 		try:
-			print '\t:Subtracte shortnoise!!'
 			shortnoise = np.load(shortnoise_fname)
 			PK = PK - shortnoise
+			print '\t:Subtracte shortnoise!!'
 		except IOError:
 			print '\t:No shortnoise found!!'
+
+		print PK
+		print
 
 		non0 = PK.nonzero()
 		#print PK.min(), PK.max()

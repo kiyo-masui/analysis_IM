@@ -110,6 +110,7 @@ class PowerSpectrumMaker(mkpower.PowerSpectrumMaker):
 		PK = np.zeros(shape=(n_map,kbn))
 
 		if n_new <= 0:
+			raise ValueError('Process Should >= 2')
 			for ii in range(n_map):
 				self.process_map(ii, PK[ii])
 		elif n_new > 32:
