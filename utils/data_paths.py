@@ -24,10 +24,40 @@ def print_dictionary(dict_in, handle, key_list=None, prepend=""):
         print >> handle, "%s%s: %s" % (prepend, key, repr(dict_in[key]))
 
 
+def unique_list(listin):
+    seen = set()
+    seen_add = seen.add
+    uniq = [ x for x in listin if x not in seen and not seen_add(x)]
+    return sorted(uniq)
+
+
+def unpack_cases(case_list, case_key, divider=";"):
+    r"""Given a list of cases like:
+    >>> case_key = "pair;map_type;treatment"
+    >>> case_list = ['A;1;a', 'A;1;b', 'A;2;a', 'A;2;b']
+    >>> unpack_cases(case_list, case_key)
+    {'pair': ['A'], 'map_type': ['1', '2'], 'treatment': ['a', 'b']}
+
+    """
+    case_keys = case_key.split(divider)
+    case_counter = { case_key: [] for case_key in case_keys}
+    for entry in case_list:
+        csplit = entry.split(divider)
+        if len(csplit) == len(case_keys):
+            for (ckey, cval) in zip(case_keys, csplit):
+                case_counter[ckey].append(cval)
+
+    for ckey in case_counter:
+        case_counter[ckey] = unique_list(case_counter[ckey])
+
+    return case_counter
+
+
 def extract_split_tag(keylist, divider=";", ignore=None):
     r"""take a list like ['A;ok', 'B;ok'], and return ['A', 'B']
     list is made unique and sorted alphabetically
     anything in `ignore` is thrown out
+    TODO: use unique_list from above and possible merge with unpack_cases
     """
     taglist = []
     for key in keylist:
@@ -546,6 +576,13 @@ class DataPath(object):
             ret_data = copy.deepcopy(data_obj)
 
         return ret_data
+
+    def fileset_cases(self, db_key, case_key, divider=";"):
+        r"""Parse the list of files in a db entry into unique identifiers
+        see behavior of unpack_cases(case_list, case_key, divider=";")
+        """
+        fdb = self.fetch(db_key, silent=True)
+        return unpack_cases(fdb[0], case_key, divider=divider)
 
     def fetch(self, db_key, pick=None, intend_read=False, intend_write=False,
               purpose="", silent=False):

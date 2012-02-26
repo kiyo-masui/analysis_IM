@@ -12,6 +12,7 @@ import shelve
 import functools
 import anydbm
 import os
+import copy
 
 def short_repr(input, maxlen=256):
     r"""return a repr() for something if it is short enough
@@ -23,7 +24,7 @@ def short_repr(input, maxlen=256):
     return repr(input)
 
 def rehasher(item):
-    r"""classed derived on numpy have a non-uniform way of being hashed, so
+    r"""classes derived on numpy have a non-uniform way of being hashed, so
     just call their tolist member"""
     try:
         infofield = tuple(sorted(item.info.items()))
@@ -234,10 +235,20 @@ class MemoizeBatch(object):
         self.verbose = verbose
 
     def execute(self, *args, **kwargs):
-        # also see stackoverflow's: computing-an-md5-hash-of-a-data-structure
-        # based on: how-to-memoize-kwargs
+        r"""if one of the arguments is "inifile" expand that file reference
+        into a string which is added to the argument checksum
+        also see stackoverflow's: computing-an-md5-hash-of-a-data-structure
+        based on: how-to-memoize-kwargs
+        """
+        kwini = copy.deepcopy(kwargs)
+        if "inifile" in kwargs:
+            f = open(kwargs["inifile"], "r")
+            kwini["inifile"] = "".join(f.readlines())
+
+        # TODO: add support for more generic arguments (numpy derivatives)
         argpkl = pickle.dumps((self.funcname, args,
-                               tuple(sorted(kwargs.items()))), -1)
+                               tuple(sorted(kwini.items()))), -1)
+
         arghash = hashlib.sha224(argpkl).hexdigest()
 
         args_package = (arghash, self.directory,

@@ -315,4 +315,4 @@ if __name__ == '__main__':
                            prefix=prefix)
 
     generate_sim(params, parallel=True, datapath_db=datapath_db)
-    generate_aux_simset(params, datapath_db=datapath_db)
+    #generate_aux_simset(params, datapath_db=datapath_db)
