@@ -34,7 +34,7 @@ data_dir = os.getenv('GBT_DATA')
 #raw_data_dir = os.getenv('GBT10B_DATA')
 kiyo_dir = os.getenv('GBT10B_KM')
 prefix = ''
-map_prefix = '' + field +'_41-90_flux_'
+map_prefix = '' + field +'_41-90_fdg_'
 IFs = ()
 
 
@@ -86,8 +86,8 @@ rf_channel_width = 0.
 rf_n_bins_combined = 16
 rf_mean_instead_median = False
 
-#from time_stream import flux_diff_gain_cal
-#pipe_modules.append(flux_diff_gain_cal.Calibrate)
+from time_stream import flux_diff_gain_cal
+pipe_modules.append(flux_diff_gain_cal.Calibrate)
 fgc_input_root = rf_output_root
 fgc_file_middles = file_middles
 fgc_input_end = '.fits'
@@ -99,9 +99,9 @@ fgc_IFs = ()
 fgc_mueler_file = base_dir + 'diff_gain_params/'
 #fgc_mueler_file = ''
 
-#from time_stream import rotate_pol
+from time_stream import rotate_pol
 #Comment this line to skip this step in pipline.
-#pipe_modules.append(rotate_pol.RotatePol)
+pipe_modules.append(rotate_pol.RotatePol)
 rp_input_root = fgc_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
@@ -113,8 +113,8 @@ rp_IFs = ()
 rp_new_pols = (1,2,3,4)
 rp_average_cals = False
 
-from time_stream import flux_pol_cal
-pipe_modules.append(flux_pol_cal.Calibrate)
+#from time_stream import flux_pol_cal
+#pipe_modules.append(flux_pol_cal.Calibrate)
 tc_input_root = rp_output_root
 tc_file_middles = file_middles
 tc_input_end = '.fits'
@@ -128,8 +128,8 @@ tc_flux_cal_only = 'True'
 
 from map import dirty_map
 pipe_modules.append(dirty_map.DirtyMapMaker)
-dm_input_root = tc_output_root
-#dm_input_root = rp_output_root
+#dm_input_root = tc_output_root
+dm_input_root = rp_output_root
 dm_file_middles = file_middles
 dm_input_end = '.fits'
 dm_output_root = base_dir + 'maps/' + map_prefix
