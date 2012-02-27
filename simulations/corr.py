@@ -10,7 +10,7 @@ from os.path import dirname, join, exists
 from utils import integrate, units, fftutil
 from utils import cubicspline as cs
 
-from utils.cosmology import Cosmology
+from utils import cosmology as cosmo
 from gaussianfield import RandomField
 
 #ps = cs.LogInterpolater.fromfile( join(dirname(__file__),"data/ps.dat")).value
@@ -100,7 +100,7 @@ class RedshiftCorrelation(object):
     _dv0i = None
     _dv2i = None
 
-    cosmology = Cosmology()
+    cosmology = cosmo.Cosmology()
 
     def __init__(self, ps_vv = None, ps_dd = None, ps_dv = None,
                  redshift = 0.0, bias = 1.0):
@@ -218,7 +218,7 @@ class RedshiftCorrelation(object):
         c1 = self.cosmology.comoving_distance(z1)
         c2 = self.cosmology.comoving_distance(z2)
         # Construct an array of the redshifts on each slice of the cube.
-        comoving_inv = inverse_approx(self.cosmology.comoving_distance, z1, z2)
+        comoving_inv = cosmo.inverse_approx(self.cosmology.comoving_distance, z1, z2)
         da = np.linspace(c1, c2, numz+1, endpoint=True)
         za = comoving_inv(da)
 
@@ -671,7 +671,7 @@ class RedshiftCorrelation(object):
         n = cube[0].shape
 
         # Construct an array of the redshifts on each slice of the cube.
-        comoving_inv = inverse_approx(self.cosmology.comoving_distance, z1, z2)
+        comoving_inv = cosmo.inverse_approx(self.cosmology.comoving_distance, z1, z2)
         da = np.linspace(c1, c2, n[0], endpoint=True)
         za = comoving_inv(da)
 
@@ -977,32 +977,6 @@ class RedshiftCorrelation(object):
         psvv = scipy.ndimage.map_coordinates(self._aps_vv, coords, order=2)
 
         return D1*D2*pf1*pf2*(b1*b2*psdd + (f1*b2 + f2*b1)*psdv + f1*f2*psvv) / (xc**2 * np.pi)
-
-
-def inverse_approx(f, x1, x2):
-    r"""Generate the inverse function on the interval x1 to x2.
-
-    Periodically sample a function and use interpolation to construct
-    its inverse. Function must be monotonic on the given interval.
-
-    Parameters
-    ----------
-    f : callable
-        The function to invert, must accept a single argument.
-    x1, x2 : scalar
-        The lower and upper bounds of the interval on which to
-        construct the inverse.
-
-    Returns
-    -------
-    inv : cubicspline.Interpolater
-        A callable function holding the inverse.
-    """
-
-    xa = np.linspace(x1, x2, 1000)
-    fa = f(xa)
-
-    return cs.Interpolater(fa, xa)
 
 
 @np.vectorize

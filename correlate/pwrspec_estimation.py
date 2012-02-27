@@ -8,6 +8,7 @@
         make radius array unit test (anisotropic axes)
 """
 import numpy as np
+import scipy.special
 import math
 from core import algebra
 import copy
@@ -88,7 +89,7 @@ def make_unitless(xspec_arr, radius_arr=None, ndim=None):
     if ndim is None:
         ndim = xspec_arr.ndim
 
-    factor = 2. * math.pi ** (ndim / 2.) / math.gamma(ndim / 2.)
+    factor = 2. * math.pi ** (ndim / 2.) / scipy.special.gamma(ndim / 2.)
     factor /= (2. * math.pi) ** ndim
     return xspec_arr * radius_arr ** ndim * factor
 

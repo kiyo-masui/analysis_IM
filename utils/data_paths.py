@@ -40,7 +40,12 @@ def unpack_cases(case_list, case_key, divider=";"):
 
     """
     case_keys = case_key.split(divider)
-    case_counter = { case_key: [] for case_key in case_keys}
+    # python 2.7 syntax; broken on tpb, use 2.6
+    #case_counter = { case_key: [] for case_key in case_keys}
+    case_counter = {}
+    for case_key in case_keys:
+        case_counter[case_key] = []
+
     for entry in case_list:
         csplit = entry.split(divider)
         if len(csplit) == len(case_keys):

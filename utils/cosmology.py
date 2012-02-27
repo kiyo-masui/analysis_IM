@@ -283,6 +283,32 @@ class Cosmology:
         raise Exception("Units not known")
 
 
+def inverse_approx(f, x1, x2):
+    r"""Generate the inverse function on the interval x1 to x2.
+
+    Periodically sample a function and use interpolation to construct
+    its inverse. Function must be monotonic on the given interval.
+
+    Parameters
+    ----------
+    f : callable
+        The function to invert, must accept a single argument.
+    x1, x2 : scalar
+        The lower and upper bounds of the interval on which to
+        construct the inverse.
+
+    Returns
+    -------
+    inv : cubicspline.Interpolater
+        A callable function holding the inverse.
+    """
+
+    xa = np.linspace(x1, x2, 1000)
+    fa = f(xa)
+
+    return cs.Interpolater(fa, xa)
+
+
 @np.vectorize
 def _intfz(f, a, b):
     # A wrapper function to allow vectorizing integrals, cuts such
