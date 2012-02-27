@@ -1,100 +1,55 @@
 from correlate import batch_quadratic as bq
+import sys
 
-def sim_autopower():
+
+def sim_autopower(inifile=None, inifile_phys=None):
     r"""run all of the auto-power theory cases
-    sim = dd, vv
-    simvel = dd, vv, streaming
-    ideal = dd only
-    1800 power spectra
     """
+    basesims = ['sim_15hr_oldmap_ideal', 'sim_15hr_oldmap_nostr',
+                'sim_15hr_oldmap_str', 'sim_22hr_oldmap_str',
+                'sim_1hr_oldmap_str']
+    treatments = ['_temperature', '_beam', '_beam_conv', '_beam_meansub',
+                  '_beam_meansubconv']
 
-    # run autopower on the physical volumes
-    bq.batch_physical_sim_run("sim_15hr_physical")
-    bq.batch_physical_sim_run("simvel_15hr_physical")
-    bq.batch_physical_sim_run("simideal_15hr_physical")
+    for base in basesims:
+        bq.batch_physical_sim_run("%s_physical" % base,
+                                  inifile=inifile_phys)
 
-    # run autopower on the observed volumes
-    bq.batch_sim_run("sim_15hr")
-    bq.batch_sim_run("simvel_15hr")
-    bq.batch_sim_run("simideal_15hr")
-
-    # run autopower on the observed volumes with beam applied
-    bq.batch_sim_run("sim_15hr_beam")
-    bq.batch_sim_run("simvel_15hr_beam")
-    bq.batch_sim_run("simideal_15hr_beam")
-
-    # run autopower on the observed volumes with beam and meansub applied
-    bq.batch_sim_run("sim_15hr_beam", degrade_resolution=False, subtract_mean=True)
-    bq.batch_sim_run("simvel_15hr_beam", degrade_resolution=False, subtract_mean=True)
-    bq.batch_sim_run("simideal_15hr_beam", degrade_resolution=False, subtract_mean=True)
-
-    # run autopower on the observed volumes with beam and conv applied
-    bq.batch_sim_run("sim_15hr_beam", degrade_resolution=True, subtract_mean=False)
-    bq.batch_sim_run("simvel_15hr_beam", degrade_resolution=True, subtract_mean=False)
-    bq.batch_sim_run("simideal_15hr_beam", degrade_resolution=True, subtract_mean=False)
-
-    # run autopower on the observed volumes with beam, meansub and conv applied
-    bq.batch_sim_run("sim_15hr_beam", degrade_resolution=True, subtract_mean=True)
-    bq.batch_sim_run("simvel_15hr_beam", degrade_resolution=True, subtract_mean=True)
-    bq.batch_sim_run("simideal_15hr_beam", degrade_resolution=True, subtract_mean=True)
+        for treatment in treatments:
+            mapname = base + treatment
+            weight = "GBT_15hr_map_fluxpolcal_cleaned_combined:weight;0modes"
+            bq.batch_sim_run(mapname, mapname,
+                             weight, weight, inifile=inifile)
 
 
-def sim_crosspower():
-    r"""Do not calculate the simideal case"""
-    bq.batch_genericsim_run("sim_15hr", "sim_15hr_delta",
-                         "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
-                         "WiggleZ_15hr_montecarlo")
+def sim_crosspower(inifile=None):
+    basesims = ['sim_15hr_oldmap_ideal', 'sim_15hr_oldmap_nostr',
+                'sim_15hr_oldmap_str', 'sim_22hr_oldmap_str',
+                'sim_1hr_oldmap_str']
+    treatments = ['_temperature', '_beam', '_beam_conv', '_beam_meansub',
+                  '_beam_meansubconv']
 
-    bq.batch_genericsim_run("sim_15hr_beam", "sim_15hr_delta",
-                         "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
-                         "WiggleZ_15hr_montecarlo")
-
-    bq.batch_genericsim_run("sim_15hr_beam_meansub", "sim_15hr_delta",
-                         "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
-                         "WiggleZ_15hr_montecarlo")
-
-    bq.batch_genericsim_run("sim_15hr_beam_meansubconv", "sim_15hr_delta",
-                         "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
-                         "WiggleZ_15hr_montecarlo")
-
-    bq.batch_genericsim_run("sim_15hr_beam_conv", "sim_15hr_delta",
-                         "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
-                         "WiggleZ_15hr_montecarlo")
-
-    bq.batch_genericsim_run("simvel_15hr", "simvel_15hr_delta",
-                         "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
-                         "WiggleZ_15hr_montecarlo")
-
-    bq.batch_genericsim_run("simvel_15hr_beam", "simvel_15hr_delta",
-                         "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
-                         "WiggleZ_15hr_montecarlo")
-
-    bq.batch_genericsim_run("simvel_15hr_beam_meansub", "simvel_15hr_delta",
-                         "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
-                         "WiggleZ_15hr_montecarlo")
-
-    bq.batch_genericsim_run("simvel_15hr_beam_meansubconv", "simvel_15hr_delta",
-                         "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
-                         "WiggleZ_15hr_montecarlo")
-
-    bq.batch_genericsim_run("simvel_15hr_beam_conv", "simvel_15hr_delta",
-                         "GBT_15hr_map_combined_cleaned_noconv_0mode_weight",
-                         "WiggleZ_15hr_montecarlo")
+    for base in basesims:
+        for treatment in treatments:
+            map1 = base + treatment
+            map2 = base + "_delta"
+            print map1, map2
+            bq.batch_sim_run(map1, map2,
+                         "GBT_15hr_map_fluxpolcal_cleaned_combined:weight;0modes",
+                         "WiggleZ_15hr_montecarlo", inifile=inifile)
 
 
-def sim_one_sided_trans():
-    bq.batch_one_sided_trans_run("sim_15hr_combined_cleaned", "sim_15hr",
-                              "GBT_15hr_map_combined_cleaned")
-    bq.batch_one_sided_trans_run("sim_15hr_combined_cleaned_noconv", "sim_15hr",
-                              "GBT_15hr_map_combined_cleaned_noconv")
-    bq.batch_one_sided_trans_run("sim_15hr_combined_cleaned", "sim_15hr_beam",
-                              "GBT_15hr_map_combined_cleaned")
-    bq.batch_one_sided_trans_run("sim_15hr_combined_cleaned_noconv", "sim_15hr_beam",
-                              "GBT_15hr_map_combined_cleaned_noconv")
-    bq.batch_one_sided_trans_run("sim_15hr_combined_cleaned", "sim_15hr_beam_meansubconv",
-                              "GBT_15hr_map_combined_cleaned")
-    bq.batch_one_sided_trans_run("sim_15hr_combined_cleaned_noconv", "sim_15hr_beam_meansub",
-                              "GBT_15hr_map_combined_cleaned_noconv")
+def sim_one_sided_trans(basemap, basesim, inifile=None):
+    left_treatments = ["", "_noconv"]
+    right_treatments = ['_temperature', '_beam', '_beam_conv', '_beam_meansub',
+                        '_beam_meansubconv']
+
+    for lt in left_treatments:
+        for rt in right_treatments:
+            lmap = "%s_cleaned_sims%s_combined" % (basemap, lt)
+            rmap = "%s%s" % (basesim, rt)
+            wmap = "%s_cleaned%s_combined" % (basemap, lt)
+            bq.batch_one_sided_trans_run(lmap, rmap, wmap, inifile=inifile)
 
 
 def run_GBTxGBT():
@@ -118,6 +73,18 @@ def run_GBTxGBT():
 
 
 if __name__ == '__main__':
+    inifile = "input/ers/batch_quadratic/default.ini"
+    inifile_phys = "input/ers/batch_quadratic/default_physical.ini"
+
+    sim_autopower(inifile=inifile, inifile_phys=inifile_phys)
+
+    # TODO: make a loop which runs the various relevant cases of this
+    sim_one_sided_trans("GBT_15hr_map_fluxpolcal",
+                        "sim_15hr_oldmap_str", inifile=inifile)
+
+    sim_crosspower(inifile=inifile)
+
+    sys.exit()
     # WiggleZ xpower with old calibration
     print "PHASEI"
     bq.batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned_noconv_fluxcal",
@@ -158,8 +125,6 @@ if __name__ == '__main__':
                                "WiggleZ_15hr_delta_mock",
                                "WiggleZ_15hr_montecarlo")
 
-    sys.exit()
-    sim_crosspower()
 
     bq.batch_GBTxwigglez_trans_run("sim_15hr_combined_cleaned_noconv",
                                 "sim_15hr_delta",

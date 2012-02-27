@@ -7,10 +7,11 @@ from utils import data_paths
 from correlate import map_pair as mp
 from correlate import pwrspec_estimation as pe
 from utils import batch_handler
+from kiyopy import parse_ini
 
 
 def call_xspec_run(map1_key, map2_key,
-                   noiseinv1_key, noiseinv2_key
+                   noiseinv1_key, noiseinv2_key,
                    inifile=None):
     r"""a free-standing function which calls the xspec analysis
     """
@@ -23,9 +24,7 @@ def call_xspec_run(map1_key, map2_key,
         "pad": 5,
         "order": 2,
         "freq_list": [],
-        "bins": np.logspace(math.log10(0.00765314), \
-                            math.log10(2.49977141), \
-                            num=35, endpoint=True)
+        "bins": [0.00765314, 2.49977141, 35]
                    }
     prefix = 'xs_'
 
@@ -38,9 +37,14 @@ def call_xspec_run(map1_key, map2_key,
                          noiseinv1_key, noiseinv2_key,
                          params['freq_list'])
 
+    bparam = params['bins']
+    bins = np.logspace(math.log10(bparam[0]),
+                       math.log10(bparam[1]),
+                       num = bparam[2], endpoint=True)
+
     retval = simpair.pwrspec_summary(window=params['window'],
                                      unitless=params['unitless'],
-                                     bins=params['bins'],
+                                     bins=bins,
                                      truncate=params['truncate'],
                                      refinement=params['refinement'],
                                      pad=params['pad'],
@@ -57,10 +61,8 @@ def call_phys_space_run(cube1_file, cube2_file,
         "unitless": True,
         "return_3d": False,
         "truncate": False,
-        "window": "blackman"
-        "bins": np.logspace(math.log10(0.00765314), \
-                            math.log10(2.49977141), \
-                            num=35, endpoint=True)
+        "window": "blackman",
+        "bins": [0.00765314, 2.49977141, 35]
                    }
     prefix = 'xs_'
 
@@ -68,7 +70,12 @@ def call_phys_space_run(cube1_file, cube2_file,
     if inifile is None:
         print "WARNING: no ini file for pwrspec estimation"
 
-    retval = pe.calculate_xspec_file(cube1_file, cube2_file, params['bins'],
+    bparam = params['bins']
+    bins = np.logspace(math.log10(bparam[0]),
+                       math.log10(bparam[1]),
+                       num = bparam[2], endpoint=True)
+
+    retval = pe.calculate_xspec_file(cube1_file, cube2_file, bins,
                     weight1_file=None, weight2_file=None,
                     truncate=params['truncate'], window=params['window'],
                     return_3d=params['return_3d'], unitless=params['unitless'])
@@ -83,14 +90,15 @@ def batch_physical_sim_run(sim_key, inifile=None):
     outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
     mock_cases = datapath_db.fileset_cases(sim_key, "realization")
+    fileset = datapath_db.fileset_cases(sim_key, "realization")
 
     funcname = "correlate.batch_quadratic.call_phys_space_run"
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
 
     for index in mock_cases['realization']:
-        map1_file = fileset[1][index]
-        map2_file = fileset[1][index]
+        map1_file = datapath_db.fetch("%s:%s" % (sim_key, index))
+        map2_file = datapath_db.fetch("%s:%s" % (sim_key, index))
 
         caller.execute(map1_file, map2_file,
                        inifile=inifile)
@@ -204,7 +212,7 @@ def batch_GBTxwigglez_trans_run(sim_key, sim_wigglez,
     caller.multiprocess_stack()
 
 
-def batch_one_sided_trans_run(modeloss_simkey, base_simkey,
+def batch_one_sided_trans_run(modeloss_simkey, sim_key,
                               modeloss_weight_root,
                               inifile=None):
     datapath_db = data_paths.DataPath()
@@ -217,8 +225,8 @@ def batch_one_sided_trans_run(modeloss_simkey, base_simkey,
                                         generate=True, verbose=True)
 
     # TODO: this is not a generic loop based on new db structure
-    map1_key = "db:%s:0" % base_simkey
-    map2_key = "db:%s:0" % base_simkey
+    map1_key = "db:%s:0" % sim_key
+    map2_key = "db:%s:0" % sim_key
     noiseinv1_key = "db:%s:weight;0modes" % (modeloss_weight_root)
     noiseinv2_key = "db:%s:weight;0modes" % (modeloss_weight_root)
 
@@ -229,7 +237,7 @@ def batch_one_sided_trans_run(modeloss_simkey, base_simkey,
     map_cases = datapath_db.fileset_cases(sim_key, "type;treatment")
     for treatment in map_cases['treatment']:
         map1_key = "db:%s:map;%s" % (modeloss_simkey, treatment)
-        map2_key = "db:%s:0" % base_simkey
+        map2_key = "db:%s:0" % sim_key
 
         noiseinv1_key = "db:%s:weight;%s" % (modeloss_weight_root, \
                                                  treatment)
