@@ -3,7 +3,7 @@ import scipy as sp
 from core import algebra
 from utils import data_paths
 from utils import units
-from utils.cosmology import Cosmology
+from utils import cosmology as cosmo
 from utils import batch_handler
 
 
@@ -32,7 +32,7 @@ def physical_grid(input_array, refinement=2, pad=5, order=2):
     thetax *= ra_fact
     (numz, numx, numy) = input_array.shape
 
-    cosmology = Cosmology()
+    cosmology = cosmo.Cosmology()
     z1 = units.nu21 / nu_upper - 1.0
     z2 = units.nu21 / nu_lower - 1.0
     d1 = cosmology.proper_distance(z1)
@@ -102,7 +102,7 @@ def physical_grid(input_array, refinement=2, pad=5, order=2):
     y_axis = phys_map.get_axis("dec")
 
     # Construct an array of the redshifts on each slice of the cube.
-    comoving_inv = cosmology.inverse_approx(cosmology.comoving_distance, z1, z2)
+    comoving_inv = cosmo.inverse_approx(cosmology.comoving_distance, z1, z2)
     za = comoving_inv(radius_axis)  # redshifts on the constant-D spacing
     nua = units.nu21 / (1. + za)
 

@@ -3,6 +3,7 @@ import math
 import numpy as np
 from units import *
 import scipy.integrate as si
+from utils import cubicspline as cs
 
 
 class Cosmology:
