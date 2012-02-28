@@ -242,6 +242,7 @@ class MemoizeBatch(object):
         """
         kwini = copy.deepcopy(kwargs)
         if "inifile" in kwargs:
+            print "MemoizeBatch: expanding inifile into argument checksum"
             f = open(kwargs["inifile"], "r")
             kwini["inifile"] = "".join(f.readlines())
 

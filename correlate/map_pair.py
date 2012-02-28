@@ -11,7 +11,6 @@ from map import beam
 from map import physical_gridding as pg
 from kiyopy import parse_ini
 import kiyopy.utils
-from utils import file_tools as ft
 from correlate import corr_estimation
 from correlate import pwrspec_estimation as pe
 from utils import data_paths
@@ -32,40 +31,7 @@ params_init = {
 prefix = 'fs_'
 
 
-class CorrelateSingle():
-    r"""Class to handle correlation of a single map pair"""
-    def __init__(self, parameter_file_or_dict=None):
-        self.params = parse_ini.parse(parameter_file_or_dict, params_init,
-                                      prefix=prefix)
-
-        self.freq_list = sp.array(self.params['freq_list'], dtype=int)
-        self.lags = self.params['lags']
-
-        #self.output_root = self.datapath_db.fetch(self.params['output_root'],
-        #                                          intend_write=True)
-        self.output_root = self.params['output_root']
-        self.output_filetag = self.params['output_filetag']
-        self.inifile = self.output_root + self.output_filetag + ".ini"
-
-        # Write parameter file.
-        kiyopy.utils.mkparents(self.output_root)
-        parse_ini.write_params(self.params, self.inifile,
-                               prefix=prefix)
-
-        # load the maps, N^-1
-        map1 = algebra.make_vect(algebra.load(self.params['map1']))
-        map2 = algebra.make_vect(algebra.load(self.params['map2']))
-        noise_inv1 = algebra.make_vect(algebra.load(self.params['noise_inv1']))
-        noise_inv2 = algebra.make_vect(algebra.load(self.params['noise_inv2']))
-        self.pair = MapPair(map1, map2, noise_inv1, noise_inv2, self.freq_list)
-
-    def execute(self):
-        r"""calculate the correlation function of the given map pair"""
-        print "stuff here"
-        # SAVE TO SHELVE NOTPICKLE
-
-
-class MapPair(ft.ClassPersistence):
+class MapPair(object):
     r"""Pair of maps that are processed together and cross correlated.
 
     Parameters
@@ -97,52 +63,47 @@ class MapPair(ft.ClassPersistence):
 
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, map1, map2, noise_inv1, noise_inv2, freq, avoid_db=False):
         r"""
         arguments: map1, map2, noise_inv1, noise_inv2, freq
         """
-        super(MapPair, self).__init__()
-        # variable names that define the object (for loading and saving)
-        self.varlist = ['map1', 'map2', 'noise_inv1', 'noise_inv2', 'freq']
-        self.varlist = ['phys_map1', 'phys_map2',
-                        'phys_noise_inv1', 'phys_noise_inv2']
-        self.varlist.extend(['counts', 'modes1', 'modes2'])
-        self.varlist.extend(['left_modes', 'right_modes'])
-        self.varlist.extend(['map1_name', 'map2_name'])
-
-        self.datapath_db = data_paths.DataPath()
-
-        if ((len(args) == 0) and ("shelve_filename" in kwargs)):
-            shelve_filename = kwargs['shelve_filename']
-            self.load_variables(shelve_filename)
+        # just take filenames to these objects to avoid independent db lookups
+        # which get expensive to do for e.g. 10000 quadratic products
+        if avoid_db:
+            self.map1 = algebra.make_vect(algebra.load(map1))
+            self.map2 = algebra.make_vect(algebra.load(map2))
+            self.noise_inv1 = algebra.make_vect(algebra.load(noise_inv1))
+            self.noise_inv2 = algebra.make_vect(algebra.load(noise_inv2))
         else:
-            self.map1 = self.datapath_db.fetch_multi(args[0])
-            self.map2 = self.datapath_db.fetch_multi(args[1])
-            self.noise_inv1 = self.datapath_db.fetch_multi(args[2])
-            self.noise_inv2 = self.datapath_db.fetch_multi(args[3])
-            self.freq = args[4]
+            self.datapath_db = data_paths.DataPath()
+            self.map1 = self.datapath_db.fetch_multi(map1)
+            self.map2 = self.datapath_db.fetch_multi(map2)
+            self.noise_inv1 = self.datapath_db.fetch_multi(noise_inv1)
+            self.noise_inv2 = self.datapath_db.fetch_multi(noise_inv2)
 
-            # set the physical-dimension maps to None
-            self.phys_map1 = None
-            self.phys_map2 = None
-            self.phys_noise_inv1 = None
-            self.phys_noise_inv2 = None
+        self.freq = freq
 
-            # Give infinite noise to unconsidered frequencies
-            self.sanitize()
+        # set the physical-dimension maps to None
+        self.phys_map1 = None
+        self.phys_map2 = None
+        self.phys_noise_inv1 = None
+        self.phys_noise_inv2 = None
 
-            # Set attributes.
-            self.counts = 0
-            self.modes1 = 0
-            self.modes2 = 0
-            self.left_modes = 0
-            self.right_modes = 0
-            # For saving, to keep track of each mapname.
-            self.map1_name = ''
-            self.map2_name = ''
-            # Which section [A, B, C, D...] the maps is from.
-            self.map1_code = ''
-            self.map2_code = ''
+        # Give infinite noise to unconsidered frequencies
+        self.sanitize()
+
+        # Set attributes.
+        self.counts = 0
+        self.modes1 = 0
+        self.modes2 = 0
+        self.left_modes = 0
+        self.right_modes = 0
+        # For saving, to keep track of each mapname.
+        self.map1_name = ''
+        self.map2_name = ''
+        # Which section [A, B, C, D...] the maps is from.
+        self.map1_code = ''
+        self.map2_code = ''
 
     def set_names(self, name1, name2):
         r"""Set the map names and codes.

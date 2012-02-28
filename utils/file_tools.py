@@ -369,6 +369,7 @@ class TestClassPersistence(ClassPersistence):
     >>> os.remove(shelvefile)
     """
     def __init__(self, *args, **kwargs):
+        super(MapPair, self).__init__()
         self.varlist = ['var1', 'var2']
         if ((len(args) == 0) and ("shelve_filename" in kwargs)):
             self.shelve_init(*args, **kwargs)

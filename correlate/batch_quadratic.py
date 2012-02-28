@@ -23,7 +23,7 @@ def call_xspec_run(map1_key, map2_key,
         "refinement": 2,
         "pad": 5,
         "order": 2,
-        "freq_list": [],
+        "freq_list": tuple(range(256)),
         "bins": [0.00765314, 2.49977141, 35]
                    }
     prefix = 'xs_'
@@ -106,6 +106,17 @@ def batch_physical_sim_run(sim_key, inifile=None):
     caller.multiprocess_stack()
 
 
+def convert_keydict_to_filedict(dbkeydict, db=None):
+    if db is None:
+        db = data_paths.DataPath()
+
+    filedict = {}
+    for name in dbkeydict:
+        filedict[name] = db.fetch(dbkeydict[name])
+
+    return filedict
+
+
 def batch_sim_run(simleft_key, simright_key,
                   weightleft_key, weightright_key,
                   inifile=None):
@@ -124,13 +135,15 @@ def batch_sim_run(simleft_key, simright_key,
     mock_cases = datapath_db.fileset_cases(simleft_key, "realization")
 
     for index in mock_cases['realization']:
-        map1_key = "db:%s:%s" % (simleft_key, index)
-        map2_key = "db:%s:%s" % (simright_key, index)
-        noiseinv1_key = "db:%s" % weightleft_key
-        noiseinv2_key = "db:%s" % weightright_key
+        input = {}
+        input['map1_key'] = "%s:%s" % (simleft_key, index)
+        input['map2_key'] = "%s:%s" % (simright_key, index)
+        input['noiseinv1_key'] = "%s" % weightleft_key
+        input['noiseinv2_key'] = "%s" % weightright_key
+        files = convert_keydict_to_filedict(input, db=datapath_db)
 
-        caller.execute(map1_key, map2_key,
-                       noiseinv1_key, noiseinv2_key,
+        caller.execute(files['map1_key'], files['map2_key'],
+                       files['noiseinv1_key'], files['noiseinv2_key'],
                        inifile=inifile)
 
     caller.multiprocess_stack()
@@ -152,24 +165,28 @@ def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
     mock_cases = datapath_db.fileset_cases(wigglez_mock_key, "realization")
 
     for treatment in map_cases['treatment']:
-        map1_key = "db:%s:map;%s" % (gbt_map_key, treatment)
-        map2_key = "db:%s" % wigglez_map_key
-        noiseinv1_key = "db:%s:weight;%s" % (gbt_map_key, treatment)
-        noiseinv2_key = "db:%s" % wigglez_selection_key
+        input = {}
+        input['map1_key'] = "%s:map;%s" % (gbt_map_key, treatment)
+        input['map2_key'] = "%s" % wigglez_map_key
+        input['noiseinv1_key'] = "%s:weight;%s" % (gbt_map_key, treatment)
+        input['noiseinv2_key'] = "%s" % wigglez_selection_key
+        files = convert_keydict_to_filedict(input, db=datapath_db)
 
-        caller.execute(map1_key, map2_key,
-                       noiseinv1_key, noiseinv2_key,
+        caller.execute(files['map1_key'], files['map2_key'],
+                       files['noiseinv1_key'], files['noiseinv2_key'],
                        inifile=inifile)
 
     for treatment in map_cases['treatment']:
         for index in mock_cases['realization']:
-            map1_key = "db:%s:map;%s" % (gbt_map_key, treatment)
-            map2_key = "db:%s:%d" % (wigglez_mock_key, index)
-            noiseinv1_key = "db:%s:weight;%s" % (gbt_map_key, treatment)
-            noiseinv2_key = "db:%s" % wigglez_selection_key
+            input = {}
+            input['map1_key'] = "%s:map;%s" % (gbt_map_key, treatment)
+            input['map2_key'] = "%s:%d" % (wigglez_mock_key, index)
+            input['noiseinv1_key'] = "%s:weight;%s" % (gbt_map_key, treatment)
+            input['noiseinv2_key'] = "%s" % wigglez_selection_key
+            files = convert_keydict_to_filedict(input, db=datapath_db)
 
-            caller.execute(map1_key, map2_key,
-                           noiseinv1_key, noiseinv2_key,
+            caller.execute(files['map1_key'], files['map2_key'],
+                           files['noiseinv1_key'], files['noiseinv2_key'],
                            inifile=inifile)
 
     caller.multiprocess_stack()
