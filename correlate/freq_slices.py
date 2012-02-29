@@ -26,7 +26,8 @@ site.addsitedir('/home/eswitzer/local/lib/python2.6/site-packages/')
 from kiyopy import parse_ini
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
-from core import utils, algebra
+from core import algebra
+import utils.misc as utils
 from core import handythread as ht
 import itertools
 import map.tools
@@ -56,7 +57,7 @@ params_init = {
                # How long to run the program.
                'first_pass_only' : False,
                'skip_fore_corr': False,
-               # saving and svd file used when wanting to skip fore corr.
+               # saving an svd file used when wanting to skip fore corr.
                'save_svd_info' : False,
                # Saving and loading svd stuff occurs to the same file but
                # never at the same time.
@@ -72,11 +73,44 @@ class MapPair(object) :
 
     Parameters
     ----------
-    Map1
-    Map2
-    Noise_inv1
-    Noise_inv2
-    freq
+    Map1, Map2 : algebra_vector
+        Input Maps.
+    Noise_inv1, Noise_inv2 : algebra_vector
+        Input Noise inverses.
+    freq : tuple of ints
+        The frequency indeces to use.
+    
+    Attributes
+    ----------
+    Map1, Map2 : algebra_vector
+        Input Maps.
+    Noise_inv1, Noise_inv2 : algebra_vector
+        Input Noise inverses.
+    Map1_name, Map2_name : str
+        The names of the maps from file_middles.
+    Map1_code, Map2_code : str
+        A single letter representing which section the map is.
+    freq : tuple of ints
+        The frequency indeces to use.
+    lags : tuple of ints
+        The angular lag tuples to use.
+    params : dict
+        A dictionary containing all the information from correlate_slices.ini
+    fore_corr, corr : 3D array
+        The correlation of the maps before and after mode subtraction.
+    fore_counts, counts : 3D array
+        The weights for the correlations before and after mode subtraction.
+    vals : array
+        The amplitude of the modes.
+    all_modes1, all_modes2 : 2D array
+        All of the modes for the 2 maps in a pair (from 1 to len(freq)).
+    modes1, modes2 : 2D array
+        The modes for the 2 maps in a pair (from 1 to number of modes 
+        to be subtracted).
+    L_modes, R_modes : 3D array
+        What was subtracted from the maps during cleaning. Do not know why
+        the naming is like this.
+
     """
 
     def __init__(self, Map1, Map2, Noise_inv1, Noise_inv2, freq) :
@@ -102,6 +136,8 @@ class MapPair(object) :
         self.fore_counts = 0
         self.counts = 0
         self.vals = 0
+        self.all_modes1 = 0
+        self.all_modes2 = 0
         self.modes1 = 0
         self.modes2 = 0
         self.L_modes = 0
@@ -118,36 +154,45 @@ class MapPair(object) :
         self.params = {}
 
     def set_names(self, name1, name2):
-        """Set Map1_name to name1 and Map2_name to name2. 
-        Also the map codes. Note it is hardcoded for 4 maps right now."""
+        """Set the map names and codes.
+
+        Set Map1_name to name1 and Map2_name to name2. 
+        Also the map codes. Note it is hardcoded for 4 maps right now.
+
+        Parameters
+        ----------
+        name1, name2 : str
+            The names of the maps.
+   
+        """
+        
+        # Note that "I" would not be a good idea since it represents
+        # a polarization and all of the maps have it.
+        sections = ["A","B","C","D","E","F","G","H"]
+
         self.Map1_name = name1
         self.Map2_name = name2
+
         # Set Map1's section.
-        if "A" in name1:
-            self.Map1_code = "A"
-        elif "B" in name1:
-            self.Map1_code = "B"
-        elif "C" in name1:
-            self.Map1_code = "C"
-        elif "D" in name1:
-            self.Map1_code = "D"
-        else:
-            print "Maps can only be names by sections A,B,C or D."
-            raise
+        found1 = False
+        for letter in sections:
+            if ((not found1) and (letter in name1)):
+                found1 = True
+                self.Map1_code = letter
+
         # Set Map2's section.
-        if "A" in name2:
-            self.Map2_code = "A"
-        elif "B" in name2:
-            self.Map2_code = "B"
-        elif "C" in name2:
-            self.Map2_code = "C"
-        elif "D" in name2:
-            self.Map2_code = "D"
-        else:
-            print "Maps can only be names by sections A,B,C or D."
+        found2 = False
+        for letter in sections:
+            if ((not found2) and (letter in name2)):
+                found2 = True
+                self.Map2_code = letter
+
+        if ((not found1) or (not found2)):
+            print "Maps can only be named by sections A,B,C,D,E,F,G, or H."
             raise
 
-    def degrade_resolution(self):# , fake_width=1.) :
+
+    def degrade_resolution(self):
         """Convolves the maps down to the lowest resolution.
 
         Also convolves the noise, making sure to deweight pixels near the edge
@@ -165,8 +210,6 @@ class MapPair(object) :
                              dtype=float)
         freq_data *= 1.0e6
         beam_diff=sp.sqrt(max(1.1*beam_data)**2-(beam_data)**2)
-#remove  beam_diff = sp.zeros(len(beam_data))
-#        beam_diff[:] = fake_width
         b = beam.GaussianBeam(beam_diff,freq_data)
         # Convolve to a common resolution.
         self.Map2=b.apply(self.Map2)
@@ -238,10 +281,12 @@ class MapPair(object) :
         self.Map2[self.Noise_inv2<1.e-20] = 0
 
     def subtract_frequency_modes(self, modes1, modes2=None) :
-        """Subtract frequency mode from the map. This does not save anything
-        anymore. The outmaps (L and R modes) that were saved before are now
-        stored as a variable in the class and the saving of everything (maps,
-        noise_invs, and modes) is done later in it's own function.
+        """Subtract frequency mode from the map. 
+
+        This does not save anything anymore. The outmaps (L and R modes)
+        that were saved before are now stored as a variable in the class
+        and the saving of everything (maps, noise_invs, and modes) is done
+        later in it's own function.
 
         Parameters
         ---------
@@ -250,6 +295,7 @@ class MapPair(object) :
             of the map one.
         modes2 : list of 1D arrays.
             Modes to subtract out of map 2.  If `None` set to `modes1`.
+
         """
 
         if modes2 == None :
@@ -276,12 +322,6 @@ class MapPair(object) :
                     Map1[freq,ira,jdec] -= amp*v
                     outmap_L[i,ira,jdec] = amp
         self.L_modes = outmap_L
-#        if fname1 :
-#            save_file = self.params['output_root'] + fname1 + \
-#                            "_cleaned_clean_map_I_with_" + \
-#                            other_mapname1 + ".npy"
-#            #algebra.save(fname1, outmap)
-#            algebra.save(save_file, Map1) # outmap)
 
         # Second map.
         outmap_R = sp.empty((len(modes1),)+Map1.shape[1:])
@@ -299,19 +339,12 @@ class MapPair(object) :
                     Map2[freq,ira,jdec] -= amp*v
                     outmap_R[i,ira,jdec] = amp
         self.R_modes = outmap_R
-#        if fname2 :
-#            save_file = self.params['output_root'] + fname2 + \
-#                            "_cleaned_clean_map_I_with_" + \
-#                            other_mapname2 + ".npy"
-#            #algebra.save(fname1, outmap)
-#            algebra.save(save_file, Map2) # outmap)
 
 
     def correlate(self, lags=(), speedup=False):
         """Calculate the cross correlation function of the maps.
 
         The cross correlation function is a function of f1, f2 and angular lag.
-
         The angular lag bins are passed, all pairs of frequencies are
         calculated.
 
@@ -319,11 +352,17 @@ class MapPair(object) :
         ----------
         lags : array like
             Angular lags bins (upper side bin edges).
+        speedup : boolean
+            Speeds up the correlation. This works fine, yes? Should be the
+            normal way if so.
 
         Returns
         -------
         corr : array
-            Normalized such that the 0 lag, f1=f2 compenents are unity.
+            The correlation between 2 maps.
+        counts : array
+            The weighting of the correlation based on the maps' weights.
+
         """
 
         Map1 = self.Map1
@@ -431,8 +470,30 @@ class MapPair(object) :
 
 class NewSlices(object) :
     """Pipeline module that scripts together the cross correlation of maps.
-    Now: params, Pair, fore_corr, corr, fore_Pair, vals, modes1, modes2.
-    Want: Pairs, corr_final, core_std.
+
+    Parameters
+    ----------
+    parameter_file_or_dict : file or dict
+        Loads parameters for execution and stores in a dictionary.
+
+    Attributes
+    ----------
+    params : dict
+        A dictionary containing all the information from correlate_slices.ini
+    fore_Pairs : list of MapPair
+        Keeps track of all pair information until just after 1st correlation.
+    Pairs : list of MapPair
+        Keeps track of all pairs. The ordering of the pairs in this list is
+        based on the double for loop that goes over file_middles.
+    svd_info_list : list of svd_infos
+        Contains the svd_info for each `MapPair`.
+        svd_info has 3 elements - `vals`, `all_modes1`, and `all_modes2` (see
+        MapPair documention for what they are).
+    corr_final : 3D array
+        The average correlation from all pairs.
+    corr_std : 3D array
+        The standard deviation of `corr_final`.
+
     """
 
     def __init__(self, parameter_file_or_dict=None) :
@@ -441,6 +502,9 @@ class NewSlices(object) :
                                  prefix=prefix)
 
     def execute(self) :
+        '''Clean the maps of foregrounds, save the results, and get the
+        autocorrelation.'''
+
         params = self.params
         freq = sp.array(params['freq'], dtype=int)
         lags = sp.array(params['lags'])
@@ -448,14 +512,11 @@ class NewSlices(object) :
         kiyopy.utils.mkparents(params['output_root'])
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
                                prefix=prefix)
-        # Get the map data from file as well as the noise inverse.  The Noise
-        # data is huge matrix, but for now we are just using the diagonal.
+        # Get the map data from file as well as the noise inverse.
         if len(params['file_middles']) == 1 :
             fn = params['file_middles'][0]
             params['file_middles'] = (fn, fn)
         if len(params['file_middles']) >= 2 :
-#            raise ce.FileParameterTypeError('For now can only process one'
-#                                            ' or two files.')
             # Deal with multiple files.
             num_maps = len(params['file_middles'])
             Maps = []
@@ -471,18 +532,13 @@ class NewSlices(object) :
                     noise_file = (params['input_root'] +
                         params['file_middles'][ii] + params['input_end_noise'])
                     print "Loading noise %d of %d." %(ii+1, num_maps)
-    #                Noise_invs.append(abs(algebra.make_vect(algebra.load(map_file))))
                     Noise_inv = algebra.make_mat(algebra.open_memmap(noise_file,
                                                                       mode='r'))
                     Noise_inv = Noise_inv.mat_diag()
                 else :
                     Noise_inv = algebra.ones_like(Map)
-                    #Noise_inv[...] += (100 +
-                    #    ii*sp.arange(Noise_inv.shape[0])[:,None,None])
-                    #Noise_inv[...] += (100 +
-                    #    ii*sp.arange(Noise_inv.shape[1])[None,:,None])
-
                 Noise_invs.append(Noise_inv)
+
             Pairs = []
             # Make pairs with deepcopies to not make mutability mistakes.
             for ii in range(0, num_maps):
@@ -496,6 +552,8 @@ class NewSlices(object) :
                             Noise_inv1, Noise_inv2, freq)
                         Pair.lags = lags
                         Pair.params = params
+                        # Keep track of the names of maps in pairs so
+                        # it knows what to save later.
                         Pair.set_names(params['file_middles'][ii],
                                        params['file_middles'][jj])
                         Pairs.append(Pair)
@@ -504,10 +562,10 @@ class NewSlices(object) :
         # Hold a reference in self.
         self.Pairs = Pairs
 
-
+        # Get maps/ noise inv ready for running.
         if params["convolve"] :
             for Pair in Pairs:
-                Pair.degrade_resolution()#0.5)
+                Pair.degrade_resolution()
         if params['factorizable_noise'] :
             for Pair in Pairs:
                 Pair.make_noise_factorizable()
@@ -522,29 +580,33 @@ class NewSlices(object) :
         # Note: MapPairs will not have anything saved in 'fore_corr' if you
         # skip this correlation.
         if not params['skip_fore_corr']:
-            # Correlate the maps.
+            # Correlate the maps with multiprocessing. Note that the
+            # correlations are saved to file separately then loaded in
+            # together because that's (one way) how multiprocessing works. 
             fore_Pairs = []
             processes_list = []
-#            for Pair in Pairs:
             for ii in range(0, num_map_pairs):
-#                fore_muliproc(Pair)
+                # Calls 1 multiproc (which governs the correlating) for each
+                # pair on a new CPU so you can have all pairs working at once.
                 p = multiprocessing.Process(target=multiproc,
                         args=([Pairs[ii], params['output_root'], ii, False]))
                 processes_list.append(p)
                 p.start()
-                #print(parent_conn.recv())
 
-#            while p.is_alive():
+            # Waits for all correlations to finish before continuing.
             while True in [p.is_alive() for p in processes_list]:
                 print "processing"
                 time.sleep(5)
             # just to be safe
             time.sleep(1)
-            print "Loading Map Pairs back into program [a min or so wait]"
+
+            # Load the correlations and save them to each Pair. The Pairs that
+            # got passed to multiproc are not the same ones as ones in
+            # self.Pairs, so this must be done to have actual values.
+            print "Loading Map Pairs back into program."
             file_name = params['output_root']
             file_name += "Map_Pair_for_freq_slices_fore_corr_"
             for count in range(0, num_map_pairs):
-#            while path.exists(file_name+str(count)+".pkl"):
                 print "Loading correlation for Pair %d" %(count)
                 f = open(file_name+str(count)+".pkl", "r")
                 correlate_results = cPickle.load(f)
@@ -553,32 +615,29 @@ class NewSlices(object) :
                 fore_Pairs.append(Pairs[count])
                 f.close()
             self.fore_Pairs = copy.deepcopy(fore_Pairs)
-            # To have fore_corr in self.Pairs, too, to not need
-            # self.fore_Pairs later.
+            # With this, you do not need fore_Pairs anymore.
             self.Pairs = copy.deepcopy(fore_Pairs)
             print "gung ho!"
 
             Pairs = self.Pairs
+            
             # Get foregrounds.
-            # TODO: Provide a list of integers for params["modes"] so we can try a
-            # few different numbers of modes to subtract.  This is computationally
-            # expensive.
+
+            # svd_info_list keeps track of all of the modes of all maps in
+            # all pairs. This means if you want to subract a different number
+            # of modes for the same maps/noises/frequencies, you have the modes
+            # already saved and do not need to run the first correlation again.
             svd_info_list = []
             for Pair in Pairs:
-                # Since these values are different for diff maps,
-                # can there be a 'final' one? [Like an average?]
-#                vals, modes1, modes2 = get_freq_svd_modes(Pair.fore_corr,
-#                                                  params['modes'])
-#                Pair.vals = vals
-#                Pair.modes1 = modes1
-#                Pair.modes2 = modes2
                 vals, modes1, modes2 = get_freq_svd_modes(Pair.fore_corr,
                                                    len(freq))
                 Pair.vals = vals
+                # Save ALL of the modes for reference.
                 Pair.all_modes1 = modes1
                 Pair.all_modes2 = modes2
                 svd_info = (vals, modes1, modes2)
                 svd_info_list.append(svd_info)
+                # Save only the modes you want to subtract.
                 n_modes = params['modes']
                 Pair.modes1 = modes1[:n_modes]
                 Pair.modes2 = modes2[:n_modes]
@@ -586,7 +645,10 @@ class NewSlices(object) :
             self.Pairs = Pairs
             if params['save_svd_info']:
                 save_svd_info(self.svd_info_list, params['svd_file'])
-        else: # First correlation and svd has been skipped.
+        else: 
+            # The first correlation and svd has been skipped.
+            # This means you already have the modes so you can just load
+            # them from file.
             self.svd_info_list = load_svd_info(params['svd_file'])
             # Set the svd info to the Pairs.
             for i in range(0, len(Pairs)):
@@ -599,10 +661,8 @@ class NewSlices(object) :
                 Pairs[i].modes2 = svd_info[2][:n_modes]
             self.Pairs = Pairs
 
-        # Back to normal.
 
         # Subtract foregrounds.
-#        for Pair in Pairs:
         for ii in range(0, len(Pairs)):
             Pairs[ii].subtract_frequency_modes(Pairs[ii].modes1,
                 Pairs[ii].modes2)
@@ -611,24 +671,14 @@ class NewSlices(object) :
         save_data(self, params['save_maps'], params['save_noises'],
             params['save_modes'])
 
-## REMOVE
-#        if params["convolve"] :
-#            for Pair in Pairs:
-#                Pair.degrade_resolution(0.1)
-
         # Finish if this was just first pass.
         if params['first_pass_only'] :
             self.Pairs = Pairs
             return
+
         # Correlate the cleaned maps.
         # Here we could calculate the power spectrum instead eventually.
 
-# Before multiprocessing:
-#        for Pair in Pairs:
-#            corr, counts = Pair.correlate(lags)
-#            Pair.corr = corr
-#            Pair.counts = counts
-# After:
         # Same as previous multiproc, but this time, you get the final
         # correlation for each Pair.
         temp_Pair_list = []
@@ -644,7 +694,7 @@ class NewSlices(object) :
             time.sleep(5)
         # just to be safe
         time.sleep(1)
-        print "Loading Map Pairs back into program [a min or so wait]"
+        print "Loading Map Pairs back into program."
         file_name = params['output_root']
         file_name += "Map_Pair_for_freq_slices_corr_"
         for count in range(0, num_map_pairs):
@@ -665,6 +715,8 @@ class NewSlices(object) :
             corr_list.append(Pair.corr)
         self.corr_final, self.corr_std = get_corr_and_std_3D(corr_list)
 
+        # Used be useful a long time ago but now plotting has moved to it's
+        # own folder. It really moved up in the world this summer.
         if params["make_plots"] :
             print "Plots not supported for multiple pairs."
  #           self.make_plots()
@@ -674,29 +726,38 @@ class NewSlices(object) :
 
         return
 
-    def make_plots(self) :
-        plt.figure()
-        plot_svd(self.vals)
-        plt.show()
 
 def multiproc(Pair, save_dir, pair_number, final):
-    """Do the correlation for a MapPair Pair. The correlation is then saved
-    to a numbered file corresponding to pair_number. This is done since
-    this function gets multiprocessed and must have a common information
-    ground somewhere. If final is false, the fore correlation is being done.
-    If final is True, the final correlation is being done. final is used
-    to save Pair to the appropriate file. save_dir is the diectory for
-    these to be saved."""
+    """Do the correlation for a MapPair `Pair`. 
+
+    The correlation is then saved to a numbered file corresponding to 
+    `pair_number`. This is done since this function gets multiprocessed and
+    must have a common information ground somewhere.
+
+    Parameters
+    ----------
+    Pair : MapPair
+        A pair with 2 maps that will be correlated.
+    save_dir : str
+        The full pathname to where the correlations will be saved.
+    pair_number : int
+        A number from 0 to (# of Pairs)-1. Must be unique for each pair.
+    final : bool
+        If `True`, then the fore correlation is being done. If `False`, then
+        the final correlation is being done. Dont mix these up!
+
+    """
+
     print "I am starting."
-#    print Pair.lags
-#    print type(Pair.lags)
-#    fore_core, fore_counts = Pair.correlate(Pair.lags)
-#    Pair.shout(44)
+    # Having a function looks nicer than an if statement.
     control_correlation(Pair, Pair.lags, final)
     file_name = save_dir
     # Make sure folder is there.
     if not os.path.isdir(file_name):
         os.mkdir(file_name)
+    # Save the correlation and its weights. Note that using an int for
+    # each pair is enough because of the for loop that passes each pair into
+    # multiproc.
     if final:
         file_name += "Map_Pair_for_freq_slices_corr_" + \
                         str(pair_number) + ".pkl"
@@ -710,14 +771,25 @@ def multiproc(Pair, save_dir, pair_number, final):
     print file_name
     cPickle.dump(to_save,f)
     f.close()
-    print "I have have gotten here. "
     return
 
 def control_correlation(Pair, lags, final):
-    """For multiprocessing since it cannot deal with return values.
-    Save the return values of correlate(lags) in self.corr and .counts
-    if final is True. Else, save return values in self.fore_corr and
-    .fore_counts."""
+    """Call the 1st or 2nd correlation on the MapPair.
+
+    Saves the correlation and its weight in `Pair`.
+    For multiprocessing since it cannot deal with return values.
+
+    Parameters
+    ----------
+    Pair : MapPair
+        A pair with 2 maps that will be correlated.
+    lags : tuple of ints
+        The angular lags.
+    final : bool
+        If True, then the fore correlation is being done. If False, then the
+        final correlation is being done. Dont mix these up!
+
+    """
 
     if final:
         Pair.corr, Pair.counts = Pair.correlate(lags, speedup=True)
@@ -725,9 +797,22 @@ def control_correlation(Pair, lags, final):
         Pair.fore_corr, Pair.fore_counts = Pair.correlate(lags, speedup=True)
 
 def get_corr_and_std_3D(corr_list):
-    '''Return the average correlation and the std for each point in
-    the 3D correlation. corr_list is a list of 3D correlation matrices
-    of length > 0.'''
+    '''Return the average correlation and its standard deviation.
+
+    Parameters
+    ----------
+    corr_list : list of 3D arrays
+        This list contains a correlation for each `MapPair`.
+        len must be > 0.
+
+    Returns
+    -------
+    corr_avg : 3D array
+        The average of the correlations in `corr_list`.
+    corr_std : 3D array
+        The standard deviation on each point `in corr_avg`.
+
+    '''
     # Get average.
     corr_sum = copy.deepcopy(corr_list[0])
     for ii in range(1, len(corr_list)):
@@ -748,6 +833,21 @@ def get_corr_and_std_3D(corr_list):
 def get_freq_svd_modes(corr, n) :
     """Same as get freq eigenmodes, but treats left and right maps
     separatly with an SVD.
+    
+    Parameters
+    ----------
+    corr : 3D array
+        The correlation. Only the 1st lag is used.
+    n : int
+        The number of modes wanted.
+
+    Returns
+    -------
+    s : 1D array
+        The amplitude of the modes. length = `n`
+    Lvectors, Rvectors : 2D array
+        The first `n` modes from the svd.
+    
     """
     U, s, V = linalg.svd(corr[:,:,0])
     V = V.T
@@ -757,16 +857,37 @@ def get_freq_svd_modes(corr, n) :
     Rvectors = []
     for ii in range(n) :
         ind, = sp.where(abs(s) == hs[-ii-1])
-        if len(ind) > 1 :
-            raise NotImplementedError('2 eigenvalues bitwise equal.')
+#        if len(ind) > 1 :
+#            raise NotImplementedError('2 eigenvalues bitwise equal.')
         Lvectors.append(U[:,ind[0]])
         Rvectors.append(V[:,ind[0]])
 
     return s, Lvectors, Rvectors
 
 def subtract_modes_corr(corr, n) :
-    """Similar to get_freq_svd_modes, but the modes are subtracted and from the
-    correlation and the cleaned correlation is returned."""
+    """Get the modes at subtract them directly from the correlation.
+
+    Similar to get_freq_svd_modes, but the modes are subtracted and from the
+    correlation and the cleaned correlation is returned.
+    
+    Parameters
+    ----------
+    corr : 3D array
+        The correlation. Only the 1st lag is used.
+    n : int
+        The number of modes wanted.
+
+    Returns
+    -------
+    corr : 3D array
+        The input `corr` with its modes directly subtracted.
+
+    Notes
+    -----
+    This works only for the 1st lag.
+    (Was that it? There was something holding this back.)
+
+    """
 
     corr = copy.deepcopy(corr)
 
@@ -777,7 +898,9 @@ def subtract_modes_corr(corr, n) :
     return corr
 
 def plot_svd(vals) :
-    """Plots the svd values and prints out some statistics."""
+    """Deprecated.
+
+    Plots the svd values and prints out some statistics."""
 
     n = len(vals)
     plt.semilogy(abs(sp.sort(-vals/n)), marker='o',
@@ -787,8 +910,20 @@ def plot_svd(vals) :
     print sp.sort(vals/n)[-10:]
 
 def normalize_corr(corr):
-    """Return the normalized 3D correlation along the diagonal.
-    [3D meaning f,f_prime,lag]."""
+    """Return the normalized correlation along the diagonal.
+    
+    Paramters
+    ---------
+    corr : 3D array
+        The correlation.
+
+    Returns
+    -------
+    corr_norm : 3D array
+        The normalized `corr`. The normalization is such that the values
+        along the diagonal (f=f_prime) are 1.
+
+    """
     # Get dimensions.
     fs,f_primes,lags = corr.shape
     corr_norm = sp.zeros((fs,f_primes,lags))
@@ -813,13 +948,35 @@ def rebin_corr_freq_lag(corr, freq1, freq2=None, weights=None, nfbins=20,
     """Collapses frequency pair correlation function to frequency lag.
 
     Basically this constructs the 2D correlation function.
+    
+    Parameters
+    ----------
+    corr : 3D array
+        Covariance matrix which is a function of frequency and frequency prime
+        and angular lag.
+    freq1, freq2 : tuple of floats
+        The REAL frequencies. ie. 744000Hz, not 0,1,2...
+        freq2 is used if using a map at a different redshift, but we haven't
+        looked at this yet.
+    weights : 3D array 
+        The weights of the correlation. It is found in Pair.counts right now.
+    nfbins : int
+        How many lag bins out you go in frequency. A higher number means a
+        more accurate result at high lag.
+    return_fbins : bool
+        If `True`, `fbins` is returned.
+    
+    Returns
+    -------
+    out_corr : 2D array
+        `corr` from before but now only in terms of frequency lag and
+        angular lag.
+    out_weights : 2D array
+        `weights` from before but now in 2D. The weights for `out_corr`
+    fbins : 1D array
+        The frequency lags in terms of Hz. Much like how `lags` in the rest of
+        this module is angular lag in degrees.
 
-    This function takes in a 3D corvariance matrix which is a function of
-    frequency and frequency prime and returns the same matrix but as a function
-    of frequency - frequency prime (2D).
-
-    freq1 is the actualy freq values not the indeces [700MHz not 0,1,2...]
-    for weights see counts in correlate.
     """
 
     if freq2 is None :
@@ -864,7 +1021,42 @@ def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
     """Takes a 2D correlation function and collapses to a 1D correlation
     function.
 
-    f_lags in Hz, a_lags in degrees.  This is important.
+    Parameters
+    ----------
+    corr : 2D array
+        Covariance matrix in terms of frequency lag and angular lag.
+        The first output from `rebin_corr_freq_lag` right now.
+    f_lags : 1D array
+        The frequency lags in terms of Hz.
+        The third output from `rebin_corr_freq_lag` right now.
+    a_lags : 1D array
+        The angular lags in terms of degrees.
+    weights : 2D array
+        The weights of `corr`.
+        The second output from `rebin_corr_freq_lag` right now. 
+
+    Returns
+    -------
+    out_corr : 1D array
+        The 1D autocorrelation.
+    out_weights : 
+        The weights for `out_corr`.
+    x_axis : tuple of 3 1D arrays
+        `x_axis[1]` is the x-values that correspond to `out_corr`.
+        `x_axis[0]` and `x_axis[2]` are the left and rightmost points 
+         covered by each lag bin.
+
+    Notes
+    -----
+    `a_lags` are not the same as the lags from the .ini file.
+    The lags from the .ini file are the right side of each lag bin,
+    but you want the centre of the bin when you plot.
+    To get the right values, you must do: (ask Eric or Liviu)
+        lags = sp.array(F.params['lags'])
+        a_lags = copy.deepcopy(lags)
+        a_lags[0] = 0
+        a_lags[1:] -= sp.diff(lags)/2.0
+    
     """
 
     if corr.ndim != 2:
@@ -918,9 +1110,24 @@ def collapse_correlation_1D(corr, f_lags, a_lags, weights=None) :
     return out_corr, out_weights, (x_left, x_centre, x_right)
 
 def save_data(F, save_maps=False, save_noises=False, save_modes=False):
-    '''Saves the cleaned data and modes to the output directory specified
-    in the parameters of the configuration file. F is the New_Slices object
-    which contains ALL the data.'''
+    ''' Save the all of the clean data.
+
+    Saves the cleaned data and modes to the output directory specified
+    in the parameters of the configuration file.
+
+    Parameters
+    ----------
+
+    F : NewSlices
+        `F` contains ALL of the data.
+    save_maps : bool
+        Save the cleaned clean maps to output directory if `True`.
+    save_noises : bool
+        Save the cleaned noise invs to output directory if `True`.
+    save_modes : bool
+        Save what was subtracted from the maps to output directory if `True`.
+
+    '''
     # Get the output directory and filenames.
     out_root = F.params['output_root']
     # Make sure folder is there.
@@ -951,8 +1158,16 @@ def save_data(F, save_maps=False, save_noises=False, save_modes=False):
             algebra.save(R_modes_savename, Pair.R_modes)
 
 def save_svd_info(svd_info_list, svd_file):
-    """cPickle the svd_info_list to file with name svd_file.
-    svd_file should be the full pathname."""
+    """cPickle the `svd_info_list` to file with name `svd_file`.
+
+    Parameters
+    ----------
+    svd_info_list : list of svd_infos
+        See `NewSlices` documentation for what this is.
+    svd_file : str
+        The full pathname of where to save `svd_info_list`.
+
+    """
     # Check saving folder exists.
     pickle_out_root = os.path.dirname(svd_file)
     if not os.path.isdir(pickle_out_root):
@@ -963,16 +1178,42 @@ def save_svd_info(svd_info_list, svd_file):
     f.close()
 
 def load_svd_info(svd_file):
-    """Return svd_info_list saved in file with name svd_file.
-    svd_file should be the full pathname."""
+    """Return `svd_info_list` saved in file with name `svd_file`.
+
+    Parameters
+    ----------
+    svd_file : str
+        The full pathname of where to load from.
+
+    Returns
+    -------
+    svd_info_list : list of svd_infos
+        See `NewSlices` documentation for what this is.
+
+    """
     f = open(svd_file,'r')
     svd_info_list = cPickle.load(f)
     f.close()
     return svd_info_list
 
 def pickle_slices(F):
-    """Pickle F to the output directory from the ini file.F is the
-    New_Slices object which contains ALL the data."""
+    """Save the NewSlices object with ALL the info to file.
+
+    Pickle F to the output directory from the ini file. 
+    
+    Parameters
+    ----------
+    F : NewSlices
+        The object to get pickled. The output directory is saved in itself.
+    
+    Notes
+    -----
+    If you pickle F from outide of this class, to use it, you can import:
+    'from correlate import freq_slices as fs'
+    But since the pickle has been done from inside this class, you must:
+    'from correlate.freq_slices import *'
+
+    """
     # Check folder exists.
     out_root = F.params['output_root']
     if not os.path.isdir(out_root):

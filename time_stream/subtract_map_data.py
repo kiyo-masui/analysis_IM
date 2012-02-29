@@ -15,7 +15,7 @@ from core import algebra
 class Subtract(base_single.BaseSingle) :
     """Pipeline module subtracts a map from time stream data.
 
-    This module reads in a map and times stream data.  It then subtracts the
+    This module reads in a map and time stream data.  It then subtracts the
     signal part off of each time bin using the pointing information and the
     map.  This should leave only noise and map residuals (signal that isn't in
     the map).
@@ -29,7 +29,6 @@ class Subtract(base_single.BaseSingle) :
                    'gain_output_end' : '',
                    'interpolation' : 'nearest'
                    # XXX: What about if I start subtracing off a linear piece.
-                   # TODO: Option to rescaleoutput data to map gain.
                    }
 
     # Add extra stuff to the constructor.
@@ -46,7 +45,8 @@ class Subtract(base_single.BaseSingle) :
     def action(self, Data) :
         if (not self.params['solve_for_gain'] or
             self.params['gain_output_end'] is '') :
-            sub_map(Data, self.Map, self.params['solve_for_gain'])
+            sub_map(Data, self.Map, self.params['solve_for_gain'],
+                    interpolation=self.params['interpolation'])
         else :
             block_gain = {}
             Data.calc_freq()
@@ -113,6 +113,7 @@ def sub_map(Data, Maps, correlate=False, pols=(), make_plots=False,
         shape = Map.shape
         spacing = (Map.info['freq_delta'], Map.info['ra_delta'], 
                    Map.info['dec_delta'])
+        # Nearest code is depricated.  We could just use the general code.
         if interpolation == 'nearest' :
             # These indices are the length of the time axis. Integer indicies.
             ra_ind = map.tools.calc_inds(Data.ra, centre[1], shape[1],

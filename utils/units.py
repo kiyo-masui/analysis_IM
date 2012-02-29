@@ -31,6 +31,8 @@ kilo_year = kilo * year
 mega_year = mega * year
 giga_year = giga * year
 
+t_sidereal = 23.9344696 * hour # Sidereal day
+
 #### Physical constants (in SI) ####
 # Gravitational constant G kg^-1 m^3 s^-2
 G = 6.6742e-11

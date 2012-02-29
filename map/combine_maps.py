@@ -40,8 +40,8 @@ old_twoway = {
 # /mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test1/
 # /mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test/
 def make_fourway_list(root_data, root_cov,
-                      map_middle = "_15hr_41-73_cleaned_clean_map_I_with_",
-                      cov_middle = "_15hr_41-73_cleaned_noise_inv_I_with_"):
+                      map_middle = "_22hr_41-84_cleaned_clean_map_I_with_",
+                      cov_middle = "_22hr_41-84_cleaned_noise_inv_I_with_"):
 
     pairs = [('A', 'B'), ('A', 'C'), ('A', 'D'),
              ('B', 'A'), ('B', 'C'), ('B', 'D'),
@@ -130,12 +130,12 @@ def combine_maps(param_dict, fullcov=False, verbose=False):
 
 
 def make_individual():
-    fourway_split = make_fourway_list('/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test1/',
-                                      '/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/test1/')
+    fourway_split = make_fourway_list('/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/84_ABCD_all_15_modes/',
+                                      '/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/84_ABCD_all_15_modes/')
     (map_out, weights_out, prodmap_out) = combine_maps(fourway_split)
-    algebra.save("combined_41-73_cleaned_clean_test.npy", map_out)
-    algebra.save("combined_41-73_cleaned_noise_inv_test.npy", weights_out)
-    algebra.save("combined_41-73_cleaned_product_test.npy", prodmap_out)
+    algebra.save("combined_41-84_cleaned_clean_test.npy", map_out)
+    algebra.save("combined_41-84_cleaned_noise_inv_test.npy", weights_out)
+    algebra.save("combined_41-84_cleaned_product_test.npy", prodmap_out)
     #(map_out, weights_out, prodmap_out) = combine_maps(cleanmaps_fourway,
     #                                                   fullcov=True)
     #algebra.save("combined_41-73_clean_test.npy", map_out)

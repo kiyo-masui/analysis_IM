@@ -17,18 +17,22 @@ class Corr21cm(RedshiftCorrelation, Map3d):
 
     """
 
+    add_mean = False
+
     def __init__(self, ps = None, redshift = 0.0, **kwargs):
+        from os.path import join, dirname
         if ps == None:
-            from os.path import join, dirname
+
             psfile = join(dirname(__file__),"data/ps_z1.5.dat")
             redshift = 1.5
 
-            kstar = 50.0
+            kstar = 5.0
             c1 = cs.LogInterpolater.fromfile(psfile)
             ps = lambda k: np.exp(-0.5 * k**2 / kstar**2) * c1(k)
 
         RedshiftCorrelation.__init__(self, ps_vv = ps, redshift = redshift)
-        #self._load_cache("data/corr_z1.5.dat")
+        self._load_cache(join(dirname(__file__),"data/corr_z1.5.dat"))
+        #self.load_fft_cache(join(dirname(__file__),"data/fftcache.npz"))
 
 
     def T_b(self, z):
@@ -50,7 +54,10 @@ class Corr21cm(RedshiftCorrelation, Map3d):
                 * ((1.0 + z) / 2.5)**0.5 * (self.omega_HI(z) / 1e-3))
 
     def mean(self, z):
-        return self.T_b(z)
+        if self.add_mean:
+            return self.T_b(z)
+        else:
+            return np.zeros_like(z)
 
     def omega_HI(self, z):
         return 1e-3
@@ -94,7 +101,7 @@ class Corr21cm(RedshiftCorrelation, Map3d):
         -----
         See _[1].
 
-        .. [1] http://http://arxiv.org/abs/1012.2671
+        .. [1] http://arxiv.org/abs/1012.2671
         """
 
         x = ((1.0 / self.cosmology.omega_m) - 1.0) / (1.0 + z)**3
@@ -125,7 +132,7 @@ class Corr21cm(RedshiftCorrelation, Map3d):
         -----
         See _[1].
 
-        .. [1] http://http://arxiv.org/abs/1012.2671
+        .. [1] http://arxiv.org/abs/1012.2671
         """
 
         x = ((1.0 / self.cosmology.omega_m) - 1.0) / (1.0 + z)**3
