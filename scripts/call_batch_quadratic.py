@@ -1,27 +1,33 @@
 from correlate import batch_quadratic as bq
+from utils import data_paths
 import sys
 
 
 def sim_autopower(inifile=None, inifile_phys=None):
     r"""run all of the auto-power theory cases
     """
-    basesims = ['sim_15hr_oldmap_ideal', 'sim_15hr_oldmap_nostr',
+    #basesims = ['sim_15hr_oldmap_ideal', 'sim_15hr_oldmap_nostr',
+    #            'sim_15hr_oldmap_str', 'sim_22hr_oldmap_str',
+    #            'sim_1hr_oldmap_str']
+    basesims = ['sim_15hr_oldmap_nostr',
                 'sim_15hr_oldmap_str', 'sim_22hr_oldmap_str',
                 'sim_1hr_oldmap_str']
     treatments = ['_temperature', '_beam', '_beam_conv', '_beam_meansub',
                   '_beam_meansubconv']
-    #treatments = ['_beam', '_beam_conv', '_beam_meansub',
-    #              '_beam_meansubconv']
+
+    datapath_db = data_paths.DataPath()
 
     for base in basesims:
-        #bq.batch_physical_sim_run("%s_physical" % base,
-        #                          inifile=inifile_phys)
+        bq.batch_physical_sim_run("%s_physical" % base,
+                                  inifile=inifile_phys,
+                                  datapath_db=datapath_db)
 
         for treatment in treatments:
             mapname = base + treatment
             weight = "GBT_15hr_map_fluxpolcal_cleaned_combined:weight;0modes"
             bq.batch_sim_run(mapname, mapname,
-                             weight, weight, inifile=inifile)
+                             weight, weight, inifile=inifile,
+                             datapath_db=datapath_db)
 
 
 def sim_crosspower(inifile=None):
@@ -81,11 +87,12 @@ if __name__ == '__main__':
     sim_autopower(inifile=inifile, inifile_phys=inifile_phys)
 
     sys.exit()
+    sim_crosspower(inifile=inifile)
+
     # TODO: make a loop which runs the various relevant cases of this
     sim_one_sided_trans("GBT_15hr_map_fluxpolcal",
                         "sim_15hr_oldmap_str", inifile=inifile)
 
-    sim_crosspower(inifile=inifile)
 
     sys.exit()
     # WiggleZ xpower with old calibration

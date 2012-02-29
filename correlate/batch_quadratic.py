@@ -35,7 +35,7 @@ def call_xspec_run(map1_key, map2_key,
     # initialize and calculate the xspec
     simpair = mp.MapPair(map1_key, map2_key,
                          noiseinv1_key, noiseinv2_key,
-                         params['freq_list'])
+                         params['freq_list'], avoid_db=True)
 
     bparam = params['bins']
     bins = np.logspace(math.log10(bparam[0]),
@@ -83,9 +83,10 @@ def call_phys_space_run(cube1_file, cube2_file,
     return retval
 
 
-def batch_physical_sim_run(sim_key, inifile=None):
+def batch_physical_sim_run(sim_key, inifile=None, datapath_db=None):
     """Test the power spectral estimator using simulations"""
-    datapath_db = data_paths.DataPath()
+    if datapath_db is None:
+        datapath_db = data_paths.DataPath()
 
     outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
@@ -119,11 +120,12 @@ def convert_keydict_to_filedict(dbkeydict, db=None):
 
 def batch_sim_run(simleft_key, simright_key,
                   weightleft_key, weightright_key,
-                  inifile=None):
+                  inifile=None, datapath_db=None):
     r"""
     typical weight matrix:
     db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv"""
-    datapath_db = data_paths.DataPath()
+    if datapath_db is None:
+        datapath_db = data_paths.DataPath()
 
     outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
@@ -151,8 +153,9 @@ def batch_sim_run(simleft_key, simright_key,
 
 def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
                                wigglez_mock_key, wigglez_selection_key,
-                               inifile=None):
-    datapath_db = data_paths.DataPath()
+                               inifile=None, datapath_db=None):
+    if datapath_db is None:
+        datapath_db = data_paths.DataPath()
 
     outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
@@ -195,8 +198,9 @@ def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
 def batch_GBTxwigglez_trans_run(sim_key, sim_wigglez,
                                 base_sim_GBT, gbt_map_key,
                                 wigglez_selection_key,
-                                inifile=None):
-    datapath_db = data_paths.DataPath()
+                                inifile=None, datapath_db=None):
+    if datapath_db is None:
+        datapath_db = data_paths.DataPath()
 
     outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
@@ -231,8 +235,9 @@ def batch_GBTxwigglez_trans_run(sim_key, sim_wigglez,
 
 def batch_one_sided_trans_run(modeloss_simkey, sim_key,
                               modeloss_weight_root,
-                              inifile=None):
-    datapath_db = data_paths.DataPath()
+                              inifile=None, datapath_db=None):
+    if datapath_db is None:
+        datapath_db = data_paths.DataPath()
 
     outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
@@ -270,9 +275,10 @@ def batch_one_sided_trans_run(modeloss_simkey, sim_key,
 
 
 def batch_wigglez_automock_run(mock_key, sel_key,
-                               inifile=None):
+                               inifile=None, datapath_db=None):
 
-    datapath_db = data_paths.DataPath()
+    if datapath_db is None:
+        datapath_db = data_paths.DataPath()
 
     outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
@@ -295,8 +301,10 @@ def batch_wigglez_automock_run(mock_key, sel_key,
     caller.multiprocess_stack()
 
 
-def batch_data_run(map_key, inifile=None):
-    datapath_db = data_paths.DataPath()
+def batch_data_run(map_key, inifile=None, datapath_db=None):
+    if datapath_db is None:
+        datapath_db = data_paths.DataPath()
+
     outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
 
