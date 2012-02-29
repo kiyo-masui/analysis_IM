@@ -10,7 +10,7 @@ import numpy.ma as ma
 
 import noise_power as npow
 from scipy import optimize
-from kiyopy import parse_ini, utils
+from kiyopy import parse_ini
 import kiyopy.pickle_method
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
@@ -86,7 +86,7 @@ class Measure(object) :
         out_db.close()
         if self.feedback > 1 :
             print ("Wrote noise parameters to file: " 
-                   + utils.abbreviate_file_path(output_fname))
+                   + kiyopy.utils.abbreviate_file_path(output_fname))
 
     def process_file(self, file_middle, Pipe=None) :
         
@@ -147,7 +147,7 @@ class Measure(object) :
                         a.autoscale_view(tight=True)
                 h.subplots_adjust(hspace=0.4, left=0.2)
                 fig_f_name = params['output_root'] + file_middle + ".pdf"
-                utils.mkparents(fig_f_name)
+                kiyopy.utils.mkparents(fig_f_name)
                 h.savefig(fig_f_name)
                 plt.close(h.number)
             if Pipe:
@@ -255,9 +255,7 @@ def get_freq_modes_over_f(power_mat, window_function, frequency, n_modes,
         raise RuntimeError("Eigenvalues not sorted")
     # Power matrix striped of the biggest modes.
     reduced_power = sp.copy(power_mat)
-    # Initialize the compensation matrix, that will be used to restore thermal
-    # noise that gets subtracted out.  See Jan 29, 2012 of Kiyo's notes.
-    compensation = sp.eye(n_chan, dtype=float)
+    mode_list = []
     # Solve for the spectra of these modes.
     for ii in range(n_modes):
         this_mode_params = {}
@@ -290,10 +288,16 @@ def get_freq_modes_over_f(power_mat, window_function, frequency, n_modes,
         reduced_power -= tmp_amp[:,None,:] * mode[:,None]
         tmp_amp = sp.sum(tmp_amp * mode, -1)
         reduced_power += tmp_amp[:,None,None] * mode[:,None] * mode
-        # Update the compensation matrix.
-        sq_mode = mode**2
-        compensation.flat[::n_chan + 1] -= 2 * sq_mode
-        compensation += sq_mode[:,None] * sq_mode[None,:]
+        mode_list.append(mode)
+    # Initialize the compensation matrix, that will be used to restore thermal
+    # noise that gets subtracted out.  See Jan 29, Feb 17th, 2012 of Kiyo's
+    # notes.
+    compensation = sp.eye(n_chan, dtype=float)
+    for mode1 in mode_list:
+        compensation.flat[::n_chan + 1] -= 2 * mode1**2
+        for mode2 in mode_list:
+            mode_prod = mode1 * mode2
+            compensation += mode_prod[:,None] * mode_prod[None,:]
     # Now that we've striped the noisiest modes, measure the auto power
     # spectrum, averaged over channels.
     auto_spec_mean = reduced_power.view()
@@ -371,6 +375,9 @@ def get_freq_modes_over_f(power_mat, window_function, frequency, n_modes,
     # Normalize
     thermal /= thermal_norms
     thermal[bad_inds] = T_infinity**2
+    # Occationally the compensation fails horribly on a few channels.
+    # When this happens, zero out the offending indices.
+    thermal[thermal<0] = 0
     output_params['thermal'] = thermal
     # Now that we know what thermal is, we can subtract it out of the modes we
     # already measured.

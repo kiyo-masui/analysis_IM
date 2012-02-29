@@ -20,7 +20,7 @@ class RebinTime(base_single.BaseSingle) :
                    }
     prefix = 'rt_'
 
-    def action(self, Data, ) :
+    def action(self, Data) :
         rebin(Data, self.params['n_bins_combined'])
         Data.add_history('Rebinned time axis.', 
                          ('Number of time bins averaged: '

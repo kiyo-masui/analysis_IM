@@ -15,7 +15,7 @@ from core import algebra
 class Subtract(base_single.BaseSingle) :
     """Pipeline module subtracts a map from time stream data.
 
-    This module reads in a map and times stream data.  It then subtracts the
+    This module reads in a map and time stream data.  It then subtracts the
     signal part off of each time bin using the pointing information and the
     map.  This should leave only noise and map residuals (signal that isn't in
     the map).
@@ -29,7 +29,6 @@ class Subtract(base_single.BaseSingle) :
                    'gain_output_end' : '',
                    'interpolation' : 'nearest'
                    # XXX: What about if I start subtracing off a linear piece.
-                   # TODO: Option to rescaleoutput data to map gain.
                    }
 
     # Add extra stuff to the constructor.

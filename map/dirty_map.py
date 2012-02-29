@@ -11,6 +11,7 @@ import threading
 from Queue import Queue
 import shelve
 import sys
+import time as time_mod
 
 import scipy as sp
 import numpy.ma as ma
@@ -21,9 +22,11 @@ import numpy as np
 #import matplotlib.pyplot as plt
 
 import core.algebra as al
-from core import fitsGBT, utils
+from core import fitsGBT
+import utils.misc as utils
 import tools
 from noise import noise_power
+from foreground import ts_measure
 import kiyopy.custom_exceptions as ce
 import kiyopy.utils
 from kiyopy import parse_ini
@@ -70,6 +73,10 @@ params_init = {# IO:
                'noise_parameter_file' : '',
                'deweight_time_mean' : True,
                'deweight_time_slope' : False,
+               # If there where any foregrounds subtracted in the time stream,
+               # let the noise know about it.
+               'n_ts_foreground_modes' : 0,
+               'ts_foreground_mode_file' : ''
                }
 
 class DirtyMapMaker(object):
@@ -94,7 +101,8 @@ class DirtyMapMaker(object):
             self.file_middle = middle
             fname = params["input_root"] + middle + params["input_end"]
             Reader = fitsGBT.Reader(fname, feedback=self.feedback)
-            Blocks = Reader.read((), self.band_ind)
+            Blocks = Reader.read(self.params['scans'], self.band_ind,
+                                 force_tuple=True)
             if params['time_block'] == 'scan':
                 for Data in Blocks:
                     yield self.preprocess_data((Data,))
@@ -260,7 +268,10 @@ class DirtyMapMaker(object):
                 elif parameter_name == "all_channel":
                     # When specifying as a cross over, thermal is the
                     # amplitude.
-                    p = (noise_entry["thermal"],)
+                    thermal = sp.copy(noise_entry["thermal"])
+                    thermal_min = abs(T_sys**2 / self.delta_freq / 2.)
+                    thermal[thermal < thermal_min] = thermal_min
+                    p = (thermal,)
                     p += (noise_entry["all_channel_index"],)
                     p += (noise_entry["all_channel_corner_f"],)
                     return p
@@ -268,6 +279,48 @@ class DirtyMapMaker(object):
         msg = ("Invalid noise parameter name: " + parameter_name
                + " for noise model: " + noise_model)
         raise ValueError(msg)
+
+    def get_ts_foreground_mode(self, mode_number):
+        # Collect the variables we need from the class.
+        foreground_modes_db = self.foreground_modes
+        pol_ind = self.pol_ind
+        cal_ind = 0
+        file_middle = self.file_middle
+        freq = self.map.get_axis('freq')
+        # Get the data base key.
+        key = ts_measure.get_key(file_middle)
+        # From the database, read the data for this file.
+        db_freq = foreground_modes_db[key + '.freq']
+        db_vects = foreground_modes_db[key + '.vects']
+        # Loop through the IF's in the data base and figure out which on is the
+        # right one.
+        n_bands_db = db_freq.shape[0]
+        db_band = -1
+        for ii in range(n_bands_db):
+            if ((min(db_freq[ii,:]) <= min(freq))
+                and (max(db_freq[ii,:]) >= max(freq))):
+                db_band = ii
+        if db_band == -1:
+            raise RuntimeError("Did not find an overlapping band in foreground"
+                               " data.")
+        # Throw away the data we don't need.
+        db_freq = db_freq[db_band,:]
+        db_vects = db_vects[db_band,pol_ind,cal_ind,:,-1 - mode_number]
+        # Now just need to find what range of frequencies correspond to the
+        # band we are dealing with.
+        n_chan_db = len(db_freq)
+        n_chan = len(freq)
+        chan_start_ind = -1
+        for ii in range(n_chan_db - n_chan):
+            if sp.allclose(freq, db_freq[ii:ii + n_chan]):
+                chan_start_ind = ii
+        if chan_start_ind == -1:
+            raise RuntimeError("Could not find frequency range in foreground"
+                               " data.")
+        # Get that piece of the vector and normalize.
+        vector = sp.copy(db_vects[chan_start_ind:chan_start_ind + n_chan])
+        vector /= sp.sum(vector**2)
+        return vector
         
     def execute(self, n_processes):
         """Driver method."""
@@ -292,6 +345,12 @@ class DirtyMapMaker(object):
             self.noise_params = shelve.open(params['noise_parameter_file'], 'r')
         else:
             self.noise_params = None
+        # If we are subtracting out foreground modes, open that file.
+        if params['ts_foreground_mode_file']:
+            self.foreground_modes = shelve.open(
+                params['ts_foreground_mode_file'], 'r')
+        else:
+            self.foreground_modes = None
         # Set the map dimensioning parameters.
         self.n_ra = params['map_shape'][0]
         self.n_dec = params['map_shape'][1]
@@ -501,6 +560,10 @@ class DirtyMapMaker(object):
                         N.deweight_time_slope(T_large**2)
                     else:
                         N.deweight_time_slope(T_large**2)
+                # If we've subtracted any modes out of the time stream,
+                # deweight them.
+                for mode_num in range(params['n_ts_foreground_modes']):
+                    N.deweight_freq_mode(self.get_ts_foreground_mode(mode_num))
                 # Store all these for later.
                 pointing_list.append(P)
                 noise_list.append(N)
@@ -1129,7 +1192,7 @@ class Noise(object):
         #self.diagonal += mode[:,None]**2 * thermal * BW * 2 / mode_norm
         self.freq_mode_noise[start_mode,...] = noise_mat
 
-    def deweight_freq_mode(self, mode):
+    def deweight_freq_mode(self, mode, T=T_large**2):
         """Completly deweight a frequency mode."""
         
         n_chan = self.n_chan
@@ -1137,7 +1200,7 @@ class Noise(object):
         start_mode = self.add_freq_modes(1)
         self.freq_modes[start_mode,:] = mode
         self.freq_mode_noise[start_mode,...]  = (sp.eye(n_time, dtype=float)
-                                                 * T_large**2 * n_chan)
+                                                 * T * n_chan)
 
     def add_all_chan_low(self, amps, index, f_0):
         """Deweight frequencies below, and a bit above 'f_0', 
@@ -1216,21 +1279,31 @@ class Noise(object):
             for ii in xrange(self.freq_mode_noise.shape[0]):
                 freq_mode_inv[ii,...] = \
                         linalg.inv(self.freq_mode_noise[ii,...])
+                # Check that its positive definiate.
+                A = self.freq_mode_noise[ii].view()
+                A.shape = (n_time,) * 2
+                e, v = linalg.eigh(A)
+                e_max = max(e)
+                if not sp.all(e > -1e-7*e_max) or e_max < 0:
+                    print e
+                    msg = ("Some freq_mode noise components not positive"
+                           " definate.")
+                    raise RuntimeError(msg)
                 if hasattr(self, 'flag'):
-                    A = self.freq_mode_noise[ii].view()
-                    A.shape = (n_time,) * 2
-                    e, v = linalg.eigh(A)
-                    e = abs(e)
                     print "Initial freq_mode condition number:", max(e)/min(e)
             time_mode_inv = al.empty_like(self.time_mode_noise)
             for ii in xrange(self.time_mode_noise.shape[0]):
-                time_mode_inv[ii,...] = \
-                        linalg.inv(self.time_mode_noise[ii,...])
+                time_mode_inv[ii,...] = linalg.inv(
+                    self.time_mode_noise[ii,...])
+                A = self.time_mode_noise[ii].view()
+                A.shape = (n_chan,) * 2
+                e, v = linalg.eigh(A)
+                e_max = max(e)
+                if not sp.all(e > -1e-7*e_max) or e_max < 0:
+                    print e
+                    msg = ("Some time_mode noise components not positive"
+                           " definate.")
                 if hasattr(self, 'flag'):
-                    A = self.time_mode_noise[ii].view()
-                    A.shape = (n_chan,) * 2
-                    e, v = linalg.eigh(A)
-                    e = abs(e)
                     print "Initial time_mode condition number:", max(e)/min(e)
             # The normal case when se are considering the full noise.
             # Calculate the term in the bracket in the matrix inversion lemma.
@@ -1359,7 +1432,6 @@ class Noise(object):
                 del self.freq_mode_noise
             del self.time_mode_noise
 
-
     def check_inv_pos_diagonal(self, thres=-1./T_huge**2):
         """Checks the diagonal elements of the inverse for positiveness.
         """
@@ -1368,6 +1440,7 @@ class Noise(object):
         if sp.any(noise_inv_diag < thres):
             print (sp.sum(noise_inv_diag < 0), noise_inv_diag.size)
             print (noise_inv_diag[noise_inv_diag < 0], sp.amax(noise_inv_diag))
+            time_mod.sleep(300)
             raise NoiseError("Inverted noise has negitive entries on the "
                              "diagonal.")
 

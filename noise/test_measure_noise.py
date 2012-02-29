@@ -13,7 +13,8 @@ import numpy.ma as ma
 import scipy.signal as sig
 import matplotlib.pyplot as plt
 
-from core import data_block, utils
+from core import data_block
+import utils.misc as utils
 import measure_noise as mn
 import noise_power
 from map.constants import T_infinity, T_small

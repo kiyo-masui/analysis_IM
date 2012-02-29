@@ -96,6 +96,8 @@ class CleanMapMaker(object) :
                     else:
                         clean_map = solve_from_eig(evals_inv,
                                     evects, dirty_map, False, self.feedback)
+                    # Delete the eigen vectors to recover memory.
+                    del evects
                 else:
                     # Solving from the noise.
                     noise_fname = (in_root + 'noise_inv_' + pol_str + "_" +
@@ -105,7 +107,7 @@ class CleanMapMaker(object) :
                         print "Using noise inverse: " + noise_fname
                     all_in_fname_list.append(
                         kiyopy.utils.abbreviate_file_path(noise_fname))
-                    noise_inv = algebra.open_memmap(noise_fname, 'r')
+                    noise_inv = algebra.open_memmap(noise_fname, 'c')
                     noise_inv = algebra.make_mat(noise_inv)
                     # Two cases for the noise.  If its the same shape as the map
                     # then the noise is diagonal.  Otherwise, it should be
@@ -221,6 +223,8 @@ class CleanMapMaker(object) :
                         del chol
                     else :
                         raise ce.DataError("Noise matrix has bad shape.")
+                    # In all cases delete the noise object to recover memeory.
+                    del noise_inv
                 # Write the clean map to file.
                 out_fname = (params['output_root'] + 'clean_map_'
                              + pol_str + "_" + repr(band) + '.npy')
@@ -261,9 +265,11 @@ def solve(noise_inv, dirty_map, return_noise_diag=False, feedback=0):
     side_size = noise_inv.shape[0] * noise_inv.shape[1] * noise_inv.shape[2]
     expanded.shape = (side_size,) * 2
     # Allowcate memory for the cholesky and copy the upper triangular data.
-    if feedback > 1:
-        print "Copying matrix."
-    tri_copy = _c.up_tri_copy(expanded)
+    # Instead of copying, open the matrix in copy on write mode.
+    #if feedback > 1:
+    #    print "Copying matrix."
+    #tri_copy = _c.up_tri_copy(expanded)
+    tri_copy = expanded
     # Cholesky decompose it.
     if feedback > 1:
         print "Cholesky decomposition."

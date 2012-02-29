@@ -60,7 +60,7 @@ class Calibrate(base_single.BaseSingle) :
         self.flux_diff = flux_dg(fg_file_name)
         calibrate_pol(Data, self.flux_diff)
        	Data.add_history('Flux calibrated and Corrected for differential gain leakage.', 
-               	         ('Flux and Diff Gain file: ' + self.params['mueler_file'],))
+               	         ('Gain file: ' + self.params['mueler_file'],))
         
 #        pl.plot(frequency,Data.data[0,0,0,:],label='XX-mod')
 #        pl.plot(frequency,Data.data[0,1,0,:],label='Q-mod')
