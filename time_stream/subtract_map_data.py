@@ -11,6 +11,7 @@ import kiyopy.utils as ku
 import base_single
 import map.tools
 from core import algebra
+from utils import misc
 
 class Subtract(base_single.BaseSingle) :
     """Pipeline module subtracts a map from time stream data.
@@ -54,11 +55,31 @@ class Subtract(base_single.BaseSingle) :
                 this_band_maps.append(maps)
             self.maps.append(this_band_maps)
 
-
-    def action(self, Data) :
+    def action(self, Data):
+        # Figure out what map band this corresponds to.
+        Data.calc_freq()
+        freq = Data.freq
+        # We are going to look for an exact match in for the map frequencies.
+        # This could be made more general since the sub_map function can handle
+        # partial overlap, but this will be fine for now.
+        for band_maps in self.maps:
+            maps_freq = band_maps[0].get_axis['freq']
+            if sp.allclose(maps_freq, freq):
+                maps = band_maps
+                break
+        else:
+            raise NotImplementedError('No maps with frequency axis exactly'
+                                      ' matching data.')
+        # Now make sure we have the polarizations in the right order.
+        data_pols = Data.field['CRVAL4'].copy()
+        for ii in len(data_pols):
+            if (misc.polint2str(data_pols[ii])
+                != params['map_polarizations'][ii]):
+                raise NotImplementedError('Map polarizations not in same order'
+                                          ' as data polarizations.')
         if (not self.params['solve_for_gain'] or
             self.params['gain_output_end'] is '') :
-            sub_map(Data, self.Map, self.params['solve_for_gain'],
+            sub_map(Data, maps, self.params['solve_for_gain'],
                     interpolation=self.params['interpolation'])
         else :
             block_gain = {}
@@ -66,7 +87,8 @@ class Subtract(base_single.BaseSingle) :
             block_gain['freq'] = sp.copy(Data.freq)
             block_gain['time'] = Data.field['DATE-OBS'][0]
             block_gain['scan'] = Data.field['SCAN']
-            block_gain['gain'] = sub_map(Data, self.Map, True)
+            block_gain['gain'] = sub_map(Data, maps, True, 
+                                interpolation=self.params['interpolation']))
             self.gain_list.append(block_gain)
 
         Data.add_history('Subtracted map from data.', 
