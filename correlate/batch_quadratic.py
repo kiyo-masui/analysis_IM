@@ -90,8 +90,8 @@ def batch_physical_sim_run(sim_key, inifile=None, datapath_db=None):
 
     outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
+
     mock_cases = datapath_db.fileset_cases(sim_key, "realization")
-    fileset = datapath_db.fileset_cases(sim_key, "realization")
 
     funcname = "correlate.batch_quadratic.call_phys_space_run"
     caller = batch_handler.MemoizeBatch(funcname, outpath,
@@ -123,25 +123,27 @@ def batch_sim_run(simleft_key, simright_key,
                   inifile=None, datapath_db=None):
     r"""
     typical weight matrix:
-    db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv"""
+    db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv
+    """
+
     if datapath_db is None:
         datapath_db = data_paths.DataPath()
 
     outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
 
+    mock_cases = datapath_db.fileset_cases(simleft_key, "realization")
+
     funcname = "correlate.batch_quadratic.call_xspec_run"
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
-
-    mock_cases = datapath_db.fileset_cases(simleft_key, "realization")
 
     for index in mock_cases['realization']:
         input = {}
         input['map1_key'] = "%s:%s" % (simleft_key, index)
         input['map2_key'] = "%s:%s" % (simright_key, index)
-        input['noiseinv1_key'] = "%s" % weightleft_key
-        input['noiseinv2_key'] = "%s" % weightright_key
+        input['noiseinv1_key'] = weightleft_key
+        input['noiseinv2_key'] = weightright_key
         files = convert_keydict_to_filedict(input, db=datapath_db)
 
         caller.execute(files['map1_key'], files['map2_key'],
@@ -160,19 +162,19 @@ def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
     outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
 
+    map_cases = datapath_db.fileset_cases(gbt_map_key, "type;treatment")
+    mock_cases = datapath_db.fileset_cases(wigglez_mock_key, "realization")
+
     funcname = "correlate.batch_quadratic.call_xspec_run"
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
 
-    map_cases = datapath_db.fileset_cases(gbt_map_key, "type;treatment")
-    mock_cases = datapath_db.fileset_cases(wigglez_mock_key, "realization")
-
     for treatment in map_cases['treatment']:
         input = {}
         input['map1_key'] = "%s:map;%s" % (gbt_map_key, treatment)
-        input['map2_key'] = "%s" % wigglez_map_key
+        input['map2_key'] = wigglez_map_key
         input['noiseinv1_key'] = "%s:weight;%s" % (gbt_map_key, treatment)
-        input['noiseinv2_key'] = "%s" % wigglez_selection_key
+        input['noiseinv2_key'] = wigglez_selection_key
         files = convert_keydict_to_filedict(input, db=datapath_db)
 
         caller.execute(files['map1_key'], files['map2_key'],
@@ -183,9 +185,9 @@ def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
         for index in mock_cases['realization']:
             input = {}
             input['map1_key'] = "%s:map;%s" % (gbt_map_key, treatment)
-            input['map2_key'] = "%s:%d" % (wigglez_mock_key, index)
+            input['map2_key'] = "%s:%s" % (wigglez_mock_key, index)
             input['noiseinv1_key'] = "%s:weight;%s" % (gbt_map_key, treatment)
-            input['noiseinv2_key'] = "%s" % wigglez_selection_key
+            input['noiseinv2_key'] = wigglez_selection_key
             files = convert_keydict_to_filedict(input, db=datapath_db)
 
             caller.execute(files['map1_key'], files['map2_key'],
@@ -199,35 +201,42 @@ def batch_GBTxwigglez_trans_run(sim_key, sim_wigglez,
                                 base_sim_GBT, gbt_map_key,
                                 wigglez_selection_key,
                                 inifile=None, datapath_db=None):
+    r"""
+    Assume that the 0'th realization sim is used in the cleaning sims
+    """
     if datapath_db is None:
         datapath_db = data_paths.DataPath()
 
     outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
 
+    map_cases = datapath_db.fileset_cases(sim_key, "type;treatment")
+
     funcname = "correlate.batch_quadratic.call_xspec_run"
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
 
-    map_cases = datapath_db.fileset_cases(sim_key, "type;treatment")
+    input = {}
+    input['map1_key'] = "%s:0" % base_sim_GBT
+    input['map2_key'] = "%s:0" % sim_wigglez
+    input['noiseinv1_key'] = "%s:weight;0modes" % (gbt_map_key)
+    input['noiseinv2_key'] = wigglez_selection_key
+    files = convert_keydict_to_filedict(input, db=datapath_db)
 
-    map1_key = "db:%s:0" % base_sim_GBT
-    map2_key = "db:%s:0" % sim_wigglez
-    noiseinv1_key = "db:%s:weight;0modes" % (gbt_map_key)
-    noiseinv2_key = "db:%s" % wigglez_selection_key
-
-    caller.execute(map1_key, map2_key,
-                   noiseinv1_key, noiseinv2_key,
+    caller.execute(files['map1_key'], files['map2_key'],
+                   files['noiseinv1_key'], files['noiseinv2_key'],
                    inifile=inifile)
 
     for treatment in map_cases['treatment']:
-        map1_key = "db:%s:map;%s" % (sim_key, treatment)
-        map2_key = "db:%s:0" % sim_wigglez
-        noiseinv1_key = "db:%s:weight;%s" % (gbt_map_key, treatment)
-        noiseinv2_key = "db:%s" % wigglez_selection_key
+        input = {}
+        input['map1_key'] = "%s:map;%s" % (sim_key, treatment)
+        input['map2_key'] = "%s:0" % sim_wigglez
+        input['noiseinv1_key'] = "%s:weight;%s" % (gbt_map_key, treatment)
+        input['noiseinv2_key'] = wigglez_selection_key
+        files = convert_keydict_to_filedict(input, db=datapath_db)
 
-        caller.execute(map1_key, map2_key,
-                       noiseinv1_key, noiseinv2_key,
+        caller.execute(files['map1_key'], files['map2_key'],
+                       files['noiseinv1_key'], files['noiseinv2_key'],
                        inifile=inifile)
 
     caller.multiprocess_stack()
@@ -242,33 +251,37 @@ def batch_one_sided_trans_run(modeloss_simkey, sim_key,
     outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
 
+    map_cases = datapath_db.fileset_cases(sim_key, "type;treatment")
+
     funcname = "correlate.batch_quadratic.call_xspec_run"
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
 
-    # TODO: this is not a generic loop based on new db structure
-    map1_key = "db:%s:0" % sim_key
-    map2_key = "db:%s:0" % sim_key
-    noiseinv1_key = "db:%s:weight;0modes" % (modeloss_weight_root)
-    noiseinv2_key = "db:%s:weight;0modes" % (modeloss_weight_root)
+    input = {}
+    input['map1_key'] = "%s:0" % sim_key
+    input['map2_key'] = "%s:0" % sim_key
+    input['noiseinv1_key'] = "%s:weight;0modes" % (modeloss_weight_root)
+    input['noiseinv2_key'] = "%s:weight;0modes" % (modeloss_weight_root)
+    files = convert_keydict_to_filedict(input, db=datapath_db)
 
-    caller.execute(map1_key, map2_key,
-                   noiseinv1_key, noiseinv2_key,
+    caller.execute(files['map1_key'], files['map2_key'],
+                   files['noiseinv1_key'], files['noiseinv2_key'],
                    inifile=inifile)
 
-    map_cases = datapath_db.fileset_cases(sim_key, "type;treatment")
     for treatment in map_cases['treatment']:
-        map1_key = "db:%s:map;%s" % (modeloss_simkey, treatment)
-        map2_key = "db:%s:0" % sim_key
+        input = {}
+        input['map1_key'] = "%s:map;%s" % (modeloss_simkey, treatment)
+        input['map2_key'] = "%s:0" % sim_key
 
-        noiseinv1_key = "db:%s:weight;%s" % (modeloss_weight_root, \
+        input['noiseinv1_key'] = "%s:weight;%s" % (modeloss_weight_root, \
+                                                   treatment)
+
+        input['noiseinv2_key'] = "%s:ones;%s" % (modeloss_weight_root, \
                                                  treatment)
+        files = convert_keydict_to_filedict(input, db=datapath_db)
 
-        noiseinv2_key = "db:%s:ones;%s" % (modeloss_weight_root, \
-                                               treatment)
-
-        caller.execute(map1_key, map2_key,
-                       noiseinv1_key, noiseinv2_key,
+        caller.execute(files['map1_key'], files['map2_key'],
+                       files['noiseinv1_key'], files['noiseinv2_key'],
                        inifile=inifile)
 
     caller.multiprocess_stack()
@@ -283,19 +296,22 @@ def batch_wigglez_automock_run(mock_key, sel_key,
     outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
 
+    mock_cases = datapath_db.fileset_cases(mock_key, "realization")
+
     funcname = "correlate.batch_quadratic.call_xspec_run"
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
 
-    mock_cases = datapath_db.fileset_cases(mock_key, "realization")
     for index in mock_cases['realization']:
-        map1_key = "db:%s:%s" % (mock_key, index)
-        map2_key = "db:%s:%s" % (mock_key, index)
-        noiseinv1_key = "db:%s" % sel_key
-        noiseinv2_key = "db:%s" % sel_key
+        input = {}
+        input['map1_key'] = "%s:%s" % (mock_key, index)
+        input['map2_key'] = "%s:%s" % (mock_key, index)
+        input['noiseinv1_key'] = sel_key
+        input['noiseinv2_key'] = sel_key
+        files = convert_keydict_to_filedict(input, db=datapath_db)
 
-        caller.execute(map1_key, map2_key,
-                       noiseinv1_key, noiseinv2_key,
+        caller.execute(files['map1_key'], files['map2_key'],
+                       files['noiseinv1_key'], files['noiseinv2_key'],
                        inifile=inifile)
 
     caller.multiprocess_stack()
@@ -308,24 +324,27 @@ def batch_data_run(map_key, inifile=None, datapath_db=None):
     outpath = datapath_db.fetch("quadratic_batch_data")
     print "writing to: " + outpath
 
+    map_cases = datapath_db.fileset_cases(map_key, "pair;type;treatment")
+
     funcname = "correlate.batch_quadratic.call_xspec_run"
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
 
-    map_cases = datapath_db.fileset_cases(map_key, "pair;type;treatment")
     for treatment in map_cases['treatment']:
         uniq_pairs = data_paths.GBTauto_cross_pairs(map_cases['pair'],
                                                     map_cases['pair'],
                                                     cross_sym="_with_")
 
         for item in uniq_pairs:
-            map1_key = "db:%s:%s;map;%s" % (map_key, item[0], treatment)
-            map2_key = "db:%s:%s;map;%s" % (map_key, item[1], treatment)
-            noiseinv1_key = "db:%s:%s;weight;%s" % (map_key, item[0], treatment)
-            noiseinv2_key = "db:%s:%s;weight;%s" % (map_key, item[1], treatment)
+            input = {}
+            input['map1_key'] = "%s:%s;map;%s" % (map_key, item[0], treatment)
+            input['map2_key'] = "%s:%s;map;%s" % (map_key, item[1], treatment)
+            input['noiseinv1_key'] = "%s:%s;weight;%s" % (map_key, item[0], treatment)
+            input['noiseinv2_key'] = "%s:%s;weight;%s" % (map_key, item[1], treatment)
+            files = convert_keydict_to_filedict(input, db=datapath_db)
 
-            caller.execute(map1_key, map2_key,
-                           noiseinv1_key, noiseinv2_key,
+            caller.execute(files['map1_key'], files['map2_key'],
+                           files['noiseinv1_key'], files['noiseinv2_key'],
                            inifile=inifile)
 
     caller.multiprocess_stack()

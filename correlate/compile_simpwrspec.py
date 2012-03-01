@@ -14,45 +14,38 @@ from utils import batch_handler
 import copy
 
 
-def gather_batch_sim_run(sim_key, tag, subtract_mean=False,
-                         degrade_resolution=False,
-                         unitless=True, return_3d=False,
-                         truncate=False, window=None, n_modes=None,
-                         refinement=2, pad=5, order=2, transfer=None,
-                         res_path=None):
+def gather_batch_sim_run(simleft_key, simright_key,
+                         weightleft_key, weightright_key,
+                         inifile=None, datapath_db=None):
 
-    if res_path is None:
+    if datapath_db is None:
         datapath_db = data_paths.DataPath()
-        batchquad_path = datapath_db.fetch("quadratic_batch_simulations")
 
+    outpath = datapath_db.fetch("quadratic_batch_data")
     print "reading from: " + batchquad_path
 
     funcname = "correlate.batch_quadratic.call_xspec_run"
-    caller = batch_handler.MemoizeBatch(funcname, batchquad_path,
-                                        verbose=True)
-
-    (simlist, simlistfiles) = datapath_db.fetch(sim_key, silent=True,
-                                                intend_read=True)
+    caller = batch_handler.MemoizeBatch(funcname, outpath,
+                                        generate=False, verbose=True)
 
     pwr_1d = []
     pwr_1d_from_2d = []
     pwr_2d = []
-    for index in simlist:
-        map1_key = "db:%s:%s" % (sim_key, index)
-        map2_key = "db:%s:%s" % (sim_key, index)
-        noiseinv1_key = "db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv"
-        noiseinv2_key = "db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv"
+    mock_cases = datapath_db.fileset_cases(simleft_key, "realization")
 
-        pwr2d_run, pwr1d_run = caller.execute(map1_key, map2_key,
-                                              noiseinv1_key, noiseinv2_key,
-                                              subtract_mean=subtract_mean,
-                                              degrade_resolution=degrade_resolution,
-                                              unitless=unitless,
-                                              return_3d=return_3d,
-                                              truncate=truncate,
-                                              window=window, n_modes=n_modes,
-                                              refinement=refinement,
-                                              pad=pad, order=order)
+    for index in mock_cases['realization']:
+        input = {}
+        input['map1_key'] = "%s:%s" % (simleft_key, index)
+        input['map2_key'] = "%s:%s" % (simright_key, index)
+        input['noiseinv1_key'] = "%s" % weightleft_key
+        input['noiseinv2_key'] = "%s" % weightright_key
+        files = convert_keydict_to_filedict(input, db=datapath_db)
+
+        pwr2d_run, pwr1d_run = caller.execute(files['map1_key'],
+                                              files['map2_key'],
+                                              files['noiseinv1_key'],
+                                              files['noiseinv2_key'],
+                                              inifile=inifile)
 
         pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwr2d_run,
                                                   transfer=transfer))
@@ -61,45 +54,43 @@ def gather_batch_sim_run(sim_key, tag, subtract_mean=False,
         pwr_1d.append(pwr1d_run)
 
     pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, tag,
-                         outdir="./plot_data")
+                         outdir="./plot_data_v2")
 
     return (pwr_1d, pwr_1d_from_2d, pwr_2d)
 
 
-def gather_physical_sim_run(sim_key, tag, unitless=True, return_3d=False,
-                            truncate=False, window="blackman",
-                            outdir="./plot_data", transfer=None,
-                            redshift_filekey='simideal_15hr'):
-    """Test the power spectral estimator using simulations"""
-    datapath_db = data_paths.DataPath()
+def gather_physical_sim_run(sim_key, inifile=None, datapath_db=None):
 
-    batchquad_path = datapath_db.fetch("quadratic_batch_simulations")
+    if datapath_db is None:
+        datapath_db = data_paths.DataPath()
+
+    outpath = datapath_db.fetch("quadratic_batch_data")
     print "reading from: " + batchquad_path
-    fileset = datapath_db.fetch(sim_key, silent=True, intend_read=True)
 
     funcname = "correlate.batch_quadratic.call_phys_space_run"
-    caller = batch_handler.MemoizeBatch(funcname, batchquad_path,
+    caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=False, verbose=True)
+
+    mock_cases = datapath_db.fileset_cases(sim_key, "realization")
 
     pwr_1d = []
     pwr_1d_from_2d = []
     pwr_2d = []
-    for index in fileset[0]:
-        map1_file = fileset[1][index]
-        map2_file = fileset[1][index]
+    for index in mock_cases['realization']:
+        map1_file = datapath_db.fetch("%s:%s" % (sim_key, index))
+        map2_file = datapath_db.fetch("%s:%s" % (sim_key, index))
 
         pwr2d_run, pwr1d_run = caller.execute(map1_file, map2_file,
-                                               unitless=unitless,
-                                               return_3d=return_3d,
-                                               truncate=truncate,
-                                               window=window)
+                                              inifile=inifile)
 
-        pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwr2d_run, transfer=transfer))
+        pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwr2d_run,
+                                                  transfer=transfer))
+
         pwr_2d.append(pwr2d_run)
         pwr_1d.append(pwr1d_run)
 
     pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, tag,
-                         outdir="./plot_data")
+                         outdir="./plot_data_v2")
 
     # now report the theory input curve over the same bins
     bin_left = pwr_1d[0]['bin_left']
