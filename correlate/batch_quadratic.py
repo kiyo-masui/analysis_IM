@@ -16,6 +16,8 @@ The bin edges for the output power spectra are in
         bin_center = pwr_1d[0]['bin_center']
         bin_right = pwr_1d[0]['bin_right']
 
+TODO: generate=True and False have different outputs and will get confused now
+replace pwr2d_run with pwr_out[0], pwr1d_run with pwr_out[1]
 """
 import numpy as np
 import math
@@ -99,50 +101,6 @@ def call_phys_space_run(cube1_file, cube2_file,
     return retval
 
 
-def batch_physical_sim_run(sim_key, inifile=None, datapath_db=None,
-                           compile_tag=None):
-    """Test the power spectral estimator using simulations"""
-    if datapath_db is None:
-        datapath_db = data_paths.DataPath()
-
-    outpath = datapath_db.fetch("quadratic_batch_data")
-    print "writing to: " + outpath
-
-    mock_cases = datapath_db.fileset_cases(sim_key, "realization")
-
-    funcname = "correlate.batch_quadratic.call_phys_space_run"
-    caller = batch_handler.MemoizeBatch(funcname, outpath,
-                                        generate=True, verbose=True)
-
-    pwr_1d = []
-    pwr_1d_from_2d = []
-    pwr_2d = []
-    for index in mock_cases['realization']:
-        map1_file = datapath_db.fetch("%s:%s" % (sim_key, index))
-        map2_file = datapath_db.fetch("%s:%s" % (sim_key, index))
-
-        pwr2d_run, pwr1d_run = caller.execute(map1_file, map2_file,
-                                              inifile=inifile)
-
-        if compile_tag:
-            pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwr2d_run,
-                                                  transfer=transfer))
-
-            pwr_2d.append(pwr2d_run)
-            pwr_1d.append(pwr1d_run)
-
-    if compile_tag:
-        pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, compile_tag,
-                             outdir="./plot_data_v2")
-
-        retval = (pwr_1d, pwr_1d_from_2d, pwr_2d)
-    else:
-        caller.multiprocess_stack()
-        retval = None
-
-    return retval
-
-
 def convert_keydict_to_filedict(dbkeydict, db=None):
     if db is None:
         db = data_paths.DataPath()
@@ -154,76 +112,22 @@ def convert_keydict_to_filedict(dbkeydict, db=None):
     return filedict
 
 
-def batch_sim_run(simleft_key, simright_key,
-                  weightleft_key, weightright_key,
-                  inifile=None, datapath_db=None,
-                  compile_tag=None):
-    r"""
-    typical weight matrix:
-    db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv
-    """
-
-    if datapath_db is None:
-        datapath_db = data_paths.DataPath()
-
-    outpath = datapath_db.fetch("quadratic_batch_data")
-    print "writing to: " + outpath
-
-    mock_cases = datapath_db.fileset_cases(simleft_key, "realization")
-
-    funcname = "correlate.batch_quadratic.call_xspec_run"
-    caller = batch_handler.MemoizeBatch(funcname, outpath,
-                                        generate=True, verbose=True)
-
-    pwr_1d = []
-    pwr_1d_from_2d = []
-    pwr_2d = []
-    for index in mock_cases['realization']:
-        input = {}
-        input['map1_key'] = "%s:%s" % (simleft_key, index)
-        input['map2_key'] = "%s:%s" % (simright_key, index)
-        input['noiseinv1_key'] = weightleft_key
-        input['noiseinv2_key'] = weightright_key
-        files = convert_keydict_to_filedict(input, db=datapath_db)
-
-        pwr2d_run, pwr1d_run = caller.execute(files['map1_key'],
-                                              files['map2_key'],
-                                              files['noiseinv1_key'],
-                                              files['noiseinv2_key'],
-                                              inifile=inifile)
-        if compile_tag:
-            pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwr2d_run,
-                                                  transfer=transfer))
-
-            pwr_2d.append(pwr2d_run)
-            pwr_1d.append(pwr1d_run)
-
-
-    if compile_tag:
-        pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, compile_tag,
-                             outdir="./plot_data_v2")
-        retval = (pwr_1d, pwr_1d_from_2d, pwr_2d)
-    else:
-        caller.multiprocess_stack()
-        retval = None
-
-    return retval
-
 def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
                                wigglez_mock_key, wigglez_selection_key,
-                               inifile=None, datapath_db=None):
+                               inifile=None, datapath_db=None,
+                               compile_tag=None):
     if datapath_db is None:
         datapath_db = data_paths.DataPath()
 
-    outpath = datapath_db.fetch("quadratic_batch_data")
-    print "writing to: " + outpath
+    cache_path = datapath_db.fetch("quadratic_batch_data")
 
     map_cases = datapath_db.fileset_cases(gbt_map_key, "type;treatment")
     mock_cases = datapath_db.fileset_cases(wigglez_mock_key, "realization")
 
     funcname = "correlate.batch_quadratic.call_xspec_run"
-    caller = batch_handler.MemoizeBatch(funcname, outpath,
-                                        generate=True, verbose=True)
+    generate = False if compile_tag else True
+    caller = batch_handler.MemoizeBatch(funcname, cache_path,
+                                        generate=generate, verbose=True)
 
     for treatment in map_cases['treatment']:
         input = {}
@@ -256,21 +160,22 @@ def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
 def batch_GBTxwigglez_trans_run(sim_key, sim_wigglez,
                                 base_sim_GBT, gbt_map_key,
                                 wigglez_selection_key,
-                                inifile=None, datapath_db=None):
+                                inifile=None, datapath_db=None
+                                compile_tag=None):
     r"""
     Assume that the 0'th realization sim is used in the cleaning sims
     """
     if datapath_db is None:
         datapath_db = data_paths.DataPath()
 
-    outpath = datapath_db.fetch("quadratic_batch_data")
-    print "writing to: " + outpath
+    cache_path = datapath_db.fetch("quadratic_batch_data")
 
     map_cases = datapath_db.fileset_cases(sim_key, "type;treatment")
 
     funcname = "correlate.batch_quadratic.call_xspec_run"
-    caller = batch_handler.MemoizeBatch(funcname, outpath,
-                                        generate=True, verbose=True)
+    generate = False if compile_tag else True
+    caller = batch_handler.MemoizeBatch(funcname, cache_path,
+                                        generate=generate, verbose=True)
 
     input = {}
     input['map1_key'] = "%s:0" % base_sim_GBT
@@ -300,30 +205,41 @@ def batch_GBTxwigglez_trans_run(sim_key, sim_wigglez,
 
 def batch_one_sided_trans_run(modeloss_simkey, sim_key,
                               modeloss_weight_root,
-                              inifile=None, datapath_db=None):
+                              inifile=None, datapath_db=None,
+                              compile_tag=None):
     if datapath_db is None:
         datapath_db = data_paths.DataPath()
 
-    outpath = datapath_db.fetch("quadratic_batch_data")
-    print "writing to: " + outpath
+    cache_path = datapath_db.fetch("quadratic_batch_data")
 
     map_cases = datapath_db.fileset_cases(sim_key, "type;treatment")
 
     funcname = "correlate.batch_quadratic.call_xspec_run"
-    caller = batch_handler.MemoizeBatch(funcname, outpath,
-                                        generate=True, verbose=True)
+    generate = False if compile_tag else True
+    caller = batch_handler.MemoizeBatch(funcname, cache_path,
+                                        generate=generate, verbose=True)
 
     input = {}
     input['map1_key'] = "%s:0" % sim_key
     input['map2_key'] = "%s:0" % sim_key
     input['noiseinv1_key'] = "%s:weight;0modes" % (modeloss_weight_root)
-    input['noiseinv2_key'] = "%s:weight;0modes" % (modeloss_weight_root)
+    # TODO: should these be ones or weight
+    input['noiseinv2_key'] = "%s:ones;0modes" % (modeloss_weight_root)
     files = convert_keydict_to_filedict(input, db=datapath_db)
 
-    caller.execute(files['map1_key'], files['map2_key'],
-                   files['noiseinv1_key'], files['noiseinv2_key'],
-                   inifile=inifile)
+    pwr2d_run, pwr1d_run = caller.execute(files['map1_key'],
+                                          files['map2_key'],
+                                          files['noiseinv1_key'],
+                                          files['noiseinv2_key'],
+                                          inifile=inifile)
 
+    pwr1d_from_2d = pe.convert_2d_to_1d(pwr2d_run)
+
+    pwr_1d_zero = pwr1d_run['binavg']
+    pwr_2d_zero = pwr2d_run['binavg']
+    pwr_1d_from_2d_zero = pwr1d_from_2d['binavg']
+
+    transfer_functions = {}
     for treatment in map_cases['treatment']:
         input = {}
         input['map1_key'] = "%s:map;%s" % (modeloss_simkey, treatment)
@@ -336,27 +252,61 @@ def batch_one_sided_trans_run(modeloss_simkey, sim_key,
                                                  treatment)
         files = convert_keydict_to_filedict(input, db=datapath_db)
 
-        caller.execute(files['map1_key'], files['map2_key'],
-                       files['noiseinv1_key'], files['noiseinv2_key'],
-                       inifile=inifile)
+        pwr2d_run, pwr1d_run = caller.execute(files['map1_key'],
+                                              files['map2_key'],
+                                              files['noiseinv1_key'],
+                                              files['noiseinv2_key'],
+                                              inifile=inifile)
+        if compile_tag:
+            pwr1d_from_2d = pe.convert_2d_to_1d(pwr2d_run)
 
-    caller.multiprocess_stack()
+            pwr_1d = pwr1d_run['binavg']
+            pwr_1d_from_2d = pwr1d_from_2d['binavg']
+            trans1d_mode = pwr_1d/pwr_1d_zero
+            trans1d_from2d_mode = pwr_1d_from_2d/pwr_1d_from_2d_zero
+            trans2d_mode = pwr2d_run['binavg']/pwr_2d_zero
 
+            transfer_functions[mode_num] = (trans1d_mode,
+                                            trans1d_from2d_mode,
+                                            trans2d_mode)
+
+            # assume that they all have the same binning
+            bin_left = pwr1d_run['bin_left']
+            bin_center = pwr1d_run['bin_center']
+            bin_right = pwr1d_run['bin_right']
+            counts_histo = pwr1d_run['counts_histo']
+
+            filename = "./plot_data/%s_%dmodes_trans.dat" % (tag, mode_num)
+            outfile = open(filename, "w")
+            for specdata in zip(bin_left, bin_center,
+                                bin_right, counts_histo, pwr_1d, trans1d_mode,
+                                trans1d_from2d_mode):
+                outfile.write(("%10.15g " * 7 + "\n") % specdata)
+            outfile.close()
+
+    if not compile_tag:
+        caller.multiprocess_stack()
+        retval = None
+    else:
+        retval = transfer_functions
+
+    return retval
 
 def batch_wigglez_automock_run(mock_key, sel_key,
-                               inifile=None, datapath_db=None):
+                               inifile=None, datapath_db=None,
+                               compile_tag=None):
 
     if datapath_db is None:
         datapath_db = data_paths.DataPath()
 
-    outpath = datapath_db.fetch("quadratic_batch_data")
-    print "writing to: " + outpath
+    cache_path = datapath_db.fetch("quadratic_batch_data")
 
     mock_cases = datapath_db.fileset_cases(mock_key, "realization")
 
     funcname = "correlate.batch_quadratic.call_xspec_run"
-    caller = batch_handler.MemoizeBatch(funcname, outpath,
-                                        generate=True, verbose=True)
+    generate = False if compile_tag else True
+    caller = batch_handler.MemoizeBatch(funcname, cache_path,
+                                        generate=generate, verbose=True)
 
     for index in mock_cases['realization']:
         input = {}
@@ -373,18 +323,19 @@ def batch_wigglez_automock_run(mock_key, sel_key,
     caller.multiprocess_stack()
 
 
-def batch_data_run(map_key, inifile=None, datapath_db=None):
+def batch_data_run(map_key, inifile=None, datapath_db=None,
+                   compile_tag=None):
     if datapath_db is None:
         datapath_db = data_paths.DataPath()
 
-    outpath = datapath_db.fetch("quadratic_batch_data")
-    print "writing to: " + outpath
+    cache_path = datapath_db.fetch("quadratic_batch_data")
 
     map_cases = datapath_db.fileset_cases(map_key, "pair;type;treatment")
 
     funcname = "correlate.batch_quadratic.call_xspec_run"
-    caller = batch_handler.MemoizeBatch(funcname, outpath,
-                                        generate=True, verbose=True)
+    generate = False if compile_tag else True
+    caller = batch_handler.MemoizeBatch(funcname, cache_path,
+                                        generate=generate, verbose=True)
 
     for treatment in map_cases['treatment']:
         uniq_pairs = data_paths.GBTauto_cross_pairs(map_cases['pair'],
@@ -425,6 +376,3 @@ def theory_power_spectrum(redshift_filekey, bin_centers,
         outfile.write(("%10.15g " * 4 + "\n") % specdata)
 
     outfile.close()
-
-
-
