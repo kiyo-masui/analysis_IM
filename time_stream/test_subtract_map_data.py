@@ -3,6 +3,7 @@
 import unittest
 import os
 import cPickle
+import glob
 
 import scipy as sp
 import numpy.ma as ma
@@ -134,39 +135,49 @@ class TestSubMap(unittest.TestCase) :
 class TestModule(unittest.TestCase) :
     
     def setUp(self) :
-        Reader = fitsGBT.Reader(test_file, feedback=0)
-        blocks = Reader.read((),())
-        for Data in blocks :
-            rotate_pol.rotate(Data, (1,2,3,4))
-        Writer = fitsGBT.Writer(blocks, feedback=0)
-        Writer.write('test_rot.testout.fits')
-        
-        map = sp.zeros((150, 10, 11))
-        map = algebra.make_vect(map, axis_names=('freq', 'ra', 'dec'))
-        map.set_axis_info('freq', 700.0e6, -2.0e6)
-        map.set_axis_info('ra', 325.6, -0.2)
-        map.set_axis_info('dec', 0, 0.2)
-        algebra.save('test_inmap.npy', map)
+        # Read in just to fiugre out the band structure.
+        this_test_file = 'testdata/testfile_guppi_rotated.fits'
+        Reader = fitsGBT.Reader(this_test_file, feedback=0)
+        Blocks = Reader.read((0,),())
+        bands = ()
+        for Data in Blocks:
+            n_chan = Data.dims[3]
+            Data.calc_freq()
+            freq = Data.freq
+            delta = abs(sp.mean(sp.diff(freq)))
+            centre = freq[n_chan//2]
+            band = int(centre/1e6)
+            bands += (band,)
+            map = sp.zeros((n_chan, 15, 11))
+            map = algebra.make_vect(map, axis_names=('freq', 'ra', 'dec'))
+            map.set_axis_info('freq', centre, -delta)
+            map.set_axis_info('ra', 218, -0.2)
+            map.set_axis_info('dec', 2, 0.2)
+            algebra.save('./testout_clean_map_I_' + str(band) + '.npy', map)
 
-        self.params = {'sm_file_middles' : ("test",),
-                       'sm_input_end' : "_rot.testout.fits",
-                       'sm_output_end' : "_sub.testout.fits",
+        self.params = {'sm_input_root' : 'testdata/',
+                       'sm_file_middles' : ("testfile",),
+                       'sm_input_end' : "_guppi_rotated.fits",
+                       'sm_output_root' : "./testout_",
+                       'sm_output_end' : "_sub.fits",
                        'sm_solve_for_gain' : True,
-                       'sm_gain_output_end' : '_gain.pickle',
-                       'sm_map_file' : 'test_inmap.npy'
+                       'sm_gain_output_end' : 'gain.pickle',
+                       'sm_map_input_root' : './testout_',
+                       'sm_map_type' : 'clean_map_',
+                       'sm_map_polarizations' : ('I',),
+                       'sm_map_bands' : bands
                        }
 
     def test_history(self) :
         smd.Subtract(self.params, feedback=0).execute()
-        Data = fitsGBT.Reader('test_sub.testout.fits', feedback=0).read(0,0)
-        self.assertTrue(Data.history.has_key('003: Subtracted map from data.'))
+        Data = fitsGBT.Reader('./testout_testfile_sub.fits',
+                              feedback=0).read(0,0)
+        self.assertTrue(Data.history.has_key('002: Subtracted map from data.'))
 
     def tearDown(self) :
-        os.remove('test_inmap.npy')
-        os.remove('test_rot.testout.fits')
-        os.remove('test_sub.testout.fits')
-        os.remove('params.ini')
-        os.remove('test_gain.pickle')
+        files = glob.glob("*testout*")
+        for file in files:
+            os.remove(file)
         
 if __name__ == '__main__' :
     unittest.main()

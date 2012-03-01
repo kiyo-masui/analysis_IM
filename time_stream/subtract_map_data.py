@@ -52,7 +52,7 @@ class Subtract(base_single.BaseSingle) :
                                  + '.npy')
                 map = algebra.load(map_file_name)
                 map = algebra.make_vect(map)
-                this_band_maps.append(maps)
+                this_band_maps.append(map)
             self.maps.append(this_band_maps)
 
     def action(self, Data):
@@ -63,7 +63,7 @@ class Subtract(base_single.BaseSingle) :
         # This could be made more general since the sub_map function can handle
         # partial overlap, but this will be fine for now.
         for band_maps in self.maps:
-            maps_freq = band_maps[0].get_axis['freq']
+            maps_freq = band_maps[0].get_axis('freq')
             if sp.allclose(maps_freq, freq):
                 maps = band_maps
                 break
@@ -72,9 +72,9 @@ class Subtract(base_single.BaseSingle) :
                                       ' matching data.')
         # Now make sure we have the polarizations in the right order.
         data_pols = Data.field['CRVAL4'].copy()
-        for ii in len(data_pols):
+        for ii in range(len(data_pols)):
             if (misc.polint2str(data_pols[ii])
-                != params['map_polarizations'][ii]):
+                != self.params['map_polarizations'][ii]):
                 raise NotImplementedError('Map polarizations not in same order'
                                           ' as data polarizations.')
         if (not self.params['solve_for_gain'] or
@@ -88,11 +88,12 @@ class Subtract(base_single.BaseSingle) :
             block_gain['time'] = Data.field['DATE-OBS'][0]
             block_gain['scan'] = Data.field['SCAN']
             block_gain['gain'] = sub_map(Data, maps, True, 
-                                interpolation=self.params['interpolation']))
+                                interpolation=self.params['interpolation'])
             self.gain_list.append(block_gain)
 
         Data.add_history('Subtracted map from data.', 
-            ('Map file: ' + ku.abbreviate_file_path(self.params['map_file']),))
+                         ('Map root: ' + ku.abbreviate_file_path(
+                         self.params['map_input_root']),))
         return Data
 
     # Overwrite the base single process file method so we can also pickle the
