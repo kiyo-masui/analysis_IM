@@ -1,5 +1,21 @@
 r"""Code to run large batches of quadratic estimators on combinations of
 data/sims
+
+The code is run in two steps:
+1. with compile_tag=None (default) calculate and cache all the power spectra
+2. with compile_tag=some identifier for the outputs, read the caches, write a
+summary file, and return the power spectra and bins
+
+The reason for this structure is that it is expensive to compute the hundreds
+of power spectra that go into a plot, but one also needs to try out many
+different ways of combining the outputs to form transfer functions, etc.,
+different 2D->1D binnings, etc.
+
+The bin edges for the output power spectra are in
+        bin_left = pwr_1d[0]['bin_left']
+        bin_center = pwr_1d[0]['bin_center']
+        bin_right = pwr_1d[0]['bin_right']
+
 """
 import numpy as np
 import math
@@ -83,7 +99,8 @@ def call_phys_space_run(cube1_file, cube2_file,
     return retval
 
 
-def batch_physical_sim_run(sim_key, inifile=None, datapath_db=None):
+def batch_physical_sim_run(sim_key, inifile=None, datapath_db=None,
+                           compile_tag=None):
     """Test the power spectral estimator using simulations"""
     if datapath_db is None:
         datapath_db = data_paths.DataPath()
@@ -97,14 +114,33 @@ def batch_physical_sim_run(sim_key, inifile=None, datapath_db=None):
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
 
+    pwr_1d = []
+    pwr_1d_from_2d = []
+    pwr_2d = []
     for index in mock_cases['realization']:
         map1_file = datapath_db.fetch("%s:%s" % (sim_key, index))
         map2_file = datapath_db.fetch("%s:%s" % (sim_key, index))
 
-        caller.execute(map1_file, map2_file,
-                       inifile=inifile)
+        pwr2d_run, pwr1d_run = caller.execute(map1_file, map2_file,
+                                              inifile=inifile)
 
-    caller.multiprocess_stack()
+        if compile_tag:
+            pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwr2d_run,
+                                                  transfer=transfer))
+
+            pwr_2d.append(pwr2d_run)
+            pwr_1d.append(pwr1d_run)
+
+    if compile_tag:
+        pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, compile_tag,
+                             outdir="./plot_data_v2")
+
+        retval = (pwr_1d, pwr_1d_from_2d, pwr_2d)
+    else:
+        caller.multiprocess_stack()
+        retval = None
+
+    return retval
 
 
 def convert_keydict_to_filedict(dbkeydict, db=None):
@@ -120,7 +156,8 @@ def convert_keydict_to_filedict(dbkeydict, db=None):
 
 def batch_sim_run(simleft_key, simright_key,
                   weightleft_key, weightright_key,
-                  inifile=None, datapath_db=None):
+                  inifile=None, datapath_db=None,
+                  compile_tag=None):
     r"""
     typical weight matrix:
     db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv
@@ -138,6 +175,9 @@ def batch_sim_run(simleft_key, simright_key,
     caller = batch_handler.MemoizeBatch(funcname, outpath,
                                         generate=True, verbose=True)
 
+    pwr_1d = []
+    pwr_1d_from_2d = []
+    pwr_2d = []
     for index in mock_cases['realization']:
         input = {}
         input['map1_key'] = "%s:%s" % (simleft_key, index)
@@ -146,12 +186,28 @@ def batch_sim_run(simleft_key, simright_key,
         input['noiseinv2_key'] = weightright_key
         files = convert_keydict_to_filedict(input, db=datapath_db)
 
-        caller.execute(files['map1_key'], files['map2_key'],
-                       files['noiseinv1_key'], files['noiseinv2_key'],
-                       inifile=inifile)
+        pwr2d_run, pwr1d_run = caller.execute(files['map1_key'],
+                                              files['map2_key'],
+                                              files['noiseinv1_key'],
+                                              files['noiseinv2_key'],
+                                              inifile=inifile)
+        if compile_tag:
+            pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwr2d_run,
+                                                  transfer=transfer))
 
-    caller.multiprocess_stack()
+            pwr_2d.append(pwr2d_run)
+            pwr_1d.append(pwr1d_run)
 
+
+    if compile_tag:
+        pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, compile_tag,
+                             outdir="./plot_data_v2")
+        retval = (pwr_1d, pwr_1d_from_2d, pwr_2d)
+    else:
+        caller.multiprocess_stack()
+        retval = None
+
+    return retval
 
 def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
                                wigglez_mock_key, wigglez_selection_key,
@@ -348,3 +404,27 @@ def batch_data_run(map_key, inifile=None, datapath_db=None):
                            inifile=inifile)
 
     caller.multiprocess_stack()
+
+
+def theory_power_spectrum(redshift_filekey, bin_centers,
+                          unitless=True, fileout="theory.dat"):
+    r"""TODO: make this work ... needs some minor changes
+    probably move elsewhere
+    """
+    zfilename = datapath_db.fetch(redshift_filekey, intend_read=True,
+                                      pick='1')
+
+    zspace_cube = algebra.make_vect(algebra.load(zfilename))
+    simobj = corr21cm.Corr21cm.like_kiyo_map(zspace_cube)
+    pwrspec_input = simobj.get_pwrspec(bin_center)
+    if unitless:
+        pwrspec_input *= bin_center ** 3. / 2. / math.pi / math.pi
+
+    outfile = open(fileout, "w")
+    for specdata in zip(bin_left, bin_center, bin_right, pwrspec_input):
+        outfile.write(("%10.15g " * 4 + "\n") % specdata)
+
+    outfile.close()
+
+
+
