@@ -23,7 +23,10 @@ class Subtract(base_single.BaseSingle) :
     
     prefix = 'sm_'
     params_init = {
-                   'map_file' : 'testfile_map.fits',
+                   'map_input_root' : './',
+                   'map_type' : 'clean_map_',
+                   'map_bands' : (),
+                   'map_polarizations' : (),
                    'solve_for_gain' : False,
                    # Empty string to not write an output.
                    'gain_output_end' : '',
@@ -37,10 +40,20 @@ class Subtract(base_single.BaseSingle) :
         # Call the base_single init.
         base_single.BaseSingle.__init__(self, parameter_file_or_dict,
                                         feedback)
-        # Read in the calibration file.
-        map_file_name = self.params['map_file']
-        self.Map = algebra.load(map_file_name)
-        self.Map = algebra.make_vect(self.Map)
+        # Read in the map files.
+        map_fnames_start = (self.params['map_input_root']
+                            + self.params['map_type'])
+        self.maps = []
+        for band in self.params['map_bands']:
+            this_band_maps = []
+            for pol in self.params['map_polarizations']:
+                map_file_name = (map_fnames_start + pol + '_' + str(band)
+                                 + '.npy')
+                map = algebra.load(map_file_name)
+                map = algebra.make_vect(map)
+                this_band_maps.append(maps)
+            self.maps.append(this_band_maps)
+
 
     def action(self, Data) :
         if (not self.params['solve_for_gain'] or
