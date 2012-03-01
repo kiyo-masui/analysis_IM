@@ -6,6 +6,7 @@ from kiyopy import parse_ini
 from correlate import batch_quadratic as bq
 from correlate import pwrspec_estimation as pe
 
+
 def batch_physical_sim_run(sim_key, inifile=None, datapath_db=None,
                            compile_tag=None):
     """Test the power spectral estimator using simulations"""
@@ -53,7 +54,7 @@ def batch_physical_sim_run(sim_key, inifile=None, datapath_db=None,
 def batch_sim_run(simleft_key, simright_key,
                   weightleft_key, weightright_key,
                   inifile=None, datapath_db=None,
-                  compile_tag=None):
+                  compile_tag=None, transfer=None):
     r"""
     typical weight matrix:
     db:GBT_15hr_map_cleaned_0mode:A_with_B;noise_inv
