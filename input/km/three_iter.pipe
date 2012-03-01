@@ -24,6 +24,20 @@ middles_b = file_middles[n_files//4:2*n_files//4]
 middles_c = file_middles[2*n_files//4:3*n_files//4]
 middles_d = file_middles[3*n_files//4:n_files]
 
+# Based upon Eric's preference, there is a new set of center/dim information.
+# 15hr: RA center = 217.8688, DEC center = 2.0, Pixel spacing = 0.0627, map shape = (78,43)
+# 22hr: RA center = 325.4190, DEC center = 0.0, Pixel spacing = 0.0627, map shape = (80,49)
+# 1hr: RA center = 13.0, DEC center = 1.85, Pixel spacing = 0.0627, map shape = (161,83)
+#      adjusted to (140,81) due to memory limits.
+
+map_centre = (217.87, 2.0)
+# For maps where performace isn't important.
+map0_shape = (78, 43)
+map0_spacing = .0627
+# Performance limited maps.
+map_shape = (70, 38)
+map_spacing = .07
+
 base_dir = os.getenv('GBT_OUT')
 data_dir = os.getenv('GBT_DATA')
 base_tcv = os.getenv('GBT_TCV')
@@ -73,7 +87,6 @@ pipe_modules = []
 
 #### Second Map making iteration ####
 
-
 #from time_stream import subtract_map_data
 #pipe_modules.append(subtract_map_data.Subtract)
 
@@ -91,9 +104,6 @@ pipe_modules = []
 
 
 #### Third Map making iteration ####
-
-#from time_stream import split_bands
-#pipe_modules.append(split_bands.SplitBands)
 
 # Correlation calibration modules here. # XXX
 
@@ -226,9 +236,9 @@ dm_scans = ()
 dm_IFs = ()
 
 dm_polarizations = ('I',)
-dm_field_centre = (217.87, 2.0)
-dm_pixel_spacing = .0627
-dm_map_shape = (78, 43)
+dm_field_centre = map_centre
+dm_pixel_spacing = map0_spacing
+dm_map_shape = map0_shape
 dm_time_block = 'scan'
 dm_n_files_group = 0
 dm_frequency_correlations = 'None'
@@ -245,21 +255,8 @@ cm_polarizations = ('I',)
 cm_bands = (737, 799, 862)
 cm_save_noise_diag = True
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 # subtract_map_data
-sm_input_root = rp_output_root
+sm_input_root = sb_output_root
 sm_file_middles = file_middles
 sm_input_end = '.fits'
 sm_output_root = base_dir + 'map_subtracted/'
@@ -267,14 +264,16 @@ sm_output_end = '.fits'
 sm_scans = ()
 sm_IFs = ()
 
-sm_pols = ()
-sm_map_file = map_base + map_prefix + 'clean_map_I_799.npy'
+sm_interpolation = 'cubic'
+sm_map_polarizations = ('I',)
+sm_map_nbands = cm_bands
+sm_map_input_root = cm_output_root
+sm_map_type = 'clean_map_'
 sm_solve_for_gain = False
 sm_gain_output_end = '_gain.pickle'
-sm_interpolation = 'cubic'
 
 # second_flag
-sf_input_root = rp_output_root
+sf_input_root = sb_output_root
 sf_file_middles = file_middles
 sf_input_end = '.fits'
 sf_output_root = base_dir + 'reflagged/'
@@ -285,59 +284,10 @@ sf_IFs = ()
 sf_thres = 3.0
 sf_max_noise_factor = 4.0
 sf_subtracted_input_root = sm_output_root
-sf_subtracted_output_root = base_dir + 'reflag_sub/'
-
-# time stream foreground measurement
-tf_input_root = sf_output_root
-tf_file_middles = file_middles
-tf_input_end = '.fits'
-tf_output_root = base_dir + 'ts_forground_measure/'
-tf_output_filename = "foreground_modes.shelve"
-tf_scans = ()
-tf_IFs = ()
-
-# subtract measured foregrounds
-fs_input_root = sf_output_root
-fs_file_middles = file_middles
-fs_input_end = '.fits'
-fs_output_root = base_dir + 'forground_subtracted/'
-fs_output_end = '.fits'
-fs_scans = ()
-fs_IFs = ()
-
-fs_n_modes_subtract = 1
-fs_foreground_file = base_dir + 'ts_forground_measure/foreground_modes.shelve'
-
-# split_bands
-sb_input_root = fs_output_root
-sb_file_middles = file_middles
-sb_input_end = '.fits'
-sb_output_root = base_dir + 'band_split/' + prefix
-sb_output_end = '.fits'
-sb_scans = ()
-sb_IFs = ()
-
-# 128 bins -> 3 bands of 40, starting at 4 ending at 124.
-sb_n_bands = 3
-sb_n_bins_band = 40
-#sb_offset = 4 + 2 * sb_n_bins_band
-sb_offset = 4
-
-# split_bands
-sbs_input_root = sf_subtracted_output_root
-sbs_file_middles = file_middles
-sbs_input_end = '.fits'
-sbs_output_root = base_dir + 'band_split_subtracted/' + prefix
-sbs_output_end = '.fits'
-sbs_scans = ()
-sbs_IFs = ()
-
-sbs_n_bands = sb_n_bands
-sbs_n_bins_band = sb_n_bins_band
-sbs_offset = sb_offset
+sf_subtracted_output_root = base_dir + 'reflagged_sub/'
 
 # measure_noise
-mn_input_root = sbs_output_root
+mn_input_root = sf_subtracted_output_root
 mn_file_middles = file_middles
 mn_input_end = '.fits'
 mn_output_root = base_dir + 'noise_measurments/'
@@ -353,58 +303,55 @@ mn_parameters = ["channel_var", "freq_modes_over_f_0",
                  "freq_modes_over_f_5", "freq_modes_over_f_6",
                  "freq_modes_over_f_7", "freq_modes_over_f_8"]
 
-# Based upon Eric's preference, there is a new set of center/dim information.
-# 15hr: RA center = 217.8688, DEC center = 2.0, Pixel spacing = 0.0627, map shape = (78,43)
-# 22hr: RA center = 325.4190, DEC center = 0.0, Pixel spacing = 0.0627, map shape = (80,49)
-# 1hr: RA center = 13.0, DEC center = 1.85, Pixel spacing = 0.0627, map shape = (161,83)
-#      adjusted to (140,81) due to memory limits.
 
+# dirty_map, second iteration
+dm2_input_root = sf_output_root
+dm2_file_middles = 
+dm2_input_end = '.fits'
+dm2_output_root = map_base + 'sec_' + map_prefix
+dm2_scans = ()
+dm2_IFs = ()
 
-# dirty_map
-# Map A
-dmA_input_root = sb_output_root
-dmA_file_middles = middles_a
-dmA_input_end = '.fits'
-dmA_output_root = map_base + 'secA_' + map_prefix
-dmA_scans = ()
-dmA_IFs = ()
-#dmA_IFs = (2,)  # XXX
-
-dmA_polarizations = ('I',)
-dmA_field_centre = (217.87, 2.0)
-#dmA_map_shape = (64, 32)
-#dmA_pixel_spacing = .075
-#dmA_pixel_spacing = .0627
-#dmA_map_shape = (78, 43)
-dmA_pixel_spacing = .07
-dmA_map_shape = (70, 38)
-#dmA_pixel_spacing = 1.0627
-dmA_interpolation = 'cubic'
-dmA_time_block = 'scan'
-#dmA_n_files_group = 420  # prawn
-dmA_n_files_group = 280  # tpb nodes.
-#dmA_n_files_group = 120
-dmA_frequency_correlations = 'measured'
-#dmA_number_frequency_modes = 3
-dmA_number_frequency_modes = 4  # Probably most appropriate.
-dmA_number_frequency_modes_discard = 0
-dmA_noise_parameter_file = (base_dir
+dm2_polarizations = ('I',)
+dm2_field_centre = map_centre
+dm2_pixel_spacing = map_spacing
+dm2_map_shape = map_shape
+dm2_interpolation = 'cubic'
+dm2_time_block = 'scan'
+#dm2_n_files_group = 420  # prawn
+dm2_n_files_group = 280  # tpb nodes.
+dm2_frequency_correlations = 'measured'
+#dm2_number_frequency_modes = 3
+dm2_number_frequency_modes = 4  # Probably most appropriate.
+dm2_number_frequency_modes_discard = 0
+dm2_noise_parameter_file = (base_dir
                             + 'noise_measurments/noise_parameters.shelve')
-dmA_deweight_time_mean = True
-dmA_deweight_time_slope = True
-dmA_ts_foreground_mode_file = fs_foreground_file
-dmA_n_ts_foreground_modes = 1
+dm2_deweight_time_mean = True
+dm2_deweight_time_slope = True
+dm2_ts_foreground_mode_file = fs_foreground_file
+dm2_n_ts_foreground_modes = 1
 
-# Other maps mostly copy parameters of map A.
-dmB_file_middles = middles_b
-#dmB_output_root = base_dir + 'maps/test_' + map_prefix # XXX
-dmB_output_root = map_base + 'secB_' + map_prefix
+# clean_map, second iteration
+cm2_input_root = dm2_output_root
+cm2_output_root = cm2_input_root
 
-dmC_file_middles = middles_c
-dmC_output_root = map_base + 'secC_' + map_prefix
+cm2_polarizations = ('I',)
+cm2_bands = (737, 799, 862)
+#cm2_bands = (799,) # XXX
+cm2_save_noise_diag = True
+cm2_save_cholesky = False
+cm2_from_eig = False
 
-dmD_file_middles = middles_d
-dmD_output_root = map_base + 'secD_' + map_prefix
+
+
+
+
+
+
+
+
+
+
 
 # clean_map
 # Map A
