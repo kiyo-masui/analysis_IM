@@ -141,10 +141,10 @@ def wrap_combine(basemap):
 
 
 if __name__ == '__main__':
+    wrap_combine("GBT_15hr_optimalmap_fluxpolcal")
+    wrap_combine("GBT_22hr_map_fluxpolcal")
     #wrap_combine("GBT_15hr_map_fluxpolcal")
-    #wrap_combine("GBT_22hr_map_fluxpolcal")
     #wrap_combine("GBT_1hr_map_fluxpolcal")
     #wrap_combine("GBT_15hr_map_fdgcal")
-    wrap_combine("GBT_15hr_optimalmap_fluxpolcal")
     #wrap_combine("GBT_15hr_map_oldcal")
     #wrap_combine("GBT_15hr_map_fluxcal")
