@@ -8,6 +8,8 @@ import scipy.linalg as linalg
 
 import misc as utils
 
+import matplotlib.pyplot as plt
+
 class TestElAz2RaDec_LST(unittest.TestCase) :
     
     def test_known_cases(self) :
@@ -153,6 +155,53 @@ class TestFloatTime(unittest.TestCase):
         seconds2 = utils.time2float(UT)
         self.assertTrue(sp.all(UT == utils.float2time(seconds2)))
         self.assertTrue(sp.allclose(seconds, seconds2))
+
+class Test_OrthoPoly(unittest.TestCase):
+
+    def test_flat_even_spaced(self):
+        # Use uniform weight, should just get the lagendre polynomials.
+        m = 20
+        n = 10
+        x = sp.arange(m, dtype=float)
+        window = 1.
+        polys = utils.ortho_poly(x, n, window)
+        # The first one should just be the mean.
+        self.assertTrue(sp.allclose(polys[0,:], 1./sp.sqrt(m)))
+        # The second one should be a slope.
+        expected = x - sp.mean(x)
+        expected = expected / sp.sqrt(sp.sum(expected**2))
+        self.assertTrue(sp.allclose(polys[1,:], expected))
+        # Check that they are all orthonormal.
+        self.check_ortho_norm(polys, 1.)
+
+    def test_uneven(self):
+        # Use uniform weight, should just get the lagendre polynomials.
+        m = 40
+        n = 10
+        x = sp.log(sp.arange(m, dtype=float)/2 + 0.5)
+        window = sp.sin(x)**2
+        polys = utils.ortho_poly(x, n, window)
+        self.check_ortho_norm(polys, window)
+        #plt.plot(x, window, '.')
+        #plt.plot(x, polys[0,:])
+        #plt.plot(x, polys[1,:])
+        #plt.plot(x, polys[2,:])
+        #plt.plot(x, polys[3,:])
+        #plt.plot(x, polys[6,:])
+        #plt.show()
+
+    def check_ortho_norm(self, polys, window=1.):
+        # Always check that they are all orthonormal.
+        n = polys.shape[0]
+        m = polys.shape[1]
+        for ii in range(n):
+            for jj in range(n):
+                prod = sp.sum(window * polys[ii,:] * polys[jj,:])
+                if ii == jj:
+                    self.assertTrue(abs(prod - 1.) < 1e-8)
+                else:
+                    self.assertTrue(abs(prod) < 1e-8)
+
 
 if __name__ == '__main__' :
     unittest.main()

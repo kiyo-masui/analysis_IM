@@ -4,6 +4,7 @@ import datetime
 import time
 
 import scipy as sp
+import numpy as np
 from scipy.interpolate import interp1d
 from scipy import linalg
 import ephem
@@ -284,3 +285,50 @@ def rebin_1D(array, reduce=4, axis=-1):
     array.shape = shape
     return out
 
+def ortho_poly(x, n, window=1.):
+    """Generate orthonormal basis polynomials.
+
+    Generate the first `n` orthonormal basis polynomials over the given domain
+    and for the given window using the Grame-Schmidt process.
+    
+    Parameters
+    ----------
+    x : 1D array length m
+        Functional domain.
+    n : integer
+        number of polynomials to generate. `n` - 1 is the maximum order of the
+        polynomials.
+    window : 1D array length m
+        Window (weight) function for which the polynomials are orthogonal.
+
+    Returns
+    -------
+    polys : n by m array
+        The n polynomial basis functions. Normalization is such that
+        np.sum(polys[i,:] * window * polys[j,:]) = delta_{ij}
+    """
+
+    if np.any(window < 0):
+        raise ValueError("Window function must never be negitive.")
+    m = len(x)
+    polys = np.empty((n, m), dtype=float)
+    # For stability, rescale the domain.
+    x_range = float(max(x) - min(x))
+    x = (x - np.mean(x)) / x_range * 2
+    # Now loop thorugh the polynomials and constrct them.
+    # This array will be the starting polynomial, before orthogonalization.
+    basic_poly = np.ones(m, dtype=float) / np.sqrt(m)
+    for ii in range(n):
+        # Start with a the basic polynomial.
+        new_poly = basic_poly.copy()
+        # Orthogonalize agains all lower order polynomials.
+        for jj in range(ii):
+            new_poly -= np.sum(new_poly * window * polys[jj,:]) * polys[jj,:] 
+        # Normalize.
+        new_poly /= np.sqrt(np.sum(new_poly**2 * window))
+        # Copy into output.
+        polys[ii,:] = new_poly
+        # Increment the base polynomial with another power of the domain for
+        # the next iteration.
+        basic_poly *= x
+    return polys

@@ -73,54 +73,47 @@ class Measure(object) :
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
                                prefix=prefix)
         file_middles = params['file_middles']
-        # Store the covariance and counts session by session in a dictionary.
-        covar_dict = {}
-        counts_dict = {}
+        # Store the correlation and normalization session by session in a
+        # dictionary.
+        corr_dict = {}
+        norm_dict = {}
         # Also store the frequency axis.
         freq_dict = {}
-        # Loop though all the files and accumulate the covariance and the
-        # counts.  Files in the same session are summed together.
+        # Loop though all the files and accumulate the correlation and the
+        # normalization.  Files in the same session are summed together.
         for middle in file_middles:
-            key, covar, counts, freq = self.process_file(middle)
-            if covar_dict.has_key(key):
-                if covar_dict[key].shape != covar.shape:
+            key, corr, norm, freq = self.process_file(middle)
+            if corr_dict.has_key(key):
+                if corr_dict[key].shape != corr.shape:
                     msg = ("All data needs to have the same band and"
                            "polarization structure.")
                     raise ce.DataError(msg)
-                covar_dict[key] += covar
-                counts_dict[key] += counts
+                corr_dict[key] += corr
+                norm_dict[key] += norm
                 if not np.allclose(freq_dict[key], freq):
                     raise ce.DataError("Frequency structure not consistant.")
             else:
-                covar_dict[key] = covar
-                counts_dict[key] = counts
+                corr_dict[key] = corr
+                norm_dict[key] = norm
                 freq_dict[key] = freq
-        # Now that we have the covariance, factor it into eigen-vectors and
-        # store it in a data base.
+        # Now that we have the correlation summed for all files in each
+        # session, normalize it and store it as an output.
         output_fname = params['output_root'] + params["output_filename"]        
         out_db = shelve.open(output_fname)
         # Loop through all the data divisions and processes them one at a
         # time.
-        for key in covar_dict.iterkeys():
-            covar = covar_dict[key]
-            counts = counts_dict[key]
+        for key in corr_dict.iterkeys():
+            corr = corr_dict[key]
+            norm = norm_dict[key]
             # Normalize.
-            counts[counts==0] = 1
-            covar /= counts
-            # Loop to each matrix, decompose it and save it.
-            eigen_vects = np.empty_like(covar)
-            for band_ii in range(covar.shape[0]):
-                for pol_jj in range(covar.shape[1]):
-                    for cal_kk in range(covar.shape[2]):
-                        # Factor
-                        h, v = linalg.eigh(covar[band_ii,pol_jj,cal_kk])
-                        eigen_vects[band_ii,pol_jj,cal_kk] = v
-                        #plt.semilogy(h, '.')
-                        #plt.figure()
-                        #for ii in range(1,5):
-                        #    plt.plot(v[:,-ii])
-                        #plt.show()
-            out_db[key + '.vects'] = eigen_vects
+            norm[norm==0] = 1
+            corr /= norm
+            #plt.semilogy(h, '.')
+            #plt.figure()
+            #for ii in range(1,5):
+            #    plt.plot(v[:,-ii])
+            #plt.show()
+            out_db[key + '.gains'] = eigen_vects
             out_db[key + '.freq'] = freq_dict[key]
         out_db.close()
 
@@ -149,9 +142,9 @@ class Measure(object) :
         n_cal = Data.dims[2]
         n_chan = Data.dims[3]
         # Allowcate memory for the outputs.
-        covar = np.zeros((n_bands_proc, n_pol, n_cal, n_chan, n_chan),
+        corr = np.zeros((n_bands_proc, n_pol, n_cal, n_chan),
                          dtype=float)
-        counts = np.zeros(covar.shape, dtype=int)
+        norm = np.zeros(corr.shape, dtype=int)
         freq = np.empty((n_bands_proc, n_chan))
         for ii in range(n_bands_proc):
             Blocks = Reader.read((), ii)
@@ -179,10 +172,11 @@ class Measure(object) :
                     raise NotImplementedError(map)
             # Now process each block.
             for Data in Blocks:
-                this_covar, this_counts = get_covar(Data, band_maps)
-                covar[ii,...] += this_covar
-                counts[ii,...] += this_counts
-        return key, covar, counts, freq
+                this_corr, this_norm = get_correlation(Data, band_maps,
+                                        interpolation=params['interpolation'])
+                corr[ii,...] += corr
+                norm[ii,...] += norm
+        return key, corr, norm, freq
 
 
 def get_key(middle):
@@ -192,7 +186,56 @@ def get_key(middle):
     key = sess_num
     return key
 
-def get_covar(Data, maps):
-    pass
-
-
+def get_correlation(Data, maps, interpolation='nearest'):
+    "Correlates the maps with the data."
+    
+    n_pols = Data.dims[1]
+    if len(maps) != n_pols:
+        raise ValueError("Supplied wrong number of maps.")
+    # Get the time array (for slope mode subtraction).
+    Data.calc_time()
+    time = Data.time
+    # Initialize outputs.
+    correlation = sp.zeros(Data.dims[1:], dtype=float)
+    normalization = sp.zeros(Data.dims[1:], dtype=float)
+    for ii in range(n_pols):
+        map = maps[ii]
+        if map.size[0] != Data.dims[3]:
+            raise RuntimeError("Map and data frequency axes not the same
+                               " length.")
+        Data.calc_pointing()
+        Data.calc_freq()
+        # Figure out which pointings (times) are inside the map bounds.
+        map_ra = Map.get_axis('ra')
+        map_dec = Map.get_axis('dec')
+        on_map_inds = sp.logical_and(
+            sp.logical_and(Data.ra >= min(map_ra), Data.ra <= max(map_ra)),
+            sp.logical_and(Data.dec >= min(map_dec), Data.dec <= max(map_dec)))
+        # Convert map to a time domain array.
+        submap = sp.empty((sp.sum(on_map_inds), map.shape[0]), dtype=float)
+        jj = 0
+        for ii in range(len(on_map_inds)) :
+            if on_map_inds[ii] :
+                submap[jj,:] = map.slice_interpolate([1, 2], 
+                        [Data.ra[ii], Data.dec[ii]], kind=interpolation)
+                jj += 1
+        # Now get the corresponding data.
+        subdata = Data.data[on_map_inds,ii,:,:]
+        un_mask = sp.logical_not(ma.getmaskarray(subdata))
+        subdata = subdata.filled(0)
+        # Broadcast map data up to the same shape as the time stream (add cal
+        # axis).
+        submap = sp.zeros_like(subdata) + submap[:,None,:]
+        # We do not want to correlate the mean mode and the slope mode, so
+        # subtract these out.
+        # First the mean mode.
+        submap -= sp.sum(submap * unmask, 0) / sp.sum(un_mask, 0)
+        subdata -= sp.sum(subdata * unmask, 0) / sp.sum(un_mask, 0)
+        # Now for the slope.  No need to ensure the slope mode that is 
+        # orthoganol to the mean mode (which is not ensured because of the
+        # mask) because we are zeroing both. 
+        
+        # Calculate the correlation and the normalization.
+        correlation[ii,:,:] = sp.sum(submap * un_mask * subdata, 0)
+        normilization[ii,:,:] = sp.sum(submap * un_mask * submap, 0)
+    return correlation, normalization
