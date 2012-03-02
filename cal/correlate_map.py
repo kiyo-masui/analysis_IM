@@ -36,7 +36,8 @@ params_init = {
                'map_type' : 'clean_map_',
                'map_bands' : (),
                'map_polarizations' : (),
-               'interpolation' : 'nearest'
+               'interpolation' : 'nearest',
+               'smooth_modes_subtract' : 2
                }
 
 prefix = 'tf_'
@@ -108,13 +109,13 @@ class Measure(object) :
             norm = norm_dict[key]
             # Normalize.
             norm[norm==0] = 1
-            corr /= norm
+            gains = corr / norm
             #plt.semilogy(h, '.')
             #plt.figure()
             #for ii in range(1,5):
             #    plt.plot(v[:,-ii])
             #plt.show()
-            out_db[key + '.gains'] = eigen_vects
+            out_db[key + '.gains'] = gains
             out_db[key + '.freq'] = freq_dict[key]
         out_db.close()
 
@@ -174,7 +175,8 @@ class Measure(object) :
             # Now process each block.
             for Data in Blocks:
                 this_corr, this_norm = get_correlation(Data, band_maps,
-                                        interpolation=params['interpolation'])
+                                interpolation=params['interpolation']
+                                modes_subtract=params['smooth_modes_subtract'])
                 corr[ii,...] += corr
                 norm[ii,...] += norm
         return key, corr, norm, freq
@@ -231,7 +233,14 @@ def get_correlation(Data, maps, interpolation='nearest', modes_subtract=2):
         # basis polynomials.
         # Generate basis polynomials that are orthnormal given the mask.
         polys = misc.ortho_poly(time[:,None,None], modes_subtract, un_mask, 0)
-        
+        # Subtract out of the data.
+        mags = np.sum(subdata * unmask * polys, 1)
+        to_subtract = np.sum(mags[:,None,...] * polys, 0)
+        subdata -= to_subtract
+        # Subtract out of the map.
+        mags = np.sum(submap * unmask * polys, 1)
+        to_subtract = np.sum(mags[:,None,...] * polys, 0)
+        submap -= to_subtract
         # Calculate the correlation and the normalization.
         correlation[ii,:,:] = sp.sum(submap * un_mask * subdata, 0)
         normilization[ii,:,:] = sp.sum(submap * un_mask * submap, 0)

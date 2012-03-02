@@ -201,11 +201,9 @@ class Test_OrthoPoly(unittest.TestCase):
         x.shape = (m, 1)
         polys = utils.ortho_poly(x, n, window, axis=0)
 
-
     def check_ortho_norm(self, polys, window=1., axis=-1):
         # Always check that they are all orthonormal.
         n = polys.shape[0]
-        m = polys.shape[1]
         for ii in range(n):
             for jj in range(n):
                 prod = sp.sum(window * polys[ii,:] * polys[jj,:], axis)
