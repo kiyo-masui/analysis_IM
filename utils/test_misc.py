@@ -190,17 +190,17 @@ class Test_OrthoPoly(unittest.TestCase):
         #plt.plot(x, polys[6,:])
         #plt.show()
 
-    def check_ortho_norm(self, polys, window=1.):
+    def check_ortho_norm(self, polys, window=1., axis=-1):
         # Always check that they are all orthonormal.
         n = polys.shape[0]
         m = polys.shape[1]
         for ii in range(n):
             for jj in range(n):
-                prod = sp.sum(window * polys[ii,:] * polys[jj,:])
+                prod = sp.sum(window * polys[ii,:] * polys[jj,:], axis)
                 if ii == jj:
-                    self.assertTrue(abs(prod - 1.) < 1e-8)
+                    self.assertTrue(sp.alltrue(abs(prod - 1.) < 1e-8))
                 else:
-                    self.assertTrue(abs(prod) < 1e-8)
+                    self.assertTrue(sp.alltrue(abs(prod) < 1e-8))
 
 
 if __name__ == '__main__' :

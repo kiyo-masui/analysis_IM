@@ -186,7 +186,7 @@ def get_key(middle):
     key = sess_num
     return key
 
-def get_correlation(Data, maps, interpolation='nearest'):
+def get_correlation(Data, maps, interpolation='nearest', modes_subtract=2):
     "Correlates the maps with the data."
     
     n_pols = Data.dims[1]
@@ -226,14 +226,9 @@ def get_correlation(Data, maps, interpolation='nearest'):
         # Broadcast map data up to the same shape as the time stream (add cal
         # axis).
         submap = sp.zeros_like(subdata) + submap[:,None,:]
-        # We do not want to correlate the mean mode and the slope mode, so
-        # subtract these out.
-        # First the mean mode.
-        submap -= sp.sum(submap * unmask, 0) / sp.sum(un_mask, 0)
-        subdata -= sp.sum(subdata * unmask, 0) / sp.sum(un_mask, 0)
-        # Now for the slope.  No need to ensure the slope mode that is 
-        # orthoganol to the mean mode (which is not ensured because of the
-        # mask) because we are zeroing both. 
+        # Get rid of the low frequency smooth components by subtracting out
+        # basis polynomials.
+
         
         # Calculate the correlation and the normalization.
         correlation[ii,:,:] = sp.sum(submap * un_mask * subdata, 0)
