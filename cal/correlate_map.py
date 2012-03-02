@@ -175,7 +175,7 @@ class Measure(object) :
             # Now process each block.
             for Data in Blocks:
                 this_corr, this_norm = get_correlation(Data, band_maps,
-                                interpolation=params['interpolation']
+                                interpolation=params['interpolation'],
                                 modes_subtract=params['smooth_modes_subtract'])
                 corr[ii,...] += corr
                 norm[ii,...] += norm
@@ -203,25 +203,25 @@ def get_correlation(Data, maps, interpolation='nearest', modes_subtract=2):
     normalization = np.zeros(Data.dims[1:], dtype=float)
     for ii in range(n_pols):
         map = maps[ii]
-        if map.size[0] != Data.dims[3]:
-            raise RuntimeError("Map and data frequency axes not the same
+        if map.shape[0] != Data.dims[3]:
+            raise RuntimeError("Map and data frequency axes not the same"
                                " length.")
         Data.calc_pointing()
         Data.calc_freq()
         # Figure out which pointings (times) are inside the map bounds.
-        map_ra = Map.get_axis('ra')
-        map_dec = Map.get_axis('dec')
+        map_ra = map.get_axis('ra')
+        map_dec = map.get_axis('dec')
         on_map_inds = np.logical_and(
             np.logical_and(Data.ra >= min(map_ra), Data.ra <= max(map_ra)),
             np.logical_and(Data.dec >= min(map_dec), Data.dec <= max(map_dec)))
         # Convert map to a time domain array.
         submap = np.empty((np.sum(on_map_inds), map.shape[0]), dtype=float)
-        jj = 0
-        for ii in range(len(on_map_inds)) :
-            if on_map_inds[ii] :
-                submap[jj,:] = map.slice_interpolate([1, 2], 
-                        [Data.ra[ii], Data.dec[ii]], kind=interpolation)
-                jj += 1
+        kk = 0
+        for jj in range(len(on_map_inds)) :
+            if on_map_inds[jj] :
+                submap[kk,:] = map.slice_interpolate([1, 2], 
+                        [Data.ra[jj], Data.dec[jj]], kind=interpolation)
+                kk += 1
         # Now get the corresponding data.
         subdata = Data.data[on_map_inds,ii,:,:]
         un_mask = np.logical_not(ma.getmaskarray(subdata))
@@ -232,16 +232,18 @@ def get_correlation(Data, maps, interpolation='nearest', modes_subtract=2):
         # Get rid of the low frequency, smooth components by subtracting out
         # basis polynomials.
         # Generate basis polynomials that are orthnormal given the mask.
-        polys = misc.ortho_poly(time[:,None,None], modes_subtract, un_mask, 0)
+        on_map_time = time[on_map_inds]
+        polys = misc.ortho_poly(on_map_time[:,None,None], modes_subtract,
+                                un_mask, 0)
         # Subtract out of the data.
-        mags = np.sum(subdata * unmask * polys, 1)
+        mags = np.sum(subdata * un_mask * polys, 1)
         to_subtract = np.sum(mags[:,None,...] * polys, 0)
         subdata -= to_subtract
         # Subtract out of the map.
-        mags = np.sum(submap * unmask * polys, 1)
+        mags = np.sum(submap * un_mask * polys, 1)
         to_subtract = np.sum(mags[:,None,...] * polys, 0)
         submap -= to_subtract
         # Calculate the correlation and the normalization.
         correlation[ii,:,:] = np.sum(submap * un_mask * subdata, 0)
-        normilization[ii,:,:] = np.sum(submap * un_mask * submap, 0)
+        normalization[ii,:,:] = np.sum(submap * un_mask * submap, 0)
     return correlation, normalization
