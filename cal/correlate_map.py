@@ -17,6 +17,7 @@ import kiyopy.pickle_method
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
 import core.fitsGBT
+from utils import misc
 
 # XXX
 import matplotlib.pyplot as plt
@@ -226,9 +227,10 @@ def get_correlation(Data, maps, interpolation='nearest', modes_subtract=2):
         # Broadcast map data up to the same shape as the time stream (add cal
         # axis).
         submap = sp.zeros_like(subdata) + submap[:,None,:]
-        # Get rid of the low frequency smooth components by subtracting out
+        # Get rid of the low frequency, smooth components by subtracting out
         # basis polynomials.
-
+        # Generate basis polynomials that are orthnormal given the mask.
+        polys = misc.ortho_poly(time[:,None,None], modes_subtract, un_mask, 0)
         
         # Calculate the correlation and the normalization.
         correlation[ii,:,:] = sp.sum(submap * un_mask * subdata, 0)

@@ -2,6 +2,7 @@
 
 import datetime
 import time
+import sys
 
 import scipy as sp
 import numpy as np
@@ -285,7 +286,7 @@ def rebin_1D(array, reduce=4, axis=-1):
     array.shape = shape
     return out
 
-def ortho_poly(x, n, window=1.):
+def ortho_poly(x, n, window=1., axis=-1):
     """Generate orthonormal basis polynomials.
 
     Generate the first `n` orthonormal basis polynomials over the given domain
@@ -310,22 +311,31 @@ def ortho_poly(x, n, window=1.):
 
     if np.any(window < 0):
         raise ValueError("Window function must never be negitive.")
-    m = len(x)
-    polys = np.empty((n, m), dtype=float)
+    # The following is the only way I know how to get the broadcast shape of
+    # x and window.
+    shape = (x + window).shape
+    m = shape[axis]
+    # Construct a slice tuple for up broadcasting arrays.
+    upbroad = [slice(sys.maxsize)] * len(shape)
+    upbroad[axis] = None
+    upbroad = tuple(upbroad)
+    # Allocate memory for output.
+    polys = np.empty((n,) + shape, dtype=float)
     # For stability, rescale the domain.
-    x_range = float(max(x) - min(x))
-    x = (x - np.mean(x)) / x_range * 2
+    x_range = np.amax(x, axis) - np.amin(x, axis)
+    x = (x - np.mean(x, axis)[upbroad]) / x_range[upbroad] * 2
     # Now loop thorugh the polynomials and constrct them.
     # This array will be the starting polynomial, before orthogonalization.
-    basic_poly = np.ones(m, dtype=float) / np.sqrt(m)
+    basic_poly = np.ones(shape, dtype=float) / np.sqrt(m)
     for ii in range(n):
         # Start with a the basic polynomial.
         new_poly = basic_poly.copy()
         # Orthogonalize agains all lower order polynomials.
         for jj in range(ii):
-            new_poly -= np.sum(new_poly * window * polys[jj,:]) * polys[jj,:] 
+            new_poly -= (np.sum(new_poly * window * polys[jj,:], axis)
+                         * polys[jj,:])
         # Normalize.
-        new_poly /= np.sqrt(np.sum(new_poly**2 * window))
+        new_poly /= np.sqrt(np.sum(new_poly**2 * window, axis))
         # Copy into output.
         polys[ii,:] = new_poly
         # Increment the base polynomial with another power of the domain for

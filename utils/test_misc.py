@@ -190,6 +190,18 @@ class Test_OrthoPoly(unittest.TestCase):
         #plt.plot(x, polys[6,:])
         #plt.show()
 
+    def test_multiD(self):
+        # Use uniform weight, should just get the lagendre polynomials.
+        m = 40
+        n = 10
+        x = sp.log(sp.arange(m, dtype=float)/2 + 0.5)
+        window = sp.empty((m, 2), dtype=float)
+        window[:,0] = sp.sin(x)**2
+        window[:,1] = sp.cos(x)**2
+        x.shape = (m, 1)
+        polys = utils.ortho_poly(x, n, window, axis=0)
+
+
     def check_ortho_norm(self, polys, window=1., axis=-1):
         # Always check that they are all orthonormal.
         n = polys.shape[0]
