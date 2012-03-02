@@ -158,7 +158,7 @@ class Measure(object) :
             # now.
             for band_maps in self.maps:
                 maps_freq = band_maps[0].get_axis('freq')
-                if sp.allclose(maps_freq, freq[ii,:]):
+                if np.allclose(maps_freq, freq[ii,:]):
                     maps = band_maps
                     break
             else:
@@ -199,8 +199,8 @@ def get_correlation(Data, maps, interpolation='nearest', modes_subtract=2):
     Data.calc_time()
     time = Data.time
     # Initialize outputs.
-    correlation = sp.zeros(Data.dims[1:], dtype=float)
-    normalization = sp.zeros(Data.dims[1:], dtype=float)
+    correlation = np.zeros(Data.dims[1:], dtype=float)
+    normalization = np.zeros(Data.dims[1:], dtype=float)
     for ii in range(n_pols):
         map = maps[ii]
         if map.size[0] != Data.dims[3]:
@@ -211,11 +211,11 @@ def get_correlation(Data, maps, interpolation='nearest', modes_subtract=2):
         # Figure out which pointings (times) are inside the map bounds.
         map_ra = Map.get_axis('ra')
         map_dec = Map.get_axis('dec')
-        on_map_inds = sp.logical_and(
-            sp.logical_and(Data.ra >= min(map_ra), Data.ra <= max(map_ra)),
-            sp.logical_and(Data.dec >= min(map_dec), Data.dec <= max(map_dec)))
+        on_map_inds = np.logical_and(
+            np.logical_and(Data.ra >= min(map_ra), Data.ra <= max(map_ra)),
+            np.logical_and(Data.dec >= min(map_dec), Data.dec <= max(map_dec)))
         # Convert map to a time domain array.
-        submap = sp.empty((sp.sum(on_map_inds), map.shape[0]), dtype=float)
+        submap = np.empty((np.sum(on_map_inds), map.shape[0]), dtype=float)
         jj = 0
         for ii in range(len(on_map_inds)) :
             if on_map_inds[ii] :
@@ -224,11 +224,11 @@ def get_correlation(Data, maps, interpolation='nearest', modes_subtract=2):
                 jj += 1
         # Now get the corresponding data.
         subdata = Data.data[on_map_inds,ii,:,:]
-        un_mask = sp.logical_not(ma.getmaskarray(subdata))
+        un_mask = np.logical_not(ma.getmaskarray(subdata))
         subdata = subdata.filled(0)
         # Broadcast map data up to the same shape as the time stream (add cal
         # axis).
-        submap = sp.zeros_like(subdata) + submap[:,None,:]
+        submap = np.zeros_like(subdata) + submap[:,None,:]
         # Get rid of the low frequency, smooth components by subtracting out
         # basis polynomials.
         # Generate basis polynomials that are orthnormal given the mask.
@@ -242,6 +242,6 @@ def get_correlation(Data, maps, interpolation='nearest', modes_subtract=2):
         to_subtract = np.sum(mags[:,None,...] * polys, 0)
         submap -= to_subtract
         # Calculate the correlation and the normalization.
-        correlation[ii,:,:] = sp.sum(submap * un_mask * subdata, 0)
-        normilization[ii,:,:] = sp.sum(submap * un_mask * submap, 0)
+        correlation[ii,:,:] = np.sum(submap * un_mask * subdata, 0)
+        normilization[ii,:,:] = np.sum(submap * un_mask * submap, 0)
     return correlation, normalization
