@@ -28,7 +28,7 @@ base_dir = os.getenv('GBT_OUT')
 data_dir = os.getenv('GBT_DATA')
 base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
-map_base = base_dir + 'maps/feb21.2012/'
+map_base = base_dir + 'maps/feb23.2012/'
 
 
 # IO directory and file prefixes.
@@ -91,9 +91,9 @@ pipe_modules = []
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
 from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
 pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
 
 from map import glue_maps

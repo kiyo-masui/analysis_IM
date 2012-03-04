@@ -42,7 +42,7 @@ base_dir = os.getenv('GBT_OUT')
 data_dir = os.getenv('GBT_DATA')
 base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
-map_base = base_dir + 'maps/feb29.2012/'
+map_base = base_dir + 'maps/mar4.2012/'
 
 
 # IO directory and file prefixes.
@@ -61,43 +61,43 @@ pipe_modules = []
 #from time_stream import flag_data
 #pipe_modules.append(flag_data.FlagData)
 
-#from time_stream import rebin
-#pipe_modules.append(rebin.Rebin)
+from time_stream import rebin
+pipe_modules.append(rebin.Rebin)
 
-#from time_stream import flux_diff_gain_cal
-#pipe_modules.append(flux_diff_gain_cal.Calibrate)
+from time_stream import flux_diff_gain_cal
+pipe_modules.append(flux_diff_gain_cal.Calibrate)
 
-#from time_stream import rotate_pol
-#pipe_modules.append(rotate_pol.RotatePol)
+from time_stream import rotate_pol
+pipe_modules.append(rotate_pol.RotatePol)
 
-#from time_stream import band_stop
-#pipe_modules.append(band_stop.BandStop)
+from time_stream import band_stop
+pipe_modules.append(band_stop.BandStop)
 
-#from time_stream import split_bands
-#pipe_modules.append(split_bands.SplitBands)
+from time_stream import split_bands
+pipe_modules.append(split_bands.SplitBands)
 
 #### First Map making interation ####
 
-#from map import dirty_map
-#pipe_modules.append(dirty_map.DirtyMapMaker)
+from map import dirty_map
+pipe_modules.append(dirty_map.DirtyMapMaker)
 
-#from map import clean_map
-#pipe_modules.append(clean_map.CleanMapMaker)
+from map import clean_map
+pipe_modules.append(clean_map.CleanMapMaker)
 
 
 #### Second Map making iteration ####
 
-#from time_stream import subtract_map_data
-#pipe_modules.append(subtract_map_data.Subtract)
+from time_stream import subtract_map_data
+pipe_modules.append(subtract_map_data.Subtract)
 
-#from time_stream import reflag
-#pipe_modules.append(reflag.ReFlag)
+from time_stream import reflag
+pipe_modules.append(reflag.ReFlag)
 
-#from noise import measure_noise
-#pipe_modules.append(measure_noise.Measure)
+from noise import measure_noise
+pipe_modules.append(measure_noise.Measure)
 
-#from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dm2_', 'dm_')))
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm2_', 'dm_')))
 
 #from map import clean_map
 #pipe_modules.append((clean_map.CleanMapMaker, ('cm2_', 'cm_')))
@@ -108,13 +108,13 @@ pipe_modules = []
 # Correlation calibration modules here. # XXX
 
 #from time_stream import subtract_map_data
-#pipe_modules.append(subtract_map_data.Subtract)
+#pipe_modules.append(subtract_map_data.Subtract, ('sb3_', 'sb_'))
 
 #from time_stream import reflag
-#pipe_modules.append(reflag.ReFlag)
+#pipe_modules.append(reflag.ReFlag, ('rf3_', 'rf_'))
 
 #from noise import measure_noise
-#pipe_modules.append(measure_noise.Measure)
+#pipe_modules.append(measure_noise.Measure, ('mn3_', 'mn_'))
 
 #from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
@@ -216,7 +216,7 @@ bs_band_stops = [(690e6, 702e6), (796e6, 800e6), (815e6, 820e6),
 sb_input_root = bs_output_root
 sb_file_middles = file_middles
 sb_input_end = '.fits'
-sb_output_root = base_dir + 'band_split/' + prefix
+sb_output_root = base_dir + 'band_split_new/' + prefix
 sb_output_end = '.fits'
 sb_scans = ()
 sb_IFs = ()
@@ -290,7 +290,7 @@ sf_subtracted_output_root = base_dir + 'reflagged_sub/'
 mn_input_root = sf_subtracted_output_root
 mn_file_middles = file_middles
 mn_input_end = '.fits'
-mn_output_root = base_dir + 'noise_measurments/'
+mn_output_root = base_dir + 'noise_measurments_sec/'
 mn_output_filename = "noise_parameters.shelve"
 mn_save_spectra_plots = True
 mn_time_block = 'scan'
@@ -306,7 +306,7 @@ mn_parameters = ["channel_var", "freq_modes_over_f_0",
 
 # dirty_map, second iteration
 dm2_input_root = sf_output_root
-dm2_file_middles = 
+dm2_file_middles = file_middles
 dm2_input_end = '.fits'
 dm2_output_root = map_base + 'sec_' + map_prefix
 dm2_scans = ()
@@ -324,12 +324,12 @@ dm2_frequency_correlations = 'measured'
 #dm2_number_frequency_modes = 3
 dm2_number_frequency_modes = 4  # Probably most appropriate.
 dm2_number_frequency_modes_discard = 0
-dm2_noise_parameter_file = (base_dir
-                            + 'noise_measurments/noise_parameters.shelve')
+dm2_noise_parameter_file = mn_output_root + mn_output_filename
 dm2_deweight_time_mean = True
 dm2_deweight_time_slope = True
-dm2_ts_foreground_mode_file = fs_foreground_file
-dm2_n_ts_foreground_modes = 1
+#dm2_ts_foreground_mode_file = fs_foreground_file
+dm2_ts_foreground_mode_file = ''
+dm2_n_ts_foreground_modes = 0
 
 # clean_map, second iteration
 cm2_input_root = dm2_output_root
@@ -345,200 +345,3 @@ cm2_from_eig = False
 
 
 
-
-
-
-
-
-
-
-
-# clean_map
-# Map A
-cmA_input_root = dmA_output_root
-cmA_output_root = cmA_input_root
-
-cmA_polarizations = ('I',)
-cmA_bands = (737, 799, 862)
-#cmA_bands = (799,) # XXX
-cmA_save_noise_diag = True
-cmA_save_cholesky = False
-cmA_from_eig = False
-
-# Other maps
-cmB_input_root = dmB_output_root
-cmB_output_root = cmB_input_root
-
-cmC_input_root = dmC_output_root
-cmC_output_root = cmC_input_root
-
-cmD_input_root = dmD_output_root
-cmD_output_root = cmD_input_root
-
-# glue_maps
-# Map A
-gmA_input_root = cmA_input_root + "clean_map_"
-gmA_output_root = gmA_input_root
-gmA_polarizations = ('I',)
-gmA_bands = (737, 799, 862)
-gmA_mat_diag = False
-
-# Other maps
-gmB_input_root = cmB_input_root + "clean_map_"
-gmB_output_root = gmB_input_root
-
-gmC_input_root = cmC_input_root + "clean_map_"
-gmC_output_root = gmC_input_root
-
-gmD_input_root = cmD_input_root + "clean_map_"
-gmD_output_root = gmD_input_root
-
-# Gluing the noise diagonals.
-# Map A
-gmnA_input_root = cmA_input_root + "noise_diag_"
-gmnA_output_root = gmnA_input_root
-gmnA_polarizations = ('I',)
-gmnA_bands = (737, 799, 862)
-gmnA_mat_diag = False
-
-# Other maps
-gmnB_input_root = cmB_input_root + "noise_diag_"
-gmnB_output_root = gmnB_input_root
-
-gmnC_input_root = cmC_input_root + "noise_diag_"
-gmnC_output_root = gmnC_input_root
-
-gmnD_input_root = cmD_input_root + "noise_diag_"
-gmnD_output_root = gmnD_input_root
-
-# Gluing the noise inverse diagonals.
-# Map A
-gmdA_input_root = cmA_input_root + "noise_inv_"
-gmdA_output_root = cmA_input_root + "noise_inv_diag_"
-gmdA_polarizations = ('I',)
-gmdA_bands = (737, 799, 862)
-gmdA_mat_diag = True
-
-# Other maps
-gmdB_input_root = cmB_input_root + "noise_inv_"
-gmdB_output_root = cmB_input_root + "noise_inv_diag_"
-
-gmdC_input_root = cmC_input_root + "noise_inv_"
-gmdC_output_root = cmC_input_root + "noise_inv_diag_"
-
-gmdD_input_root = cmD_input_root + "noise_inv_"
-gmdD_output_root = cmD_input_root + "noise_inv_diag_"
-
-
-# Parameters that are set to be the same as the A case.
-dmB_input_root = dmA_input_root
-dmB_input_end = dmA_input_end
-dmB_scans = dmA_scans
-dmB_IFs = dmA_IFs
-dmB_polarizations = dmA_polarizations
-dmB_field_centre = dmA_field_centre
-dmB_map_shape = dmA_map_shape
-dmB_pixel_spacing = dmA_pixel_spacing 
-dmB_time_block = dmA_time_block
-dmB_n_files_group = dmA_n_files_group
-dmB_frequency_correlations =  dmA_frequency_correlations
-dmB_number_frequency_modes = dmA_number_frequency_modes
-dmB_number_frequency_modes_discard = dmA_number_frequency_modes_discard
-dmB_noise_parameter_file = dmA_noise_parameter_file
-dmB_deweight_time_mean = dmA_deweight_time_mean
-dmB_deweight_time_slope = dmA_deweight_time_slope
-dmB_interpolation = dmA_interpolation
-
-dmC_input_root = dmA_input_root
-dmC_input_end = dmA_input_end
-dmC_scans = dmA_scans
-dmC_IFs = dmA_IFs
-dmC_polarizations = dmA_polarizations
-dmC_field_centre = dmA_field_centre
-dmC_map_shape = dmA_map_shape
-dmC_pixel_spacing = dmA_pixel_spacing 
-dmC_time_block = dmA_time_block
-dmC_n_files_group = dmA_n_files_group
-dmC_frequency_correlations =  dmA_frequency_correlations
-dmC_number_frequency_modes = dmA_number_frequency_modes
-dmC_number_frequency_modes_discard = dmA_number_frequency_modes_discard
-dmC_noise_parameter_file = dmA_noise_parameter_file
-dmC_deweight_time_mean = dmA_deweight_time_mean
-dmC_deweight_time_slope = dmA_deweight_time_slope
-dmC_interpolation = dmA_interpolation
-
-dmD_input_root = dmA_input_root
-dmD_input_end = dmA_input_end
-dmD_scans = dmA_scans
-dmD_IFs = dmA_IFs
-dmD_polarizations = dmA_polarizations
-dmD_field_centre = dmA_field_centre
-dmD_map_shape = dmA_map_shape
-dmD_pixel_spacing = dmA_pixel_spacing 
-dmD_time_block = dmA_time_block
-dmD_n_files_group = dmA_n_files_group
-dmD_frequency_correlations =  dmA_frequency_correlations
-dmD_number_frequency_modes = dmA_number_frequency_modes
-dmD_number_frequency_modes_discard = dmA_number_frequency_modes_discard
-dmD_noise_parameter_file = dmA_noise_parameter_file
-dmD_deweight_time_mean = dmA_deweight_time_mean
-dmD_deweight_time_slope = dmA_deweight_time_slope
-dmD_interpolation = dmA_interpolation
-
-
-cmB_polarizations = cmA_polarizations
-cmB_bands = cmA_bands
-cmB_save_noise_diag = cmA_save_noise_diag
-cmB_save_cholesky = cmA_save_cholesky
-cmB_from_eig = cmA_from_eig
-
-cmC_polarizations = cmA_polarizations
-cmC_bands = cmA_bands
-cmC_save_noise_diag = cmA_save_noise_diag
-cmC_save_cholesky = cmA_save_cholesky
-cmC_from_eig = cmA_from_eig
-
-cmD_polarizations = cmA_polarizations
-cmD_bands = cmA_bands
-cmD_save_noise_diag = cmA_save_noise_diag
-cmD_save_cholesky = cmA_save_cholesky
-cmD_from_eig = cmA_from_eig
-
-
-gmB_polarizations = gmA_polarizations
-gmB_bands = gmA_bands
-gmB_mat_diag = gmA_mat_diag
-
-gmC_polarizations = gmA_polarizations
-gmC_bands = gmA_bands
-gmC_mat_diag = gmA_mat_diag
-
-gmD_polarizations = gmA_polarizations
-gmD_bands = gmA_bands
-gmC_mat_diag = gmA_mat_diag
-
-
-gmnB_polarizations = gmnA_polarizations
-gmnB_bands = gmnA_bands
-gmnB_mat_diag = gmnA_mat_diag
-
-gmnC_polarizations = gmnA_polarizations
-gmnC_bands = gmnA_bands
-gmnC_mat_diag = gmnA_mat_diag
-
-gmnD_polarizations = gmnA_polarizations
-gmnD_bands = gmnA_bands
-gmnD_mat_diag = gmnA_mat_diag
-
-
-gmdB_polarizations = gmdA_polarizations
-gmdB_bands = gmdA_bands
-gmdB_mat_diag = gmdA_mat_diag
-
-gmdC_polarizations = gmdA_polarizations
-gmdC_bands = gmdA_bands
-gmdC_mat_diag = gmdA_mat_diag
-
-gmdD_polarizations = gmdA_polarizations
-gmdD_bands = gmdA_bands
-gmdD_mat_diag = gmdA_mat_diag

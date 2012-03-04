@@ -4,6 +4,7 @@ import os
 import numpy as np
 from scipy import interpolate
 from numpy import random
+import numpy.ma as ma
 
 from core import fitsGBT, algebra
 import correlate_map
@@ -49,14 +50,18 @@ class TestGetCorrelation(unittest.TestCase):
         for ii in range(n_time):
             Data.data[ii,0,0,:] = map.slice_interpolate((1, 2), 
                                         (ra[ii], dec[ii]), kind='cubic')
+        # Mask things out all over the place.
+        Data.data[:,0,0,12] = ma.masked
+        Data.data[80,0,0,:] = ma.masked
+        Data.data[8:20,0,0,3] = ma.masked
         # Rig the pointing of the Data object.
         def rigged_pointing() :
             Data.ra = ra
             Data.dec = dec
         Data.calc_pointing = rigged_pointing
-        corr, norm = correlate_map.get_correlation(Data, (map,), 'cubic', 3)
-        print corr/norm
-
+        corr, norm = correlate_map.get_correlation(Data, (map,), 'cubic', 10)
+        # Since there is no noise, the correlation should be exactly unity.
+        self.assertTrue(np.allclose(corr, norm))
 
 
 

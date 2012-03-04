@@ -7,7 +7,7 @@ import sys
 import scipy as sp
 import numpy as np
 from scipy.interpolate import interp1d
-from scipy import linalg
+from scipy import linalg, special
 import ephem
 
 def elaz2radec_lst(el, az, lst, lat = 38.43312) :
@@ -329,13 +329,28 @@ def ortho_poly(x, n, window=1., axis=-1):
     basic_poly = np.ones(shape, dtype=float) / np.sqrt(m)
     for ii in range(n):
         # Start with a the basic polynomial.
+        # XXX This algorithm is unstable for ii > ~30. We should really start
+        # with a basis of polynomials which are already nearly orthoganol. The
+        # problem is that scipy doesn't have a stable polynomil algorithm for
+        # scipy < 0.10.
         new_poly = basic_poly.copy()
-        # Orthogonalize agains all lower order polynomials.
+        # Orthogonalize against all lower order polynomials.
         for jj in range(ii):
-            new_poly -= (np.sum(new_poly * window * polys[jj,:], axis)
+            new_poly -= (np.sum(new_poly * window * polys[jj,:], axis)[upbroad]
                          * polys[jj,:])
-        # Normalize.
-        new_poly /= np.sqrt(np.sum(new_poly**2 * window, axis))
+        # Normalize, accounting for possiblity that all data is masked. 
+        norm = np.array(np.sqrt(np.sum(new_poly**2 * window, axis)))
+        if norm.shape == ():
+            if norm == 0:
+                bad_inds = np.array(True)
+                norm = np.array(1.)
+            else:
+                bad_inds = np.array(False)
+        else:
+            bad_inds = norm == 0
+            norm[bad_inds] = 1.
+        new_poly /= norm[upbroad]
+        new_poly[bad_inds[upbroad]] = 0
         # Copy into output.
         polys[ii,:] = new_poly
         # Increment the base polynomial with another power of the domain for
