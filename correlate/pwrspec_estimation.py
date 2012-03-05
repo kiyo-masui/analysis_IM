@@ -353,9 +353,9 @@ def summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
 
     fileout = outdir + "/" + tag + "_avg.dat"
     corr_fileout = outdir + "/" + tag + "_corr.dat"
-    #mean1d, std1d, cov1d = summarize_1d_agg_pwrspec(pwr_1d, fileout,
-    #                                         corr_file=corr_fileout,
-    #                            apply_1d_transfer=apply_1d_transfer)
+    mean1d, std1d, cov1d = summarize_1d_agg_pwrspec(pwr_1d, fileout,
+                                             corr_file=corr_fileout,
+                                apply_1d_transfer=apply_1d_transfer)
 
     fileout = outdir + "/" + tag + "_avg_2d.dat"
     summarize_2d_agg_pwrspec(pwr_2d, fileout, dataname="binavg")
