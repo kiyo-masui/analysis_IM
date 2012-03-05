@@ -34,13 +34,16 @@ def make_cube_movie(source_key, colorbar_title, frame_dir,
     First mask any points that exceed `sigmacut`, and then report the extent of
     `sigmarange` away from the mean
     """
+    # for a file in the DB:
     datapath_db = data_paths.DataPath()
-    # set up the labels:
     tag = '_'.join(source_key.split(";"))
     tag = '-'.join(tag.split(":"))
-    print tag
-    #tag = ".".join(cubename.split(".")[:-1])  # extract root name
+
+    # for a given path
+    #tag = ".".join(source_key.split(".")[:-1])  # extract root name
     #tag = tag.split("/")[-1]
+
+    print tag
     fileprefix = frame_dir + tag
     nlevels = 500
 
@@ -53,7 +56,7 @@ def make_cube_movie(source_key, colorbar_title, frame_dir,
         title = tag
 
     # prepare the data
-    #cube = algebra.make_vect(algebra.load(cubename)) * multiplier
+    #cube = algebra.make_vect(algebra.load(source_key)) * multiplier
     cube =  datapath_db.fetch_multi(source_key) * multiplier
     if logscale:
         cube = np.log10(cube)

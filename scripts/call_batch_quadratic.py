@@ -1,4 +1,5 @@
 from correlate import compile_simpwrspec as csp
+from correlate import compile_pwrspec as cp
 from utils import data_paths
 import sys
 
@@ -39,18 +40,33 @@ if __name__ == '__main__':
     inifile_phys = "input/ers/batch_quadratic/default_physical.ini"
 
     # add 'sim_22hr_oldmap_str', 'sim_1hr_oldmap_str'
-    basesims = ['sim_15hr_oldmap_ideal']
-    #basesims = ['sim_15hr_oldmap_ideal', 'sim_15hr_oldmap_nostr',
-    #            'sim_15hr_oldmap_str']
+    basesims = ['sim_15hr_oldmap_ideal', 'sim_15hr_oldmap_nostr',
+                'sim_15hr_oldmap_str']
     treatments = ['_temperature', '_beam', '_beam_conv', '_beam_meansub',
                   '_beam_meansubconv']
     weight = "GBT_15hr_map_fluxpolcal_cleaned_combined:weight;0modes"
 
-    csp.sim_autopower(basesims, treatments, weight, inifile=inifile,
-                      inifile_phys=inifile_phys, generate=True)
+    #csp.sim_autopower(basesims, treatments, weight, inifile=inifile,
+    #                  inifile_phys=inifile_phys, generate=False)
+
+    # left out (gridding): "GBT_15hr_optimalmap_fluxpolcal_cleaned"
+    # left out (D->C map): "GBT_15hr_optimalmap_mapv2oldcal_cleaned"
+    # not done yet: "GBT_15hr_optimalmap_mapv2fdgcalmoderm_cleaned"
+    basemaps = ["GBT_15hr_map_fluxpolcal_cleaned",
+                "GBT_15hr_map_oldcal_cleaned",
+                "GBT_15hr_map_fluxcal_cleaned",
+                "GBT_15hr_map_fdgcal_cleaned",
+                "GBT_15hr_optimalmap_mapv2fdgcal_cleaned"]
+    #basemaps = ["GBT_22hr_map_fluxpolcal_cleaned"]
+    #basemaps = ["GBT_1hr_map_fluxpolcal_cleaned"]
+    treatments = ["", "_sims", "_noconv", "_sims_noconv"]
+    cp.call_data_autopower(basemaps, treatments, inifile=inifile, generate=True,
+                        outdir="./plot_data_v2/", mode_transfer_1d=None,
+                        mode_transfer_2d=None, beam_transfer=None)
 
     #sim_autopower(inifile=inifile, inifile_phys=inifile_phys)
     #sim_crosspower(inifile=inifile)
     #sim_one_sided_trans("GBT_15hr_map_fluxpolcal",
     #                    "sim_15hr_oldmap_str", inifile=inifile)
+
 
