@@ -1,4 +1,6 @@
-"""Procedure to calculate the Mueller parameters for each frequency from on-off scans of a calibrator such as 3C286."""
+"""Procedure to calculate the Mueller parameters for each frequency from on-off scans of a calibrator such as 3C286.
+This version tried to use an unparameterized Mueller matrix to generate corrections. It has more independent parameters to be solved for (16), requiring more onoff scans (4 sets) to work, and was found to be less accurate in testing. 
+"""
 import os
 
 from scipy.optimize import *

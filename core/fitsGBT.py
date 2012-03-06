@@ -204,7 +204,7 @@ class Reader(object) :
             if ii == n_cards or prihdr.ascardlist().keys()[ii] == card_hist :
                 Block.add_history(hist_entry, details)
 
-    def read(self, scans=None, IFs=None, force_tuple=False) :
+    def read(self, scans=None, bands=None, force_tuple=False, IFs=None) :
         """Read in data from the fits file.
 
         This method reads data from the fits file including the files history
@@ -213,23 +213,33 @@ class Reader(object) :
         instance of the DataBlock class (defined in another module of this
         package).
 
-        Arguments:
-            scans: Which scans in the file to be processed.  A list of 
-                integers, with 0 corresponding to the lowest numbered scan.
-                Default is all of them.
-            IFs: Which intermediate frequencies (also called frequency windows)
-                to process.  A list of integers with 0 coorsponding to the 
-                lowest frequency present. Default is all of them.
-                TODO : Overlapping frequency windows stiched together somehow.
-            force_tuple: By default, if there is only a single output Data
-                Block, it is returned not wraped in a tuple, but if we want to
-                loop over the output we can force the output to be a tuple,
-                even if it only has one element.
+        Parameters
+        ----------
+        scans : tuple of integers
+            Which scans in the file to be processed.  A list of 
+            integers, with 0 corresponding to the lowest numbered scan.
+            Default is all of them.
+        bands : tuple of integers
+            Which intermediate frequencies (also called frequency windows)
+            to process.  A list of integers with 0 coorsponding to the 
+            lowest frequency present. Default is all of them.
+            TODO : Overlapping frequency windows stiched together somehow.
+        force_tuple: By default, if there is only a single output Data
+            Block, it is returned not wraped in a tuple, but if we want to
+            loop over the output we can force the output to be a tuple,
+            even if it only has one element.
+        IFs : tuple of integers
+            Depricated, use `bands`.
 
-        Returns: Instance of the DataBlock class, or a tuple of these instances
+        Returns
+        -------
+        Instance of the DataBlock class, or a tuple of these instances
         (if asked for multiple scans and IFs).
         """
         
+        # `bands` and `IFs` is are two names for the same parameter.
+        if not bands is None and IFs is None:
+            IFs = bands
         # We want scans and IFs to be a sequence of indicies.
         if scans is None :
             scans = range(len(self.scan_set))
@@ -258,7 +268,11 @@ class Reader(object) :
                 # to the data block.
                 for field, axis in fields_and_axes.iteritems() :
                     # See if this fits file has the key we are looking for.
-                    if not field in self.fitsdata._names :
+                    try:
+                        names = self.fitsdata.names
+                    except AttributeError:
+                        names = self.fitsdata._names
+                    if not field in names :
                         continue
                     # First get the 'FITS' format string.
                     field_format = self.hdulist[1].columns.formats[

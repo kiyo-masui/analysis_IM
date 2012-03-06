@@ -7,7 +7,7 @@ from correlate.freq_slices import NewSlices
 from correlate.freq_slices import MapPair
 import multiprocessing
 import shelve
-from core import utils
+import utils.misc as utils
 import numpy as np
 
 # note that notes are purely human-readable and the keys do not mean anything

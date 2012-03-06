@@ -4,7 +4,7 @@ import scipy as sp
 
 import numpy.ma as ma
 
-import utils
+import utils.misc as utils
 import base_data
 
 

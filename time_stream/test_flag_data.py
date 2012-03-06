@@ -172,6 +172,23 @@ class TestFlagData(unittest.TestCase) :
         #Uncomment above stuff for real test.
         self.assertTrue(True)
 
+class TestFilter(unittest.TestCase):
+
+    def setUp(self):
+        test_file = 'testdata/testfile_guppi_rebinned.fits'
+        Reader = fitsGBT.Reader(test_file, feedback=0)
+        self.Data = Reader.read(0,0)
+
+    def test_foreground_filter(self):
+        #import matplotlib.pyplot as plt
+        #plt.plot(ma.mean(self.Data.data[:,0,1,:6], -1))
+        #plt.plot(self.Data.data[:,0,0,25])
+        flag_data.filter_foregrounds(self.Data, 20, 10)
+        #plt.plot(ma.mean(self.Data.data[:,0,1,:6], -1))
+        #plt.plot(self.Data.data[:,0,0,25])
+        plt.show()
+
+
 if __name__ == '__main__':
     unittest.main()
 

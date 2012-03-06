@@ -344,12 +344,12 @@ class TestMatVectFromArray(unittest.TestCase) :
 class TestAlgUtils(unittest.TestCase) :
     
     def setUp(self) :
-        data = sp.arange(30)
+        data = sp.arange(30, dtype=float)
         data.shape = (5, 2, 3)
         self.vect = algebra.info_array(data)
         self.vect = algebra.vect_array(self.vect, 
                                        axis_names=('freq', 'a', 'b'))
-        data = sp.arange(120)
+        data = sp.arange(120, dtype=float)
         self.mat = algebra.info_array(data)
         self.mat.shape = (5, 4, 6)
         self.mat = algebra.mat_array(self.mat, row_axes=(0,1), col_axes=(0,2), 
@@ -430,6 +430,89 @@ class TestAlgUtils(unittest.TestCase) :
         self.mat.axes = ('freq', 'mode', 'a')
         algebra.dot(self.mat, self.vect, check_inner_axes=False)
         self.assertRaises(ce.DataError, algebra.dot, self.mat, self.vect)
+
+    def test_partial_dot_mat_vect(self):
+        self.mat.shape = (4, 6, 5)
+        self.mat.rows = (0, 1)
+        self.mat.cols = (2,)
+        self.mat.axes = ('x', 'y', 'freq')
+        new_vect = algebra.partial_dot(self.mat, self.vect)
+        self.assertEqual(new_vect.shape, (4, 6, 2, 3))
+        self.assertEqual(new_vect.axes, ('x', 'y', 'a', 'b'))
+        numerical_result = sp.dot(sp.reshape(self.mat, (4*6, 5)), 
+                                  sp.reshape(self.vect, (5, 2*3)))
+        self.assertTrue(sp.allclose(numerical_result.flatten(),
+                                    new_vect.flatten()))
+
+    def test_partial_dot_mat_mat(self):
+        mat1 = sp.asarray(self.mat)
+        mat1.shape = (4, 3, 2, 5)
+        mat1 = algebra.make_mat(mat1, axis_names=('time', 'x', 'y', 'z'),
+                                row_axes=(0,), col_axes=(1, 2, 3))
+        mat2 = sp.asarray(self.mat)
+        mat2.shape = (4, 2, 3, 5)
+        mat2 = algebra.make_mat(mat2, axis_names=('w', 'y', 'x', 'freq'), 
+                                row_axes=(0, 1, 2), col_axes=(3,))
+        result = algebra.partial_dot(mat1, mat2)
+        self.assertEqual(result.axes, ('time', 'w', 'z', 'freq'))
+        self.assertEqual(result.rows, (0, 1))
+        self.assertEqual(result.cols, (2, 3))
+        self.assertEqual(result.shape, (4, 4, 5, 5))
+        right_ans = sp.tensordot(mat1, mat2, ((1, 2), (2, 1)))
+        right_ans = sp.swapaxes(right_ans, 1, 2)
+        self.assertTrue(sp.allclose(right_ans, result))
+
+    def test_partial_dot_mat_mat_block(self):
+        mat1 = sp.arange(2 * 3 * 5 * 7 *11)
+        mat1.shape = (2, 3, 5, 7, 11)
+        mat1 = algebra.make_mat(mat1, axis_names=('time', 'x', 'y', 'ra', 'z'),
+                                row_axes=(0, 1, 3), col_axes=(0, 2, 3, 4))
+        mat2 = sp.arange(2 * 13 * 5 * 7 * 17)
+        mat2.shape = (2, 13, 7, 5, 17)
+        mat2 = algebra.make_mat(mat2, 
+            axis_names=('time', 'w', 'ra', 'y', 'freq'), 
+            row_axes=(0, 1, 2, 3), col_axes=(1, 2, 4))
+        tmp_arr = sp.tensordot(mat1, mat2, ((2,), (3,)))
+        right_ans = sp.empty((7, 13, 2, 3, 11, 17))
+        for ii in range(2):
+            for jj in range(7):
+                this_tmp = tmp_arr[ii,:,jj,:,ii,:,jj,:]
+                this_tmp = sp.rollaxis(this_tmp, 2, 0)
+                right_ans[jj,:,ii,...] = this_tmp
+        result = algebra.partial_dot(mat1, mat2)
+        self.assertEqual(result.axes, ('ra', 'w', 'time', 'x', 'z', 'freq'))
+        self.assertEqual(result.rows, (0, 1, 2, 3))
+        self.assertEqual(result.cols, (0, 1, 4, 5))
+        self.assertTrue(sp.allclose(right_ans, result))
+
+    def test_transpose(self):
+        mat = self.mat
+        mat_info = dict(mat.info)
+        matT = mat.mat_transpose()
+        self.assertEqual(mat.rows, matT.cols)
+        self.assertEqual(mat.mat_shape()[0], matT.mat_shape()[1])
+        self.assertEqual(mat.mat_shape()[1], matT.mat_shape()[0])
+        self.assertEqual(mat.row_shape(), matT.col_shape())
+        self.assertEqual(mat.col_names(), matT.row_names())
+        self.assertEqual(mat.row_names(), matT.col_names())
+        self.assertEqual(mat.shape, mat.shape)
+        self.assertEqual(mat.info, mat_info)
+
+    def test_transpose_partial_dot(self):
+        self.mat.shape = (5, 4, 6)
+        self.mat.cols = (1, 2)
+        self.mat.rows = (0,)
+        self.mat.axes = ('freq', 'x', 'y')
+        matT = self.mat.mat_transpose()
+        new_vect = algebra.partial_dot(matT, self.vect)
+        self.assertEqual(new_vect.shape, (4, 6, 2, 3))
+        self.assertEqual(new_vect.axes, ('x', 'y', 'a', 'b'))
+        # Reform origional matrix to get same numerical result.
+        mat = sp.reshape(self.mat, (5, 4*6))
+        mat = sp.rollaxis(mat, 1, 0)
+        numerical_result = sp.dot(mat, sp.reshape(self.vect, (5, 2*3)))
+        self.assertTrue(sp.allclose(numerical_result.flatten(),
+                                    new_vect.flatten()))
 
     def test_dot_mat_checks_dims(self) :
         """ Make sure that it checks that marticies have compatible dimensions 
@@ -534,14 +617,14 @@ class TestAlgUtils(unittest.TestCase) :
         # Test input sanitization.
         self.assertRaises(ValueError, v.slice_interpolate_weights, [0,1], 2.5)
         # Test bounds.
-        self.assertRaises(ValueError, v.slice_interpolate_weights, [1, 2], 
+        self.assertRaises(ce.DataError, v.slice_interpolate_weights, [1, 2], 
                           [2.5, 1.5])
         # Test linear interpolations in 1D.
         points, weights = v.slice_interpolate_weights(0, 2.5, 'linear')
         self.assertTrue(sp.allclose(weights, 0.5))
         self.assertTrue(2 in points)
         self.assertTrue(3 in points)
-        # Test liear interpolations in multi D.
+        # Test linear interpolations in multi D.
         points, weights = v.slice_interpolate_weights([0, 1, 2], 
                                                       [0.5, 0.5, 1.5],
                                                       'linear')
@@ -566,6 +649,88 @@ class TestAlgUtils(unittest.TestCase) :
         out.shape = (2,)
         self.assertTrue(sp.allclose(out, v.slice_interpolate([0, 2], 
                              [3.14159, 1.4112], 'linear')))
+
+    def test_slice_interpolate_nearest(self):
+        v = self.vect
+        v.set_axis_info('freq', 2, 1)
+        v.set_axis_info('a', 1, 1)
+        v.set_axis_info('b', 1, 1)
+        points, weights = v.slice_interpolate_weights(0, 2.3, 'nearest')
+        self.assertTrue(sp.allclose(weights, 1))
+        self.assertTrue(sp.allclose(points, 2))
+        points, weights = v.slice_interpolate_weights((1, 2), (0.1, 0.9),
+                                                      'nearest')
+        self.assertTrue(sp.allclose(weights, 1))
+        self.assertTrue(sp.allclose(points, [[0, 1]]))
+        v[3, :, 1] = sp.arange(2, dtype=float)*sp.pi
+        self.assertTrue(sp.allclose(v.slice_interpolate((0, 2), (2.5, 1.1), 
+                'nearest'), sp.arange(2)*sp.pi))
+
+    def test_slice_interpolate_cubic(self) :
+        # Construct a 3D array that is a quadratic function.
+        data = sp.arange(140, dtype=float)
+        data.shape = (5, 4, 7)
+        vect = algebra.info_array(data)
+        vect = algebra.vect_array(vect,axis_names=('freq', 'a', 'b'))
+
+        v = vect
+        a = sp.arange(-2,3)**2
+        a.shape = (5, 1, 1)
+        b = sp.arange(-1,3)**2
+        b.shape = (1, 4, 1)
+        c = sp.arange(-1,6)**2
+        c.shape = (1, 1, 7)
+        v[:,:,:] = a + b + c
+        v.set_axis_info('freq', 0, 1)
+        v.set_axis_info('a', 1, 1)
+        v.set_axis_info('b', 2, 1)
+        
+        #### First test the weights.
+
+        # Test cubic conv interpolations in multi D.
+        points, weights = v.slice_interpolate_weights([0, 1, 2], 
+                                                      [0, 0, 0],
+                                                      'cubic')
+        self.assertTrue(1. in weights)
+        self.assertTrue(weights.tolist().count(0) == 63)
+        self.assertTrue(points[sp.where(weights==1)[0][0]][0] == 2)
+        self.assertTrue(points[sp.where(weights==1)[0][0]][1] == 1)
+        self.assertTrue(points[sp.where(weights==1)[0][0]][2] == 1)
+
+        points, weights = v.slice_interpolate_weights([0, 1, 2], 
+                                                      [1.5, 0.5, 0],
+                                                      'cubic')
+        self.assertTrue(points.shape[0] == 64)
+        self.assertTrue(weights.shape[0] == 64)
+
+        # Test full interpolation.
+        out = v.slice_interpolate([0, 1, 2], 
+                                  [0, 0, 0],
+                                  'cubic')
+        self.assertTrue(sp.allclose(out,0.0))
+
+        out = v.slice_interpolate([0, 1, 2], 
+                                  [-1.34, 0.55, 0.86],
+                                  'cubic')
+        self.assertTrue(sp.allclose(out,2.8377))
+
+        # Test partial interpolation.
+        out = v.slice_interpolate([0, 2], 
+                                  [1.4, -0.3],
+                                  'cubic')
+        out1 = v.slice_interpolate([0, 1, 2], 
+                                   [1.4, -1, -0.3],
+                                   'cubic')
+        out2 = v.slice_interpolate([0, 1, 2], 
+                                   [1.4, 0, -0.3],
+                                   'cubic')
+        out3 = v.slice_interpolate([0, 1, 2], 
+                                   [1.4, 1, -0.3],
+                                   'cubic')
+        out4 = v.slice_interpolate([0, 1, 2], 
+                                   [1.4, 2, -0.3],
+                                   'cubic')
+        self.assertTrue(sp.allclose(out,[out1,out2,out3,out4]))
 
 class TestMatUtilsSq(unittest.TestCase) :
 

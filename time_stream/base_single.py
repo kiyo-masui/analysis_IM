@@ -63,10 +63,10 @@ class BaseSingle(object) :
         # Messages to print this iteration.
         self.block_feedback = 'Did nothing.'
         return Data
+
     # Don't worry too much about the feedback stuff; it's safe to ignore it.
     # If you want to see feedback in action look at time_stream/flag_data.py.
 
-    # Don't overwrite these in derivative classes.
     def __init__(self, parameter_file_or_dict=None, feedback=2) :
         self.feedback = feedback
         
@@ -78,6 +78,7 @@ class BaseSingle(object) :
         self.params = parse_ini.parse(parameter_file_or_dict, params_init,
                                       prefix=self.prefix, feedback=feedback)
     
+    # Don't overwrite these in derivative classes.
     def execute(self, n_processes=1) :
         """Process all data.
         
@@ -105,11 +106,11 @@ class BaseSingle(object) :
         else :
             # Spawn a bunch of new processes each with a single file to
             # analyse.
-            # Can't us an mp.Pool here because we don't want to reused processes
+            # Can't us an mp.Pool here because we don't want to reuse processes
             # due to pyfits memory leak.
             process_list = range(n_new)
             for ii in xrange(n_files + n_new) :
-                if ii > n_new :
+                if ii >= n_new :
                     process_list[ii%n_new].join()
                     if process_list[ii%n_new].exitcode != 0 : 
                         raise RuntimeError("A thread failed with exit code: "
@@ -118,22 +119,13 @@ class BaseSingle(object) :
                     process_list[ii%n_new] = mp.Process(
                         target=self.process_file, args=(ii,))
                     process_list[ii%n_new].start()
-
-            #n_pools = int(math.ceil(float(n_files)/float(n_new)))
-            #for ii in range(n_pools) :
-            #    p = mp.Pool(processes=n_new)
-            #    for jj in range(ii*n_new, min((ii+1)*n_new, n_files)) :
-            #        p.apply_async(self.process_file, (jj,))
-            #    p.close()
-            #    p.join()
-
             
     def process_file(self, file_ind) :
         """Process on file from the list to be processed based on the passed
         index.
         """
 	
-	self.file_ind = file_ind
+        self.file_ind = file_ind
         params = self.params
         file_middle = params['file_middles'][file_ind]
         input_fname = (params['input_root'] + file_middle +
@@ -176,7 +168,11 @@ class BaseSingle(object) :
         out_data = ()
         for Data in scan_blocks :
             # Now process the data.
+            # self.action can return either a single DataBlock or a tuple of
+            # data_blocks.
             NewData = self.action(Data)
+            if not type(NewData) is tuple:
+                NewData = (NewData,)
             # Chances are NewData is just a reference to Data.  To avoid
             # confusion, delete the old reference.  This is just paranoia.
             del Data
@@ -185,11 +181,8 @@ class BaseSingle(object) :
             # but don't go to a new line.
             if hasattr(self, 'block_feedback') and self.feedback > 1:
                 print self.block_feedback,
-
-            # Check that the data is valid and add it to the writer.
-            NewData.verify()
-
-            out_data = out_data + (NewData,)
+            
+            out_data = out_data + NewData
 
         return out_data
 

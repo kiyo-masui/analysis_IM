@@ -2,7 +2,7 @@
 
 import scipy as sp
 import numpy.ma as ma
-#import pylab as pl
+import pylab as pl
 import numpy as np
 
 import kiyopy.custom_exceptions as ce
@@ -41,7 +41,7 @@ class Calibrate(base_single.BaseSingle) :
 #        print sess_num
 #        mueler_file_name = self.params['mueler_file']+str(sess_num)+'_mueller_matrix_from_params.txt'
 #        self.mueler
-#        mueler_file_name = self.params['mueler_file']+'67_mueller_matrix_from_jones.txt'
+#        mueler_file_name = self.params['mueler_file']+'87_mueller_matrix_from_params.txt'
 #        self.mueler = mueller(mueler_file_name)
     
     # This function tells BaseSingle what science to do.  Data is a
@@ -59,10 +59,14 @@ class Calibrate(base_single.BaseSingle) :
         # Main Action
         i = self.file_ind
         file_middle = self.params['file_middles'][i]
-        sess_num = file_middle.split('_')[0]
+        separate = file_middle.split('/')[1]
+        sess_num = separate.split('_')[0]
         sess_num = int(sess_num)
+        if (sess_num<10):
+            sess_num = '0'+str(sess_num)
+        project = file_middle.split('/')[0]
 #        print sess_num
-        mueler_file_name = self.params['mueler_file']+str(sess_num)+'_mueller_matrix_from_params_Mastro.txt'
+        mueler_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_mueller_matrix_from_inverted_params.txt'
         self.mueler = mueller(mueler_file_name)
         calibrate_pol(Data, self.mueler)
        	Data.add_history('Flux calibrated and Corrected for polarization leakage.', 
@@ -76,8 +80,8 @@ class Calibrate(base_single.BaseSingle) :
 #        pl.ylim(-20,130)
 #        pl.xlabel("Frequency (MHz)")
 #        pl.ylabel("Sample Data")
-#        title0 = str(Data.field['SCAN'])+'_caloff_pol_params_'
-#        pl.savefig(title0+'Comparison_Test_for_3C48.png')
+#        title0 = str(Data.field['SCAN'])+'_caloff_pol_params_Mastro_'
+#        pl.savefig(title0+'Comparison_Test_for_3C286.png')
 #        pl.clf()
 
        	return Data
@@ -186,7 +190,9 @@ def calibrate_pol(Data, m_total) :
      # Tells which mueller matrix to use. 
                freq_limit = len(m_total[0,0,:])
                frequency = int(Data.freq[freq]/1000)
+#               print frequency
                bin = int((900000-frequency)*freq_limit/200000)
+#               print bin
 #               if freq_limit == 200:
 #                   bin = 900-frequency
 #Not setup to work with spectrometer data.
@@ -203,7 +209,13 @@ def calibrate_pol(Data, m_total) :
     # a new set of stokes values.
                stokesmod = np.dot(MUELLER,STOKES)
                stokesmod = np.dot(M_sky,stokesmod)
+
+    # The next two lines should replace the lines above if just want to do flux calibration (no polarization calibration)
+#               stokesmod = STOKES
+#               stokesmod[0]=stokesmod[0]*MUELLER[0,0]
 #               print stokesmod
+
+
                for i in range(0,Data.dims[1]):
                     Data.data[time_index,i,cal_index,freq] = stokesmod[i]	
 
