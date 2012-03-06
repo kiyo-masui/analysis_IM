@@ -88,6 +88,21 @@ notes = 'optimal maps, proposal-era cal'
 dbcl.register_path('GBT_maps_Kiyo_16jan2012', pathname,
                     "Kiyo's map directory", notes=notes)
 
+pathname = dbcl.fetch_path('GBTDATA_KIYO') + "gbt_out/maps/feb19.2012/"
+notes = 'optimal maps, proposal-era cal, some bugs fixed following Jan 16 2012'
+dbcl.register_path('GBT_maps_Kiyo_19feb2012', pathname,
+                    "Kiyo's map directory", notes=notes)
+
+pathname = dbcl.fetch_path('GBTDATA_KIYO') + "gbt_out/maps/feb21.2012/"
+notes = 'optimal maps, proposal-era cal, some bugs fixed following Jan 16 2012, fdgcal'
+dbcl.register_path('GBT_maps_Kiyo_21feb2012', pathname,
+                    "Kiyo's map directory", notes=notes)
+
+pathname = dbcl.fetch_path('GBTDATA_KIYO') + "gbt_out/maps/feb23.2012/"
+notes = 'optimal maps, proposal-era cal, some bugs fixed following Jan 16 2012, fdgcal, TOD modes removed'
+dbcl.register_path('GBT_maps_Kiyo_23feb2012', pathname,
+                    "Kiyo's map directory", notes=notes)
+
 #-----------------------------------------------------------------------------
 # register map data; 'register_maprun'
 # unique information: map key, group key, mappath key, map field tag, map desc,
@@ -116,23 +131,23 @@ then the flux calibration is applied from source observations."
 group_key = 'GBTmaps'
 status = 'static'
 
-key = 'GBT_15hr_map'
+key = 'GBT_15hr_map_fluxpolcal'
 parent = 'GBT_maps_Tabitha'
-desc = "15hr maps with Oct. 10 2011 calibration"
+desc = "15hr maps with Oct. 10 2011 flux+pol calibration"
 field_tag = '15hr_41-90'
 dbcl.register_maprun(key, group_key, parent, field_tag, desc,
                         notes=tcv_cal_note2, status=status)
 
-key = 'GBT_22hr_map'
+key = 'GBT_22hr_map_fluxpolcal'
 parent = 'GBT_maps_Tabitha'
-desc = "22hr maps with Oct. 10 2011 calibration"
+desc = "22hr maps with Oct. 10 2011 flux+pol calibration"
 field_tag = '22hr_41-90'
 dbcl.register_maprun(key, group_key, parent, field_tag, desc,
                         notes=tcv_cal_note2, status=status)
 
-key = 'GBT_1hr_map'
+key = 'GBT_1hr_map_fluxpolcal'
 parent = 'GBT_maps_Tabitha'
-desc = "1hr maps with Oct. 10 2011 calibration"
+desc = "1hr maps with Oct. 10 2011 flux+pol calibration"
 field_tag = '1hr_41-16'
 dbcl.register_maprun(key, group_key, parent, field_tag, desc,
                         notes=tcv_cal_note1, status=status)
@@ -140,7 +155,7 @@ dbcl.register_maprun(key, group_key, parent, field_tag, desc,
 # register Tabitha's new calibration
 key = 'GBT_15hr_map_fdgcal'
 parent = 'GBT_maps_Tabitha'
-desc = "15hr maps with Oct. 10 2011 calibration"
+desc = "15hr maps with Feb. 20 XXYY+flux calibration"
 field_tag = '15hr_41-90_fdg'
 status = 'in development'
 dbcl.register_maprun(key, group_key, parent, field_tag, desc,
@@ -174,9 +189,30 @@ status = 'in development'
 #dbcl.register_optimalmap_section_run(key, group_key, parent, field_tag, '862', desc,
 #                        status=status)
 
-key = 'GBT_15hr_optimalmap_glued'
+key = 'GBT_15hr_optimalmap_fluxpolcal'
 parent = 'GBT_maps_Kiyo_16jan2012'
 desc = "optimal maps glued into one cube"
+field_tag = '15hr_41-90'
+dbcl.register_optimalmap_glued_run(key, group_key, parent, field_tag, desc,
+                        status=status)
+
+key = 'GBT_15hr_optimalmap_mapv2oldcal'
+parent = 'GBT_maps_Kiyo_19feb2012'
+desc = "optimal maps glued into one cube; some bugs fixed following 16Jan2012"
+field_tag = '15hr_41-90'
+dbcl.register_optimalmap_glued_run(key, group_key, parent, field_tag, desc,
+                        status=status)
+
+key = 'GBT_15hr_optimalmap_mapv2fdgcal'
+parent = 'GBT_maps_Kiyo_21feb2012'
+desc = "optimal maps glued into one cube; some bugs fixed following 16Jan2012, fdg cal"
+field_tag = '15hr_41-90'
+dbcl.register_optimalmap_glued_run(key, group_key, parent, field_tag, desc,
+                        status=status)
+
+key = 'GBT_15hr_optimalmap_mapv2fdgcalmoderm'
+parent = 'GBT_maps_Kiyo_23feb2012'
+desc = "optimal maps glued into one cube; some bugs fixed following 16Jan2012, fdg cal, modes removed in TOD"
 field_tag = '15hr_41-90'
 dbcl.register_optimalmap_glued_run(key, group_key, parent, field_tag, desc,
                         status=status)
@@ -252,9 +288,10 @@ def mapsim_mode_clean_run(map_source_key, sim_source_key,
 
 # high level call to register a mode cleaning run + sims for conv, noconv case
 def mapsimnoconv_mode_clean_run(map_source_key, sim_source_key, username="Eric",
-                                tag="", status=None, notes=None):
+                                tag="", status=None, notes=None, modelist=None):
     # For all maps, we clean 0, 5 ... 50 modes
-    modelist = range(0, 55, 5)
+    if modelist is None:
+        modelist = range(0, 105, 5)
 
     extdesc = "the mean is removed, convolved to a common beam, radial modes subtracted"
     mapsim_mode_clean_run(map_source_key, sim_source_key, 'Eric', modelist,
@@ -269,27 +306,52 @@ def mapsimnoconv_mode_clean_run(map_source_key, sim_source_key, username="Eric",
 #-----------------------------------------------------------------------------
 notes = "Tabitha flux+pol calibration and old mapmaker"
 status = 'static'
-mapsimnoconv_mode_clean_run('GBT_15hr_map', 'sim_15hr_oldmap_nostr_beam',
+mapsimnoconv_mode_clean_run('GBT_15hr_map_fluxpolcal', 'sim_15hr_oldmap_str_beam',
+                             status=status, notes=notes)
+
+notes = "Tabitha flux+pol calibration and old mapmaker"
+status = 'static'
+mapsimnoconv_mode_clean_run('GBT_22hr_map_fluxpolcal', 'sim_22hr_oldmap_str_beam',
+                             status=status, notes=notes)
+
+notes = "Tabitha flux+pol calibration and old mapmaker"
+status = 'static'
+mapsimnoconv_mode_clean_run('GBT_1hr_map_fluxpolcal', 'sim_1hr_oldmap_str_beam',
                              status=status, notes=notes)
 
 notes = "proposal era calibration and old mapmaker"
 status = 'static'
-mapsimnoconv_mode_clean_run('GBT_15hr_map_oldcal', 'sim_15hr_oldmap_nostr_beam',
+mapsimnoconv_mode_clean_run('GBT_15hr_map_oldcal', 'sim_15hr_oldmap_str_beam',
                              status=status, notes=notes)
 
 notes = "Tabitha flux-only calibration calibration and old mapmaker"
-status = 'static'
-mapsimnoconv_mode_clean_run('GBT_15hr_map_fluxcal', 'sim_15hr_oldmap_nostr_beam',
+status = 'UNRESOLVED FACTOR OF 2 ERROR'
+mapsimnoconv_mode_clean_run('GBT_15hr_map_fluxcal', 'sim_15hr_oldmap_str_beam',
                              status=status, notes=notes)
 
 notes = "Tabitha XX,YY + flux calibration calibration and old mapmaker"
-status = 'development'
-mapsimnoconv_mode_clean_run('GBT_15hr_map_fdgcal', 'sim_15hr_oldmap_nostr_beam',
+status = 'active development'
+mapsimnoconv_mode_clean_run('GBT_15hr_map_fdgcal', 'sim_15hr_oldmap_str_beam',
                              status=status, notes=notes)
 
 notes = "Tabitha flux+pol calibration calibration and new mapmaker"
-status = 'in development'
-mapsimnoconv_mode_clean_run('GBT_15hr_optimalmap_glued', 'sim_15hr_optimalmap_nostr_beam',
+status = 'active development'
+mapsimnoconv_mode_clean_run('GBT_15hr_optimalmap_fluxpolcal', 'sim_15hr_optimalmap_str_beam',
+                             status=status, notes=notes)
+
+notes = "prop. era calibration calibration and new mapmaker, v2"
+status = 'active development'
+mapsimnoconv_mode_clean_run('GBT_15hr_optimalmap_mapv2oldcal', 'sim_15hr_optimalmap_str_beam',
+                             status=status, notes=notes)
+
+notes = "Tabitha fdg calibration calibration and new mapmaker, v2"
+status = 'active development'
+mapsimnoconv_mode_clean_run('GBT_15hr_optimalmap_mapv2fdgcal', 'sim_15hr_optimalmap_str_beam',
+                             status=status, notes=notes)
+
+notes = "Tabitha fdg calibration calibration and new mapmaker v2 with time modes removed"
+status = 'active development'
+mapsimnoconv_mode_clean_run('GBT_15hr_optimalmap_mapv2fdgcalmoderm', 'sim_15hr_optimalmap_str_beam',
                              status=status, notes=notes)
 
 #-----------------------------------------------------------------------------
