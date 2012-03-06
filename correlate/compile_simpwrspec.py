@@ -73,6 +73,9 @@ def batch_sim_run(simleft_key, simright_key,
 
     funcname = "correlate.batch_quadratic.call_xspec_run"
     generate = False if usecache_output_tag else True
+    if generate:
+        print "REGENERATING the power spectrum result cache: "
+
     caller = batch_handler.MemoizeBatch(funcname, cache_path,
                                         generate=generate, verbose=True)
 
@@ -98,7 +101,6 @@ def batch_sim_run(simleft_key, simright_key,
 
             pwr_2d.append(pwrspec_out[0])
             pwr_1d.append(pwrspec_out[1])
-
 
     if usecache_output_tag:
         pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, usecache_output_tag,

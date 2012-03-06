@@ -60,7 +60,8 @@ if __name__ == '__main__':
     #basemaps = ["GBT_22hr_map_fluxpolcal_cleaned"]
     #basemaps = ["GBT_1hr_map_fluxpolcal_cleaned"]
     treatments = ["", "_sims", "_noconv", "_sims_noconv"]
-    cp.call_data_autopower(basemaps, treatments, inifile=inifile, generate=True,
+    cp.call_data_autopower(basemaps, treatments, inifile=inifile,
+                        generate=False,
                         outdir="./plot_data_v2/", mode_transfer_1d=None,
                         mode_transfer_2d=None, beam_transfer=None)
 

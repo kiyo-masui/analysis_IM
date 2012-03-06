@@ -143,12 +143,12 @@ def wrap_combine(basemap, skipsims=False, skipmaps=False):
 
 
 if __name__ == '__main__':
-    wrap_combine("GBT_15hr_optimalmap_mapv2fdgcal", skipmaps=True)
-    wrap_combine("GBT_15hr_optimalmap_mapv2oldcal", skipmaps=True)
+    #wrap_combine("GBT_15hr_optimalmap_mapv2fdgcal", skipmaps=True)
+    #wrap_combine("GBT_15hr_optimalmap_mapv2oldcal", skipmaps=True)
     #wrap_combine("GBT_15hr_optimalmap_fluxpolcal")
     #wrap_combine("GBT_22hr_map_fluxpolcal")
     #wrap_combine("GBT_15hr_map_fluxpolcal")
-    #wrap_combine("GBT_1hr_map_fluxpolcal")
+    wrap_combine("GBT_1hr_map_fluxpolcal")
     #wrap_combine("GBT_15hr_map_fdgcal")
     #wrap_combine("GBT_15hr_map_oldcal")
     #wrap_combine("GBT_15hr_map_fluxcal")

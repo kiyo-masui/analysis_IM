@@ -230,42 +230,48 @@ def make_cube_slice(cubename, outfilename, slice_index, colorbar_title,
                             eps_outfile=outfilename)
 
 
-def plot_gbt_maps(keyname, transverse=False, skip_noise=False, skip_map=False,
+def plot_gbt_maps(keyname, transverse=False,
+                  make_noise_diag=False, make_map=True,
+                  make_dirty_map=False, make_noise_inv=False,
                   outputdir="./", sigmarange=[0., 0.001]):
     r"""plot the 15hr, 22hr and 1hr real maps"""
-    datapath_db = data_paths.DataPath()
+    #datapath_db = data_paths.DataPath()
 
     section_list = ['A', 'B', 'C', 'D']
     for section in section_list:
-        if not skip_map:
-            filename = datapath_db.fetch(keyname, intend_read=True,
-                                         pick=(section + ';clean_map'))
+        if make_map:
             title = "Sec. %s, %s" % (section, keyname)
-            make_cube_movie(filename,
+            make_cube_movie("db:%s:%s;clean_map" % (keyname, section),
                                "Temperature (mK)", cube_frame_dir,
                                sigmarange=3.,
                                outputdir=outputdir, multiplier=1000.,
                                transverse=transverse,
                                title=title)
 
-            filename = datapath_db.fetch(keyname, intend_read=True,
-                                         pick=(section + ';dirty_map'))
+        if make_dirty_map:
             title = "Sec. %s, %s (dirty)" % (section, keyname)
-            make_cube_movie(filename,
+            make_cube_movie("db:%s:%s;dirty_map" % (keyname, section),
                                "Temperature (mK)", cube_frame_dir,
                                sigmarange=3.,
                                outputdir=outputdir, multiplier=1000.,
                                transverse=transverse,
                                title=title)
 
-        if not skip_noise:
-            filename = datapath_db.fetch(keyname, intend_read=True,
-                                         pick=(section + ';noise_diag'))
-            title = "Sec. %s, %s (noise)" % (section, keyname)
-            # sigmacut=0.008
-            make_cube_movie(filename,
+        if make_noise_diag:
+            title = "Sec. %s, %s (noise diag)" % (section, keyname)
+            make_cube_movie("db:%s:%s;noise_diag" % (keyname, section),
                                "Covariance", cube_frame_dir,
                                sigmarange=sigmarange,
+                               outputdir=outputdir, multiplier=1.,
+                               logscale=False,
+                               transverse=transverse,
+                               title=title)
+
+        if make_noise_inv:
+            title = "Sec. %s, %s (noise inv)" % (section, keyname)
+            make_cube_movie("db:%s:%s;noise_inv" % (keyname, section),
+                               "Covariance inverse", cube_frame_dir,
+                               sigmarange=-1,
                                outputdir=outputdir, multiplier=1.,
                                logscale=False,
                                transverse=transverse,
