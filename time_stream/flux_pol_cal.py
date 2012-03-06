@@ -79,6 +79,8 @@ class Calibrate(base_single.BaseSingle) :
 #        pl.plot(frequency,Data.data[0,1,0,:],label='Q-mod')
 #        pl.plot(frequency,Data.data[0,2,0,:],label='U-mod')
 #        pl.plot(frequency,Data.data[0,3,0,:],label='V-mod')
+#        pl.plot(frequency,19.74748409*pow((750.0/frequency),0.49899785)*(2.28315426-0.000484307905*frequency),label='3C286-Isrc')
+#        pl.plot(frequency,25.15445092*pow((750.0/frequency),0.75578842)*(2.28315426-0.000484307905*frequency),label='3C48-Isrc')
 #        pl.legend()
 #        pl.ylim(-20,130)
 #        pl.xlabel("Frequency (MHz)")

@@ -8,6 +8,7 @@ import numpy as np
 import kiyopy.custom_exceptions as ce
 import base_single
 import map.tools
+
 from core import fits_map
 
 # base_single.BaseSingle is a base class that knows how to read an input file
@@ -66,6 +67,8 @@ class Calibrate(base_single.BaseSingle) :
 #        pl.plot(frequency,Data.data[0,1,0,:],label='Q-mod')
 #        pl.plot(frequency,Data.data[0,2,0,:],label='U-mod')
 #        pl.plot(frequency,Data.data[0,3,0,:],label='YY-mod')
+#        pl.plot(frequency,19.74748409*pow((750.0/frequency),0.49899785)*(2.28315426-0.000484307905*frequency),label='3C286-Isrc')
+#        pl.plot(frequency,25.15445092*pow((750.0/frequency),0.75578842)*(2.28315426-0.000484307905*frequency),label='3C48-Isrc')
 #        pl.legend()
 #        pl.ylim(-20,130)
 #        pl.xlabel("Frequency (MHz)")
@@ -140,14 +143,14 @@ def calibrate_pol(Data, m_total) :
     #Generate a sky matrix for this time index:
         m_sky = sp.zeros((4,4))
         m_sky[0,0] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180))
-        m_sky[0,1] = ma.sin(2*Data.PA[time_index]*sp.pi/180)
+        m_sky[0,1] = -ma.sin(2*Data.PA[time_index]*sp.pi/180)
         m_sky[0,3] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180))
-        m_sky[1,0] = -0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180)
+        m_sky[1,0] = 0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180)
         m_sky[1,1] = ma.cos(2*Data.PA[time_index]*sp.pi/180)
-        m_sky[1,3] = 0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180)
+        m_sky[1,3] = -0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180)
         m_sky[2,2] = 1
         m_sky[3,0] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180))
-        m_sky[3,1] = -ma.sin(2*Data.PA[time_index]*sp.pi/180)
+        m_sky[3,1] = ma.sin(2*Data.PA[time_index]*sp.pi/180)
         m_sky[3,3] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180))
 
         M_sky = sp.mat(m_sky)
