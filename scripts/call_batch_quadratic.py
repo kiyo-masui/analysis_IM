@@ -4,24 +4,6 @@ from correlate import compile_wigglez_xspec as cwx
 from utils import data_paths
 import sys
 
-def sim_crosspower(inifile=None):
-    #basesims = ['sim_15hr_oldmap_ideal', 'sim_15hr_oldmap_nostr',
-    #            'sim_15hr_oldmap_str', 'sim_22hr_oldmap_str',
-    #            'sim_1hr_oldmap_str']
-    basesims = ['sim_15hr_oldmap_ideal', 'sim_15hr_oldmap_nostr',
-                'sim_15hr_oldmap_str']
-    treatments = ['_temperature', '_beam', '_beam_conv', '_beam_meansub',
-                  '_beam_meansubconv']
-
-    for base in basesims:
-        for treatment in treatments:
-            map1 = base + treatment
-            map2 = base + "_delta"
-            print map1, map2
-            bq.batch_sim_run(map1, map2,
-                         "GBT_15hr_map_fluxpolcal_cleaned_combined:weight;0modes",
-                         "WiggleZ_15hr_montecarlo", inifile=inifile)
-
 
 def sim_one_sided_trans(basemap, basesim, inifile=None):
     left_treatments = ["", "_noconv"]
@@ -44,8 +26,21 @@ def sim_autopwr(inifile_phys=None, inifile=None, generate=False):
                   '_beam_meansubconv']
     weight = "GBT_15hr_map_fluxpolcal_cleaned_combined:weight;0modes"
 
-    csp.sim_autopower(basesims, treatments, weight, inifile=inifile,
-                      inifile_phys=inifile_phys, generate=generate)
+    csp.call_sim_autopower(basesims, treatments, weight, inifile=inifile,
+                           inifile_phys=inifile_phys, generate=generate)
+
+
+def sim_crosspwr(inifile=None, generate=False):
+    # add 'sim_22hr_oldmap_str', 'sim_1hr_oldmap_str'
+    basesims = ['sim_15hr_oldmap_ideal', 'sim_15hr_oldmap_nostr',
+                'sim_15hr_oldmap_str']
+    treatments = ['_temperature', '_beam', '_beam_conv', '_beam_meansub',
+                  '_beam_meansubconv']
+    weight = "GBT_15hr_map_fluxpolcal_cleaned_combined:weight;0modes"
+    selection_function = "WiggleZ_15hr_montecarlo"
+
+    csp.call_sim_crosspower(basesims, treatments, weight, selection_function,
+                            inifile=inifile, generate=generate)
 
 
 def wigglez_xspec(inifile=None, generate=False):
@@ -88,7 +83,8 @@ if __name__ == '__main__':
     inifile = "input/ers/batch_quadratic/default.ini"
     inifile_phys = "input/ers/batch_quadratic/default_physical.ini"
 
-    wigglez_xspec(inifile=inifile, generate=False)
+    #wigglez_xspec(inifile=inifile, generate=False)
+    sim_crosspwr(inifile=inifile, generate=True)
 
     #sim_autopower(inifile=inifile, inifile_phys=inifile_phys)
     #sim_crosspower(inifile=inifile)

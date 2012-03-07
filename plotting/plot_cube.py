@@ -28,20 +28,21 @@ def make_cube_movie(source_key, colorbar_title, frame_dir,
                     filetag_suffix="",
                     outputdir="./", sigmarange=6., ignore=None, multiplier=1.,
                     transverse=False, title=None, sigmacut=None,
-                    logscale=False, physical=False, convolve=False):
+                    logscale=False, physical=False, convolve=False, tag=None):
     """Make a stack of spatial slice maps and animate them
     transverse plots along RA and freq and image plane is in Dec
     First mask any points that exceed `sigmacut`, and then report the extent of
     `sigmarange` away from the mean
     """
-    # for a file in the DB:
     datapath_db = data_paths.DataPath()
-    tag = '_'.join(source_key.split(";"))
-    tag = '-'.join(tag.split(":"))
 
-    # for a given path
-    #tag = ".".join(source_key.split(".")[:-1])  # extract root name
-    #tag = tag.split("/")[-1]
+    if tag is None:
+        tag = '_'.join(source_key.split(";"))
+        tag = '-'.join(tag.split(":"))
+
+        # for a given path
+        #tag = ".".join(source_key.split(".")[:-1])  # extract root name
+        #tag = tag.split("/")[-1]
 
     print tag
     fileprefix = frame_dir + tag

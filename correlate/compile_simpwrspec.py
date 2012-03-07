@@ -144,3 +144,28 @@ def call_sim_autopower(basesims, treatments, weight, inifile=None,
                           datapath_db=datapath_db,
                           outdir=outdir,
                           usecache_output_tag=usecache_output_tag)
+
+
+def call_sim_crosspower(basesims, treatments, weight,
+                        selection_function,
+                        inifile=None,
+                        inifile_phys=None, generate=False,
+                        outdir="./plot_data_v2/"):
+    r"""run all of the cross-power theory cases
+    """
+    datapath_db = data_paths.DataPath()
+
+    for base in basesims:
+        for treatment in treatments:
+            mapname = base + treatment
+            deltaname = base + "_delta"
+
+            usecache_output_tag = None
+            if not generate:
+                usecache_output_tag = mapname + "_xWigglez"
+
+            batch_sim_run(mapname, deltaname,
+                          weight, selection_function, inifile=inifile,
+                          datapath_db=datapath_db,
+                          outdir=outdir,
+                          usecache_output_tag=usecache_output_tag)
