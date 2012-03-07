@@ -58,6 +58,19 @@ def unpack_cases(case_list, case_key, divider=";"):
     return case_counter
 
 
+def convert_dbkeydict_to_filedict(dbkeydict, datapath_db=None):
+    r"""simple caller to convert a dictionary of database keys to a dictionary
+    of filenames"""
+    if datapath_db is None:
+        datapath_db = DataPath()
+
+    filedict = {}
+    for name in dbkeydict:
+        filedict[name] = datapath_db.fetch(dbkeydict[name])
+
+    return filedict
+
+
 def extract_split_tag(keylist, divider=";", ignore=None):
     r"""take a list like ['A;ok', 'B;ok'], and return ['A', 'B']
     list is made unique and sorted alphabetically

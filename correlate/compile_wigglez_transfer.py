@@ -27,12 +27,12 @@ def batch_GBTxwigglez_trans_run(sim_key, sim_wigglez,
     caller = batch_handler.MemoizeBatch(funcname, cache_path,
                                         generate=generate, verbose=True)
 
-    input = {}
-    input['map1_key'] = "%s:0" % base_sim_GBT
-    input['map2_key'] = "%s:0" % sim_wigglez
-    input['noiseinv1_key'] = "%s:weight;0modes" % (gbt_map_key)
-    input['noiseinv2_key'] = wigglez_selection_key
-    files = bq.convert_keydict_to_filedict(input, db=datapath_db)
+    dbkeydict = {}
+    dbkeydict['map1_key'] = "%s:0" % base_sim_GBT
+    dbkeydict['map2_key'] = "%s:0" % sim_wigglez
+    dbkeydict['noiseinv1_key'] = "%s:weight;0modes" % (gbt_map_key)
+    dbkeydict['noiseinv2_key'] = wigglez_selection_key
+    files = data_paths.convert_dbkeydict_to_filedict(dbkeydict, datapath_db=datapath_db)
 
     pwr2d_run, pwr1d_run = caller.execute(files['map1_key'],
                                           files['map2_key'],
@@ -49,12 +49,12 @@ def batch_GBTxwigglez_trans_run(sim_key, sim_wigglez,
 
     transfer_functions = {}
     for treatment in map_cases['treatment']:
-        input = {}
-        input['map1_key'] = "%s:map;%s" % (sim_key, treatment)
-        input['map2_key'] = "%s:0" % sim_wigglez
-        input['noiseinv1_key'] = "%s:weight;%s" % (gbt_map_key, treatment)
-        input['noiseinv2_key'] = wigglez_selection_key
-        files = bq.convert_keydict_to_filedict(input, db=datapath_db)
+        dbkeydict = {}
+        dbkeydict['map1_key'] = "%s:map;%s" % (sim_key, treatment)
+        dbkeydict['map2_key'] = "%s:0" % sim_wigglez
+        dbkeydict['noiseinv1_key'] = "%s:weight;%s" % (gbt_map_key, treatment)
+        dbkeydict['noiseinv2_key'] = wigglez_selection_key
+        files = data_paths.convert_dbkeydict_to_filedict(dbkeydict, datapath_db=datapath_db)
 
         pwr2d_run, pwr1d_run = caller.execute(files['map1_key'],
                                               files['map2_key'],

@@ -22,13 +22,13 @@ def batch_one_sided_trans_run(modeloss_simkey, sim_key,
     caller = batch_handler.MemoizeBatch(funcname, cache_path,
                                         generate=generate, verbose=True)
 
-    input = {}
-    input['map1_key'] = "%s:0" % sim_key
-    input['map2_key'] = "%s:0" % sim_key
-    input['noiseinv1_key'] = "%s:weight;0modes" % (modeloss_weight_root)
+    dbkeydict = {}
+    dbkeydict['map1_key'] = "%s:0" % sim_key
+    dbkeydict['map2_key'] = "%s:0" % sim_key
+    dbkeydict['noiseinv1_key'] = "%s:weight;0modes" % (modeloss_weight_root)
     # TODO: should these be ones or weight
-    input['noiseinv2_key'] = "%s:ones;0modes" % (modeloss_weight_root)
-    files = convert_keydict_to_filedict(input, db=datapath_db)
+    dbkeydict['noiseinv2_key'] = "%s:ones;0modes" % (modeloss_weight_root)
+    files = data_paths.convert_dbkeydict_to_filedict(dbkeydict, datapath_db=datapath_db)
 
     pwr2d_run, pwr1d_run = caller.execute(files['map1_key'],
                                           files['map2_key'],
@@ -44,16 +44,16 @@ def batch_one_sided_trans_run(modeloss_simkey, sim_key,
 
     transfer_functions = {}
     for treatment in map_cases['treatment']:
-        input = {}
-        input['map1_key'] = "%s:map;%s" % (modeloss_simkey, treatment)
-        input['map2_key'] = "%s:0" % sim_key
+        dbkeydict = {}
+        dbkeydict['map1_key'] = "%s:map;%s" % (modeloss_simkey, treatment)
+        dbkeydict['map2_key'] = "%s:0" % sim_key
 
-        input['noiseinv1_key'] = "%s:weight;%s" % (modeloss_weight_root, \
+        dbkeydict['noiseinv1_key'] = "%s:weight;%s" % (modeloss_weight_root, \
                                                    treatment)
 
-        input['noiseinv2_key'] = "%s:ones;%s" % (modeloss_weight_root, \
+        dbkeydict['noiseinv2_key'] = "%s:ones;%s" % (modeloss_weight_root, \
                                                  treatment)
-        files = bq.convert_keydict_to_filedict(input, db=datapath_db)
+        files = data_paths.convert_dbkeydict_to_filedict(dbkeydict, datapath_db=datapath_db)
 
         pwr2d_run, pwr1d_run = caller.execute(files['map1_key'],
                                               files['map2_key'],

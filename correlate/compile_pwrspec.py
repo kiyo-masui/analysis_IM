@@ -1,11 +1,8 @@
-r"""Code to run large batches of quadratic estimators on combinations of
-data/sims
+r"""Code to estimate power spectra of the GBT data
 """
 from utils import data_paths
 from correlate import pwrspec_estimation as pe
 from utils import batch_handler
-import copy
-from correlate import batch_quadratic as bq
 
 
 def batch_data_run(map_key, inifile=None, datapath_db=None,
@@ -13,6 +10,9 @@ def batch_data_run(map_key, inifile=None, datapath_db=None,
                    outdir="./plot_data_v2/",
                    mode_transfer_1d=None,
                    mode_transfer_2d=None):
+    r"""Form the pairs of maps1*weight1 x map0*weight0 for calculating the
+    auto-power of the GBT data"""
+
     if datapath_db is None:
         datapath_db = data_paths.DataPath()
 
@@ -36,25 +36,28 @@ def batch_data_run(map_key, inifile=None, datapath_db=None,
         # TODO: make this more elegant
         transfer_2d = None
         if (mode_transfer_2d is not None) and (beam_transfer is None):
-            transfer_2d = mode_transfer_2d[mode_num][1]
+            transfer_2d = mode_transfer_2d[treatment][1]
 
         if (mode_transfer_2d is None) and (beam_transfer is not None):
             transfer_2d = beam_transfer
 
         if (mode_transfer_2d is not None) and (beam_transfer is not None):
-            transfer_2d = mode_transfer_2d[mode_num][1] * beam_transfer
+            transfer_2d = mode_transfer_2d[treatment][1] * beam_transfer
 
         pwr_1d = []
         pwr_2d = []
         pwr_1d_from_2d = []
         for item in unique_pairs:
-            input = {}
+            dbkeydict = {}
             # NOTE: formerly had "weight" instead of noise_inv
-            input['map1_key'] = "%s:%s;map;%s" % (map_key, item[0], treatment)
-            input['map2_key'] = "%s:%s;map;%s" % (map_key, item[1], treatment)
-            input['noiseinv1_key'] = "%s:%s;noise_inv;%s" % (map_key, item[0], treatment)
-            input['noiseinv2_key'] = "%s:%s;noise_inv;%s" % (map_key, item[1], treatment)
-            files = bq.convert_keydict_to_filedict(input, db=datapath_db)
+            mapset0 = (map_key, item[0], treatment)
+            mapset1 = (map_key, item[1], treatment)
+            dbkeydict['map1_key'] = "%s:%s;map;%s" % mapset0
+            dbkeydict['map2_key'] = "%s:%s;map;%s" % mapset1
+            dbkeydict['noiseinv1_key'] = "%s:%s;noise_inv;%s" % mapset0
+            dbkeydict['noiseinv2_key'] = "%s:%s;noise_inv;%s" % mapset1
+            files = data_paths.convert_dbkeydict_to_filedict(dbkeydict,
+                                                      datapath_db=datapath_db)
 
             pwrspec_out = caller.execute(files['map1_key'],
                                          files['map2_key'],
@@ -71,7 +74,7 @@ def batch_data_run(map_key, inifile=None, datapath_db=None,
 
                 mtag = usecache_output_tag + "_%s" % treatment
                 if mode_transfer_1d is not None:
-                    transfunc = mode_transfer_1d[mode_num][0]
+                    transfunc = mode_transfer_1d[treatment][0]
                 else:
                     transfunc = None
 
@@ -90,6 +93,8 @@ def batch_data_run(map_key, inifile=None, datapath_db=None,
 def call_data_autopower(basemaps, treatments, inifile=None, generate=False,
                         outdir="./plot_data_v2/", mode_transfer_1d=None,
                         mode_transfer_2d=None, beam_transfer=None):
+    r"""Call a chunk of batch data runs for e.g. different map products
+    """
     datapath_db = data_paths.DataPath()
     # TODO: put transfer functions in the naming tags
 
@@ -129,12 +134,13 @@ def batch_wigglez_automock_run(mock_key, sel_key,
                                         generate=generate, verbose=True)
 
     for index in mock_cases['realization']:
-        input = {}
-        input['map1_key'] = "%s:%s" % (mock_key, index)
-        input['map2_key'] = "%s:%s" % (mock_key, index)
-        input['noiseinv1_key'] = sel_key
-        input['noiseinv2_key'] = sel_key
-        files = bq.convert_keydict_to_filedict(input, db=datapath_db)
+        dbkeydict = {}
+        dbkeydict['map1_key'] = "%s:%s" % (mock_key, index)
+        dbkeydict['map2_key'] = "%s:%s" % (mock_key, index)
+        dbkeydict['noiseinv1_key'] = sel_key
+        dbkeydict['noiseinv2_key'] = sel_key
+        files = data_paths.convert_dbkeydict_to_filedict(dbkeydict,
+                                                    datapath_db=datapath_db)
 
         caller.execute(files['map1_key'], files['map2_key'],
                        files['noiseinv1_key'], files['noiseinv2_key'],

@@ -206,3 +206,24 @@ class Corr21cm(RedshiftCorrelation, Map3d):
                                 no_mean=no_mean, no_evolution=no_evolution)
 
         return (cube * 0.001, rsf * 0.001, d)
+
+
+# TODO: this was moved from elsewhere and needs to be tested again
+def theory_power_spectrum(redshift_filekey, bin_centers,
+                          unitless=True, fileout="theory.dat"):
+    r"""simple caller to output a power spectrum"""
+    zfilename = datapath_db.fetch(redshift_filekey, intend_read=True,
+                                      pick='1')
+
+    zspace_cube = algebra.make_vect(algebra.load(zfilename))
+    simobj = corr21cm.Corr21cm.like_kiyo_map(zspace_cube)
+    pwrspec_input = simobj.get_pwrspec(bin_center)
+    if unitless:
+        pwrspec_input *= bin_center ** 3. / 2. / math.pi / math.pi
+
+    outfile = open(fileout, "w")
+    for specdata in zip(bin_left, bin_center, bin_right, pwrspec_input):
+        outfile.write(("%10.15g " * 4 + "\n") % specdata)
+
+    outfile.close()
+

@@ -1,9 +1,8 @@
-import numpy as np
-import math
+r"""Use the batch job handler to produce the simulation power spectra and then
+produce outputs.
+"""
 from utils import data_paths
 from utils import batch_handler
-from kiyopy import parse_ini
-from correlate import batch_quadratic as bq
 from correlate import pwrspec_estimation as pe
 
 
@@ -30,10 +29,9 @@ def batch_physical_sim_run(sim_key, inifile=None, datapath_db=None,
     pwr_1d_from_2d = []
     pwr_2d = []
     for index in mock_cases['realization']:
-        map1_file = datapath_db.fetch("%s:%s" % (sim_key, index))
-        map2_file = datapath_db.fetch("%s:%s" % (sim_key, index))
+        mapfile = datapath_db.fetch("%s:%s" % (sim_key, index))
 
-        pwrspec_out = caller.execute(map1_file, map2_file, inifile=inifile)
+        pwrspec_out = caller.execute(mapfile, mapfile, inifile=inifile)
 
         if usecache_output_tag:
             pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwrspec_out[0],
@@ -43,8 +41,8 @@ def batch_physical_sim_run(sim_key, inifile=None, datapath_db=None,
             pwr_1d.append(pwrspec_out[1])
 
     if usecache_output_tag:
-        pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, usecache_output_tag,
-                             outdir=outdir)
+        pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
+                             usecache_output_tag, outdir=outdir)
 
         retval = (pwr_1d, pwr_1d_from_2d, pwr_2d)
     else:
@@ -83,12 +81,13 @@ def batch_sim_run(simleft_key, simright_key,
     pwr_1d_from_2d = []
     pwr_2d = []
     for index in mock_cases['realization']:
-        input = {}
-        input['map1_key'] = "%s:%s" % (simleft_key, index)
-        input['map2_key'] = "%s:%s" % (simright_key, index)
-        input['noiseinv1_key'] = weightleft_key
-        input['noiseinv2_key'] = weightright_key
-        files = bq.convert_keydict_to_filedict(input, db=datapath_db)
+        dbkeydict = {}
+        dbkeydict['map1_key'] = "%s:%s" % (simleft_key, index)
+        dbkeydict['map2_key'] = "%s:%s" % (simright_key, index)
+        dbkeydict['noiseinv1_key'] = weightleft_key
+        dbkeydict['noiseinv2_key'] = weightright_key
+        files = data_paths.convert_dbkeydict_to_filedict(dbkeydict,
+                                                    datapath_db=datapath_db)
 
         pwrspec_out = caller.execute(files['map1_key'], files['map2_key'],
                                      files['noiseinv1_key'],
@@ -103,8 +102,8 @@ def batch_sim_run(simleft_key, simright_key,
             pwr_1d.append(pwrspec_out[1])
 
     if usecache_output_tag:
-        pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, usecache_output_tag,
-                             outdir=outdir)
+        pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
+                             usecache_output_tag, outdir=outdir)
         retval = (pwr_1d, pwr_1d_from_2d, pwr_2d)
     else:
         caller.multiprocess_stack()
@@ -113,8 +112,9 @@ def batch_sim_run(simleft_key, simright_key,
     return retval
 
 
-def call_sim_autopower(basesims, treatments, weight, inifile=None, inifile_phys=None,
-                       generate=False, outdir="./plot_data_v2/"):
+def call_sim_autopower(basesims, treatments, weight, inifile=None,
+                       inifile_phys=None, generate=False,
+                       outdir="./plot_data_v2/"):
     r"""run all of the auto-power theory cases
     """
     datapath_db = data_paths.DataPath()

@@ -1,11 +1,13 @@
+r"""code to assemble, calculate and write out GBT x WiggleZ"""
+import numpy as np
 from utils import data_paths
 from correlate import pwrspec_estimation as pe
 from utils import batch_handler
-import copy
-from correlate import batch_quadratic as bq
+from core import utils
 # TODO: figure out theory curve stuff
 
-def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
+
+def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
                                wigglez_mock_key, wigglez_selection_key,
                                inifile=None, datapath_db=None,
                                outdir="./plot_data_v2",
@@ -14,6 +16,8 @@ def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
                                mode_transfer_1d=None,
                                mode_transfer_2d=None,
                                theory_curve=None):
+    r"""assemble the pairs of GBT and WiggleZ and calculate the cross-power"""
+
     if datapath_db is None:
         datapath_db = data_paths.DataPath()
 
@@ -32,26 +36,28 @@ def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
 
     for treatment in map_cases['treatment']:
         # TODO: make this more elegant
+        # TODO: convert treatment into mode num
         transfer_2d = None
         if (mode_transfer_2d is not None) and (beam_transfer is None):
-            transfer_2d = mode_transfer_2d[mode_num][2]
+            transfer_2d = mode_transfer_2d[treatment][2]
 
         if (mode_transfer_2d is None) and (beam_transfer is not None):
             transfer_2d = beam_transfer
 
         if (mode_transfer_2d is not None) and (beam_transfer is not None):
-            transfer_2d = mode_transfer_2d[mode_num][2] * beam_transfer
+            transfer_2d = mode_transfer_2d[treatment][2] * beam_transfer
 
         pwr_1d = []
         pwr_2d = []
         pwr_1d_from_2d = []
         for index in mock_cases['realization']:
-            input = {}
-            input['map1_key'] = "%s:map;%s" % (gbt_map_key, treatment)
-            input['map2_key'] = "%s:%s" % (wigglez_mock_key, index)
-            input['noiseinv1_key'] = "%s:weight;%s" % (gbt_map_key, treatment)
-            input['noiseinv2_key'] = wigglez_selection_key
-            files = bq.convert_keydict_to_filedict(input, db=datapath_db)
+            dbkeydict = {}
+            dbkeydict['map1_key'] = "%s:map;%s" % (gbt_map_key, treatment)
+            dbkeydict['map2_key'] = "%s:%s" % (wigglez_mock_key, index)
+            dbkeydict['noiseinv1_key'] = "%s:weight;%s" % (gbt_map_key, treatment)
+            dbkeydict['noiseinv2_key'] = wigglez_selection_key
+            files = data_paths.convert_dbkeydict_to_filedict(dbkeydict,
+                                                      datapath_db=datapath_db)
 
             pwrspec_out = caller.execute(files['map1_key'], files['map2_key'],
                                          files['noiseinv1_key'],
@@ -67,23 +73,24 @@ def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
 
         if usecache_output_tag:
             if mode_transfer_1d is not None:
-                transfunc = mode_transfer_1d[mode_num][0]
+                transfunc = mode_transfer_1d[treatment][0]
             else:
                 transfunc = None
 
-            mtag = tag + "_%dmodes_mock" % mode_num
+            mtag = usecache_output_tag + "_%s_mock" % treatment
             mean1dmock, std1dmock, covmock = pe.summarize_pwrspec(pwr_1d,
                               pwr_1d_from_2d, pwr_2d, mtag,
-                              outdir="./plot_data",
+                              outdir=outdir,
                               apply_1d_transfer=transfunc)
 
         # now recover the xspec with the real data
-        input = {}
-        input['map1_key'] = "%s:map;%s" % (gbt_map_key, treatment)
-        input['map2_key'] = wigglez_map_key
-        input['noiseinv1_key'] = "%s:weight;%s" % (gbt_map_key, treatment)
-        input['noiseinv2_key'] = wigglez_selection_key
-        files = bq.convert_keydict_to_filedict(input, db=datapath_db)
+        dbkeydict = {}
+        dbkeydict['map1_key'] = "%s:map;%s" % (gbt_map_key, treatment)
+        dbkeydict['map2_key'] = wigglez_map_key
+        dbkeydict['noiseinv1_key'] = "%s:weight;%s" % (gbt_map_key, treatment)
+        dbkeydict['noiseinv2_key'] = wigglez_selection_key
+        files = data_paths.convert_dbkeydict_to_filedict(dbkeydict,
+                                                      datapath_db=datapath_db)
 
         pwrspec_out_signal = caller.execute(files['map1_key'],
                                             files['map2_key'],
@@ -92,14 +99,14 @@ def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
                                             inifile=inifile)
 
         if usecache_output_tag:
-            pwr1d_from_2d = pe.convert_2d_to_1d(pwrspec_out_signal[0],
-                                                transfer=transfer_2d)
+            pwr_1d_from_2d = pe.convert_2d_to_1d(pwrspec_out_signal[0],
+                                                 transfer=transfer_2d)
 
             pwr_1d = pwrspec_out_signal[1]['binavg']
-            pwr_1d_from_2d = pwr1d_from_2d['binavg']
+            pwr_1d_from_2d = pwr_1d_from_2d['binavg']
             if mode_transfer_1d is not None:
-                pwr_1d /= mode_transfer_1d[mode_num][0]
-                pwr_1d_from_2d /= mode_transfer_1d[mode_num][0]
+                pwr_1d /= mode_transfer_1d[treatment][0]
+                pwr_1d_from_2d /= mode_transfer_1d[treatment][0]
 
             # assume that they all have the same binning
             bin_left = pwrspec_out_signal[1]['bin_left']
@@ -107,10 +114,14 @@ def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
             bin_right = pwrspec_out_signal[1]['bin_right']
             counts_histo = pwrspec_out_signal[1]['counts_histo']
 
-            filename = "./plot_data/%s_%dmodes.dat" % (tag, mode_num)
+            filename = "%s/%s_%s.dat" % (outdir,
+                                         usecache_output_tag,
+                                         treatment)
+
             outfile = open(filename, "w")
             for specdata in zip(bin_left, bin_center,
-                                bin_right, counts_histo, pwr_1d, pwr_1d_from_2d,
+                                bin_right, counts_histo,
+                                pwr_1d, pwr_1d_from_2d,
                                 mean1dmock, std1dmock):
                 outfile.write(("%10.15g " * 8 + "\n") % specdata)
             outfile.close()
@@ -120,40 +131,46 @@ def batch_GBTxwigglez_data_run(gbt_map_key, wigglez_map_key,
                                                    bin_center < 1.1))
                 res_slice = slice(min(restrict[0]), max(restrict[0]))
 
-                #restricted_cov = covmock[np.where(restrict)[0][np.newaxis, :]][0]
-                print "AMP:", tag, mode_num, utils.ampfit(pwr_1d_from_2d[res_slice],
-                                                    covmock[res_slice, res_slice],
-                                                    theory_curve[res_slice])
+                #restrict_alt = np.where(restrict)[0][np.newaxis, :]
+                #restricted_cov = covmock[restrict_alt][0]
+
+                amplitude = utils.ampfit(pwr_1d_from_2d[res_slice],
+                                         covmock[res_slice, res_slice],
+                                         theory_curve[res_slice])
+                print "AMP:", mtag, treatment, amplitude
+
     if not usecache_output_tag:
         caller.multiprocess_stack()
 
     return None
 
 
-def call_batch_GBTxwigglez_data_run(basemaps, treatments, wigglez_map_key,
+def call_batch_gbtxwigglez_data_run(basemaps, treatments, wigglez_map_key,
                                     wigglez_mock_key, wigglez_selection_key,
                                     inifile=None, generate=False,
                                     outdir="./plot_data_v2/",
                                     mode_transfer_1d=None,
                                     mode_transfer_2d=None,
                                     beam_transfer=None):
-
+    r"""Call a large batch of GBT x WiggleZ spectra runs for different map
+    products.
+    """
     datapath_db = data_paths.DataPath()
     # TODO: put transfer functions in the naming tags
 
     for base in basemaps:
         for treatment in treatments:
-            mapname = base + treatment
+            mapname = base + treatment + "_combined"
 
             usecache_output_tag = None
             if not generate:
-                usecache_output_tag = mapname
+                usecache_output_tag = mapname + "_xWigglez"
 
-            batch_GBTxwigglez_data_run(mapname, wigglez_map_key,
+            batch_gbtxwigglez_data_run(mapname, wigglez_map_key,
                                wigglez_mock_key, wigglez_selection_key,
                                inifile=inifile, datapath_db=datapath_db,
-                               outdir="./plot_data_v2",
-                               usecache_output_tag=None,
+                               outdir=outdir,
+                               usecache_output_tag=usecache_output_tag,
                                beam_transfer=beam_transfer,
                                mode_transfer_1d=mode_transfer_1d,
                                mode_transfer_2d=mode_transfer_2d,

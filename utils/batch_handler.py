@@ -10,18 +10,22 @@ import random
 import time
 import shelve
 import functools
-import anydbm
 import os
 import copy
 
-def short_repr(input, maxlen=256):
+
+def short_repr(input_var, maxlen=None):
     r"""return a repr() for something if it is short enough
     could also use len(pickle.dumps()) to see if the object and not just its
     repr is too big to bother printing.
     """
-    reprout = repr(input)
-    #return "BIG_ARG" if len(reprout) > maxlen else reprout
-    return repr(input)
+    repr_out = repr(input_var)
+    if maxlen:
+        if len(rep_rout) > maxlen:
+            repr_out = "BIG_ARG"
+
+    return repr_out
+
 
 def rehasher(item):
     r"""classes derived on numpy have a non-uniform way of being hashed, so
@@ -34,6 +38,7 @@ def rehasher(item):
         rehashed = item
 
     return rehashed
+
 
 # TODO: do not print long arguments
 def print_call(args_package):
@@ -55,6 +60,8 @@ def print_call(args_package):
 
 
 memoize_directory = "/mnt/raid-project/gmrt/eswitzer/persistent_memoize/"
+
+
 def memoize_persistent(func):
     r"""threadsafe shelve using flock was too annoying; here, just wait
     note that shelve protocol=-1 does not handle Kiyo-style array metadata
@@ -214,8 +221,9 @@ class MemoizeBatch(object):
     ('ok2', 4, 'e', 'r')
 
     """
-    def __init__(self, funcname, directory, generate=False, regenerate=False,
-                 verbose=False):
+    # TODO: add regenerate option for generate mode:
+    # (check to see if the result exists)
+    def __init__(self, funcname, directory, generate=False, verbose=False):
         r"""
         Parameters:
         -----------
@@ -231,7 +239,6 @@ class MemoizeBatch(object):
         self.directory = directory
         self.call_stack = []
         self.generate = generate
-        self.regenerate = regenerate
         self.verbose = verbose
 
     def execute(self, *args, **kwargs):
@@ -245,8 +252,9 @@ class MemoizeBatch(object):
             #if self.verbose:
             #    print "MemoizeBatch: expanding inifile into argument checksum"
 
-            f = open(kwargs["inifile"], "r")
-            kwini["inifile"] = "".join(f.readlines())
+            open_inifile = open(kwargs["inifile"], "r")
+            kwini["inifile"] = "".join(open_inifile.readlines())
+            open_inifile.close()
 
         # TODO: add support for more generic arguments (numpy derivatives)
         argpkl = pickle.dumps((self.funcname, args,
@@ -260,8 +268,7 @@ class MemoizeBatch(object):
         if self.verbose:
             print_call(args_package)
 
-        if self.generate or self.regenerate:
-        # TODO: if not regenerate, check to see if the result exists
+        if self.generate:
             self.call_stack.append(args_package)
             retval = arghash
         else:
@@ -312,8 +319,9 @@ def trial_function(thing1, thing2, arg1="e", arg2="r"):
 
 
 @memoize_persistent
-def useless_loop(x, arg1='a', arg2=2):
-    return (x, arg1, arg2)
+def useless_loop(input_var, arg1='a', arg2=2):
+    r"""Useless function to test the memoize decorator"""
+    return (input_var, arg1, arg2)
 
 
 if __name__ == "__main__":
@@ -328,4 +336,3 @@ if __name__ == "__main__":
     print useless_loop("w", arg2="ok")
     print useless_loop(10)
     print useless_loop("w")
-
