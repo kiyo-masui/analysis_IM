@@ -1,8 +1,8 @@
-"""Procedure to calculate only the flux and differential gain between XX and YY for each frequency from on-off scans of a calibrator such as 3C286.
+"""Procedure to test the effectiveness of the flux and differential gain calibration.
 
-Currently setup so that it uses all the onoff scans from a session for a particular calibrator and gets the best fit. 
-Run in analysis_IM: python cal/flux_diff_gain_cal_gen.py input/tcv/diff_gain_gen_guppi.ini
-Note that the .ini file should indicate which session(s) and sourse you want to use. Script is run using data from a single source. The output is saved in my data directory under the folder diff_gain_params as a .txt file with three columns (freq, XXGain, YYGain).
+
+Run in analysis_IM: python cal/flux_diff_gain_cal_test.py input/tcv/diff_gain_tes_guppi.ini
+Note that the .ini file should indicate which session(s) and sourse you want to use. Script is run using data from a single source.
  """
 import os
 
@@ -10,6 +10,7 @@ from scipy.optimize import *
 import scipy as sp
 import numpy.ma as ma
 import numpy as np
+import pylab as pl
 
 from kiyopy import parse_ini
 import kiyopy.utils
@@ -60,12 +61,12 @@ class MuellerGen(object) :
         theta = self.theta
 #        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*2 
 #        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*(2.28315426-0.000484307905*freq_val[f]) # Added linear fit for Jansky to Kelvin conversion.
-        Isrc = 19.74748409*pow((750.0/freq_val[f]),0.49899785)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C286
-#        Isrc = 25.15445092*pow((750.0/freq_val[f]),0.75578842)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for  3C48
+#        Isrc = 19.74748409*pow((750.0/freq_val[f]),0.49899785)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C286
+        Isrc = 25.15445092*pow((750.0/freq_val[f]),0.75578842)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for  3C48
 #        Isrc = 4.56303633*pow((750.0/freq_val[f]),0.59237327)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C67
         PAsrc = 33.0*sp.pi/180.0 # for 3C286, doesn't matter for unpolarized. 
-        Psrc = 0.07 #for 3C286 
-#        Psrc = 0 #for #3C48,3C67 
+#        Psrc = 0.07 #for 3C286 
+        Psrc = 0 #for #3C48,3C67 
         Qsrc = Isrc*Psrc*sp.cos(2*PAsrc) 
         Usrc = Isrc*Psrc*sp.sin(2*PAsrc) 
         Vsrc = 0
@@ -130,7 +131,7 @@ class MuellerGen(object) :
         self.function = sp.zeros(4*self.file_num) #setting a variable of the right size for peval to use
         self.theta = sp.zeros(4*self.file_num) #setting a variable for parallactic angle in radians
         self.d = sp.zeros((4*self.file_num,freq_num)) #setting a variable for measured values
-        
+
 # Loop over files to process.      
         k=0
         for file_middle in params['file_middles'] :
@@ -163,7 +164,7 @@ class MuellerGen(object) :
                 freq_val = Data.freq
                 freq_val = freq_val/1000000       
                 Data.calc_PA()
-                PA[m] = ma.mean(Data.PA)  
+                PA[m] = ma.mean(Data.PA)
                 m+=1
             
 #Building the measured data into arrays (guppi version)         
@@ -214,28 +215,99 @@ class MuellerGen(object) :
                 if self.d[a,b] > 1000 :
                    self.d[a,b] = 1000
 
+        print self.d[:,150]
+
+# self is a directory of Tsrc data. I can use this as my corrected data for plotting. 
+# It looks like at the end k should equal the number of on, off src sets (so if one set of onoff scans eg 6-9, k = 8)
+       
+
+# source data for use in ploting 
+        XXsrc_3C286 = sp.zeros(freq_len)
+        YYsrc_3C286 = sp.zeros(freq_len)
+        XXsrc_3C48 = sp.zeros(freq_len)
+        YYsrc_3C48 = sp.zeros(freq_len)
+        Usrc_3C286 = sp.zeros(freq_len)
+       
+        for f in range(0,freq_num):
+            Isrc_3C286 = 19.74748409*pow((750.0/freq_val[f]),0.49899785)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C286
+            Isrc_3C48 = 25.15445092*pow((750.0/freq_val[f]),0.75578842)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for  3C48 
+#        Isrc_3C67 = 4.56303633*pow((750.0/freq_val[f]),0.59237327)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C67
+            PAsrc_3C286 = 33.0*sp.pi/180.0 # for 3C286, doesn't matter for unpolarized. 
+            Psrc_3C286 = 0.07 #for 3C286 
+            Psrc = 0 #for #3C48,3C67  
+#        Qsrc = Isrc*Psrc*sp.cos(2*PAsrc) 
+#        Usrc = Isrc*Psrc*sp.sin(2*PAsrc) 
+#        Vsrc = 0
+            XXsrc_3C286[f] = Isrc_3C286*(1-Psrc_3C286*sp.cos(2*PAsrc_3C286))
+            YYsrc_3C286[f] = Isrc_3C286*(1+Psrc_3C286*sp.cos(2*PAsrc_3C286))
+            Usrc_3C286[f] = Isrc_3C286*Psrc_3C286*sp.sin(2*PAsrc_3C286)
+            XXsrc_3C48[f] = Isrc_3C48
+            YYsrc_3C48[f] = Isrc_3C48
+#            Usrc_3C48 = 0
+
+        XX_compare = sp.zeros((freq_len,k/4))
+        YY_compare = sp.zeros((freq_len,k/4))
+        XX_PA_3C286 = sp.zeros((freq_len,k/4))
+        YY_PA_3C286 = sp.zeros((freq_len,k/4))
+        for c in range(0,k/4):
+            XX_PA_3C286[:,c] = 0.5*(1+sp.cos(2*self.theta[4*c]))*XXsrc_3C286[:]-sp.sin(2*self.theta[4*c])*Usrc_3C286[:]+0.5*(1-sp.cos(2*self.theta[4*c]))*YYsrc_3C286[:]
+            YY_PA_3C286[:,c] = 0.5*(1-sp.cos(2*self.theta[4*c]))*XXsrc_3C286[:]+sp.sin(2*self.theta[4*c])*Usrc_3C286[:]+0.5*(1+sp.cos(2*self.theta[4*c]))*YYsrc_3C286[:]
+            XX_compare[:,c] = self.d[c*4,:]
+            YY_compare[:,c] = self.d[c*4+3,:] 
+
+#        pl.plot(freq_val,XXsrc_3C286,label='XX_3C286',color='b')
+#        pl.plot(freq_val,YYsrc_3C286,label='YY_3C286')
+        pl.plot(freq_val,XXsrc_3C48,label='XX_3C48',color='b')
+      
+        for d in range(0,k/4):
+            if d == 0:
+                col = 'g'
+            elif d == 1:
+                col = 'r'
+            elif d == 2:
+                col = 'c'
+            elif d == 3:
+                col = 'm'
+            elif d == 4:
+                col = 'y'
+            else:
+                col = 'k'
+            pl.plot(freq_val,XX_compare[:,d],label='XX_'+str(d),color = col)
+#            pl.plot(freq_val,YY_compare[:,d],label='YY_'+str(d),color = col)
+#            pl.plot(freq_val,XX_PA_3C286[:,d],label='XXsrc_'+str(d), color = col)
+#            pl.plot(freq_val,YY_PA-3C286[:,d],label='YYsrc_'+str(d), color = col)
+        leg = pl.legend(fancybox='True')
+        leg.get_frame().set_alpha(0.25)
+        pl.ylim(20,55)
+        pl.xlabel("Frequency (MHz)")
+        pl.ylabel("Temperature (K)")
+        title0 = sess+'_init_XX_3C48_comparison_Test.png'
+        pl.savefig(title0)
+        pl.clf()
+
         #There are 2 parameters for this version p[0] is XX gain and p[1] is YY gain. 
-        p0 = [1,1] # guessed preliminary values
-        error = sp.ones(4*self.file_num)
+#        p0 = [1,1] # guessed preliminary values
+#        error = sp.ones(4*self.file_num)
         #Note that error can be used to weight the equations if not all set to one.
 
-        p_val_out = sp.zeros((freq_len, 3))
+#        p_val_out = sp.zeros((freq_len, 3))
  #       p_err_out = sp.zeros((freq_len, 17))
      
-        for f in range(0,freq_len):   
-            plsq = leastsq(self.residuals,p0,args=(error,f,freq_val),full_output=0, maxfev=5000)
-            pval = plsq[0] # this is the 1-d array of results0
+#        for f in range(0,freq_len):   
+#            plsq = leastsq(self.residuals,p0,args=(error,f,freq_val),full_output=0, maxfev=5000)
+#            pval = plsq[0] # this is the 1-d array of results0
 
-            p_val_out[f,0] = freq_val[f]
-            p_val_out[f,1] = pval[0]
-            p_val_out[f,2] = pval[1]
+#            p_val_out[f,0] = freq_val[f]
+#            p_val_out[f,1] = pval[0]
+#            p_val_out[f,2] = pval[1]
 
 #        sess_num = int(session_nums[0])
 #        print sess_num
 #        np.savetxt(output_root+str(sess_num)+'_flux_mueller_matrix_calc'+output_end, p_val_out, delimiter = ' ')
-        out_path = output_root+sess+'_diff_gain_calc'+output_end
-        np.savetxt(out_path,p_val_out,delimiter = ' ')
-#        np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')
+#        out_path = output_root+sess+'_diff_gain_calc'+output_end
+#        np.savetxt(out_path,p_val_out,delimiter = ' ')
+#        out_path = sess+'_corrected_data_' + output_end
+#        np.savetxt(out_path, self.d, delimiter = ' ')
 
 #If this file is run from the command line, execute the main function.
 if __name__ == "__main__":

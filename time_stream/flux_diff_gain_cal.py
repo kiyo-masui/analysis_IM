@@ -42,10 +42,11 @@ class Calibrate(base_single.BaseSingle) :
     def action(self, Data) :
 #        Data.calc_freq()
 #        frequency = Data.freq/1000000
-#        pl.plot(frequency,Data.data[0,0,0,:],label='XX-init')
-#        pl.plot(frequency,Data.data[0,1,0,:],label='Q-init')
-#        pl.plot(frequency,Data.data[0,2,0,:],label='U-init')
-#        pl.plot(frequency,Data.data[0,3,0,:],label='YY-init')
+#        print Data.data[0,0,1,:]
+#        pl.plot(frequency,ma.median(Data.data[:,0,0,:],axis=0),label='XX-init')
+#        pl.plot(frequency,Data.data[0,1,0,:]-Data.data[0,1,1,:],label='Q-init')
+#        pl.plot(frequency,Data.data[0,2,0,:]-Data.data[0,2,1,:],label='U-init')
+#        pl.plot(frequency,ma.median(Data.data[:,3,0,:],axis=0),label='YY-init')
 
         # Main Action
         i = self.file_ind
@@ -63,17 +64,17 @@ class Calibrate(base_single.BaseSingle) :
        	Data.add_history('Flux calibrated and Corrected for differential gain leakage.', 
                	         ('Flux and Diff Gain file: ' + self.params['mueler_file'],))
         
-#        pl.plot(frequency,Data.data[0,0,0,:],label='XX-mod')
-#        pl.plot(frequency,Data.data[0,1,0,:],label='Q-mod')
-#        pl.plot(frequency,Data.data[0,2,0,:],label='U-mod')
-#        pl.plot(frequency,Data.data[0,3,0,:],label='YY-mod')
+#        pl.plot(frequency,ma.median(Data.data[:,0,0,:],axis=0),label='XX-mod')
+#        pl.plot(frequency,Data.data[0,1,0,:]-Data.data[0,1,1,:],label='Q-mod')
+#        pl.plot(frequency,Data.data[0,2,0,:]-Data.data[0,2,1,:],label='U-mod')
+#        pl.plot(frequency,ma.median(Data.data[:,3,0,:],axis=0),label='YY-mod')
 #        pl.plot(frequency,19.74748409*pow((750.0/frequency),0.49899785)*(2.28315426-0.000484307905*frequency),label='3C286-Isrc')
 #        pl.plot(frequency,25.15445092*pow((750.0/frequency),0.75578842)*(2.28315426-0.000484307905*frequency),label='3C48-Isrc')
 #        pl.legend()
 #        pl.ylim(-20,130)
 #        pl.xlabel("Frequency (MHz)")
 #        pl.ylabel("Sample Data")
-#        title0 = str(Data.field['SCAN'])+'_caloff_flux_diff_gain_'
+#        title0 = str(sess_num)+'_'+str(Data.field['SCAN'])+'_caloff_flux_diff_gain_'
 #        pl.savefig(title0+'Comparison_Test.png')
 #        pl.clf()
 
@@ -157,7 +158,8 @@ def calibrate_pol(Data, m_total) :
         M_sky = M_sky.I
 #        print M_sky
 
-        for cal_index in range(0,Data.dims[2]):
+#        for cal_index in range(0,Data.dims[2]):
+        for cal_index in range(0,2):
         # Determines the Gains to use   
             for freq in range(0,Data.dims[3]):
 
