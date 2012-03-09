@@ -3,14 +3,14 @@ import numpy as np
 from utils import data_paths
 from correlate import pwrspec_estimation as pe
 from utils import batch_handler
-#from core import utils
+from utils import file_tools
 # TODO: figure out theory curve stuff
 
 
 def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
                                wigglez_mock_key, wigglez_selection_key,
                                inifile=None, datapath_db=None,
-                               outdir="./plot_data_v2",
+                               outdir="./plots",
                                usecache_output_tag=None,
                                beam_transfer=None,
                                mode_transfer_1d=None,
@@ -33,6 +33,10 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
 
     caller = batch_handler.MemoizeBatch(funcname, cache_path,
                                         generate=generate, verbose=True)
+
+    if usecache_output_tag:
+        output_root = "%s/%s/" % (outdir, usecache_output_tag)
+        file_tools.mkparents(output_root)
 
     for treatment in map_cases['treatment']:
         # TODO: make this more elegant
@@ -80,7 +84,7 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
             mtag = usecache_output_tag + "_%s_mock" % treatment
             mean1dmock, std1dmock, covmock = pe.summarize_pwrspec(pwr_1d,
                               pwr_1d_from_2d, pwr_2d, mtag,
-                              outdir=outdir,
+                              outdir=output_root,
                               apply_1d_transfer=transfunc)
 
         # now recover the xspec with the real data
@@ -114,7 +118,7 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
             bin_right = pwrspec_out_signal[1]['bin_right']
             counts_histo = pwrspec_out_signal[1]['counts_histo']
 
-            filename = "%s/%s_%s.dat" % (outdir,
+            filename = "%s/%s_%s.dat" % (output_root,
                                          usecache_output_tag,
                                          treatment)
 
@@ -134,6 +138,7 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
                 #restrict_alt = np.where(restrict)[0][np.newaxis, :]
                 #restricted_cov = covmock[restrict_alt][0]
 
+                #from core import utils
                 amplitude = utils.ampfit(pwr_1d_from_2d[res_slice],
                                          covmock[res_slice, res_slice],
                                          theory_curve[res_slice])
@@ -148,7 +153,7 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
 def call_batch_gbtxwigglez_data_run(basemaps, treatments, wigglez_map_key,
                                     wigglez_mock_key, wigglez_selection_key,
                                     inifile=None, generate=False,
-                                    outdir="./plot_data_v2/",
+                                    outdir="./plots/",
                                     mode_transfer_1d=None,
                                     mode_transfer_2d=None,
                                     beam_transfer=None):

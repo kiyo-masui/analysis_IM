@@ -34,5 +34,5 @@ set title "GBT 15 hr x WiggleZ, 2D beam and 1D mode compensation"
 #     "VARIANT_combined_xWigglez_50modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
 #     "VARIANT_combined_xWigglez_75modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 75 modes}" with yerrorbars ls 4
 #     "VARIANT_combined_xWigglez_100modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 100 modes}" with yerrorbars ls 5
-plot "VARIANT_combined_xWigglez_15modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
-     "VARIANT_combined_xWigglez_25modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2
+plot "VARIANT/VARIANT_combined_xWigglez_15modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
+     "VARIANT/VARIANT_combined_xWigglez_25modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2

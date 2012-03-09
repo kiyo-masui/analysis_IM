@@ -4,11 +4,12 @@ produce outputs.
 from utils import data_paths
 from utils import batch_handler
 from correlate import pwrspec_estimation as pe
+from utils import file_tools
 
 
 def batch_physical_sim_run(sim_key, inifile=None, datapath_db=None,
                            usecache_output_tag=None, transfer=None,
-                           outdir="./plot_data_v2/"):
+                           outdir="./plots/"):
     """Test the power spectral estimator using simulations"""
     if datapath_db is None:
         datapath_db = data_paths.DataPath()
@@ -24,6 +25,10 @@ def batch_physical_sim_run(sim_key, inifile=None, datapath_db=None,
 
     caller = batch_handler.MemoizeBatch(funcname, cache_path,
                                         generate=generate, verbose=True)
+
+    if usecache_output_tag:
+        output_root = "%s/%s/" % (outdir, usecache_output_tag)
+        file_tools.mkparents(output_root)
 
     pwr_1d = []
     pwr_1d_from_2d = []
@@ -42,7 +47,7 @@ def batch_physical_sim_run(sim_key, inifile=None, datapath_db=None,
 
     if usecache_output_tag:
         pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
-                             usecache_output_tag, outdir=outdir)
+                             usecache_output_tag, outdir=output_root)
 
         retval = (pwr_1d, pwr_1d_from_2d, pwr_2d)
     else:
@@ -55,7 +60,7 @@ def batch_physical_sim_run(sim_key, inifile=None, datapath_db=None,
 def batch_sim_run(simleft_key, simright_key,
                   weightleft_key, weightright_key,
                   inifile=None, datapath_db=None,
-                  outdir="./plot_data_v2/",
+                  outdir="./plots/",
                   usecache_output_tag=None, transfer=None):
     r"""
     typical weight matrix:
@@ -76,6 +81,10 @@ def batch_sim_run(simleft_key, simright_key,
 
     caller = batch_handler.MemoizeBatch(funcname, cache_path,
                                         generate=generate, verbose=True)
+
+    if usecache_output_tag:
+        output_root = "%s/%s/" % (outdir, usecache_output_tag)
+        file_tools.mkparents(output_root)
 
     pwr_1d = []
     pwr_1d_from_2d = []
@@ -103,7 +112,7 @@ def batch_sim_run(simleft_key, simright_key,
 
     if usecache_output_tag:
         pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
-                             usecache_output_tag, outdir=outdir)
+                             usecache_output_tag, outdir=output_root)
         retval = (pwr_1d, pwr_1d_from_2d, pwr_2d)
     else:
         caller.multiprocess_stack()
@@ -114,7 +123,7 @@ def batch_sim_run(simleft_key, simright_key,
 
 def call_sim_autopower(basesims, treatments, weight, inifile=None,
                        inifile_phys=None, generate=False,
-                       outdir="./plot_data_v2/"):
+                       outdir="./plots/"):
     r"""run all of the auto-power theory cases
     """
     datapath_db = data_paths.DataPath()
@@ -150,7 +159,7 @@ def call_sim_crosspower(basesims, treatments, weight,
                         selection_function,
                         inifile=None,
                         inifile_phys=None, generate=False,
-                        outdir="./plot_data_v2/"):
+                        outdir="./plots/"):
     r"""run all of the cross-power theory cases
     """
     datapath_db = data_paths.DataPath()

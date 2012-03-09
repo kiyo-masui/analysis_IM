@@ -3,11 +3,12 @@ r"""Code to estimate power spectra of the GBT data
 from utils import data_paths
 from correlate import pwrspec_estimation as pe
 from utils import batch_handler
+from utils import file_tools
 
 
 def batch_data_run(map_key, inifile=None, datapath_db=None,
                    usecache_output_tag=None, beam_transfer=None,
-                   outdir="./plot_data_v2/",
+                   outdir="./plots/",
                    mode_transfer_1d=None,
                    mode_transfer_2d=None):
     r"""Form the pairs of maps1*weight1 x map0*weight0 for calculating the
@@ -27,6 +28,10 @@ def batch_data_run(map_key, inifile=None, datapath_db=None,
 
     caller = batch_handler.MemoizeBatch(funcname, cache_path,
                                         generate=generate, verbose=True)
+
+    if usecache_output_tag:
+        output_root = "%s/%s/" % (outdir, usecache_output_tag)
+        file_tools.mkparents(output_root)
 
     for treatment in map_cases['treatment']:
         unique_pairs = data_paths.GBTauto_cross_pairs(map_cases['pair'],
@@ -72,15 +77,16 @@ def batch_data_run(map_key, inifile=None, datapath_db=None,
                 pwr_2d.append(pwrspec_out[0])
                 pwr_1d.append(pwrspec_out[1])
 
-                mtag = usecache_output_tag + "_%s" % treatment
-                if mode_transfer_1d is not None:
-                    transfunc = mode_transfer_1d[treatment][0]
-                else:
-                    transfunc = None
+        if usecache_output_tag:
+            mtag = usecache_output_tag + "_%s" % treatment
+            if mode_transfer_1d is not None:
+                transfunc = mode_transfer_1d[treatment][0]
+            else:
+                transfunc = None
 
-                pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, mtag,
-                                     outdir=outdir,
-                                     apply_1d_transfer=transfunc)
+            pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, mtag,
+                                 outdir=output_root,
+                                 apply_1d_transfer=transfunc)
 
     if usecache_output_tag:
         # TODO: could output the P(k)'s for the various treatments
@@ -91,7 +97,7 @@ def batch_data_run(map_key, inifile=None, datapath_db=None,
 
 
 def call_data_autopower(basemaps, treatments, inifile=None, generate=False,
-                        outdir="./plot_data_v2/", mode_transfer_1d=None,
+                        outdir="./plots/", mode_transfer_1d=None,
                         mode_transfer_2d=None, beam_transfer=None):
     r"""Call a chunk of batch data runs for e.g. different map products
     """

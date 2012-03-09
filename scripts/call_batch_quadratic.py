@@ -44,12 +44,12 @@ def sim_crosspwr(inifile=None, generate=False):
 
 
 def wigglez_xspec(inifile=None, generate=False):
-    #basemaps = ["GBT_15hr_map_fluxpolcal_cleaned",
-    #            "GBT_15hr_map_oldcal_cleaned",
-    #            "GBT_15hr_map_fluxcal_cleaned",
-    #            "GBT_15hr_map_fdgcal_cleaned",
-    #            "GBT_15hr_optimalmap_mapv2fdgcal_cleaned"]
-    basemaps = ["GBT_15hr_map_fdgcal_cleaned"]
+    basemaps = ["GBT_15hr_map_fluxpolcal_cleaned",
+                "GBT_15hr_map_oldcal_cleaned",
+                "GBT_15hr_map_fluxcal_cleaned",
+                "GBT_15hr_map_fdgcal_cleaned",
+                "GBT_15hr_optimalmap_mapv2fdgcal_cleaned"]
+    #basemaps = ["GBT_15hr_map_fdgcal_cleaned"]
     treatments = ["", "_noconv"]
 
     cwx.call_batch_gbtxwigglez_data_run(basemaps, treatments,
@@ -57,7 +57,7 @@ def wigglez_xspec(inifile=None, generate=False):
                                         "WiggleZ_15hr_delta_mock",
                                         "WiggleZ_15hr_montecarlo",
                                         inifile=inifile, generate=generate,
-                                        outdir="./plot_data_v2/", mode_transfer_1d=None,
+                                        outdir="./plots/", mode_transfer_1d=None,
                                         mode_transfer_2d=None, beam_transfer=None)
 
 
@@ -67,17 +67,17 @@ def gbt_autopwr(inifile=None, generate=False):
     # not done yet: "GBT_15hr_optimalmap_mapv2fdgcalmoderm_cleaned"
     #basemaps = ["GBT_22hr_map_fluxpolcal_cleaned"]
     #basemaps = ["GBT_1hr_map_fluxpolcal_cleaned"]
-    #basemaps = ["GBT_15hr_map_fluxpolcal_cleaned",
-    #            "GBT_15hr_map_oldcal_cleaned",
-    #            "GBT_15hr_map_fluxcal_cleaned",
-    #            "GBT_15hr_map_fdgcal_cleaned",
-    #            "GBT_15hr_optimalmap_mapv2fdgcal_cleaned"]
-    basemaps = ["GBT_15hr_map_fdgcal_cleaned"]
+    basemaps = ["GBT_15hr_map_fluxpolcal_cleaned",
+                "GBT_15hr_map_oldcal_cleaned",
+                "GBT_15hr_map_fluxcal_cleaned",
+                "GBT_15hr_map_fdgcal_cleaned",
+                "GBT_15hr_optimalmap_mapv2fdgcal_cleaned"]
+    #basemaps = ["GBT_15hr_map_fdgcal_cleaned"]
     treatments = ["", "_sims", "_noconv", "_sims_noconv"]
 
     cp.call_data_autopower(basemaps, treatments, inifile=inifile,
                            generate=generate,
-                           outdir="./plot_data_v2/", mode_transfer_1d=None,
+                           outdir="./plots/", mode_transfer_1d=None,
                            mode_transfer_2d=None, beam_transfer=None)
 
 
@@ -85,11 +85,11 @@ if __name__ == '__main__':
     inifile = "input/ers/batch_quadratic/default.ini"
     inifile_phys = "input/ers/batch_quadratic/default_physical.ini"
 
+    #sim_autopwr(inifile=inifile, inifile_phys=inifile_phys, generate=False)
     #sim_crosspwr(inifile=inifile, generate=False)
-    #wigglez_xspec(inifile=inifile, generate=False)
+    wigglez_xspec(inifile=inifile, generate=False)
     gbt_autopwr(inifile=inifile, generate=False)
 
-    #sim_autopower(inifile=inifile, inifile_phys=inifile_phys)
     #sim_crosspower(inifile=inifile)
     #sim_one_sided_trans("GBT_15hr_map_fluxpolcal",
     #                    "sim_15hr_oldmap_str", inifile=inifile)
