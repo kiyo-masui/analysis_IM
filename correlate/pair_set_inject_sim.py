@@ -62,7 +62,6 @@ class PairSet(ft.ClassPersistence):
         self.noisefiledict = {}
         self.datapath_db = dp.DataPath()
 
-
         self.params = parse_ini.parse(parameter_file_or_dict, params_init,
                                       prefix=prefix)
 
@@ -79,7 +78,7 @@ class PairSet(ft.ClassPersistence):
     def execute(self):
         r"""main call to execute the various steps in foreground removal"""
         self.calculate_corr_svd()
-        self.clean_maps(freestanding=False) # data are already loaded
+        self.clean_maps(freestanding=False)  # data are already loaded
 
     def calculate_corr_svd(self):
         r""" "macro" which finds the correlation functions for the pairs of
@@ -242,14 +241,15 @@ class PairSet(ft.ClassPersistence):
             pair = self.pairs[pairitem]
             pair_nosim = self.pairs_nosim[pairitem]
             (tag1, tag2) = (pair.map1_name, pair.map2_name)
+            clnoise = "cleaned_noise_inv"
             map1_file = "%s/sec_%s_cleaned_clean_map_I_with_%s_%s.npy" % \
                             (self.output_root, tag1, tag2, n_modes)
             map2_file = "%s/sec_%s_cleaned_clean_map_I_with_%s_%s.npy" % \
                             (self.output_root, tag2, tag1, n_modes)
-            noise_inv1_file = "%s/sec_%s_cleaned_noise_inv_I_with_%s_%s.npy" % \
-                            (self.output_root, tag1, tag2, n_modes)
-            noise_inv2_file = "%s/sec_%s_cleaned_noise_inv_I_with_%s_%s.npy" % \
-                            (self.output_root, tag2, tag1, n_modes)
+            noise_inv1_file = "%s/sec_%s_%s_I_with_%s_%s.npy" % \
+                            (self.output_root, tag1, clnoise, tag2, n_modes)
+            noise_inv2_file = "%s/sec_%s_%s_I_with_%s_%s.npy" % \
+                            (self.output_root, tag2, clnoise, tag1, n_modes)
             modes1_file = "%s/sec_%s_modes_clean_map_I_with_%s_%s.npy" % \
                             (self.output_root, tag1, tag2, n_modes)
             modes2_file = "%s/sec_%s_modes_clean_map_I_with_%s_%s.npy" % \
@@ -298,6 +298,8 @@ class PairSet(ft.ClassPersistence):
                                                 algebra.load(filename_diag))
             else:
                 print "loading noise: " + filename
+                # TODO: have this be smarter about reading various noise cov
+                # inputs
                 noise_inv = algebra.make_mat(
                                     algebra.open_memmap(filename, mode='r'))
                 self.noisefiledict[filename] = noise_inv.mat_diag()

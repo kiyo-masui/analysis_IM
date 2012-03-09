@@ -9,6 +9,19 @@ set style line 8 lt 2 lw 2 linecolor rgb "black"
 set style line 9 lt 3 lw 4 linecolor rgb "black"
 set style line 10 lt 2 lw 2 linecolor rgb "red"
 
+# sim_15hr_oldmap_[ideal, nostr, str]_[beam, beam_conv, beam_meansub, beam_meansubconv, physical, temperature]_[avg_2d_counts, avg_2d, avg_from2d].dat
+# various comparisons we would like to make:
+# between ideal, nostr, str in the physical case, from 2D
+# for just the str case, impact of beam, beam_conv, beam_meansub, beam_meansubconv relative to temperature
+
+# TODO: what about the sims corrected by the 1 and 2D transfer functions; comparison
+# TODO: what about modes subtending in physical volume? -- correct column?
+
+# previous comparisons:
+# ideal, nostr, str, adding beam to str, adding beam and meansub conv to str, corrected by 2D transfer
+# signal loss in sims: str, str+beam, str+beam+meansubconv, +0 modes, ... +50 modes
+# theory power spectrum, ideal comparison, adding vv, evo, streaming, in the real region
+
 set size 1., 1.
 set terminal postscript eps enhanced color "Helvetica" 20
 set output "sim/sim_pwr_variants.eps"
@@ -24,29 +37,12 @@ set yrange [1e-10: 1e-6]
 #set y2tics
 set title "Recovering the power spectrum of simulations -- observed volume"
 set key at screen 0.6, 0.85
-#     "simideal_15hr_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 density only}" with yerrorbars
-#     "sim_15hr_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo.}" with yerrorbars
-#     "sim_15hr_beam_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo., beam}" with yerrorbars
-#     "sim_15hr_beam_meanconv_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo., beam, meansub, conv.}" with yerrorbars
-plot "simideal_15hr_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 density only}" with yerrorbars ls 1, \
-     "sim_15hr_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo.}" with yerrorbars ls 2, \
-     "simvel_15hr_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, streaming evo.}" with yerrorbars ls 5, \
-     "sim_15hr_beam_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo., beam}" with yerrorbars ls 3, \
-     "sim_15hr_beam_meanconv_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo., beam, meansub, conv.}" with yerrorbars ls 4, \
-     "sim_15hr_beam_meanconv_corrected_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 case above, corrected by 2D transfer}" with yerrorbars ls 10
-
-set output "sim/sim_pwr_modeloss.eps"
-set title "Impact of mode subtraction on the simulations"
-set key at screen 0.6, 0.85
-plot "sim_15hr_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo.}" with yerrorbars ls 2, \
-     "sim_15hr_beam_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo., beam}" with yerrorbars ls 3, \
-     "sim_15hr_beam_meanconv_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo., beam, meansub, conv.}" with yerrorbars ls 4, \
-     "GBT15hr_sim_0modes_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 above, 0 modes}" with yerrorbars ls 1, \
-     "GBT15hr_sim_10modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 10 modes}" with points ls 5, \
-     "GBT15hr_sim_20modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 20 modes}" with points ls 6, \
-     "GBT15hr_sim_30modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 20 modes}" with points ls 10, \
-     "GBT15hr_sim_40modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 20 modes}" with points ls 1, \
-     "GBT15hr_sim_50modes_avg_from2d.dat" using 2:5 t "{/Helvetica=13 20 modes}" with points ls 2
+# "sim_15hr_beam_meanconv_corrected_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 case above, corrected by 2D transfer}" with yerrorbars ls 10
+plot "sim_15hr_oldmap_ideal_temperature_avg_from2d.dat" using 2:5:($6) t "{/Helvetica=13 density only}" with yerrorbars ls 1, \
+     "sim_15hr_oldmap_nostr_temperature_avg_from2d.dat" using 2:5:($6) t "{/Helvetica=13 dd, vv, evo.}" with yerrorbars ls 2, \
+     "sim_15hr_oldmap_str_temperature_avg_from2d.dat" using 2:5:($6) t "{/Helvetica=13 dd, vv, streaming evo.}" with yerrorbars ls 5, \
+     "sim_15hr_oldmap_str_beam_avg_from2d.dat" using 2:5:($6) t "{/Helvetica=13 dd, vv, evo., beam}" with yerrorbars ls 3, \
+     "sim_15hr_oldmap_str_beam_meansubconv_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo., beam, meansub, conv.}" with yerrorbars ls 4
 
 set output "sim/simtheory_pwr_variants.eps"
 set y2label "# modes available"
@@ -55,15 +51,11 @@ set y2tics
 set yrange [1e-10:5e-6]
 set title "Recovering the input theory power spectrum"
 set key at screen 0.6, 0.85
-#     "simideal_15hr_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 density only}" with yerrorbars
-#     "sim_15hr_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo.}" with yerrorbars
-#     "sim_15hr_beam_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo., beam}" with yerrorbars
-#     "sim_15hr_beam_meanconv_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo., beam, meansub, conv.}" with yerrorbars
-#     "sim_15hr_physical_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 dd, vv, evo}" with yerrorbars ls 5
+# "sim_15hr_oldmap_str_temperature_avg.dat" using 2:5 t "{/Helvetica=13 dd, vv, evo., streaming, obs. region (1D est.)}" with points ls 3
 plot "theory_power_spectrum.dat" using 2:4 t "{/Helvetica=13 dd theory, no evo.}" with histeps ls 6, \
-     "simideal_15hr_physical_avg.dat" using 2:5:($6*2) t "{/Helvetica=13 density only}" with yerrorbars ls 4, \
-     "sim_15hr_physical_avg.dat" using 2:5 t "{/Helvetica=13 dd, vv, evo}" with points ls 5, \
-     "simvel_15hr_physical_avg.dat" using 2:5 t "{/Helvetica=13 dd, vv, streaming, evo}" with points ls 2, \
-     "sim_15hr_avg.dat" using 2:5 t "{/Helvetica=13 dd, vv, evo., obs. region}" with points ls 1, \
-     "sim_15hr_physical_avg.dat" using 2:4 axes x2y2 t "{/Helvetica=13 # k modes (phys. subtrending)}" with histeps ls 8
+     "sim_15hr_oldmap_ideal_physical_avg_from2d.dat" using 2:5:($6*2) t "{/Helvetica=13 density only}" with yerrorbars ls 4, \
+     "sim_15hr_oldmap_nostr_physical_avg_from2d.dat" using 2:5 t "{/Helvetica=13 dd, vv, evo}" with points ls 5, \
+     "sim_15hr_oldmap_str_physical_avg_from2d.dat" using 2:5 t "{/Helvetica=13 dd, vv, streaming, evo}" with points ls 2, \
+     "sim_15hr_oldmap_str_temperature_avg_from2d.dat" using 2:5 t "{/Helvetica=13 dd, vv, evo., streaming, obs. region}" with points ls 1, \
+     "sim_15hr_oldmap_str_physical_avg_from2d.dat" using 2:4 axes x2y2 t "{/Helvetica=13 # k modes (phys. subtrending)}" with histeps ls 8
 

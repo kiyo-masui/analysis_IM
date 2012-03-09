@@ -1,13 +1,18 @@
+python correlate/pair_set.py input/ers/map_cleaning/GBT_15hr_map_fdgcal_plussim_cleaned.ini >& GBT_15hr_map_fdgcal_plussim_cleaned.log &
+python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_map_fdgcal_plussim_cleaned_sims.ini >& GBT_15hr_map_fdgcal_plussim_cleaned_sims.log &
+python correlate/pair_set.py input/ers/map_cleaning/GBT_15hr_map_fdgcal_plussim_cleaned_noconv.ini >& GBT_15hr_map_fdgcal_plussim_cleaned_noconv.log &
+python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_map_fdgcal_plussim_cleaned_sims_noconv.ini >& GBT_15hr_map_fdgcal_plussim_cleaned_sims_noconv.log
+
 # note that these have different covariance inputs
 #python correlate/pair_set.py input/ers/map_cleaning/GBT_15hr_optimalmap_mapv2oldcal_cleaned.ini >& GBT_15hr_optimalmap_mapv2oldcal_cleaned.log &
-python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_optimalmap_mapv2oldcal_cleaned_sims.ini >& GBT_15hr_optimalmap_mapv2oldcal_cleaned_sims.log &
+#python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_optimalmap_mapv2oldcal_cleaned_sims.ini >& GBT_15hr_optimalmap_mapv2oldcal_cleaned_sims.log &
 #python correlate/pair_set.py input/ers/map_cleaning/GBT_15hr_optimalmap_mapv2oldcal_cleaned_noconv.ini >& GBT_15hr_optimalmap_mapv2oldcal_cleaned_noconv.log &
-python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_optimalmap_mapv2oldcal_cleaned_sims_noconv.ini >& GBT_15hr_optimalmap_mapv2oldcal_cleaned_sims_noconv.log &
+#python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_optimalmap_mapv2oldcal_cleaned_sims_noconv.ini >& GBT_15hr_optimalmap_mapv2oldcal_cleaned_sims_noconv.log &
 
 #python correlate/pair_set.py input/ers/map_cleaning/GBT_15hr_optimalmap_mapv2fdgcal_cleaned.ini >& GBT_15hr_optimalmap_mapv2fdgcal_cleaned.log &
-python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_optimalmap_mapv2fdgcal_cleaned_sims.ini >& GBT_15hr_optimalmap_mapv2fdgcal_cleaned_sims.log &
+#python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_optimalmap_mapv2fdgcal_cleaned_sims.ini >& GBT_15hr_optimalmap_mapv2fdgcal_cleaned_sims.log &
 #python correlate/pair_set.py input/ers/map_cleaning/GBT_15hr_optimalmap_mapv2fdgcal_cleaned_noconv.ini >& GBT_15hr_optimalmap_mapv2fdgcal_cleaned_noconv.log &
-python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_optimalmap_mapv2fdgcal_cleaned_sims_noconv.ini >& GBT_15hr_optimalmap_mapv2fdgcal_cleaned_sims_noconv.log
+#python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_optimalmap_mapv2fdgcal_cleaned_sims_noconv.ini >& GBT_15hr_optimalmap_mapv2fdgcal_cleaned_sims_noconv.log
 
 # TODO fix this junk and run the 1hr field
 #python correlate/pair_set.py input/ers/map_cleaning/GBT_1hr_map_fluxpolcal_cleaned.ini >& GBT_1hr_map_fluxpolcal_cleaned.log &

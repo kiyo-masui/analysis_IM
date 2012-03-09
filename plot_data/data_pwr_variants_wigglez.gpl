@@ -14,130 +14,25 @@ set terminal postscript eps enhanced color "Helvetica" 20
 set logscale
 set xlabel "|k| (h cMpc^{-1})"
 set ylabel "{/Symbol D}(k)^2 (K)"
-set title "GBT 15 hr, no compensation"
+set title "TITLE, no compensation"
 set key at screen 0.5, 0.85
-
-# OLD STUFF
-#set yrange [1e-7: 1e-3]
-#set xrange [0.1: 1]
-#set output "convmeansub/wigglez_x_GBT_beammodecomp_yichao.eps"
-#set title "GBT 15 hr x WiggleZ, 2D beam and 1D mode compensation"
-#plot "wigglez_x_GBT_beammodecomp_15modes.dat" using 2:($5-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
-#     "wigglez_x_GBT_beammodecomp_25modes.dat" using ($2*1.02):($5-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
-#     "wigglez_x_GBT_beammodecomp_50modes.dat" using ($2*1.04):($5-$7):($8) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
-
-#set output "convmeansub/wigglez_x_GBT_yichao.eps"
-#set title "GBT 15 hr x WiggleZ"
-#plot "wigglez_x_GBT_15modes.dat" using 2:($5-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
-#     "wigglez_x_GBT_25modes.dat" using ($2*1.02):($5-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
-#     "wigglez_x_GBT_50modes.dat" using ($2*1.04):($5-$7):($8) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
-
-# RELEVANT plots
 set yrange [1e-6: 1e-3]
 set xrange [0.08: 1.1]
-set output "noconv/wigglez_x_GBT_noconv_2dbeam1dmodecomp_yichao.eps"
+
+# TODO: additional cases to add:
+# simulation which is appropriate for the data run
+# 1D mode compensation, 1D mode
+# 1D mode compensation, 2D mode
+# 2D beam compensation
+# 2D beam compensation and 1D mode compensation
+# 2D beam compensation and 2D mode compensation
+
+set output "gbt_x_wigglez/VARIANT_no_compensation.eps"
 set title "GBT 15 hr x WiggleZ, 2D beam and 1D mode compensation"
-plot "simvel_wigglezxGBT15hr_avg.dat" using 2:($5*0.33):($5*0.47) notitle with filledcu ls 6, \
-     "simvel_wigglezxGBT15hr_avg.dat" using 2:($5*0.4) t "{/Helvetica=13 sim. {/Symbol W}_{HI} = 4 10^{-4}}" with lines ls 8, \
-     "wigglez_x_GBT_2dbeam1dmodecomp_noconv_15modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
-     "wigglez_x_GBT_2dbeam1dmodecomp_noconv_25modes.dat" using ($2*1.02):($6-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
-     "wigglez_x_GBT_2dbeam1dmodecomp_noconv_50modes.dat" using ($2*1.04):($6-$7):($8) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
-
-set output "noconv/wigglez_x_GBT_noconv_2dbeam2dmodecomp_yichao.eps"
-set title "GBT 15 hr x WiggleZ, 2D beam and 2D mode compensation"
-# "simvel_wigglezxGBT15hr_avg.dat" using 2:5:6 t "{/Helvetica=13 sim.}" with yerrorbars ls 6
-# "simvel_wigglezxGBT15hr_avg.dat" using 2:($5/2) t "{/Helvetica=13 sim. {/Symbol W}_{HI} = 5 10^{-4}}" with histeps ls 6
-# "simvel_wigglezxGBT15hr_avg.dat" using 2:5 notitle with histeps ls 6
-# "simvel_wigglezxGBT15hr_avg.dat" using 2:($5*0.4):($6*0.4) t "{/Helvetica=13  sim. {/Symbol W}_{HI} = 4 10^{-4}}" with yerrorbars ls 8
-plot "simvel_wigglezxGBT15hr_avg.dat" using 2:($5*0.33):($5*0.47) notitle with filledcu ls 6, \
-     "simvel_wigglezxGBT15hr_avg.dat" using 2:($5*0.4) t "{/Helvetica=13 sim. {/Symbol W}_{HI} = 4 10^{-4}}" with lines ls 8, \
-     "wigglez_x_GBT_2dbeam2dmodecomp_noconv_15modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
-     "wigglez_x_GBT_2dbeam2dmodecomp_noconv_25modes.dat" using ($2*1.02):($6-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
-     "wigglez_x_GBT_2dbeam2dmodecomp_noconv_50modes.dat" using ($2*1.04):($6-$7):($8) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
-
-set output "noconv/wigglez_x_GBT_noconv_1dbeam1dmodecomp_yichao.eps"
-set title "GBT 15 hr x WiggleZ, 1D beam and 1D mode compensation"
-plot "simvel_wigglezxGBT15hr_avg.dat" using 2:($5*0.33):($5*0.47) notitle with filledcu ls 6, \
-     "simvel_wigglezxGBT15hr_avg.dat" using 2:($5*0.4) t "{/Helvetica=13 sim. {/Symbol W}_{HI} = 4 10^{-4}}" with lines ls 8, \
-     "wigglez_x_GBT_1dbeam1dmodecomp_noconv_15modes.dat" using 2:($5-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
-     "wigglez_x_GBT_1dbeam1dmodecomp_noconv_25modes.dat" using ($2*1.02):($5-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
-     "wigglez_x_GBT_1dbeam1dmodecomp_noconv_50modes.dat" using ($2*1.04):($5-$7):($8) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
-
-set output "noconv/wigglez_x_GBT_noconv_2dbeamcomp_yichao.eps"
-set title "GBT 15 hr x WiggleZ, 2D beam compensation"
-plot "simvel_wigglezxGBT15hr_avg.dat" using 2:($5*0.33):($5*0.47) notitle with filledcu ls 6, \
-     "simvel_wigglezxGBT15hr_avg.dat" using 2:($5*0.4) t "{/Helvetica=13 sim. {/Symbol W}_{HI} = 4 10^{-4}}" with lines ls 8, \
-     "wigglez_x_GBT_2dbeamcomp_noconv_15modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
-     "wigglez_x_GBT_2dbeamcomp_noconv_25modes.dat" using ($2*1.02):($6-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
-     "wigglez_x_GBT_2dbeamcomp_noconv_50modes.dat" using ($2*1.04):($6-$7):($8) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
-
-set output "noconv/wigglez_x_GBT_noconv_yichao.eps"
-set title "GBT 15 hr x WiggleZ; no compensation 3D->1D"
-plot "simvel_wigglezxGBT15hr_beam_avg.dat" using 2:5:6 t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
-     "simvel_wigglezxGBT15hr_beam_avg.dat" using 2:5 notitle with histeps ls 6, \
-     "wigglez_x_GBT_nocomp_noconv_15modes.dat" using 2:($5-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
-     "wigglez_x_GBT_nocomp_noconv_25modes.dat" using ($2*1.02):($5-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
-     "wigglez_x_GBT_nocomp_noconv_50modes.dat" using ($2*1.04):($5-$7):($8) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
-
-set output "noconv/wigglez_x_GBT_noconv_yichao_from2d.eps"
-set title "GBT 15 hr x WiggleZ; no compensation, 3D->2D->1D"
-plot "simvel_wigglezxGBT15hr_beam_avg.dat" using 2:5:6 t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
-     "simvel_wigglezxGBT15hr_beam_avg.dat" using 2:5 notitle with histeps ls 6, \
-     "wigglez_x_GBT_nocomp_noconv_15modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
-     "wigglez_x_GBT_nocomp_noconv_25modes.dat" using ($2*1.02):($6-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
-     "wigglez_x_GBT_nocomp_noconv_50modes.dat" using ($2*1.04):($6-$7):($8) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
-
-# RELEVANT plots
-set yrange [1e-6: 1e-3]
-set xrange [0.08: 1.1]
-set output "convmeansub/wigglez_x_GBT_2dbeam1dmodecomp_yichao.eps"
-set title "GBT 15 hr x WiggleZ, 2D beam and 1D mode compensation"
-plot "simvel_wigglezxGBT15hr_avg.dat" using 2:($5*0.33):($5*0.47) notitle with filledcu ls 6, \
-     "simvel_wigglezxGBT15hr_avg.dat" using 2:($5*0.4) t "{/Helvetica=13 sim. {/Symbol W}_{HI} = 4 10^{-4}}" with lines ls 8, \
-     "wigglez_x_GBT_2dbeam1dmodecomp_15modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
-     "wigglez_x_GBT_2dbeam1dmodecomp_25modes.dat" using ($2*1.02):($6-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
-     "wigglez_x_GBT_2dbeam1dmodecomp_50modes.dat" using ($2*1.04):($6-$7):($8) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
-
-set output "convmeansub/wigglez_x_GBT_2dbeam2dmodecomp_yichao.eps"
-set title "GBT 15 hr x WiggleZ, 2D beam and 2D mode compensation"
-# "simvel_wigglezxGBT15hr_avg.dat" using 2:5:6 t "{/Helvetica=13 sim.}" with yerrorbars ls 6
-# "simvel_wigglezxGBT15hr_avg.dat" using 2:($5/2) t "{/Helvetica=13 sim. {/Symbol W}_{HI} = 5 10^{-4}}" with histeps ls 6
-# "simvel_wigglezxGBT15hr_avg.dat" using 2:5 notitle with histeps ls 6
-# "simvel_wigglezxGBT15hr_avg.dat" using 2:($5*0.4):($6*0.4) t "{/Helvetica=13  sim. {/Symbol W}_{HI} = 4 10^{-4}}" with yerrorbars ls 8
-plot "simvel_wigglezxGBT15hr_avg.dat" using 2:($5*0.33):($5*0.47) notitle with filledcu ls 6, \
-     "simvel_wigglezxGBT15hr_avg.dat" using 2:($5*0.4) t "{/Helvetica=13 sim. {/Symbol W}_{HI} = 4 10^{-4}}" with lines ls 8, \
-     "wigglez_x_GBT_2dbeam2dmodecomp_15modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
-     "wigglez_x_GBT_2dbeam2dmodecomp_25modes.dat" using ($2*1.02):($6-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
-     "wigglez_x_GBT_2dbeam2dmodecomp_50modes.dat" using ($2*1.04):($6-$7):($8) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
-
-set output "convmeansub/wigglez_x_GBT_1dbeam1dmodecomp_yichao.eps"
-set title "GBT 15 hr x WiggleZ, 1D beam and 1D mode compensation"
-plot "simvel_wigglezxGBT15hr_avg.dat" using 2:($5*0.33):($5*0.47) notitle with filledcu ls 6, \
-     "simvel_wigglezxGBT15hr_avg.dat" using 2:($5*0.4) t "{/Helvetica=13 sim. {/Symbol W}_{HI} = 4 10^{-4}}" with lines ls 8, \
-     "wigglez_x_GBT_1dbeam1dmodecomp_15modes.dat" using 2:($5-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
-     "wigglez_x_GBT_1dbeam1dmodecomp_25modes.dat" using ($2*1.02):($5-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
-     "wigglez_x_GBT_1dbeam1dmodecomp_50modes.dat" using ($2*1.04):($5-$7):($8) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
-
-set output "convmeansub/wigglez_x_GBT_2dbeamcomp_yichao.eps"
-set title "GBT 15 hr x WiggleZ, 2D beam compensation"
-plot "simvel_wigglezxGBT15hr_avg.dat" using 2:($5*0.33):($5*0.47) notitle with filledcu ls 6, \
-     "simvel_wigglezxGBT15hr_avg.dat" using 2:($5*0.4) t "{/Helvetica=13 sim. {/Symbol W}_{HI} = 4 10^{-4}}" with lines ls 8, \
-     "wigglez_x_GBT_2dbeamcomp_15modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
-     "wigglez_x_GBT_2dbeamcomp_25modes.dat" using ($2*1.02):($6-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
-     "wigglez_x_GBT_2dbeamcomp_50modes.dat" using ($2*1.04):($6-$7):($8) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
-
-set output "convmeansub/wigglez_x_GBT_yichao.eps"
-set title "GBT 15 hr x WiggleZ; no compensation 3D->1D"
-plot "simvel_wigglezxGBT15hr_beam_avg.dat" using 2:5:6 t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
-     "simvel_wigglezxGBT15hr_beam_avg.dat" using 2:5 notitle with histeps ls 6, \
-     "wigglez_x_GBT_nocomp_15modes.dat" using 2:($5-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
-     "wigglez_x_GBT_nocomp_25modes.dat" using ($2*1.02):($5-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
-     "wigglez_x_GBT_nocomp_50modes.dat" using ($2*1.04):($5-$7):($8) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
-
-set output "convmeansub/wigglez_x_GBT_yichao_from2d.eps"
-set title "GBT 15 hr x WiggleZ; no compensation, 3D->2D->1D"
-plot "simvel_wigglezxGBT15hr_beam_avg.dat" using 2:5:6 t "{/Helvetica=13 sim.}" with yerrorbars ls 6, \
-     "simvel_wigglezxGBT15hr_beam_avg.dat" using 2:5 notitle with histeps ls 6, \
-     "wigglez_x_GBT_nocomp_15modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
-     "wigglez_x_GBT_nocomp_25modes.dat" using ($2*1.02):($6-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
-     "wigglez_x_GBT_nocomp_50modes.dat" using ($2*1.04):($6-$7):($8) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
+# "SIMKEY_xWigglez_avg_from2d.dat" using 2:($5*0.33):($5*0.47) notitle with filledcu ls 6
+# "SIMKEY_xWigglez_avg_from2d.dat" using 2:($5*0.4) t "{/Helvetica=13 sim. {/Symbol W}_{HI} = 4 10^{-4}}" with lines ls 8
+#     "VARIANT_combined_xWigglez_50modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
+#     "VARIANT_combined_xWigglez_75modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 75 modes}" with yerrorbars ls 4
+#     "VARIANT_combined_xWigglez_100modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 100 modes}" with yerrorbars ls 5
+plot "VARIANT_combined_xWigglez_15modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
+     "VARIANT_combined_xWigglez_25modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2
