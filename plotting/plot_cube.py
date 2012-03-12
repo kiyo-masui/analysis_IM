@@ -60,6 +60,7 @@ def make_cube_movie(source_key, colorbar_title, frame_dir,
     #cube = algebra.make_vect(algebra.load(source_key)) * multiplier
     cube =  datapath_db.fetch_multi(source_key) * multiplier
     if logscale:
+        cube[cube < 0] = np.min(np.abs(cube))
         cube = np.log10(cube)
 
     isnan = np.isnan(cube)

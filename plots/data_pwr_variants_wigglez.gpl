@@ -18,6 +18,14 @@ set title "TITLE, no compensation"
 set key at screen 0.5, 0.85
 set yrange [1e-6: 1e-3]
 set xrange [0.08: 1.1]
+set output "gbt_x_wigglez/VARIANT_no_compensation.eps"
+plot "SIMKEY_xWigglez/SIMKEY_xWigglez_avg_from2d.dat" using 2:($5*0.33):($5*0.47) notitle with filledcu ls 6,\
+     "SIMKEY_xWigglez/SIMKEY_xWigglez_avg_from2d.dat" using 2:($5*0.4) t "{/Helvetica=13 sim. {/Symbol W}_{HI} = 4 10^{-4}}" with lines ls 8, \
+     "VARIANT_combined_xWigglez/VARIANT_combined_xWigglez_15modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
+     "VARIANT_combined_xWigglez/VARIANT_combined_xWigglez_25modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2, \
+     "VARIANT_combined_xWigglez/VARIANT_combined_xWigglez_50modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3, \
+     "VARIANT_combined_xWigglez/VARIANT_combined_xWigglez_75modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 75 modes}" with yerrorbars ls 4, \
+     "VARIANT_combined_xWigglez/VARIANT_combined_xWigglez_100modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 100 modes}" with yerrorbars ls 5
 
 # TODO: additional cases to add:
 # simulation which is appropriate for the data run
@@ -26,13 +34,3 @@ set xrange [0.08: 1.1]
 # 2D beam compensation
 # 2D beam compensation and 1D mode compensation
 # 2D beam compensation and 2D mode compensation
-
-set output "gbt_x_wigglez/VARIANT_no_compensation.eps"
-set title "GBT 15 hr x WiggleZ, 2D beam and 1D mode compensation"
-# "SIMKEY_xWigglez_avg_from2d.dat" using 2:($5*0.33):($5*0.47) notitle with filledcu ls 6
-# "SIMKEY_xWigglez_avg_from2d.dat" using 2:($5*0.4) t "{/Helvetica=13 sim. {/Symbol W}_{HI} = 4 10^{-4}}" with lines ls 8
-#     "VARIANT_combined_xWigglez_50modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 50 modes}" with yerrorbars ls 3
-#     "VARIANT_combined_xWigglez_75modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 75 modes}" with yerrorbars ls 4
-#     "VARIANT_combined_xWigglez_100modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 100 modes}" with yerrorbars ls 5
-plot "VARIANT/VARIANT_combined_xWigglez_15modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 15 modes}" with yerrorbars ls 1, \
-     "VARIANT/VARIANT_combined_xWigglez_25modes.dat" using 2:($6-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 2

@@ -29,6 +29,7 @@ from multiprocessing import Process, current_process
 # TODO: replace print with logging
 
 params_init = {
+               'SVD_root': None,
                'output_root': "local_test",
                # Options of saving.
                # What frequencies to correlate:
@@ -69,6 +70,13 @@ class PairSet(ft.ClassPersistence):
         self.lags = sp.array(self.params['lags'])
         self.output_root = self.datapath_db.fetch(self.params['output_root'],
                                                   intend_write=True)
+
+        if self.params['SVD_root']:
+            self.SVD_root = self.datapath_db.fetch(self.params['SVD_root'],
+                                                   intend_write=True)
+            print "WARNING: using %s to clean (intended?)" % self.SVD_root
+        else:
+            self.SVD_root = self.output_root
 
         # Write parameter file.
         kiyopy.utils.mkparents(self.output_root)
@@ -182,7 +190,6 @@ class PairSet(ft.ClassPersistence):
         for pairitem in self.pairlist:
             filename = self.output_root
             filename += "foreground_corr_pair_%s.pkl" % pairitem
-            #wrap_corr(self.pairs[pairitem], filename)
             multi = Process(target=wrap_corr, args=([self.pairs[pairitem],
                             filename]), name=pairitem)
 
@@ -216,8 +223,11 @@ class PairSet(ft.ClassPersistence):
         in the svd, removing the first `n_modes`
         """
         for pairitem in self.pairlist:
-            print "subtracting %d modes from %s" % (n_modes, pairitem)
-            filename_svd = "%s/SVD_pair_%s.pkl" % (self.output_root, pairitem)
+            filename_svd = "%s/SVD_pair_%s.pkl" % (self.SVD_root, pairitem)
+            print "subtracting %d modes from %s using %s" % (n_modes, \
+                                                             pairitem, \
+                                                             filename_svd)
+
             # svd_info: 0 is vals, 1 is modes1 (left), 2 is modes2 (right)
             svd_info = ft.load_pickle(filename_svd)
 
