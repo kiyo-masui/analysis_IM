@@ -1,7 +1,7 @@
 from correlate import compile_simpwrspec as csp
 from correlate import compile_pwrspec as cp
 from correlate import compile_wigglez_xspec as cwx
-from correlate import compile_corrfg_transfer as cct
+from correlate import compile_crosspwr_transfer as cxt
 from utils import data_paths
 import sys
 
@@ -30,7 +30,7 @@ def sim_crosspwr(inifile=None, generate=False):
                             inifile=inifile, generate=generate)
 
 
-def corrfg_crosspwr_transfer_run(mapname, rootsim, selection_function,
+def corrfg_crosspwr_transfer_run(cleaned_simkey, rootsim, selection_function,
                                  simindex="1", weightmap="15modes",
                                  include_beam=True,
                                  inifile=None, generate=False, alttag=None):
@@ -42,20 +42,20 @@ def corrfg_crosspwr_transfer_run(mapname, rootsim, selection_function,
 
     if include_beam:
         basesim_key = "%s_temperature:%s" % (rootsim, simindex)
-        output_tag = mapname + "_corrfgtranswithbeam"
+        output_tag = cleaned_simkey + "_corrfgtranswithbeam"
     else:
         basesim_key = "%s_beam:%s" % (rootsim, simindex)
-        output_tag = mapname + "_corrfgtransnobeam"
+        output_tag = cleaned_simkey + "_corrfgtransnobeam"
 
     if alttag:
         output_tag += "_" + alttag
 
-    basesim_weightkey = "%s:weight;%s" % (mapname, weightmap)
+    basesim_weightkey = "%s:weight;%s" % (cleaned_simkey, weightmap)
 
     if generate:
         output_tag = None
 
-    return cct.batch_corrfg_transfer_run(mapname, delta_simkey,
+    return cxt.batch_crosspwr_transfer(cleaned_simkey, delta_simkey,
                                       deltasim_weightkey,
                                       basesim_key, basesim_weightkey,
                                       inifile=inifile, datapath_db=datapath_db,
@@ -67,21 +67,21 @@ def wigglez_crosspwr(inifile=None, generate=False):
     rootsim = "sim_15hr_oldmap_str"
     selection_function = "WiggleZ_15hr_montecarlo"
 
-    mapname = "GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined"
-    transfer = corrfg_crosspwr_transfer_run(mapname, rootsim, selection_function,
+    cleaned_simkey = "GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined"
+    transfer = corrfg_crosspwr_transfer_run(cleaned_simkey, rootsim, selection_function,
                                             include_beam=True, inifile=inifile,
                                             generate=generate)
 
-    transfer = corrfg_crosspwr_transfer_run(mapname, rootsim, selection_function,
+    transfer = corrfg_crosspwr_transfer_run(cleaned_simkey, rootsim, selection_function,
                                             include_beam=False, inifile=inifile,
                                             generate=generate)
 
-    mapname = "GBT_15hr_map_fdgcal_plussim_cleaned_combined"
-    transfer = corrfg_crosspwr_transfer_run(mapname, rootsim, selection_function,
+    cleaned_simkey = "GBT_15hr_map_fdgcal_plussim_cleaned_combined"
+    transfer = corrfg_crosspwr_transfer_run(cleaned_simkey, rootsim, selection_function,
                                             include_beam=True, inifile=inifile,
                                             generate=generate)
 
-    transfer = corrfg_crosspwr_transfer_run(mapname, rootsim, selection_function,
+    transfer = corrfg_crosspwr_transfer_run(cleaned_simkey, rootsim, selection_function,
                                             include_beam=False, inifile=inifile,
                                             generate=generate)
 
