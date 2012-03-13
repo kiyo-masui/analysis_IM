@@ -150,6 +150,7 @@ if __name__ == '__main__':
     #wrap_combine("GBT_15hr_map_fluxpolcal")
     #wrap_combine("GBT_1hr_map_fluxpolcal")
     #wrap_combine("GBT_15hr_map_fdgcal")
-    wrap_combine("GBT_15hr_map_fdgcal_plussim")
+    #wrap_combine("GBT_15hr_map_fdgcal_plussim")
+    wrap_combine("GBT_15hr_map_fdgcal_cleanedplussim")
     #wrap_combine("GBT_15hr_map_oldcal")
     #wrap_combine("GBT_15hr_map_fluxcal")

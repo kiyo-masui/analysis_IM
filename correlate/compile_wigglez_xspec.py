@@ -77,7 +77,7 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
 
         if usecache_output_tag:
             if mode_transfer_1d is not None:
-                transfunc = mode_transfer_1d[treatment][0]
+                transfunc = mode_transfer_1d[treatment][1]
             else:
                 transfunc = None
 
@@ -109,8 +109,8 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
             pwr_1d = pwrspec_out_signal[1]['binavg']
             pwr_1d_from_2d = pwr_1d_from_2d['binavg']
             if mode_transfer_1d is not None:
-                pwr_1d /= mode_transfer_1d[treatment][0]
-                pwr_1d_from_2d /= mode_transfer_1d[treatment][0]
+                pwr_1d /= mode_transfer_1d[treatment][1]
+                pwr_1d_from_2d /= mode_transfer_1d[treatment][1]
 
             # assume that they all have the same binning
             bin_left = pwrspec_out_signal[1]['bin_left']
@@ -153,7 +153,7 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
 def call_batch_gbtxwigglez_data_run(basemaps, treatments, wigglez_map_key,
                                     wigglez_mock_key, wigglez_selection_key,
                                     inifile=None, generate=False,
-                                    outdir="./plots/",
+                                    outdir="./plots/", alttag=None,
                                     mode_transfer_1d=None,
                                     mode_transfer_2d=None,
                                     beam_transfer=None):
@@ -170,6 +170,8 @@ def call_batch_gbtxwigglez_data_run(basemaps, treatments, wigglez_map_key,
             usecache_output_tag = None
             if not generate:
                 usecache_output_tag = mapname + "_xWigglez"
+                if alttag:
+                    usecache_output_tag += "_" + alttag
 
             batch_gbtxwigglez_data_run(mapname, wigglez_map_key,
                                wigglez_mock_key, wigglez_selection_key,
