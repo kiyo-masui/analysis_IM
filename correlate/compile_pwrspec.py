@@ -7,7 +7,7 @@ from utils import file_tools
 
 
 def batch_data_run(map_key, inifile=None, datapath_db=None,
-                   usecache_output_tag=None, beam_transfer=None,
+                   output_tag=None, beam_transfer=None,
                    outdir="./plots/",
                    mode_transfer_1d=None,
                    mode_transfer_2d=None):
@@ -22,15 +22,15 @@ def batch_data_run(map_key, inifile=None, datapath_db=None,
     map_cases = datapath_db.fileset_cases(map_key, "pair;type;treatment")
 
     funcname = "correlate.batch_quadratic.call_xspec_run"
-    generate = False if usecache_output_tag else True
+    generate = False if output_tag else True
     if generate:
         print "REGENERATING the power spectrum result cache: "
 
     caller = batch_handler.MemoizeBatch(funcname, cache_path,
                                         generate=generate, verbose=True)
 
-    if usecache_output_tag:
-        output_root = "%s/%s/" % (outdir, usecache_output_tag)
+    if output_tag:
+        output_root = "%s/%s/" % (outdir, output_tag)
         file_tools.mkparents(output_root)
 
     for treatment in map_cases['treatment']:
@@ -70,15 +70,15 @@ def batch_data_run(map_key, inifile=None, datapath_db=None,
                                          files['noiseinv2_key'],
                                          inifile=inifile)
 
-            if usecache_output_tag:
+            if output_tag:
                 pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwrspec_out[0],
                                       transfer=transfer_2d))
 
                 pwr_2d.append(pwrspec_out[0])
                 pwr_1d.append(pwrspec_out[1])
 
-        if usecache_output_tag:
-            mtag = usecache_output_tag + "_%s" % treatment
+        if output_tag:
+            mtag = output_tag + "_%s" % treatment
             if mode_transfer_1d is not None:
                 transfunc = mode_transfer_1d[treatment][0]
             else:
@@ -88,7 +88,7 @@ def batch_data_run(map_key, inifile=None, datapath_db=None,
                                  outdir=output_root,
                                  apply_1d_transfer=transfunc)
 
-    if usecache_output_tag:
+    if output_tag:
         # TODO: could output the P(k)'s for the various treatments
         return None
     else:
@@ -98,33 +98,33 @@ def batch_data_run(map_key, inifile=None, datapath_db=None,
 
 def call_data_autopower(basemaps, treatments, inifile=None, generate=False,
                         outdir="./plots/", mode_transfer_1d=None,
-                        mode_transfer_2d=None, beam_transfer=None):
+                        mode_transfer_2d=None, beam_transfer=None, alttag=None):
     r"""Call a chunk of batch data runs for e.g. different map products
     """
     datapath_db = data_paths.DataPath()
-    # TODO: put transfer functions in the naming tags
 
     for base in basemaps:
         for treatment in treatments:
-            mapname = base + treatment
+            output_tag = base + treatment
+            if alttag:
+                output_tag += "_" + output_tag
 
-            usecache_output_tag = None
-            if not generate:
-                usecache_output_tag = mapname
+            if generate:
+                output_tag = None
 
             batch_data_run(mapname,
                            inifile=inifile,
                            datapath_db=datapath_db,
-                           usecache_output_tag=usecache_output_tag,
-                           beam_transfer=beam_transfer,
+                           output_tag=output_tag,
                            outdir=outdir,
+                           beam_transfer=beam_transfer,
                            mode_transfer_1d=mode_transfer_1d,
                            mode_transfer_2d=mode_transfer_2d)
 
 
 def batch_wigglez_automock_run(mock_key, sel_key,
                                inifile=None, datapath_db=None,
-                               usecache_output_tag=None):
+                               output_tag=None):
     r"""TODO: make this work; wrote this but never really needed it yet
     """
     if datapath_db is None:
@@ -135,7 +135,7 @@ def batch_wigglez_automock_run(mock_key, sel_key,
     mock_cases = datapath_db.fileset_cases(mock_key, "realization")
 
     funcname = "correlate.batch_quadratic.call_xspec_run"
-    generate = False if usecache_output_tag else True
+    generate = False if output_tag else True
     caller = batch_handler.MemoizeBatch(funcname, cache_path,
                                         generate=generate, verbose=True)
 

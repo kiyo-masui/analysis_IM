@@ -11,7 +11,7 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
                                wigglez_mock_key, wigglez_selection_key,
                                inifile=None, datapath_db=None,
                                outdir="./plots",
-                               usecache_output_tag=None,
+                               output_tag=None,
                                beam_transfer=None,
                                mode_transfer_1d=None,
                                mode_transfer_2d=None,
@@ -27,15 +27,15 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
     mock_cases = datapath_db.fileset_cases(wigglez_mock_key, "realization")
 
     funcname = "correlate.batch_quadratic.call_xspec_run"
-    generate = False if usecache_output_tag else True
+    generate = False if output_tag else True
     if generate:
         print "REGENERATING the power spectrum result cache: "
 
     caller = batch_handler.MemoizeBatch(funcname, cache_path,
                                         generate=generate, verbose=True)
 
-    if usecache_output_tag:
-        output_root = "%s/%s/" % (outdir, usecache_output_tag)
+    if output_tag:
+        output_root = "%s/%s/" % (outdir, output_tag)
         file_tools.mkparents(output_root)
 
     for treatment in map_cases['treatment']:
@@ -68,20 +68,20 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
                                          files['noiseinv2_key'],
                                          inifile=inifile)
 
-            if usecache_output_tag:
+            if output_tag:
                 pwr_1d_from_2d.append(pe.convert_2d_to_1d(pwrspec_out[0],
                                       transfer=transfer_2d))
 
                 pwr_2d.append(pwrspec_out[0])
                 pwr_1d.append(pwrspec_out[1])
 
-        if usecache_output_tag:
+        if output_tag:
             if mode_transfer_1d is not None:
                 transfunc = mode_transfer_1d[treatment][1]
             else:
                 transfunc = None
 
-            mtag = usecache_output_tag + "_%s_mock" % treatment
+            mtag = output_tag + "_%s_mock" % treatment
             mean1dmock, std1dmock, covmock = pe.summarize_pwrspec(pwr_1d,
                               pwr_1d_from_2d, pwr_2d, mtag,
                               outdir=output_root,
@@ -102,7 +102,7 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
                                             files['noiseinv2_key'],
                                             inifile=inifile)
 
-        if usecache_output_tag:
+        if output_tag:
             pwr_1d_from_2d = pe.convert_2d_to_1d(pwrspec_out_signal[0],
                                                  transfer=transfer_2d)
 
@@ -119,7 +119,7 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
             counts_histo = pwrspec_out_signal[1]['counts_histo']
 
             filename = "%s/%s_%s.dat" % (output_root,
-                                         usecache_output_tag,
+                                         output_tag,
                                          treatment)
 
             outfile = open(filename, "w")
@@ -144,7 +144,7 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
                                          theory_curve[res_slice])
                 print "AMP:", mtag, treatment, amplitude
 
-    if not usecache_output_tag:
+    if not output_tag:
         caller.multiprocess_stack()
 
     return None
@@ -153,32 +153,36 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
 def call_batch_gbtxwigglez_data_run(basemaps, treatments, wigglez_map_key,
                                     wigglez_mock_key, wigglez_selection_key,
                                     inifile=None, generate=False,
-                                    outdir="./plots/", alttag=None,
-                                    mode_transfer_1d=None,
-                                    mode_transfer_2d=None,
-                                    beam_transfer=None):
-    r"""Call a large batch of GBT x WiggleZ spectra runs for different map
-    products.
+                                    outdir="./plots/", alttag=None):
+    r"""Call a chunk of batch data runs for e.g. different map products
+
+    No compensation can be applied using this function because
+    batch_gbtxwigglez_data_run should be called on a case by case basis for
+    transfer functions associated with different map runs
+
+    This is useful for building up the cache of various cross-powers
     """
     datapath_db = data_paths.DataPath()
-    # TODO: put transfer functions in the naming tags
 
     for base in basemaps:
         for treatment in treatments:
             mapname = base + treatment + "_combined"
 
-            usecache_output_tag = None
-            if not generate:
-                usecache_output_tag = mapname + "_xWigglez"
-                if alttag:
-                    usecache_output_tag += "_" + alttag
+            output_tag = mapname
+            if alttag:
+                output_tag += "_" + output_tag
 
+            if generate:
+                output_tag = None
+
+            print mapname
             batch_gbtxwigglez_data_run(mapname, wigglez_map_key,
-                               wigglez_mock_key, wigglez_selection_key,
-                               inifile=inifile, datapath_db=datapath_db,
-                               outdir=outdir,
-                               usecache_output_tag=usecache_output_tag,
-                               beam_transfer=beam_transfer,
-                               mode_transfer_1d=mode_transfer_1d,
-                               mode_transfer_2d=mode_transfer_2d,
-                               theory_curve=None)
+                            wigglez_mock_key, wigglez_selection_key,
+                            inifile=inifile,
+                            datapath_db=datapath_db,
+                            output_tag=output_tag,
+                            outdir=outdir,
+                            beam_transfer=None,
+                            mode_transfer_1d=None,
+                            mode_transfer_2d=None,
+                            theory_curve=None)

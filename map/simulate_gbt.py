@@ -13,7 +13,7 @@ import sys
 from numpy import random
 import struct
 from kiyopy import parse_ini
-import kiyopy.utils
+from utils import file_tools
 from utils import units
 
 
@@ -310,7 +310,7 @@ if __name__ == '__main__':
     datapath_db = data_paths.DataPath()
     output_root = datapath_db.fetch(params['output_root'])
 
-    kiyopy.utils.mkparents(output_root)
+    file_tools.mkparents(output_root)
     parse_ini.write_params(params, output_root + 'params.ini',
                            prefix=prefix)
 
