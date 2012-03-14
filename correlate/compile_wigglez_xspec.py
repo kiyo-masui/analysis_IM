@@ -4,6 +4,8 @@ from utils import data_paths
 from correlate import pwrspec_estimation as pe
 from utils import batch_handler
 from utils import file_tools
+from optparse import OptionParser
+from kiyopy import parse_ini
 # TODO: figure out theory curve stuff
 
 
@@ -35,8 +37,7 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
                                         generate=generate, verbose=True)
 
     if output_tag:
-        output_root = "%s/%s/" % (outdir, output_tag)
-        file_tools.mkparents(output_root)
+        file_tools.mkparents(outdir)
 
     for treatment in map_cases['treatment']:
         # TODO: make this more elegant
@@ -84,7 +85,7 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
             mtag = output_tag + "_%s_mock" % treatment
             mean1dmock, std1dmock, covmock = pe.summarize_pwrspec(pwr_1d,
                               pwr_1d_from_2d, pwr_2d, mtag,
-                              outdir=output_root,
+                              outdir=outdir,
                               apply_1d_transfer=transfunc)
 
         # now recover the xspec with the real data
@@ -118,7 +119,7 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
             bin_right = pwrspec_out_signal[1]['bin_right']
             counts_histo = pwrspec_out_signal[1]['counts_histo']
 
-            filename = "%s/%s_%s.dat" % (output_root,
+            filename = "%s/%s_%s.dat" % (outdir,
                                          output_tag,
                                          treatment)
 
@@ -150,6 +151,8 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
     return None
 
 
+# TODO: WARNING, this needs to be updated to the new outdir structure
+# but ... we may not need this function anymore?
 def call_batch_gbtxwigglez_data_run(basemaps, treatments, wigglez_map_key,
                                     wigglez_mock_key, wigglez_selection_key,
                                     inifile=None, generate=False,
@@ -186,3 +189,70 @@ def call_batch_gbtxwigglez_data_run(basemaps, treatments, wigglez_map_key,
                             mode_transfer_1d=None,
                             mode_transfer_2d=None,
                             theory_curve=None)
+
+def wrap_batch_gbtxwigglez_data_run(inifile, generate=False,
+                                    outdir="./plots/"):
+    r"""Wrapper to the GBT x WiggleZ calculation"""
+    params_init = {"gbt_mapkey": "cleaned GBT map",
+                   "wigglez_deltakey": "WiggleZ overdensity map",
+                   "wigglez_mockkey": "WiggleZ overdensities from mocks",
+                   "wigglez_selectionkey": "WiggleZ selection function",
+                   "mode_transfer_1d_ini": "ini file -> 1d trans. function",
+                   "mode_transfer_2d_ini": "ini file -> 2d trans. function",
+                   "beam_transfer_ini": "ini file -> 2d beam trans. function",
+                   "spec_ini": "ini file for the spectral estimation",
+                   "output_tag": "tag identifying the output somehow"}
+    prefix="cwx_"
+
+    params = parse_ini.parse(inifile, params_init, prefix=prefix)
+    print params
+
+    output_tag = "%s_%s" % (params['gbt_mapkey'], params['output_tag'])
+    output_root = "%s/%s/" % (outdir, output_tag)
+
+    if generate:
+        output_tag = None
+
+    print output_root
+    print output_tag
+    file_tools.mkparents(output_root)
+    parse_ini.write_params(params, output_root + 'params.ini',
+                           prefix=prefix)
+
+    datapath_db = data_paths.DataPath()
+
+    batch_gbtxwigglez_data_run(params["gbt_mapkey"],
+                               params["wigglez_deltakey"],
+                               params["wigglez_mockkey"],
+                               params["wigglez_selectionkey"],
+                               inifile=params["spec_ini"],
+                               datapath_db=datapath_db,
+                               outdir=output_root,
+                               output_tag=output_tag,
+                               beam_transfer=None,
+                               mode_transfer_1d=None,
+                               mode_transfer_2d=None,
+                               theory_curve=None)
+
+if __name__ == '__main__':
+    parser = OptionParser(usage="usage: %prog [options] filename (-h for help)",
+                          version="%prog 1.0")
+    parser.add_option("-g", "--generate", action="store_true",
+                      dest="generate", default=False,
+                      help="regenerate the cache of quadratic products")
+    parser.add_option("-o", "--outdir", action="store",
+                      dest="outdir", default="./plots/",
+                      help="directory to write output data to")
+    (optparam, inifile) = parser.parse_args()
+    optparam = vars(optparam)
+
+    if len(inifile) != 1:
+        parser.error("inifile not specified")
+
+    inifile = inifile[0]
+    print optparam
+
+    wrap_batch_gbtxwigglez_data_run(inifile,
+                                    generate=optparam['generate'],
+                                    outdir=optparam['outdir'])
+

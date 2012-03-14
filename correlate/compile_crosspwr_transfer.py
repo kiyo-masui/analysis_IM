@@ -36,7 +36,6 @@ from utils import batch_handler
 from utils import file_tools
 from optparse import OptionParser
 from kiyopy import parse_ini
-import sys
 
 
 def batch_crosspwr_transfer(cleaned_simkey,
@@ -82,6 +81,7 @@ def batch_crosspwr_transfer(cleaned_simkey,
                                         inifile=inifile)
 
     if output_tag:
+        file_tools.mkparents(outdir)
         ref_pwr_1d_from_2d = pe.convert_2d_to_1d(reference_pwrspec_out[0])
 
         ref_pwr_1d = reference_pwrspec_out[1]['binavg']
@@ -110,7 +110,6 @@ def batch_crosspwr_transfer(cleaned_simkey,
                                             inifile=inifile)
 
         if output_tag:
-            file_tools.mkparents(outdir)
             pwr_1d_from_2d = pe.convert_2d_to_1d(pwrspec_out_signal[0])
 
             pwr_1d = pwrspec_out_signal[1]['binavg']
@@ -177,7 +176,10 @@ def wigglez_crosspwr_transfer_run(cleaned_simkey, rootsim, selection_function,
                                    outdir="./plots/",
                                    output_tag=output_tag)
 
-if __name__ == '__main__':
+
+def wrap_batch_crosspwr_transfer(inifile, generate=False, outdir="./plots/"):
+    r"""Wrapper to the transfer function calculator
+    """
     params_init = {"cleaned_simkey": "cleaned sims for transfer func",
                    "truesignal_simkey": "pure signal",
                    "truesignal_weightkey": "weight to use for pure signal",
@@ -187,17 +189,42 @@ if __name__ == '__main__':
                    "output_tag": "tag identifying the output somehow"}
     prefix="cct_"
 
+    params = parse_ini.parse(inifile, params_init, prefix=prefix)
+    print params
+
+    output_tag = "%s_%s" % (params['cleaned_simkey'], params['output_tag'])
+    output_root = "%s/%s/" % (outdir, output_tag)
+
+    if generate:
+        output_tag = None
+
+    print output_root
+    print output_tag
+    file_tools.mkparents(output_root)
+    parse_ini.write_params(params, output_root + 'params.ini',
+                           prefix=prefix)
+
+    datapath_db = data_paths.DataPath()
+
+    return batch_crosspwr_transfer(params["cleaned_simkey"],
+                                   params["truesignal_simkey"],
+                                   params["truesignal_weightkey"],
+                                   params["reference_simkey"],
+                                   params["reference_weightkey"],
+                                   inifile=params["spec_ini"],
+                                   datapath_db=datapath_db,
+                                   outdir=output_root,
+                                   output_tag=output_tag)
+
+
+if __name__ == '__main__':
     parser = OptionParser(usage="usage: %prog [options] filename (-h for help)",
                           version="%prog 1.0")
-    parser.add_option("-g", "--generate",
-                      action="store_true",
-                      dest="generate",
-                      default=False,
+    parser.add_option("-g", "--generate", action="store_true",
+                      dest="generate", default=False,
                       help="regenerate the cache of quadratic products")
-    parser.add_option("-o", "--outdir",
-                      action="store",
-                      dest="outdir",
-                      default="./plots/",
+    parser.add_option("-o", "--outdir", action="store",
+                      dest="outdir", default="./plots/",
                       help="directory to write output data to")
     (optparam, inifile) = parser.parse_args()
     optparam = vars(optparam)
@@ -208,29 +235,6 @@ if __name__ == '__main__':
     inifile = inifile[0]
     print optparam
 
-    params = parse_ini.parse(inifile, params_init, prefix=prefix)
-    print params
-
-    output_tag = "%s_%s" % (params['cleaned_simkey'], params['output_tag'])
-    outdir = "%s/%s/" % (optparam['outdir'], output_tag)
-
-    if optparam["generate"]:
-        output_tag = None
-
-    print outdir
-    print output_tag
-    file_tools.mkparents(outdir)
-    parse_ini.write_params(params, outdir + 'params.ini',
-                           prefix=prefix)
-
-    datapath_db = data_paths.DataPath()
-
-    batch_crosspwr_transfer(params["cleaned_simkey"],
-                            params["truesignal_simkey"],
-                            params["truesignal_weightkey"],
-                            params["reference_simkey"],
-                            params["reference_weightkey"],
-                            inifile=params["spec_ini"],
-                            datapath_db=datapath_db,
-                            outdir=outdir,
-                            output_tag=output_tag)
+    wrap_batch_crosspwr_transfer(inifile,
+                                 generate=optparam['generate'],
+                                 outdir=optparam['outdir'])
