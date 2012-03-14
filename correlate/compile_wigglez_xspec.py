@@ -6,6 +6,7 @@ from utils import batch_handler
 from utils import file_tools
 from optparse import OptionParser
 from kiyopy import parse_ini
+from correlate import compile_crosspwr_transfer as cct
 # TODO: figure out theory curve stuff
 
 
@@ -151,45 +152,6 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
     return None
 
 
-# TODO: WARNING, this needs to be updated to the new outdir structure
-# but ... we may not need this function anymore?
-def call_batch_gbtxwigglez_data_run(basemaps, treatments, wigglez_map_key,
-                                    wigglez_mock_key, wigglez_selection_key,
-                                    inifile=None, generate=False,
-                                    outdir="./plots/", alttag=None):
-    r"""Call a chunk of batch data runs for e.g. different map products
-
-    No compensation can be applied using this function because
-    batch_gbtxwigglez_data_run should be called on a case by case basis for
-    transfer functions associated with different map runs
-
-    This is useful for building up the cache of various cross-powers
-    """
-    datapath_db = data_paths.DataPath()
-
-    for base in basemaps:
-        for treatment in treatments:
-            mapname = base + treatment + "_combined"
-
-            output_tag = mapname
-            if alttag:
-                output_tag += "_" + output_tag
-
-            if generate:
-                output_tag = None
-
-            print mapname
-            batch_gbtxwigglez_data_run(mapname, wigglez_map_key,
-                            wigglez_mock_key, wigglez_selection_key,
-                            inifile=inifile,
-                            datapath_db=datapath_db,
-                            output_tag=output_tag,
-                            outdir=outdir,
-                            beam_transfer=None,
-                            mode_transfer_1d=None,
-                            mode_transfer_2d=None,
-                            theory_curve=None)
-
 def wrap_batch_gbtxwigglez_data_run(inifile, generate=False,
                                     outdir="./plots/"):
     r"""Wrapper to the GBT x WiggleZ calculation"""
@@ -221,6 +183,13 @@ def wrap_batch_gbtxwigglez_data_run(inifile, generate=False,
 
     datapath_db = data_paths.DataPath()
 
+    mode_transfer_1d=None
+    if params["mode_transfer_1d_ini"]:
+        mode_transfer_1d = cct.wrap_batch_crosspwr_transfer(
+                                            params["mode_transfer_1d_ini"],
+                                            generate=generate,
+                                            outdir=outdir)
+
     batch_gbtxwigglez_data_run(params["gbt_mapkey"],
                                params["wigglez_deltakey"],
                                params["wigglez_mockkey"],
@@ -230,7 +199,7 @@ def wrap_batch_gbtxwigglez_data_run(inifile, generate=False,
                                outdir=output_root,
                                output_tag=output_tag,
                                beam_transfer=None,
-                               mode_transfer_1d=None,
+                               mode_transfer_1d=mode_transfer_1d,
                                mode_transfer_2d=None,
                                theory_curve=None)
 
