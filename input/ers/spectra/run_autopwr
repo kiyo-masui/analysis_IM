@@ -1,0 +1,14 @@
+#OPTS="--generate"
+OPTS=""
+echo $OPTS
+
+python correlate/compile_pwrspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_noconv_auto-nocomp.ini
+python correlate/compile_pwrspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_auto-nocomp.ini
+python correlate/compile_pwrspec.py $OPTS input/ers/spectra/GBT_15hr_map_oldcal_cleaned_noconv_auto-nocomp.ini
+python correlate/compile_pwrspec.py $OPTS input/ers/spectra/GBT_15hr_map_oldcal_cleaned_auto-nocomp.ini
+python correlate/compile_pwrspec.py $OPTS input/ers/spectra/GBT_15hr_map_fluxpolcal_cleaned_noconv_auto-nocomp.ini
+python correlate/compile_pwrspec.py $OPTS input/ers/spectra/GBT_15hr_map_fluxpolcal_cleaned_auto-nocomp.ini
+python correlate/compile_pwrspec.py $OPTS input/ers/spectra/GBT_15hr_map_fluxcal_cleaned_noconv_auto-nocomp.ini
+python correlate/compile_pwrspec.py $OPTS input/ers/spectra/GBT_15hr_map_fluxcal_cleaned_auto-nocomp.ini
+python correlate/compile_pwrspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_noconv_auto-nocomp.ini
+python correlate/compile_pwrspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_auto-nocomp.ini

@@ -2,11 +2,16 @@ OPTS="--generate"
 #OPTS=""
 echo $OPTS
 
-python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_sims_combined_simcl-xtrans-nobeam.ini
-python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_sims_combined_simcl-xtrans-withbeam.ini
-python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_sims_noconv_combined_simcl-xtrans-nobeam.ini
-python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_sims_noconv_combined_simcl-xtrans-withbeam.ini
-python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-xtrans-nobeam.ini
-python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-xtrans-withbeam.ini
-python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_corrfg-xtrans-nobeam.ini
-python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam.ini
+python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-1strans-nobeam.ini
+python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-1strans-withbeam.ini
+python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_corrfg-1strans-nobeam.ini
+python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_corrfg-1strans-withbeam.ini
+
+#python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-xtrans-nobeam.ini
+#python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-xtrans-withbeam.ini
+#python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_corrfg-xtrans-nobeam.ini
+#python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam.ini
+#python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_sims_combined_simcl-xtrans-nobeam.ini
+#python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_sims_combined_simcl-xtrans-withbeam.ini
+#python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_sims_noconv_combined_simcl-xtrans-nobeam.ini
+#python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_sims_noconv_combined_simcl-xtrans-withbeam.ini
