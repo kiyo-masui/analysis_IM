@@ -1,5 +1,5 @@
-#OPTS="--generate"
-OPTS=""
+OPTS="--generate"
+#OPTS=""
 echo $OPTS
 
 python correlate/compile_crosspwr_transfer.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_sims_combined_simcl-xtrans-nobeam.ini

@@ -4,9 +4,12 @@ from utils import data_paths
 from correlate import pwrspec_estimation as pe
 from utils import batch_handler
 from utils import file_tools
+from optparse import OptionParser
+from kiyopy import parse_ini
+from correlate import compile_crosspwr_transfer as cct
 
 
-def batch_data_run(map_key, inifile=None, datapath_db=None,
+def batch_gbtpwrspec_data_run(map_key, inifile=None, datapath_db=None,
                    output_tag=None, beam_transfer=None,
                    outdir="./plots/",
                    mode_transfer_1d=None,
@@ -30,8 +33,7 @@ def batch_data_run(map_key, inifile=None, datapath_db=None,
                                         generate=generate, verbose=True)
 
     if output_tag:
-        output_root = "%s/%s/" % (outdir, output_tag)
-        file_tools.mkparents(output_root)
+        file_tools.mkparents(outdir)
 
     for treatment in map_cases['treatment']:
         unique_pairs = data_paths.GBTauto_cross_pairs(map_cases['pair'],
@@ -85,7 +87,7 @@ def batch_data_run(map_key, inifile=None, datapath_db=None,
                 transfunc = None
 
             pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, mtag,
-                                 outdir=output_root,
+                                 outdir=outdir,
                                  apply_1d_transfer=transfunc)
 
     if output_tag:
@@ -109,47 +111,84 @@ def call_data_autopower(basemaps, treatments, inifile=None, generate=False,
             if alttag:
                 output_tag += "_" + output_tag
 
+            output_root = "%s/%s/" % (outdir, output_tag)
+
             if generate:
                 output_tag = None
 
-            batch_data_run(mapname,
-                           inifile=inifile,
-                           datapath_db=datapath_db,
-                           output_tag=output_tag,
-                           outdir=outdir,
-                           beam_transfer=beam_transfer,
-                           mode_transfer_1d=mode_transfer_1d,
-                           mode_transfer_2d=mode_transfer_2d)
+            batch_gbtpwrspec_data_run(mapname,
+                                 inifile=inifile,
+                                 datapath_db=datapath_db,
+                                 output_tag=output_tag,
+                                 outdir=output_root,
+                                 beam_transfer=beam_transfer,
+                                 mode_transfer_1d=mode_transfer_1d,
+                                 mode_transfer_2d=mode_transfer_2d)
 
 
-def batch_wigglez_automock_run(mock_key, sel_key,
-                               inifile=None, datapath_db=None,
-                               output_tag=None):
-    r"""TODO: make this work; wrote this but never really needed it yet
-    """
-    if datapath_db is None:
-        datapath_db = data_paths.DataPath()
+def wrap_batch_gbtpwrspec_data_run(inifile, generate=False,
+                                    outdir="./plots/"):
+    r"""Wrapper to the GBT x GBT calculation"""
+    params_init = {"gbt_mapkey": "cleaned GBT map",
+                   "mode_transfer_1d_ini": "ini file -> 1d trans. function",
+                   "mode_transfer_2d_ini": "ini file -> 2d trans. function",
+                   "beam_transfer_ini": "ini file -> 2d beam trans. function",
+                   "spec_ini": "ini file for the spectral estimation",
+                   "output_tag": "tag identifying the output somehow"}
+    prefix="cp_"
 
-    cache_path = datapath_db.fetch("quadratic_batch_data")
+    params = parse_ini.parse(inifile, params_init, prefix=prefix)
+    print params
 
-    mock_cases = datapath_db.fileset_cases(mock_key, "realization")
+    output_tag = "%s_%s" % (params['gbt_mapkey'], params['output_tag'])
+    output_root = "%s/%s/" % (outdir, output_tag)
 
-    funcname = "correlate.batch_quadratic.call_xspec_run"
-    generate = False if output_tag else True
-    caller = batch_handler.MemoizeBatch(funcname, cache_path,
-                                        generate=generate, verbose=True)
+    if generate:
+        output_tag = None
 
-    for index in mock_cases['realization']:
-        dbkeydict = {}
-        dbkeydict['map1_key'] = "%s:%s" % (mock_key, index)
-        dbkeydict['map2_key'] = "%s:%s" % (mock_key, index)
-        dbkeydict['noiseinv1_key'] = sel_key
-        dbkeydict['noiseinv2_key'] = sel_key
-        files = data_paths.convert_dbkeydict_to_filedict(dbkeydict,
-                                                    datapath_db=datapath_db)
+    print output_root
+    print output_tag
+    file_tools.mkparents(output_root)
+    parse_ini.write_params(params, output_root + 'params.ini',
+                           prefix=prefix)
 
-        caller.execute(files['map1_key'], files['map2_key'],
-                       files['noiseinv1_key'], files['noiseinv2_key'],
-                       inifile=inifile)
+    datapath_db = data_paths.DataPath()
 
-    caller.multiprocess_stack()
+    mode_transfer_1d=None
+    if params["mode_transfer_1d_ini"]:
+        mode_transfer_1d = cct.wrap_batch_crosspwr_transfer(
+                                            params["mode_transfer_1d_ini"],
+                                            generate=generate,
+                                            outdir=outdir)
+
+    batch_gbtpwrspec_data_run(params["gbt_mapkey"],
+                         inifile=params["spec_ini"],
+                         datapath_db=datapath_db,
+                         outdir=output_root,
+                         output_tag=output_tag,
+                         beam_transfer=None,
+                         mode_transfer_1d=None,
+                         mode_transfer_2d=None)
+
+
+if __name__ == '__main__':
+    parser = OptionParser(usage="usage: %prog [options] filename (-h for help)",
+                          version="%prog 1.0")
+    parser.add_option("-g", "--generate", action="store_true",
+                      dest="generate", default=False,
+                      help="regenerate the cache of quadratic products")
+    parser.add_option("-o", "--outdir", action="store",
+                      dest="outdir", default="./plots/",
+                      help="directory to write output data to")
+    (optparam, inifile) = parser.parse_args()
+    optparam = vars(optparam)
+
+    if len(inifile) != 1:
+        parser.error("inifile not specified")
+
+    inifile = inifile[0]
+    print optparam
+
+    wrap_batch_gbtpwrspec_data_run(inifile,
+                                   generate=optparam['generate'],
+                                   outdir=optparam['outdir'])
