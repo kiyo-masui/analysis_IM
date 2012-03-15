@@ -6,6 +6,8 @@ python correlate/compile_wigglez_xspec.py $OPTS input/ers/spectra/GBT_15hr_map_f
 python correlate/compile_wigglez_xspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_noconv_combined_xspec-1dmodecomp-corrfg.ini
 python correlate/compile_wigglez_xspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_combined_xspec-1dmodecomp-simcl.ini
 python correlate/compile_wigglez_xspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_combined_xspec-1dmodecomp-corrfg.ini
+python correlate/compile_wigglez_xspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_noconv_combined_xspec-nocomp.ini
+python correlate/compile_wigglez_xspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_combined_xspec-nocomp.ini
 
 ##python correlate/compile_wigglez_xspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_xspec-nocomp.ini
 ##python correlate/compile_wigglez_xspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_plussim_cleaned_combined_xspec-nocomp.ini
