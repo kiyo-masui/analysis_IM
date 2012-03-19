@@ -2,7 +2,7 @@ import numpy as np
 import core.algebra as algebra
 from utils import data_paths
 
-def add_sim_to_data(simkey, datakey):
+def add_sim_to_data(simkey, datakey, replace=False):
     datapath_db = data_paths.DataPath()
 
     mapA_file = datapath_db.fetch(datakey + ":A;clean_map", intend_read=True)
@@ -17,6 +17,11 @@ def add_sim_to_data(simkey, datakey):
     for mapfile in mapset:
         print mapfile, simfile
         origmap = algebra.make_vect(algebra.load(mapfile))
-        algebra.save(mapfile, origmap + simmap)
+        if replace:
+            algebra.save(mapfile, simmap)
+        else:
+            algebra.save(mapfile, origmap + simmap)
 
-add_sim_to_data("sim_15hr_oldmap_str_beam", "GBT_15hr_map_fdgcal_plussim")
+#add_sim_to_data("sim_15hr_oldmap_str_beam", "GBT_15hr_map_fdgcal_plussim")
+#add_sim_to_data("sim_15hr_oldmap_str_beam", "GBT_15hr_map_oldcal_plussim")
+add_sim_to_data("sim_15hr_oldmap_str_beam", "GBT_15hr_map_signal_only", replace=True)

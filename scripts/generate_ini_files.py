@@ -23,7 +23,7 @@ def write_map_cleanerini(mapname, cutlist, nfreq, factorizable=True, meansub=Tru
     params["freq_list"] = tuple([ind for ind in range(nfreq) \
                                  if ind not in cutlist])
 
-    tag = "_sim" if simfile else ""
+    tag = "_sims" if simfile else ""
     if simfile:
         params["simfile"] = simfile
 

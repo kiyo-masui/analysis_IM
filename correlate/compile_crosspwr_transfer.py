@@ -146,7 +146,7 @@ def wigglez_crosspwr_transfer_run(cleaned_simkey, rootsim, selection_function,
                                  include_beam=True,
                                  inifile=None, generate=False, alttag=None):
     r"""This provides some basic uniformity in how the WiggleZ transfer
-    functions are derived. This can probably be phased out.
+    functions are derived. TODO: This can probably be phased out.
     """
     datapath_db = data_paths.DataPath()
 

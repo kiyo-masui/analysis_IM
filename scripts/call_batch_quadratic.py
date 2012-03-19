@@ -12,31 +12,6 @@ from correlate import compile_crosspwr_transfer as cxt
 from utils import data_paths
 import sys
 
-def sim_autopwr(inifile_phys=None, inifile=None, generate=False):
-    # add 'sim_22hr_oldmap_str', 'sim_1hr_oldmap_str'
-    basesims = ['sim_15hr_oldmap_ideal', 'sim_15hr_oldmap_nostr',
-                'sim_15hr_oldmap_str']
-    treatments = ['_temperature', '_beam', '_beam_conv', '_beam_meansub',
-                  '_beam_meansubconv']
-    weight = "GBT_15hr_map_fluxpolcal_cleaned_combined:weight;0modes"
-
-    csp.call_sim_autopower(basesims, treatments, weight, inifile=inifile,
-                           inifile_phys=inifile_phys, generate=generate)
-
-
-def sim_crosspwr(inifile=None, generate=False):
-    # add 'sim_22hr_oldmap_str', 'sim_1hr_oldmap_str'
-    basesims = ['sim_15hr_oldmap_ideal', 'sim_15hr_oldmap_nostr',
-                'sim_15hr_oldmap_str']
-    treatments = ['_temperature', '_beam', '_beam_conv', '_beam_meansub',
-                  '_beam_meansubconv']
-    weight = "GBT_15hr_map_fluxpolcal_cleaned_combined:weight;0modes"
-    selection_function = "WiggleZ_15hr_montecarlo"
-
-    csp.call_sim_crosspower(basesims, treatments, weight, selection_function,
-                            inifile=inifile, generate=generate)
-
-
 def wigglez_xspec(inifile):
     r"""required parameters:
     general:
