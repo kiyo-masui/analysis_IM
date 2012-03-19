@@ -49,6 +49,7 @@ if __name__ == '__main__':
                "GBT_15hr_map_fluxcal",
                "GBT_15hr_map_fluxpolcal",
                "GBT_15hr_map_oldcal",
+               "GBT_15hr_map_oldcal_plussim",
                "GBT_1hr_map_fluxpolcal",
                "GBT_22hr_map_fluxpolcal"]
 

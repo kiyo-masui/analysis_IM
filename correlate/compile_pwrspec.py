@@ -12,6 +12,7 @@ from correlate import compile_crosspwr_transfer as cct
 def batch_gbtpwrspec_data_run(map_key, inifile=None, datapath_db=None,
                    output_tag=None, beam_transfer=None,
                    outdir="./plots/",
+                   square_1dmodetrans=False,
                    mode_transfer_1d=None,
                    mode_transfer_2d=None):
     r"""Form the pairs of maps1*weight1 x map0*weight0 for calculating the
@@ -83,6 +84,8 @@ def batch_gbtpwrspec_data_run(map_key, inifile=None, datapath_db=None,
             mtag = output_tag + "_%s" % treatment
             if mode_transfer_1d is not None:
                 transfunc = mode_transfer_1d[treatment][0]
+                if square_1dmodetrans:
+                    transfunc *= transfunc
             else:
                 transfunc = None
 
@@ -133,6 +136,7 @@ def wrap_batch_gbtpwrspec_data_run(inifile, generate=False,
                    "mode_transfer_1d_ini": "ini file -> 1d trans. function",
                    "mode_transfer_2d_ini": "ini file -> 2d trans. function",
                    "beam_transfer_ini": "ini file -> 2d beam trans. function",
+                   "square_1dmodetrans": False,
                    "spec_ini": "ini file for the spectral estimation",
                    "output_tag": "tag identifying the output somehow"}
     prefix="cp_"
@@ -167,7 +171,8 @@ def wrap_batch_gbtpwrspec_data_run(inifile, generate=False,
                          outdir=output_root,
                          output_tag=output_tag,
                          beam_transfer=None,
-                         mode_transfer_1d=None,
+                         square_1dmodetrans = params["square_1dmodetrans"],
+                         mode_transfer_1d=mode_transfer_1d,
                          mode_transfer_2d=None)
 
 

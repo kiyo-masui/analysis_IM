@@ -3,9 +3,10 @@ OPTS=""
 echo $OPTS
 
 python correlate/compile_pwrspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_noconv_auto-1dmodecomp-corrfg.ini
-python correlate/compile_pwrspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_auto-1dmodecomp-simcl.ini
 python correlate/compile_pwrspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_auto-1dmodecomp-corrfg.ini
-python correlate/compile_pwrspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_noconv_auto-1dmodecomp-simcl.ini
+# TODO: need to calculate one-sided transfer functions for the simcl case before running these
+#python correlate/compile_pwrspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_noconv_auto-1dmodecomp-simcl.ini
+#python correlate/compile_pwrspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_auto-1dmodecomp-simcl.ini
 
 #python correlate/compile_pwrspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_noconv_auto-nocomp.ini
 #python correlate/compile_pwrspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_auto-nocomp.ini
