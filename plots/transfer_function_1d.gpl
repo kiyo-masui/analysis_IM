@@ -9,15 +9,6 @@ set style line 8 lt 2 lw 1 linecolor rgb "red"
 set style line 9 lt 2 lw 1 linecolor rgb "black"
 set style line 10 lt 2 lw 1 linecolor rgb "purple"
 
-#GBT_15hr_map_fdgcal_cleaned_sims_combined_simcl-xtrans-nobeam
-#GBT_15hr_map_fdgcal_cleaned_sims_combined_simcl-xtrans-withbeam
-#GBT_15hr_map_fdgcal_cleaned_sims_noconv_combined_simcl-xtrans-nobeam
-#GBT_15hr_map_fdgcal_cleaned_sims_noconv_combined_simcl-xtrans-withbeam
-#GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-xtrans-nobeam
-#GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-xtrans-withbeam
-#GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_corrfg-xtrans-nobeam
-#GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam
-
 set size 1., 1.
 set terminal postscript eps enhanced color "Helvetica" 20
 set logscale x
@@ -78,6 +69,36 @@ plot "GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-xtrans-nobeam/GBT_15hr
      "GBT_15hr_map_fdgcal_cleaned_sims_combined_simcl-xtrans-nobeam/GBT_15hr_map_fdgcal_cleaned_sims_combined_simcl-xtrans-nobeam_50modes.dat" using 2:8 notitle with lines ls 8, \
      "GBT_15hr_map_fdgcal_cleaned_sims_combined_simcl-xtrans-nobeam/GBT_15hr_map_fdgcal_cleaned_sims_combined_simcl-xtrans-nobeam_75modes.dat" using 2:8 notitle with lines ls 9, \
      "GBT_15hr_map_fdgcal_cleaned_sims_combined_simcl-xtrans-nobeam/GBT_15hr_map_fdgcal_cleaned_sims_combined_simcl-xtrans-nobeam_100modes.dat" using 2:8 notitle with lines ls 10
+
+# comparing with oldcal trans
+
+set title "comparing fdgcal/oldcal trans with beam, noconv"
+set output "tests/transfer_1d_oldfdgcomp_noconv_beam.eps"
+plot "GBT_15hr_map_oldcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam/GBT_15hr_map_oldcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam_15modes.dat" using 2:8 t "{/Helvetica=13 15 modes}" with lines ls 1, \
+     "GBT_15hr_map_oldcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam/GBT_15hr_map_oldcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam_25modes.dat" using 2:8 t "{/Helvetica=13 25 modes}" with lines ls 2, \
+     "GBT_15hr_map_oldcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam/GBT_15hr_map_oldcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam_50modes.dat" using 2:8 t "{/Helvetica=13 50 modes}" with lines ls 3, \
+     "GBT_15hr_map_oldcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam/GBT_15hr_map_oldcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam_75modes.dat" using 2:8 t "{/Helvetica=13 75 modes}" with lines ls 4, \
+     "GBT_15hr_map_oldcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam/GBT_15hr_map_oldcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam_100modes.dat" using 2:8 t "{/Helvetica=13 100 modes}" with lines ls 5, \
+     "GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam/GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam_15modes.dat" using 2:8 t "{/Helvetica=13 15 modes}" with lines ls 6, \
+     "GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam/GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam_25modes.dat" using 2:8 t "{/Helvetica=13 25 modes}" with lines ls 7, \
+     "GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam/GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam_50modes.dat" using 2:8 t "{/Helvetica=13 50 modes}" with lines ls 8, \
+     "GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam/GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam_75modes.dat" using 2:8 t "{/Helvetica=13 75 modes}" with lines ls 9, \
+     "GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam/GBT_15hr_map_fdgcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam_100modes.dat" using 2:8 t "{/Helvetica=13 100 modes}" with lines ls 10
+
+set title "comparing fdgcal/oldcal trans with beam, conv"
+set output "tests/transfer_1d_oldfdgcomp_conv_beam.eps"
+plot "GBT_15hr_map_oldcal_plussim_cleaned_combined_corrfg-xtrans-withbeam/GBT_15hr_map_oldcal_plussim_cleaned_combined_corrfg-xtrans-withbeam_15modes.dat" using 2:8 t "{/Helvetica=13 15 modes}" with lines ls 1, \
+     "GBT_15hr_map_oldcal_plussim_cleaned_combined_corrfg-xtrans-withbeam/GBT_15hr_map_oldcal_plussim_cleaned_combined_corrfg-xtrans-withbeam_25modes.dat" using 2:8 t "{/Helvetica=13 25 modes}" with lines ls 2, \
+     "GBT_15hr_map_oldcal_plussim_cleaned_combined_corrfg-xtrans-withbeam/GBT_15hr_map_oldcal_plussim_cleaned_combined_corrfg-xtrans-withbeam_50modes.dat" using 2:8 t "{/Helvetica=13 50 modes}" with lines ls 3, \
+     "GBT_15hr_map_oldcal_plussim_cleaned_combined_corrfg-xtrans-withbeam/GBT_15hr_map_oldcal_plussim_cleaned_combined_corrfg-xtrans-withbeam_75modes.dat" using 2:8 t "{/Helvetica=13 75 modes}" with lines ls 4, \
+     "GBT_15hr_map_oldcal_plussim_cleaned_combined_corrfg-xtrans-withbeam/GBT_15hr_map_oldcal_plussim_cleaned_combined_corrfg-xtrans-withbeam_100modes.dat" using 2:8 t "{/Helvetica=13 100 modes}" with lines ls 5, \
+     "GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-xtrans-withbeam/GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-xtrans-withbeam_15modes.dat" using 2:8 t "{/Helvetica=13 15 modes}" with lines ls 6, \
+     "GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-xtrans-withbeam/GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-xtrans-withbeam_25modes.dat" using 2:8 t "{/Helvetica=13 25 modes}" with lines ls 7, \
+     "GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-xtrans-withbeam/GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-xtrans-withbeam_50modes.dat" using 2:8 t "{/Helvetica=13 50 modes}" with lines ls 8, \
+     "GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-xtrans-withbeam/GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-xtrans-withbeam_75modes.dat" using 2:8 t "{/Helvetica=13 75 modes}" with lines ls 9, \
+     "GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-xtrans-withbeam/GBT_15hr_map_fdgcal_plussim_cleaned_combined_corrfg-xtrans-withbeam_100modes.dat" using 2:8 t "{/Helvetica=13 100 modes}" with lines ls 10
+
+set title "comparing new trans with old without beam, with noconv"
 
 # vs. one-sided
 
