@@ -293,6 +293,20 @@ def summarize_1d_agg_pwrspec(pwr_1d, filename, corr_file=None,
     return mean_1d, std_1d, covmat_1d
 
 
+def summarize_1d_pwrspec(pwr_1d, filename):
+    r"""Write out a 1d power spectrum
+    """
+    bin_left = pwr_1d['bin_left']
+    bin_center = pwr_1d['bin_center']
+    bin_right = pwr_1d['bin_right']
+
+    outfile = open(filename, "w")
+    for specdata in zip(bin_left, bin_center,
+                        bin_right, pwr_1d['binavg']):
+        outfile.write(("%10.15g " * 4 + "\n") % specdata)
+    outfile.close()
+
+
 def agg_stat_2d_pwrspec(pwr_2d, dataname='binavg'):
     pwrshp_2d = pwr_2d[0][dataname].shape
     n_runs = len(pwr_2d)
@@ -307,10 +321,32 @@ def agg_stat_2d_pwrspec(pwr_2d, dataname='binavg'):
     return (mean_2d, std_2d)
 
 
+def summarize_2d_pwrspec(pwr_2d, filename, dataname='binavg', resetnan=0.):
+    r"""Write out a single pwrspec
+    """
+    bin_x_left = np.log10(pwr_2d['bin_x_left'])
+    bin_x_center = np.log10(pwr_2d['bin_x_center'])
+    bin_x_right = np.log10(pwr_2d['bin_x_right'])
+    bin_y_left = np.log10(pwr_2d['bin_y_left'])
+    bin_y_center = np.log10(pwr_2d['bin_y_center'])
+    bin_y_right = np.log10(pwr_2d['bin_y_right'])
+
+    outfile = open(filename, "w")
+    reset_2d = copy.deepcopy(pwr_2d[dataname])
+    reset_2d[np.isnan(reset_2d)] = resetnan
+    for xind in range(len(bin_x_center)):
+        for yind in range(len(bin_y_center)):
+            outstr = ("%10.15g " * 7 + "\n") % \
+                    (bin_x_left[xind], bin_x_center[xind], bin_x_right[xind], \
+                     bin_y_left[yind], bin_y_center[yind], bin_y_right[yind], \
+                     reset_2d[xind, yind])
+            outfile.write(outstr)
+
+    outfile.close()
+
+
 def summarize_2d_agg_pwrspec(pwr_2d, filename, dataname='binavg', resetnan=0.):
-    r"""Summarize the 1D power spectrum from a list of one-dimensional power
-    spectrum outputs.
-    writes: 2d power estimator and its error and counts maps
+    r"""Combine a list of 2D power runs and write out
     """
     (mean_2d, std_2d) = agg_stat_2d_pwrspec(pwr_2d, dataname=dataname)
 
@@ -340,7 +376,24 @@ def summarize_2d_agg_pwrspec(pwr_2d, filename, dataname='binavg', resetnan=0.):
 
 
 def summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
-                      tag, outdir="./plot_data", apply_1d_transfer=None):
+                      tag, outdir="./plot_data"):
+    r"""Plot the 1D and 2D power spectra from a run
+    """
+    fileout = outdir + "/" + tag + "_from2d.dat"
+    summarize_1d_pwrspec(pwr_1d_from_2d, fileout)
+
+    fileout = outdir + "/" + tag + ".dat"
+    summarize_1d_pwrspec(pwr_1d, fileout)
+
+    fileout = outdir + "/" + tag + "_2d.dat"
+    summarize_2d_pwrspec(pwr_2d, fileout, dataname="binavg")
+
+    fileout = outdir + "/" + tag + "_2d_counts.dat"
+    summarize_2d_pwrspec(pwr_2d, fileout, dataname="counts_histo")
+
+
+def summarize_agg_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
+                          tag, outdir="./plot_data", apply_1d_transfer=None):
     r"""call various power spectral aggregation functions to make 2D, 1D, etc.
     P(k)s to plot.
     """

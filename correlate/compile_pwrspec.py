@@ -89,9 +89,9 @@ def batch_gbtpwrspec_data_run(map_key, inifile=None, datapath_db=None,
             else:
                 transfunc = None
 
-            pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, mtag,
-                                 outdir=outdir,
-                                 apply_1d_transfer=transfunc)
+            pe.summarize_agg_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, mtag,
+                                     outdir=outdir,
+                                     apply_1d_transfer=transfunc)
 
     if output_tag:
         # TODO: could output the P(k)'s for the various treatments

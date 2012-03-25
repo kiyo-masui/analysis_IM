@@ -84,7 +84,7 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
                 transfunc = None
 
             mtag = output_tag + "_%s_mock" % treatment
-            mean1dmock, std1dmock, covmock = pe.summarize_pwrspec(pwr_1d,
+            mean1dmock, std1dmock, covmock = pe.summarize_agg_pwrspec(pwr_1d,
                               pwr_1d_from_2d, pwr_2d, mtag,
                               outdir=outdir,
                               apply_1d_transfer=transfunc)

@@ -87,7 +87,7 @@ def gather_batch_datasim_run(tag, subtract_mean=False,
 
         mtag = tag + "_%dmodes" % mode_num
 
-        pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, mtag,
+        pe.summarize_agg_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, mtag,
                           outdir="./plot_data")
 
     return transfer_functions

@@ -2,8 +2,12 @@
 OPTS=""
 echo $OPTS
 
+# single run of relevant cases
+python correlate/compile_single_crosspwr.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleanedplussim_cleaned_noconv_combined_xspecsimsingle-nocomp.ini
+python correlate/compile_single_crosspwr.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_noconv_combined_xspecsimsingle-nocomp.ini
+
 # This is the cleaned map crossed with the sim (Should be null)
-python correlate/compile_wigglez_xspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_combined_xspecsim-nocomp.ini
+#python correlate/compile_wigglez_xspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_combined_xspecsim-nocomp.ini
 #python correlate/compile_wigglez_xspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_cleaned_noconv_combined_xspecsim-nocomp.ini
 # This is the cleaned(map + sim) x sim, so should have both real signal and correlated fg
 #python correlate/compile_wigglez_xspec.py $OPTS input/ers/spectra/GBT_15hr_map_fdgcal_plussim_cleaned_combined_xspecsim-nocomp.ini

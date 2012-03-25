@@ -46,8 +46,8 @@ def batch_physical_sim_run(sim_key, inifile=None, datapath_db=None,
             pwr_1d.append(pwrspec_out[1])
 
     if output_tag:
-        pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
-                             output_tag, outdir=output_root)
+        pe.summarize_agg_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
+                                 output_tag, outdir=output_root)
 
         retval = (pwr_1d, pwr_1d_from_2d, pwr_2d)
     else:

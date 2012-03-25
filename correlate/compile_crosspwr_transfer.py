@@ -141,10 +141,10 @@ def batch_crosspwr_transfer(cleaned_simkey,
         return transfer_functions
 
 
-def wigglez_crosspwr_transfer_run(cleaned_simkey, rootsim, selection_function,
-                                 simindex="1", weightmap="15modes",
-                                 include_beam=True,
-                                 inifile=None, generate=False, alttag=None):
+def batch_crosspwr_transfer_run(cleaned_simkey, rootsim, selection_function,
+                                simindex="1", weightmap="15modes",
+                                include_beam=True,
+                                inifile=None, generate=False, alttag=None):
     r"""This provides some basic uniformity in how the WiggleZ transfer
     functions are derived. TODO: This can probably be phased out.
     """

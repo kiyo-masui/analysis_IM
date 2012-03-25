@@ -61,8 +61,8 @@ def batch_sim_run(simleft_key, simright_key,
             pwr_1d.append(pwrspec_out[1])
 
     if usecache_output_tag:
-        pe.summarize_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
-                             usecache_output_tag, outdir=output_root)
+        pe.summarize_agg_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
+                                 usecache_output_tag, outdir=output_root)
         retval = (pwr_1d, pwr_1d_from_2d, pwr_2d)
     else:
         caller.multiprocess_stack()
