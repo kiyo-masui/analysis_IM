@@ -140,8 +140,10 @@ class MuellerGen(object) :
             Reader = core.fitsGBT.Reader(input_fname)
             n_IFs = len(Reader.IF_set) # Should be 1 given that we've stitched windows for the spectrometer or by def in guppi
             n_scans = len(Reader.scan_set) #Should be 4 for the spectrometer, 2 for guppi
+#            print n_scans
             OnBlocks = Reader.read(range(0,n_scans,2),0,force_tuple=True)
             OffBlocks = Reader.read(range(1,n_scans,2),0,force_tuple=True)
+     
 #force_tuple=True makes the ouput of Reader.read a tuple even if thre is only one Block to return.
             Blocks = Reader.read(params['scans'], params['IFs'],
                                  force_tuple=True)
@@ -159,6 +161,7 @@ class MuellerGen(object) :
             m = 0           
             for Data in Blocks:
                 freq_len = Data.dims[3]
+                time_len = Data.dims[0]
                 Data.calc_freq()
                 freq_val = Data.freq
                 freq_val = freq_val/1000000       
@@ -166,6 +169,9 @@ class MuellerGen(object) :
                 PA[m] = ma.mean(Data.PA)  
                 m+=1
             
+#            print time_len
+#            print freq_len
+#            print m
 #Building the measured data into arrays (guppi version)         
             if guppi_result == True : 
                 if n_scans == 2 : 
@@ -174,11 +180,22 @@ class MuellerGen(object) :
                     self.theta[k+2] = ma.mean(PA)
                     self.theta[k+3] = ma.mean(PA)
 
+#for if I want to do the difference of medians
                     S_med_calon_src = sp.zeros((freq_len,4))
                     S_med_caloff_src = sp.zeros((freq_len,4))
                     S_med_calon = sp.zeros((freq_len,4))
                     S_med_caloff = sp.zeros((freq_len,4))
 
+#arrays built without taking median
+                    for Data in OnBlocks: 
+                        S_src = Data.data
+                    print len(S_src)
+
+                    for Data in OffBlocks:
+                        S_offsrc = Data.data
+                    print len(S_offsrc)
+ 
+#arrays built taking median
                     for Data in OnBlocks:
                         S_med_caloff_src[:,0] = ma.median(Data.data[:,XX_ind,off_ind,:],axis=0)
                         S_med_caloff_src[:,1] = ma.median(Data.data[:,XY_ind,off_ind,:],axis=0)
@@ -201,11 +218,18 @@ class MuellerGen(object) :
                         S_med_calon[:,2] = ma.median(Data.data[:,YX_ind,on_ind,:],axis=0)
                         S_med_calon[:,3] = ma.median(Data.data[:,YY_ind,on_ind,:],axis=0)
  
-                     
+#Final input if we already took median
                     self.d[k,:] = 0.5*(S_med_calon_src[:,0]+S_med_caloff_src[:,0]-S_med_calon[:,0]-S_med_caloff[:,0])
                     self.d[k+1,:] = 0.5*(S_med_calon_src[:,1]+S_med_caloff_src[:,1]-S_med_calon[:,1]-S_med_caloff[:,1])
                     self.d[k+2,:] = 0.5*(S_med_calon_src[:,2]+S_med_caloff_src[:,2]-S_med_calon[:,2]-S_med_caloff[:,2])
                     self.d[k+3,:] = 0.5*(S_med_calon_src[:,3]+S_med_caloff_src[:,3]-S_med_calon[:,3]-S_med_caloff[:,3])
+
+#Final input if we did not yet take median                     
+#                    print 0.5*(S_src[:,XX_ind,1,:]+S_src[:,XX_ind,0,:]-S_offsrc[:,XX_ind,1,:]-S_offsrc[:,XX_ind,0,:])
+#                    self.d[k,:] = ma.mean(0.5*(S_src[:,XX_ind,1,:]+S_src[:,XX_ind,0,:]-S_offsrc[:,XX_ind,1,:]-S_offsrc[:,XX_ind,0,:]),axis=0)
+#                    self.d[k+1,:] = ma.mean(0.5*(S_src[:,XY_ind,1,:]+S_src[:,XY_ind,0,:]-S_offsrc[:,XY_ind,1,:]-S_offsrc[:,XY_ind,0,:]),axis=0)
+#                    self.d[k+2,:] =ma.mean(0.5*(S_src[:,YX_ind,1,:]+S_src[:,YX_ind,0,:]-S_offsrc[:,YX_ind,1,:]-S_offsrc[:,YX_ind,0,:]),axis=0)
+#                    self.d[k+3,:] =ma.mean(0.5*(S_src[:,YY_ind,1,:]+S_src[:,YY_ind,0,:]-S_offsrc[:,YY_ind,1,:]-S_offsrc[:,YY_ind,0,:]),axis=0)             
                     k+=4
 
         for a in range(0,4*self.file_num):
@@ -233,7 +257,7 @@ class MuellerGen(object) :
 #        sess_num = int(session_nums[0])
 #        print sess_num
 #        np.savetxt(output_root+str(sess_num)+'_flux_mueller_matrix_calc'+output_end, p_val_out, delimiter = ' ')
-        out_path = output_root+sess+'_diff_gain_calc'+output_end
+        out_path = output_root+sess+'_diff_gain_calc_mod'+output_end
         np.savetxt(out_path,p_val_out,delimiter = ' ')
 #        np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')
 
