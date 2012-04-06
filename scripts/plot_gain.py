@@ -4,11 +4,12 @@ from numpy import *
 import scipy as sp
 import scipy.interpolate as ip
 
-prefix = '61'
+prefix = '01'
 
 filedir = sys.argv[1]
 
-gain_params = loadtxt(filedir+prefix+'_diff_gain_calc_mod.txt')
+gain_params = loadtxt(filedir+prefix+'_diff_gain_calc.txt')
+#gain_params = loadtxt(filedir+prefix+'_diff_gain_calc_mod.txt')
 
 size = len(gain_params[:,0])
 #print mueller_params[0,:] #is a set of values for highest frequency
@@ -25,12 +26,12 @@ YG = gain_params[:,2]
 #print YG[100]
 #print YG[129]
 
-for i in range(102,110):
-    XG[i] = 0.5*(XG[101]+XG[111])
-    YG[i] = 0.5*(YG[101]+YG[111])
-for j in range(130,137):
-    XG[j] = 0.5*(XG[129]+XG[138])
-    YG[j] = 0.5*(YG[129]+YG[138])
+#for i in range(102,110):
+#    XG[i] = 0.5*(XG[101]+XG[111])
+#    YG[i] = 0.5*(YG[101]+YG[111])
+#for j in range(130,137):
+#    XG[j] = 0.5*(XG[129]+XG[138])
+#    YG[j] = 0.5*(YG[129]+YG[138])
 #for i in range(1,len(XG)-1):
 #    if abs(XG[i]-XG[i-1])>0.5:
 #        XG[i] = XG[i-1]
@@ -56,13 +57,14 @@ for i in range(0,len(XG)):
 #Gain plot
 pylab.plot(freq, XG_new,label='XX Gain')
 pylab.plot(freq, YG_new,label='YY Gain')
-pylab.plot(freq_new,XG_mod_f, label='XX_mod')
-pylab.plot(freq_new,YG_mod_f, label='YY_mod')
+#pylab.plot(freq_new,XG_mod_f, label='XX_mod')
+#pylab.plot(freq_new,YG_mod_f, label='YY_mod')
 pylab.ylim(0,4)
 pylab.xlim(freq[0],freq[-1])
 pylab.xlabel('frequency')
 pylab.legend()
 pylab.grid(b='on')
-pylab.savefig('diff_gain_mod_'+prefix+'.png')
+pylab.savefig('diff_gain_'+prefix+'.png')
+#pylab.savefig('diff_gain_mod_'+prefix+'.png')
 pylab.clf()
 
