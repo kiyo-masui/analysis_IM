@@ -153,19 +153,20 @@ class PairSet(ft.ClassPersistence):
                                     noise_inv1, noise_inv2,
                                     self.freq_list)
 
+            pair.set_names(pdict['tag1'], pdict['tag2'])
+            pair.lags = self.lags
+            pair.params = self.params
+            self.pairs[pairitem] = pair
+
             pair_nosim = map_pair.MapPair(map1, map2,
                                     noise_inv1, noise_inv2,
                                     self.freq_list)
 
-            pair.set_names(pdict['tag1'], pdict['tag2'])
             pair_nosim.set_names(pdict['tag1'], pdict['tag2'])
-
-            pair.lags = self.lags
-            pair.params = self.params
             pair_nosim.lags = self.lags
             pair_nosim.params = self.params
-            self.pairs[pairitem] = pair
             self.pairs_nosim[pairitem] = pair_nosim
+
 
     def preprocess_pairs(self):
         r"""perform several preparation tasks on the data
@@ -249,7 +250,6 @@ class PairSet(ft.ClassPersistence):
         n_modes = "%dmodes" % n_modes
         for pairitem in self.pairlist:
             pair = self.pairs[pairitem]
-            pair_nosim = self.pairs_nosim[pairitem]
             (tag1, tag2) = (pair.map1_name, pair.map2_name)
             clnoise = "cleaned_noise_inv"
             map1_file = "%s/sec_%s_cleaned_clean_map_I_with_%s_%s.npy" % \
@@ -265,6 +265,7 @@ class PairSet(ft.ClassPersistence):
             modes2_file = "%s/sec_%s_modes_clean_map_I_with_%s_%s.npy" % \
                             (self.output_root, tag2, tag1, n_modes)
 
+            pair_nosim = self.pairs_nosim[pairitem]
             algebra.save(map1_file, pair.map1 - pair_nosim.map1)
             algebra.save(map2_file, pair.map2 - pair_nosim.map2)
             algebra.save(noise_inv1_file, pair.noise_inv1)
@@ -277,16 +278,24 @@ class PairSet(ft.ClassPersistence):
         r"""call some operation on the map pairs"""
         for pairitem in self.pairlist:
             pair = self.pairs[pairitem]
-            pair_nosim = self.pairs_nosim[pairitem]
             try:
                 method_to_call = getattr(pair, call)
-                method_to_call_nosim = getattr(pair_nosim, call)
             except AttributeError:
                 print "ERROR: %s missing call %s" % (pairitem, call)
                 sys.exit()
 
             print "calling %s() on pair %s" % (call, pairitem)
             method_to_call()
+
+        for pairitem in self.pairlist:
+            pair_nosim = self.pairs_nosim[pairitem]
+            try:
+                method_to_call_nosim = getattr(pair_nosim, call)
+            except AttributeError:
+                print "ERROR: %s missing call %s" % (pairitem, call)
+                sys.exit()
+
+            print "calling %s() on pair %s" % (call, pairitem)
             method_to_call_nosim()
 
     # TODO: this could probably replaced with a memoize

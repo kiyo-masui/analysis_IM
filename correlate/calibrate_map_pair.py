@@ -8,7 +8,7 @@ from core import algebra
 from correlate import map_pair
 import shelve
 
-input_root = "/mnt/raid-project/gmrt/nbanavar/gbt_out/maps/"
+input_root = "/mnt/raid-project/gmrt/nbanavar/gbt_out/maps/sessions/"
 output_root = "/mnt/raid-project/gmrt/eswitzer/GBT/maps/self_calibrated/"
 
 live_sessions = range(41, 74)
@@ -55,6 +55,12 @@ def map_pair_cal(uncal_maplist, uncal_weightlist, calfactor_outlist,
     map1file = uncal_maplist.pop(0)
     weight1file = uncal_weightlist.pop(0)
     calfactor_outlist.pop(0)
+    dirtymap_out0 = dirtymap_outlist.pop(0)
+    dirtymap_in0 = dirtymap_inlist.pop(0)
+
+    # do nothing to the reference map
+    ref_dirtymap = algebra.make_vect(algebra.load(dirtymap_in0))
+    algebra.save(dirtymap_out0, ref_dirtymap)
 
     # load maps into pairs
     svdout = shelve.open("correlation_pairs.shelve")
@@ -96,6 +102,7 @@ def map_pair_cal(uncal_maplist, uncal_weightlist, calfactor_outlist,
         newmap = algebra.make_vect(algebra.load(dirty_infile))
         newmap[freq_list, :, :] *= calfactor[:,np.newaxis,np.newaxis]
         algebra.save(dirty_outfile, newmap)
+        print dirty_outfile
 
     svdout.close()
 

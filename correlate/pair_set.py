@@ -37,6 +37,8 @@ params_init = {
                'map2': 'GBT_15hr_map',
                'noise_inv1': 'GBT_15hr_map',
                'noise_inv2': 'GBT_15hr_map',
+               'simfile': None,
+               'subtract_inputmap_from_sim': False,
                'freq_list': (),
                # Angular lags at which to calculate the correlation.  Upper
                # edge bins in degrees.
@@ -57,6 +59,7 @@ class PairSet(ft.ClassPersistence):
     def __init__(self, parameter_file_or_dict=None):
         # recordkeeping
         self.pairs = {}
+        self.pairs_nosim = {}
         self.pairlist = []
         self.noisefiledict = {}
         self.datapath_db = dp.DataPath()
@@ -135,6 +138,10 @@ class PairSet(ft.ClassPersistence):
 
             map1 = algebra.make_vect(algebra.load(pdict['map1']))
             map2 = algebra.make_vect(algebra.load(pdict['map2']))
+            if par['simfile'] is not None:
+                sim = algebra.make_vect(algebra.load(par['simfile']))
+            else:
+                sim = algebra.zeros_like(map1)
 
             if not par['no_weights']:
                 noise_inv1 = self.process_noise_inv(pdict['noise_inv1'],
@@ -146,7 +153,7 @@ class PairSet(ft.ClassPersistence):
                 noise_inv1 = algebra.ones_like(map1)
                 noise_inv2 = algebra.ones_like(map2)
 
-            pair = map_pair.MapPair(map1, map2,
+            pair = map_pair.MapPair(map1 + sim, map2 + sim,
                                     noise_inv1, noise_inv2,
                                     self.freq_list)
 
@@ -155,6 +162,17 @@ class PairSet(ft.ClassPersistence):
             pair.lags = self.lags
             pair.params = self.params
             self.pairs[pairitem] = pair
+
+            if par['subtract_inputmap_from_sim']:
+                pair_nosim = map_pair.MapPair(map1, map2,
+                                              noise_inv1, noise_inv2,
+                                              self.freq_list)
+
+                pair_nosim.set_names(pdict['tag1'], pdict['tag2'])
+                pair_nosim.lags = self.lags
+                pair_nosim.params = self.params
+                self.pairs_nosim[pairitem] = pair_nosim
+
 
     def preprocess_pairs(self):
         r"""perform several preparation tasks on the data
@@ -224,6 +242,11 @@ class PairSet(ft.ClassPersistence):
                                     svd_info[1][:n_modes],
                                     svd_info[2][:n_modes])
 
+            if self.params['subtract_inputmap_from_sim']:
+                self.pairs_nosim[pairitem].subtract_frequency_modes(
+                                                svd_info[1][:n_modes],
+                                                svd_info[2][:n_modes])
+
     def save_data(self, n_modes):
         ''' Save the all of the clean data.
         '''
@@ -249,8 +272,13 @@ class PairSet(ft.ClassPersistence):
             modes2_file = "%s/sec_%s_modes_clean_map_I_with_%s_%s.npy" % \
                             (self.output_root, tag2, tag1, n_modes)
 
-            algebra.save(map1_file, pair.map1)
-            algebra.save(map2_file, pair.map2)
+            if self.params['subtract_inputmap_from_sim']:
+                pair_nosim = self.pairs_nosim[pairitem]
+                algebra.save(map1_file, pair.map1 - pair_nosim.map1)
+                algebra.save(map2_file, pair.map2 - pair_nosim.map2)
+            else:
+                algebra.save(map1_file, pair.map1)
+                algebra.save(map2_file, pair.map2)
             algebra.save(noise_inv1_file, pair.noise_inv1)
             algebra.save(noise_inv2_file, pair.noise_inv2)
             algebra.save(modes1_file, pair.left_modes)
@@ -269,6 +297,18 @@ class PairSet(ft.ClassPersistence):
 
             print "calling %s() on pair %s" % (call, pairitem)
             method_to_call()
+
+        if self.params['subtract_inputmap_from_sim']:
+            for pairitem in self.pairlist:
+                pair_nosim = self.pairs_nosim[pairitem]
+                try:
+                    method_to_call_nosim = getattr(pair_nosim, call)
+                except AttributeError:
+                    print "ERROR: %s missing call %s" % (pairitem, call)
+                    sys.exit()
+
+                print "calling %s() on pair %s" % (call, pairitem)
+                method_to_call_nosim()
 
     # TODO: this could probably replaced with a memoize
     def process_noise_inv(self, filename, regenerate=True):
