@@ -2,6 +2,7 @@
 The MemoizeBatch class is best for trivial parallelization
 The memoize_persistent decorator is best for memoized serial calls
 """
+from core import algebra
 import multiprocessing
 import cPickle as pickle
 import hashlib
@@ -59,12 +60,19 @@ def print_call(args_package):
     return filename
 
 
+def repackage_kiyo(kiyo_map_split):
+    combined_kiyo = algebra.make_vect(kiyo_map_split[0], axis_names=('freq', 'ra', 'dec'))
+    combined_kiyo.info = kiyo_map_split[1]
+
+    return combined_kiyo
+
+
 memoize_directory = "/mnt/raid-project/gmrt/eswitzer/persistent_memoize/"
-
-
 def memoize_persistent(func):
     r"""threadsafe shelve using flock was too annoying; here, just wait
-    note that shelve protocol=-1 does not handle Kiyo-style array metadata
+    note that shelve protocol=-1 does not handle Kiyo-style array metadata.
+    The repackage_kiyo function above handles this.
+
     There seems to be a race condition where two threads can open the same
     shelve because of the finite time it takes to write the shelve. Currently
     trying a simpler lock.
