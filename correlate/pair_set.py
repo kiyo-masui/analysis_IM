@@ -46,6 +46,7 @@ params_init = {
                'convolve': True,
                'factorizable_noise': True,
                'sub_weighted_mean': True,
+               'regenerate_noise_inv': True,
                'modes': [10, 15],
                'no_weights': False
                }
@@ -87,38 +88,31 @@ class PairSet(ft.ClassPersistence):
     def execute(self):
         r"""main call to execute the various steps in foreground removal"""
         self.calculate_corr_svd()
-        self.clean_maps(freestanding=False)  # data are already loaded
+        self.clean_maps()
 
     def calculate_corr_svd(self):
         r""" "macro" which finds the correlation functions for the pairs of
         given maps, then the SVD.
         """
-        self.load_pairs(regenerate=True)
+        self.load_pairs()
         self.preprocess_pairs()
-        # If the correlation is already calculated, this can be commented out
-        # and the SVD will load the previously-calculated correlations
         self.calculate_correlation()
         self.calculate_svd()
 
-    def clean_maps(self, freestanding=True):
+    def clean_maps(self):
         r""" "macro" which open the data, does pre-processing, loads the
         pre-calculated SVD modes, subtracts them, and saves the data.
-        This is the second stage. If `freestanding` assume that the data have
-        not been loaded into pairs and pre-processed.
+        This is the second stage.
         """
-        if freestanding:
-            self.load_pairs(regenerate=False)  # use previous diag(N^-1)
-            self.preprocess_pairs()
-
         self.uncleaned_pairs = copy.deepcopy(self.pairs)
         for n_modes in self.params['modes']:
             # clean self.pairs and save its components
             self.subtract_foregrounds(n_modes)
             self.save_data(n_modes)
-            # reset the all the pair data
+            # reset the all the pair data; vestigial?
             self.pairs = copy.deepcopy(self.uncleaned_pairs)
 
-    def load_pairs(self, regenerate=True):
+    def load_pairs(self):
         r"""load the set of map/noise pairs specified by keys handed to the
         database. This sets up operations on the quadratic product
             Q = map1^T noise_inv1 B noise_inv2 map2
@@ -144,11 +138,8 @@ class PairSet(ft.ClassPersistence):
                 sim = algebra.zeros_like(map1)
 
             if not par['no_weights']:
-                noise_inv1 = self.process_noise_inv(pdict['noise_inv1'],
-                                                    regenerate=regenerate)
-
-                noise_inv2 = self.process_noise_inv(pdict['noise_inv2'],
-                                                    regenerate=regenerate)
+                noise_inv1 = self.process_noise_inv(pdict['noise_inv1'])
+                noise_inv2 = self.process_noise_inv(pdict['noise_inv2'])
             else:
                 noise_inv1 = algebra.ones_like(map1)
                 noise_inv2 = algebra.ones_like(map2)
@@ -311,7 +302,7 @@ class PairSet(ft.ClassPersistence):
                 method_to_call_nosim()
 
     # TODO: this could probably replaced with a memoize
-    def process_noise_inv(self, filename, regenerate=True):
+    def process_noise_inv(self, filename):
         r"""buffer reading the noise inverse files for speed and also
         save to a file in the intermediate output path.
 
@@ -323,7 +314,7 @@ class PairSet(ft.ClassPersistence):
             filename_diag = "%s/%s_diag.npy" % \
                            (self.output_root, basename)
             exists = os.access(filename_diag, os.F_OK)
-            if exists and not regenerate:
+            if exists and not self.params['regenerate_noise_inv']:
                 print "loading pre-diagonalized noise: " + filename_diag
                 self.noisefiledict[filename] = algebra.make_vect(
                                                 algebra.load(filename_diag))
