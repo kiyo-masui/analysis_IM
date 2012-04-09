@@ -23,17 +23,16 @@ import kiyopy.utils
 from core import algebra
 from correlate import map_pair
 from multiprocessing import Process, current_process
-from map import batch_handler
+from utils import batch_handler
 # TODO: make map cleaning multiprocess; could also use previous cleaning, e.g.
 # 5 modes to clean 10 modes = modes 5 to 10 (but no need to do this)
 # TODO: move all magic strings to __init__ or params
 # TODO: replace print with logging
 
+
 params_init = {
                'SVD_root': None,
                'output_root': "local_test",
-               # Options of saving.
-               # What frequencies to correlate:
                'map1': 'GBT_15hr_map',
                'map2': 'GBT_15hr_map',
                'noise_inv1': 'GBT_15hr_map',
@@ -41,8 +40,7 @@ params_init = {
                'simfile': None,
                'subtract_inputmap_from_sim': False,
                'freq_list': (),
-               # Angular lags at which to calculate the correlation.  Upper
-               # edge bins in degrees.
+                # in deg: (unused)
                'lags': (0.1, 0.2),
                'convolve': True,
                'factorizable_noise': True,
@@ -54,18 +52,18 @@ params_init = {
 prefix = 'fs_'
 
 
-def wrap_find_weight(filename, memoize=False):
-    if memoize:
-        retval = memoize_find_weight(filename)
-    else:
+def wrap_find_weight(filename, regenerate=False):
+    if regenerate:
         retval = find_weight(filename)
+    else:
+        retval = memoize_find_weight(filename)
 
     return batch_handler.repackage_kiyo(retval)
 
 
 @batch_handler.memoize_persistent
 def memoize_find_weight(filename):
-    print "using the memoized version of find_weights"
+    print "using the memoized version of find_weights: " + filename
     return find_weight(filename)
 
 
@@ -91,15 +89,17 @@ class PairSet(ft.ClassPersistence):
     r"""Class to manage a set of map pairs
     """
 
-    def __init__(self, parameter_file_or_dict=None):
+    def __init__(self, parameter_file=None, params_dict=None):
         # recordkeeping
         self.pairs = {}
         self.pairs_nosim = {}
         self.pairlist = []
         self.datapath_db = dp.DataPath()
 
-        self.params = parse_ini.parse(parameter_file_or_dict, params_init,
-                                      prefix=prefix)
+        self.params = params_dict
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file, params_init,
+                                          prefix=prefix)
 
         self.freq_list = sp.array(self.params['freq_list'], dtype=int)
         self.lags = sp.array(self.params['lags'])
@@ -172,10 +172,10 @@ class PairSet(ft.ClassPersistence):
 
             if not par['no_weights']:
                 noise_inv1 = wrap_find_weight(pdict['noise_inv1'],
-                                memoize=par['regenerate_noise_inv'])
+                                regenerate=par['regenerate_noise_inv'])
 
                 noise_inv2 = wrap_find_weight(pdict['noise_inv2'],
-                                memoize=par['regenerate_noise_inv'])
+                                regenerate=par['regenerate_noise_inv'])
             else:
                 noise_inv1 = algebra.ones_like(map1)
                 noise_inv2 = algebra.ones_like(map2)
