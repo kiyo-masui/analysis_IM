@@ -23,6 +23,7 @@ import kiyopy.utils
 from core import algebra
 from correlate import map_pair
 from multiprocessing import Process, current_process
+from map import batch_handler
 # TODO: make map cleaning multiprocess; could also use previous cleaning, e.g.
 # 5 modes to clean 10 modes = modes 5 to 10 (but no need to do this)
 # TODO: move all magic strings to __init__ or params
@@ -53,6 +54,39 @@ params_init = {
 prefix = 'fs_'
 
 
+def wrap_find_weight(filename, memoize=False):
+    if memoize:
+        retval = memoize_find_weight(filename)
+    else:
+        retval = find_weight(filename)
+
+    return batch_handler.repackage_kiyo(retval)
+
+
+@batch_handler.memoize_persistent
+def memoize_find_weight(filename):
+    print "using the memoized version of find_weights"
+    return find_weight(filename)
+
+
+# TODO: make this handle the dimensions of the new map noise inv more
+# automatically
+def find_weight(filename):
+    r"""rather than read the full noise_inv and find its diagonal, cache the
+    diagonal values.
+
+    Note that the .info does not get shelved (class needs to be made
+    serializeable). Return the info separately.
+    """
+    print "loading noise: " + filename
+    noise_inv = algebra.make_mat(algebra.open_memmap(filename, mode='r'))
+    noise_inv_diag = noise_inv.mat_diag()
+    # if optimal map:
+    #noise_inv_diag = algebra.make_vect(algebra.load(filename))
+
+    return noise_inv_diag, noise_inv_diag.info
+
+
 class PairSet(ft.ClassPersistence):
     r"""Class to manage a set of map pairs
     """
@@ -62,7 +96,6 @@ class PairSet(ft.ClassPersistence):
         self.pairs = {}
         self.pairs_nosim = {}
         self.pairlist = []
-        self.noisefiledict = {}
         self.datapath_db = dp.DataPath()
 
         self.params = parse_ini.parse(parameter_file_or_dict, params_init,
@@ -138,8 +171,11 @@ class PairSet(ft.ClassPersistence):
                 sim = algebra.zeros_like(map1)
 
             if not par['no_weights']:
-                noise_inv1 = self.process_noise_inv(pdict['noise_inv1'])
-                noise_inv2 = self.process_noise_inv(pdict['noise_inv2'])
+                noise_inv1 = wrap_find_weight(pdict['noise_inv1'],
+                                memoize=par['regenerate_noise_inv'])
+
+                noise_inv2 = wrap_find_weight(pdict['noise_inv2'],
+                                memoize=par['regenerate_noise_inv'])
             else:
                 noise_inv1 = algebra.ones_like(map1)
                 noise_inv2 = algebra.ones_like(map2)
@@ -300,36 +336,6 @@ class PairSet(ft.ClassPersistence):
 
                 print "calling %s() on pair %s" % (call, pairitem)
                 method_to_call_nosim()
-
-    # TODO: this could probably replaced with a memoize
-    def process_noise_inv(self, filename):
-        r"""buffer reading the noise inverse files for speed and also
-        save to a file in the intermediate output path.
-
-        If the cached file exists as an intermediate product, load it else
-        produce it.
-        """
-        if filename not in self.noisefiledict:
-            basename = filename.split("/")[-1].split(".npy")[0]
-            filename_diag = "%s/%s_diag.npy" % \
-                           (self.output_root, basename)
-            exists = os.access(filename_diag, os.F_OK)
-            if exists and not self.params['regenerate_noise_inv']:
-                print "loading pre-diagonalized noise: " + filename_diag
-                self.noisefiledict[filename] = algebra.make_vect(
-                                                algebra.load(filename_diag))
-            else:
-                print "loading noise: " + filename
-                # TODO: have this be smarter about reading various noise cov
-                # inputs
-                noise_inv = algebra.make_mat(
-                                    algebra.open_memmap(filename, mode='r'))
-                self.noisefiledict[filename] = noise_inv.mat_diag()
-                #self.noisefiledict[filename] = algebra.make_vect(
-                #                               algebra.load(filename))
-                algebra.save(filename_diag, self.noisefiledict[filename])
-
-        return copy.deepcopy(self.noisefiledict[filename])
 
 
 def wrap_corr(pair, filename):
