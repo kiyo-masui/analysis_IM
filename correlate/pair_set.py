@@ -63,7 +63,6 @@ def wrap_find_weight(filename, regenerate=False):
 
 @batch_handler.memoize_persistent
 def memoize_find_weight(filename):
-    print "using the memoized version of find_weights: " + filename
     return find_weight(filename)
 
 

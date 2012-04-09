@@ -34,7 +34,8 @@ params_init = {
                'modes': [10, 15],
                'no_weights': False,
                'SVD_root': None,
-               'regenerate_noise_inv': False
+               'regenerate_noise_inv': False,
+               'subtract_inputmap_from_sim': False
                }
 prefix = 'fs_'
 

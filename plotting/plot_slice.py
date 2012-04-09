@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
                         aspect, title, cbar_title, slice_label, index,
-                        eps_outfile=None, physical=False):
+                        eps_outfile=None, physical=False, density=300):
     r"""plot a single map slice
     Here, slice_label is the value of the value over which the slice is fixed
         for physical=False, this is the frequency of the slice in MHz
@@ -49,7 +49,35 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
         fulltitle = "%s (i = %d, Dc = %10.3f cMpc)" % \
                 (title, index, slice_label)
 
-    print fulltitle, repr(cube_slice.shape)
+    FWHM_circle = {"primitive": "circle",
+                   "center_x": 0.9,
+                   "center_y": 0.15,
+                   "radius": fwhm / 2.,
+                   "width": 5,
+                   "color": "purple" }
+
+    region_scale = {"primitive": "rect",
+                   "center_x": 0.9,
+                   "center_y": 0.15,
+                   "size_x": angular_scale,
+                   "size_y": angular_scale,
+                   "width": 3,
+                   "color": "black" }
+
+    draw_objects = [FWHM_circle, region_scale]
+
+    gnuplot_2D(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
+               aspect, fulltitle, cbar_title, eps_outfile=None,
+               draw_objects=draw_objects)
+
+
+def gnuplot_2D(outfilename, region, xaxis, yaxis, vaxis, xylabels,
+               aspect, fulltitle, cbar_title, eps_outfile=None,
+               draw_objects=[], density='300'):
+    r"""plot a 2D matrix
+    """
+
+    print fulltitle, repr(region.shape)
 
     input_data_file = tempfile.NamedTemporaryFile()
     gplfile = tempfile.NamedTemporaryFile(suffix=".gpl")
@@ -66,7 +94,7 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
     for xind in range(len(xaxis)):
         for yind in range(len(yaxis)):
             outstring = "%g %g %g\n" % \
-                        (xaxis[xind], yaxis[yind], cube_slice[xind, yind])
+                        (xaxis[xind], yaxis[yind], region[xind, yind])
             input_data_file.write(outstring)
 
     input_data_file.flush()
@@ -91,13 +119,26 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
     else:
         gplfile.write('set output "%s"\n' % eps_outfile)
 
-    if not physical:
-        gplfile.write('set obj 10 circle at graph 0.9,.15 size %g front\n' % \
-                       (fwhm / 2.))
-        gplfile.write('set obj 10 lw 5 fill empty border rgb "purple"\n')
-        gplfile.write('set obj 11 rect at graph 0.9,.15 size %g, %g front\n' % \
-                      (angular_scale, angular_scale))
-        gplfile.write('set obj 11 lw 3 fill empty border rgb "black"\n')
+    objnum = 10
+    for drawing in draw_objects:
+        drawing["objnum"] = objnum
+
+        objcmd = "set obj %(objnum)d %(primitive)s " % drawing
+        objcmd += "at graph %(center_x)g, %(center_y)g " % drawing
+
+        if drawing["primitive"] == "circle":
+            objcmd += "size %(radius)g front\n" % drawing
+
+        if drawing["primitive"] == "rect":
+            objcmd += "size %(size_x)g, %(size_y)g front\n" % drawing
+
+        gplfile.write(objcmd)
+
+        objcmd = "set obj %(objnum)d lw %(width)d " % drawing
+        objcmd += "fill empty border rgb \"%(color)s\"\n" % drawing
+        gplfile.write(objcmd)
+
+        objnum += 1
 
     gplfile.write("set palette rgbformulae 22, 13, -31\n")
 
@@ -110,7 +151,7 @@ def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
     input_data_file.close()
 
     if eps_outfile is None:
-        subprocess.check_call(('convert', '-density', '300', '-trim', '+repage',
+        subprocess.check_call(('convert', '-density', density, '-trim', '+repage',
                                '-border', '40x40', '-bordercolor', 'white',
                                 outplot_file.name, outfilename))
 
