@@ -1,74 +1,10 @@
 r"""functions to plot slices of the cubes"""
-import scipy as sp
 import numpy as np
 import tempfile
 import subprocess
-from scipy.interpolate import interp1d
-from utils.cosmology import Cosmology
-from utils import units
-from core import constants as cc
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
-
-def gnuplot_radec_slice(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
-                        aspect, title, cbar_title, slice_label, index,
-                        eps_outfile=None, physical=False, density=300):
-    r"""plot a single map slice
-    Here, slice_label is the value of the value over which the slice is fixed
-        for physical=False, this is the frequency of the slice in MHz
-        for physical=True, this is the comoving distance to the slice
-    """
-
-    if not physical:
-        z_here = cc.freq_21cm_MHz / slice_label - 1.
-        cosmology = Cosmology()
-        littleh = (cosmology.H0 / 100.0)
-        comoving_distance = cosmology.comoving_distance(z_here) / littleh
-        proper_distance = cosmology.proper_distance(z_here) / littleh
-        angular_scale = 20. / units.degree / proper_distance
-
-        fulltitle = "%s (i = %d, freq = %3.1f MHz, z = %3.3f, Dc=%3.0f cMpc)" % \
-                (title, index, slice_label, z_here, comoving_distance)
-
-        beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792,
-                     0.281176247549, 0.270856788455, 0.26745856078,
-                     0.258910010848, 0.249188429031])
-        freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
-                                 dtype=float)
-
-        beam_fwhm = interp1d(freq_data, beam_data)
-        if (slice_label <= freq_data.min()) or \
-           (slice_label >= freq_data.max()):
-            fwhm = 0.
-        else:
-            fwhm = beam_fwhm(slice_label)
-
-    else:
-        fulltitle = "%s (i = %d, Dc = %10.3f cMpc)" % \
-                (title, index, slice_label)
-
-    FWHM_circle = {"primitive": "circle",
-                   "center_x": 0.9,
-                   "center_y": 0.15,
-                   "radius": fwhm / 2.,
-                   "width": 5,
-                   "color": "purple" }
-
-    region_scale = {"primitive": "rect",
-                   "center_x": 0.9,
-                   "center_y": 0.15,
-                   "size_x": angular_scale,
-                   "size_y": angular_scale,
-                   "width": 3,
-                   "color": "black" }
-
-    draw_objects = [FWHM_circle, region_scale]
-
-    gnuplot_2D(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
-               aspect, fulltitle, cbar_title, eps_outfile=None,
-               draw_objects=draw_objects)
 
 
 def gnuplot_2D(outfilename, region, xaxis, yaxis, vaxis, xylabels,
