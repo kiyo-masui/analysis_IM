@@ -39,6 +39,7 @@ params_init = {
                'noise_inv2': 'GBT_15hr_map',
                'simfile': None,
                'subtract_inputmap_from_sim': False,
+               'subtract_sim_from_inputmap': False,
                'freq_list': (),
                 # in deg: (unused)
                'lags': (0.1, 0.2),
@@ -91,7 +92,7 @@ class PairSet(ft.ClassPersistence):
     def __init__(self, parameter_file=None, params_dict=None):
         # recordkeeping
         self.pairs = {}
-        self.pairs_nosim = {}
+        self.pairs_parallel_track = {}
         self.pairlist = []
         self.datapath_db = dp.DataPath()
 
@@ -189,15 +190,22 @@ class PairSet(ft.ClassPersistence):
             pair.params = self.params
             self.pairs[pairitem] = pair
 
-            if par['subtract_inputmap_from_sim']:
-                pair_nosim = map_pair.MapPair(map1, map2,
-                                              noise_inv1, noise_inv2,
-                                              self.freq_list)
+            if par['subtract_inputmap_from_sim'] or \
+               par['subtract_sim_from_inputmap']:
+                if par['subtract_inputmap_from_sim']:
+                    pair_parallel_track = map_pair.MapPair(map1, map2,
+                                                  noise_inv1, noise_inv2,
+                                                  self.freq_list)
 
-                pair_nosim.set_names(pdict['tag1'], pdict['tag2'])
-                pair_nosim.lags = self.lags
-                pair_nosim.params = self.params
-                self.pairs_nosim[pairitem] = pair_nosim
+                if par['subtract_sim_from_inputmap']:
+                    pair_parallel_track = map_pair.MapPair(sim1, sim2,
+                                                  noise_inv1, noise_inv2,
+                                                  self.freq_list)
+
+                pair_parallel_track.set_names(pdict['tag1'], pdict['tag2'])
+                pair_parallel_track.lags = self.lags
+                pair_parallel_track.params = self.params
+                self.pairs_parallel_track[pairitem] = pair_parallel_track
 
 
     def preprocess_pairs(self):
@@ -268,8 +276,9 @@ class PairSet(ft.ClassPersistence):
                                     svd_info[1][:n_modes],
                                     svd_info[2][:n_modes])
 
-            if self.params['subtract_inputmap_from_sim']:
-                self.pairs_nosim[pairitem].subtract_frequency_modes(
+            if self.params['subtract_inputmap_from_sim'] or \
+               self.params['subtract_sim_from_inputmap']:
+                self.pairs_parallel_track[pairitem].subtract_frequency_modes(
                                                 svd_info[1][:n_modes],
                                                 svd_info[2][:n_modes])
 
@@ -298,10 +307,11 @@ class PairSet(ft.ClassPersistence):
             modes2_file = "%s/sec_%s_modes_clean_map_I_with_%s_%s.npy" % \
                             (self.output_root, tag2, tag1, n_modes)
 
-            if self.params['subtract_inputmap_from_sim']:
-                pair_nosim = self.pairs_nosim[pairitem]
-                algebra.save(map1_file, pair.map1 - pair_nosim.map1)
-                algebra.save(map2_file, pair.map2 - pair_nosim.map2)
+            if self.params['subtract_inputmap_from_sim'] or \
+               self.params['subtract_sim_from_inputmap']:
+                pair_parallel_track = self.pairs_parallel_track[pairitem]
+                algebra.save(map1_file, pair.map1 - pair_parallel_track.map1)
+                algebra.save(map2_file, pair.map2 - pair_parallel_track.map2)
             else:
                 algebra.save(map1_file, pair.map1)
                 algebra.save(map2_file, pair.map2)
@@ -324,17 +334,18 @@ class PairSet(ft.ClassPersistence):
             print "calling %s() on pair %s" % (call, pairitem)
             method_to_call()
 
-        if self.params['subtract_inputmap_from_sim']:
+        if self.params['subtract_inputmap_from_sim'] or \
+           self.params['subtract_sim_from_inputmap']:
             for pairitem in self.pairlist:
-                pair_nosim = self.pairs_nosim[pairitem]
+                pair_parallel_track = self.pairs_parallel_track[pairitem]
                 try:
-                    method_to_call_nosim = getattr(pair_nosim, call)
+                    method_to_call_parallel_track = getattr(pair_parallel_track, call)
                 except AttributeError:
                     print "ERROR: %s missing call %s" % (pairitem, call)
                     sys.exit()
 
                 print "calling %s() on pair %s" % (call, pairitem)
-                method_to_call_nosim()
+                method_to_call_parallel_track()
 
 
 def wrap_corr(pair, filename):
