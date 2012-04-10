@@ -38,6 +38,7 @@ params_init = {
                'noise_inv1': 'GBT_15hr_map',
                'noise_inv2': 'GBT_15hr_map',
                'simfile': None,
+               'sim_multiplier': 1.,
                'subtract_inputmap_from_sim': False,
                'subtract_sim_from_inputmap': False,
                'freq_list': (),
@@ -167,6 +168,7 @@ class PairSet(ft.ClassPersistence):
             map2 = algebra.make_vect(algebra.load(pdict['map2']))
             if par['simfile'] is not None:
                 sim = algebra.make_vect(algebra.load(par['simfile']))
+                sim *= par['sim_multiplier']
             else:
                 sim = algebra.zeros_like(map1)
 

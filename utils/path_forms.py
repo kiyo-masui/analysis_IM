@@ -417,3 +417,63 @@ class PathForms(object):
 
         self._set_key(key, val)
 
+    def register_combined_batchsimrun(self, key, group_key, parent, desc,
+                                      modelist, simlist, notes=None, status=None):
+        r"""register all the files produced in a mapping run
+        """
+        val = {'desc': desc}
+        self.groups[group_key].append(key)
+        fileroot = self.fetch_path(parent)
+
+        val['group_key'] = group_key
+        val['parent'] = parent
+
+        if notes is not None:
+            val['notes'] = notes
+
+        if status is not None:
+            val['status'] = status
+
+        filelist = {}
+        listindex = []
+
+        for sim_num in simlist:
+            for mode_num in modelist:
+                modetag = "%dmodes" % mode_num
+                simtag = "sim%d" % sim_num
+
+                filekey = 'map;%s;%s' % (modetag, simtag)
+                filename = '%scombined_%s_clean_map_%s.npy' % \
+                            (fileroot, simtag, modetag)
+
+                filelist[filekey] = filename
+                listindex.append(filekey)
+
+                filekey = 'product;%s;%s' % (modetag, simtag)
+                filename = '%scombined_%s_clean_product_%s.npy' % \
+                            (fileroot, simtag, modetag)
+
+                filelist[filekey] = filename
+                listindex.append(filekey)
+
+                filekey = 'weight;%s;%s' % (modetag, simtag)
+                filename = '%scombined_%s_clean_weight_%s.npy' % \
+                            (fileroot, simtag, modetag)
+
+                filelist[filekey] = filename
+                listindex.append(filekey)
+
+                filekey = 'ones;%s;%s' % (modetag, simtag)
+                filename = '%scombined_%s_clean_ones_%s.npy' % \
+                            (fileroot, simtag, modetag)
+
+                filelist[filekey] = filename
+                listindex.append(filekey)
+
+        val['listindex'] = listindex
+        val['filelist'] = filelist
+        if self.verbose:
+            print "registered combined map run set: " + repr(val)
+
+        self._set_key(key, val)
+
