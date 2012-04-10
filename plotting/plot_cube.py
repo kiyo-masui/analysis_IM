@@ -18,7 +18,7 @@ cube_frame_dir = "/scratch/eswitzer/cube_frames/"
 
 
 # TODO make a more general kwargs wrapper
-def gnuplot_radec_single(plotitem):
+def gnuplot_single_slice(plotitem):
     """plot a single map slice; helper function for process pool"""
     (outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels, \
         aspect, fulltitle, cbar_title, draw_objects) = plotitem
@@ -29,7 +29,7 @@ def gnuplot_radec_single(plotitem):
 
 
 def make_cube_movie(source_key, colorbar_title, frame_dir,
-                    filetag_suffix="",
+                    filetag_suffix="", saveslice=None, saveslice_file=None,
                     outputdir="./", sigmarange=6., ignore=None, multiplier=1.,
                     transverse=False, title=None, sigmacut=None,
                     logscale=False, physical=False, convolve=False, tag=None):
@@ -60,6 +60,11 @@ def make_cube_movie(source_key, colorbar_title, frame_dir,
         #tag = ".".join(source_key.split(".")[:-1])  # extract root name
         #tag = tag.split("/")[-1]
 
+    if title is None:
+        title = "%(tag)s (i = %(index)d, "
+        title += "freq = %(freq)3.1f MHz, z = %(redshift)3.3f, "
+        title += "Dc=%(distance)3.0f cMpc)"
+
     print tag
     fileprefix = frame_dir + tag
     nlevels = 500
@@ -68,9 +73,6 @@ def make_cube_movie(source_key, colorbar_title, frame_dir,
         orientation = "_freqRA"
     else:
         orientation = "_RADec"
-
-    if not title:
-        title = tag
 
     # prepare the data
     #cube = algebra.make_vect(algebra.load(source_key)) * multiplier
@@ -133,7 +135,7 @@ def make_cube_movie(source_key, colorbar_title, frame_dir,
     # TODO: make transverse work with gnuplot
     if transverse:
         for decind in range(cube.shape[2]):
-            fulltitle = title + " (dec = %3.1f)" % (dec_axis[decind])
+            fulltitle = tag + " (dec = %3.1f)" % (dec_axis[decind])
             runlist.append((decind, cube[:, :, decind], freq_axis,
                             ra_axis, color_axis, ["Freq", "Ra"], 20.,
                             fulltitle, colorbar_title, fileprefix, 800.))
@@ -149,8 +151,13 @@ def make_cube_movie(source_key, colorbar_title, frame_dir,
                 proper_distance = cosmology.proper_distance(z_here) / littleh
                 angular_scale = 20. / units.degree / proper_distance
 
-                fulltitle = "%s (i = %d, freq = %3.1f MHz, z = %3.3f, Dc=%3.0f cMpc)" % \
-                            (title, freqind, freq_MHz, z_here, comoving_distance)
+                title_info = {"index": freqind,
+                              "redshift": z_here,
+                              "distance": comoving_distance,
+                              "freq": freq_MHz,
+                              "tag": tag}
+
+                fulltitle = title % title_info
 
                 if (freq_MHz <= freq_data.min()) or \
                     (freq_MHz >= freq_data.max()):
@@ -190,21 +197,27 @@ def make_cube_movie(source_key, colorbar_title, frame_dir,
                                 fulltitle, colorbar_title, draw_objects))
 
 
-    pool = multiprocessing.Pool(processes=(multiprocessing.cpu_count() - 4))
-    #pool.map(plot_single, runlist)
-    pool.map(gnuplot_radec_single, runlist)
-    #gnuplot_radec_single(runlist[0])  # for troubleshooting
+    if saveslice:
+        (outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels, \
+            aspect, fulltitle, cbar_title, draw_objects) = runlist[saveslice]
 
-    #argument = frame_dir + tag + '.%03d.png'
-    argument = frame_dir + tag + '.%03d.jpeg'
-    outfile = outputdir + tag + filetag_suffix + orientation + convolved + '.mp4'
-    subprocess.check_call(('ffmpeg', '-vb', '2500000', '-r', '10',
-                           '-y', '-i',
-                            argument, outfile))
+        plot_slice.gnuplot_2D(outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels,
+                              aspect, fulltitle, cbar_title,
+                              eps_outfile=saveslice_file,
+                              draw_objects=draw_objects)
+    else:
+        pool = multiprocessing.Pool(processes=(multiprocessing.cpu_count() - 4))
+        pool.map(gnuplot_single_slice, runlist)
+        #gnuplot_single_slice(runlist[0])  # for troubleshooting
 
-    for fileindex in range(len(runlist)):
-        #os.remove(fileprefix + str('.%03d' % fileindex) + '.png')
-        os.remove(fileprefix + str('.%03d' % fileindex) + '.jpeg')
+        argument = frame_dir + tag + '.%03d.jpeg'
+        outfile = outputdir + tag + filetag_suffix + orientation + convolved + '.mp4'
+        subprocess.check_call(('ffmpeg', '-vb', '2500000', '-r', '10',
+                               '-y', '-i', argument, outfile))
+
+        for fileindex in range(len(runlist)):
+            os.remove(fileprefix + str('.%03d' % fileindex) + '.jpeg')
+
 
 
 def plot_gbt_maps(keyname, transverse=False,
