@@ -110,7 +110,7 @@ class DirtyMapMaker(object) :
                                    params['input_end'])
                     # Read in the data, and loop over data blocks.
                     Reader = fitsGBT.Reader(input_fname, feedback=self.feedback)
-                    Blocks = Reader.read(params['scans'], params['IFs'])
+                    Blocks = Reader.read(params['scans'], params['IFs'],force_tuple=True)
                     
                     # Calculate the time varience at each frequency.  This will
                     # be used as weights in most algorithms.

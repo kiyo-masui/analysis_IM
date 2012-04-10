@@ -11,7 +11,8 @@ field = '11hr'
 #field = '15hr'
 #dm_field_centre = (218.25, 2.0) 
 #Here I'm grabbing the guppi data
-file_middles = tuple(dir_data.get_data_files(range(01,03), field='11hr', project='GBT12A_418', type = 'ralongmap'))
+file_middles = ('GBT12A_418/02_wigglez11hr_centre_ralongmap_101',)
+#file_middles = tuple(dir_data.get_data_files(range(01,03), field='11hr', project='GBT12A_418', type = 'ralongmap'))
 #file_middles = tuple(dir_data.get_data_files(range(41,52), field='15hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(59,90), field='15hr', project='GBT10B_036', type='ralongmap')) # some kind of corruption in session 57. - overall uncertainty 52-58 
 #file_middles = tuple(dir_data.get_data_files(range(41,90), field='22hr', project='GBT10B_036', type='ralongmap')) 
 #file_middles = tuple(dir_data.get_data_files(range(15,17), field='1hr', project='GBT11B_055', type='ralongmap'))
@@ -36,7 +37,7 @@ data_dir = os.getenv('GBT_DATA')
 #raw_data_dir = os.getenv('GBT10B_DATA')
 kiyo_dir = os.getenv('GBT10B_KM')
 prefix = ''
-map_prefix = '' + field +'_01-02_'
+map_prefix = '' + field +'_01-02_daisy_'
 IFs = ()
 
 
@@ -88,8 +89,8 @@ rf_channel_width = 0.
 rf_n_bins_combined = 16
 rf_mean_instead_median = False
 
-from time_stream import flux_diff_gain_cal
-pipe_modules.append(flux_diff_gain_cal.Calibrate)
+#from time_stream import flux_diff_gain_cal
+#pipe_modules.append(flux_diff_gain_cal.Calibrate)
 fgc_input_root = rf_output_root
 fgc_file_middles = file_middles
 fgc_input_end = '.fits'
@@ -101,9 +102,9 @@ fgc_IFs = ()
 fgc_mueler_file = base_dir + 'diff_gain_params/'
 #fgc_mueler_file = ''
 
-from time_stream import rotate_pol
+#from time_stream import rotate_pol
 # Comment this line to skip this step in pipline.
-pipe_modules.append(rotate_pol.RotatePol)
+#pipe_modules.append(rotate_pol.RotatePol)
 rp_input_root = fgc_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
@@ -129,8 +130,8 @@ tc_mueler_file = base_dir + 'mueller_params/'
 tc_flux_cal_only = 'True'
 
 from map import dirty_map
-#pipe_modules.append(dirty_map.DirtyMapMaker)
-dm_input_root = tc_output_root
+pipe_modules.append(dirty_map.DirtyMapMaker)
+#dm_input_root = tc_output_root
 dm_input_root = rp_output_root
 dm_file_middles = file_middles
 dm_input_end = '.fits'
@@ -148,7 +149,7 @@ dm_IFs = (0,)
 
 dm_field_centre = (162.5,3.5)
 dm_map_shape = (64,32)
-dm_pixel_spacing = 0.3
+dm_pixel_spacing = 0.4
 #dm_field_centre = (217.8688,2.0)
 #dm_map_shape = (64,32)
 #dm_map_shape = (70, 45)
@@ -159,15 +160,15 @@ dm_pixel_spacing = 0.3
 #dm_pixel_spacing = .075
 dm_noise_model = 'disjoint_scans'
 #dm_polarizations = ('I','Q','U','V')
-dm_polarizations = ('I')
+dm_polarizations = ('I',)
 dm_noise_parameters_input_root = 'None'
 
-from map import clean_map
-pipe_modules.append(clean_map.CleanMapMaker)
+#from map import clean_map
+#pipe_modules.append(clean_map.CleanMapMaker)
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
 #cm_polarizations = ('I','Q','U','V')
-cm_polarizations = ('I')
+cm_polarizations = ('I',)
 
 #from time_stream import subtract_map_data
 #pipe_modules.append(subtract_map_data.Subtract)
