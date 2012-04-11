@@ -7,11 +7,13 @@ from utils import file_tools
 # GBT_15hr_map_fdgcal_cleanedplussim_cleaned.ini
 
 def write_map_cleanerini(mapname, cutlist, nfreq, factorizable=True, meansub=True,
+                         regenerate=False, noconv=False,
                          modes = range(0, 105, 5), simfile=None, prefix="fs_",
                          inidir="./input/ers/map_cleaning_autogen/"):
     file_tools.mkparents(inidir)
 
     params = {}
+    params["SVD_root"] = None
     params["modes"] = modes
     params["map1"] = mapname
     params["map2"] = mapname
@@ -20,14 +22,19 @@ def write_map_cleanerini(mapname, cutlist, nfreq, factorizable=True, meansub=Tru
     params["no_weights"] = False
     params["sub_weighted_mean"] = meansub
     params["factorizable_noise"] = factorizable
+    params["regenerate_noise_inv"] = regenerate
     params["freq_list"] = tuple([ind for ind in range(nfreq) \
                                  if ind not in cutlist])
 
     tag = "_sims" if simfile else ""
     if simfile:
         params["simfile"] = simfile
+        params["sim_multiplier"] = 1.
+        params["subtract_inputmap_from_sim"] = True
+        params["subtract_sim_from_inputmap"] = False
 
     params["convolve"] = False
+    # TODO: move this to direct path rather than db
     params["output_root"] = "%s_cleaned%s_noconv_path_Eric" % (mapname, tag)
     filename = "%s/%s_cleaned%s_noconv.ini" % (inidir, mapname, tag)
     parse_ini.write_params(params, filename, prefix=prefix)
@@ -50,6 +57,7 @@ if __name__ == '__main__':
                "GBT_15hr_map_fluxpolcal",
                "GBT_15hr_map_oldcal",
                "GBT_15hr_map_oldcal_plussim",
+               "GBT_15hr_map_oldcal_plussim_10pct",
                "GBT_1hr_map_fluxpolcal",
                "GBT_22hr_map_fluxpolcal"]
 
@@ -65,5 +73,3 @@ if __name__ == '__main__':
     for mapname in maplist:
         write_map_cleanerini(mapname, cutlist, 120, simfile=None)
         write_map_cleanerini(mapname, cutlist, 120, simfile=simfile)
-
-

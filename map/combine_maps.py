@@ -74,7 +74,7 @@ def combine_maps_driver(inputmap_dict, inputweight_dict, output_dict,
 
 def combine_maps(source_key, combined_key,
                  signal='map', weight='noise_inv', divider=";",
-                 fullcov=False):
+                 fullcov=False, batchsim=None):
     r"""
     `source_key` is the file db key for the maps to combine
     `combined_key` is the file db key for the combined maps
@@ -94,8 +94,12 @@ def combine_maps(source_key, combined_key,
     # determine the number of foreground cleaning options (modes removed)
     input_map_cases = datapath_db.fileset_cases(source_key,
                       "pair;type;treatment", divider=divider)
-    output_map_cases = datapath_db.fileset_cases(combined_key,
-                      "type;treatment", divider=divider)
+    if batchsim:
+        output_map_cases = datapath_db.fileset_cases(combined_key,
+                          "type;treatment;simnum", divider=divider)
+    else:
+        output_map_cases = datapath_db.fileset_cases(combined_key,
+                          "type;treatment", divider=divider)
 
     if input_map_cases['treatment'] != output_map_cases['treatment']:
         print "the source map does not match the requested combined map output"
@@ -115,7 +119,10 @@ def combine_maps(source_key, combined_key,
 
         output_dict = {}
         for product in output_map_cases['type']:
-            mapkey = "%s;%s" % (product, treatment)
+            if batchsim:
+                mapkey = "%s;%s;%s" % (product, treatment, batchsim)
+            else:
+                mapkey = "%s;%s" % (product, treatment)
             output_dict[product] = output_fdict[mapkey]
 
         #print "-"*80

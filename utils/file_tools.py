@@ -33,9 +33,9 @@ def mkparents(path) :
 
 def abbreviate_file_path(fname) :
     """Abbrviates file paths.
-    Givin any file path return an abbreviated path showing only the deepest
-    most directory and the file name (Usefull for writing feedback that doesn't
-    flood your screen.
+    Given any file path return an abbreviated path showing only the deepest
+    most directory and the file name (Useful for writing feedback that doesn't
+    flood your screen.)
     """
     split_fname = fname.split('/')
     if len(split_fname) > 1 :

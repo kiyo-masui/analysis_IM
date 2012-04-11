@@ -106,6 +106,7 @@ class PairSet(ft.ClassPersistence):
         self.lags = sp.array(self.params['lags'])
         self.output_root = self.datapath_db.fetch(self.params['output_root'],
                                                   intend_write=True)
+        #self.output_root = self.params['output_root']
 
         if self.params['SVD_root']:
             self.SVD_root = self.datapath_db.fetch(self.params['SVD_root'],
