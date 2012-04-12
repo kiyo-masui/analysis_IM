@@ -43,6 +43,7 @@ params_init = {
                'subtract_sim_from_inputmap': False,
                'freq_list': (),
                 # in deg: (unused)
+               'tack_on': None,
                'lags': (0.1, 0.2),
                'convolve': True,
                'factorizable_noise': True,
@@ -105,8 +106,15 @@ class PairSet(ft.ClassPersistence):
         self.freq_list = sp.array(self.params['freq_list'], dtype=int)
         self.lags = sp.array(self.params['lags'])
         self.output_root = self.datapath_db.fetch(self.params['output_root'],
-                                                  intend_write=True)
+                                                  tack_on=self.params['tack_on'])
         #self.output_root = self.params['output_root']
+        if not os.path.isdir(self.output_root):
+            os.mkdir(self.output_root)
+
+        # check that it exists (TODO: do this more simply)
+        self.output_root = self.datapath_db.fetch(self.params['output_root'],
+                                                  intend_write=True,
+                                                  tack_on=self.params['tack_on'])
 
         if self.params['SVD_root']:
             self.SVD_root = self.datapath_db.fetch(self.params['SVD_root'],
@@ -168,6 +176,9 @@ class PairSet(ft.ClassPersistence):
             map1 = algebra.make_vect(algebra.load(pdict['map1']))
             map2 = algebra.make_vect(algebra.load(pdict['map2']))
             if par['simfile'] is not None:
+                print "adding %s with multiplier %s" % (par['simfile'],
+                                                        par['sim_multiplier'])
+ 
                 sim = algebra.make_vect(algebra.load(par['simfile']))
                 sim *= par['sim_multiplier']
             else:
@@ -201,7 +212,7 @@ class PairSet(ft.ClassPersistence):
                                                   self.freq_list)
 
                 if par['subtract_sim_from_inputmap']:
-                    pair_parallel_track = map_pair.MapPair(sim1, sim2,
+                    pair_parallel_track = map_pair.MapPair(sim, sim,
                                                   noise_inv1, noise_inv2,
                                                   self.freq_list)
 
@@ -288,10 +299,6 @@ class PairSet(ft.ClassPersistence):
     def save_data(self, n_modes):
         ''' Save the all of the clean data.
         '''
-        # Make sure folder is there.
-        if not os.path.isdir(self.output_root):
-            os.mkdir(self.output_root)
-
         n_modes = "%dmodes" % n_modes
         for pairitem in self.pairlist:
             pair = self.pairs[pairitem]
