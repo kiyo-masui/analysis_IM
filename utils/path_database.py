@@ -78,13 +78,8 @@ notes = 'fdgcal plus sim'
 dbcl.register_path('GBT_maps_Eric_fdgcal_plussim', pathname,
                     "Eric's map directory (fdgcal plus sim)", notes=notes)
 
-pathname = dbcl.fetch_path('GBTDATA_ESWITZER') + "GBT/maps/oldcal_plussim/"
-notes = 'oldcal plus sim'
-dbcl.register_path('GBT_maps_Eric_oldcal_plussim', pathname,
-                    "Eric's map directory (oldcal plus sim)", notes=notes)
-
 pathname = dbcl.fetch_path('GBTDATA_ESWITZER') + "GBT/maps/signal_only/"
-notes = 'oldcal plus sim'
+notes = 'signal sim only sim'
 dbcl.register_path('GBT_maps_Eric_signal_only', pathname,
                     "Eric's map directory: signal only", notes=notes)
 
@@ -93,10 +88,10 @@ notes = 'calibration test maps: old calibration, old mapper'
 dbcl.register_path('GBT_maps_Nidhi_oldcal', pathname,
                     "Nidhi's map directory", notes=notes)
 
-pathname = dbcl.fetch_path('GBTDATA_NBANAVAR') + "gbt_out/maps/4_section_maps/flux_cal/"
-notes = 'calibration test maps: old calibration, old mapper'
-dbcl.register_path('GBT_maps_Nidhi_fluxcal', pathname,
-                    "Nidhi's map directory", notes=notes)
+pathname = dbcl.fetch_path('GBTDATA_ESWITZER') + "GBT/maps/oldcal_plussim/"
+notes = 'oldcal plus sim'
+dbcl.register_path('GBT_maps_Eric_oldcal_plussim', pathname,
+                    "Eric's map directory (oldcal plus sim)", notes=notes)
 
 pathname = dbcl.fetch_path('GBTDATA_KIYO') + "gbt_out/maps/"
 notes = 'optimal maps, proposal-era cal'
@@ -122,6 +117,16 @@ pathname = dbcl.fetch_path('GBTDATA_KIYO') + "gbt_out/maps/feb23.2012/"
 notes = 'optimal maps, proposal-era cal, some bugs fixed following Jan 16 2012, fdgcal, TOD modes removed'
 dbcl.register_path('GBT_maps_Kiyo_23feb2012', pathname,
                     "Kiyo's map directory", notes=notes)
+
+#pathname = dbcl.fetch_path('GBTDATA_ESWITZER') + "GBT/maps/oldcal_plussim10pct/"
+#notes = 'oldcal plus sim * 1.1'
+#dbcl.register_path('GBT_maps_Eric_oldcal_plussim10pct', pathname,
+#                    "Eric's map directory (oldcal plus sim)", notes=notes)
+
+#pathname = dbcl.fetch_path('GBTDATA_NBANAVAR') + "gbt_out/maps/4_section_maps/flux_cal/"
+#notes = 'calibration test maps: old calibration, old mapper'
+#dbcl.register_path('GBT_maps_Nidhi_fluxcal', pathname,
+#                    "Nidhi's map directory", notes=notes)
 
 #-----------------------------------------------------------------------------
 # register map data; 'register_maprun'
@@ -186,15 +191,6 @@ key = 'GBT_15hr_map_fdgcal_plussim'
 parent = 'GBT_maps_Eric_fdgcal_plussim'
 desc = "15hr maps with Feb. 20 XXYY+flux calibration plus 15hr_oldmap_str sim_beam_001.npy"
 field_tag = '15hr_41-90_fdg'
-status = 'in development'
-dbcl.register_maprun(key, group_key, parent, field_tag, desc,
-                        notes=tcv_cal_note3, status=status)
-
-# register the oldcal maps plus sim
-key = 'GBT_15hr_map_oldcal_plussim'
-parent = 'GBT_maps_Eric_oldcal_plussim'
-desc = "15hr maps with proposal-era calibration plus 15hr_oldmap_str sim_beam_001.npy"
-field_tag = '15hr_41-90'
 status = 'in development'
 dbcl.register_maprun(key, group_key, parent, field_tag, desc,
                         notes=tcv_cal_note3, status=status)
@@ -279,19 +275,121 @@ field_tag = '15hr_41-90'
 dbcl.register_maprun(key, group_key, parent, field_tag, desc,
                      status=status)
 
-key = 'GBT_15hr_map_fluxcal'
-parent = 'GBT_maps_Nidhi_fluxcal'
-desc = "maps with fluxcal only"
+# register the oldcal maps plus sim
+key = 'GBT_15hr_map_oldcal_plussim'
+parent = 'GBT_maps_Eric_oldcal_plussim'
+desc = "15hr maps with proposal-era calibration plus 15hr_oldmap_str sim_beam_001.npy"
 field_tag = '15hr_41-90'
+status = 'in development'
 dbcl.register_maprun(key, group_key, parent, field_tag, desc,
-                     status=status)
+                        notes=tcv_cal_note3, status=status)
+
+# register the oldcal maps plus sim
+#key = 'GBT_15hr_map_oldcal_plussim10pct'
+#parent = 'GBT_maps_Eric_oldcal_plussim10pct'
+#desc = "15hr maps with proposal-era calibration plus 15hr_oldmap_str sim_beam_001.npy"
+#field_tag = '15hr_41-90'
+#status = 'in development'
+#dbcl.register_maprun(key, group_key, parent, field_tag, desc,
+#                        notes=tcv_cal_note3, status=status)
+
+#key = 'GBT_15hr_map_fluxcal'
+#parent = 'GBT_maps_Nidhi_fluxcal'
+#desc = "maps with fluxcal only"
+#field_tag = '15hr_41-90'
+#dbcl.register_maprun(key, group_key, parent, field_tag, desc,
+#                     status=status)
+
+#-----------------------------------------------------------------------------
+# functions to register the cleaned maps (new style)
+# here, the cases are
+# map
+# map_plussim_alt
+# map_plussim_minussim_alt
+# map_plussim_minusmap_alt
+# where _alt is an additional tag like mult1p1 for simulation multiplied by 1.1
+#
+# this only need to be modified if the structure of the maps cleaning chain
+# is modified. Different maps can be input below.
+#-----------------------------------------------------------------------------
+def mode_clean_run(source_key, username, modelist,
+                   tag="", status=None, notes=None, sim=None, simtag=None,
+                   alt="", extdesc=""):
+
+    key = '%s_cleaned%s%s' % (source_key, simtag, alt)
+    combined_key = '%s_combined' % key
+    group_key = 'GBTcleaned'
+    parent_key = '%s_path_%s' % (key, username)
+
+    pathname = '%s/GBT/cleaned_maps/%s%s%s/' % \
+                (dbcl.fetch_path('GBTDATA_ESWITZER'), source_key, simtag, alt)
+
+    if sim:
+        if simtag == "_plussim":
+            desc = '`%s` cleaned using map `%s`; %s' % (sim, source_key, extdesc)
+
+        if simtag == "_plussim_minussim":
+            desc = '`%s` cleaned using map `%s`, cleaned sim subtracted; %s' % (sim, source_key, extdesc)
+
+        if simtag == "_plussim_minusmap":
+            desc = '`%s` cleaned using map `%s`, cleaned map subtracted; %s' % (sim, source_key, extdesc)
+    else:
+        desc = '`%s` cleaned ; %s' % (source_key, extdesc)
+
+    dbcl.register_path(parent_key, pathname, desc, notes=notes)
+
+    dbcl.register_fourway_list(key, group_key, parent_key, desc, modelist,
+                 notes=notes, status=status, paramfile="params.ini", tag="",
+                 register_modes=True)
+
+    dbcl.register_combined_maprun(combined_key, group_key, parent_key, desc,
+                                  modelist, notes=notes, status=status)
+
+def mapsim_mode_clean_run(map_source_key, sim_source_key,
+                   username, modelist,
+                   tag="", status=None, notes=None,
+                   alt="", extdesc=""):
+
+    mode_clean_run(map_source_key, username, modelist,
+                   tag=tag, status=status, notes=notes, sim=None,
+                   alt=alt, extdesc=extdesc)
+
+    mode_clean_run(map_source_key, username, modelist,
+                   tag=tag, status=status, notes=notes,
+                   sim=sim_source_key,
+                   simtag = "_plussim",
+                   alt=alt, extdesc=extdesc)
+
+    mode_clean_run(map_source_key, username, modelist,
+                   tag=tag, status=status, notes=notes,
+                   sim=sim_source_key,
+                   simtag = "_plussim_minussim",
+                   alt=alt, extdesc=extdesc)
+
+    mode_clean_run(map_source_key, username, modelist,
+                   tag=tag, status=status, notes=notes,
+                   sim=sim_source_key,
+                   simtag = "_plussim_minusmap",
+                   alt=alt, extdesc=extdesc)
+
+notes = "proposal era calibration and old mapmaker"
+extdesc = "the mean is removed, radial modes subtracted (no common res conv.)"
+status = 'static'
+modelist = range(0, 105, 5)
+mapsim_mode_clean_run('GBT_15hr_map_oldcal', 'sim_15hr_oldmap_str_beam',
+                      "Eric", modelist, status=status, notes=notes,
+                      extdesc=extdesc)
+
+mapsim_mode_clean_run('GBT_15hr_map_oldcal', 'sim_15hr_oldmap_str_beam',
+                      "Eric", modelist, status=status, notes=notes,
+                      extdesc=extdesc, alt="_simx1p1")
 
 #-----------------------------------------------------------------------------
 # functions to register the cleaned maps
 # this only need to be modified if the structure of the maps cleaning chain
 # is modified. Different maps can be input below.
 #-----------------------------------------------------------------------------
-def mode_clean_run(source_key, username, modelist,
+def mode_clean_run_old(source_key, username, modelist,
                    tag="", status=None, notes=None, sim=None,
                    alt="", extdesc=""):
     mapsim = ""
@@ -319,16 +417,16 @@ def mode_clean_run(source_key, username, modelist,
     dbcl.register_combined_maprun(combined_key, group_key, parent_key, desc,
                                   modelist, notes=notes, status=status)
 
-def mapsim_mode_clean_run(map_source_key, sim_source_key,
+def mapsim_mode_clean_run_old(map_source_key, sim_source_key,
                    username, modelist,
                    tag="", status=None, notes=None,
                    alt="", extdesc=""):
 
-    mode_clean_run(map_source_key, username, modelist,
+    mode_clean_run_old(map_source_key, username, modelist,
                    tag=tag, status=status, notes=notes, sim=None,
                    alt=alt, extdesc=extdesc)
 
-    mode_clean_run(map_source_key, username, modelist,
+    mode_clean_run_old(map_source_key, username, modelist,
                    tag=tag, status=status, notes=notes,
                     sim=sim_source_key,
                    alt=alt, extdesc=extdesc)
@@ -341,45 +439,12 @@ def mapsimnoconv_mode_clean_run(map_source_key, sim_source_key, username="Eric",
         modelist = range(0, 105, 5)
 
     extdesc = "the mean is removed, convolved to a common beam, radial modes subtracted"
-    mapsim_mode_clean_run(map_source_key, sim_source_key, 'Eric', modelist,
+    mapsim_mode_clean_run_old(map_source_key, sim_source_key, 'Eric', modelist,
                           status=status, notes=notes, extdesc=extdesc)
 
     extdesc = "the mean is removed, radial modes subtracted"
-    mapsim_mode_clean_run(map_source_key, sim_source_key, 'Eric', modelist,
+    mapsim_mode_clean_run_old(map_source_key, sim_source_key, 'Eric', modelist,
                           status=status, notes=notes, alt="_noconv", extdesc=extdesc)
-
-#-----------------------------------------------------------------------------
-# batch cleaning of simulations for a transfer function
-#-----------------------------------------------------------------------------
-pathname = dbcl.fetch_path('GBTDATA_ESWITZER') + "map_cleaning_cache/"
-notes = 'map cleaning cache for batch runs'
-dbcl.register_path('GBT_15hr_map_batch_sim_depot', pathname,
-                    "Map cleaning cache", notes=notes)
-
-key = 'batch_cleaned_cache'
-group_key = 'GBTcleaned'
-parent_key = 'GBT_15hr_map_batch_sim_depot'
-desc = 'cache of files for cleaned maps (intermediate product)'
-modelist = range(0, 105, 5)
-simlist = range(0, 100)
-notes = "this is temporary and these files are continuously overwritten"
-status = "in development"
-dbcl.register_fourway_list(key, group_key, parent_key, desc, modelist,
-                 notes=notes, status=status, paramfile="params.ini", tag="",
-                 register_modes=True)
-
-parent_key = "GBT_15hr_oldcal_corrfg_path"
-pathname = '%s/GBT/cleaned_maps/GBT_15hr_oldcal_corrfg/' % \
-                dbcl.fetch_path('GBTDATA_ESWITZER')
-
-dbcl.register_path(parent_key, pathname, desc, notes=notes)
-
-desc = 'clean_{map+sim} (map+sim)'
-notes = "cleaned foregrounds are correlated with the signal"
-status = "in development"
-dbcl.register_combined_batchsimrun("GBT_15hr_oldcal_corrfg", group_key,
-                                   parent_key, desc,
-                                   modelist, simlist, notes=notes, status=status)
 
 #-----------------------------------------------------------------------------
 # calls to register various complete cleaned map + sim runs
@@ -402,11 +467,6 @@ mapsimnoconv_mode_clean_run('GBT_1hr_map_fluxpolcal', 'sim_1hr_oldmap_str_beam',
 notes = "proposal era calibration and old mapmaker"
 status = 'static'
 mapsimnoconv_mode_clean_run('GBT_15hr_map_oldcal', 'sim_15hr_oldmap_str_beam',
-                             status=status, notes=notes)
-
-notes = "Tabitha flux-only calibration calibration and old mapmaker"
-status = 'UNRESOLVED FACTOR OF 2 ERROR'
-mapsimnoconv_mode_clean_run('GBT_15hr_map_fluxcal', 'sim_15hr_oldmap_str_beam',
                              status=status, notes=notes)
 
 notes = "Tabitha XX,YY + flux calibration calibration and old mapmaker"
@@ -458,6 +518,49 @@ notes = "Tabitha fdg calibration calibration and new mapmaker v2 with time modes
 status = 'active development'
 mapsimnoconv_mode_clean_run('GBT_15hr_optimalmap_mapv2fdgcalmoderm', 'sim_15hr_optimalmap_str_beam',
                              status=status, notes=notes)
+
+#notes = "Tabitha flux-only calibration calibration and old mapmaker"
+#status = 'UNRESOLVED FACTOR OF 2 ERROR'
+#mapsimnoconv_mode_clean_run('GBT_15hr_map_fluxcal', 'sim_15hr_oldmap_str_beam',
+#                             status=status, notes=notes)
+
+#notes = "proposal-era calibration calibration and old mapmaker plus sim*1.1"
+#status = 'active development'
+#mapsimnoconv_mode_clean_run('GBT_15hr_map_oldcal_plussim10pct', 'sim_15hr_oldmap_str_beam',
+#                             status=status, notes=notes)
+
+#-----------------------------------------------------------------------------
+# batch cleaning of simulations for a transfer function
+#-----------------------------------------------------------------------------
+pathname = dbcl.fetch_path('GBTDATA_ESWITZER') + "map_cleaning_cache/"
+notes = 'map cleaning cache for batch runs'
+dbcl.register_path('GBT_15hr_map_batch_sim_depot', pathname,
+                    "Map cleaning cache", notes=notes)
+
+key = 'batch_cleaned_cache'
+group_key = 'GBTcleaned'
+parent_key = 'GBT_15hr_map_batch_sim_depot'
+desc = 'cache of files for cleaned maps (intermediate product)'
+modelist = range(0, 105, 5)
+simlist = range(0, 100)
+notes = "this is temporary and these files are continuously overwritten"
+status = "in development"
+dbcl.register_fourway_list(key, group_key, parent_key, desc, modelist,
+                 notes=notes, status=status, paramfile="params.ini", tag="",
+                 register_modes=True)
+
+parent_key = "GBT_15hr_oldcal_corrfg_path"
+pathname = '%s/GBT/cleaned_maps/GBT_15hr_oldcal_corrfg/' % \
+                dbcl.fetch_path('GBTDATA_ESWITZER')
+
+dbcl.register_path(parent_key, pathname, desc, notes=notes)
+
+desc = 'clean_{map+sim} (map+sim)'
+notes = "cleaned foregrounds are correlated with the signal"
+status = "in development"
+dbcl.register_combined_batchsimrun("GBT_15hr_oldcal_corrfg", group_key,
+                                   parent_key, desc,
+                                   modelist, simlist, notes=notes, status=status)
 
 #-----------------------------------------------------------------------------
 # paths to WiggleZ data
