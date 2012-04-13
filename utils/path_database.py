@@ -313,28 +313,28 @@ dbcl.register_maprun(key, group_key, parent, field_tag, desc,
 # is modified. Different maps can be input below.
 #-----------------------------------------------------------------------------
 def mode_clean_run(source_key, username, modelist,
-                   tag="", status=None, notes=None, sim=None, simtag=None,
+                   tag="", status=None, notes=None, simkey=None, simtag="",
                    alt="", extdesc=""):
+    if simkey:
+        key = '%s_cleaned%s%s' % (source_key, simtag, alt)
+        if simtag == "_plussim":
+            desc = '`%s` cleaned using map `%s`; %s' % (simkey, source_key, extdesc)
 
-    key = '%s_cleaned%s%s' % (source_key, simtag, alt)
+        if simtag == "_plussim_minussim":
+            desc = '`%s` cleaned using map `%s`, cleaned sim subtracted; %s' % (simkey, source_key, extdesc)
+
+        if simtag == "_plussim_minusmap":
+            desc = '`%s` cleaned using map `%s`, cleaned map subtracted; %s' % (simkey, source_key, extdesc)
+    else:
+        key = '%s_cleaned%s' % (source_key, alt)
+        desc = '`%s` cleaned ; %s' % (source_key, extdesc)
+
     combined_key = '%s_combined' % key
     group_key = 'GBTcleaned'
     parent_key = '%s_path_%s' % (key, username)
 
     pathname = '%s/GBT/cleaned_maps/%s%s%s/' % \
                 (dbcl.fetch_path('GBTDATA_ESWITZER'), source_key, simtag, alt)
-
-    if sim:
-        if simtag == "_plussim":
-            desc = '`%s` cleaned using map `%s`; %s' % (sim, source_key, extdesc)
-
-        if simtag == "_plussim_minussim":
-            desc = '`%s` cleaned using map `%s`, cleaned sim subtracted; %s' % (sim, source_key, extdesc)
-
-        if simtag == "_plussim_minusmap":
-            desc = '`%s` cleaned using map `%s`, cleaned map subtracted; %s' % (sim, source_key, extdesc)
-    else:
-        desc = '`%s` cleaned ; %s' % (source_key, extdesc)
 
     dbcl.register_path(parent_key, pathname, desc, notes=notes)
 
@@ -351,31 +351,35 @@ def mapsim_mode_clean_run(map_source_key, sim_source_key,
                    alt="", extdesc=""):
 
     mode_clean_run(map_source_key, username, modelist,
-                   tag=tag, status=status, notes=notes, sim=None,
+                   tag=tag, status=status, notes=notes,
+                   simkey=sim_source_key,
+                   simtag="_plussim",
                    alt=alt, extdesc=extdesc)
 
     mode_clean_run(map_source_key, username, modelist,
                    tag=tag, status=status, notes=notes,
-                   sim=sim_source_key,
-                   simtag = "_plussim",
+                   simkey=sim_source_key,
+                   simtag="_plussim_minussim",
                    alt=alt, extdesc=extdesc)
 
     mode_clean_run(map_source_key, username, modelist,
                    tag=tag, status=status, notes=notes,
-                   sim=sim_source_key,
-                   simtag = "_plussim_minussim",
-                   alt=alt, extdesc=extdesc)
-
-    mode_clean_run(map_source_key, username, modelist,
-                   tag=tag, status=status, notes=notes,
-                   sim=sim_source_key,
-                   simtag = "_plussim_minusmap",
+                   simkey=sim_source_key,
+                   simtag="_plussim_minusmap",
                    alt=alt, extdesc=extdesc)
 
 notes = "proposal era calibration and old mapmaker"
 extdesc = "the mean is removed, radial modes subtracted (no common res conv.)"
 status = 'static'
 modelist = range(0, 105, 5)
+#    mode_clean_run(map_source_key, username, modelist,
+#                   tag=tag, status=status, notes=notes, sim=None,
+#                   alt=alt, extdesc=extdesc)
+
+mode_clean_run('GBT_15hr_map_oldcal', 'Eric', modelist,
+               status=status, notes=notes, simkey=None,
+               alt="", extdesc=extdesc)
+
 mapsim_mode_clean_run('GBT_15hr_map_oldcal', 'sim_15hr_oldmap_str_beam',
                       "Eric", modelist, status=status, notes=notes,
                       extdesc=extdesc)
@@ -396,7 +400,7 @@ def mode_clean_run_old(source_key, username, modelist,
     if sim:
         mapsim = "_sims"
 
-    key = '%s_cleaned%s%s' % (source_key, mapsim, alt)
+    key = '%s_oldcleaned%s%s' % (source_key, mapsim, alt)
     combined_key = '%s_combined' % key
     group_key = 'GBTcleaned'
     parent_key = '%s_path_%s' % (key, username)

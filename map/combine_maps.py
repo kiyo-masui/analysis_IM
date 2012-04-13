@@ -133,7 +133,7 @@ def combine_maps(source_key, combined_key,
         combine_maps_driver(inputmap_dict, inputweight_dict, output_dict,
                             fullcov=fullcov, datapath_db=datapath_db)
 
-def wrap_combine(basemap, skipsims=False, skipmaps=False):
+def wrap_combine_old(basemap, skipsims=False, skipmaps=False):
     if not skipmaps:
         combine_maps("%s_cleaned" % basemap,
                      "%s_cleaned_combined" % basemap)
@@ -148,17 +148,32 @@ def wrap_combine(basemap, skipsims=False, skipmaps=False):
         combine_maps("%s_cleaned_sims_noconv" % basemap,
                      "%s_cleaned_sims_noconv_combined" % basemap)
 
+def wrap_combine(basemap, simalt=""):
+        combine_maps("%s_cleaned" % basemap,
+                     "%s_cleaned_combined" % basemap)
+
+        combine_maps("%s_cleaned_plussim%s" % (basemap, simalt),
+                     "%s_cleaned_plussim%s_combined" % (basemap, simalt))
+
+        combine_maps("%s_cleaned_plussim_minussim%s" % (basemap, simalt),
+                     "%s_cleaned_plussim_minussim%s_combined" % (basemap, simalt))
+
+        combine_maps("%s_cleaned_plussim_minusmap%s" % (basemap, simalt),
+                     "%s_cleaned_plussim_minusmap%s_combined" % (basemap, simalt))
+
 
 if __name__ == '__main__':
-    #wrap_combine("GBT_15hr_optimalmap_mapv2fdgcal", skipmaps=True)
-    #wrap_combine("GBT_15hr_optimalmap_mapv2oldcal", skipmaps=True)
-    #wrap_combine("GBT_15hr_optimalmap_fluxpolcal")
-    #wrap_combine("GBT_22hr_map_fluxpolcal")
-    #wrap_combine("GBT_15hr_map_fluxpolcal")
-    #wrap_combine("GBT_1hr_map_fluxpolcal")
-    #wrap_combine("GBT_15hr_map_fdgcal")
-    #wrap_combine("GBT_15hr_map_fdgcal_plussim")
-    wrap_combine("GBT_15hr_map_oldcal_plussim")
-    #wrap_combine("GBT_15hr_map_fdgcal_cleanedplussim")
-    #wrap_combine("GBT_15hr_map_oldcal")
-    #wrap_combine("GBT_15hr_map_fluxcal")
+    #wrap_combine_old("GBT_15hr_optimalmap_mapv2fdgcal", skipmaps=True)
+    #wrap_combine_old("GBT_15hr_optimalmap_mapv2oldcal", skipmaps=True)
+    #wrap_combine_old("GBT_15hr_optimalmap_fluxpolcal")
+    #wrap_combine_old("GBT_22hr_map_fluxpolcal")
+    #wrap_combine_old("GBT_15hr_map_fluxpolcal")
+    #wrap_combine_old("GBT_1hr_map_fluxpolcal")
+    #wrap_combine_old("GBT_15hr_map_fdgcal")
+    #wrap_combine_old("GBT_15hr_map_fdgcal_plussim")
+    #wrap_combine_old("GBT_15hr_map_fdgcal_cleanedplussim")
+    #wrap_combine_old("GBT_15hr_map_oldcal")
+    #wrap_combine_old("GBT_15hr_map_fluxcal")
+
+    wrap_combine("GBT_15hr_map_oldcal")
+    wrap_combine("GBT_15hr_map_oldcal", simalt="_simx1p1")
