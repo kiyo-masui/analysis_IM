@@ -36,6 +36,7 @@ def batch_gbtpwrspec_data_run(map_key, inifile=None, datapath_db=None,
     if output_tag:
         file_tools.mkparents(outdir)
 
+    pwrspec_collection = {}
     for treatment in map_cases['treatment']:
         unique_pairs = data_paths.GBTauto_cross_pairs(map_cases['pair'],
                                                     map_cases['pair'],
@@ -89,13 +90,16 @@ def batch_gbtpwrspec_data_run(map_key, inifile=None, datapath_db=None,
             else:
                 transfunc = None
 
-            pe.summarize_agg_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d, mtag,
-                                     outdir=outdir,
-                                     apply_1d_transfer=transfunc)
+            agg_pwrspec = pe.summarize_agg_pwrspec(pwr_1d,
+                                                   pwr_1d_from_2d, pwr_2d, mtag,
+                                                   outdir=outdir,
+                                                   apply_1d_transfer=transfunc)
+
+            # (mean_1d, std_1d, covmat_1d)
+            pwrspec_collection[treatment] = agg_pwrspec
 
     if output_tag:
-        # TODO: could output the P(k)'s for the various treatments
-        return None
+        return pwrspec_collection
     else:
         caller.multiprocess_stack()
         return None
@@ -165,7 +169,7 @@ def wrap_batch_gbtpwrspec_data_run(inifile, generate=False,
                                             generate=generate,
                                             outdir=outdir)
 
-    batch_gbtpwrspec_data_run(params["gbt_mapkey"],
+    return batch_gbtpwrspec_data_run(params["gbt_mapkey"],
                          inifile=params["spec_ini"],
                          datapath_db=datapath_db,
                          outdir=output_root,

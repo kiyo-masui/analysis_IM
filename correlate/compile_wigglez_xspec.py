@@ -84,10 +84,14 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
                 transfunc = None
 
             mtag = output_tag + "_%s_mock" % treatment
-            mean1dmock, std1dmock, covmock = pe.summarize_agg_pwrspec(pwr_1d,
+            agg_pwrspec = pe.summarize_agg_pwrspec(pwr_1d,
                               pwr_1d_from_2d, pwr_2d, mtag,
                               outdir=outdir,
                               apply_1d_transfer=transfunc)
+
+            mean1dmock = agg_pwrspec["mean_1d"]
+            std1dmock = agg_pwrspec["std_1d"]
+            covmock = agg_pwrspec["covmat_1d"]
 
         # now recover the xspec with the real data
         dbkeydict = {}

@@ -135,7 +135,7 @@ def gen_new_inis(sim_multiplier=1.):
                212, 213, 218, 219, 229, 233, 237, 244, 254, 255]
 
     simfile = '/mnt/raid-project/gmrt/eswitzer/GBT/simulations/15hr_oldmap_str/sim_beam_000.npy'
-    maplist = ["GBT_15hr_map_oldcal"]
+    maplist = ["GBT_15hr_map_oldcal", "GBT_15hr_map_mapcal"]
 
     for mapname in maplist:
         write_map_cleanerini(mapname, cutlist, 256, simfile=None)

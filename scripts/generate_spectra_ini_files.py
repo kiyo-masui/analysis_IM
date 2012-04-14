@@ -87,5 +87,3 @@ def sim_crosspwr(inifile=None, generate=False):
 #    sim_autopwr(inifile=inifile, inifile_phys=inifile_phys, generate=False)
 #    sim_crosspwr(inifile=inifile, generate=False)
 
-
-

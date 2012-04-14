@@ -275,22 +275,32 @@ def summarize_1d_agg_pwrspec(pwr_1d, filename, corr_file=None,
         outfile.write(("%10.15g " * 6 + "\n") % specdata)
     outfile.close()
 
-    bin_left = np.log10(bin_left)
-    bin_center = np.log10(bin_center)
-    bin_right = np.log10(bin_right)
+    bin_left_lt = np.log10(bin_left)
+    bin_center_lt = np.log10(bin_center)
+    bin_right_lt = np.log10(bin_right)
 
     if corr_file is not None:
         outfile = open(corr_file, "w")
         for xind in range(len(bin_center)):
             for yind in range(len(bin_center)):
                 outstr = ("%10.15g " * 7 + "\n") % \
-                        (bin_left[xind], bin_center[xind], bin_right[xind], \
-                         bin_left[yind], bin_center[yind], bin_right[yind], \
+                        (bin_left_lt[xind], bin_center_lt[xind], bin_right_lt[xind], \
+                         bin_left_lt[yind], bin_center_lt[yind], bin_right_lt[yind], \
                          corrmat_1d[xind, yind])
                 outfile.write(outstr)
 
         outfile.close()
-    return mean_1d, std_1d, covmat_1d
+
+    retval = {}
+    retval["mean_1d"] = mean_1d
+    retval["std_1d"] = std_1d
+    retval["covmat_1d"] = covmat_1d
+    retval["bin_left"] = bin_left
+    retval["bin_center"] = bin_center
+    retval["bin_right"] = bin_right
+    retval["counts_histo"] = counts_histo
+
+    return retval
 
 
 def summarize_1d_pwrspec(pwr_1d, filename):
@@ -399,14 +409,14 @@ def summarize_agg_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
     """
     fileout = outdir + "/" + tag + "_avg_from2d.dat"
     corr_fileout = outdir + "/" + tag + "_corr_from2d.dat"
-    mean1d_f2d, std1d_f2d, cov1d_f2d = summarize_1d_agg_pwrspec(pwr_1d_from_2d,
+    agg_1d_pwrspec_f2d = summarize_1d_agg_pwrspec(pwr_1d_from_2d,
                                 fileout,
                                 corr_file=corr_fileout,
                                 apply_1d_transfer=apply_1d_transfer)
 
     fileout = outdir + "/" + tag + "_avg.dat"
     corr_fileout = outdir + "/" + tag + "_corr.dat"
-    mean1d, std1d, cov1d = summarize_1d_agg_pwrspec(pwr_1d, fileout,
+    agg_1d_pwrspec = summarize_1d_agg_pwrspec(pwr_1d, fileout,
                                              corr_file=corr_fileout,
                                 apply_1d_transfer=apply_1d_transfer)
 
@@ -416,7 +426,7 @@ def summarize_agg_pwrspec(pwr_1d, pwr_1d_from_2d, pwr_2d,
     fileout = outdir + "/" + tag + "_avg_2d_counts.dat"
     summarize_2d_agg_pwrspec(pwr_2d, fileout, dataname="counts_histo")
 
-    return mean1d_f2d, std1d_f2d, cov1d_f2d
+    return agg_1d_pwrspec_f2d
 
 
 def convert_2d_to_1d_driver(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
