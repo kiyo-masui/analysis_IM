@@ -84,33 +84,33 @@ pipe_modules = []
 #from noise import measure_noise
 #pipe_modules.append(measure_noise.Measure)
 
-#from map import dirty_map
+from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
-from map import clean_map
-pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
-pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
-pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
-pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
+#from map import clean_map
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
 
-from map import glue_maps
-pipe_modules.append((glue_maps.GlueMaps, ('gmA_', 'gm_')))
-pipe_modules.append((glue_maps.GlueMaps, ('gmB_', 'gm_')))
-pipe_modules.append((glue_maps.GlueMaps, ('gmC_', 'gm_')))
-pipe_modules.append((glue_maps.GlueMaps, ('gmD_', 'gm_')))
+#from map import glue_maps
+#pipe_modules.append((glue_maps.GlueMaps, ('gmA_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmB_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmC_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmD_', 'gm_')))
 
-pipe_modules.append((glue_maps.GlueMaps, ('gmnA_', 'gm_')))
-pipe_modules.append((glue_maps.GlueMaps, ('gmnB_', 'gm_')))
-pipe_modules.append((glue_maps.GlueMaps, ('gmnC_', 'gm_')))
-pipe_modules.append((glue_maps.GlueMaps, ('gmnD_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmnA_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmnB_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmnC_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmnD_', 'gm_')))
 
-pipe_modules.append((glue_maps.GlueMaps, ('gmdA_', 'gm_')))
-pipe_modules.append((glue_maps.GlueMaps, ('gmdB_', 'gm_')))
-pipe_modules.append((glue_maps.GlueMaps, ('gmdC_', 'gm_')))
-pipe_modules.append((glue_maps.GlueMaps, ('gmdD_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmdA_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmdB_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmdC_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmdD_', 'gm_')))
 
 
 #### Parameters for the various modules. ####
@@ -450,6 +450,8 @@ dmB_noise_parameter_file = dmA_noise_parameter_file
 dmB_deweight_time_mean = dmA_deweight_time_mean
 dmB_deweight_time_slope = dmA_deweight_time_slope
 dmB_interpolation = dmA_interpolation
+dmB_ts_foreground_mode_file = dmA_ts_foreground_mode_file
+dmB_n_ts_foreground_modes = dmA_n_ts_foreground_modes
 
 dmC_input_root = dmA_input_root
 dmC_input_end = dmA_input_end
@@ -468,6 +470,8 @@ dmC_noise_parameter_file = dmA_noise_parameter_file
 dmC_deweight_time_mean = dmA_deweight_time_mean
 dmC_deweight_time_slope = dmA_deweight_time_slope
 dmC_interpolation = dmA_interpolation
+dmD_ts_foreground_mode_file = dmA_ts_foreground_mode_file
+dmD_n_ts_foreground_modes = dmA_n_ts_foreground_modes
 
 dmD_input_root = dmA_input_root
 dmD_input_end = dmA_input_end
@@ -486,6 +490,8 @@ dmD_noise_parameter_file = dmA_noise_parameter_file
 dmD_deweight_time_mean = dmA_deweight_time_mean
 dmD_deweight_time_slope = dmA_deweight_time_slope
 dmD_interpolation = dmA_interpolation
+dmD_ts_foreground_mode_file = dmA_ts_foreground_mode_file
+dmD_n_ts_foreground_modes = dmA_n_ts_foreground_modes
 
 
 cmB_polarizations = cmA_polarizations

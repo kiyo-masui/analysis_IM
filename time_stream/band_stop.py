@@ -26,8 +26,10 @@ class BandStop(base_single.BaseSingle) :
         for limits in self.params['band_stops']:
             mask_frequency_range(Data, limits)
         
-        Data.add_history('Masked stop bands.',
-                         ('Stop bands: ' + str(self.params['band_stops'])))
+        #Data.add_history('Masked stop bands.',
+        #                 ('Stop bands: ' + str(self.params['band_stops'])))
+        # Less detailed history message until pyfits bug gets fixed.
+        Data.add_history('Masked stop bands.')
         return Data
 
 def mask_frequency_range(Data, limits):

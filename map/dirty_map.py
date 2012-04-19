@@ -1305,7 +1305,7 @@ class Noise(object):
                            " definate.")
                 if hasattr(self, 'flag'):
                     print "Initial time_mode condition number:", max(e)/min(e)
-            # The normal case when se are considering the full noise.
+            # The normal case when we are considering the full noise.
             # Calculate the term in the bracket in the matrix inversion lemma.
             # Get the size of the update term.
             # First, the rank of the correlated frequency part.

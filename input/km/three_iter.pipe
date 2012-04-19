@@ -9,7 +9,7 @@ import scipy as sp
 field = '15hr'
 
 #sessions = range(41, 90)
-# According to Tabitha, cal unstable in these sessions.
+# According to Tabitha, cal unstable in sessions 52 to 58.
 sessions = range(41, 52) + range(59, 90)
 
 file_middles = tuple(dir_data.get_data_files(sessions, field='15hr', 
@@ -38,11 +38,12 @@ map0_spacing = .0627
 map_shape = (70, 38)
 map_spacing = .07
 
-base_dir = os.getenv('GBT_OUT')
+base_dir_main = os.getenv('GBT_OUT')
+base_dir = "/mnt/raid-project/gmrt/kiyo/gbt_out_new/"
 data_dir = os.getenv('GBT_DATA')
 base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
-map_base = base_dir + 'maps/mar4.2012/'
+map_base = base_dir + 'maps/apr19.2012/'
 
 
 # IO directory and file prefixes.
@@ -50,7 +51,7 @@ prefix = ''
 map_prefix = '' + field + '_' + '41-90' + '_'
 
 # Maximum number of processes to use.
-pipe_processes = 24
+pipe_processes = 10
 
 
 ####  List of modules to execute.  ####
@@ -61,25 +62,29 @@ pipe_modules = []
 #from time_stream import flag_data
 #pipe_modules.append(flag_data.FlagData)
 
-from time_stream import rebin
-pipe_modules.append(rebin.Rebin)
+#from time_stream import rebin
+#pipe_modules.append(rebin.Rebin)
 
-from time_stream import flux_diff_gain_cal
-pipe_modules.append(flux_diff_gain_cal.Calibrate)
+# This calibration still unproven.
+#from time_stream import flux_diff_gain_cal
+#pipe_modules.append(flux_diff_gain_cal.Calibrate)
 
-from time_stream import rotate_pol
-pipe_modules.append(rotate_pol.RotatePol)
+#from time_stream import calibrate
+#pipe_modules.append(calibrate.Calibrate)
 
-from time_stream import band_stop
-pipe_modules.append(band_stop.BandStop)
+#from time_stream import band_stop
+#pipe_modules.append(band_stop.BandStop)
 
-from time_stream import split_bands
-pipe_modules.append(split_bands.SplitBands)
+#from time_stream import split_bands
+#pipe_modules.append(split_bands.SplitBands)
+
+#from time_stream import rotate_pol
+#pipe_modules.append(rotate_pol.RotatePol)
 
 #### First Map making interation ####
 
-from map import dirty_map
-pipe_modules.append(dirty_map.DirtyMapMaker)
+#from map import dirty_map
+#pipe_modules.append(dirty_map.DirtyMapMaker)
 
 from map import clean_map
 pipe_modules.append(clean_map.CleanMapMaker)
@@ -87,17 +92,23 @@ pipe_modules.append(clean_map.CleanMapMaker)
 
 #### Second Map making iteration ####
 
-from time_stream import subtract_map_data
-pipe_modules.append(subtract_map_data.Subtract)
+#from cal import correlate_map
+#pipe_modules.append(correlate_map.Measure, ('mc2_', 'mc_'))
 
-from time_stream import reflag
-pipe_modules.append(reflag.ReFlag)
+#from time_stream import rotate_pol
+#pipe_modules.append(rotate_pol.RotatePol, ('rp2_', 'rp_'))
 
-from noise import measure_noise
-pipe_modules.append(measure_noise.Measure)
+#from time_stream import subtract_map_data
+#pipe_modules.append(subtract_map_data.Subtract, ('sm2_', 'sm_') )
 
-from map import dirty_map
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dm2_', 'dm_')))
+#from time_stream import reflag
+#pipe_modules.append(reflag.ReFlag, ('rf2_', 'rf_'))
+
+#from noise import measure_noise
+#pipe_modules.append(measure_noise.Measure, ('mn2_', 'mn_'))
+
+#from map import dirty_map
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dm2_', 'dm_')))
 
 #from map import clean_map
 #pipe_modules.append((clean_map.CleanMapMaker, ('cm2_', 'cm_')))
@@ -105,7 +116,13 @@ pipe_modules.append((dirty_map.DirtyMapMaker, ('dm2_', 'dm_')))
 
 #### Third Map making iteration ####
 
-# Correlation calibration modules here. # XXX
+#from cal import correlate_map
+#pipe_modules.append(correlate_map.Measure, ())
+
+##from time_stream import map_cal
+##pipe_modules.append(map_cal.Calibrate, ())
+
+# rotate_pol
 
 #from time_stream import subtract_map_data
 #pipe_modules.append(subtract_map_data.Subtract, ('sb3_', 'sb_'))
@@ -165,7 +182,9 @@ fd_badness_thres = 0.1
 fd_time_cut = 10
 
 # Rebin the time and frequency axis.
-rb_input_root = fd_output_root
+##### Get input root from the normal data pipeline. #####
+#rb_input_root = fd_output_root
+rb_input_root = base_dir_main + 'flagged/' + prefix
 rb_file_middles = file_middles
 rb_input_end = '.fits'
 rb_output_root = base_dir + 'rebinned/' + prefix
@@ -177,30 +196,30 @@ rb_n_bins_combined_freq = 32
 rb_n_bins_combined_time = 2
 
 # calibrate
-fgc_input_root = rb_output_root
-fgc_file_middles = file_middles
-fgc_input_end = '.fits'
-fgc_output_root = base_dir + 'flux_dg_cal/'
-fgc_output_end = '.fits'
-fgc_scans = ()
-fgc_IFs = ()
+# Using older calibration.  These parameters not used.
+#fgc_input_root = rb_output_root
+#fgc_file_middles = file_middles
+#fgc_input_end = '.fits'
+#fgc_output_root = base_dir + 'flux_dg_cal/'
+#fgc_output_end = '.fits'
+#fgc_scans = ()
+#fgc_IFs = ()
+#
+#fgc_mueler_file = base_tcv + 'diff_gain_params/'
 
-fgc_mueler_file = base_tcv + 'diff_gain_params/'
+# These parameters used instead.
+cl_input_root = rb_output_root
+cl_file_middles = file_middles
+cl_input_end = '.fits'
+cl_output_root = base_dir + 'calibrated/' + prefix
+cl_output_end = '.fits'
+cl_scans = ()
+cl_IFs = ()
 
-# rotate_pol
-rp_input_root = fgc_output_root
-rp_file_middles = file_middles
-rp_input_end = '.fits'
-rp_output_root = base_dir + 'pol_selected/' + prefix
-rp_output_end = '.fits'
-rp_scans = ()
-rp_IFs = ()
-
-rp_new_pols = (1,)
-rp_average_cals = True
+cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
 
 # band stop
-bs_input_root = rp_output_root
+bs_input_root = cl_output_root
 bs_file_middles = file_middles
 bs_input_end = '.fits'
 bs_output_root = base_dir + 'band_stopped/' + prefix
@@ -222,13 +241,31 @@ sb_scans = ()
 sb_IFs = ()
 
 # 128 bins -> 3 bands of 40, starting at 4 ending at 124.
-sb_n_bands = 3
-sb_n_bins_band = 40
+#sb_n_bands = 3
+#sb_n_bins_band = 40
 #sb_offset = 4 + 2 * sb_n_bins_band
-sb_offset = 4
+#sb_offset = 4
+# For now deal with a single lowish noise band that misses resonances, rfi,
+# etc. Band chosen such the upper end is ~5MHz from resonance.
+sb_n_bands = 1
+sb_n_bins_band = 40
+sb_offset = 68
+
+# rotate_pol
+rp_input_root = sb_output_root
+rp_file_middles = file_middles
+rp_input_end = '.fits'
+rp_output_root = base_dir + 'pol_selected/' + prefix
+rp_output_end = '.fits'
+rp_scans = ()
+rp_IFs = ()
+
+rp_new_pols = (1,)
+rp_average_cals = True
+
 
 # dirty_map
-dm_input_root = sb_output_root
+dm_input_root = rp_output_root
 dm_file_middles = file_middles
 dm_input_end = '.fits'
 dm_output_root = map_base + 'fir_' + map_prefix
@@ -252,52 +289,77 @@ dm_interpolation = 'cubic'
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
 cm_polarizations = ('I',)
-cm_bands = (737, 799, 862)
+#cm_bands = (737, 799, 862)
+cm_bands = (762,)
 cm_save_noise_diag = True
 
-# subtract_map_data
-sm_input_root = sb_output_root
-sm_file_middles = file_middles
-sm_input_end = '.fits'
-sm_output_root = base_dir + 'map_subtracted/'
-sm_output_end = '.fits'
-sm_scans = ()
-sm_IFs = ()
+#### Second round of map making #####
 
-sm_interpolation = 'cubic'
-sm_map_polarizations = ('I',)
-sm_map_nbands = cm_bands
-sm_map_input_root = cm_output_root
-sm_map_type = 'clean_map_'
-sm_solve_for_gain = False
-sm_gain_output_end = '_gain.pickle'
+# measure gain relative to map.
+mc2_input_root = sb_output_root
+mc2_file_middles = file_middles
+mc2_input_end = '.fits'
+mc2_output_root = base_dir + 'map_correlation_sec/'
+mc2_output_filename = "correlations.shelve"
+mc2_output_end = '.fits'
+mc2_scans = ()
+mc2_IFs = ()
+
+mc2_interpolation = 'cubic'
+mc2_map_polarizations = ('I',)
+mc2_map_nbands = cm_bands
+mc2_map_input_root = cm_output_root
+mc2_map_type = 'clean_map_'
+mc2_smooth_modes_subtract = 3
+
+# rotate polarizations.
+rp2_input_root = mc2_output_root
+rp2_output_root = base_dir + 'pol_selected_sec/' + prefix
+
+# subtract_map_data
+sm2_input_root = rp2_output_root
+sm2_file_middles = file_middles
+sm2_input_end = '.fits'
+sm2_output_root = base_dir + 'map_subtracted/'
+sm2_output_end = '.fits'
+sm2_scans = ()
+sm2_IFs = ()
+
+sm2_interpolation = 'cubic'
+sm2_map_polarizations = ('I',)
+sm2_map_nbands = cm_bands
+sm2_map_input_root = cm_output_root
+sm2_map_type = 'clean_map_'
+sm2_map_bands = cm_bands
+sm2_solve_for_gain = False
+sm2_gain_output_end = '_gain.pickle'
 
 # second_flag
-sf_input_root = sb_output_root
-sf_file_middles = file_middles
-sf_input_end = '.fits'
-sf_output_root = base_dir + 'reflagged/'
-sf_output_end = '.fits'
-sf_scans = ()
-sf_IFs = ()
+sf2_input_root = sb2_output_root
+sf2_file_middles = file_middles
+sf2_input_end = '.fits'
+sf2_output_root = base_dir + 'reflagged/'
+sf2_output_end = '.fits'
+sf2_scans = ()
+sf2_IFs = ()
 
-sf_thres = 3.0
-sf_max_noise_factor = 4.0
-sf_subtracted_input_root = sm_output_root
-sf_subtracted_output_root = base_dir + 'reflagged_sub/'
+sf2_thres = 3.0
+sf2_max_noise_factor = 4.0
+sf2_subtracted_input_root = sm_output_root
+sf2_subtracted_output_root = base_dir + 'reflagged_sub/'
 
 # measure_noise
-mn_input_root = sf_subtracted_output_root
-mn_file_middles = file_middles
-mn_input_end = '.fits'
-mn_output_root = base_dir + 'noise_measurments_sec/'
-mn_output_filename = "noise_parameters.shelve"
-mn_save_spectra_plots = True
-mn_time_block = 'scan'
-mn_scans = ()
-mn_IFs = ()
+mn2_input_root = sf2_subtracted_output_root
+mn2_file_middles = file_middles
+mn2_input_end = '.fits'
+mn2_output_root = base_dir + 'noise_measurments_sec/'
+mn2_output_filename = "noise_parameters.shelve"
+mn2_save_spectra_plots = True
+mn2_time_block = 'scan'
+mn2_scans = ()
+mn2_IFs = ()
 
-mn_parameters = ["channel_var", "freq_modes_over_f_0",
+mn2_parameters = ["channel_var", "freq_modes_over_f_0",
                  "freq_modes_over_f_1", "freq_modes_over_f_2",
                  "freq_modes_over_f_3", "freq_modes_over_f_4",
                  "freq_modes_over_f_5", "freq_modes_over_f_6",
@@ -336,12 +398,30 @@ cm2_input_root = dm2_output_root
 cm2_output_root = cm2_input_root
 
 cm2_polarizations = ('I',)
-cm2_bands = (737, 799, 862)
-#cm2_bands = (799,) # XXX
+#cm2_bands = (737, 799, 862)
+cm2_bands = (799,) # XXX
 cm2_save_noise_diag = True
 cm2_save_cholesky = False
 cm2_from_eig = False
 
 
+#### Third round of map making. ####
 
+# measure gain relative to map.
+mc3_input_root = sb_output_root
+mc3_file_middles = file_middles
+mc3_input_end = '.fits'
+mc3_output_root = base_dir + 'map_correlation/'
+mc3_output_filename = "correlations.shelve"
+mc3_output_end = '.fits'
+mc3_scans = ()
+mc3_IFs = ()
 
+mc3_interpolation = 'cubic'
+mc3_map_polarizations = ('I',)
+mc3_map_nbands = cm2_bands
+mc3_map_input_root = cm2_output_root
+mc3_map_type = 'clean_map_'
+mc3_smooth_modes_subtract = 3
+
+# Rotate polarizations.

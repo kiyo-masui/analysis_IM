@@ -29,7 +29,7 @@ params_init = {
                "file_middles" : ("testfile_guppi_combined",),
                "input_end" : ".fits",
                "output_root" : "./",
-               "output_filename" : "foreground_modes.shelve",
+               "output_filename" : "map_correlations.shelve",
                "scans" : (),
                "IFs" : (),
                'map_input_root' : './',
@@ -37,10 +37,10 @@ params_init = {
                'map_bands' : (),
                'map_polarizations' : (),
                'interpolation' : 'nearest',
-               'smooth_modes_subtract' : 2
+               'smooth_modes_subtract' : 2,
                }
 
-prefix = 'tf_'
+prefix = 'mc_'
 
 class Measure(object) :
     """Measures the correlation of the data with the map.
@@ -81,6 +81,8 @@ class Measure(object) :
         norm_dict = {}
         # Also store the frequency axis.
         freq_dict = {}
+        # Finally, a gain dictionary.
+        gain_dict = {}
         # Loop though all the files and accumulate the correlation and the
         # normalization.  Files in the same session are summed together.
         for middle in file_middles:
@@ -108,8 +110,10 @@ class Measure(object) :
             corr = corr_dict[key]
             norm = norm_dict[key]
             # Normalize.
+            corr[norm==0] = 0
             norm[norm==0] = 1
             gains = corr / norm
+            gain_dict[key] = gains
             #plt.semilogy(h, '.')
             #plt.figure()
             #for ii in range(1,5):
@@ -118,7 +122,11 @@ class Measure(object) :
             out_db[key + '.gains'] = gains
             out_db[key + '.freq'] = freq_dict[key]
         out_db.close()
-
+        #### Apply the calibration to the data. ####
+        for middle in file_middles:
+            key = get_key(middle)
+            gain = gain_dict[key]
+            self.calibrate_file(middle, gain)
 
     def process_file(self, middle):
         params = self.params
@@ -164,22 +172,101 @@ class Measure(object) :
             else:
                 raise NotImplementedError('No maps with frequency axis exactly'
                                           ' matching data.')
-            # Check the polarization axis.
+            # Check the polarization axis. If the same number of maps where
+            # passed, check that the polarizations are in order.  If only one
+            # map was passed, correlate all data polarizations against it.
             data_pols = Blocks[0].field['CRVAL4'].copy()
-            for ii in range(len(data_pols)):
-                if (misc.polint2str(data_pols[ii])
-                    != self.params['map_polarizations'][ii]):
-                    msg = ('Map polarizations not in same order'
-                           ' as data polarizations.')
-                    raise NotImplementedError(map)
+            if len(band_maps == 1):
+                maps_to_correlate = band_maps * len(data_pols)
+            else:
+                for ii in range(len(data_pols)):
+                    if (misc.polint2str(data_pols[ii])
+                        != self.params['map_polarizations'][ii]):
+                        msg = ('Map polarizations not in same order'
+                               ' as data polarizations.')
+                        raise NotImplementedError(map)
+                maps_to_correlate = band_maps
             # Now process each block.
             for Data in Blocks:
-                this_corr, this_norm = get_correlation(Data, band_maps,
+                this_corr, this_norm = get_correlation(Data,
+                                maps_to_correlate,
                                 interpolation=params['interpolation'],
                                 modes_subtract=params['smooth_modes_subtract'])
                 corr[ii,...] += corr
                 norm[ii,...] += norm
         return key, corr, norm, freq
+
+    def calibrate_file(middle, gains):
+        # This function is largely cut and pasted from process file. I should
+        # really combine the code into an iterator but that's a lot of work.
+        # Alternativly, I could make a meta function and pass a function to it.
+        params = self.params
+        file_name = (params['input_root'] + middle
+                     + params['input_end'])
+        band_inds = params["IFs"]
+        Reader = core.fitsGBT.Reader(file_name, feedback=self.feedback)
+        n_bands = len(Reader.IF_set)
+        if not band_inds:
+            band_inds = range(n_bands)
+        # Number of bands we acctually process.
+        n_bands_proc = len(band_inds)
+        if not band_inds:
+            band_inds = range(n_bands)
+        # Number of bands we acctually process.
+        n_bands_proc = len(band_inds)
+        # Get the key that will group this file with other files.
+        key = get_key(middle)
+        # Read one block to figure out how many polarizations and channels
+        # there are.
+        Data = Reader.read(0,0)
+        n_pol = Data.dims[1]
+        n_cal = Data.dims[2]
+        n_chan = Data.dims[3]
+        # Allowcate memory for the outputs.
+        corr = np.zeros((n_bands_proc, n_pol, n_cal, n_chan),
+                         dtype=float)
+        norm = np.zeros(corr.shape, dtype=int)
+        freq = np.empty((n_bands_proc, n_chan))
+        for ii in range(n_bands_proc):
+            Blocks = Reader.read((), ii)
+            Blocks[0].calc_freq()
+            freq[ii,:] = Blocks[0].freq
+            # We are going to look for an exact match in for the map 
+            # frequencies. This could be made more general since the sub_map
+            # function can handle partial overlap, but this will be fine for
+            # now.
+            for band_maps in self.maps:
+                maps_freq = band_maps[0].get_axis('freq')
+                if np.allclose(maps_freq, freq[ii,:]):
+                    maps = band_maps
+                    break
+            else:
+                raise NotImplementedError('No maps with frequency axis exactly'
+                                          ' matching data.')
+            # Check the polarization axis. If the same number of maps where
+            # passed, check that the polarizations are in order.  If only one
+            # map was passed, correlate all data polarizations against it.
+            data_pols = Blocks[0].field['CRVAL4'].copy()
+            if len(band_maps == 1):
+                maps_to_correlate = band_maps * len(data_pols)
+            else:
+                for ii in range(len(data_pols)):
+                    if (misc.polint2str(data_pols[ii])
+                        != self.params['map_polarizations'][ii]):
+                        msg = ('Map polarizations not in same order'
+                               ' as data polarizations.')
+                        raise NotImplementedError(map)
+                maps_to_correlate = band_maps
+            # Now process each block.
+            for Data in Blocks:
+                this_corr, this_norm = get_correlation(Data,
+                                maps_to_correlate,
+                                interpolation=params['interpolation'],
+                                modes_subtract=params['smooth_modes_subtract'])
+                corr[ii,...] += corr
+                norm[ii,...] += norm
+        return key, corr, norm, freq
+
 
 
 def get_key(middle):

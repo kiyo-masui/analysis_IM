@@ -173,6 +173,8 @@ def cho_solve(np.ndarray[DTYPE_t, ndim=2, mode='c'] chol not None,
     cdef DTYPE_t tmp
     # Limit of small information, about 0.1 K**-1. Modes with less information
     # are ignored.
+    # The following is not squared because it is compared with the diagonal
+    # from the Cholesky, which already has the sqrt.
     cdef DTYPE_t small = 1./T_huge
     cdef np.ndarray[DTYPE_t, ndim=1, mode='c'] x
     x = b.copy()

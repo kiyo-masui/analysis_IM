@@ -54,8 +54,12 @@ class CleanMapMaker(object) :
         # Loop over files to process.
         for pol_str in params['polarizations']:
             for band in bands:
-                dmap_fname = (in_root + 'dirty_map_' + pol_str + "_" +
-                              repr(band) + '.npy')
+                if band == -1:
+                    band_str = ''
+                else:
+                    band_str =  "_" + repr(band)
+                dmap_fname = (in_root + 'dirty_map_' + pol_str + 
+                              band_str + '.npy')
                 all_in_fname_list.append(
                     kiyopy.utils.abbreviate_file_path(dmap_fname))
                 # Load the dirty map and the noise matrix.
@@ -78,8 +82,8 @@ class CleanMapMaker(object) :
                     # Solving from eigen decomposition of the noise instead of
                     # the noise itself.
                     # Load in the decomposition.
-                    evects_fname = (in_root + 'noise_evects_' + pol_str + "_"
-                                    + repr(band) + '.npy')
+                    evects_fname = (in_root + 'noise_evects_' + pol_str +
+                                    + band_str + '.npy')
                     if self.feedback > 1:
                         print "Using dirty map: " + dmap_fname
                         print "Using eigenvectors: " + evects_fname
@@ -100,8 +104,8 @@ class CleanMapMaker(object) :
                     del evects
                 else:
                     # Solving from the noise.
-                    noise_fname = (in_root + 'noise_inv_' + pol_str + "_" +
-                                   repr(band) + '.npy')
+                    noise_fname = (in_root + 'noise_inv_' + pol_str +
+                                   band_str + '.npy')
                     if self.feedback > 1:
                         print "Using dirty map: " + dmap_fname
                         print "Using noise inverse: " + noise_fname
@@ -217,7 +221,7 @@ class CleanMapMaker(object) :
                                         False, feedback=self.feedback)
                         if params['save_cholesky']:
                             chol_fname = (params['output_root'] + 'chol_'
-                                        + pol_str + "_" + repr(band) + '.npy')
+                                        + pol_str + band_str + '.npy')
                             sp.save(chol_fname, chol)
                         # Delete the cholesky to recover memory.
                         del chol
@@ -227,7 +231,7 @@ class CleanMapMaker(object) :
                     del noise_inv
                 # Write the clean map to file.
                 out_fname = (params['output_root'] + 'clean_map_'
-                             + pol_str + "_" + repr(band) + '.npy')
+                             + pol_str + band_str + '.npy')
                 if self.feedback > 1:
                     print "Writing clean map to: " + out_fname
                 algebra.save(out_fname, clean_map)
@@ -235,7 +239,7 @@ class CleanMapMaker(object) :
                     kiyopy.utils.abbreviate_file_path(out_fname))
                 if save_noise_diag :
                     noise_diag_fname = (params['output_root'] + 'noise_diag_'
-                                        + pol_str + "_" + repr(band) + '.npy')
+                                        + pol_str + band_str + '.npy')
                     algebra.save(noise_diag_fname, noise_diag)
                     all_out_fname_list.append(
                         kiyopy.utils.abbreviate_file_path(noise_diag_fname))
