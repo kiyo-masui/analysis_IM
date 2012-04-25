@@ -1299,7 +1299,7 @@ class Noise(object):
                 A.shape = (n_chan,) * 2
                 e, v = linalg.eigh(A)
                 e_max = max(e)
-                if not sp.all(e > -1e-7*e_max) or e_max < 0:
+                if not sp.all(e > -1e-10*e_max) or e_max < 0:
                     print e
                     msg = ("Some time_mode noise components not positive"
                            " definate.")

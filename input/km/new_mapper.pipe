@@ -30,7 +30,7 @@ prefix = ''
 map_prefix = '' + field + '_' + '41-90' + '_'
 
 # Maximum number of processes to use.
-pipe_processes = 12
+pipe_processes = 24
 
 
 ####  List of modules to execute.  ####
@@ -72,16 +72,16 @@ pipe_modules = []
 #from noise import measure_noise
 #pipe_modules.append(measure_noise.Measure)
 
-#from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
 from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
 pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
 
 #from map import glue_maps
@@ -289,7 +289,7 @@ dmA_input_end = '.fits'
 #dmA_output_root = base_dir + 'maps/test2_' + map_prefix
 dmA_output_root = base_dir + maps_dir + 'secA_' + map_prefix
 dmA_scans = ()
-dmA_IFs = (0,)
+dmA_IFs = (1,)
 #dmA_IFs = (2,)  # XXX
 
 dmA_polarizations = ('I',)
@@ -332,7 +332,7 @@ cmA_output_root = cmA_input_root
 
 cmA_polarizations = ('I',)
 #cmA_bands = (737, 799, 862)
-cmA_bands = (737,)
+cmA_bands = (799,)
 #cmA_save_noise_diag = True 
 cmA_save_noise_diag = True
 cmA_save_cholesky = False
