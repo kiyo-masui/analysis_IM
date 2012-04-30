@@ -264,9 +264,9 @@ class MuellerGen(object) :
             XX_PA_3C286[:,c] = self.d[c*4+2,:]# Tsys/Tcal 2, XX
             YY_PA_3C286[:,c] = self.d[c*4+3,:]# Tsys/Tcal 2, YY
 
-#        pl.plot(freq_val,XXsrc_3C286,label='XX_3C286',color='b')
+        pl.plot(freq_val,XXsrc_3C286,label='XX_3C286',color='b')
 #        pl.plot(freq_val,YYsrc_3C286,label='YY_3C286',color='b')
-        pl.plot(freq_val,XXsrc_3C48,label='XX_3C147',color='b')
+#        pl.plot(freq_val,XXsrc_3C48,label='XX_3C147',color='b')
 #        pl.plot(freq_val,XXsrc_3C48,label='YY_3C48',color='b')
       
         for d in range(0,k/4):
@@ -287,12 +287,12 @@ class MuellerGen(object) :
 #            pl.plot(freq_val,YY_compare[:,d], label='YY_'+str(d),color=col)
 #            pl.plot(freq_val,XX_PA_3C286[:,d], label='XX_2_'+str(d),color=col)
             pl.plot(freq_val,XX_compare[:,d],label='XX_'+str(d),color = col)
-            pl.plot(freq_val,YY_compare[:,d],label='YY_'+str(d),color = col)
+#            pl.plot(freq_val,YY_compare[:,d],label='YY_'+str(d),color = col)
 #            pl.plot(freq_val,XX_PA_3C286[:,d],label='XXsrc_'+str(d), color = col)
 #            pl.plot(freq_val,YY_PA_3C286[:,d],label='YYsrc_'+str(d), color = col)
         leg = pl.legend(fancybox='True')
         leg.get_frame().set_alpha(0.25)
-        pl.ylim(50,70)
+        pl.ylim(30,45)
         pl.xlabel("Frequency (MHz)")
         pl.ylabel("Temperature (K)")
         title0 = sess+ '_Tsrc_Test.png'

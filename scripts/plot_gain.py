@@ -4,10 +4,11 @@ from numpy import *
 import scipy as sp
 import scipy.interpolate as ip
 
-prefix = '01'
+prefix = '74'
 
 filedir = sys.argv[1]
 
+gain_params2 = loadtxt(filedir+prefix+'_diff_gain_calc_RM.txt')
 gain_params = loadtxt(filedir+prefix+'_diff_gain_calc.txt')
 #gain_params = loadtxt(filedir+prefix+'_diff_gain_calc_mod.txt')
 
@@ -21,6 +22,8 @@ freq_new = arange(freq[-1],freq[0]+0.78125,0.78125)
 
 XG = gain_params[:,1]
 YG = gain_params[:,2]
+XG_RM = gain_params2[:,1]
+YG_RM = gain_params2[:,2]
 #print XG[100]
 #print XG[129]
 #print YG[100]
@@ -40,6 +43,10 @@ YG = gain_params[:,2]
 
 XG_mod = ip.UnivariateSpline(freq_new,XG,s=1,k=1)
 YG_mod = ip.UnivariateSpline(freq_new,YG,s=1,k=2)
+#print XG_mod.get_knots()
+#print XG_mod.get_coeffs()
+#print YG_mod.get_knots()
+#print YG_mod.get_coeffs()
 #print XG_mod(800.)
 freq_new = arange(freq_new[0],freq_new[-1],.78125)
 #print freq[0]
@@ -55,16 +62,21 @@ for i in range(0,len(XG)):
 #print XG_mod_f
 
 #Gain plot
-pylab.plot(freq, XG_new,label='XX Gain')
-pylab.plot(freq, YG_new,label='YY Gain')
+pylab.plot(freq, XG, 'b',label='XX Gain')
+pylab.plot(freq, YG, 'g',label='YY Gain')
+pylab.plot(freq, XG_RM,'c--', label='XX RM')
+pylab.plot(freq, YG_RM, 'r--', label='YY RM')
+#pylab.plot(freq, XG_new,label='XX Gain')
+#pylab.plot(freq, YG_new,label='YY Gain')
 #pylab.plot(freq_new,XG_mod_f, label='XX_mod')
 #pylab.plot(freq_new,YG_mod_f, label='YY_mod')
 pylab.ylim(0,4)
-pylab.xlim(freq[0],freq[-1])
+#pylab.xlim(freq[0],freq[-1])
 pylab.xlabel('frequency')
 pylab.legend()
 pylab.grid(b='on')
-pylab.savefig('diff_gain_'+prefix+'.png')
+#pylab.savefig('diff_gain_'+prefix+'.png')
 #pylab.savefig('diff_gain_mod_'+prefix+'.png')
+pylab.savefig('diff_gain_RM_'+prefix+'.png')
 pylab.clf()
 
