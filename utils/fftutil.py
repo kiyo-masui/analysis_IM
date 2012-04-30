@@ -1,5 +1,22 @@
-
 import numpy as np
+
+def window_nd(shape, name="blackman"):
+    """define a window function in n-dim
+    `name` options: blackman, bartlett, hamming, hanning, kaiser
+    """
+    print "using a %s window" % name
+    ndim = len(shape)
+    window = np.ones(shape)
+
+    for index, l in enumerate(shape):
+        sl = ([np.newaxis]*index) + [slice(None)] + \
+             ([np.newaxis]) * (ndim - index - 1)
+        window_func = getattr(np, name)
+        arr = window_func(l)
+        window *= arr[sl]
+
+    return window
+
 
 def rfftfreqn(n, d = None):
     """Generate an array of FFT frequencies for an n-dimensional *real* transform.
@@ -45,6 +62,6 @@ def rfftfreqn(n, d = None):
     # If we are given the sample spacing, scale each vector component
     # such that it is a proper frequency.
     rollarr[...,:] /= d
-            
+
     return rollarr
 

@@ -1,0 +1,209 @@
+set terminal postscript eps color enhanced "Helvetica" 17
+#set terminal postscript eps color enhanced fontfile "/opt/local/share/texmf-texlive-dist/fonts/type1/public/amsfonts/cm/cmff10.pfb"
+#set xlabel "{/CMFF10 \\077}"
+set view map
+set xrange [-2.15344661135655: 0.448995850120586]
+set yrange [-2.15344661135655: 0.448995850120586]
+set size ratio -1
+set nokey
+set tics out
+set xlabel "log(k_{{/Symbol \\136}} h cMpc^{-1})"
+set ylabel "log(k_{{/Symbol \174\174}} h cMpc^{-1})"
+set title "k-space coverage of the 15hr survey"
+set cblabel "Number of modes per k-cell"
+set rmargin 10
+set output "sim/2d_counts.eps"
+set logscale cb
+set cbrange [1e-1: 1e6]
+set palette rgbformulae 22, 13, -31
+plot "sim_15hr_physical_avg_2d_counts.dat" using 2:5:7 with image
+
+#set title "Scatter in the number k-space coverage"
+#set output "2d_counts_scatter.eps"
+#plot "sim_15hr_physical_avg_2d_counts.dat" using 2:5:8 with image
+
+# now make the power spectrum plots
+set cblabel "{/Symbol D}(k)^2 (K^2)"
+set logscale cb
+set cbrange [*: *]
+
+set title "Power spectrum with vv, evo."
+set output "sim/sim_15hr_avg_2d.eps"
+plot "sim_15hr_avg_2d.dat" using 2:5:7 with image
+
+set title "Power spectrum with vv, evo., streaming"
+set output "sim/simvel_15hr_avg_2d.eps"
+plot "simvel_15hr_avg_2d.dat" using 2:5:7 with image
+
+set title "Density-only power spectrum"
+set output "sim/simideal_15hr_avg_2d.eps"
+plot "simideal_15hr_avg_2d.dat" using 2:5:7 with image
+
+set title "Power spectrum with vv, evo., beam"
+set output "sim/sim_15hr_beam_avg_2d.eps"
+plot "sim_15hr_beam_avg_2d.dat" using 2:5:7 with image
+
+set title "Power spectrum with vv, evo., beam, meansub, conv."
+set output "sim/sim_15hr_beam_meanconv_avg_2d.eps"
+plot "sim_15hr_beam_meanconv_avg_2d.dat" using 2:5:7 with image
+
+set title "Power spectrum with vv, evo., streaming, beam"
+set output "sim/simvel_15hr_beam_avg_2d.eps"
+plot "simvel_15hr_beam_avg_2d.dat" using 2:5:7 with image
+
+set title "Power spectrum with vv, evo., streaming, beam, meansub, conv."
+set output "sim/simvel_15hr_beam_meanconv_avg_2d.eps"
+plot "simvel_15hr_beam_meanconv_avg_2d.dat" using 2:5:7 with image
+
+# now make the transfer function plots
+set cblabel "B(k)^2"
+unset logscale cb
+set cbrange [0:1]
+
+set title "Beam transfer function"
+set output "sim/trans_beam.eps"
+plot "trans_beam.dat" using 2:5:7 with image
+
+set title "Beam transfer function (alt. average)"
+set output "sim/trans_beam_altavg.eps"
+plot "trans_beam_altavg.dat" using 2:5:7 with image
+
+set title "Beam and meansub"
+set output "sim/trans_beam_mean.eps"
+plot "trans_beam_mean.dat" using 2:5:7 with image
+
+set title "Beam and meansub (alt. average)"
+set output "sim/trans_beam_mean_altavg.eps"
+plot "trans_beam_mean_altavg.dat" using 2:5:7 with image
+
+set title "Beam and meansub, degrade trans."
+set output "sim/trans_beam_meanconv.eps"
+plot "trans_beam_meanconv.dat" using 2:5:7 with image
+
+set title "Beam and meansub, degrade trans. (alt. average)"
+set output "sim/trans_beam_meanconv_altavg.eps"
+plot "trans_beam_meanconv_altavg.dat" using 2:5:7 with image
+
+# 2D cross-power transfer functions
+set title "Crosspower: Beam transfer function"
+set output "sim/crosstrans_beam.eps"
+plot "crosstrans_beam.dat" using 2:5:7 with image
+
+set title "Crosspower: Beam transfer function (alt. average)"
+set output "sim/crosstrans_beam_altavg.eps"
+plot "crosstrans_beam_altavg.dat" using 2:5:7 with image
+
+set title "Crosspower: Beam and meansub"
+set output "sim/crosstrans_beam_mean.eps"
+plot "crosstrans_beam_mean.dat" using 2:5:7 with image
+
+set title "Crosspower: Beam and meansub (alt. average)"
+set output "sim/crosstrans_beam_mean_altavg.eps"
+plot "crosstrans_beam_mean_altavg.dat" using 2:5:7 with image
+
+set title "Crosspower: Beam and meansub, degrade trans."
+set output "sim/crosstrans_beam_meanconv.eps"
+plot "crosstrans_beam_meanconv.dat" using 2:5:7 with image
+
+set title "Crosspower: Beam and meansub, degrade trans. (alt. average)"
+set output "sim/crosstrans_beam_meanconv_altavg.eps"
+plot "crosstrans_beam_meanconv_altavg.dat" using 2:5:7 with image
+
+# mode transfer functions
+set title "Mode=0 transfer function"
+set output "convmeansub/trans_0modes.eps"
+plot "GBT15hr_sim_0modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=5 transfer function"
+set output "convmeansub/trans_5modes.eps"
+plot "GBT15hr_sim_5modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=10 transfer function"
+set output "convmeansub/trans_10modes.eps"
+plot "GBT15hr_sim_10modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=15 transfer function"
+set output "convmeansub/trans_15modes.eps"
+plot "GBT15hr_sim_15modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=20 transfer function"
+set output "convmeansub/trans_20modes.eps"
+plot "GBT15hr_sim_20modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=25 transfer function"
+set output "convmeansub/trans_25modes.eps"
+plot "GBT15hr_sim_25modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=30 transfer function"
+set output "convmeansub/trans_30modes.eps"
+plot "GBT15hr_sim_30modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=35 transfer function"
+set output "convmeansub/trans_35modes.eps"
+plot "GBT15hr_sim_35modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=40 transfer function"
+set output "convmeansub/trans_40modes.eps"
+plot "GBT15hr_sim_40modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=45 transfer function"
+set output "convmeansub/trans_45modes.eps"
+plot "GBT15hr_sim_45modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=50 transfer function"
+set output "convmeansub/trans_50modes.eps"
+plot "GBT15hr_sim_50modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+# now with _noconv
+set title "Mode=0 transfer function, no degrade"
+set output "noconv/trans_noconv_0modes.eps"
+plot "GBT15hr_sim_noconv_0modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=5 transfer function, no degrade"
+set output "noconv/trans_noconv_5modes.eps"
+plot "GBT15hr_sim_noconv_5modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=10 transfer function, no degrade"
+set output "noconv/trans_noconv_10modes.eps"
+plot "GBT15hr_sim_noconv_10modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=15 transfer function, no degrade"
+set output "noconv/trans_noconv_15modes.eps"
+plot "GBT15hr_sim_noconv_15modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=20 transfer function, no degrade"
+set output "noconv/trans_noconv_20modes.eps"
+plot "GBT15hr_sim_noconv_20modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=25 transfer function, no degrade"
+set output "noconv/trans_noconv_25modes.eps"
+plot "GBT15hr_sim_noconv_25modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=30 transfer function, no degrade"
+set output "noconv/trans_noconv_30modes.eps"
+plot "GBT15hr_sim_noconv_30modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=35 transfer function, no degrade"
+set output "noconv/trans_noconv_35modes.eps"
+plot "GBT15hr_sim_noconv_35modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=40 transfer function, no degrade"
+set output "noconv/trans_noconv_40modes.eps"
+plot "GBT15hr_sim_noconv_40modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=45 transfer function, no degrade"
+set output "noconv/trans_noconv_45modes.eps"
+plot "GBT15hr_sim_noconv_45modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+set title "Mode=50 transfer function, no degrade"
+set output "noconv/trans_noconv_50modes.eps"
+plot "GBT15hr_sim_noconv_50modes_2dtrans_altavg.dat" using 2:5:7 with image
+
+# now make the correlation matrix
+set title "bin-bin correlation matrix (100 sims)"
+set output "sim/bin_bin_corr.eps"
+set xlabel "log(|k| h cMpc^{-1})"
+set ylabel "log(|k| h cMpc^{-1})"
+set cbrange [-1:1]
+unset cblabel
+plot "sim_15hr_corr.dat" using 2:5:7 with image

@@ -19,18 +19,29 @@ class Corr21cm(RedshiftCorrelation, Map3d):
 
     add_mean = False
 
+<<<<<<< HEAD
     def __init__(self, ps = None, redshift = 0.0, **kwargs):
         from os.path import join, dirname
         if ps == None:
 
             psfile = join(dirname(__file__),"data/ps_z1.5.dat")
+=======
+    def __init__(self, ps=None, sigma_v=0.0, redshift=0.0, **kwargs):
+        if ps == None:
+            from os.path import join, dirname
+            #psfile = join(dirname(__file__),"data/ps_z1.5.dat")
+            psfile = join(dirname(__file__),"data/wigglez_halofit_z1.5.dat")
+            print "loading matter power file: " + psfile
+>>>>>>> 2bb5253943ff6d75ecc81895ad37e53d3a7aaae5
             redshift = 1.5
 
             kstar = 5.0
             c1 = cs.LogInterpolater.fromfile(psfile)
             ps = lambda k: np.exp(-0.5 * k**2 / kstar**2) * c1(k)
 
-        RedshiftCorrelation.__init__(self, ps_vv = ps, redshift = redshift)
+        self._sigma_v = sigma_v
+
+        RedshiftCorrelation.__init__(self, ps_vv=ps, redshift=redshift)
         self._load_cache(join(dirname(__file__),"data/corr_z1.5.dat"))
         #self.load_fft_cache(join(dirname(__file__),"data/fftcache.npz"))
 
@@ -48,9 +59,13 @@ class Corr21cm(RedshiftCorrelation, Map3d):
         Returns
         -------
         T_b : array_like
+
+        Notes: the prefactor used to be 0.3 mK, but Tzu-Ching pointed out that this
+        was from and error in 2008PhRvL.100i1303C, Eric recalculated this to be
+        0.39 mK (agrees with 0.4 mK quoted over phone from Tzu-Ching)
         """
 
-        return (0.3 * ((self.cosmology.omega_m + self.cosmology.omega_l * (1+z)**-3) / 0.29)**-0.5
+        return (0.39 * ((self.cosmology.omega_m + self.cosmology.omega_l * (1+z)**-3) / 0.29)**-0.5
                 * ((1.0 + z) / 2.5)**0.5 * (self.omega_HI(z) / 1e-3))
 
     def mean(self, z):
@@ -106,7 +121,7 @@ class Corr21cm(RedshiftCorrelation, Map3d):
 
         x = ((1.0 / self.cosmology.omega_m) - 1.0) / (1.0 + z)**3
 
-        num = 1.0 + 1.175*x + 0.3064*x**2 + 0.005335*x**3
+        num = 1.0 + 1.175*x + 0.3064*x**2 + 0.005355*x**3
         den = 1.0 + 1.857*x + 1.021 *x**2 + 0.1530  *x**3
 
         d = (1.0 + x)**0.5 / (1.0 + z) * num / den
@@ -137,10 +152,10 @@ class Corr21cm(RedshiftCorrelation, Map3d):
 
         x = ((1.0 / self.cosmology.omega_m) - 1.0) / (1.0 + z)**3
 
-        dnum = 3.0*x*(1.175 + 0.6127*x + 0.01606*x**2)
+        dnum = 3.0*x*(1.175 + 0.6127*x + 0.01607*x**2)
         dden = 3.0*x*(1.857 + 2.042 *x + 0.4590 *x**2)
 
-        num = 1.0 + 1.175*x + 0.3064*x**2 + 0.005335*x**3
+        num = 1.0 + 1.175*x + 0.3064*x**2 + 0.005355*x**3
         den = 1.0 + 1.857*x + 1.021 *x**2 + 0.1530  *x**3
 
         f = 1.0 + 1.5 * x / (1.0 + x) + dnum / num - dden / den
@@ -163,4 +178,39 @@ class Corr21cm(RedshiftCorrelation, Map3d):
         cube = self.realisation(z1, z2, self.x_width, self.y_width, self.nu_num, self.x_num, self.y_num, zspace = False)[::-1,:,:].copy()
 
         return cube
-        
+
+    def get_kiyo_field(self, refinement=1):
+        r"""Fetch a realisation of the 21cm signal (NOTE: in K)
+        """
+        z1 = units.nu21 / self.nu_upper - 1.0
+        z2 = units.nu21 / self.nu_lower - 1.0
+
+        cube = self.realisation(z1, z2, self.x_width, self.y_width,
+                                self.nu_num, self.x_num, self.y_num,
+                                refinement=refinement, zspace = False) * 0.001
+
+        return cube
+
+    def get_pwrspec(self, k_vec):
+        r"""Fetch the power spectrum of the signal
+        The effective redshift is found by averaging over 256 redshifts...
+        """
+        z1 = units.nu21 / self.nu_upper - 1.0
+        z2 = units.nu21 / self.nu_lower - 1.0
+
+        return self.powerspectrum_1D(k_vec, z1, z2, 256) * 1.e-6
+
+    def get_kiyo_field_physical(self, refinement=1, density_only=False,
+                                no_mean=False, no_evolution=False):
+        r"""Fetch a realisation of the 21cm signal (NOTE: in K)
+        """
+        z1 = units.nu21 / self.nu_upper - 1.0
+        z2 = units.nu21 / self.nu_lower - 1.0
+
+        (cube, rsf, d) = self.realisation(z1, z2, self.x_width, self.y_width,
+                                self.nu_num, self.x_num, self.y_num,
+                                refinement=refinement, zspace = False,
+                                report_physical=True, density_only=density_only,
+                                no_mean=no_mean, no_evolution=no_evolution)
+
+        return (cube * 0.001, rsf * 0.001, d)

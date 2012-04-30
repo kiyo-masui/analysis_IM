@@ -1,0 +1,35 @@
+# note that these have different covariance inputs
+#python correlate/pair_set.py input/ers/map_cleaning/GBT_15hr_optimalmap_fluxpolcal_cleaned.ini >& GBT_15hr_optimalmap_fluxpolcal_cleaned.log &
+#python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_optimalmap_fluxpolcal_cleaned_sims.ini >& GBT_15hr_optimalmap_fluxpolcal_cleaned_sims.log &
+#python correlate/pair_set.py input/ers/map_cleaning/GBT_15hr_optimalmap_fluxpolcal_cleaned_noconv.ini >& GBT_15hr_optimalmap_fluxpolcal_cleaned_noconv.log &
+#python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_optimalmap_fluxpolcal_cleaned_sims_noconv.ini >& GBT_15hr_optimalmap_fluxpolcal_cleaned_sims_noconv.log
+
+#python correlate/pair_set.py input/ers/map_cleaning/GBT_1hr_map_fluxpolcal_cleaned.ini >& GBT_1hr_map_fluxpolcal_cleaned.log &
+#python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_1hr_map_fluxpolcal_cleaned_sims.ini >& GBT_1hr_map_fluxpolcal_cleaned_sims.log &
+#python correlate/pair_set.py input/ers/map_cleaning/GBT_1hr_map_fluxpolcal_cleaned_noconv.ini >& GBT_1hr_map_fluxpolcal_cleaned_noconv.log &
+#python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_1hr_map_fluxpolcal_cleaned_sims_noconv.ini >& GBT_1hr_map_fluxpolcal_cleaned_sims_noconv.log
+
+python correlate/pair_set.py input/ers/map_cleaning/GBT_22hr_map_fluxpolcal_cleaned.ini >& GBT_22hr_map_fluxpolcal_cleaned.log &
+python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_22hr_map_fluxpolcal_cleaned_sims.ini >& GBT_22hr_map_fluxpolcal_cleaned_sims.log &
+python correlate/pair_set.py input/ers/map_cleaning/GBT_22hr_map_fluxpolcal_cleaned_noconv.ini >& GBT_22hr_map_fluxpolcal_cleaned_noconv.log &
+python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_22hr_map_fluxpolcal_cleaned_sims_noconv.ini >& GBT_22hr_map_fluxpolcal_cleaned_sims_noconv.log
+
+python correlate/pair_set.py input/ers/map_cleaning/GBT_15hr_map_fluxpolcal_cleaned.ini >& GBT_15hr_map_fluxpolcal_cleaned.log &
+python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_map_fluxpolcal_cleaned_sims.ini >& GBT_15hr_map_fluxpolcal_cleaned_sims.log &
+python correlate/pair_set.py input/ers/map_cleaning/GBT_15hr_map_fluxpolcal_cleaned_noconv.ini >& GBT_15hr_map_fluxpolcal_cleaned_noconv.log &
+python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_map_fluxpolcal_cleaned_sims_noconv.ini >& GBT_15hr_map_fluxpolcal_cleaned_sims_noconv.log
+
+#python correlate/pair_set.py input/ers/map_cleaning/GBT_15hr_map_oldcal_cleaned.ini >& GBT_15hr_map_oldcal_cleaned.log &
+#python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_map_oldcal_cleaned_sims.ini >& GBT_15hr_map_oldcal_cleaned_sims.log &
+#python correlate/pair_set.py input/ers/map_cleaning/GBT_15hr_map_oldcal_cleaned_noconv.ini >& GBT_15hr_map_oldcal_cleaned_noconv.log &
+#python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_map_oldcal_cleaned_sims_noconv.ini >& GBT_15hr_map_oldcal_cleaned_sims_noconv.log
+
+#python correlate/pair_set.py input/ers/map_cleaning/GBT_15hr_map_fluxcal_cleaned.ini >& GBT_15hr_map_fluxcal_cleaned.log &
+#python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_map_fluxcal_cleaned_sims.ini >& GBT_15hr_map_fluxcal_cleaned_sims.log &
+#python correlate/pair_set.py input/ers/map_cleaning/GBT_15hr_map_fluxcal_cleaned_noconv.ini >& GBT_15hr_map_fluxcal_cleaned_noconv.log &
+#python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_map_fluxcal_cleaned_sims_noconv.ini >& GBT_15hr_map_fluxcal_cleaned_sims_noconv.log
+
+#python correlate/pair_set.py input/ers/map_cleaning/GBT_15hr_map_fdgcal_cleaned.ini >& GBT_15hr_map_fdgcal_cleaned.log &
+#python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_map_fdgcal_cleaned_sims.ini >& GBT_15hr_map_fdgcal_cleaned_sims.log &
+#python correlate/pair_set.py input/ers/map_cleaning/GBT_15hr_map_fdgcal_cleaned_noconv.ini >& GBT_15hr_map_fdgcal_cleaned_noconv.log &
+#python correlate/pair_set_inject_sim.py input/ers/map_cleaning/GBT_15hr_map_fdgcal_cleaned_sims_noconv.ini >& GBT_15hr_map_fdgcal_cleaned_sims_noconv.log

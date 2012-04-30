@@ -94,6 +94,12 @@ class BiasCalibrate(object):
 		pk0= sp.load(simmap_root + 'simmaps_p.npy')
 
 		# Test if k and k0 are match
+		#print simmap_root 
+		#print 
+		#print k0
+		#print
+		#print k
+		#print
 		if (k-k0).any():
 			print "k and k0 are not match!!"
 			return 0
