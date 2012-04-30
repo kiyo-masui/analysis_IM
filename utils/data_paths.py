@@ -8,6 +8,7 @@ import subprocess
 import getpass
 import ast
 import re
+import os
 from utils import file_tools as ft
 from core import algebra
 
@@ -30,6 +31,24 @@ def unique_list(listin):
     uniq = [ x for x in listin if x not in seen and not seen_add(x)]
     return sorted(uniq)
 
+
+def tack_on_subdir(filestring, tack_on):
+    r"""Given a full path to a file, tack on a new subdir:
+    >>> tack_on_subdir("/path/to/file/ok.dat", "tack_on")
+    '/path/to/file/tack_on/ok.dat'
+    >>> tack_on_subdir("/path/to/file/", "tack_on")
+    '/path/to/file/tack_on/'
+    >>> tack_on_subdir("./", "tack_on")
+    './tack_on/'
+    >>> tack_on_subdir("ok.dat", "tack_on")
+    './tack_on/ok.dat'
+    """
+    splitfile = list(os.path.split(filestring))
+    # if the path is empty, recognize it as the local directory
+    if splitfile[0] == "":
+        splitfile[0] = "."
+
+    return "%s/%s/%s" % (splitfile[0], tack_on, splitfile[1])
 
 def unpack_cases(case_list, case_key, divider=";"):
     r"""Given a list of cases like:
@@ -56,6 +75,19 @@ def unpack_cases(case_list, case_key, divider=";"):
         case_counter[ckey] = unique_list(case_counter[ckey])
 
     return case_counter
+
+
+def convert_dbkeydict_to_filedict(dbkeydict, datapath_db=None):
+    r"""simple caller to convert a dictionary of database keys to a dictionary
+    of filenames"""
+    if datapath_db is None:
+        datapath_db = DataPath()
+
+    filedict = {}
+    for name in dbkeydict:
+        filedict[name] = datapath_db.fetch(dbkeydict[name])
+
+    return filedict
 
 
 def extract_split_tag(keylist, divider=";", ignore=None):
@@ -230,14 +262,14 @@ class DataPath(object):
     DataPath: ... files registered; database size in memory ...
 
     # pick index '44' of the 15hr sims
-    >>> datapath_db.fetch("sim_15hr_oldmap_ideal", pick='44')
-    (sim_15hr_beam) => .../simulations/15hr/sim_beam_044.npy: ...
-    '.../simulations/15hr/sim_beam_044.npy'
+    #>>> datapath_db.fetch("sim_15hr_oldmap_ideal", pick='44')
+    #(sim_15hr_beam) => .../simulations/15hr/sim_beam_044.npy: ...
+    #'.../simulations/15hr/sim_beam_044.npy'
 
     # get the 15hr sim path
-    >>> datapath_db.fetch("sim_15hr_oldmap_ideal_path")
-    (sim_15hr_path) => .../simulations/15hr/: ...
-    '.../simulations/15hr/'
+    #>>> datapath_db.fetch("sim_15hr_oldmap_ideal_path")
+    #(sim_15hr_path) => .../simulations/15hr/: ...
+    #'.../simulations/15hr/'
 
     TODO: also allow dbs from local paths instead of URLs
     TODO: switch to ordered dictionaries instead of list+dictionary?
@@ -590,7 +622,7 @@ class DataPath(object):
         return unpack_cases(fdb[0], case_key, divider=divider)
 
     def fetch(self, db_key, pick=None, intend_read=False, intend_write=False,
-              purpose="", silent=False):
+              purpose="", silent=False, tack_on=None):
         r"""The access function for this database class:
         Fetch the data for a requested key in the db.
 
@@ -620,18 +652,29 @@ class DataPath(object):
 
         if 'file' in dbentry:
             pathout = dbentry['file']
+            if tack_on:
+                pathout = tack_on_subdir(pathout, tack_on)
+
             ft.path_properties(pathout, intend_write=intend_write,
                                intend_read=intend_read, is_file=True,
                                prefix=prefix, silent=silent)
 
         if 'path' in dbentry:
             pathout = dbentry['path']
+            if tack_on:
+                pathout = tack_on_subdir(pathout, tack_on)
+
             ft.path_properties(pathout, intend_write=intend_write,
                                intend_read=intend_read, is_file=False,
                                prefix=prefix, silent=silent)
 
         if 'filelist' in dbentry:
             pathout = (dbentry['listindex'], dbentry['filelist'])
+            if tack_on:
+                for item in pathout[0]:
+                    pathout[1][item] = tack_on_subdir(pathout[1][item],
+                                                      tack_on)
+
             if pick:
                 pathout = pathout[1][pick]
                 ft.path_properties(pathout, intend_write=intend_write,

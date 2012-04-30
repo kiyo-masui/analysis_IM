@@ -137,13 +137,6 @@ def physical_grid(input_array, refinement=2, pad=5, order=2):
     return phys_map_npy, info
 
 
-def physkiyo(phys_grid_out):
-    phys_map = algebra.make_vect(phys_grid_out[0], axis_names=('freq', 'ra', 'dec'))
-    phys_map.info = phys_grid_out[1]
-
-    return phys_map
-
-
 if __name__ == '__main__':
     datapath_db = data_paths.DataPath()
     filename = datapath_db.fetch('simideal_15hr_beam', intend_read=True,

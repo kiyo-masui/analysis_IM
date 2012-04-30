@@ -14,6 +14,7 @@ import kiyopy.utils
 from correlate import corr_estimation
 from correlate import pwrspec_estimation as pe
 from utils import data_paths
+from utils import batch_handler as bh
 # TODO: move single map operations to a separate class
 
 params_init = {
@@ -182,19 +183,23 @@ class MapPair(object):
         pad puts a number of padded pixels on all sides of the physical vol.
         """
 
-        self.phys_map1 = pg.physkiyo(pg.physical_grid(self.map1,
-                                          refinement=refinement,
-                                          pad=pad, order=order))
-        self.phys_map2 = pg.physkiyo(pg.physical_grid(self.map2,
-                                          refinement=refinement,
-                                          pad=pad, order=order))
+        self.phys_map1 = bh.repackage_kiyo(pg.physical_grid(self.map1,
+                                           refinement=refinement,
+                                           pad=pad, order=order))
 
-        self.phys_noise_inv1 = pg.physkiyo(pg.physical_grid(self.noise_inv1,
-                                          refinement=refinement,
-                                          pad=pad, order=order))
-        self.phys_noise_inv2 = pg.physkiyo(pg.physical_grid(self.noise_inv2,
-                                          refinement=refinement,
-                                          pad=pad, order=order))
+        self.phys_map2 = bh.repackage_kiyo(pg.physical_grid(self.map2,
+                                           refinement=refinement,
+                                           pad=pad, order=order))
+
+        self.phys_noise_inv1 = bh.repackage_kiyo(pg.physical_grid(
+                                                 self.noise_inv1,
+                                                 refinement=refinement,
+                                                 pad=pad, order=order))
+
+        self.phys_noise_inv2 = bh.repackage_kiyo(pg.physical_grid(
+                                                 self.noise_inv2,
+                                                 refinement=refinement,
+                                                 pad=pad, order=order))
 
         return
 

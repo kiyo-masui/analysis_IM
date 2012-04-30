@@ -234,8 +234,8 @@ def get_freq_svd_modes(corr, n_modes):
     for mode_index in range(n_modes):
         ind, = sp.where(abs(singular_values) ==
                         sorted_singular_values[-mode_index - 1])
-        if len(ind) > 1:
-            raise NotImplementedError('2 eigenvalues bitwise equal.')
+        #if len(ind) > 1:
+        #    raise NotImplementedError('2 eigenvalues bitwise equal.')
 
         left_vectors.append(u_matrix[:, ind[0]])
         right_vectors.append(v_matrix[:, ind[0]])

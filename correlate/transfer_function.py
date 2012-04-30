@@ -85,7 +85,8 @@ def calculate_1d_transfer_function(pwr_stack1, pwr_stack2, tag, outdir="./plot_d
         trans_stack.append(entry)
 
     fileout = outdir + "/" + tag + ".dat"
-    trans_mean, trans_std, trans_cov = pe.summarize_1d_agg_pwrspec(trans_stack, fileout)
+    trans_agg_1d_pwrspec = pe.summarize_1d_agg_pwrspec(trans_stack, fileout)
+    trans_mean = trans_agg_1d_pwrspec['mean_1d']
 
     # now derive the alternative transfer function by taking the ratio of
     # averages

@@ -15,16 +15,11 @@ The bin edges for the output power spectra are in
         bin_left = pwr_1d[0]['bin_left']
         bin_center = pwr_1d[0]['bin_center']
         bin_right = pwr_1d[0]['bin_right']
-
-TODO: generate=True and False have different outputs and will get confused now
-replace pwr2d_run with pwr_out[0], pwr1d_run with pwr_out[1]
 """
 import numpy as np
 import math
-from utils import data_paths
 from correlate import map_pair as mp
 from correlate import pwrspec_estimation as pe
-from utils import batch_handler
 from kiyopy import parse_ini
 
 
@@ -58,7 +53,7 @@ def call_xspec_run(map1_key, map2_key,
     bparam = params['bins']
     bins = np.logspace(math.log10(bparam[0]),
                        math.log10(bparam[1]),
-                       num = bparam[2], endpoint=True)
+                       num=bparam[2], endpoint=True)
 
     retval = simpair.pwrspec_summary(window=params['window'],
                                      unitless=params['unitless'],
@@ -91,7 +86,7 @@ def call_phys_space_run(cube1_file, cube2_file,
     bparam = params['bins']
     bins = np.logspace(math.log10(bparam[0]),
                        math.log10(bparam[1]),
-                       num = bparam[2], endpoint=True)
+                       num=bparam[2], endpoint=True)
 
     retval = pe.calculate_xspec_file(cube1_file, cube2_file, bins,
                     weight1_file=None, weight2_file=None,
@@ -99,35 +94,3 @@ def call_phys_space_run(cube1_file, cube2_file,
                     return_3d=params['return_3d'], unitless=params['unitless'])
 
     return retval
-
-
-def convert_keydict_to_filedict(dbkeydict, db=None):
-    if db is None:
-        db = data_paths.DataPath()
-
-    filedict = {}
-    for name in dbkeydict:
-        filedict[name] = db.fetch(dbkeydict[name])
-
-    return filedict
-
-
-def theory_power_spectrum(redshift_filekey, bin_centers,
-                          unitless=True, fileout="theory.dat"):
-    r"""TODO: make this work ... needs some minor changes
-    probably move elsewhere
-    """
-    zfilename = datapath_db.fetch(redshift_filekey, intend_read=True,
-                                      pick='1')
-
-    zspace_cube = algebra.make_vect(algebra.load(zfilename))
-    simobj = corr21cm.Corr21cm.like_kiyo_map(zspace_cube)
-    pwrspec_input = simobj.get_pwrspec(bin_center)
-    if unitless:
-        pwrspec_input *= bin_center ** 3. / 2. / math.pi / math.pi
-
-    outfile = open(fileout, "w")
-    for specdata in zip(bin_left, bin_center, bin_right, pwrspec_input):
-        outfile.write(("%10.15g " * 4 + "\n") % specdata)
-
-    outfile.close()

@@ -11,8 +11,38 @@ def unique_list(listin):
     uniq = [ x for x in listin if x not in seen and not seen_add(x)]
     return sorted(uniq)
 
-def plot_gbt_mapset(outputdir="/cita/d/www/home/eswitzer/movies/"):
-    pc.plot_gbt_maps('GBT_15hr_oldcal', outputdir=outputdir, transverse=False)
+def plot_gbt_mapset(outputdir="/cita/d/www/home/eswitzer/movies/",
+                    make_map=True, make_dirty_map=False,
+                    make_noise_inv=False, make_noise_diag=False):
+
+    pc.plot_gbt_maps('GBT_15hr_map_oldcal', outputdir=outputdir,
+                     make_map=make_map, make_dirty_map=make_dirty_map,
+                     make_noise_inv=make_noise_inv,
+                     make_noise_diag=make_noise_diag)
+
+    #pc.plot_gbt_maps('GBT_15hr_optimalmap_fluxpolcal', outputdir=outputdir,
+    #                 make_map=make_map, make_dirty_map=make_dirty_map,
+    #                 make_noise_inv=make_noise_inv,
+    #                 make_noise_diag=make_noise_diag)
+
+    #pc.plot_gbt_maps('GBT_15hr_optimalmap_mapv2oldcal', outputdir=outputdir,
+    #                 make_map=make_map, make_dirty_map=make_dirty_map,
+    #                 make_noise_inv=make_noise_inv,
+    #                 make_noise_diag=make_noise_diag)
+
+    #pc.plot_gbt_maps('GBT_15hr_optimalmap_mapv2fdgcal', outputdir=outputdir,
+    #                 make_map=make_map, make_dirty_map=make_dirty_map,
+    #                 make_noise_inv=make_noise_inv,
+    #                 make_noise_diag=make_noise_diag)
+
+    #pc.plot_gbt_maps('GBT_15hr_optimalmap_mapv2fdgcalmoderm', outputdir=outputdir,
+    #                 make_map=make_map, make_dirty_map=make_dirty_map,
+    #                 make_noise_inv=make_noise_inv,
+    #                 make_noise_diag=make_noise_diag)
+
+
+    #pc.plot_gbt_maps('GBT_15hr_map_fdgcal', outputdir=outputdir, transverse=False)
+    #pc.plot_gbt_maps('GBT_15hr_oldcal', outputdir=outputdir, transverse=False)
     #pc.plot_gbt_maps('GBT_15hr_map', outputdir=outputdir, transverse=False)
     #pc.plot_gbt_maps('GBT_22hr_map', outputdir=outputdir, transverse=False)
     #pc.plot_gbt_maps('GBT_1hr_map', outputdir=outputdir, transverse=False)
@@ -235,8 +265,21 @@ def plot_wigglez(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/",
                         transverse=False, filetag_suffix="_"+fieldname)
 
 
+def plot_mode_amplitudes(mapkey, outputdir="/cita/d/www/home/eswitzer/movies/"):
+    datapath_db = data_paths.DataPath()
+    map_cases = datapath_db.fileset_cases(mapkey, "pair;product;treatment")
+    for pair in map_cases['pair']:
+        source_key = "db:%s:%s;modes;100modes" % (mapkey, pair)
+        pc.make_cube_movie(source_key, "Mode amp", pc.cube_frame_dir,
+                           sigmarange=-1, outputdir=outputdir, multiplier=1.,
+                           transverse=False, convolve=False, logscale=True)
+
+
 if __name__ == "__main__":
-    #plot_gbt_mapset()
+
+    #plot_mode_amplitudes('GBT_15hr_map_fdgcal_cleaned')
+    #plot_mode_amplitudes('GBT_15hr_map_fdgcal_cleaned_noconv')
+    plot_gbt_mapset()
     #plot_cleaned_gbt15hr_mapset()
     #plot_gbt_simset('sim_15hr')
     #plot_gbt_simset('simvel_15hr')
@@ -251,12 +294,19 @@ if __name__ == "__main__":
     #plot_gbt_comb_modeset('GBT_15hr_map_fluxcal_cleaned_sims_noconv_combined', convolve=True)
     #plot_gbt_comb_modeset('GBT_15hr_map_fluxcal_cleaned_sims_combined', convolve=False)
 
-    plot_gbt_comb_modeset('GBT_15hr_map_fdgcal_cleaned_noconv_combined', convolve=False)
-    plot_gbt_comb_modeset('GBT_15hr_map_fdgcal_cleaned_noconv_combined', convolve=True)
-    plot_gbt_comb_modeset('GBT_15hr_map_fdgcal_cleaned_combined', convolve=False)
-    plot_gbt_comb_modeset('GBT_15hr_map_fdgcal_cleaned_sims_noconv_combined', convolve=False)
-    plot_gbt_comb_modeset('GBT_15hr_map_fdgcal_cleaned_sims_noconv_combined', convolve=True)
-    plot_gbt_comb_modeset('GBT_15hr_map_fdgcal_cleaned_sims_combined', convolve=False)
+    #plot_gbt_comb_modeset('GBT_15hr_optimalmap_mapv2fdgcal_cleaned_noconv_combined', convolve=False)
+    #plot_gbt_comb_modeset('GBT_15hr_optimalmap_mapv2fdgcal_cleaned_noconv_combined', convolve=True)
+    #plot_gbt_comb_modeset('GBT_15hr_optimalmap_mapv2fdgcal_cleaned_combined', convolve=False)
+    #plot_gbt_comb_modeset('GBT_15hr_optimalmap_mapv2oldcal_cleaned_noconv_combined', convolve=False)
+    #plot_gbt_comb_modeset('GBT_15hr_optimalmap_mapv2oldcal_cleaned_noconv_combined', convolve=True)
+    #plot_gbt_comb_modeset('GBT_15hr_optimalmap_mapv2oldcal_cleaned_combined', convolve=False)
+
+    #plot_gbt_comb_modeset('GBT_15hr_map_fdgcal_cleaned_noconv_combined', convolve=False)
+    #plot_gbt_comb_modeset('GBT_15hr_map_fdgcal_cleaned_noconv_combined', convolve=True)
+    #plot_gbt_comb_modeset('GBT_15hr_map_fdgcal_cleaned_combined', convolve=False)
+    #plot_gbt_comb_modeset('GBT_15hr_map_fdgcal_cleaned_sims_noconv_combined', convolve=False)
+    #plot_gbt_comb_modeset('GBT_15hr_map_fdgcal_cleaned_sims_noconv_combined', convolve=True)
+    #plot_gbt_comb_modeset('GBT_15hr_map_fdgcal_cleaned_sims_combined', convolve=False)
 
     #plot_wigglez('15hr', complete=False)
     #plot_wigglez('22hr', complete=False)

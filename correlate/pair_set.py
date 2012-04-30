@@ -23,50 +23,105 @@ import kiyopy.utils
 from core import algebra
 from correlate import map_pair
 from multiprocessing import Process, current_process
+from utils import batch_handler
 # TODO: make map cleaning multiprocess; could also use previous cleaning, e.g.
 # 5 modes to clean 10 modes = modes 5 to 10 (but no need to do this)
 # TODO: move all magic strings to __init__ or params
 # TODO: replace print with logging
 
+
 params_init = {
+               'SVD_root': None,
                'output_root': "local_test",
-               # Options of saving.
-               # What frequencies to correlate:
                'map1': 'GBT_15hr_map',
                'map2': 'GBT_15hr_map',
                'noise_inv1': 'GBT_15hr_map',
                'noise_inv2': 'GBT_15hr_map',
+               'simfile': None,
+               'sim_multiplier': 1.,
+               'subtract_inputmap_from_sim': False,
+               'subtract_sim_from_inputmap': False,
                'freq_list': (),
-               # Angular lags at which to calculate the correlation.  Upper
-               # edge bins in degrees.
+                # in deg: (unused)
+               'tack_on': None,
                'lags': (0.1, 0.2),
                'convolve': True,
                'factorizable_noise': True,
                'sub_weighted_mean': True,
+               'regenerate_noise_inv': True,
                'modes': [10, 15],
                'no_weights': False
                }
 prefix = 'fs_'
 
 
+def wrap_find_weight(filename, regenerate=False):
+    if regenerate:
+        retval = find_weight(filename)
+    else:
+        retval = memoize_find_weight(filename)
+
+    return batch_handler.repackage_kiyo(retval)
+
+
+@batch_handler.memoize_persistent
+def memoize_find_weight(filename):
+    return find_weight(filename)
+
+
+# TODO: make this handle the dimensions of the new map noise inv more
+# automatically
+def find_weight(filename):
+    r"""rather than read the full noise_inv and find its diagonal, cache the
+    diagonal values.
+
+    Note that the .info does not get shelved (class needs to be made
+    serializeable). Return the info separately.
+    """
+    print "loading noise: " + filename
+    noise_inv = algebra.make_mat(algebra.open_memmap(filename, mode='r'))
+    noise_inv_diag = noise_inv.mat_diag()
+    # if optimal map:
+    #noise_inv_diag = algebra.make_vect(algebra.load(filename))
+
+    return noise_inv_diag, noise_inv_diag.info
+
+
 class PairSet(ft.ClassPersistence):
     r"""Class to manage a set of map pairs
     """
 
-    def __init__(self, parameter_file_or_dict=None):
+    def __init__(self, parameter_file=None, params_dict=None):
         # recordkeeping
         self.pairs = {}
+        self.pairs_parallel_track = {}
         self.pairlist = []
-        self.noisefiledict = {}
         self.datapath_db = dp.DataPath()
 
-        self.params = parse_ini.parse(parameter_file_or_dict, params_init,
-                                      prefix=prefix)
+        self.params = params_dict
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file, params_init,
+                                          prefix=prefix)
 
         self.freq_list = sp.array(self.params['freq_list'], dtype=int)
         self.lags = sp.array(self.params['lags'])
         self.output_root = self.datapath_db.fetch(self.params['output_root'],
-                                                  intend_write=True)
+                                                  tack_on=self.params['tack_on'])
+        #self.output_root = self.params['output_root']
+        if not os.path.isdir(self.output_root):
+            os.mkdir(self.output_root)
+
+        # check that it exists (TODO: do this more simply)
+        self.output_root = self.datapath_db.fetch(self.params['output_root'],
+                                                  intend_write=True,
+                                                  tack_on=self.params['tack_on'])
+
+        if self.params['SVD_root']:
+            self.SVD_root = self.datapath_db.fetch(self.params['SVD_root'],
+                                                   intend_write=True)
+            print "WARNING: using %s to clean (intended?)" % self.SVD_root
+        else:
+            self.SVD_root = self.output_root
 
         # Write parameter file.
         kiyopy.utils.mkparents(self.output_root)
@@ -76,38 +131,31 @@ class PairSet(ft.ClassPersistence):
     def execute(self):
         r"""main call to execute the various steps in foreground removal"""
         self.calculate_corr_svd()
-        self.clean_maps(freestanding=False)  # data are already loaded
+        self.clean_maps()
 
     def calculate_corr_svd(self):
         r""" "macro" which finds the correlation functions for the pairs of
         given maps, then the SVD.
         """
-        self.load_pairs(regenerate=True)
+        self.load_pairs()
         self.preprocess_pairs()
-        # If the correlation is already calculated, this can be commented out
-        # and the SVD will load the previously-calculated correlations
         self.calculate_correlation()
         self.calculate_svd()
 
-    def clean_maps(self, freestanding=True):
+    def clean_maps(self):
         r""" "macro" which open the data, does pre-processing, loads the
         pre-calculated SVD modes, subtracts them, and saves the data.
-        This is the second stage. If `freestanding` assume that the data have
-        not been loaded into pairs and pre-processed.
+        This is the second stage.
         """
-        if freestanding:
-            self.load_pairs(regenerate=False)  # use previous diag(N^-1)
-            self.preprocess_pairs()
-
         self.uncleaned_pairs = copy.deepcopy(self.pairs)
         for n_modes in self.params['modes']:
             # clean self.pairs and save its components
             self.subtract_foregrounds(n_modes)
             self.save_data(n_modes)
-            # reset the all the pair data
+            # reset the all the pair data; vestigial?
             self.pairs = copy.deepcopy(self.uncleaned_pairs)
 
-    def load_pairs(self, regenerate=True):
+    def load_pairs(self):
         r"""load the set of map/noise pairs specified by keys handed to the
         database. This sets up operations on the quadratic product
             Q = map1^T noise_inv1 B noise_inv2 map2
@@ -127,18 +175,26 @@ class PairSet(ft.ClassPersistence):
 
             map1 = algebra.make_vect(algebra.load(pdict['map1']))
             map2 = algebra.make_vect(algebra.load(pdict['map2']))
+            if par['simfile'] is not None:
+                print "adding %s with multiplier %s" % (par['simfile'],
+                                                        par['sim_multiplier'])
+ 
+                sim = algebra.make_vect(algebra.load(par['simfile']))
+                sim *= par['sim_multiplier']
+            else:
+                sim = algebra.zeros_like(map1)
 
             if not par['no_weights']:
-                noise_inv1 = self.process_noise_inv(pdict['noise_inv1'],
-                                                    regenerate=regenerate)
+                noise_inv1 = wrap_find_weight(pdict['noise_inv1'],
+                                regenerate=par['regenerate_noise_inv'])
 
-                noise_inv2 = self.process_noise_inv(pdict['noise_inv2'],
-                                                    regenerate=regenerate)
+                noise_inv2 = wrap_find_weight(pdict['noise_inv2'],
+                                regenerate=par['regenerate_noise_inv'])
             else:
                 noise_inv1 = algebra.ones_like(map1)
                 noise_inv2 = algebra.ones_like(map2)
 
-            pair = map_pair.MapPair(map1, map2,
+            pair = map_pair.MapPair(map1 + sim, map2 + sim,
                                     noise_inv1, noise_inv2,
                                     self.freq_list)
 
@@ -147,6 +203,24 @@ class PairSet(ft.ClassPersistence):
             pair.lags = self.lags
             pair.params = self.params
             self.pairs[pairitem] = pair
+
+            if par['subtract_inputmap_from_sim'] or \
+               par['subtract_sim_from_inputmap']:
+                if par['subtract_inputmap_from_sim']:
+                    pair_parallel_track = map_pair.MapPair(map1, map2,
+                                                  noise_inv1, noise_inv2,
+                                                  self.freq_list)
+
+                if par['subtract_sim_from_inputmap']:
+                    pair_parallel_track = map_pair.MapPair(sim, sim,
+                                                  noise_inv1, noise_inv2,
+                                                  self.freq_list)
+
+                pair_parallel_track.set_names(pdict['tag1'], pdict['tag2'])
+                pair_parallel_track.lags = self.lags
+                pair_parallel_track.params = self.params
+                self.pairs_parallel_track[pairitem] = pair_parallel_track
+
 
     def preprocess_pairs(self):
         r"""perform several preparation tasks on the data
@@ -204,8 +278,11 @@ class PairSet(ft.ClassPersistence):
         in the svd, removing the first `n_modes`
         """
         for pairitem in self.pairlist:
-            print "subtracting %d modes from %s" % (n_modes, pairitem)
-            filename_svd = "%s/SVD_pair_%s.pkl" % (self.output_root, pairitem)
+            filename_svd = "%s/SVD_pair_%s.pkl" % (self.SVD_root, pairitem)
+            print "subtracting %d modes from %s using %s" % (n_modes, \
+                                                             pairitem, \
+                                                             filename_svd)
+
             # svd_info: 0 is vals, 1 is modes1 (left), 2 is modes2 (right)
             svd_info = ft.load_pickle(filename_svd)
 
@@ -213,13 +290,15 @@ class PairSet(ft.ClassPersistence):
                                     svd_info[1][:n_modes],
                                     svd_info[2][:n_modes])
 
+            if self.params['subtract_inputmap_from_sim'] or \
+               self.params['subtract_sim_from_inputmap']:
+                self.pairs_parallel_track[pairitem].subtract_frequency_modes(
+                                                svd_info[1][:n_modes],
+                                                svd_info[2][:n_modes])
+
     def save_data(self, n_modes):
         ''' Save the all of the clean data.
         '''
-        # Make sure folder is there.
-        if not os.path.isdir(self.output_root):
-            os.mkdir(self.output_root)
-
         n_modes = "%dmodes" % n_modes
         for pairitem in self.pairlist:
             pair = self.pairs[pairitem]
@@ -238,8 +317,14 @@ class PairSet(ft.ClassPersistence):
             modes2_file = "%s/sec_%s_modes_clean_map_I_with_%s_%s.npy" % \
                             (self.output_root, tag2, tag1, n_modes)
 
-            algebra.save(map1_file, pair.map1)
-            algebra.save(map2_file, pair.map2)
+            if self.params['subtract_inputmap_from_sim'] or \
+               self.params['subtract_sim_from_inputmap']:
+                pair_parallel_track = self.pairs_parallel_track[pairitem]
+                algebra.save(map1_file, pair.map1 - pair_parallel_track.map1)
+                algebra.save(map2_file, pair.map2 - pair_parallel_track.map2)
+            else:
+                algebra.save(map1_file, pair.map1)
+                algebra.save(map2_file, pair.map2)
             algebra.save(noise_inv1_file, pair.noise_inv1)
             algebra.save(noise_inv2_file, pair.noise_inv2)
             algebra.save(modes1_file, pair.left_modes)
@@ -259,35 +344,18 @@ class PairSet(ft.ClassPersistence):
             print "calling %s() on pair %s" % (call, pairitem)
             method_to_call()
 
-    # TODO: this could probably replaced with a memoize
-    def process_noise_inv(self, filename, regenerate=True):
-        r"""buffer reading the noise inverse files for speed and also
-        save to a file in the intermediate output path.
+        if self.params['subtract_inputmap_from_sim'] or \
+           self.params['subtract_sim_from_inputmap']:
+            for pairitem in self.pairlist:
+                pair_parallel_track = self.pairs_parallel_track[pairitem]
+                try:
+                    method_to_call_parallel_track = getattr(pair_parallel_track, call)
+                except AttributeError:
+                    print "ERROR: %s missing call %s" % (pairitem, call)
+                    sys.exit()
 
-        If the cached file exists as an intermediate product, load it else
-        produce it.
-        """
-        if filename not in self.noisefiledict:
-            basename = filename.split("/")[-1].split(".npy")[0]
-            filename_diag = "%s/%s_diag.npy" % \
-                           (self.output_root, basename)
-            exists = os.access(filename_diag, os.F_OK)
-            if exists and not regenerate:
-                print "loading pre-diagonalized noise: " + filename_diag
-                self.noisefiledict[filename] = algebra.make_vect(
-                                                algebra.load(filename_diag))
-            else:
-                print "loading noise: " + filename
-                # TODO: have this be smarter about reading various noise cov
-                # inputs
-                noise_inv = algebra.make_mat(
-                                    algebra.open_memmap(filename, mode='r'))
-                self.noisefiledict[filename] = noise_inv.mat_diag()
-                #self.noisefiledict[filename] = algebra.make_vect(
-                #                               algebra.load(filename))
-                algebra.save(filename_diag, self.noisefiledict[filename])
-
-        return copy.deepcopy(self.noisefiledict[filename])
+                print "calling %s() on pair %s" % (call, pairitem)
+                method_to_call_parallel_track()
 
 
 def wrap_corr(pair, filename):
