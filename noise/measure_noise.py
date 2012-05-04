@@ -171,7 +171,7 @@ def measure_noise_parameters(Blocks, parameters, split_scans=False,
     # Calculate the full correlated power spectrum.
     power_mat, window_function, dt, channel_means = npow.full_power_mat(
             Blocks, window="hanning", deconvolve=False, n_time=-1.05,
-            normalize=False, split_scans=split_scans, subtract_slope=False)
+            normalize=False, split_scans=split_scans, subtract_slope=True)
     # This shouldn't be nessisary, since I've tried to keep things finite in
     # the above function.  However, leave it in for now just in case.
     if not sp.alltrue(sp.isfinite(power_mat)) :

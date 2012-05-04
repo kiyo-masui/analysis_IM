@@ -328,8 +328,9 @@ class DirtyMapMaker(object):
         self.n_processes = n_processes
         params = self.params
         kiyopy.utils.mkparents(params['output_root'])
-        parse_ini.write_params(params, params['output_root'] + 'params.ini',
-                               prefix='mm_')
+        parse_ini.write_params(params, params['output_root']
+                               + 'dirty_map_params.ini',
+                               prefix='dm_')
         if self.feedback > 0:
             print "Input root is: " + params["input_root"]
             print "Output root is: " + params["output_root"]
