@@ -1,0 +1,401 @@
+#########################################################################
+#                                                                       #
+#      This pipeline is used to calculate the cross power spectrum      #
+#                                                                       #
+#                                                                       #
+#########################################################################
+
+import os
+pipe_modules = []
+pipe_processes = 1
+WORKROOT = os.getenv('YICHAO_WORK_PS')
+
+import data_paths
+"""  simulation maps  """
+
+print
+print "="*50
+print "cross power spectrum"
+print
+
+map_cln = os.getenv('MAP_CLN')
+map_wgz = os.getenv('MAP_WGZ')
+
+hour = int(os.getenv('HOUR'))
+mode = int(os.getenv('MODE'))
+
+output_root = WORKROOT + 'power_cros_%s_%d/'%(map_cln, mode)
+resultf = 'cros_%s_%d'%(map_cln, mode)
+
+# get the maps dict
+datadb = data_paths.DataPath()
+imaps_a = datadb.fetch(map_cln + '_combined', silent=True)
+nmaps_a = datadb.fetch(map_cln + '_combined', silent=True)
+imaps_b = datadb.fetch(map_wgz + "_delta_binned_data", silent=True)
+nmaps_b = datadb.fetch(map_wgz + "_montecarlo", silent=True)
+imaps_m = datadb.fetch(map_wgz + "_delta_mock", silent=True)
+nmaps_m = nmaps_b
+
+NUM = len(imaps_m[0])
+
+imap_list = []
+imap_root = []
+nmap_list = []
+nmap_root = []
+
+mappath = imaps_a[1]['map;%dmodes'%mode]
+imap_list.append(mappath.split('/')[-1])
+imap_root.append(mappath.replace(mappath.split('/')[-1], ''))
+
+wetpath = nmaps_a[1]['weight;%dmodes'%mode]
+nmap_list.append(wetpath.split('/')[-1])
+nmap_root.append(wetpath.replace(wetpath.split('/')[-1], ''))
+
+print
+print mappath
+print wetpath
+
+mappath = imaps_b
+imap_list.append(mappath.split('/')[-1])
+imap_root.append(mappath.replace(mappath.split('/')[-1], ''))
+
+wetpath = nmaps_b
+nmap_list.append(wetpath.split('/')[-1])
+nmap_root.append(wetpath.replace(wetpath.split('/')[-1], ''))
+
+print
+print mappath
+print wetpath
+
+for i in range(NUM):
+	mappath = imaps_m[1]['%d'%i]
+	imap_list.append(mappath.split('/')[-1])
+	imap_root.append(mappath.replace(mappath.split('/')[-1], ''))
+
+	wetpath = nmaps_m
+	nmap_list.append(wetpath.split('/')[-1])
+	nmap_root.append(wetpath.replace(wetpath.split('/')[-1], ''))
+
+	print
+	print mappath
+	print wetpath
+
+pk_imap_pair = (imaps_a[1]['map;%dmodes'%mode].split('/')[-1],
+                imaps_b.split('/')[-1])
+pk_nmap_pair = (nmaps_a[1]['weight;%dmodes'%mode].split('/')[-1],
+                nmaps_b.split('/')[-1])
+
+pkc_imap_list = []
+pkc_nmap_list = []
+for i in range(NUM):
+	pkc_imap_list.append([imaps_a[1]['map;%dmodes'%mode].split('/')[-1],
+	                      imaps_m[1]['%d'%i].split('/')[-1]])
+	pkc_nmap_list.append([nmaps_a[1]['weight;%dmodes'%mode].split('/')[-1],
+                         nmaps_m.split('/')[-1]])
+
+cldir = WORKROOT + 'bias/cros_%s_combined_%d/'%(map_cln, mode)
+
+cutlist = []
+#if hour==15 and FLAG!='_optimalmap' and FLAG!='_oldcal':
+#	cutlist = [6,  7,  8,  15, 16, 18, 19, 20, 21, 22, 37,103,104,105,106,107,
+#				  108,130,131,132,133,134,237,244,254,255,
+#				  133,189,192,193,194,195,196,197,198,208,209,213,233,
+#				  177,194,195,196,197,198,201,204,209,213,229,
+#				  80, 171,175,179,182,183,187,212,218,219,
+#				  180,206,207,211,79, 151,155,157,159,160,191,199,210,223,253,77,
+#				  173,176,181,152,214,232]
+#elif hour==22:
+#	cutlist = [1,  2,  80, 206,201,200,196,192,189,186,182,217,212,211,223,229,
+#				  252,253,254,255,156,159,191,193,199,204,210,214,219,240,250,209,
+#				  215,213,187,198,157,197]
+#elif hour==1:
+#	cutlist = [78,]
+#else:
+#	print 'no cutlist'
+
+FKPweight = False 
+kmin = 0.03
+kmax = 0.9
+kbinNum = 15
+
+print
+print "-"*50
+print
+print
+
+#""" Pipe line """
+from mkpower import prepare
+pipe_modules.append(prepare.Prepare)
+
+from mkpower import mkpower_combine
+pipe_modules.append(mkpower_combine.PowerSpectrumMaker)
+
+from mkpower import mkpower
+pipe_modules.append(mkpower.PowerSpectrumMaker)
+
+from mkpower import pycamb
+pipe_modules.append(pycamb.CAMB)
+
+#from mkpower import plot_single
+#pipe_modules.append(plot_single.PowerSpectrumPlot)
+
+""" End """
+
+
+"""  Prepare """
+#from mkpower import prepare
+#pipe_modules.append(prepare.Prepare)
+pre_processes = 5
+pre_plot = False
+#pre_plot = True
+pre_output_root = output_root
+pre_imap_root = imap_root
+pre_nmap_root = nmap_root
+pre_imap_list = imap_list
+pre_nmap_list = nmap_list
+
+pre_boxshape = (512, 128, 64)
+pre_discrete = 2
+pre_boxunit = 2.
+pre_Xrange = (1400, pre_boxunit*pre_boxshape[0]+1400)
+pre_Yrange = (-pre_boxunit*pre_boxshape[1]*0.5, 
+   	 		  pre_boxunit*pre_boxshape[1]*0.5)
+pre_Zrange = (10.0, pre_boxunit*pre_boxshape[2]+10.0)
+
+if hour==22:
+	pre_Zrange = (-pre_boxunit*pre_boxshape[2]*0.5,
+						pre_boxunit*pre_boxshape[2]*0.5)
+
+elif hour==1:
+	#pre_boxunit = 3.2
+	#pre_boxshape = (512, 128, 64)
+	pre_boxshape = (512, 256, 128)
+	pre_Xrange = (1400, pre_boxunit*pre_boxshape[0]+1400)
+	pre_Yrange = (-pre_boxunit*pre_boxshape[1]*0.5, 
+	   	 		  pre_boxunit*pre_boxshape[1]*0.5)
+	pre_Zrange = (-30.0, pre_boxunit*pre_boxshape[2]-30)
+
+pre_cutlist = cutlist
+
+"""  Add Noise to the Map"""
+#from mkpower import noisemk
+#pipe_modules.append(noisemk.MakeNoise)
+nmk_processes = 3
+nmk_plot = False
+#nmk_plot = True
+#nmk_input_root = input_root
+#nmk_output_root = output_root
+nmk_sigma = 2.0
+nmk_mu = 0.0
+
+nmk_boxshape = (512, 128, 64)
+nmk_discrete = 2
+nmk_boxunit = 2.
+nmk_Xrange = (1400, pre_boxunit*pre_boxshape[0]+1400)
+nmk_Yrange = (-pre_boxunit*pre_boxshape[1]*0.5, 
+   	 		  pre_boxunit*pre_boxshape[1]*0.5)
+nmk_Zrange = (10.0, pre_boxunit*pre_boxshape[2]+10.0)
+
+
+"""  Calculate the Pk  """
+#from mkpower import mkpower
+#pipe_modules.append(mkpower.PowerSpectrumMaker)
+pk_processes = 1
+pk_plot = False 
+#pk_plot = True
+pk_saveweight = True
+pk_input_root = output_root
+pk_output_root = output_root
+pk_resultf = resultf
+
+pk_cldir = cldir
+
+pk_boxshape = pre_boxshape
+pk_discrete = pre_discrete
+pk_boxunit = pre_boxunit
+pk_Xrange = pre_Xrange
+pk_Yrange = pre_Yrange
+pk_Zrange = pre_Zrange
+
+pk_kbinNum = kbinNum
+pk_kmin = kmin
+pk_kmax = kmax
+
+#pk_FKPweight = True
+pk_FKPweight = FKPweight
+pk_OmegaHI = 1.e-3
+pk_Omegam = 0.24
+pk_OmegaL = 0.76
+
+"""  Calculate the combined Pk  """
+#from mkpower import mkpower_combine
+#pipe_modules.append(mkpower_combine.CrossPowerSpectrumMaker)
+pkc_processes = 5
+if hour==1:
+	pkc_processes = 2
+pkc_plot = False 
+pkc_saveweight = True
+pkc_input_root = output_root
+pkc_output_root = output_root
+pkc_resultf = resultf
+
+pkc_cldir = cldir
+
+pkc_boxshape = pre_boxshape
+pkc_discrete = pre_discrete
+pkc_boxunit = pre_boxunit
+pkc_Xrange = pre_Xrange
+pkc_Yrange = pre_Yrange
+pkc_Zrange = pre_Zrange
+
+pkc_kbinNum = pk_kbinNum 
+pkc_kmin = kmin
+pkc_kmax = kmax
+
+#pkc_FKPweight = True
+pkc_FKPweight = FKPweight
+pkc_OmegaHI = 1.e-3
+pkc_Omegam = 0.24
+pkc_OmegaL = 0.76
+
+pkc_sme = False
+
+"""  Calling CAMB """
+#from mkpower import pycamb
+#pipe_modules.append(pycamb.CAMB)
+pcb_output_root = output_root + 'cambio/'
+pcb_do_nonlinear = 1
+pcb_transfer_redshift = 0.7
+pcb_transfer_high_precision = 'T'
+pcb_transfer_kmax = 1.5
+#pcb_transfer_k_per_logint = 400
+
+"""  Calculate the WindowF  """
+#from mkpower import windowf
+#pipe_modules.append(windowf.WindowFunctionMaker)
+wd_processes = 1
+#wd_plot = False
+wd_plot = True
+wd_input_root = output_root
+wd_output_root = output_root
+wd_boxshape = pk_boxshape
+wd_boxunit = pk_boxunit
+wd_FKPweight = FKPweight
+wd_discrete = 2
+wd_Xrange = (1400, pk_boxunit*pk_boxshape[0]+1400)
+wd_Yrange = (-pk_boxunit*pk_boxshape[1]*0.5, 
+              pk_boxunit*pk_boxshape[1]*0.5)
+wd_Zrange = (0.0, pk_boxunit*pk_boxshape[2])
+
+"""  Calculate the nonlinear Power Spectrum  """
+#from mkpower import nonlpower
+#pipe_modules.append(nonlpower.TheoryPowerSpectrumMaker)
+nl_processes = 1
+nl_plot = True
+#nl_plot = False
+#nl_input_root = input_root
+nl_camb_input_root = pcb_output_root
+nl_output_root = output_root
+#nl_boxshape = pk_boxshape
+#nl_boxunit = pk_boxunit
+nl_boxshape = (256, 256, 256)
+nl_boxunit = 32.
+nl_boxshapelist = ((256,256,256),(256,256,256))
+nl_boxunitlist = (32.0, 8.0)
+nl_FKPweight = FKPweight
+nl_discrete = 2
+nl_Xrange = (1400, pk_boxunit*pk_boxshape[0]+1400)
+nl_Yrange = (-pk_boxunit*pk_boxshape[1]*0.5, 
+              pk_boxunit*pk_boxshape[1]*0.5)
+nl_Zrange = (0.0, pk_boxunit*pk_boxshape[2])
+
+nl_OmegaHI = 1.e-3
+nl_Omegam = 0.24
+nl_OmegaL = 0.76
+nl_z = 1.
+
+""" Calibrate the Bias of the Power Spectrum  """
+#form mkpower import bias
+#pipe_modules.append(bias.BiasCalibrate)
+bc_processes = 1
+bc_plot = True
+bc_input_root = output_root
+bc_output_root = bc_input_root
+bc_resultf = resultf
+bc_PKunit = 'mK'
+bc_cross = False
+
+
+""" Window Function Plot """
+#from mkpower import plot
+#pipe_modules.append(plot.PowerSpectrumPlot)
+wpt_processes = 1
+wpt_input_root = nl_output_root
+wpt_output_root = output_root
+wpt_FKPweight = True
+wpt_boxshape = ((256,256,256), (256,256,256))
+wpt_boxunit = (8.0, 32.0)
+
+
+"""  Make JackKnife Map """
+#from mkpower import jkmap
+#pipe_modules.append(jkmap.JackKnifeErrorMap)
+jm_processes = 4
+jm_plot = False
+#jm_input_root = input_root
+jm_jkn0 = 8
+jm_jkn1 = 4
+jm_jkn2 = 4
+jm_output_root = output_root + 'jkmap/'
+jm_boxshape = pre_boxshape
+jm_discrete = pre_discrete
+jm_boxunit = pre_boxunit
+jm_Xrange = pre_Xrange
+jm_Yrange = pre_Yrange
+jm_Zrange = pre_Zrange
+
+
+"""  Calculate the jk error (Better run in mpi)"""
+#from mkpower import jkerror
+#pipe_modules.append(jkerror.JackKnifeError)
+jk_processes = 4
+jk_plot = False
+jk_input_root = jm_output_root
+jk_jknumber = jm_jkn0*jm_jkn1*jm_jkn2
+jk_output_root = output_root
+jk_boxshape = pk_boxshape
+jk_discrete = pk_discrete
+jk_boxunit = pk_boxunit
+jk_Xrange = pk_Xrange
+jk_Yrange = pk_Yrange
+jk_Zrange = pk_Zrange
+jk_kbinNum = pk_kbinNum
+
+#jk_FKPweight = False
+jk_FKPweight = pk_FKPweight
+jk_OmegaHI = 1.e-3
+jk_Omegam = 0.24
+jk_OmegaL = 0.76
+jk_z = 1.
+
+
+"""  Plot  """
+#from mkpower import plot
+#pipe_modules.append(plot.PowerSpectrumPlot)
+pt_processes = 1
+pt_input_root = output_root
+pt_output_root = output_root
+pt_FKPweight = FKPweight
+pt_OmegaHI = 1.e-3
+pt_Omegam = 0.24
+pt_OmegaL = 0.76
+pt_z = 0.6
+pt_ymin = 3*1.e-6
+pt_ymax = 3*1.e-3
+pt_PKunit = 'K'
+pt_resultf = resultf
+pt_cross = True
+pt_kmin = pkc_kmin
+pt_kmax = pkc_kmax
+pt_delta_plot = True
+
