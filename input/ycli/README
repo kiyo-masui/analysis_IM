@@ -1,0 +1,103 @@
+These pipeline are used for power spectrum calculation
+
+Here are some example
+
+------------------
+GET_POWER_auto.sh
+
+#! /bin/bash
+
+#PBS -l nodes=1:ppn=8
+#PBS -q workq
+#PBS -r n
+#PBS -l walltime=8:00:00
+#PBS -N get_power_auto
+# EVERYTHING ABOVE THIS COMMENT IS NECESSARY, 
+# SHOULD ONLY CHANGE nodes,ppn,walltime and my_job_name VALUES
+
+cd $PBS_O_WORKDIR
+
+export PIPELINE_DIR="/home/ycli/pipeline"
+cd $PIPELINE_DIR
+source $PIPELINE_DIR/PARAMS.sh
+
+#===== Auto  Power ======
+MAP_SIM="sim_15hr_oldmap_str"
+MAP_SSM="GBT_15hr_map_oldcal_cleaned_sims_noconv"
+MAP_CLN="GBT_15hr_map_oldcal_cleaned_noconv"
+MODE="50"
+HOUR="15"
+$PIPELINE_DIR/manager.py $PIPELINE_DIR/reference_auto.pipe
+$PIPELINE_DIR/manager.py $PIPELINE_DIR/transfer_auto.pipe
+$PIPELINE_DIR/manager.py $PIPELINE_DIR/power_auto.pipe
+$PIPELINE_DIR/manager.py $PIPELINE_DIR/sim_power_auto.pipe
+$PIPELINE_DIR/summary.py auto
+
+
+------------------
+GET_POWER_cros.sh
+
+#! /bin/bash
+
+#PBS -l nodes=1:ppn=8
+#PBS -q workq
+#PBS -r n
+#PBS -l walltime=15:00:00
+#PBS -N get_power_cros
+# EVERYTHING ABOVE THIS COMMENT IS NECESSARY, 
+# SHOULD ONLY CHANGE nodes,ppn,walltime and my_job_name VALUES
+
+cd $PBS_O_WORKDIR
+
+export PIPELINE_DIR="/home/ycli/pipeline"
+cd $PIPELINE_DIR
+source $PIPELINE_DIR/PARAMS.sh
+
+#===== Cross Power ======
+MAP_SIM="sim_15hr_oldmap_str"
+MAP_SSM="GBT_15hr_map_oldcal_cleaned_sims_noconv"
+MAP_CLN="GBT_15hr_map_oldcal_cleaned_noconv"
+MAP_WGZ="WiggleZ_15hr"
+MODE="50"
+HOUR="15"
+$PIPELINE_DIR/manager.py $PIPELINE_DIR/reference_cros.pipe
+$PIPELINE_DIR/manager.py $PIPELINE_DIR/transfer_cros.pipe
+$PIPELINE_DIR/manager.py $PIPELINE_DIR/power_cros.pipe
+$PIPELINE_DIR/manager.py $PIPELINE_DIR/sim_power_cros.pipe
+$PIPELINE_DIR/summary.py cros
+
+
+------------------
+GET_POWER_wigl
+
+#! /bin/bash
+
+#PBS -l nodes=1:ppn=8
+#PBS -q workq
+#PBS -r n
+#PBS -l walltime=08:00:00
+#PBS -N get_power_wigl
+# EVERYTHING ABOVE THIS COMMENT IS NECESSARY, 
+# SHOULD ONLY CHANGE nodes,ppn,walltime and my_job_name VALUES
+
+cd $PBS_O_WORKDIR
+
+export PIPELINE_DIR="/home/ycli/pipeline"
+cd $PIPELINE_DIR
+source $PIPELINE_DIR/PARAMS.sh
+
+#===== wiggle  Power ======
+#MAP_WGZ="WiggleZ_22hr"
+#HOUR="22"
+#$PIPELINE_DIR/manager.py $PIPELINE_DIR/power_wigl.pipe
+#$PIPELINE_DIR/summary.py wigl
+
+MAP_WGZ="WiggleZ_15hr"
+HOUR="15"
+#$PIPELINE_DIR/manager.py $PIPELINE_DIR/power_wigl.pipe
+#$PIPELINE_DIR/summary.py wigl
+
+#MAP_WGZ="WiggleZ_1hr"
+#HOUR="1"
+#$PIPELINE_DIR/manager.py $PIPELINE_DIR/power_wigl.pipe
+#$PIPELINE_DIR/summary.py wigl
