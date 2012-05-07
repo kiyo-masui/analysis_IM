@@ -80,7 +80,7 @@ cutlist = []
 
 FKPweight = False 
 kmin = 0.03
-kmax = 0.9
+kmax = 1.5
 kbinNum = 25 
 
 print
@@ -121,9 +121,11 @@ pre_nmap_root = nmap_root
 pre_imap_list = imap_list
 pre_nmap_list = nmap_list
 
-pre_boxshape = (512, 128, 64)
+#pre_boxshape = (1024, 256, 128)
+#pre_boxunit = 1.
+pre_boxshape = (512, 128, 128)
+pre_boxunit = 1.9
 pre_discrete = 2
-pre_boxunit = 2.
 pre_Xrange = (1400, pre_boxunit*pre_boxshape[0]+1400)
 pre_Yrange = (-pre_boxunit*pre_boxshape[1]*0.5, 
    	 		  pre_boxunit*pre_boxshape[1]*0.5)

@@ -109,11 +109,11 @@ print
 print
 
 #""" Pipe line """
-from mkpower import prepare
-pipe_modules.append(prepare.Prepare)
-
-from mkpower import mkpower_combine
-pipe_modules.append(mkpower_combine.PowerSpectrumMaker)
+#from mkpower import prepare
+#pipe_modules.append(prepare.Prepare)
+#
+#from mkpower import mkpower_combine
+#pipe_modules.append(mkpower_combine.PowerSpectrumMaker)
 
 from mkpower import pycamb
 pipe_modules.append(pycamb.CAMB)
@@ -246,7 +246,7 @@ pkc_sme = True
 #pipe_modules.append(pycamb.CAMB)
 pcb_output_root = output_root + 'cambio/'
 pcb_do_nonlinear = 1
-pcb_transfer_redshift = 0.7
+pcb_transfer_redshift = 0.8
 pcb_transfer_high_precision = 'T'
 pcb_transfer_kmax = 1.5
 #pcb_transfer_k_per_logint = 400

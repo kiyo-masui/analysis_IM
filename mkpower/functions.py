@@ -87,6 +87,38 @@ def fill(params, imap, nmap, mmap=None):
 	dde= de.ptp()/de.shape[0]
 
 
+	#ra_far = 0
+	#de_far = 0
+	#if ra.min()*ra.max()>0:
+	#	if fabs(ra.min())<fabs(ra.max()):
+	#		ra_far = ra.min()
+	#	else:
+	#		ra_far = ra.max()
+	#if de.min()*de.max()>0:
+	#	if fabs(de.min())<fabs(de.max()):
+	#		de_far = de.min()
+	#	else:
+	#		de_far = de.max()
+	#point = []
+	#for i in range(3):
+	#	point.append([xyzv(ra.min(), de.min(), r.min())[i], 
+   #                 xyzv(ra.max(), de.min(), r.min())[i],
+   #                 xyzv(ra.min(), de.max(), r.min())[i],
+   #                 xyzv(ra.max(), de.max(), r.min())[i],
+   #                 xyzv(ra.min(), de.min(), r.max())[i],
+   #                 xyzv(ra.max(), de.min(), r.max())[i],
+   #                 xyzv(ra.min(), de.max(), r.max())[i],
+   #                 xyzv(ra.max(), de.max(), r.max())[i],
+   #                 xyzv(ra_far,   de_far,   r.max())[i],
+	#					  ])
+	#	point[i].sort()
+	#print point
+	#print params['boxshape']
+	#print (point[0][-1]-point[0][0])/params['boxshape'][0]
+	#print (point[1][-1]-point[1][0])/params['boxshape'][1]
+	#print (point[2][-1]-point[2][0])/params['boxshape'][2]
+	#return 0
+
 	#print r.min(), r.max()
 	#print xyz(ra.min(), de.min(), r.min())
 	#print xyz(ra.max(), de.min(), r.min())

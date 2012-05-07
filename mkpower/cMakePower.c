@@ -262,6 +262,8 @@ int makepk(FFT *fft, PK *pk){
 		}
 		return 0;
 	}
+
+	double nyquist = 0.8;
 	
 	for(int i=1; i<Nx*Ny*Nz; i++){
 		int x = (int)(i/(Ny*Nz));
@@ -271,49 +273,49 @@ int makepk(FFT *fft, PK *pk){
 		double result0, result1;
 		result1 = fft->data[i];
 
-		if(x<0.5*Nx && y<0.5*Ny && z<0.5*Nz){
+		if(x<nyquist*Nx && y<nyquist*Ny && z<nyquist*Nz){
 			result0 = sqrt(x*x*kunitx*kunitx
 				+y*y*kunity*kunity+z*z*kunitz*kunitz);
 			pkplus(result0, result1, pk->val, kn);
 		}
 
-		if(x<0.5*Nx && y>0.5*Ny && z<0.5*Nz){
+		if(x<nyquist*Nx && y>(1.-nyquist)*Ny && z<nyquist*Nz){
 			result0 = sqrt(x*x*kunitx*kunitx
 				+(y-Ny)*(y-Ny)*kunity*kunity+z*z*kunitz*kunitz);
 			pkplus(result0, result1, pk->val, kn);
 		}
 
-		if(x>0.5*Nx && y<0.5*Ny && z<0.5*Nz){
+		if(x>(1.-nyquist)*Nx && y<nyquist*Ny && z<nyquist*Nz){
 			result0 = sqrt((x-Nx)*(x-Nx)*kunitx*kunitx
 				+y*y*kunity*kunity+z*z*kunitz*kunitz);
 			pkplus(result0, result1, pk->val, kn);
 		}
 
-		if(x>0.5*Nx && y>0.5*Ny && z<0.5*Nz){
+		if(x>(1.-nyquist)*Nx && y>(1.-nyquist)*Ny && z<nyquist*Nz){
 			result0 = sqrt((x-Nx)*(x-Nx)*kunitx*kunitx
 				+(y-Ny)*(y-Ny)*kunity*kunity+z*z*kunitz*kunitz);
 			pkplus(result0, result1, pk->val, kn);
 		}
 
-		if(x<0.5*Nx && y<0.5*Ny && z>0.5*Nz){
+		if(x<nyquist*Nx && y<nyquist*Ny && z>(1.-nyquist)*Nz){
 			result0 = sqrt(x*x*kunitx*kunitx
 				+y*y*kunity*kunity+(z-Nz)*(z-Nz)*kunitz*kunitz);
 			pkplus(result0, result1, pk->val, kn);
 		}
 
-		if(x<0.5*Nx && y>0.5*Ny && z>0.5*Nz){
+		if(x<nyquist*Nx && y>(1.-nyquist)*Ny && z>(1.-nyquist)*Nz){
 			result0 = sqrt(x*x*kunitx*kunitx+
 				(y-Ny)*(y-Ny)*kunity*kunity+(z-Nz)*(z-Nz)*kunitz*kunitz);
 			pkplus(result0, result1, pk->val, kn);
 		}
 
-		if(x>0.5*Nx && y<0.5*Ny && z>0.5*Nz){
+		if(x>(1.-nyquist)*Nx && y<nyquist*Ny && z>(1.-nyquist)*Nz){
 			result0 = sqrt((x-Nx)*(x-Nx)*kunitx*kunitx+
 				y*y*kunity*kunity+(z-Nz)*(z-Nz)*kunitz*kunitz);
 			pkplus(result0, result1, pk->val, kn);
 		}
 
-		if(x>0.5*Nx && y>0.5*Ny && z>0.5*Nz){
+		if(x>(1.-nyquist)*Nx && y>(1.-nyquist)*Ny && z>(1.-nyquist)*Nz){
 			result0 = sqrt((x-Nx)*(x-Nx)*kunitx*kunitx+
 				(y-Ny)*(y-Ny)*kunity*kunity+(z-Nz)*(z-Nz)*kunitz*kunitz);
 			pkplus(result0, result1, pk->val, kn);
