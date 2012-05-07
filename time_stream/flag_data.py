@@ -16,6 +16,9 @@ import hanning
 import cal_scale
 from time_stream import rotate_pol
 
+# XXX
+#import matplotlib.pyplot as plt
+
 class FlagData(base_single.BaseSingle) :
     '''Pipeline module that flags RFI and other forms of bad data.
 
@@ -31,7 +34,7 @@ class FlagData(base_single.BaseSingle) :
                    'rotate' : False,
                    # Any frequency with variance > sigma_thres sigmas will be 
                    # flagged (recursively).
-                   'sigma_thres' : 6,
+                   'sigma_thres' : 6.,
                    # A Data that has more than badness_thres frequencies flagged
                    # (as a fraction) will be considered bad.
                    'badness_thres' : 0.1,
@@ -80,7 +83,8 @@ class FlagData(base_single.BaseSingle) :
                     + str(self.params['time_cut'])))
         # Report the number of new flags.
         new_flags = ma.count_masked(Data.data) - already_flagged
-        self.block_feedback = str(new_flags) + ', '
+        percent = float(new_flags) / Data.data.size * 100
+        self.block_feedback = '%d (%f%%), ' % (new_flags, percent)
         return Data
 
 def apply_cuts(Data, sigma_thres=6, badness_thres=0.1, time_cut=40):
@@ -142,7 +146,7 @@ def flag_data(Data, sigma_thres, badness_thres, time_cut):
     max_itr = 20       # For recursion
     bad_freqs = []
     amount_masked = -1 # For recursion
-    while not (amount_masked == 0) and itr < max_itr:                         
+    while not (amount_masked == 0) and itr < max_itr:
         amount_masked = destroy_with_variance(Data1, sigma_thres, bad_freqs) 
         itr += 1
     bad_freqs.sort()
@@ -173,7 +177,23 @@ def flag_data(Data, sigma_thres, badness_thres, time_cut):
         # a problem in time and it was solved, so use this mask.
         # If the data is still bad, then the mask from Data1 will be used.
         if not badness:
-            mask = Data2.data.mask
+            itr = 0
+            while not (amount_masked == 0) and itr < max_itr:
+                amount_masked = destroy_with_variance(Data2, sigma_thres,
+                                                      bad_freqs) 
+                itr += 1
+            Data1 = Data2
+    # We've flagged the RFI down to the foreground limit.  Filter out the
+    # foregrounds and flag again to get below the foreground limit.
+    # TODO, hard coded time_bins_smooth acctually depends on the scan speed and
+    # the time sampling.
+    filter_foregrounds(Data1, n_bands=40, time_bins_smooth=10)
+    itr = 0 
+    while not (amount_masked == 0) and itr < max_itr:
+        amount_masked = destroy_with_variance(Data1, sigma_thres, bad_freqs) 
+        itr += 1
+    mask = Data1.data.mask
+    # Finally copy the mask to origional data block.
     Data.data.mask = mask
     return badness
 
@@ -291,6 +311,60 @@ def destroy_time_with_mean_arrays(Data, flag_size=40):
     for time in bad_times:
         Data.data[(time-flag_size):(time+flag_size),:,:,:].mask = True
     return
+
+def filter_foregrounds(Data, n_bands=20, time_bins_smooth=10.):
+    """Gets an estimate of the foregrounds and subtracts it out of the data.
+    
+    The Foreground removal is very rough, just used to push the foreground down
+    a bunch so the RFI can be more easily found.
+    Two things are done to estimate the foregrounds: averaging over a fairly
+    wide band, and smoothing to just below the beam crossing time scale.
+
+    Parameters
+    ----------
+    Data : DataBolock object
+        Data from which to remove the foregrounds.
+    n_bands : int
+        Number of bands to split the data into.  Forgrounds are assumed to
+        be the same throughout this band.
+    time_bins : float
+        Number of time bins to smooth over to find the foregrounds (full width
+        half max of the filter kernal). Should be
+        shorter than the beam crossing time (by about a factor of 2).
+    """
+    
+    # Some basic numbers.
+    n_chan = Data.dims[-1]
+    sub_band_width = float(n_chan)/n_bands
+    # First up, initialize the smoothing kernal.
+    width = time_bins_smooth/2.355
+    # Two sigma edge cut off.
+    nk = round(4*width) + 1
+    smoothing_kernal = sig.gaussian(nk, width)
+    smoothing_kernal /= sp.sum(smoothing_kernal)
+    smoothing_kernal.shape = (nk, 1, 1)
+    # Now loop through the sub-bands. Foregrounds are assumed to be identical
+    # within a sub-band.
+    for subband_ii in range(n_bands):
+        # Figure out what data is in this subband.
+        band_start = round(subband_ii * sub_band_width)
+        band_end = round((subband_ii + 1) * sub_band_width)
+        data = Data.data[:,:,:,band_start:band_end]
+        # Estimate the forgrounds.
+        # Take the band mean.
+        foregrounds = ma.mean(data, -1)
+        # Now low pass filter.
+        fore_weights = (sp.ones(foregrounds.shape, dtype=float)
+                        - ma.getmaskarray(foregrounds))
+        foregrounds -= ma.mean(foregrounds, 0)
+        foregrounds = foregrounds.filled(0)
+        foregrounds = sig.convolve(foregrounds, smoothing_kernal, mode='same')
+        fore_weights = sig.convolve(fore_weights, smoothing_kernal,
+                                    mode='same')
+        foregrounds /= fore_weights
+        # Subtract out the foregrounds.
+        data[...] -= foregrounds[:,:,:,None]
+
 
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":

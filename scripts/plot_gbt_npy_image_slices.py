@@ -33,13 +33,14 @@ for slice, freq in enumerate(freqs):
    medianv = median(array[slice][nancut])
 
 #   Alternate plotting command to set temperature limits
-   pylab.imshow(new_array, cmap='hot', vmin=-0.6, vmax=0.6, extent=(ras.max(),ras.min(),decs.min(),decs.max()), origin='lower')
-#   pylab.imshow(new_array, interpolation='gaussian', cmap='hot', extent=(ras.max(),ras.min(),decs.min(),decs.max()), origin='lower')
+#  pylab.imshow(new_array, cmap='hot', vmin=-0.6, vmax=0.6, extent=(ras.max(),ras.min(),decs.min(),decs.max()), origin='lower')
+   pylab.imshow(new_array, interpolation='gaussian', cmap='hot', extent=(ras.max(),ras.min(),decs.min(),decs.max()), origin='lower')
    pylab.colorbar() #For some reason this isn't working, fixed...
    pylab.savefig(filename2+str(freq)[:3]+'.png')
 #   pylab.savefig('v_'+filename2+str(freq)[:3]+'.png')
    pylab.clf()
 
+#Alternate code if want to plot in term of dec instead of freq.
 #for slice, dec in enumerate(decs):
 #   print slice
 #   print dec

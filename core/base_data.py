@@ -4,7 +4,7 @@ import scipy as sp
 import numpy.ma as ma
 
 import kiyopy.custom_exceptions as ce
-import utils
+import utils.misc as utils
 from hist import History, merge_histories
 
 class BaseData(object) :

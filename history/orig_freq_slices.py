@@ -26,7 +26,8 @@ site.addsitedir('/home/eswitzer/local/lib/python2.6/site-packages/')
 from kiyopy import parse_ini
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
-from core import utils, algebra
+from core import algebra
+import utils.misc as utils
 from core import handythread as ht
 import itertools
 import map.tools
@@ -757,8 +758,8 @@ def get_freq_svd_modes(corr, n) :
     Rvectors = []
     for ii in range(n) :
         ind, = sp.where(abs(s) == hs[-ii-1])
-        if len(ind) > 1 :
-            raise NotImplementedError('2 eigenvalues bitwise equal.')
+#        if len(ind) > 1 :
+#            raise NotImplementedError('2 eigenvalues bitwise equal.')
         Lvectors.append(U[:,ind[0]])
         Rvectors.append(V[:,ind[0]])
 

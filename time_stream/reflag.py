@@ -11,8 +11,9 @@ import base_single
 import kiyopy.custom_exceptions as ce
 
 params_init = {
-               'thres' : 3.0,
-               'subtracted_input_root' : './',
+               'thres' : 3.,
+               'max_noise_factor' : 3.,
+               'subtracted_input_root' : './testdata/',
                'subtracted_output_root' : './subtracted_'
               }
 
@@ -64,7 +65,8 @@ class ReFlag(base_single.BaseSingle) :
                 SubData = SubReader.read(thisscan, thisIF)
                 n_flags = ma.count_masked(Data.data)
                 # Now do the flagging.
-                flag(Data, SubData, params['thres'])
+                flag(Data, SubData, params['thres'],
+                     params['max_noise_factor'])
                 Data.add_history("Reflaged for outliers.", ("Used file: "
                     + utils.abbreviate_file_path(sub_input_fname),))
                 SubData.add_history("Reflaged for outliers.")
@@ -83,7 +85,7 @@ class ReFlag(base_single.BaseSingle) :
         SubWriter.write(sub_output_fname)
 
     
-def flag(Data, NoiseData, thres=3.0) :
+def flag(Data, NoiseData, thres=3.0, max_noise_factor=-1) :
     """Flags data for outliers using a signal subtracted data set.
     
     Flags outliers of in a time stream data by looking at a version of the data
@@ -107,6 +109,14 @@ def flag(Data, NoiseData, thres=3.0) :
     # Mask the data.
     Data.data[mask] = ma.masked
     NoiseData.data[mask] = ma.masked
+    
+    # Now flag for very noisey channels.
+    if max_noise_factor > 0:
+        vars = ma.var(NoiseData.data, 0)
+        mean_vars = ma.mean(vars, -1).filled(0)
+        bad_chans = vars.filled(0) > max_noise_factor * mean_vars[:,:,None]
+        Data.data[:,bad_chans] = ma.masked
+        NoiseData.data[:,bad_chans] = ma.masked
 
 
 # If this file is run from the command line, execute the main function.
