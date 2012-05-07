@@ -72,11 +72,11 @@ pipe_modules = []
 #from noise import measure_noise
 #pipe_modules.append(measure_noise.Measure)
 
-from map import dirty_map
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+#from map import dirty_map
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
 from map import clean_map
 pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
@@ -84,21 +84,21 @@ pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
 pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
 pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
 
-#from map import glue_maps
-#pipe_modules.append((glue_maps.GlueMaps, ('gmA_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmB_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmC_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmD_', 'gm_')))
+from map import glue_maps
+pipe_modules.append((glue_maps.GlueMaps, ('gmA_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmB_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmC_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmD_', 'gm_')))
 
-#pipe_modules.append((glue_maps.GlueMaps, ('gmnA_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmnB_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmnC_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmnD_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmnA_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmnB_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmnC_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmnD_', 'gm_')))
 
-#pipe_modules.append((glue_maps.GlueMaps, ('gmdA_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmdB_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmdC_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmdD_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmdA_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmdB_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmdC_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmdD_', 'gm_')))
 
 
 #### Parameters for the various modules. ####
