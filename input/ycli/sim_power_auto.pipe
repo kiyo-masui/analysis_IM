@@ -123,7 +123,7 @@ pre_nmap_list = nmap_list
 
 #pre_boxshape = (1024, 256, 128)
 #pre_boxunit = 1.
-pre_boxshape = (512, 128, 128)
+pre_boxshape = (512, 128, 64)
 pre_boxunit = 1.9
 pre_discrete = 2
 pre_Xrange = (1400, pre_boxunit*pre_boxshape[0]+1400)

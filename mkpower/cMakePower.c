@@ -232,11 +232,11 @@ int makepk(FFT *fft, PK *pk){
 	double kmin = pk->k[0];
 	double kmax = pk->k[pk->N];
 //	printf("%lg %lg\n", kmin, kmax);
-	double dk = pow(10, log10(kmax/kmin)/pk->N);
+	double dk = pow(10, log10(kmax/kmin)/(pk->N + 1.));
 //	printf("%lg\n", dk);
 	#ifdef Linearkbin
 		printf("\t::Using Linear k bin\n");
-		dk = (kmax-kmin)/pk->N;
+		dk = (kmax-kmin)/(pk->N + 1.);
 	#endif
 	double *kn = (double *)malloc(pk->N*sizeof(double));
 	double dkp = pow(10, log10(kmax/kmin)/pk->Np);
@@ -257,13 +257,13 @@ int makepk(FFT *fft, PK *pk){
 			#ifdef Linearkbin
 				idx = (int)((k-kmin)/dk);
 			#endif
-			p[idx] = p[idx] + val*k*k*k/2./3.1415/3.1415926;
+			p[idx] = p[idx] + val*k*k*k/2./3.1415926/3.1415926;
 			pn[idx] = pn[idx] + 1.;
 		}
 		return 0;
 	}
 
-	double nyquist = 0.8;
+	double nyquist = 0.5;
 	
 	for(int i=1; i<Nx*Ny*Nz; i++){
 		int x = (int)(i/(Ny*Nz));
