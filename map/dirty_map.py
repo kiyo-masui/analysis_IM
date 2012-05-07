@@ -183,7 +183,7 @@ class DirtyMapMaker(object) :
                                 # number of times each pixel in this scan is
                                 # hit. Factor of 2 longer in time in case some
                                 # scans are longer than first block (guppi).
-                                pixel_hits = sp.empty((2*dims[0], dims[-1]))
+                                pixel_hits = sp.empty((8*dims[0], dims[-1]))
                             first_block = False
                         else :
                             if pol_ind==0 :
