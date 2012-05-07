@@ -328,8 +328,9 @@ class DirtyMapMaker(object):
         self.n_processes = n_processes
         params = self.params
         kiyopy.utils.mkparents(params['output_root'])
-        parse_ini.write_params(params, params['output_root'] + 'params.ini',
-                               prefix='mm_')
+        parse_ini.write_params(params, params['output_root']
+                               + 'dirty_map_params.ini',
+                               prefix='dm_')
         if self.feedback > 0:
             print "Input root is: " + params["input_root"]
             print "Output root is: " + params["output_root"]
@@ -1299,7 +1300,7 @@ class Noise(object):
                 A.shape = (n_chan,) * 2
                 e, v = linalg.eigh(A)
                 e_max = max(e)
-                if not sp.all(e > -1e-7*e_max) or e_max < 0:
+                if not sp.all(e > -1e-10*e_max) or e_max < 0:
                     print e
                     msg = ("Some time_mode noise components not positive"
                            " definate.")

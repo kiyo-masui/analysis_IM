@@ -23,14 +23,14 @@ middles_d = file_middles[3*n_files//4:n_files]
 
 base_dir = os.getenv('GBT_OUT')
 data_dir = os.getenv('GBT_DATA')
-maps_dir = 'maps/apr17.2012.newmap_test/'
+maps_dir = 'maps/apr26.2012.newmap_test/'
 
 # IO directory and file prefixes.
 prefix = ''
 map_prefix = '' + field + '_' + '41-90' + '_'
 
 # Maximum number of processes to use.
-pipe_processes = 12
+pipe_processes = 10
 
 
 ####  List of modules to execute.  ####
@@ -79,26 +79,26 @@ pipe_modules = []
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
 from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
 pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
 
-#from map import glue_maps
-#pipe_modules.append((glue_maps.GlueMaps, ('gmA_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmB_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmC_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmD_', 'gm_')))
+from map import glue_maps
+pipe_modules.append((glue_maps.GlueMaps, ('gmA_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmB_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmC_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmD_', 'gm_')))
 
-#pipe_modules.append((glue_maps.GlueMaps, ('gmnA_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmnB_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmnC_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmnD_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmnA_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmnB_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmnC_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmnD_', 'gm_')))
 
-#pipe_modules.append((glue_maps.GlueMaps, ('gmdA_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmdB_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmdC_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmdD_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmdA_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmdB_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmdC_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmdD_', 'gm_')))
 
 
 #### Parameters for the various modules. ####
@@ -188,6 +188,7 @@ dm_number_frequency_modes = 0
 dm_noise_parameter_file = ''
 dm_deweight_time_mean = True
 dm_deweight_time_slope = True
+dm_interpolation = 'cubic'
 
 # clean_map
 cm_input_root = dm_output_root
@@ -289,7 +290,7 @@ dmA_input_end = '.fits'
 #dmA_output_root = base_dir + 'maps/test2_' + map_prefix
 dmA_output_root = base_dir + maps_dir + 'secA_' + map_prefix
 dmA_scans = ()
-dmA_IFs = (0,)
+dmA_IFs = (2,)
 #dmA_IFs = (2,)  # XXX
 
 dmA_polarizations = ('I',)
@@ -313,6 +314,7 @@ dmA_noise_parameter_file = (base_dir
                             + 'noise_measurments/noise_parameters.shelve')
 dmA_deweight_time_mean = True
 dmA_deweight_time_slope = True
+dmA_interpolation = 'cubic'
 
 # Other maps mostly copy parameters of map A.
 dmB_file_middles = middles_b
@@ -332,7 +334,7 @@ cmA_output_root = cmA_input_root
 
 cmA_polarizations = ('I',)
 #cmA_bands = (737, 799, 862)
-cmA_bands = (737,)
+cmA_bands = (862,)
 #cmA_save_noise_diag = True 
 cmA_save_noise_diag = True
 cmA_save_cholesky = False
@@ -420,6 +422,7 @@ dmB_number_frequency_modes_discard = dmA_number_frequency_modes_discard
 dmB_noise_parameter_file = dmA_noise_parameter_file
 dmB_deweight_time_mean = dmA_deweight_time_mean
 dmB_deweight_time_slope = dmA_deweight_time_slope
+dmB_interpolation = dmA_interpolation
 
 dmC_input_root = dmA_input_root
 dmC_input_end = dmA_input_end
@@ -437,6 +440,7 @@ dmC_number_frequency_modes_discard = dmA_number_frequency_modes_discard
 dmC_noise_parameter_file = dmA_noise_parameter_file
 dmC_deweight_time_mean = dmA_deweight_time_mean
 dmC_deweight_time_slope = dmA_deweight_time_slope
+dmC_interpolation = dmA_interpolation
 
 dmD_input_root = dmA_input_root
 dmD_input_end = dmA_input_end
@@ -454,6 +458,7 @@ dmD_number_frequency_modes_discard = dmA_number_frequency_modes_discard
 dmD_noise_parameter_file = dmA_noise_parameter_file
 dmD_deweight_time_mean = dmA_deweight_time_mean
 dmD_deweight_time_slope = dmA_deweight_time_slope
+dmD_interpolation = dmA_interpolation
 
 
 cmB_polarizations = cmA_polarizations

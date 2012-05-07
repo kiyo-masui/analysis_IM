@@ -308,9 +308,19 @@ def ortho_poly(x, n, window=1., axis=-1):
         The n polynomial basis functions. Normalization is such that
         np.sum(polys[i,:] * window * polys[j,:]) = delta_{ij}
     """
-
+    
     if np.any(window < 0):
         raise ValueError("Window function must never be negitive.")
+    # Check scipy versions. If there is a stable polynomial package, use it.
+    s_ver = sp.__version__.split('.')
+    major = int(s_ver[0])
+    minor = int(s_ver[1])
+    if major <= 0 and minor < 8:
+        new_sp = False
+        if n > 20:
+            raise NotImplementedError("High ordre polynomials unstable.")
+    else:
+        new_sp = True
     # The following is the only way I know how to get the broadcast shape of
     # x and window.
     shape = (x + window).shape
@@ -324,16 +334,21 @@ def ortho_poly(x, n, window=1., axis=-1):
     # For stability, rescale the domain.
     x_range = np.amax(x, axis) - np.amin(x, axis)
     x = (x - np.mean(x, axis)[upbroad]) / x_range[upbroad] * 2
+    # Reshape x to be the final shape.
+    x = np.zeros(shape, dtype=float) + x
     # Now loop thorugh the polynomials and constrct them.
-    # This array will be the starting polynomial, before orthogonalization.
-    basic_poly = np.ones(shape, dtype=float) / np.sqrt(m)
+    # This array will be the starting polynomial, before orthogonalization
+    # (only used for earlier versions of scipy).
+    if not new_sp:
+        basic_poly = np.ones(shape, dtype=float) / np.sqrt(m)
     for ii in range(n):
         # Start with a the basic polynomial.
-        # XXX This algorithm is unstable for ii > ~30. We should really start
-        # with a basis of polynomials which are already nearly orthoganol. The
-        # problem is that scipy doesn't have a stable polynomil algorithm for
-        # scipy < 0.10.
-        new_poly = basic_poly.copy()
+        # If we have an up-to-date scipy, start with nearly orthogonal
+        # functions.  Otherwise, just start with the next polynomial.
+        if not new_sp:
+            new_poly = basic_poly.copy()
+        else:
+            new_poly = special.eval_legendre(ii, x)
         # Orthogonalize against all lower order polynomials.
         for jj in range(ii):
             new_poly -= (np.sum(new_poly * window * polys[jj,:], axis)[upbroad]
@@ -355,5 +370,6 @@ def ortho_poly(x, n, window=1., axis=-1):
         polys[ii,:] = new_poly
         # Increment the base polynomial with another power of the domain for
         # the next iteration.
-        basic_poly *= x
+        if not new_sp:
+            basic_poly *= x
     return polys

@@ -126,7 +126,7 @@ def up_tri_copy(np.ndarray[DTYPE_t, ndim=2, mode='c'] origional not None):
     out = large_empty((origional.shape[0], origional.shape[1]))
     print "Rows copied: "
     for ii in xrange(origional.shape[0]):
-        if ii % 100 == 0:
+        if ii % 1000 == 0:
             print ii,
         out[ii,ii:] = origional[ii,ii:]
         #for jj in xrange(ii, origional.shape[1]):

@@ -229,6 +229,11 @@ class CleanMapMaker(object) :
                         raise ce.DataError("Noise matrix has bad shape.")
                     # In all cases delete the noise object to recover memeory.
                     del noise_inv
+                # Check the clean map for faileur.
+                if not sp.alltrue(sp.isfinite(clean_map)):
+                    msg = ("Non finit entries found in clean map. Solve"
+                           " failed.")
+                    raise RuntimeError(msg)
                 # Write the clean map to file.
                 out_fname = (params['output_root'] + 'clean_map_'
                              + pol_str + band_str + '.npy')
@@ -270,10 +275,10 @@ def solve(noise_inv, dirty_map, return_noise_diag=False, feedback=0):
     expanded.shape = (side_size,) * 2
     # Allowcate memory for the cholesky and copy the upper triangular data.
     # Instead of copying, open the matrix in copy on write mode.
-    #if feedback > 1:
-    #    print "Copying matrix."
-    #tri_copy = _c.up_tri_copy(expanded)
-    tri_copy = expanded
+    if feedback > 1:
+        print "Copying matrix."
+    tri_copy = _c.up_tri_copy(expanded)
+    #tri_copy = expanded
     # Cholesky decompose it.
     if feedback > 1:
         print "Cholesky decomposition."

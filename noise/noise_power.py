@@ -18,6 +18,8 @@ from kiyopy import parse_ini
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
 import core.fitsGBT
+from utils import misc
+
 
 # Define a dictionary with keys the names of parameters to be read from
 # file and values the defaults.
@@ -285,12 +287,21 @@ def make_masked_time_stream(Blocks, ntime=None, window=None,
     dt = abs(sp.mean(sp.diff(Blocks[0].time)))
     # Find the beginning and the end of the time axis by looping through
     # blocks.
+    # Also get the time axis and the mask
+    # for calculating basis polynomials.
+    unmask = sp.zeros((0,) + back_shape, dtype=bool)
+    time = sp.zeros((0,), dtype=float)
+    start_ind = []
     min_time = float('inf')
     max_time = 0.0
-    mean_time = 0.0
-    n_data_times = 0
+    #mean_time = 0.0
+    #n_data_times = 0
     for Data in Blocks :
         Data.calc_time()
+        start_ind.append(len(time))
+        time = sp.concatenate((time, Data.time))
+        this_unmask = sp.logical_not(ma.getmaskarray(Data.data))
+        unmask = sp.concatenate((unmask, this_unmask), 0)
         # Often the start or the end of a scan is completly masked.  Make sure
         # we don't start till the first unmasked time and end at the last
         # unmasked time.
@@ -302,8 +313,8 @@ def make_masked_time_stream(Blocks, ntime=None, window=None,
         time_unmask = sp.logical_not(time_unmask)
         min_time = min(min_time, min(Data.time[time_unmask]))
         max_time = max(min_time, max(Data.time[time_unmask]))
-        mean_time += sp.sum(Data.time[time_unmask])
-        n_data_times += len(Data.time[time_unmask])
+        #mean_time += sp.sum(Data.time[time_unmask])
+        #n_data_times += len(Data.time[time_unmask])
         # Ensure that the time sampling is uniform.
         if not (sp.allclose(abs(sp.diff(Data.time)), dt, rtol=0.1)
                 and sp.allclose(abs(sp.mean(sp.diff(Data.time))), dt,
@@ -316,9 +327,43 @@ def make_masked_time_stream(Blocks, ntime=None, window=None,
             msg = ("All data blocks must have the same shape except the time "
                    "axis.")
             raise ce.DataError(msg)
-    if n_data_times == 0:
-        n_data_times = 1
-    mean_time /= n_data_times
+    # Now calculate basis polynomials for the mean mode and the slope mode.
+    polys = misc.ortho_poly(time[:,None,None,None], 2, unmask, 0)
+    #mean_time /= n_data_times
+    #if n_data_times == 0:
+    #    n_data_times = 1
+    # Very important to subtract the mean out of the signal, otherwise the
+    # window coupling to the mean (0) mode will dominate everything. Can also
+    # optionally take out a slope.
+    # Old algorithm.
+    #total_sum = 0.0
+    #total_counts = 0
+    #total_slope = 0.0
+    #time_norm = 0.0
+    #for Data in Blocks:
+    #    total_sum += sp.sum(Data.data.filled(0), 0)
+    #    total_counts += ma.count(Data.data, 0)
+    #    total_slope += sp.sum(Data.data.filled(0) 
+    #                          * (Data.time[:,None,None,None] - mean_time), 0)
+    #    time_norm += sp.sum(sp.logical_not(ma.getmaskarray(Data.data))
+    #                        * (Data.time[:,None,None,None] - mean_time)**2, 0)
+    #total_counts[total_counts == 0] = 1
+    #time_norm[time_norm == 0.0] = 1
+    #total_mean = total_sum / total_counts
+    #total_slope /= time_norm
+    # New algorithm.
+    mean_amp = 0
+    slope_amp = 0
+    for ii, Data in enumerate(Blocks):
+        si = start_ind[ii]
+        this_nt = Data.dims[0]
+        data = Data.data.filled(0)
+        mean_amp += sp.sum(data * unmask[si:si + this_nt,...]
+                           * polys[0,si:si + this_nt,...], 0)
+        slope_amp += sp.sum(data * unmask[si:si + this_nt,...]
+                            * polys[1,si:si + this_nt,...], 0)
+    polys[0,...] *= mean_amp
+    polys[1,...] *= slope_amp
     # Calculate the time axis.
     if min_time > max_time:
         min_time = 0
@@ -337,31 +382,17 @@ def make_masked_time_stream(Blocks, ntime=None, window=None,
     # Allowcate memory for the outputs.
     time_stream = sp.zeros((ntime,) + back_shape, dtype=float)
     mask = sp.zeros((ntime,) + back_shape, dtype=sp.float32)
-    # Very important to subtract the mean out of the signal, otherwise the
-    # window coupling to the mean (0) mode will dominate everything.
-    total_sum = 0.0
-    total_counts = 0
-    total_slope = 0.0
-    time_norm = 0.0
-    for Data in Blocks:
-        total_sum += sp.sum(Data.data.filled(0), 0)
-        total_counts += ma.count(Data.data, 0)
-        total_slope += sp.sum(Data.data.filled(0) 
-                              * (Data.time[:,None,None,None] - mean_time), 0)
-        time_norm += sp.sum(sp.logical_not(ma.getmaskarray(Data.data))
-                            * (Data.time[:,None,None,None] - mean_time)**2, 0)
-    total_counts[total_counts == 0] = 1
-    time_norm[time_norm == 0.0] = 1
-    total_mean = total_sum / total_counts
-    total_slope /= time_norm
     # Loop over all times and fill in the arrays.
-    for Data in Blocks :
+    for ii, Data in enumerate(Blocks):
+        this_nt = Data.dims[0]
+        si = start_ind[ii]
         # Subtract the mean calculated above.
-        Data.data -= total_mean
+        Data.data -= polys[0,si:si + this_nt,...]
         # If desired, subtract of the linear function of time.
         if subtract_slope:
-            Data.data -= (total_slope 
-                          * (Data.time[:,None,None,None] - mean_time))
+            #Data.data -= (total_slope 
+            #              * (Data.time[:,None,None,None] - mean_time))
+            Data.data -= polys[1,si:si + this_nt,...]
         # Find the first and last unmasked times.
         time_unmask = sp.alltrue(ma.getmaskarray(Data.data), -1)
         time_unmask = sp.alltrue(time_unmask, -1)
@@ -405,7 +436,7 @@ def make_masked_time_stream(Blocks, ntime=None, window=None,
                 mask[ind, ...] = window_value * sp.logical_not(ma.getmaskarray(
                                      Data.data)[ii, ...])
     if return_means:
-        return time_stream, mask, dt, total_mean
+        return time_stream, mask, dt, polys[0,0,...]
     else :
         return time_stream, mask, dt
 

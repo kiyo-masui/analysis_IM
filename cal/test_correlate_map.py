@@ -50,6 +50,8 @@ class TestGetCorrelation(unittest.TestCase):
         for ii in range(n_time):
             Data.data[ii,0,0,:] = map.slice_interpolate((1, 2), 
                                         (ra[ii], dec[ii]), kind='cubic')
+        # Add some noise.
+        Data.data += random.randn(*Data.data.shape)
         # Mask things out all over the place.
         Data.data[:,0,0,12] = ma.masked
         Data.data[80,0,0,:] = ma.masked
@@ -59,9 +61,9 @@ class TestGetCorrelation(unittest.TestCase):
             Data.ra = ra
             Data.dec = dec
         Data.calc_pointing = rigged_pointing
-        corr, norm = correlate_map.get_correlation(Data, (map,), 'cubic', 10)
+        corr, norm = correlate_map.get_correlation(Data, (map,), 'cubic', 20)
         # Since there is no noise, the correlation should be exactly unity.
-        self.assertTrue(np.allclose(corr, norm))
+        self.assertTrue(np.allclose(corr, norm, atol=5*np.sqrt(norm)))
 
 
 
