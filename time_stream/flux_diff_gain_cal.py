@@ -10,7 +10,8 @@ import base_single
 import map.tools
 
 from core import fits_map
-from core import utils
+import utils.misc as utils
+#from core import utils
 import time
 import ephem
 

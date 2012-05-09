@@ -16,8 +16,8 @@ import numpy as np
 from kiyopy import parse_ini
 import kiyopy.utils
 import core.fitsGBT
-from core import utils
-
+#from core import utils
+import utils.misc as utils
 
 # Define a dictionary with keys the names of parameters to be read from
 # file and values the defaults.
