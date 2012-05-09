@@ -1,9 +1,10 @@
 import pylab
 from numpy import *
 import scipy as sp
+from scipy import optimize
 import sys
 
-prefix = 'wo_flux_test'
+prefix = '41-42_examine'
 
 #mm_1_row = loadtxt('mueller_matrix_first_row.txt')
 #mm_2_row = loadtxt('mueller_matrix_second_row.txt')
@@ -52,7 +53,7 @@ mm_dir_41 = loadtxt(filedir+'41'+suffix)
 #mm_dir_77 = loadtxt(filedir+'77'+suffix)
 #mm_dir_78 = loadtxt(filedir+'78'+suffix)
 #mm_dir_79 = loadtxt(filedir+'79'+suffix)
-mm_dir_80 = loadtxt(filedir+'80'+suffix)
+#mm_dir_80 = loadtxt(filedir+'80'+suffix)
 #mm_dir_81 = loadtxt(filedir+'81'+suffix)
 #mm_dir_82 = loadtxt(filedir+'82'+suffix)
 #mm_dir_83 = loadtxt(filedir+'83'+suffix)
@@ -162,6 +163,10 @@ freq = mm_dir_41[:,0]
 #mm_32 = mm_4_row[2]
 #mm_33 = mm_4_row[3]
 
+fitfunc = lambda p, x: abs(p[0])*sp.cos(2*pi/p[1]*x+(p[2]+pi)%(2*pi)-pi)
+errfunc = lambda p, x, y: fitfunc(p,x)-y
+
+
 pylab.subplots_adjust(wspace=0.4,hspace=0.2)
 #pylab.subplots_adjust(left=0.1,bottom=0.1,right=0.98,top=0.95,wspace=0.4,hspace=0.2)
 
@@ -203,7 +208,7 @@ pylab.scatter(mm_dir_41[:,0],mm_dir_41[:,1], label='41-42',s=4,c='r',edgecolors=
 #pylab.scatter(mm_dir_75[:,0],mm_dir_75[:,1], label='75-76',s=4,c='r',edgecolors='none')
 #pylab.scatter(mm_dir_76[:,0],mm_dir_76[:,1], label='76-77',s=4,c='y',edgecolors='none')
 #pylab.scatter(mm_dir_78[:,0],mm_dir_78[:,1], label='78-81',s=4,c='y',edgecolors='none')
-pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
+#pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
 #pylab.scatter(mm_dir_79[:,0],mm_dir_79[:,1], label='79-84',s=1,c='c',edgecolors='none')
 #pylab.scatter(mm_dir_83[:,0],mm_dir_83[:,1], label='83-86',s=1,c='g',edgecolors='none')
 #pylab.scatter(mm_dir_86[:,0],mm_dir_86[:,1], label='86-87',s=1,c='k',edgecolors='none')
@@ -239,7 +244,7 @@ pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors=
 #pylab.scatter(mp_dir_77[:,0],mp_dir_77[:,1], label='76-78',s=4,c='c',edgecolors='none')
 #pylab.scatter(mp_dir_78[:,0],mp_dir_78[:,1], label='78-80',s=4,c='g',edgecolors='none')
 #pylab.scatter(mp_dir_81[:,0],mp_dir_81[:,1], label='81-84',s=4,c='g',edgecolors='none')
-pylab.ylim(0,3)
+pylab.ylim(1,2.5)
 pylab.xlim(freq[-1],freq[0])
 #pylab.xlabel('frequency',fontsize=6)
 #pylab.legend()
@@ -284,7 +289,7 @@ pylab.scatter(mm_dir_41[:,0],mm_dir_41[:,2]/mm_dir_41[:,1], label='41-42',s=4,c=
 #pylab.scatter(mm_dir_75[:,0],mm_dir_75[:,2], label='75-76',s=4,c='r',edgecolors='none')
 #pylab.scatter(mm_dir_76[:,0],mm_dir_76[:,2], label='76-77',s=4,c='y',edgecolors='none')
 #pylab.scatter(mm_dir_78[:,0],mm_dir_78[:,2], label='78-81',s=4,c='y',edgecolors='none')
-pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,2]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
+#pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,2]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
 #pylab.scatter(mm_dir_79[:,0],mm_dir_79[:,2], label='79-84',s=1,c='c',edgecolors='none')
 #pylab.scatter(mm_dir_83[:,0],mm_dir_83[:,2], label='83-86',s=1,c='g',edgecolors='none')
 #pylab.scatter(mm_dir_86[:,0],mm_dir_86[:,2], label='86-87',s=1,c='k',edgecolors='none')
@@ -320,7 +325,7 @@ pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,2]/mm_dir_80[:,1], label='80-81',s=1,c=
 #pylab.scatter(mp_dir_77[:,0],mp_dir_77[:,2], label='76-78',s=4,c='c',edgecolors='none')
 #pylab.scatter(mp_dir_78[:,0],mp_dir_78[:,2], label='78-80',s=4,c='g',edgecolors='none')
 #pylab.scatter(mp_dir_81[:,0],mp_dir_81[:,2], label='81-84',s=4,c='g',edgecolors='none')
-pylab.ylim(-1,1)
+pylab.ylim(-0.5,0.5)
 pylab.xlim(freq[-1],freq[0])
 #pylab.xlabel('frequency')
 #pylab.legend()
@@ -365,7 +370,7 @@ pylab.scatter(mm_dir_41[:,0],mm_dir_41[:,3]/mm_dir_41[:,1], label='41-42',s=4,c=
 #pylab.scatter(mm_dir_75[:,0],mm_dir_75[:,3], label='75-76',s=4,c='r',edgecolors='none')
 #pylab.scatter(mm_dir_76[:,0],mm_dir_76[:,3], label='76-77',s=4,c='y',edgecolors='none')
 #pylab.scatter(mm_dir_78[:,0],mm_dir_78[:,3], label='78-81',s=4,c='y',edgecolors='none')
-pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,3]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
+#pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,3]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
 #pylab.scatter(mm_dir_79[:,0],mm_dir_79[:,3], label='79-84',s=1,c='c',edgecolors='none')
 #pylab.scatter(mm_dir_83[:,0],mm_dir_83[:,3], label='83-86',s=1,c='g',edgecolors='none')
 #pylab.scatter(mm_dir_86[:,0],mm_dir_86[:,3], label='86-87',s=1,c='k',edgecolors='none')
@@ -403,7 +408,16 @@ pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,3]/mm_dir_80[:,1], label='80-81',s=1,c=
 #pylab.scatter(mp_dir_77[:,0],mp_dir_77[:,3], label='76-78',s=4,c='c',edgecolors='none')
 #pylab.scatter(mp_dir_78[:,0],mp_dir_78[:,3], label='78-80',s=4,c='g',edgecolors='none')
 #pylab.scatter(mp_dir_81[:,0],mp_dir_81[:,3], label='81-84',s=4,c='g',edgecolors='none')
-pylab.ylim(-1,1)
+p0 = [0.2, 100.0, 1.0]
+IU,success = optimize.leastsq(errfunc,p0[:],args=(mm_dir_41[:,0],mm_dir_41[:,3]/mm_dir_41[:,1]))
+print success
+IU[0] = abs(IU[0])
+IU[2] = (IU[2]+pi)%(2*pi)-pi
+pylab.plot(mm_dir_41[:,0],fitfunc(IU,mm_dir_41[:,0]),'b-')
+print "IU amplitude is:",IU[0]
+print "IU frequency is:",1/IU[1]
+print "IU phase is:",IU[2]
+pylab.ylim(-0.25,0.25)
 pylab.xlim(freq[-1],freq[0])
 #pylab.xlabel('frequency')
 #pylab.legend()
@@ -447,7 +461,7 @@ pylab.scatter(mm_dir_41[:,0],mm_dir_41[:,4]/mm_dir_41[:,1], label='41-42',s=4,c=
 #pylab.scatter(mm_dir_75[:,0],mm_dir_75[:,4], label='75-76',s=4,c='r',edgecolors='none')
 #pylab.scatter(mm_dir_76[:,0],mm_dir_76[:,4], label='76-77',s=4,c='y',edgecolors='none')
 #pylab.scatter(mm_dir_78[:,0],mm_dir_78[:,4], label='78-81',s=4,c='y',edgecolors='none')
-pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,4]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
+#pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,4]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
 #pylab.scatter(mm_dir_79[:,0],mm_dir_79[:,4], label='79-84',s=1,c='c',edgecolors='none')
 #pylab.scatter(mm_dir_83[:,0],mm_dir_83[:,4], label='83-86',s=1,c='g',edgecolors='none')
 #pylab.scatter(mm_dir_86[:,0],mm_dir_86[:,4], label='86-87',s=1,c='k',edgecolors='none')
@@ -485,7 +499,7 @@ pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,4]/mm_dir_80[:,1], label='80-81',s=1,c=
 #pylab.scatter(mp_dir_77[:,0],mp_dir_77[:,4], label='76-78',s=4,c='c',edgecolors='none')
 #pylab.scatter(mp_dir_78[:,0],mp_dir_78[:,4], label='78-80',s=4,c='g',edgecolors='none')
 #pylab.scatter(mp_dir_81[:,0],mp_dir_81[:,4], label='81-84',s=4,c='g',edgecolors='none')
-pylab.ylim(-1,1)  
+pylab.ylim(-0.25,0.25)  
 pylab.xlim(freq[-1],freq[0])
 #pylab.xlabel('frequency')
 #pylab.legend()
@@ -529,7 +543,7 @@ pylab.scatter(mm_dir_41[:,0],mm_dir_41[:,5]/mm_dir_41[:,1], label='41-42',s=4,c=
 #pylab.scatter(mm_dir_75[:,0],mm_dir_75[:,5], label='75-76',s=4,c='r',edgecolors='none')
 #pylab.scatter(mm_dir_76[:,0],mm_dir_76[:,5], label='76-77',s=4,c='y',edgecolors='none')
 #pylab.scatter(mm_dir_78[:,0],mm_dir_78[:,5], label='78-81',s=4,c='y',edgecolors='none')
-pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,5]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
+#pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,5]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
 #pylab.scatter(mm_dir_79[:,0],mm_dir_79[:,5], label='79-84',s=1,c='c',edgecolors='none')
 #pylab.scatter(mm_dir_83[:,0],mm_dir_83[:,5], label='83-86',s=1,c='g',edgecolors='none')
 #pylab.scatter(mm_dir_86[:,0],mm_dir_86[:,5], label='86-87',s=1,c='k',edgecolors='none')
@@ -567,7 +581,7 @@ pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,5]/mm_dir_80[:,1], label='80-81',s=1,c=
 #pylab.scatter(mp_dir_77[:,0],mp_dir_77[:,5], label='76-78',s=4,c='c',edgecolors='none')
 #pylab.scatter(mp_dir_78[:,0],mp_dir_78[:,5], label='78-80',s=4,c='g',edgecolors='none')
 #pylab.scatter(mp_dir_81[:,0],mp_dir_81[:,5], label='81-84',s=4,c='g',edgecolors='none')
-pylab.ylim(-0.5,0.5)   
+pylab.ylim(-0.25,0.25)   
 pylab.xlim(freq[-1],freq[0])
 #pylab.xlabel('frequency')
 #pylab.legend()
@@ -611,7 +625,7 @@ pylab.scatter(mm_dir_41[:,0],mm_dir_41[:,6]/mm_dir_41[:,1], label='41-42',s=4,c=
 #pylab.scatter(mm_dir_75[:,0],mm_dir_75[:,6], label='75-76',s=4,c='r',edgecolors='none')
 #pylab.scatter(mm_dir_76[:,0],mm_dir_76[:,6], label='76-77',s=4,c='y',edgecolors='none')
 #pylab.scatter(mm_dir_78[:,0],mm_dir_78[:,6], label='78-81',s=4,c='y',edgecolors='none')
-pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,6]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
+#pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,6]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
 #pylab.scatter(mm_dir_79[:,0],mm_dir_79[:,6], label='79-84',s=1,c='c',edgecolors='none')
 #pylab.scatter(mm_dir_83[:,0],mm_dir_83[:,6], label='83-86',s=1,c='g',edgecolors='none')
 #pylab.scatter(mm_dir_86[:,0],mm_dir_86[:,6], label='86-87',s=1,c='k',edgecolors='none')
@@ -649,7 +663,7 @@ pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,6]/mm_dir_80[:,1], label='80-81',s=1,c=
 #pylab.scatter(mp_dir_77[:,0],mp_dir_77[:,6], label='76-78',s=4,c='c',edgecolors='none')
 #pylab.scatter(mp_dir_78[:,0],mp_dir_78[:,6], label='78-80',s=4,c='g',edgecolors='none')
 #pylab.scatter(mp_dir_81[:,0],mp_dir_81[:,6], label='81-84',s=4,c='g',edgecolors='none')
-pylab.ylim(-3,3)
+pylab.ylim(-1,1)
 pylab.xlim(freq[-1],freq[0])
 #pylab.xlabel('frequency')
 #pylab.legend()
@@ -693,7 +707,7 @@ pylab.scatter(mm_dir_41[:,0],mm_dir_41[:,7]/mm_dir_41[:,1], label='41-42',s=4,c=
 #pylab.scatter(mm_dir_75[:,0],mm_dir_75[:,7], label='75-76',s=4,c='r',edgecolors='none')
 #pylab.scatter(mm_dir_76[:,0],mm_dir_76[:,7], label='76-77',s=4,c='y',edgecolors='none')
 #pylab.scatter(mm_dir_78[:,0],mm_dir_78[:,7], label='78-81',s=4,c='y',edgecolors='none')
-pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,7]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
+#pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,7]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
 #pylab.scatter(mm_dir_79[:,0],mm_dir_79[:,7], label='79-84',s=1,c='c',edgecolors='none')
 #pylab.scatter(mm_dir_83[:,0],mm_dir_83[:,7], label='83-86',s=1,c='g',edgecolors='none')
 #pylab.scatter(mm_dir_86[:,0],mm_dir_86[:,7], label='86-87',s=1,c='k',edgecolors='none')
@@ -731,7 +745,7 @@ pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,7]/mm_dir_80[:,1], label='80-81',s=1,c=
 #pylab.scatter(mp_dir_77[:,0],mp_dir_77[:,7], label='76-78',s=4,c='c',edgecolors='none')
 #pylab.scatter(mp_dir_78[:,0],mp_dir_78[:,7], label='78-80',s=4,c='g',edgecolors='none')
 #pylab.scatter(mp_dir_81[:,0],mp_dir_81[:,7], label='81-84',s=4,c='g',edgecolors='none')
-pylab.ylim(-0.5,0.5)
+pylab.ylim(-1,1)
 pylab.xlim(freq[-1],freq[0])
 #pylab.xlabel('frequency')
 #pylab.legend()
@@ -775,7 +789,7 @@ pylab.scatter(mm_dir_41[:,0],mm_dir_41[:,8]/mm_dir_41[:,1], label='41-42',s=4,c=
 #pylab.scatter(mm_dir_75[:,0],mm_dir_75[:,8], label='75-76',s=4,c='r',edgecolors='none')
 #pylab.scatter(mm_dir_76[:,0],mm_dir_76[:,8], label='76-77',s=4,c='y',edgecolors='none')
 #pylab.scatter(mm_dir_78[:,0],mm_dir_78[:,8], label='78-81',s=4,c='y',edgecolors='none')
-pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,8]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
+#pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,8]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
 #pylab.scatter(mm_dir_79[:,0],mm_dir_79[:,8], label='79-84',s=1,c='c',edgecolors='none')
 #pylab.scatter(mm_dir_83[:,0],mm_dir_83[:,8], label='83-86',s=1,c='g',edgecolors='none')
 #pylab.scatter(mm_dir_86[:,0],mm_dir_86[:,8], label='86-87',s=1,c='k',edgecolors='none')
@@ -813,7 +827,7 @@ pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,8]/mm_dir_80[:,1], label='80-81',s=1,c=
 #pylab.scatter(mp_dir_77[:,0],mp_dir_77[:,8], label='76-78',s=4,c='c',edgecolors='none')
 #pylab.scatter(mp_dir_78[:,0],mp_dir_78[:,8], label='78-80',s=4,c='g',edgecolors='none')
 #pylab.scatter(mp_dir_81[:,0],mp_dir_81[:,8], label='81-84',s=4,c='g',edgecolors='none')
-pylab.ylim(-0.5,0.5)
+pylab.ylim(-1,1)
 pylab.xlim(freq[-1],freq[0])
 #pylab.xlabel('frequency')
 #pylab.legend()
@@ -857,7 +871,7 @@ pylab.scatter(mm_dir_41[:,0],mm_dir_41[:,9]/mm_dir_41[:,1], label='41-42',s=4,c=
 #pylab.scatter(mm_dir_75[:,0],mm_dir_75[:,9], label='75-76',s=4,c='r',edgecolors='none')
 #pylab.scatter(mm_dir_76[:,0],mm_dir_76[:,9], label='76-77',s=4,c='y',edgecolors='none')
 #pylab.scatter(mm_dir_78[:,0],mm_dir_78[:,9], label='78-81',s=4,c='y',edgecolors='none')
-pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,9]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
+#pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,9]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
 #pylab.scatter(mm_dir_79[:,0],mm_dir_79[:,9], label='79-84',s=1,c='c',edgecolors='none')
 #pylab.scatter(mm_dir_83[:,0],mm_dir_83[:,9], label='83-86',s=1,c='g',edgecolors='none')
 #pylab.scatter(mm_dir_86[:,0],mm_dir_86[:,9], label='86-87',s=1,c='k',edgecolors='none')
@@ -939,7 +953,7 @@ pylab.scatter(mm_dir_41[:,0],mm_dir_41[:,10]/mm_dir_41[:,1], label='41-42',s=4,c
 #pylab.scatter(mm_dir_75[:,0],mm_dir_75[:,10], label='75-76',s=4,c='r',edgecolors='none')
 #pylab.scatter(mm_dir_76[:,0],mm_dir_76[:,10], label='76-77',s=4,c='y',edgecolors='none')
 #pylab.scatter(mm_dir_78[:,0],mm_dir_78[:,10], label='78-81',s=4,c='y',edgecolors='none')
-pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,10]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
+#pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,10]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
 #pylab.scatter(mm_dir_79[:,0],mm_dir_79[:,10], label='79-84',s=1,c='c',edgecolors='none')
 #pylab.scatter(mm_dir_83[:,0],mm_dir_83[:,10], label='83-86',s=1,c='g',edgecolors='none')
 #pylab.scatter(mm_dir_86[:,0],mm_dir_86[:,10], label='86-87',s=1,c='k',edgecolors='none')
@@ -977,7 +991,7 @@ pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,10]/mm_dir_80[:,1], label='80-81',s=1,c
 #pylab.scatter(mp_dir_77[:,0],mp_dir_77[:,10], label='76-78',s=4,c='c',edgecolors='none')
 #pylab.scatter(mp_dir_78[:,0],mp_dir_78[:,10], label='78-80',s=4,c='g',edgecolors='none')
 #pylab.scatter(mp_dir_81[:,0],mp_dir_81[:,10], label='81-84',s=4,c='g',edgecolors='none')
-pylab.ylim(-0.5,0.5)  
+pylab.ylim(-1,1)  
 pylab.xlim(freq[-1],freq[0])
 #pylab.xlabel('frequency')
 #pylab.legend()
@@ -1021,7 +1035,7 @@ pylab.scatter(mm_dir_41[:,0],mm_dir_41[:,11]/mm_dir_41[:,1], label='41-42',s=4,c
 #pylab.scatter(mm_dir_75[:,0],mm_dir_75[:,11], label='75-76',s=4,c='r',edgecolors='none')
 #pylab.scatter(mm_dir_76[:,0],mm_dir_76[:,11], label='76-77',s=4,c='y',edgecolors='none')
 #pylab.scatter(mm_dir_78[:,0],mm_dir_78[:,11], label='78-81',s=4,c='y',edgecolors='none')
-pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,11]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
+#pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,11]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
 #pylab.scatter(mm_dir_79[:,0],mm_dir_79[:,11], label='79-84',s=1,c='c',edgecolors='none')
 #pylab.scatter(mm_dir_83[:,0],mm_dir_83[:,11], label='83-86',s=1,c='g',edgecolors='none')
 #pylab.scatter(mm_dir_86[:,0],mm_dir_86[:,11], label='86-87',s=1,c='k',edgecolors='none')
@@ -1059,7 +1073,16 @@ pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,11]/mm_dir_80[:,1], label='80-81',s=1,c
 #pylab.scatter(mp_dir_77[:,0],mp_dir_77[:,11], label='76-78',s=4,c='c',edgecolors='none')
 #pylab.scatter(mp_dir_78[:,0],mp_dir_78[:,11], label='78-80',s=4,c='g',edgecolors='none')
 #pylab.scatter(mp_dir_81[:,0],mp_dir_81[:,11], label='81-84',s=4,c='g',edgecolors='none')
-pylab.ylim(-3,3)
+p0 = [1.0,50.0,1.0]
+UU, success = optimize.leastsq(errfunc, p0[:], args=(mm_dir_41[:,0],mm_dir_41[:,11]/mm_dir_41[:,1]))
+UU[0] = abs(UU[0])
+UU[2] = (UU[2]+pi)%(2*pi)-pi
+pylab.plot(mm_dir_41[:,0],fitfunc(UU, mm_dir_41[:,0]),"b-")
+UU_freq = 1/UU[1]
+print 'UU frequency is:', UU_freq
+print 'UU phase is:', UU[2]
+print 'UU amplitude is:', UU[0]
+pylab.ylim(-1,1)
 pylab.xlim(freq[-1],freq[0])
 #pylab.xlabel('frequency')
 #pylab.legend()
@@ -1103,7 +1126,7 @@ pylab.scatter(mm_dir_41[:,0],mm_dir_41[:,12]/mm_dir_41[:,1], label='41-42',s=4,c
 #pylab.scatter(mm_dir_75[:,0],mm_dir_75[:,12], label='75-76',s=4,c='r',edgecolors='none')
 #pylab.scatter(mm_dir_76[:,0],mm_dir_76[:,12], label='76-77',s=4,c='y',edgecolors='none')
 #pylab.scatter(mm_dir_78[:,0],mm_dir_78[:,12], label='78-81',s=4,c='y',edgecolors='none')
-pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,12]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
+#pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,12]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
 #pylab.scatter(mm_dir_79[:,0],mm_dir_79[:,12], label='79-84',s=1,c='c',edgecolors='none')
 #pylab.scatter(mm_dir_83[:,0],mm_dir_83[:,12], label='83-86',s=1,c='g',edgecolors='none')
 #pylab.scatter(mm_dir_86[:,0],mm_dir_86[:,12], label='86-87',s=1,c='k',edgecolors='none')
@@ -1141,7 +1164,16 @@ pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,12]/mm_dir_80[:,1], label='80-81',s=1,c
 #pylab.scatter(mp_dir_77[:,0],mp_dir_77[:,12], label='76-78',s=4,c='c',edgecolors='none')
 #pylab.scatter(mp_dir_78[:,0],mp_dir_78[:,12], label='78-80',s=4,c='g',edgecolors='none')
 #pylab.scatter(mp_dir_81[:,0],mp_dir_81[:,12], label='81-84',s=4,c='g',edgecolors='none')
-pylab.ylim(-3,3)
+p0 = [1.0,50.0,1.0]
+UV,success = optimize.leastsq(errfunc,p0[:],args=(mm_dir_41[:,0],mm_dir_41[:,12]/mm_dir_41[:,1]))
+UV[0] = abs(UV[0]
+UV[2] = (UV[2]-pi)%
+pylab.plot(mm_dir_41[:,0],fitfunc(UV,mm_dir_41[:,0]),'b-')
+UV_freq = 1/UV[1]
+print "UV frequency is:", UV_freq
+print "UV phase is:", UV[2]
+print "UV amplitude is:", UV[0]
+pylab.ylim(-1,1)
 pylab.xlim(freq[-1],freq[0])
 #pylab.xlabel('frequency')
 #pylab.legend()
@@ -1185,7 +1217,7 @@ pylab.scatter(mm_dir_41[:,0],mm_dir_41[:,13]/mm_dir_41[:,1], label='41-42',s=4,c
 #pylab.scatter(mm_dir_75[:,0],mm_dir_75[:,13], label='75-76',s=4,c='r',edgecolors='none')
 #pylab.scatter(mm_dir_76[:,0],mm_dir_76[:,13], label='76-77',s=4,c='y',edgecolors='none')
 #pylab.scatter(mm_dir_78[:,0],mm_dir_78[:,13], label='78-81',s=4,c='y',edgecolors='none')
-pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,13]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
+#pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,13]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
 #pylab.scatter(mm_dir_79[:,0],mm_dir_79[:,13], label='79-84',s=1,c='c',edgecolors='none')
 #pylab.scatter(mm_dir_83[:,0],mm_dir_83[:,13], label='83-86',s=1,c='g',edgecolors='none')
 #pylab.scatter(mm_dir_86[:,0],mm_dir_86[:,13], label='86-87',s=1,c='k',edgecolors='none')
@@ -1223,7 +1255,7 @@ pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,13]/mm_dir_80[:,1], label='80-81',s=1,c
 #pylab.scatter(mp_dir_77[:,0],mp_dir_77[:,13], label='76-78',s=4,c='c',edgecolors='none')
 #pylab.scatter(mp_dir_78[:,0],mp_dir_78[:,13], label='78-80',s=4,c='g',edgecolors='none')
 #pylab.scatter(mp_dir_81[:,0],mp_dir_81[:,13], label='81-84',s=4,c='g',edgecolors='none')
-pylab.ylim(-1,1)
+pylab.ylim(-0.5,0.5)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency',fontsize=10)
 #pylab.legend()
@@ -1267,7 +1299,7 @@ pylab.scatter(mm_dir_41[:,0],mm_dir_41[:,14]/mm_dir_41[:,1], label='41-42',s=4,c
 #pylab.scatter(mm_dir_75[:,0],mm_dir_75[:,14], label='75-76',s=4,c='r',edgecolors='none')
 #pylab.scatter(mm_dir_76[:,0],mm_dir_76[:,14], label='76-77',s=4,c='y',edgecolors='none')
 #pylab.scatter(mm_dir_78[:,0],mm_dir_78[:,14], label='78-81',s=4,c='y',edgecolors='none')
-pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,14]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
+#pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,14]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
 #pylab.scatter(mm_dir_79[:,0],mm_dir_79[:,14], label='79-84',s=1,c='c',edgecolors='none')
 #pylab.scatter(mm_dir_83[:,0],mm_dir_83[:,14], label='83-86',s=1,c='g',edgecolors='none')
 #pylab.scatter(mm_dir_86[:,0],mm_dir_86[:,14], label='86-87',s=1,c='k',edgecolors='none')
@@ -1305,7 +1337,7 @@ pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,14]/mm_dir_80[:,1], label='80-81',s=1,c
 #pylab.scatter(mp_dir_77[:,0],mp_dir_77[:,14], label='76-78',s=4,c='c',edgecolors='none')
 #pylab.scatter(mp_dir_78[:,0],mp_dir_78[:,14], label='78-80',s=4,c='g',edgecolors='none')
 #pylab.scatter(mp_dir_81[:,0],mp_dir_81[:,14], label='81-84',s=4,c='g',edgecolors='none')
-pylab.ylim(-0.5,0.5) 
+pylab.ylim(-1,1) 
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency',fontsize=10)
 #pylab.legend()
@@ -1349,7 +1381,7 @@ pylab.scatter(mm_dir_41[:,0],mm_dir_41[:,15]/mm_dir_41[:,1], label='41-42',s=4,c
 #pylab.scatter(mm_dir_75[:,0],mm_dir_75[:,15], label='75-76',s=4,c='r',edgecolors='none')
 #pylab.scatter(mm_dir_76[:,0],mm_dir_76[:,15], label='76-77',s=4,c='y',edgecolors='none')
 #pylab.scatter(mm_dir_78[:,0],mm_dir_78[:,15], label='78-81',s=4,c='y',edgecolors='none')
-pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,15]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
+#pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,15]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
 #pylab.scatter(mm_dir_79[:,0],mm_dir_79[:,15], label='79-84',s=1,c='c',edgecolors='none')
 #pylab.scatter(mm_dir_83[:,0],mm_dir_83[:,15], label='83-86',s=1,c='g',edgecolors='none')
 #pylab.scatter(mm_dir_86[:,0],mm_dir_86[:,15], label='86-87',s=1,c='k',edgecolors='none')
@@ -1387,7 +1419,13 @@ pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,15]/mm_dir_80[:,1], label='80-81',s=1,c
 #pylab.scatter(mp_dir_77[:,0],mp_dir_77[:,15], label='76-78',s=4,c='c',edgecolors='none')
 #pylab.scatter(mp_dir_78[:,0],mp_dir_78[:,15], label='78-80',s=4,c='g',edgecolors='none')
 #pylab.scatter(mp_dir_81[:,0],mp_dir_81[:,15], label='81-84',s=4,c='g',edgecolors='none')
-pylab.ylim(-3,3)
+p0 = [2.0,100.0,1.0]
+VU,success = optimize.leastsq(errfunc,p0[:], args=(mm_dir_41[:,0],mm_dir_41[:,15]/mm_dir_41[:,1]))
+pylab.plot(mm_dir_41[:,0],fitfunc(VU,mm_dir_41[:,0]),'b-')
+print "VU frequency is:",1/VU[1]
+print "VU phase is:", VU[2]
+print "VU amplitude is:", VU[0]
+pylab.ylim(-1.5,1.5)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency',fontsize=10)
 #pylab.legend()
@@ -1432,7 +1470,7 @@ pylab.scatter(mm_dir_41[:,0],mm_dir_41[:,16]/mm_dir_41[:,1], label='41-42',s=4,c
 #pylab.scatter(mm_dir_75[:,0],mm_dir_75[:,16], label='75-76',s=4,c='r',edgecolors='none')
 #pylab.scatter(mm_dir_76[:,0],mm_dir_76[:,16], label='76-77',s=4,c='y',edgecolors='none')
 #pylab.scatter(mm_dir_78[:,0],mm_dir_78[:,16], label='78-81',s=4,c='y',edgecolors='none')
-pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,16]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
+#pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,16]/mm_dir_80[:,1], label='80-81',s=1,c='k',edgecolors='none')
 #pylab.scatter(mm_dir_79[:,0],mm_dir_79[:,16], label='79-84',s=1,c='c',edgecolors='none')
 #pylab.scatter(mm_dir_83[:,0],mm_dir_83[:,16], label='83-86',s=1,c='g',edgecolors='none')
 #pylab.scatter(mm_dir_86[:,0],mm_dir_86[:,16], label='86-87',s=1,c='k',edgecolors='none')
@@ -1470,7 +1508,13 @@ pylab.scatter(mm_dir_80[:,0],mm_dir_80[:,16]/mm_dir_80[:,1], label='80-81',s=1,c
 #pylab.scatter(mp_dir_77[:,0],mp_dir_77[:,16], label='76-78',s=4,c='c',edgecolors='none')
 #pylab.scatter(mp_dir_78[:,0],mp_dir_78[:,16], label='78-80',s=4,c='g',edgecolors='none')
 #pylab.scatter(mp_dir_81[:,0],mp_dir_81[:,16], label='81-84',s=4,c='g',edgecolors='none')
-pylab.ylim(-3,3)
+p0 = [2.0,100.0,1.0]
+VV,success = optimize.leastsq(errfunc,p0[:],args=(mm_dir_41[:,0],mm_dir_41[:,16]/mm_dir_41[:,1]))
+pylab.plot(mm_dir_41[:,0],fitfunc(VV,mm_dir_41[:,0]), 'b-')
+print "VV frequency is:",1/VV[1]
+print "VV phase is:",VV[2]
+print "VV amplitude is:",VV[0]
+pylab.ylim(-1.5,1.5)
 pylab.xlim(freq[-1],freq[0])
 pylab.xlabel('frequency',fontsize=10)
 #pylab.legend()

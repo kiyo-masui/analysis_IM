@@ -62,7 +62,10 @@ class Calibrate(base_single.BaseSingle) :
             sess_num = '0'+str(sess_num)
         project = file_middle.split('/')[0]
 #        print sess_num
-        fg_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_diff_gain_calc_RM.txt'
+#        fg_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_diff_gain_calc.txt'
+
+#Alternative for average flux/differential gain calibration.
+        fg_file_name = self.params['mueler_file']+'1hr_fdg_calc_avg.txt'
         self.flux_diff = flux_dg(fg_file_name)
         RM_dir = self.params['RM_file']
         calibrate_pol(Data, self.flux_diff,RM_dir)
@@ -146,84 +149,85 @@ def calibrate_pol(Data, m_total,RM_dir) :
 #   print Data.dims[0]
 
     # Since the RM Tables have half hour time divisions and scans are shorter, we can do 1 selection.
-    Comp_Time = 0.0
-    Full_date = Data.field['DATE-OBS'][Data.dims[0]/2]
-    Date = Full_date.split('T')[0]
-    Year = Date.split('-')[0]
-    Month = Date.split('-')[1]
-    Day = Date.split('-')[2]
-    Full_time = Full_date.split('T')[1]
-    Hour = Full_time.split(':')[0]
-    Min = Full_time.split(':')[1]
-    Sec = Full_time.split(':')[2]
-    if int(Min)<=15:
-        Comp_Time = float(Hour)+0.0
-    elif int(Min)<=45:
-        Comp_Time = float(Hour)+0.5
-    else :
-        Comp_Time = float(Hour)+1.0
+
+#    Comp_Time = 0.0
+#    Full_date = Data.field['DATE-OBS'][Data.dims[0]/2]
+#    Date = Full_date.split('T')[0]
+#    Year = Date.split('-')[0]
+#    Month = Date.split('-')[1]
+#    Day = Date.split('-')[2]
+#    Full_time = Full_date.split('T')[1]
+#    Hour = Full_time.split(':')[0]
+#    Min = Full_time.split(':')[1]
+#    Sec = Full_time.split(':')[2]
+#    if int(Min)<=15:
+#        Comp_Time = float(Hour)+0.0
+#    elif int(Min)<=45:
+#        Comp_Time = float(Hour)+0.5
+#    else :
+#        Comp_Time = float(Hour)+1.0
     #Victor's tables have time in format Hour (xx.xx), Az (deg), El (deg), RM
     # Angle phi = RM*(wavelength)^2 where phi is in radians and wavelength is in meters
 
-    RM_file_name = RM_dir + Year + Month + Day + '_RM.txt'
-    RM_data = np.loadtxt(RM_file_name)
-    RA_RM = sp.zeros(len(RM_data[:,0]))
-    DEC_RM = sp.zeros(len(RM_data[:,0]))
-    for i in range(0,len(RM_data[:,0])):
-        RM_Hr = int(RM_data[i,0])
-        if RM_data[i,0]%1 == 0 :
-            RM_Min = '00'
-            minutes = 0.0
-        else:
-            RM_Min = '30'
-            minutes = 0.5
-        Test = float(RM_Hr)+minutes
-        if str(Comp_Time) == str(Test):
-            UT_RM = Year+'-'+Month+'-'+Day+'T'+str(RM_Hr)+':'+RM_Min+':00.00'
-            EL_RM = RM_data[i,2]
-            AZ_RM = RM_data[i,1]
-            RA_RM[i], DEC_RM[i] = utils.elaz2radecGBT(EL_RM,AZ_RM,UT_RM)
+#    RM_file_name = RM_dir + Year + Month + Day + '_RM.txt'
+#    RM_data = np.loadtxt(RM_file_name)
+#    RA_RM = sp.zeros(len(RM_data[:,0]))
+#    DEC_RM = sp.zeros(len(RM_data[:,0]))
+#    for i in range(0,len(RM_data[:,0])):
+#        RM_Hr = int(RM_data[i,0])
+#        if RM_data[i,0]%1 == 0 :
+#            RM_Min = '00'
+#            minutes = 0.0
+#        else:
+#            RM_Min = '30'
+#            minutes = 0.5
+#        Test = float(RM_Hr)+minutes
+#        if str(Comp_Time) == str(Test):
+#            UT_RM = Year+'-'+Month+'-'+Day+'T'+str(RM_Hr)+':'+RM_Min+':00.00'
+#            EL_RM = RM_data[i,2]
+#            AZ_RM = RM_data[i,1]
+#            RA_RM[i], DEC_RM[i] = utils.elaz2radecGBT(EL_RM,AZ_RM,UT_RM)
 
     #Now have tables of RA/DEC to compare to actual RA/DEC
 
-    RM = 0
+#    RM = 0
     for time_index in range(0,Data.dims[0]):
-        RA = Data.field['CRVAL2'][time_index]
-        DEC = Data.field['CRVAL3'][time_index]
+#        RA = Data.field['CRVAL2'][time_index]
+#        DEC = Data.field['CRVAL3'][time_index]
 #        print RA
 #        print DEC
 #        RM = 0
-        valid = []
-        for i in range(0,len(RA_RM)):
-            if RA_RM[i] != 0:
-                if abs(RA-RA_RM[i])<10.0:
-                    if abs(DEC-DEC_RM[i])<10.0:
+#        valid = []
+#        for i in range(0,len(RA_RM)):
+#            if RA_RM[i] != 0:
+#                if abs(RA-RA_RM[i])<10.0:
+#                    if abs(DEC-DEC_RM[i])<10.0:
 #                        RM = RM_data[i,3]     
-                        valid.append(i)
-        RA_M = 10.0
-        DEC_M = 10.0
-        for j in range(0,len(valid)):
-            if abs(RA-RA_RM[valid[j]])<RA_M:
-                if abs(DEC-DEC_RM[valid[j]])<DEC_M:
-                   RM = RM_data[valid[j],3]  
+#                        valid.append(i)
+#        RA_M = 10.0
+#        DEC_M = 10.0
+#        for j in range(0,len(valid)):
+#            if abs(RA-RA_RM[valid[j]])<RA_M:
+#                if abs(DEC-DEC_RM[valid[j]])<DEC_M:
+#                   RM = RM_data[valid[j],3]  
                          
 #        print RM
  
     #Generate a sky matrix for this time index:
-#        m_sky = sp.zeros((4,4))
-#        m_sky[0,0] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180))
-#        m_sky[0,1] = -ma.sin(2*Data.PA[time_index]*sp.pi/180)
-#        m_sky[0,3] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180))
-#        m_sky[1,0] = 0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180)
-#        m_sky[1,1] = ma.cos(2*Data.PA[time_index]*sp.pi/180)
-#        m_sky[1,3] = -0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180)
-#        m_sky[2,2] = 1
-#        m_sky[3,0] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180))
-#        m_sky[3,1] = ma.sin(2*Data.PA[time_index]*sp.pi/180)
-#        m_sky[3,3] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180))
+        m_sky = sp.zeros((4,4))
+        m_sky[0,0] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180))
+        m_sky[0,1] = -ma.sin(2*Data.PA[time_index]*sp.pi/180)
+        m_sky[0,3] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180))
+        m_sky[1,0] = 0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180)
+        m_sky[1,1] = ma.cos(2*Data.PA[time_index]*sp.pi/180)
+        m_sky[1,3] = -0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180)
+        m_sky[2,2] = 1
+        m_sky[3,0] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180))
+        m_sky[3,1] = ma.sin(2*Data.PA[time_index]*sp.pi/180)
+        m_sky[3,3] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180))
 
-#        M_sky = sp.mat(m_sky)
-#        M_sky = M_sky.I
+        M_sky = sp.mat(m_sky)
+        M_sky = M_sky.I
 #        print M_sky
 
 #        for cal_index in range(0,Data.dims[2]):
@@ -246,24 +250,24 @@ def calibrate_pol(Data, m_total,RM_dir) :
     #Generate a sky matrix for this time index:
     #With faraday rotation  sky matrix now frequency dependent
  
-               wavelength = 300000.0/float(frequency) # should be in meters given that frequency is in kHz
+#               wavelength = 300000.0/float(frequency) # should be in meters given that frequency is in kHz
 #               print wavelength
-               Phi = RM*wavelength*wavelength
+#               Phi = RM*wavelength*wavelength
 #               print Phi
-               m_sky = sp.zeros((4,4)) 
-               m_sky[0,0] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
-               m_sky[0,1] = -ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi) 
-               m_sky[0,3] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
-               m_sky[1,0] = 0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi) 
-               m_sky[1,1] = ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi) 
-               m_sky[1,3] = -0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi)
-               m_sky[2,2] = 1
-               m_sky[3,0] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
-               m_sky[3,1] = ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi)
-               m_sky[3,3] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
+#               m_sky = sp.zeros((4,4)) 
+#               m_sky[0,0] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
+#               m_sky[0,1] = -ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi) 
+#               m_sky[0,3] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
+#               m_sky[1,0] = 0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi) 
+#               m_sky[1,1] = ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi) 
+#               m_sky[1,3] = -0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi)
+#               m_sky[2,2] = 1
+#               m_sky[3,0] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
+#               m_sky[3,1] = ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi)
+#               m_sky[3,3] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
   
-               M_sky = sp.mat(m_sky)
-               M_sky = M_sky.I 
+#               M_sky = sp.mat(m_sky)
+#               M_sky = M_sky.I 
 #               print M_sky 
 
     # Converts files into vector format 
@@ -274,7 +278,7 @@ def calibrate_pol(Data, m_total,RM_dir) :
                XY_params[3] = XY_params[3]*m_total[1,bin]
                XY_params[1] = XY_params[1]*sp.sqrt(m_total[0,bin]*m_total[1,bin])
                XY_params[2] = XY_params[2]*sp.sqrt(m_total[0,bin]*m_total[1,bin])
-               XY_params = np.dot(M_sky,XY_params)
+#               XY_params = np.dot(M_sky,XY_params)
 
     # Note the correction is only applied to XX and YY, but all terms are rotated to sky coordinates (PA rotation)
 
