@@ -88,7 +88,7 @@ def get_data_files(session_list, project='GBT10B_036', field='15hr',
 
 
 
-
+#### All depricated. ####
 
 def get_data_files_depricated(session_list, field, type=None) :
     """Gets a list of the data file names for each session and field.

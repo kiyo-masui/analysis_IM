@@ -694,6 +694,11 @@ def separate_cal(data, n_bins_cal, cal_mask=None) :
 
     return out_data
 
+
+# -------- Data Checker ---------
+
+# Makes a bunch of plots that give an indication of how the data looks.
+
 params_init_checker = {
                       "input_root" : "",
                       "file_middles" : ("",),
@@ -850,6 +855,8 @@ class DataChecker(object) :
         plt.savefig(params['output_root'] + middle
                 + params['output_end'])
 
+
+# -------- Data Manager --------
 
 # This manager scripts together all the operations that need to be performed to
 # the data at GBT.

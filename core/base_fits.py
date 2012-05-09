@@ -27,20 +27,27 @@ def get_history_header(prihdr) :
     
     # Initialize a blank history object
     history = bd.History()
+    # Get the cardlist.
+    try:
+        # New versions of pyfits.
+        ascard = prihdr.ascard
+    except AttributeError:
+        # Earlier versions of pyfits.
+        ascard = prihdr.ascardlist()
     # If there is no history, return.
     try :
-        ii = prihdr.ascardlist().index_of(card_hist)
+        ii = ascard.index_of(card_hist)
     except KeyError :
         return history
-    n_cards = len(prihdr.ascardlist().keys())
+    n_cards = len(ascard.keys())
     while ii < n_cards :
-        if prihdr.ascardlist().keys()[ii] == card_hist :
+        if ascard.keys()[ii] == card_hist :
             hist_entry = prihdr[ii]
             details = []
-        elif prihdr.ascardlist().keys()[ii] == card_detail :
+        elif ascard.keys()[ii] == card_detail :
             details.append(prihdr[ii])
         ii = ii + 1
-        if ii == n_cards or prihdr.ascardlist().keys()[ii] == card_hist :
+        if ii == n_cards or ascard.keys()[ii] == card_hist :
             history.add(hist_entry, details)
 
     return history
@@ -52,16 +59,23 @@ def write_history_header(prihdr, history) :
     header using the DB-HIST and DB-DET cards.
     """
 
+    # Get the cardlist.
+    try:
+        # New versions of pyfits.
+        ascard = prihdr.ascard
+    except AttributeError:
+        # Earlier versions of pyfits.
+        ascard = prihdr.ascardlist()
     history_keys  = history.keys()
     history_keys.sort()
     for hist in history_keys :
         details = history[hist]
         # Chop off the number, since they are already sorted.
         hcard = pyfits.Card(card_hist, hist[5:])
-        prihdr.ascardlist().append(hcard)
+        ascard.append(hcard)
         for detail in details :
             dcard = pyfits.Card(card_detail, detail)
-            prihdr.ascardlist().append(dcard)
+            ascard.append(dcard)
 
 
 
