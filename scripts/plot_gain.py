@@ -1,3 +1,4 @@
+# This script plots a single session of differential gain corrections as a function of frequency. It also contains code to generate a smoothed (in frequency) curve version of the session data. Or it can also be used to compare different cal versions (such as the Rotation Measure addition). 
 import sys
 import pylab
 from numpy import *

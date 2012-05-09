@@ -1,3 +1,5 @@
+#This script generates a set of maps in RA and DEC for each frequency in the map data. Can be used to make plots of maps.
+
 import pylab
 import pyfits
 import sys

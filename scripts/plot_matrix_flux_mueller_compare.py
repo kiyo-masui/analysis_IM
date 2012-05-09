@@ -1,3 +1,4 @@
+#Script for looking at hte mueller matrix terms for each session. It is set up to plot all the matrix elements for as many sessions as is desired. Used in evaluating different sessions and modifications of the mueller matrix generation code.
 import pylab
 from numpy import *
 import scipy as sp

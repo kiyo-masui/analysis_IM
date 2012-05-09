@@ -1,3 +1,5 @@
+# This script is set to make 3D plots of the XX and YY gain corrections oover a range of sessions.
+
 import pylab
 import sys
 from numpy import *

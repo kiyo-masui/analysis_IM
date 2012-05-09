@@ -1,3 +1,6 @@
+#This script is designed to generate an average calibration correction table (for a flux/differential gain style calibration) using a set of data files such as all files corresponding to a given field.
+#If 1hr field: 10B_036 86-89 and 11B_055 01-18 (sesssion 14 is trash so that calibration file is set to match session 13). 
+
 import pylab
 import sys
 from numpy import *

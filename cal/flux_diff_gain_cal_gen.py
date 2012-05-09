@@ -3,6 +3,8 @@
 Currently setup so that it uses all the onoff scans from a session for a particular calibrator and gets the best fit. 
 Run in analysis_IM: python cal/flux_diff_gain_cal_gen.py input/tcv/diff_gain_gen_guppi.ini
 Note that the .ini file should indicate which session(s) and sourse you want to use. Script is run using data from a single source. The output is saved in my data directory under the folder diff_gain_params as a .txt file with three columns (freq, XXGain, YYGain).
+Need to change script to use correct source data when changing sources.
+Also, script currently also includes rotation measure correction to the rotation matrix (which only matters when generating using a polarized source such as 3C286).
  """
 import os
 

@@ -1,9 +1,7 @@
 """Procedure to test the effectiveness of the flux and differential gain calibration.
-
-
 Run in analysis_IM: python cal/flux_diff_gain_cal_test.py input/tcv/diff_gain_tes_guppi.ini
 Note that the .ini file should indicate which session(s) and sourse you want to use. Script is run using data from a single source.
- """
+"""
 import os
 
 from scipy.optimize import *
