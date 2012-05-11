@@ -177,10 +177,10 @@ class PowerSpectrumMaker(mkpower.PowerSpectrumMaker):
 			k = np.logspace(
 				log10(1./params['boxshape'][0]), log10(sqrt(3)), num=kbn+1)
 		else:
-			kmin = kmin/kunit
-			kmax = kmax/kunit
+			kmin = kmin
+			kmax = kmax
 			k = np.logspace(log10(kmin), log10(kmax), num=kbn+1)
-		k = k*2.*pi/params['boxunit']
+		#k = k*2.*pi/params['boxunit']
 		k = k[:-1]
 		sp.save(params['output_root']+resultf+'_k_combined', k)
 		if FKPweight:

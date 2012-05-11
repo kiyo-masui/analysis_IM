@@ -11,6 +11,7 @@ from math import *
 
 # kiyo module
 from core import algebra
+from utils import distance
 
 # li module
 import MakePower
@@ -41,11 +42,14 @@ def xyzv(ra, de, r, ra0=0.):
 	v = r**2*sin(0.5*pi-de)
 	return x, y, z, v
 
-def fq2r(freq, freq0=1.4e9 , c_H0 = 2.99e3, Omegam=0.27, Omegal=0.73):
+def fq2r(freq, freq0=1.42e9 , c_H0 = 2.99e3, Omegam=0.27, Omegal=0.73):
 	"""change the freq to distence"""
 	zz =  freq0/freq - 1.
-	for i in range(0, zz.shape[0]):
-		zz[i] = c_H0*funcdl(zz[i], Omegam, Omegal)
+	cosmo = {'omega_M_0' : Omegam, 'omega_lambda_0' : Omegal, 'h' : 0.72}
+	cosmo = distance.set_omega_k_0(cosmo)
+	zz = 0.72*distance.comoving_distance_transverse(zz, **cosmo)
+	#for i in range(0, zz.shape[0]):
+	#	zz[i] = c_H0*funcdl(zz[i], Omegam, Omegal)
 	return zz
 
 def discrete(params, array):

@@ -80,8 +80,8 @@ cutlist = []
 
 FKPweight = False 
 kmin = 0.03
-kmax = 1.5
-kbinNum = 25 
+kmax = 4.0
+kbinNum = 35
 
 print
 print "-"*50
@@ -89,8 +89,8 @@ print
 print
 
 #""" Pipe line """
-from mkpower import prepare
-pipe_modules.append(prepare.Prepare)
+#from mkpower import prepare
+#pipe_modules.append(prepare.Prepare)
 
 from mkpower import mkpower_combine
 pipe_modules.append(mkpower_combine.PowerSpectrumMaker)
@@ -112,7 +112,7 @@ pipe_modules.append(mkpower_combine.PowerSpectrumMaker)
 """  Prepare """
 #from mkpower import prepare
 #pipe_modules.append(prepare.Prepare)
-pre_processes = 5
+pre_processes = 9
 pre_plot = False
 #pre_plot = True
 pre_output_root = output_root
@@ -124,8 +124,8 @@ pre_nmap_list = nmap_list
 #pre_boxshape = (1024, 256, 128)
 #pre_boxunit = 1.
 pre_boxshape = (512, 128, 64)
-pre_boxunit = 1.9
-pre_discrete = 2
+pre_boxunit = 2.0
+pre_discrete = 6
 pre_Xrange = (1400, pre_boxunit*pre_boxshape[0]+1400)
 pre_Yrange = (-pre_boxunit*pre_boxshape[1]*0.5, 
    	 		  pre_boxunit*pre_boxshape[1]*0.5)
@@ -146,6 +146,7 @@ elif hour==1:
 	   	 		  pre_boxunit*pre_boxshape[1]*0.5)
 	pre_Zrange = (-30.0, pre_boxunit*pre_boxshape[2]-30)
 
+pre_submean = True
 pre_cutlist = cutlist
 
 """  Add Noise to the Map"""
@@ -199,7 +200,7 @@ pk_OmegaL = 0.76
 """  Calculate the combined Pk  """
 #from mkpower import mkpower_combine
 #pipe_modules.append(mkpower_combine.CrossPowerSpectrumMaker)
-pkc_processes = 5
+pkc_processes = 9
 if hour==1:
 	pkc_processes = 2
 pkc_plot = False 

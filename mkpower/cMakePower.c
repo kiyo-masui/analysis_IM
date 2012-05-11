@@ -222,21 +222,21 @@ int makepk(FFT *fft, PK *pk){
 	int Nx = fft->sizex;
 	int Ny = fft->sizey;
 	int Nz = fft->sizez;
-	double kunitx = 1./Nx*pk->kunit;
-	double kunity = 1./Ny*pk->kunit;
-	double kunitz = 1./Nz*pk->kunit;
+	double kunitx = 1./Nx * pk->kunit;
+	double kunity = 1./Ny * pk->kunit;
+	double kunitz = 1./Nz * pk->kunit;
+//	printf("%lg %lg %lg %lg\n", kunitx, kunity, kunitz, pk->kunit);
 
 //	double kmax = sqrt(Nx*Nx*kunitx*kunitx 
 //		+Ny*Ny*kunity*kunity+Nz*Nz*kunitz*kunitz);
 //	double kmin = 1.*kunitx;
 	double kmin = pk->k[0];
-	double kmax = pk->k[pk->N];
+	double kmax = pk->k[pk->N-1];
 //	printf("%lg %lg\n", kmin, kmax);
-	double dk = pow(10, log10(kmax/kmin)/(pk->N + 1.));
-//	printf("%lg\n", dk);
+	double dk = pow(10, log10(kmax/kmin)/pk->N);
 	#ifdef Linearkbin
 		printf("\t::Using Linear k bin\n");
-		dk = (kmax-kmin)/(pk->N + 1.);
+		dk = (kmax-kmin)/pk->N;
 	#endif
 	double *kn = (double *)malloc(pk->N*sizeof(double));
 	double dkp = pow(10, log10(kmax/kmin)/pk->Np);
@@ -244,6 +244,7 @@ int makepk(FFT *fft, PK *pk){
 	double **kn2 = (double **)malloc(pk->Np*sizeof(double*));
 	for(int i=0; i<pk->N; i++){
 		kn[i] = 0;
+		pk->val[i] = 0;
 	}
 	for(int i=0; i<pk->Np; i++){
 		kn2[i] = (double *)malloc(pk->Nv*sizeof(double));
@@ -257,7 +258,8 @@ int makepk(FFT *fft, PK *pk){
 			#ifdef Linearkbin
 				idx = (int)((k-kmin)/dk);
 			#endif
-			p[idx] = p[idx] + val*k*k*k/2./3.1415926/3.1415926;
+			//p[idx] = p[idx] + val*k*k*k/2./3.1415926/3.1415926;
+			p[idx] = p[idx] + val;
 			pn[idx] = pn[idx] + 1.;
 		}
 		return 0;
@@ -266,12 +268,15 @@ int makepk(FFT *fft, PK *pk){
 	double nyquist = 0.5;
 	
 	for(int i=1; i<Nx*Ny*Nz; i++){
-		int x = (int)(i/(Ny*Nz));
-		int y = (int)((i-x*Ny*Nz)/Nz);
-		int z = (int)(i-x*Ny*Nz-y*Nz);
-		int idx, idxp, idxv;
+		int xx = (int)(i/(Ny*Nz));
+		int yy = (int)((i-xx*Ny*Nz)/Nz);
+		int zz = (int)(i-xx*Ny*Nz-yy*Nz);
 		double result0, result1;
 		result1 = fft->data[i];
+
+		float x = xx + 0.5;
+		float y = yy + 0.5;
+		float z = zz + 0.5;
 
 		if(x<nyquist*Nx && y<nyquist*Ny && z<nyquist*Nz){
 			result0 = sqrt(x*x*kunitx*kunitx
@@ -323,6 +328,7 @@ int makepk(FFT *fft, PK *pk){
 	}
 
 	for(int i=0; i<pk->N; i++){
+		pk->val[i] = pk->val[i]*pow((pk->k[i]*sqrt(dk)),3.)/2./3.1415926/3.1415926;
 		if(kn[i]!=0) 
 			pk->val[i] /= kn[i];
 //		pk->k[i] = kmin*pow(dk, i);

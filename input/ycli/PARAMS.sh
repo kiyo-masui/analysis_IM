@@ -22,8 +22,8 @@
 #           and "_montecarlo"
 
 export MAP_SIM="sim_15hr_oldmap_str"
-export MAP_SSM="GBT_15hr_map_mapcal_cleaned_sims_noconv"
-export MAP_CLN="GBT_15hr_map_mapcal_cleaned_noconv"
+export MAP_SSM="GBT_15hr_map_oldcal_cleaned_sims_noconv"
+export MAP_CLN="GBT_15hr_map_oldcal_cleaned_noconv"
 export MAP_WGZ="WiggleZ_15hr"
 export MODE="15"
 export HOUR="15"
