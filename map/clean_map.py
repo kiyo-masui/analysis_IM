@@ -229,11 +229,6 @@ class CleanMapMaker(object) :
                         raise ce.DataError("Noise matrix has bad shape.")
                     # In all cases delete the noise object to recover memeory.
                     del noise_inv
-                # Check the clean map for faileur.
-                if not sp.alltrue(sp.isfinite(clean_map)):
-                    msg = ("Non finit entries found in clean map. Solve"
-                           " failed.")
-                    raise RuntimeError(msg)
                 # Write the clean map to file.
                 out_fname = (params['output_root'] + 'clean_map_'
                              + pol_str + band_str + '.npy')
@@ -248,6 +243,13 @@ class CleanMapMaker(object) :
                     algebra.save(noise_diag_fname, noise_diag)
                     all_out_fname_list.append(
                         kiyopy.utils.abbreviate_file_path(noise_diag_fname))
+                # Check the clean map for faileur.
+                if not sp.alltrue(sp.isfinite(clean_map)):
+                    n_bad = sp.sum(sp.logical_not(sp.isfinite(clean_map)))
+                    msg = ("Non finite entries found in clean map. Solve"
+                           " failed. %d out of %d entries bad" 
+                           % (n_bad, clean_map.size)) 
+                    raise RuntimeError(msg)
             # This needs to be added to the new dirty map maker before I can
             # add it here.
             # Finally update the history object.

@@ -1098,7 +1098,7 @@ class Noise(object):
         """
         
         self.initialize_diagonal()
-        self.diagonal[mask_inds] = T_infinity**2
+        self.diagonal[mask_inds] += T_infinity**2
 
     def deweight_time_mean(self, T=T_large**2):
         """Deweights time mean in each channel.
@@ -1285,7 +1285,7 @@ class Noise(object):
                 A.shape = (n_time,) * 2
                 e, v = linalg.eigh(A)
                 e_max = max(e)
-                if not sp.all(e > -1e-7*e_max) or e_max < 0:
+                if not sp.all(e > -1e-10*e_max) or e_max < 0:
                     print e
                     msg = ("Some freq_mode noise components not positive"
                            " definate.")
@@ -1329,12 +1329,7 @@ class Noise(object):
                 axis_names=('time_mode', 'freq', 'time_mode', 'freq'),
                 row_axes=(0, 1), col_axes=(2, 3))
             # Build the matrices.
-            # Add the update mode noise in thier proper space.
-            for ii in range(m):
-                freq_mode_update[ii,:,ii,:] = freq_mode_inv[ii,:,:]
-            for ii in range(q):
-                time_mode_update[ii,:,ii,:] = time_mode_inv[ii,:,:]
-            # Now transform the diagonal noise to this funny space and add
+            # Transform the diagonal noise to this funny space and add
             # it to the update term. Do this one pair of modes at a time
             # to make things less complicated.
             for ii in xrange(m):
@@ -1357,6 +1352,16 @@ class Noise(object):
                                              * diagonal_inv[:,:], 1)
                     time_mode_update[ii,:,jj,:].flat[::n_chan + 1] += \
                             tmp_time_update
+            if False:
+                # XXX Make a copy of these for testing.
+                diag_freq_space = freq_mode_update.copy()
+                diag_time_space = time_mode_update.copy()
+                diag_cross_space = cross_update.copy()
+            # Add the update mode noise in thier proper space.
+            for ii in range(m):
+                freq_mode_update[ii,:,ii,:] += freq_mode_inv[ii,:,:]
+            for ii in range(q):
+                time_mode_update[ii,:,ii,:] += time_mode_inv[ii,:,:]
             # Put all the update terms in one big matrix and invert it.
             update_matrix = sp.empty((n_update, n_update), dtype=float)
             # Top left.
@@ -1374,10 +1379,37 @@ class Noise(object):
             update_matrix[m * n_time:,:m * n_time].flat[...] = \
                 tmp_mat.flat
             update_matrix_inv = linalg.inv(update_matrix)
-            # TODO: Some sort of condition number check here?
-            #if hasattr(self, 'flag'):
-            #    e, v = linalg.eigh(update_matrix)
-            #    print "Update term condition number:", max(e)/min(e)
+            if False:
+                # XXX
+                diag_space = sp.empty((n_update, n_update), dtype=float)
+                # Top left.
+                diag_space[:m * n_time,:m * n_time].flat[...] = \
+                    diag_freq_space.flat
+                # Bottom right.
+                diag_space[m * n_time:,m * n_time:].flat[...] = \
+                    diag_time_space.flat
+                # Top right.
+                diag_space[:m * n_time,m * n_time:].flat[...] = \
+                    diag_cross_space.flat
+                # Bottom left.
+                tmp_mat = sp.swapaxes(diag_cross_space, 0, 2)
+                tmp_mat = sp.swapaxes(tmp_mat, 1, 3)
+                diag_space[m * n_time:,:m * n_time].flat[...] = \
+                    tmp_mat.flat
+                subtraction_term = sp.dot(update_matrix_inv, diag_space)
+                e, v = linalg.eig(subtraction_term)
+                print 1. - max(e.real), ' ',
+                print max(self.diagonal.flat), min(self.diagonal.flat)
+                if 1. - max(e.real) < 1e-7 or max(e.real) < 0.9:
+                    print "Whao!!!"
+                    print 1. - max(e)
+                    print n_time, n_chan, m, q
+                    #time_mod.sleep(300)
+                    #raise NoiseError('Negitive eigenvalue detected.')
+                # TODO: Some sort of condition number check here?
+                #if hasattr(self, 'flag'):
+                #    e, v = linalg.eigh(update_matrix)
+                #    print "Update term condition number:", max(e)/min(e)
             # Copy the update terms back to thier own matrices and store them.
             freq_mode_update.flat[...] = \
                     update_matrix_inv[:m * n_time,:m * n_time].flat
