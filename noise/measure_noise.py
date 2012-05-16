@@ -19,7 +19,10 @@ import utils.misc
 from map.constants import T_infinity, T_small
 
 # XXX
+#import matplotlib
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
 
 
 params_init = {

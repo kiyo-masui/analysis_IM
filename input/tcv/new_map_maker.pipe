@@ -99,11 +99,11 @@ pipe_modules = []
 
 #### First Map making interation ####
 
-from map import dirty_map
-pipe_modules.append(dirty_map.DirtyMapMaker)
+#from map import dirty_map
+#pipe_modules.append(dirty_map.DirtyMapMaker)
 
-from map import clean_map
-pipe_modules.append(clean_map.CleanMapMaker)
+#from map import clean_map
+#pipe_modules.append(clean_map.CleanMapMaker)
 
 
 #### Second Map making iteration ####
@@ -120,11 +120,11 @@ pipe_modules.append(clean_map.CleanMapMaker)
 #from noise import measure_noise
 #pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
-#from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
 #from map import clean_map
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
@@ -236,7 +236,8 @@ cl_IFs = ()
 cl_cal_temperature_files = (os.getenv('GBT_KM') + 'kevin_cal/cal_21.fits',)
 
 # rotate_pol
-rp_input_root = cl_output_root
+rp_input_root = base_dir_main + 'avg_fdg_cal/'+prefix
+#rp_input_root = cl_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
 rp_output_root = base_dir + 'pol_selected/' + prefix
@@ -281,6 +282,7 @@ cm_save_noise_diag = True
 #### Second round of map making #####
 
 # measure gain relative to map.
+#mc2_input_root = base_dir_main + 'rotated_to_I_Q/' + prefix
 mc2_input_root = rp_output_root
 #mc2_file_middles = middles_temp
 mc2_file_middles = file_middles
@@ -292,7 +294,7 @@ mc2_scans = ()
 mc2_IFs = ()
 
 mc2_interpolation = 'cubic'
-mc2_map_polarizations = ('I',)
+mc2_map_polarizations = ('I', )
 mc2_map_bands = cm_bands
 mc2_map_input_root = cm_output_root
 mc2_map_type = 'clean_map_'
@@ -370,7 +372,7 @@ dmA_time_block = 'scan'
 #dmA_n_files_group = 420  # prawn
 dmA_n_files_group = 280  # tpb nodes.
 #dmA_n_files_group = 120
-dmA_frequency_correlations = 'measured'
+dmA_frequency_correlations = 'None'
 #dmA_number_frequency_modes = 3
 dmA_number_frequency_modes = 3  # Probably most appropriate.
 dmA_number_frequency_modes_discard = 1
