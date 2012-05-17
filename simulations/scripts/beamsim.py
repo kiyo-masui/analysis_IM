@@ -5,7 +5,7 @@ from map import beam
 
 from utils import units
 
-import corr21cm
+from simulations import corr21cm
 
 
 
@@ -18,17 +18,20 @@ f1 = 850
 f2 = 650
 nf = 256
 
-z1 = units.nu21 / f1
-z2 = units.nu21 / f2
-
-
 cr = corr21cm.Corr21cm()
 
-## Slices produced by Corr21cm.realisation are equally spaced in
-## redshift (ascending). Obviously this does not map onto regular
-## frequency slices. For the moment, just crudely assume it does (and
-## reverse the ordering to produce ascending in freq).
-rf = cr.realisation(z1, z2, thetax, thetay, nf, nx, ny)[::-1,...]
+cr.x_width = thetax
+cr.y_width = thetay
+cr.x_num = nx
+cr.y_num = ny
+
+cr.nu_lower = f2
+cr.nu_upper = f1
+cr.nu_num = nf
+
+
+
+rf = cr.getfield()
 
 
 a = algebra.make_vect(rf, axis_names = ('freq', 'ra', 'dec'))

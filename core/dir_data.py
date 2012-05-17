@@ -2,13 +2,92 @@
 
 import os
 import re
+import glob
 
 _data_dir = os.getenv('GBT10B_DATA')
 _kiyo_data_dir = os.getenv('GBT10B_KM')+'data/'
 # This line is cheating, will break for other people.
 _guppi_data_dir = os.getenv('GBT10B_KM') + 'guppi_data/'
 
-def get_data_files(session_list, field, type=None) :
+field_name_versions = {
+    'wigglez15hr' : ['wigglez15hr', '15hr', 'wigglez15hrst'],
+    'wigglez22hr' : ['wigglez22hr', '22hr', 'wigglez22hrst'],
+    'wigglez1hr' : ['wigglez1hr', '1hr', 'wigglez1hrst', 'wigglez1hr_centre'],
+    '3C286' : ['3C286', '3c286'],
+    '3C348' : ['3C348', '3c348'],
+    '3C48' : ['3C48', '3c48'],
+    '3C67' : ['3C67', '3c67'],
+}
+
+data_dir = os.getenv('GBT_DATA')
+
+
+def get_data_files(session_list, project='GBT10B_036', field='15hr',
+                   type='ralongmap'):
+    """Gets a list of data file names matching specified criteria.
+    
+    File names are retrieved for based on speified criteria.  The names include
+    one level of directory name (this is the project name) but have the
+    extension chopped off.
+
+    Parameters
+    ----------
+    session_list : list of integers
+        What sessions to use.
+    project : string
+        What project to use.
+    field : string
+        What source to use.  This can be specified in a variety of ways ('15hr,
+        'wigglez15hr', 'wigglez1hr_centre', '3c67', '3C67' should all work.)
+    type : string
+        Scan type to use.
+
+    Returns
+    -------
+    file_list : list of strings
+        List of file names matching the criteria.  In includes the project name
+        directory, and thus uniquly identifies the data files.
+
+    Examples
+    --------
+    >>> get_data_files([89], project='GBT10B_036', field='1hr',
+                       type='ralongmap')
+    ["GBT10B_036/89_wigglez1hr_centre_ralongmap_82-91", ...]
+    >>> get_data_files([72], project='GBT10B_036',field='3C48',
+                       type='onoff')
+    ["GBT10B_036/72_3C48_onoff_8-9", ...]
+
+    Notes
+    -----
+    You can use unix wildcards in the `type` argument, but nowhere else.
+    """
+    
+    for this_field, name_versions in field_name_versions.iteritems():
+        if field in name_versions:
+            field = this_field
+            break
+    else:
+        raise ValueError("Invalid field name.")
+    out_file_name_list = []
+    for name_version in field_name_versions[field]:
+        template = project + "/%02d_" + name_version + "_" + type + "_*.fits"
+        template = data_dir + '/' + template
+        for session in session_list:
+            this_session_template = template%session
+            files_this_session = glob.glob(this_session_template)
+            for file_name in files_this_session:
+                start_ind = file_name.find(project)
+                formatted = file_name[start_ind:]
+                formatted = formatted.split('.')[0]
+                out_file_name_list.append(formatted)
+    return out_file_name_list
+
+
+
+
+#### All depricated. ####
+
+def get_data_files_depricated(session_list, field, type=None) :
     """Gets a list of the data file names for each session and field.
 
     Can pass a list of sessions (as integers) but only a single field.

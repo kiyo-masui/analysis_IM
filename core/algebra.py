@@ -59,12 +59,14 @@ import os
 import sys
 import warnings
 from functools import wraps
+import operator
 
 import scipy as sp
 import numpy as np
 import numpy.lib.format as npfor
 from numpy.lib.utils import safe_eval
-import operator
+
+import utils.cubic_conv_interpolation as cci
 
 # TODO:
 # when submitted as batch on Sunnyvale, the PYTHONPATH seems to get clobbered
@@ -633,12 +635,16 @@ class alg_object(object) :
         set_axis_info
         get_axis
         """
-
+        
+        if isinstance(alg_obj, dict):
+            info = alg_obj
+        else:
+            info = alg_obj.info
         for axis in self.axes :
-            if axis in alg_obj.axes :
+            if axis in info["axes"] :
                 try :
-                    centre = alg_obj.info[axis + '_centre']
-                    delta = alg_obj.info[axis + '_delta']
+                    centre = info[axis + '_centre']
+                    delta = info[axis + '_delta']
                 except KeyError :
                     continue
                 self.info[axis + '_centre'] = centre
@@ -682,16 +688,23 @@ class alg_object(object) :
         This method gets the interpolation weights for interpolating the
         alg_object is some subset of it's dimensions.  This provides the
         freedom in the uninterpolated dimensions to either slice or otherwise
-        index the arry.
+        index the array.
+
+		Note: When using the cubic convolution interpolation, the points
+		may out of bounds. That is how the algorithm works when interpolating
+		right beside a boundary. If the value of those nodes are needed, use
+		'get_value' from the cci helper module.
+		Also, some weights will be negative as needed by the algorithm.
 
         Parameters
         ----------
-        axes : int or sequency of ints (length N)
+        axes : int or sequence of ints (length N)
             Over which axes to interpolate.
         coord : float or sequence of floats (length N)
             The coordinate location to interpolate at.
         kind : string
-            The interpolation algorithm.  Options are: 'linear'.
+            The interpolation algorithm.  Options are: 'linear' or 'nearest'.
+			And now 'cubic' too!
 
         Returns
         -------
@@ -732,7 +745,7 @@ class alg_object(object) :
                                "interpolation range.  axis: " + str(axis_ind)
                                + ", coord: " + str(value) + ", range: "
                                + str((min(axis), max(axis))))
-                    raise ValueError(message)
+                    raise ce.DataError(message)
                 distances = abs(axis - value)
                 min_ind = distances.argmin()
                 single_inds[ii, 0] = min_ind
@@ -743,7 +756,6 @@ class alg_object(object) :
                 normalized_distance[ii, 1] = distances[min_ind]/delta
             # Now that we have all the distances, figure out all the weights.
             for ii in range(m) :
-                index = []
                 temp_ii = ii
                 weight = 1.0
                 for jj in range(n) :
@@ -751,10 +763,61 @@ class alg_object(object) :
                     weight *= (1.0 - normalized_distance[jj, temp_ii%2])
                     temp_ii = temp_ii//2
                 weights[ii] = weight
-            return points, weights
+        elif kind == 'nearest':
+            # Only one grid point to consider and each axis is independant.
+            m = 1
+            weights = sp.ones(1, dtype=int)
+            points = sp.empty((1, n), dtype=int)
+            # Loop over the axes we are interpolating.
+            for ii in range(n):
+                axis_name = self.axes[axes[ii]]
+                axis_centre = self.info[axis_name + "_centre"]
+                axis_delta = self.info[axis_name + "_delta"]
+                index = (coord[ii] - axis_centre)/axis_delta
+                index += self.shape[axes[ii]]//2
+                if index < 0 or index > self.shape[axes[ii]] - 1:
+                    message = ("Interpolation coordinate outside of "
+                               "interpolation range.  axis: " + str(axes[ii])
+                               + ", coord: " + str(coord[ii]) + ".")
+                    raise ce.DataError(message)
+                points[0, ii] = round(index)
+        elif kind == 'cubic':
+            # Make sure the given point is an array.
+            pnt = sp.array(coord)
+            # Get the array containing the first value in each dimension.
+            # And get the arrays of deltas for each dimension.
+            x0 = []
+            step_sizes = []
+            for ax in axes:
+                ax_name = self.axes[ax]
+                x0.append(self.get_axis(ax_name)[0])
+                ax_delta_name = ax_name + "_delta"
+                step_sizes.append(self.info[ax_delta_name])
+            x0 = sp.array(x0)
+            step_sizes = sp.array(step_sizes)
+            # Get the maximum possible index in each dimension in axes.
+            max_inds = np.array(self.shape) - 1
+            max_needed_inds = []
+            for ax in axes:
+                max_needed_inds.append(max_inds[ax])
+            max_inds = np.array(max_needed_inds)
+            # If there are less than four elements along some dimension
+            # then raise an error since cubic conv won't work.
+            too_small_axes = []
+            for i in range(len(max_inds)):
+                if max_inds[i] < 3:
+                    too_small_axes.append(axes[i])
+            if not (len(too_small_axes) == 0):
+                msg = "Need at least 4 points for cubic interpolation " + \
+                      "on axis (axes): " + str(too_small_axes)
+                raise ce.DataError(msg)
+            # Get the nodes needed and their weights.
+            points, weights = cci.interpolate_weights(axes, pnt, x0, \
+                                  step_sizes, max_inds)
         else :
             message = "Unsupported interpolation algorithm: " + kind
             raise ValueError(message)
+        return points, weights
         
     def slice_interpolate(self, axes, coord, kind='linear') :
         """Interpolate along a subset of dimensions.
@@ -769,7 +832,7 @@ class alg_object(object) :
         coord : float or sequence of floats (length N)
             The coordinate location to interpolate at.
         kind : string
-            The interpolation algorithm.  Options are: 'linear'.
+            The interpolation algorithm.  Options are: 'linear', 'nearest'.
         
         Returns
         -------
@@ -787,7 +850,7 @@ class alg_object(object) :
         if n != len(coord) :
             message = "axes and coord parameters must be same length."
             raise ValueError(message)
-        # Get the contributing points and thier wiehgts.
+        # Get the contributing points and their weights.
         points, weights = self.slice_interpolate_weights(axes, coord, kind)
         # Sum up the points
         q = points.shape[0]
@@ -906,6 +969,7 @@ class vect(alg_object) :
         """Get the shape of the represented matrix (vector)."""
         _check_axis_names(self)
         return (self.size,)
+
 
 def _vect_class_factory(base_class) :
     """Internal class factory for making a vector class that inherits from
@@ -1305,7 +1369,7 @@ class mat(alg_object) :
 
         Examples
         --------
-        >>> for index in mat.iter_row_axes :
+        >>> for index in mat.iter_row_index() :
         >>>     sub_arr = mat[index]
         >>>     sub_arr.shape == mat.col_shape()
         True
@@ -1324,7 +1388,7 @@ class mat(alg_object) :
 
         Examples
         --------
-        >>> for index in mat.iter_col_axes :
+        >>> for index in mat.iter_col_index() :
         >>>     sub_arr = mat[index]
         >>>     sub_arr.shape == mat.row_shape()
         True
@@ -1396,6 +1460,86 @@ class mat(alg_object) :
             out_mat[row_start:row_start + block_shape[0], 
                     col_start:col_start + block_shape[1]] = mat_block
         return out_mat
+
+    def mat_transpose(self):
+        """Transpose the matrix.
+
+        Returns an `mat` object with rows and columns exchanged.  The
+        underlying array is not modified.
+
+        Returns
+        -------
+        transposed_matrix : mat object
+            A view of `self`, with different meta data such that the matrix is
+            transposed.
+        """
+        
+        # Make a copy of the info dictionary.
+        info = dict(self.info)
+        # Make a view of self.
+        out = self.view()
+        # Replace the info dictionary (which is a reference to self.info) with
+        # the copy.
+        out.info = info
+        # Transpose the axes.
+        out.cols = self.rows
+        out.rows = self.cols
+        return out
+
+    def index_axis(self, axis, index):
+        """Remove an axis by indexing with an integer.
+        
+        Returns a view of the `mat` with an axis removed by indexing it with
+        the passed integer.  The output retains it's `mat` characteristics,
+        which are updated to reflect the removal of the index.
+
+        Parameters
+        ----------
+        axis : integer
+            Axis to remove.
+        index : integer
+            Which entry to choose from `axis`.
+
+        Returns
+        -------
+        out : mat or vect
+            If the removal of the axis deplete either the rows or columns, a
+            vect object is returned.  Otherwise a mat is returned.
+        """
+        
+        # Suport negitive indicies.
+        if axis < 0:
+            axis = self.ndim + axis
+        # Get copies of rows and colums ommitting the removed axis.  Also, any
+        # indecies that are greater than axis, need to decremented.
+        rows = list(self.rows)
+        if axis in rows:
+            rows.remove(axis)
+        cols = list(self.cols)
+        if axis in cols:
+            cols.remove(axis)
+        for ii in range(len(rows)):
+            if rows[ii] > axis:
+                rows[ii] -= 1
+        for ii in range(len(cols)):
+            if cols[ii] > axis:
+                cols[ii] -= 1
+        rows = tuple(rows)
+        cols = tuple(cols)
+        # New name attribute.
+        names = self.axes[:axis] + self.axes[axis+1:]
+        # Index the array.
+        slice_index = [slice(None)] * self.ndim
+        slice_index[axis] = index
+        out = sp.asarray(self[slice_index])
+        # Set the matrix meta data.
+        if not rows or not cols:
+            out = make_vect(out, axis_names=names)
+        else:
+            out = make_mat(out, axis_names=names, row_axes=rows, col_axes=cols)
+        out.copy_axis_info(self)
+        return out
+
 
 def _mat_class_factory(base_class) :
     """Internal class factory for making a matrix class that inherits from
@@ -1470,7 +1614,7 @@ def dot(arr1, arr2, check_inner_axes=True) :
     shape2 = arr2.mat_shape()
 
     if shape1[-1] != shape2[0] :
-        raise ValueError("Matrix dimensions incompatible for matrix ",
+        raise ValueError("Matrix dimensions incompatible for matrix "
                          "multiplication.")
     # Matrix-vector product case.
     if len(shape1) == 2 and len(shape2) ==1 :
@@ -1491,7 +1635,6 @@ def dot(arr1, arr2, check_inner_axes=True) :
                     raise ce.DataError("Matrix column axis names are not the "
                                        "same as vector axes names and strict "
                                        "checking has been requested.")
-
         # Figure out what the output vector is going to look like.
         out_shape = [arr1.shape[ii] for ii in range(arr1.ndim)
                      if ii in arr1.info['rows']]
@@ -1508,11 +1651,358 @@ def dot(arr1, arr2, check_inner_axes=True) :
             out_flat[ii*block_shape[0]:(ii+1)*block_shape[0]] = \
                 sp.dot(block, arr2_flat[ii*block_shape[1]:
                                         (ii+1)*block_shape[1]])
-            
         return out_vect
     else :
         raise NotImplementedError("Matrix-matrix multiplication has not been "
                                   "Implemented yet.")
+
+def partial_dot(left, right):
+    """Perform matrix multiplication on some subset of the axes.
+    
+    This is similar to a numpy `tensordot` but it is aware of the matrix and
+    vector nature of the inputs and returns appropriate objects.  It decides
+    which axes to 'dot' based on the axis names.
+
+    If a `vect` is passed, it is treated as `mat` with one row if it's the
+    first arguments and a matrix with one column if it's the second.  If the
+    output matrix has either only a single row or a single column, it is cast
+    as a `vect`.
+
+    This function can properly deal with block diagonal structure and axes
+    sorted in any order.
+
+    The axes in the output array as sorted such in order of block diagonal axes
+    then row-only axes then col-only axes.
+
+    Parameters
+    ----------
+    left : mat or vect
+    right : mat or vect
+    
+    Returns
+    -------
+    out : mat or vect
+        Tensor product of `left` and `right`, with any named axes appearing in
+        both `left`'s columns and `right`'s rows contracted.
+    """
+    
+    # Figure out what kind of object the inputs are.
+    msg = "Inputs must be either mat or vect objects."
+    if isinstance(left, mat):
+        left_rows = list(left.rows)
+        left_cols = list(left.cols)
+    elif isinstance(left, vect):
+        left_rows = []
+        left_cols = range(left.ndim)
+    else:
+        raise TypeError(msg)
+    if isinstance(right, mat):
+        right_rows = list(right.rows)
+        right_cols = list(right.cols)
+    elif isinstance(right, vect):
+        right_rows = range(right.ndim)
+        right_cols = []
+    else:
+        raise TypeError(msg)
+    # Find axes that are block diagonal make copies of the rows and cols that
+    # ommits the block diagonal ones.
+    left_cols_only = list(left_cols)
+    left_rows_only = list(left_rows)
+    right_cols_only = list(right_cols)
+    right_rows_only = list(right_rows)
+    left_diag = []
+    left_diag_names = []
+    left_col_only_names = []
+    for axis in left_cols:
+        if axis in left_rows:
+            left_diag.append(axis)
+            left_diag_names.append(left.axes[axis])
+            left_rows_only.remove(axis)
+            left_cols_only.remove(axis)
+        else :
+            left_col_only_names.append(left.axes[axis])
+    right_diag = []
+    right_diag_names = []
+    right_row_only_names = []
+    for axis in list(right_rows):
+        if axis in right_cols:
+            right_diag.append(axis)
+            right_diag_names.append(right.axes[axis])
+            right_rows_only.remove(axis)
+            right_cols_only.remove(axis)
+        else:
+            right_row_only_names.append(right.axes[axis])
+    # Divide all axes into groups based on what we are going to do with them.
+    # To not be dotted.
+    left_notdot = []
+    # Block diagonal axis to not dot.
+    left_notdot_diag = []
+    # To be dotted with a normal axis.
+    left_todot = []
+    right_todot = []
+    # To be dotted with a block diagonal axis.
+    left_todot_with_diag = []
+    right_todot_with_diag = []
+    # Block diagonal axes to be dotted with a normal axis.
+    left_todot_diag = []
+    right_todot_diag = []
+    # Block diagonal axes to be dotted with a block diagonal axis.
+    left_todot_diag_diag = []
+    right_todot_diag_diag = []
+    for axis in left_cols:
+        axis_name = left.axes[axis]
+        if (axis_name in left_col_only_names 
+            and axis_name not in right_row_only_names
+            and axis_name not in right_diag_names):
+            left_notdot.append(axis)
+        elif (axis_name in left_diag_names 
+              and axis_name not in right_row_only_names
+              and axis_name not in right_diag_names):
+            left_notdot_diag.append(axis)
+        elif (axis_name in left_col_only_names 
+              and axis_name in right_row_only_names):
+            left_todot.append(axis)
+            right_todot.append(right.axes.index(axis_name))
+        elif (axis_name in left_diag_names 
+              and axis_name in right_row_only_names):
+            left_todot_diag.append(axis)
+            right_todot_with_diag.append(right.axes.index(axis_name))
+        elif (axis_name in left_col_only_names 
+              and axis_name in right_diag_names):
+            left_todot_with_diag.append(axis)
+            right_todot_diag.append(right.axes.index(axis_name))
+        elif axis_name in left_diag_names and axis_name in right_diag_names:
+            left_todot_diag_diag.append(axis)
+            right_todot_diag_diag.append(right.axes.index(axis_name))
+    right_notdot = list(set(right_rows_only) - set(right_todot)
+                        - set(right_todot_with_diag))
+    right_notdot.sort()
+    right_notdot_diag = list(set(right_diag) - set(right_todot_diag)
+                             - set(right_todot_diag_diag))
+    right_notdot_diag.sort()
+    # Need shapes and names for all of these.
+    left_notdot_shape = [left.shape[axis] for axis in left_notdot]
+    left_notdot_names = [left.axes[axis] for axis in left_notdot]
+    left_notdot_diag_shape = [left.shape[axis] for axis in left_notdot_diag]
+    left_notdot_diag_names = [left.axes[axis] for axis in left_notdot_diag]
+    left_todot_shape = [left.shape[axis] for axis in left_todot]
+    left_todot_names = [left.axes[axis] for axis in left_todot]
+    left_todot_with_diag_shape = [left.shape[axis] for axis in
+                                  left_todot_with_diag]
+    left_todot_with_diag_names = [left.axes[axis] for axis in
+                                  left_todot_with_diag]
+    left_todot_diag_shape = [left.shape[axis] for axis in left_todot_diag]
+    left_todot_diag_names = [left.axes[axis] for axis in left_todot_diag]
+    left_todot_diag_diag_shape = [left.shape[axis] for axis in
+                                  left_todot_diag_diag]
+    left_todot_diag_diag_names = [left.axes[axis] for axis in
+                                  left_todot_diag_diag]
+    left_rows_only_shape = [left.shape[axis] for axis in left_rows_only]
+    left_rows_only_names = [left.axes[axis] for axis in left_rows_only]
+    right_notdot_shape = [right.shape[axis] for axis in right_notdot]
+    right_notdot_names = [right.axes[axis] for axis in right_notdot]
+    right_notdot_diag_shape = [right.shape[axis] 
+                               for axis in right_notdot_diag]
+    right_notdot_diag_names = [right.axes[axis] for axis in right_notdot_diag]
+    right_todot_shape = [right.shape[axis] for axis in right_todot]
+    right_todot_names = [right.axes[axis] for axis in right_todot]
+    right_todot_with_diag_shape = [right.shape[axis] for axis in
+                                  right_todot_with_diag]
+    right_todot_with_diag_names = [right.axes[axis] for axis in
+                                  right_todot_with_diag]
+    right_todot_diag_shape = [right.shape[axis] for axis in right_todot_diag]
+    right_todot_diag_names = [right.axes[axis] for axis in right_todot_diag]
+    right_todot_diag_diag_shape = [right.shape[axis] for axis in
+                                  right_todot_diag_diag]
+    right_todot_diag_diag_names = [right.axes[axis] for axis in
+                                  right_todot_diag_diag]
+    right_cols_only_shape = [right.shape[axis] for axis in right_cols_only]
+    right_cols_only_names = [right.axes[axis] for axis in right_cols_only]
+    # Figure out the shape, names, rows and cols of the output.
+    out_shape = (left_notdot_diag_shape + left_todot_diag_diag_shape
+                 + right_notdot_diag_shape + left_todot_diag_shape
+                 + left_rows_only_shape + right_notdot_shape 
+                 + left_notdot_shape + right_todot_diag_shape\
+                 + right_cols_only_shape)
+    out_names = (left_notdot_diag_names + left_todot_diag_diag_names
+                 + right_notdot_diag_names + left_todot_diag_names
+                 + left_rows_only_names + right_notdot_names
+                 + left_notdot_names + right_todot_diag_names
+                 + right_cols_only_names)
+    # First add the block diagonal axes as both rows and columns.
+    out_rows = range(len(left_notdot_diag) + len(left_todot_diag_diag)
+                     + len(right_notdot_diag))
+    out_cols = list(out_rows)
+    # Now add the others.
+    out_rows += range(len(out_rows), len(out_rows) + len(left_todot_diag)
+                      + len(left_rows_only) + len(right_notdot))
+    out_cols += range(len(out_rows), len(out_shape))
+    # Output data type.
+    # This is no good because it crashes for length 0 arrays.
+    #out_dtype = (left.flat[[0]] * right.flat[[0]]).dtype
+    # There are functions that do this in higher versions of numpy.
+    out_dtype = sp.dtype(float)
+    # Allowcate memory.
+    out = sp.empty(out_shape, dtype=out_dtype)
+    # All the block diagonal axes will be treated together. Get the global
+    # shape of them.
+    all_diag_shape = (left_notdot_diag_shape + left_todot_diag_diag_shape 
+                      + right_notdot_diag_shape + left_todot_diag_shape 
+                      + right_todot_diag_shape)
+    n_diag_axes = len(all_diag_shape)
+    all_diag_size = 1
+    for s in all_diag_shape:
+        all_diag_size *= s
+    # Each of these block diagonal axes are associated with different axes in
+    # the input and output arrays.  Figure out the associations for each of
+    # them.  These arrays are the length of the number of diagonal axes and
+    # each entry refers to an axis in that array.  If the axis does not apply
+    # to that array, put None.
+    out_diag_inds = []
+    left_diag_inds = []
+    right_diag_inds = []
+    tmp_n_out_axes_passed = 0
+    for ii in range(len(left_notdot_diag)):
+        left_diag_inds.append(left_notdot_diag[ii])
+        right_diag_inds.append(None)
+        out_diag_inds.append(ii)
+    tmp_n_out_axes_passed += len(left_notdot_diag)
+    for ii in range(len(left_todot_diag_diag)):
+        left_diag_inds.append(left_todot_diag_diag[ii])
+        right_diag_inds.append(right_todot_diag_diag[ii])
+        out_diag_inds.append(ii + tmp_n_out_axes_passed)
+    tmp_n_out_axes_passed += len(left_todot_diag_diag)
+    for ii in range(len(right_notdot_diag)):
+        left_diag_inds.append(None)
+        right_diag_inds.append(right_notdot_diag[ii])
+        out_diag_inds.append(ii + tmp_n_out_axes_passed)
+    tmp_n_out_axes_passed += len(right_notdot_diag)
+    for ii in range(len(left_todot_diag)):
+        left_diag_inds.append(left_todot_diag[ii])
+        right_diag_inds.append(right_todot_with_diag[ii])
+        out_diag_inds.append(ii + tmp_n_out_axes_passed)
+    tmp_n_out_axes_passed += (len(left_todot_diag) + len(left_rows_only) 
+                              + len(right_notdot) + len(left_notdot))
+    for ii in range(len(right_todot_diag)):
+        left_diag_inds.append(left_todot_with_diag[ii])
+        right_diag_inds.append(right_todot_diag[ii])
+        out_diag_inds.append(ii + tmp_n_out_axes_passed)
+    # Once we index all the diagonal axes, the ones we want to dot will be in
+    # the wrong place.  Find the location of the axes we'll need in the new
+    # array.
+    left_sliced_rows_only = list(left_rows_only)
+    left_sliced_notdot = list(left_notdot)
+    left_sliced_todot = list(left_todot)
+    for diag_axis in left_diag_inds:
+        if not diag_axis is None:
+            for ii in range(len(left_rows_only)):
+                if diag_axis < left_rows_only[ii]:
+                    left_sliced_rows_only[ii] -= 1
+            for ii in range(len(left_notdot)):
+                if diag_axis < left_notdot[ii]:
+                    left_sliced_notdot[ii] -= 1
+            for ii in range(len(left_todot)):
+                if diag_axis < left_todot[ii]:
+                    left_sliced_todot[ii] -= 1
+    right_sliced_cols_only = list(right_cols_only)
+    right_sliced_notdot = list(right_notdot)
+    right_sliced_todot = list(right_todot)
+    for diag_axis in right_diag_inds:
+        if not diag_axis is None:
+            for ii in range(len(right_cols_only)):
+                if diag_axis < right_cols_only[ii]:
+                    right_sliced_cols_only[ii] -= 1
+            for ii in range(len(right_notdot)):
+                if diag_axis < right_notdot[ii]:
+                    right_sliced_notdot[ii] -= 1
+            for ii in range(len(right_todot)):
+                if diag_axis < right_todot[ii]:
+                    right_sliced_todot[ii] -= 1
+    # Once we slice the arrays to get one block, we will permute the axes to be
+    # in the proper order for dotting.
+    left_sliced_permute = (left_sliced_rows_only + left_sliced_notdot
+                           + left_sliced_todot)
+    right_sliced_permute = (right_sliced_todot + right_sliced_notdot
+                            + right_sliced_cols_only)
+    # Then we'll reshape both into 2D arrays (matricies).
+    left_sliced_reshape = (sp.prod(left_rows_only_shape + left_notdot_shape),
+                           sp.prod(left_todot_shape))
+    right_sliced_reshape = (sp.prod(right_todot_shape),
+                            sp.prod(right_notdot_shape +
+                                    right_cols_only_shape))
+    # After the dot, we will neet to reshape back.
+    out_sliced_reshape = tuple(left_rows_only_shape + left_notdot_shape
+                               + right_notdot_shape + right_cols_only_shape)
+    # And finally we will need to permute the out axes.
+    out_sliced_permute = range(len(left_rows_only))
+    out_sliced_permute += range(len(left_rows_only) + len(left_notdot_shape),
+                                len(left_rows_only) + len(left_notdot_shape) 
+                                + len(right_notdot))
+    out_sliced_permute += range(len(left_rows_only), len(left_rows_only)
+                                + len(left_notdot))
+    out_sliced_permute += range(len(out_sliced_reshape)- len(right_cols_only),
+                                len(out_sliced_reshape))
+    # Create an index for each of left, right and out.
+    left_slice = [slice(None)] * left.ndim
+    right_slice = [slice(None)] * right.ndim
+    out_slice = [slice(None)] * out.ndim
+    # Flags for corner cases of 0D arrays.
+    left_scalar_flag = False
+    right_scalar_flag = False
+    # Now we loop over all the block diagonal axes.
+    for ii in xrange(all_diag_size):
+        # Figure out exactly which blocks we are dealing with.
+        tmp_ii = ii
+        for kk in xrange(n_diag_axes - 1, -1, -1):
+            this_index = tmp_ii % all_diag_shape[kk]
+            out_slice[out_diag_inds[kk]] = this_index
+            if not left_diag_inds[kk] is None:
+                left_slice[left_diag_inds[kk]] = this_index
+            if not right_diag_inds[kk] is None:
+                right_slice[right_diag_inds[kk]] = this_index
+            tmp_ii = tmp_ii // all_diag_shape[kk]
+        this_left = left[tuple(left_slice)]
+        this_right = right[tuple(right_slice)]
+        # Permute and reshape the axes so the fast dot function can be used.
+        # Corner case, if this_left or this_right are scalars (0D arrays).
+        # TODO: Really these flags can be set outside the loop with a few more
+        # lines of code.
+        if ii == 0:
+            if this_left.ndim == 0:
+                left_scalar_flag = True
+            if this_left.ndim == 0 and this_right.ndim == 0:
+                right_scalar_flag = True
+        if not left_scalar_flag:
+            this_left = this_left.transpose(left_sliced_permute)
+            this_left = sp.reshape(this_left, left_sliced_reshape)
+        if not right_scalar_flag:
+            this_right = this_right.transpose(right_sliced_permute)
+            this_right = sp.reshape(this_right, right_sliced_reshape)
+        # Dot them.
+        if left_scalar_flag or right_scalar_flag:
+            this_out = this_left * this_right
+        else:
+            this_out = sp.dot(this_left, this_right)
+        # Reshape, permute and copy to the output.
+        if not (left_scalar_flag and right_scalar_flag):
+            this_out.shape = out_sliced_reshape
+            this_out = this_out.transpose(out_sliced_permute)
+        out[tuple(out_slice)] = this_out
+    # XXX There is a bug where this crashes for certain cases if these lines
+    # are before the loop.
+    if not out_rows or not out_cols:
+        out = make_vect(out, out_names)
+    else:
+        out = make_mat(out, axis_names=out_names, row_axes=out_rows,
+                       col_axes=out_cols)
+    return out
+
+def empty_like(obj) :
+    """Create a new algebra object with uninitialized data but otherwise the
+    same as the passed object."""
+
+    out = sp.empty_like(obj)
+    return as_alg_like(out, obj)
 
 def zeros_like(obj) :
     """Create a new algebra object full of zeros but otherwise the same 
@@ -1539,6 +2029,8 @@ def as_alg_like(array, obj):
         Algebra object from which propertise should be copied.
     """
     
+    if not isinstance(obj, alg_object):
+        raise TypeError("Object to mimic must be an `alg_object`.")
     out = array
     out = info_array(out)
     out.info = dict(obj.info)
@@ -1552,6 +2044,7 @@ def as_alg_like(array, obj):
     return out
 
 
+# TODO: These need scipy standard documentation.
 def array_summary(array, testname, axes, meetall=False, identify_entries=True):
     """helper function for summarizing arrays
     meetall: prints those entries for which all values in the slice meet the
@@ -1574,13 +2067,10 @@ def array_summary(array, testname, axes, meetall=False, identify_entries=True):
             else:
                 print "has " + testname + ": " + \
                       repr(np.where(match_count.flatten() != 0))
-
             print "total " + testname + "s: " + repr(total_matching)
-
         print "-" * 80
     else:
         print "There are no " + testname + " entries"
-
 
 def compressed_array_summary(array, name, axes=[1, 2], extras=False):
     """print various summaries of arrays compressed along specified axes"""
@@ -1599,5 +2089,4 @@ def compressed_array_summary(array, name, axes=[1, 2], extras=False):
         print sum_nu.flatten()
         print min_nu.flatten()
         print max_nu.flatten()
-
     print ""

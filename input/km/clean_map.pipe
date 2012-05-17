@@ -1,0 +1,58 @@
+# Pipeline file for guppi data.
+
+import os
+
+from core import dir_data
+import scipy as sp
+
+
+field = '15hr'
+base_dir = os.getenv('GBT_OUT')
+data_dir = os.getenv('GBT_DATA')
+prefix = ''
+map_prefix = '_calib_' + field + '_' + '41-73' + '_'
+map_root = base_dir + 'maps/apr16.2012/'
+
+
+pipe_modules = []
+pipe_processes = 10
+
+from map import clean_map
+
+pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+cmA_input_root = map_root + 'comb2_A' + map_prefix
+cmA_output_root = cmA_input_root
+cmA_save_noise_diag = True
+cmA_polarizations = ('I',)
+cmA_bands = (-1,)
+
+pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+cmB_input_root = map_root + 'comb2_B' + map_prefix
+cmB_output_root = cmB_input_root
+cmB_save_noise_diag = True
+cmB_polarizations = ('I',)
+cmB_bands = (-1,)
+
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+cmC_input_root = map_root + 'comb_C' + map_prefix
+cmC_output_root = cmC_input_root
+cmC_save_noise_diag = True
+cmC_polarizations = ('I',)
+cmC_bands = (-1,)
+
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
+cmD_input_root = map_root + 'comb_D' + map_prefix
+cmD_output_root = cmD_input_root
+cmD_save_noise_diag = True
+cmD_polarizations = ('I',)
+cmD_bands = (-1,)
+
+#pipe_modules.append((clean_map.CleanMapMaker, ('cm_all_', 'cm_')))
+cm_all_input_root = map_root + 'comb_all' + map_prefix
+cm_all_output_root = cm_all_input_root
+cm_all_save_noise_diag = True
+cm_all_polarizations = ('I',)
+cm_all_bands = (-1,)
+
+
+
