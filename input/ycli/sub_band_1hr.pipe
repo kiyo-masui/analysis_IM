@@ -43,17 +43,18 @@ middles_d = middles_firs[3*n_files//4:n_files]
 # 1hr: RA center = 13.0, DEC center = 1.85, Pixel spacing = 0.0627, map shape = (161,83)
 #      adjusted to (140,81) due to memory limits.
 
-map_centre = (217.87, 2.0)
+
+map_centre = (13.0, 1.85)
 # For maps where performace isn't important.
 #map0_shape = (100, 60)
 #map0_spacing = .040
-map0_shape = (86, 48)
-map0_spacing = .050
+map0_shape = (161, 83)
+map0_spacing = .0627
 #map0_shape = (78, 43)
 #map0_spacing = .0627
 # Performance limited maps.
-map_shape = (70, 38)
-map_spacing = .07
+map_shape = (161, 83)
+map_spacing = .0627
 
 base_dir_main = os.getenv('GBT_OUT')
 base_dir = os.getenv("YICHAO_WORK_MAP")
@@ -76,11 +77,11 @@ pipe_modules = []
 
 #### Calibration ####
 
-from time_stream import flag_data
-pipe_modules.append(flag_data.FlagData)
+#from time_stream import flag_data
+#pipe_modules.append(flag_data.FlagData)
 
-from time_stream import rebin
-pipe_modules.append(rebin.Rebin)
+#from time_stream import rebin
+#pipe_modules.append(rebin.Rebin)
 
 #from time_stream import band_stop
 #pipe_modules.append(band_stop.BandStop)
@@ -130,11 +131,11 @@ pipe_modules.append(rebin.Rebin)
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
-#from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
 
 
 #### Parameters for the various modules. ####
@@ -252,7 +253,8 @@ cl_IFs = ()
 cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
 
 # rotate_pol
-rp_input_root = cl_output_root
+#rp_input_root = cl_output_root
+rp_input_root = fgc_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
 rp_output_root = base_dir + 'pol_selected/' + prefix

@@ -83,7 +83,7 @@ params_init = {
 
 	'boxshape' : (60,12,6),
 	'boxunit' : 15., # in unit Mpc h-1
-	'discrete' : 3,
+	'discrete' : 3.,
 	'Xrange' : (1400,),
 	'Yrange' : (-6*15,6*15),
 	'Zrange' : (0.,6*15),

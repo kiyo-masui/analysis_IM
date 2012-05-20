@@ -156,7 +156,7 @@ def fill(params, imap, nmap, mmap=None):
 	#print box_y.shape
 	#print box_z.shape
 
-	boxshape = np.array(box.shape)*box_disc
+	boxshape = np.array(box.shape)*int(box_disc)
 
 	boxinf0 = [0, 0, 0]
 	boxinf0 = np.array(boxinf0)

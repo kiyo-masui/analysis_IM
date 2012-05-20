@@ -21,6 +21,8 @@
 #           choose their "_delta_binned_data", "_delta_mock",
 #           and "_montecarlo"
 
+
+#export MAP_SIM="sim_15hr_oldmap_ideal"
 export MAP_SIM="sim_15hr_oldmap_str"
 export MAP_SSM="GBT_15hr_map_oldcal_cleaned_sims_noconv"
 export MAP_CLN="GBT_15hr_map_oldcal_cleaned_noconv"

@@ -5,6 +5,13 @@ int fillingf(FillConf *conf){
 	double disc = ((double)conf->nbox_x)/conf->boxshape[0];
 	//printf("\tdisc = %lg\n", disc);
 	//printf("\tbox j = %d\n", conf->boxinf1[2]);
+    //int pixl_num = 
+    //    (conf->boxinf1[0] - conf->boxinf0[0]) *
+    //    (conf->boxinf1[1] - conf->boxinf0[1]) *
+    //    (conf->boxinf1[2] - conf->boxinf0[2]) ;
+    //double *box_cont = (double*)malloc( pixl_num * sizeof(double));
+    //for (int i=0; i<pixl_num; i++)
+    //    box_cont[i] = 0.;
 
 	for (int i=conf->boxinf0[0]; i<conf->boxinf1[0]; i++)
 		for (int j=conf->boxinf0[1]; j<conf->boxinf1[1]; j++)
@@ -51,9 +58,15 @@ int fillingf(FillConf *conf){
 
 				double value = conf->map[map_idx];
 				conf->box[box_idx] += value*(1./pow(disc, 3.));
+				//conf->box[box_idx] += value;
+                //if (value != 0) box_cont[box_idx] += 1.;
 			}
 	
-
+    //for (int i=0; i<pixl_num; i++){
+    //    if (box_cont[i] != 0.){
+    //        conf->box[i] /= box_cont[i];
+    //    }
+    //}
 	return 0;
 
 }
@@ -231,7 +244,7 @@ int makepk(FFT *fft, PK *pk){
 //		+Ny*Ny*kunity*kunity+Nz*Nz*kunitz*kunitz);
 //	double kmin = 1.*kunitx;
 	double kmin = pk->k[0];
-	double kmax = pk->k[pk->N-1];
+	double kmax = pk->k[pk->N];
 //	printf("%lg %lg\n", kmin, kmax);
 	double dk = pow(10, log10(kmax/kmin)/pk->N);
 	#ifdef Linearkbin
@@ -253,20 +266,21 @@ int makepk(FFT *fft, PK *pk){
 	}
 
 	int pkplus(double k, double val, double *p, double *pn){
+		//printf("%lg\n", k);
 		if((k>=kmin)&&(k<kmax)){
 			int idx = (int)(log10(k/kmin)/log10(dk));
 			#ifdef Linearkbin
 				idx = (int)((k-kmin)/dk);
 			#endif
-			//p[idx] = p[idx] + val*k*k*k/2./3.1415926/3.1415926;
-			p[idx] = p[idx] + val;
+			p[idx] = p[idx] + val*pow(k, 3.)/2./3.1415926/3.1415926;
+			//p[idx] = p[idx] + val;
 			pn[idx] = pn[idx] + 1.;
 		}
 		return 0;
 	}
 
 	double nyquist = 0.5;
-	
+
 	for(int i=1; i<Nx*Ny*Nz; i++){
 		int xx = (int)(i/(Ny*Nz));
 		int yy = (int)((i-xx*Ny*Nz)/Nz);
@@ -274,9 +288,9 @@ int makepk(FFT *fft, PK *pk){
 		double result0, result1;
 		result1 = fft->data[i];
 
-		float x = xx + 0.5;
-		float y = yy + 0.5;
-		float z = zz + 0.5;
+		double x = xx;
+		double y = yy;
+		double z = zz;
 
 		if(x<nyquist*Nx && y<nyquist*Ny && z<nyquist*Nz){
 			result0 = sqrt(x*x*kunitx*kunitx
@@ -284,43 +298,43 @@ int makepk(FFT *fft, PK *pk){
 			pkplus(result0, result1, pk->val, kn);
 		}
 
-		if(x<nyquist*Nx && y>(1.-nyquist)*Ny && z<nyquist*Nz){
+		if(x<nyquist*Nx && y>=(1.-nyquist)*Ny && z<nyquist*Nz){
 			result0 = sqrt(x*x*kunitx*kunitx
 				+(y-Ny)*(y-Ny)*kunity*kunity+z*z*kunitz*kunitz);
 			pkplus(result0, result1, pk->val, kn);
 		}
 
-		if(x>(1.-nyquist)*Nx && y<nyquist*Ny && z<nyquist*Nz){
+		if(x>=(1.-nyquist)*Nx && y<nyquist*Ny && z<nyquist*Nz){
 			result0 = sqrt((x-Nx)*(x-Nx)*kunitx*kunitx
 				+y*y*kunity*kunity+z*z*kunitz*kunitz);
 			pkplus(result0, result1, pk->val, kn);
 		}
 
-		if(x>(1.-nyquist)*Nx && y>(1.-nyquist)*Ny && z<nyquist*Nz){
+		if(x>=(1.-nyquist)*Nx && y>=(1.-nyquist)*Ny && z<nyquist*Nz){
 			result0 = sqrt((x-Nx)*(x-Nx)*kunitx*kunitx
 				+(y-Ny)*(y-Ny)*kunity*kunity+z*z*kunitz*kunitz);
 			pkplus(result0, result1, pk->val, kn);
 		}
 
-		if(x<nyquist*Nx && y<nyquist*Ny && z>(1.-nyquist)*Nz){
+		if(x<nyquist*Nx && y<nyquist*Ny && z>=(1.-nyquist)*Nz){
 			result0 = sqrt(x*x*kunitx*kunitx
 				+y*y*kunity*kunity+(z-Nz)*(z-Nz)*kunitz*kunitz);
 			pkplus(result0, result1, pk->val, kn);
 		}
 
-		if(x<nyquist*Nx && y>(1.-nyquist)*Ny && z>(1.-nyquist)*Nz){
+		if(x<nyquist*Nx && y>=(1.-nyquist)*Ny && z>=(1.-nyquist)*Nz){
 			result0 = sqrt(x*x*kunitx*kunitx+
 				(y-Ny)*(y-Ny)*kunity*kunity+(z-Nz)*(z-Nz)*kunitz*kunitz);
 			pkplus(result0, result1, pk->val, kn);
 		}
 
-		if(x>(1.-nyquist)*Nx && y<nyquist*Ny && z>(1.-nyquist)*Nz){
+		if(x>=(1.-nyquist)*Nx && y<nyquist*Ny && z>=(1.-nyquist)*Nz){
 			result0 = sqrt((x-Nx)*(x-Nx)*kunitx*kunitx+
 				y*y*kunity*kunity+(z-Nz)*(z-Nz)*kunitz*kunitz);
 			pkplus(result0, result1, pk->val, kn);
 		}
 
-		if(x>(1.-nyquist)*Nx && y>(1.-nyquist)*Ny && z>(1.-nyquist)*Nz){
+		if(x>=(1.-nyquist)*Nx && y>=(1.-nyquist)*Ny && z>=(1.-nyquist)*Nz){
 			result0 = sqrt((x-Nx)*(x-Nx)*kunitx*kunitx+
 				(y-Ny)*(y-Ny)*kunity*kunity+(z-Nz)*(z-Nz)*kunitz*kunitz);
 			pkplus(result0, result1, pk->val, kn);
@@ -328,7 +342,7 @@ int makepk(FFT *fft, PK *pk){
 	}
 
 	for(int i=0; i<pk->N; i++){
-		pk->val[i] = pk->val[i]*pow((pk->k[i]*sqrt(dk)),3.)/2./3.1415926/3.1415926;
+		//pk->val[i] = pk->val[i]*pow((pk->k[i]*sqrt(dk)),3.)/2./3.1415926/3.1415926;
 		if(kn[i]!=0) 
 			pk->val[i] /= kn[i];
 //		pk->k[i] = kmin*pow(dk, i);

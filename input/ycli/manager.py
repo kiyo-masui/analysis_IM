@@ -17,7 +17,7 @@ params_init = {
               }
 
 
-def execute(pipe_file_or_dict, feedback=0) :
+def execute(pipe_file_or_dict, feedback=5) :
     """Execute all the modules listed in the input file."""
 
     params, module_params = parse_ini.parse(pipe_file_or_dict, params_init, 

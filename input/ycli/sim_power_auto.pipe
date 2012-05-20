@@ -81,7 +81,7 @@ cutlist = []
 FKPweight = False 
 kmin = 0.03
 kmax = 4.0
-kbinNum = 35
+kbinNum = 25
 
 print
 print "-"*50
@@ -112,7 +112,7 @@ pipe_modules.append(mkpower_combine.PowerSpectrumMaker)
 """  Prepare """
 #from mkpower import prepare
 #pipe_modules.append(prepare.Prepare)
-pre_processes = 9
+pre_processes = 17
 pre_plot = False
 #pre_plot = True
 pre_output_root = output_root
@@ -125,7 +125,7 @@ pre_nmap_list = nmap_list
 #pre_boxunit = 1.
 pre_boxshape = (512, 128, 64)
 pre_boxunit = 2.0
-pre_discrete = 6
+pre_discrete = 2.0
 pre_Xrange = (1400, pre_boxunit*pre_boxshape[0]+1400)
 pre_Yrange = (-pre_boxunit*pre_boxshape[1]*0.5, 
    	 		  pre_boxunit*pre_boxshape[1]*0.5)
@@ -146,7 +146,7 @@ elif hour==1:
 	   	 		  pre_boxunit*pre_boxshape[1]*0.5)
 	pre_Zrange = (-30.0, pre_boxunit*pre_boxshape[2]-30)
 
-pre_submean = True
+pre_submean = False
 pre_cutlist = cutlist
 
 """  Add Noise to the Map"""
