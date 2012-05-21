@@ -192,6 +192,30 @@ def calibrate_pol(Data, m_total,RM_dir) :
     #Now have tables of RA/DEC to compare to actual RA/DEC
 
 #    RM = 0
+
+# Can determine the differential phase prior to the loop:
+
+    Tcal = ma.mean(Data.data[:,:,0,:]-Data.data[:,:,1,:],axis=0)
+    # Randomly pick frequency bin near one of the zero crossings to compare U's
+    U_test = Tcal[1,240]/sp.sqrt(Tcal[1,240]**2+Tcal[2,240]**2)
+#    print U_test
+    chi_sq =sp.zeros(4)
+    dp_dat = sp.zeros((4,2))
+    dp_dat[0] = [0.1354,2.341]
+    dp_dat[1] = [0.0723,2.4575]
+    dp_dat[2] = [0.1029,0.045]
+    dp_dat[3] = [0.1669,5.609]
+    min = 10
+    val = 5
+    for i in range(0,4):
+        chi_sq[i] = U_test-sp.cos(dp_dat[i,0]*Data.freq[240]/1000000+dp_dat[i,1])/sp.sqrt(Tcal[1,240]**2+Tcal[2,240]**2)
+        if abs(chi_sq[i]) < min:
+            min = abs(chi_sq[i])
+            val = i
+# val tells which of the correction functions to use.    
+#    print chi_sq
+#    print val
+
     for time_index in range(0,Data.dims[0]):
 #        RA = Data.field['CRVAL2'][time_index]
 #        DEC = Data.field['CRVAL3'][time_index]
@@ -274,11 +298,18 @@ def calibrate_pol(Data, m_total,RM_dir) :
     # Converts files into vector format 
                XY_params = Data.data[time_index,:,cal_index,freq]       
     # Next there is a matrix multiplication that will generate 
-    # a new set of xy values.
+    # a new set of xy values. (Differential gain correction)
                XY_params[0] = XY_params[0]*m_total[0,bin]
                XY_params[3] = XY_params[3]*m_total[1,bin]
                XY_params[1] = XY_params[1]*sp.sqrt(m_total[0,bin]*m_total[1,bin])
                XY_params[2] = XY_params[2]*sp.sqrt(m_total[0,bin]*m_total[1,bin])
+
+    # Add in correction for differential phase
+
+               XY_params[1] = XY_params[1]*sp.cos(dp_dat[val,0]*frequency/1000+dp_dat[val,1])-XY_params[2]*sp.sin(dp_dat[val,0]*frequency/1000+dp_dat[val,1])
+               XY_params[2] = XY_params[1]*sp.sin(dp_dat[val,0]*frequency/1000+dp_dat[val,1])+XY_params[2]*sp.cos(dp_dat[val,0]*frequency/1000+dp_dat[val,1])
+
+    #Rotate to sky coordinates
 #               XY_params = np.dot(M_sky,XY_params)
 
     # Note the correction is only applied to XX and YY, but all terms are rotated to sky coordinates (PA rotation)

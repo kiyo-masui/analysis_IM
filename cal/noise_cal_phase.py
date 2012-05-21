@@ -171,7 +171,7 @@ class MuellerGen(object) :
                 elif self.d[a,b]<-3:
                    self.d[a,b] = -3
 
-        fitfunc = lambda p,x: p[0]*sp.cos(p[1]*x +p[2])
+        fitfunc = lambda p,x: sp.cos(p[0]*x +p[1])
 #        fitfunc = lambda p,x:0.9*sp.cos(2*sp.pi/84*x+p[2]%(2*sp.pi))
         errfunc = lambda p, x, y: fitfunc(p,x)-y
         fitfunc2 = lambda q,x: q[0]*sp.sin(q[1]*x+q[2])
@@ -210,10 +210,12 @@ class MuellerGen(object) :
             for j in range(0,self.file_num):
                 U_data[j,i] = self.d[4*j+1,len(freq_val)-i-1]
                 V_data[j,i] = self.d[4*j+2,len(freq_val)-i-1]
-                R_data[j,i] = sp.sin(2*sp.arctan(V_data[j,i]/U_data[j,i]))
+#               R_data[j,i] = sp.sin(2*sp.arctan(V_data[j,i]/U_data[j,i]))
+                R_data[j,i] = U_data[j,i]/sp.sqrt(U_data[j,i]**2+ V_data[j,i]**2)
                 
         print np.any(np.isnan(R_data))
         print np.any(np.isinf(R_data))
+        R_fin = sp.zeros((2,self.file_num))
         
  
         for i in range(0,self.file_num):
@@ -227,30 +229,51 @@ class MuellerGen(object) :
             Datain = Datain[good_ind]
             fin = fin[good_ind]
 
-            R0 = [0.08,1.0]
-            R,success = optimize.leastsq(errfunc3,R0[:],args=(fin,Datain),maxfev=10000)
+# settings: 0.08, 0.10,0.12,0.16
+            R0 = [0.16,1.0]
+            R,success = optimize.leastsq(errfunc,R0[:],args=(fin,Datain),maxfev=10000)
+            R[1] = R[1]%(2*sp.pi)
             print success
 #            print R
 #            R = R%(2*sp.pi)
 #            print R
-#            pylab.plot(fin,fitfunc3(R,fin),label='Ratio_'+str(i),c='g')
-#            pylab.scatter(fin,Datain,label='Ratio_'+str(i),s=1,c='r',edgecolors='none')
+#            title = 'Frequency is: %1.4f, Phase is: %1.4f' %(R[0],R[1])
+#            pylab.suptitle(title)
+#            pylab.plot(fin,fitfunc(R,fin),label='Ratio_'+str(i),c='g')
+#            R_avg = [0.1354,2.341]
+#            pylab.plot(fin,fitfunc(R_avg,fin),label='test_'+str(i),c='b')
+#            pylab.scatter(freqs,R_data[i,:],label='Ratio_'+str(i),s=1,c='r',edgecolors='none')
             
             print 'Differential phase frequency for scan ',i,' is:',R[0]
             print 'Differential phase "phase" for scan ',i,' is:',R[1]
+            R_fin[0,i] = R[0]
+            R_fin[1,i] = R[1]
+    
+        freq_avg = ma.mean(R_fin[0,:])
+        phase_avg = ma.mean(R_fin[1,:])
+#        freq_avg = 0.1354
+#        phase_avg = 2.341
+        print 'Average Differential phase frequency is:',freq_avg
+        print 'Average Differential phase "phase" is:',phase_avg
+        for i in range(0,self.file_num):        
+            pylab.scatter(freqs,U_data[i]*sp.cos(freq_avg*freqs+phase_avg)-V_data[i]*sp.sin(freq_avg*freqs+phase_avg),s=2,c='g',edgecolors='none',label='U_%d' %(i))
+            pylab.scatter(freqs,U_data[i]*sp.sin(freq_avg*freqs+phase_avg)+V_data[i]*sp.cos(freq_avg*freqs+phase_avg),s=2,c='b',edgecolor='none',label = 'V_%d' %(i))
+#            pylab.scatter(freqs,U_data[i]*sp.cos(freq_avg*freqs+phase_avg)-V_data[i]*sp.sin(freq_avg*freqs+phase_avg),s=2,c='g',edgecolors='none',label='V_%1.2f_%1.2f_%d' %(R[0],R[1],i))
+#            pylab.scatter(freqs,-U_data[i]*sp.sin(freq_avg*freqs+phase_avg)-V_data[i]*sp.cos(freq_avg*freqs+phase_avg),s=2,c='b',edgecolor='none',label = 'U_%1.2f_%1.2f_%d' %(R[0],R[1],i))
+
 #        for i in range(0,4*self.file_num,4):
-            U0 = [1,0.05,0.1]
+#            U0 = [1,0.05,0.1]
 #            U,success = optimize.leastsq(errfunc,U0[:],args=(freqs,U_data[i,:]),maxfev=1000000)
 #            U[2] = U[2]%(2*sp.pi)
-            V0 = [1,0.05,0.1]
+#            V0 = [1,0.05,0.1]
 #            V,success = optimize.leastsq(errfunc2,V0[:],args=(freqs,V_data[i,:]),maxfev=1000000)
 #            V[2] = V[2]%(2*sp.pi)
 #            pylab.plot(freqs,fitfunc(U,freqs),label='U_'+str(i),c='c')
 #            pylab.plot(freqs,fitfunc2(V,freqs),label='V_'+str(i),c='b')
 #            pylab.plot(freqs,fitfunc2(V,freqs)/fitfunc(U,freqs),label='Ratio_'+str(i),c='g')
 #        i = 0
-#            pylab.scatter(freqs,U_data[i,:],label='U_'+str(i),s=1,c='c',edgecolors='none')
-#            pylab.scatter(freqs,V_data[i,:],label='V_'+str(i),s=1,c='b',edgecolors='none')
+#            pylab.scatter(freqs,U_data[i,:],label='U_'+str(i),s=2,c='c',edgecolors='none')
+#            pylab.scatter(freqs,V_data[i,:],label='V_'+str(i),s=2,c='y',edgecolors='none')
 #            magnitude = sp.sqrt(self.d[i+3]**2+self.d[i+2]**2)
 #            pylab.scatter(freqs,M_data[i,:], label = 'amplitude'+str(i),s=1,c='g', edgecolors='none')
 #            m0 = [0.1,20.0,1.0]
@@ -295,12 +318,14 @@ class MuellerGen(object) :
 #            print 'The difference in phase for scan ',i,' between U and V is:',U[2]-V[2]
 #            print 'The difference in phase for scan ',i,' between U/M and V/M is:',UT[2]-VT[2]
 #            print '==================================='
-            
-#        pylab.xlim(freqs[0],freqs[-1])
+        
+        leg = pylab.legend(fancybox='True')
+        leg.get_frame().set_alpha(0.25)    
+        pylab.xlim(freqs[0],freqs[-1])
 #        pylab.ylim(-1,1)
 #        pylab.legend()
-#        pylab.savefig('point_source_differential_phase_compare.png')
-#        pylab.clf()
+        pylab.savefig('point_source_differential_phase_compare.png')
+        pylab.clf()
         
 #        np.savetxt('mueller_params_calc.txt',p_val_out,delimiter = ' ')
 #        np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')

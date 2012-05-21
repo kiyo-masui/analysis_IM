@@ -200,15 +200,20 @@ class MuellerGen(object) :
                         S_med_calon[:,2] = ma.median(Data.data[:,YX_ind,on_ind,:],axis=0)
                         S_med_calon[:,3] = ma.median(Data.data[:,YY_ind,on_ind,:],axis=0)
  
-                     
-                    self.d[k,:] = 0.5*(S_med_calon_src[:,0]+S_med_caloff_src[:,0]-S_med_calon[:,0]-S_med_caloff[:,0])
-                    self.d[k+1,:] = 0.5*(S_med_calon_src[:,1]+S_med_caloff_src[:,1]-S_med_calon[:,1]-S_med_caloff[:,1])
-                    self.d[k+2,:] = 0.5*(S_med_calon_src[:,2]+S_med_caloff_src[:,2]-S_med_calon[:,2]-S_med_caloff[:,2])
-                    self.d[k+3,:] = 0.5*(S_med_calon_src[:,3]+S_med_caloff_src[:,3]-S_med_calon[:,3]-S_med_caloff[:,3])
+# if want Tsrc/Tcal                     
+#                   self.d[k,:] = 0.5*(S_med_calon_src[:,0]+S_med_caloff_src[:,0]-S_med_calon[:,0]-S_med_caloff[:,0])
+#                   self.d[k+1,:] = 0.5*(S_med_calon_src[:,1]+S_med_caloff_src[:,1]-S_med_calon[:,1]-S_med_caloff[:,1])
+#                   self.d[k+2,:] = 0.5*(S_med_calon_src[:,2]+S_med_caloff_src[:,2]-S_med_calon[:,2]-S_med_caloff[:,2])
+#                   self.d[k+3,:] = 0.5*(S_med_calon_src[:,3]+S_med_caloff_src[:,3]-S_med_calon[:,3]-S_med_caloff[:,3])
 #                    self.d[k,:] = S_med_calon[:,0] - S_med_calon_src[:,0]+S_med_caloff_src[:,0] # should be Tsys/Tcal
 #                    self.d[k+1,:] = S_med_calon[:,3] - S_med_calon_src[:,3]+S_med_caloff_src[:,3] 
 #                    self.d[k+2,:] = S_med_caloff[:,0] # should also be Tsys/Tcal
 #                    self.d[k+3,:] = S_med_caloff[:,3]
+# if want Tcal/Tcal
+                    self.d[k,:] = S_med_calon[:,0] - S_med_caloff[:,0]
+                    self.d[k+1,:] = S_med_calon[:,1]-S_med_caloff[:,1]
+                    self.d[k+2,:] = S_med_calon[:,2]-S_med_caloff[:,2]
+                    self.d[k+3,:] = S_med_calon[:,3]-S_med_caloff[:,3]
                     k+=4
 
         for a in range(0,4*self.file_num):
@@ -217,7 +222,7 @@ class MuellerGen(object) :
                 if self.d[a,b] > 1000 :
                    self.d[a,b] = 1000
 
-        print self.d[:,150]
+#        print self.d[:,150]
 
 # self is a directory of Tsrc data. I can use this as my corrected data for plotting. 
 # It looks like at the end k should equal the number of on, off src sets (so if one set of onoff scans eg 6-9, k = 8)
@@ -250,19 +255,23 @@ class MuellerGen(object) :
 
         XX_compare = sp.zeros((freq_len,k/4))
         YY_compare = sp.zeros((freq_len,k/4))
+        U_compare = sp.zeros((freq_len,k/4))
+        V_compare = sp.zeros((freq_len,k/4))
         XX_PA_3C286 = sp.zeros((freq_len,k/4))
         YY_PA_3C286 = sp.zeros((freq_len,k/4))
         for c in range(0,k/4):
 #            XX_PA_3C286[:,c] = 0.5*(1+sp.cos(2*self.theta[4*c]))*XXsrc_3C286[:]-sp.sin(2*self.theta[4*c])*Usrc_3C286[:]+0.5*(1-sp.cos(2*self.theta[4*c]))*YYsrc_3C286[:]
 #            YY_PA_3C286[:,c] = 0.5*(1-sp.cos(2*self.theta[4*c]))*XXsrc_3C286[:]+sp.sin(2*self.theta[4*c])*Usrc_3C286[:]+0.5*(1+sp.cos(2*self.theta[4*c]))*YYsrc_3C286[:]
             XX_compare[:,c] = self.d[c*4,:]
-            YY_compare[:,c] = self.d[c*4+3,:] 
+            YY_compare[:,c] = self.d[c*4+3,:]
+            U_compare[:,c] = self.d[c*4+1,:]
+            V_compare[:,c] = self.d[c*4+2,:] 
 #            XX_compare[:,c] = self.d[c*4,:] # Tsys/Tcal 1, XX
 #            YY_compare[:,c] = self.d[c*4+1,:]# Tsys/Tcal 1, YY
-            XX_PA_3C286[:,c] = self.d[c*4+2,:]# Tsys/Tcal 2, XX
-            YY_PA_3C286[:,c] = self.d[c*4+3,:]# Tsys/Tcal 2, YY
+#            XX_PA_3C286[:,c] = self.d[c*4+2,:]# Tsys/Tcal 2, XX
+#            YY_PA_3C286[:,c] = self.d[c*4+3,:]# Tsys/Tcal 2, YY
 
-        pl.plot(freq_val,XXsrc_3C286,label='XX_3C286',color='b')
+#        pl.plot(freq_val,XXsrc_3C286,label='XX_3C286',color='b')
 #        pl.plot(freq_val,YYsrc_3C286,label='YY_3C286',color='b')
 #        pl.plot(freq_val,XXsrc_3C48,label='XX_3C147',color='b')
 #        pl.plot(freq_val,XXsrc_3C48,label='YY_3C48',color='b')
@@ -284,16 +293,19 @@ class MuellerGen(object) :
 #            pl.plot(freq_val,XX_compare[:,d], 'g-.', label='XX_'+str(d),color=col)
 #            pl.plot(freq_val,YY_compare[:,d], label='YY_'+str(d),color=col)
 #            pl.plot(freq_val,XX_PA_3C286[:,d], label='XX_2_'+str(d),color=col)
-            pl.plot(freq_val,XX_compare[:,d],label='XX_'+str(d),color = col)
+#            pl.plot(freq_val,XX_compare[:,d],label='XX_'+str(d),color = col)
 #            pl.plot(freq_val,YY_compare[:,d],label='YY_'+str(d),color = col)
 #            pl.plot(freq_val,XX_PA_3C286[:,d],label='XXsrc_'+str(d), color = col)
 #            pl.plot(freq_val,YY_PA_3C286[:,d],label='YYsrc_'+str(d), color = col)
+            pl.plot(freq_val, U_compare[:,d], label = 'U_'+str(d),color=col)
+
         leg = pl.legend(fancybox='True')
         leg.get_frame().set_alpha(0.25)
-        pl.ylim(30,45)
+#        pl.ylim(30,45)
         pl.xlabel("Frequency (MHz)")
         pl.ylabel("Temperature (K)")
-        title0 = sess+ '_Tsrc_Test.png'
+        title0=sess+'_Tcal_U_applied.png'
+#        title0 = sess+ '_Tsrc_Test.png'
 #        title0 = sess+'_Tsys_Test.png'
         pl.savefig(title0)
         pl.clf()

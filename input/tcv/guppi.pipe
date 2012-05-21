@@ -7,16 +7,16 @@ from core import dir_data
 import scipy as sp
 
 # Here you choose which files to process.
-#field = '1hr'
-field = '15hr'
+field = '1hr'
+#field = '15hr'
 #dm_field_centre = (218.25, 2.0) 
 #Here I'm grabbing the guppi data
 #file_middles = ('GBT12A_418/02_wigglez11hr_centre_ralongmap_101',)
 #file_middles = tuple(dir_data.get_data_files(range(01,03), field='11hr', project='GBT12A_418', type = 'ralongmap'))
-file_middles = tuple(dir_data.get_data_files(range(41,57), field='15hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(58,90), field='15hr', project='GBT10B_036', type='ralongmap')) # some kind of corruption in session 57. - overall uncertainty 52-58 
+#file_middles = tuple(dir_data.get_data_files(range(41,57), field='15hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(58,90), field='15hr', project='GBT10B_036', type='ralongmap')) # some kind of corruption in session 57. - overall uncertainty 52-58 
 #file_middles = tuple(dir_data.get_data_files(range(41,90), field='22hr', project='GBT10B_036', type='ralongmap')) 
 #file_middles = tuple(dir_data.get_data_files(range(15,17), field='1hr', project='GBT11B_055', type='ralongmap'))
-#file_middles = tuple(dir_data.get_data_files(range(41,90), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(0,14), field='1hr', project='GBT11B_055',type='ralongmap')+dir_data.get_data_files(range(15,17), field='1hr', project='GBT11B_055', type='ralongmap'))
+file_middles = tuple(dir_data.get_data_files(range(41,90), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(0,14), field='1hr', project='GBT11B_055',type='ralongmap')+dir_data.get_data_files(range(15,17), field='1hr', project='GBT11B_055', type='ralongmap'))
 
 #file_middles = tuple(dir_data.get_data_files(range(8,9), field='1hr', project='GBT11B_055', type='ralongmap'))
 
@@ -30,7 +30,7 @@ pipe_modules = []
 # Chime has 8 cores, but you should save a few for other people.  Use 6 max.
 # Prawn has 12 cores.
 # Sunnyvale must have more 12*2
-pipe_processes = 24
+pipe_processes = 8
 
 base_dir = os.getenv('GBT_OUT')
 
