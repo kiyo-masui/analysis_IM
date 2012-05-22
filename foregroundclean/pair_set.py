@@ -24,7 +24,9 @@ from core import algebra
 from correlate import map_pair
 from multiprocessing import Process, current_process
 from utils import batch_handler
-from gram_schmidt import replace_svd_mode as rpmode
+
+import replace_svd_mode as rpmode
+
 # TODO: make map cleaning multiprocess; could also use previous cleaning, e.g.
 # 5 modes to clean 10 modes = modes 5 to 10 (but no need to do this)
 # TODO: move all magic strings to __init__ or params

@@ -190,6 +190,7 @@ def make_cube_movie(source_key, colorbar_title, frame_dir,
                 distance = freq_axis[freqind] / 1.e6
                 fulltitle = "%s (i = %d, Dc = %10.3f cMpc)" % \
                              (title, freqind, distance)
+                draw_objects = []
 
                 runlist.append((outfilename, cube[freqind, :, :], ra_axis,
                                 dec_axis, color_axis,
