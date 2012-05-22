@@ -18,7 +18,7 @@ plt.plot(x, p(4), label='4')
 plt.plot(x, p(10), label='10')
 plt.plot(x, p(20), label='20')
 plt.plot(x, p(30), label='30')
-plt.plot(x, p(35), label='36')
+plt.plot(x, p(200), label='200')
 plt.legend(frameon=False)
 
 plt.savefig('./png/lengdre.png')
