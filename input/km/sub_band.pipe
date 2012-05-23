@@ -32,7 +32,7 @@ middles_c = middles_firs[2*n_files//4:3*n_files//4]
 middles_d = middles_firs[3*n_files//4:n_files]
 # XXX
 nm = len(middles_d)
-middles_d = middles_d[nm//2:]
+middles_d = middles_d[nm//4:nm//2]
 #middles_d = list(middles_d)
 #middles_d.remove('GBT10B_036/71_wigglez15hrst_ralongmap_82-89')
 #middles_d = tuple(middles_d)
@@ -60,7 +60,7 @@ base_dir = "/mnt/raid-project/gmrt/kiyo/gbt_out_new/"
 data_dir = os.getenv('GBT_DATA')
 base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
-map_base = base_dir + 'maps/may08.2012/'
+map_base = base_dir + 'maps/may22.2012_D_2_4/'
 
 
 # IO directory and file prefixes.
@@ -68,7 +68,7 @@ prefix = ''
 map_prefix = '' + field + '_' + '41-90' + '_'
 
 # Maximum number of processes to use.
-pipe_processes = 24
+pipe_processes = 12
 
 
 ####  List of modules to execute.  ####
@@ -117,11 +117,11 @@ pipe_modules = []
 #from noise import measure_noise
 #pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
-#from map import dirty_map
+from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
 from map import clean_map
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
@@ -205,7 +205,7 @@ cl_output_end = '.fits'
 cl_scans = ()
 cl_IFs = ()
 
-cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
+cl_cal_temperature_files = (os.getenv('GBT_KM') + 'kevin_cal/cal_21.fits',)
 
 # rotate_pol
 rp_input_root = cl_output_root

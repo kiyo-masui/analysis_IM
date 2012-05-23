@@ -177,7 +177,6 @@ class Converter(object) :
                 str_scan_range = str(scans_this_file[0])
             out_file = (params["output_root"] + session + '_' + object + '_' +
                         self.proceedure + '_' + str_scan_range + '.fits')
-            
             # Output data is pretty large so we'd better protect the 
             # pyfits part in a process lest memory leaks kill us.
             if len(Block_list) > 0 :
@@ -577,10 +576,16 @@ def get_cal_mask(data, n_bins_cal) :
                " of time bins in a subintegration (generally number"
                " of bins in a cal period should be a power of 2).")
         raise ValueError(msg)
-
+    
+    # For solving for the cal phase, throw away high varience channels (RFI).
+    I_data = data[:,0,:]
+    I_vars = sp.var(data, 0)
+    mean_var = sp.mean(I_vars)
+    good_chans = I_vars < 5 * mean_var
+    I_data = I_data * good_chans
     # Fold the Stokes I data on the cal period to figure out the phase.
     # Sum over the frequencies.
-    folded_data = sp.sum(data[:,0,:], -1, dtype=float)
+    folded_data = sp.sum(I_data, -1, dtype=float)
     # Fold the data at the cal period.
     folded_data.shape = ((ntime//n_bins_cal, n_bins_cal) +
                          folded_data.shape[1:])
