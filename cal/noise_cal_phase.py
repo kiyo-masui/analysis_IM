@@ -1,10 +1,9 @@
-"""IN PROGRESS: Procedure to calculate the noise cal phase that causes some of the U signal to bleed into the V signal for the data. This expected to be at least session stable (if not more) as this phase is reset whenever guppi is started. Setting up the calcualtion of the phase using the point source data. 
+"""Procedure to calculate the noise cal phase that causes some of the U signal to bleed into the V signal for the data. This expected to be at least session stable (if not more) as this phase is reset whenever guppi is started. Setting up the calcualtion of the phase using the point source data. 
 
-Using the point source data, want to take the ratio of V/U as a function of frequency and V/U = tan(2*phi), where phi is the noise cal phase. 
+Using the point source data, want to take the ratio of U/sqrt(U**2+V**2) as a function of frequency and cos(2*phi), where phi is the noise cal phase. 
 
-Run information still needs to be updated:
-Run in analysis_IM: python cal/total_cal_gen_params.py input/tcv/mueller_gen_guppi.ini
-Note that the .ini file should indicate which session(s) and sourse you want to use. Script is run using data from a single source. The output is saved in a file called mueller_params_calc.txt
+Run in analysis_IM: python cal/noise_cal_phase.py input/tcv/noise_cal_gen.ini
+Note that the .ini file should indicate which session(s) and sourse you want to use. Script is run using data from a single source. The output is saved in a file called point_source_differential_phase_compare.txt
  """
 import os
 
@@ -211,7 +210,8 @@ class MuellerGen(object) :
                 U_data[j,i] = self.d[4*j+1,len(freq_val)-i-1]
                 V_data[j,i] = self.d[4*j+2,len(freq_val)-i-1]
 #               R_data[j,i] = sp.sin(2*sp.arctan(V_data[j,i]/U_data[j,i]))
-                R_data[j,i] = U_data[j,i]/sp.sqrt(U_data[j,i]**2+ V_data[j,i]**2)
+                R_data[j,i] = U_data[j,i]
+#                R_data[j,i] = sp.arcsin(V_data[j,i]/sp.sqrt(U_data[j,i]**2+ V_data[j,i]**2))
                 
         print np.any(np.isnan(R_data))
         print np.any(np.isinf(R_data))
@@ -219,7 +219,7 @@ class MuellerGen(object) :
         
  
         for i in range(0,self.file_num):
-            mask_num = 200
+            mask_num =1 
 
             Datain = R_data[i,mask_num:-mask_num]
             fin = freqs[mask_num:-mask_num]
@@ -230,7 +230,7 @@ class MuellerGen(object) :
             fin = fin[good_ind]
 
 # settings: 0.08, 0.10,0.12,0.16
-            R0 = [0.16,1.0]
+            R0 = [0.08,1.0]
             R,success = optimize.leastsq(errfunc,R0[:],args=(fin,Datain),maxfev=10000)
             R[1] = R[1]%(2*sp.pi)
             print success
@@ -239,10 +239,10 @@ class MuellerGen(object) :
 #            print R
 #            title = 'Frequency is: %1.4f, Phase is: %1.4f' %(R[0],R[1])
 #            pylab.suptitle(title)
-#            pylab.plot(fin,fitfunc(R,fin),label='Ratio_'+str(i),c='g')
+            pylab.plot(fin,fitfunc(R,fin),label='Ratio_'+str(i),c='g')
 #            R_avg = [0.1354,2.341]
 #            pylab.plot(fin,fitfunc(R_avg,fin),label='test_'+str(i),c='b')
-#            pylab.scatter(freqs,R_data[i,:],label='Ratio_'+str(i),s=1,c='r',edgecolors='none')
+            pylab.scatter(freqs,R_data[i,:],label='Ratio_'+str(i),s=1,c='r',edgecolors='none')
             
             print 'Differential phase frequency for scan ',i,' is:',R[0]
             print 'Differential phase "phase" for scan ',i,' is:',R[1]
@@ -255,9 +255,9 @@ class MuellerGen(object) :
 #        phase_avg = 2.341
         print 'Average Differential phase frequency is:',freq_avg
         print 'Average Differential phase "phase" is:',phase_avg
-        for i in range(0,self.file_num):        
-            pylab.scatter(freqs,U_data[i]*sp.cos(freq_avg*freqs+phase_avg)-V_data[i]*sp.sin(freq_avg*freqs+phase_avg),s=2,c='g',edgecolors='none',label='U_%d' %(i))
-            pylab.scatter(freqs,U_data[i]*sp.sin(freq_avg*freqs+phase_avg)+V_data[i]*sp.cos(freq_avg*freqs+phase_avg),s=2,c='b',edgecolor='none',label = 'V_%d' %(i))
+#        for i in range(0,self.file_num):        
+#            pylab.scatter(freqs,U_data[i]*sp.cos(freq_avg*freqs+phase_avg)-V_data[i]*sp.sin(freq_avg*freqs+phase_avg),s=2,c='g',edgecolors='none',label='U_%d' %(i))
+#            pylab.scatter(freqs,U_data[i]*sp.sin(freq_avg*freqs+phase_avg)+V_data[i]*sp.cos(freq_avg*freqs+phase_avg),s=2,c='b',edgecolor='none',label = 'V_%d' %(i))
 #            pylab.scatter(freqs,U_data[i]*sp.cos(freq_avg*freqs+phase_avg)-V_data[i]*sp.sin(freq_avg*freqs+phase_avg),s=2,c='g',edgecolors='none',label='V_%1.2f_%1.2f_%d' %(R[0],R[1],i))
 #            pylab.scatter(freqs,-U_data[i]*sp.sin(freq_avg*freqs+phase_avg)-V_data[i]*sp.cos(freq_avg*freqs+phase_avg),s=2,c='b',edgecolor='none',label = 'U_%1.2f_%1.2f_%d' %(R[0],R[1],i))
 

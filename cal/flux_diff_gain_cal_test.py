@@ -41,18 +41,18 @@ class MuellerGen(object) :
                                           prefix=prefix)
         self.feedback = feedback
 
-    def peval(self,p,f):
-        d = self.d
-        XG = p[0]
-        YG = p[1]
+    def peval(self,p,f,freq_val):
+#        d = self.d
+#        XG = p[0]
+#        YG = p[1]
+        delta_I = p[0]+p[1]*pow((750.0/freq_val[f]),p[2])
         theta = self.theta
         t = self.function
-        
         for i in range(0,len(t),4):
-            t[i] = XG*d[i,f]
+            t[i] =  
             t[i+1] = 0
             t[i+2] = 0
-            t[i+3] =YG*d[i+3,f]
+            t[i+3] =
         return t 
 
     def residuals(self, p,errors, f,freq_val):
@@ -70,15 +70,18 @@ class MuellerGen(object) :
         Vsrc = 0
         XXsrc0 = Isrc-Qsrc
         YYsrc0 = Isrc+Qsrc
-#        XXsrc = (0.5*(1+sp.cos(2*theta[i]))*XXsrc0-sp.sin(2*theta[i])*Usrc+0.5*(1-sp.cos(2*theta[i]))*YYsrc0)
-#        YYsrc = (0.5*(1-sp.cos(2*theta[i]))*XXsrc0+sp.sin(2*theta[i])*Usrc+0.5*(1+sp.cos(2*theta[i]))*YYsrc0)
+        d = self.d
         source = sp.zeros(4*self.file_num)
         for i in range(0,len(source),4):
-            source[i] = (0.5*(1+sp.cos(2*theta[i]))*XXsrc0-sp.sin(2*theta[i])*Usrc+0.5*(1-sp.cos(2*theta[i]))*YYsrc0)
-            source[i+1] = 0
-            source[i+2] = 0
-            source[i+3] = (0.5*(1-sp.cos(2*theta[i]))*XXsrc0+sp.sin(2*theta[i])*Usrc+0.5*(1+sp.cos(2*theta[i]))*YYsrc0)
-        err = (source-self.peval(p,f))/errors
+            source[i] = XXsrc0-d[i,f]
+            source[i+1] = Usrc-d[i+1,f]
+            source[i+2] = 0-d[i+2,f]
+            source[i+3] = YYsrc0-d[i+3,f]
+#            source[i] = (0.5*(1+sp.cos(2*theta[i]))*XXsrc0-sp.sin(2*theta[i])*Usrc+0.5*(1-sp.cos(2*theta[i]))*YYsrc0)
+#            source[i+1] = 0
+#            source[i+2] = 0
+#            source[i+3] = (0.5*(1-sp.cos(2*theta[i]))*XXsrc0+sp.sin(2*theta[i])*Usrc+0.5*(1+sp.cos(2*theta[i]))*YYsrc0)
+        err = (source-self.peval(p,f,freq_val))/errors
         return err
     
     def execute(self, nprocesses=1) :

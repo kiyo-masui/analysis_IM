@@ -63,10 +63,10 @@ class Calibrate(base_single.BaseSingle) :
             sess_num = '0'+str(sess_num)
         project = file_middle.split('/')[0]
 #        print sess_num
-#        fg_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_diff_gain_calc.txt'
+        fg_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_diff_gain_calc.txt'
 
 #Alternative for average flux/differential gain calibration.
-        fg_file_name = self.params['mueler_file']+'1hr_fdg_calc_avg.txt'
+#        fg_file_name = self.params['mueler_file']+'1hr_fdg_calc_avg.txt'
         self.flux_diff = flux_dg(fg_file_name)
         RM_dir = self.params['RM_file']
         calibrate_pol(Data, self.flux_diff,RM_dir)
@@ -195,26 +195,35 @@ def calibrate_pol(Data, m_total,RM_dir) :
 
 # Can determine the differential phase prior to the loop:
 
-    Tcal = ma.mean(Data.data[:,:,0,:]-Data.data[:,:,1,:],axis=0)
+    Tcal = ma.mean(Data.data[:,:,0,:],axis=0)-ma.mean(Data.data[:,:,1,:],axis=0)
+#    Tcal = ma.mean(Data.data[:,:,0,:]-Data.data[:,:,1,:],axis=0)
     # Randomly pick frequency bin near one of the zero crossings to compare U's
-    U_test = Tcal[1,240]/sp.sqrt(Tcal[1,240]**2+Tcal[2,240]**2)
+#    U_test = Tcal[1,230]/sp.sqrt(Tcal[1,230]**2+Tcal[2,230]**2)
+#    print Tcal[:,191]
+#    print Tcal[1,:]
+    U_test = Tcal[1,191]
 #    print U_test
     chi_sq =sp.zeros(4)
     dp_dat = sp.zeros((4,2))
     dp_dat[0] = [0.1354,2.341]
-    dp_dat[1] = [0.0723,2.4575]
+#    dp_dat[1] = [0.0723, 2.4575]
+    dp_dat[1] = [0.0730,2.611] #calculated specifically for sess 81
     dp_dat[2] = [0.1029,0.045]
-    dp_dat[3] = [0.1669,5.609]
+    dp_dat[3] = [0,0]
+#    dp_dat[3] = [0.1669,5.609] # giving problems because closer for sess 81 at given freq
     min = 10
     val = 5
     for i in range(0,4):
-        chi_sq[i] = U_test-sp.cos(dp_dat[i,0]*Data.freq[240]/1000000+dp_dat[i,1])/sp.sqrt(Tcal[1,240]**2+Tcal[2,240]**2)
+#       chi_sq[i] = U_test-sp.cos(dp_dat[i,0]*Data.freq[230]/1000000+dp_dat[i,1])/sp.sqrt(Tcal[1,230]**2+Tcal[2,230]**2)
+#        print sp.cos(dp_dat[i,0]*Data.freq[191]/1000000+dp_dat[i,1])
+        chi_sq[i] = U_test-sp.cos(dp_dat[i,0]*Data.freq[191]/1000000+dp_dat[i,1])
         if abs(chi_sq[i]) < min:
             min = abs(chi_sq[i])
             val = i
 # val tells which of the correction functions to use.    
-#    print chi_sq
-#    print val
+    print chi_sq
+    print val
+#    print Data.freq[191]
 
     for time_index in range(0,Data.dims[0]):
 #        RA = Data.field['CRVAL2'][time_index]
