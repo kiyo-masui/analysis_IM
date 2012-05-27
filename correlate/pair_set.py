@@ -178,7 +178,7 @@ class PairSet(ft.ClassPersistence):
             if par['simfile'] is not None:
                 print "adding %s with multiplier %s" % (par['simfile'],
                                                         par['sim_multiplier'])
- 
+
                 sim = algebra.make_vect(algebra.load(par['simfile']))
                 sim *= par['sim_multiplier']
             else:

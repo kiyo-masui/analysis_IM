@@ -590,7 +590,8 @@ class DataPath(object):
         else:
             print "%s has no parent directory field" % db_key
 
-    def fetch_multi(self, data_obj, db_token="db:", silent=False):
+    def fetch_multi(self, data_obj, db_token="db:", silent=False,
+                    intend_read=True):
         r"""Handle various sorts of file pointers/data
         if `data_obj`
             is an array, return a deep copy of it
@@ -601,11 +602,13 @@ class DataPath(object):
         if isinstance(data_obj, str):
             if data_obj[0:len(db_token)] == db_token:
                 db_key = data_obj[len(db_token):]
-                filename = self.fetch(db_key, intend_read=True, silent=silent)
+                filename = self.fetch(db_key, intend_read=intend_read,
+                                      silent=silent)
             else:
                 filename = data_obj
                 prefix = "non-db filename "
-                ft.path_properties(filename, intend_read=True, is_file=True,
+                ft.path_properties(filename, intend_read=intend_read,
+                                   is_file=True,
                                    prefix=prefix, silent=silent)
 
             ret_data = algebra.make_vect(algebra.load(filename))

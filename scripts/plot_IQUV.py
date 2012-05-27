@@ -26,11 +26,20 @@ from plotting import plot_cube as pc
 #            '15hr_41-90_fdg_clean_map_U.npy',
 #            '15hr_41-90_fdg_clean_map_Q.npy',
 #            '15hr_41-90_fdg_clean_map_I.npy']
-filelist = ['15hr_41-90_fdg_clean_map_V.npy',
-            '15hr_41-90_fdg_clean_map_U.npy',
-            '15hr_41-90_fdg_clean_map_Q.npy',
-            '15hr_41-90_fdg_clean_map_I.npy']
-dirname = '/mnt/raid-project/gmrt/tcv/maps/'
+#filelist = ['15hr_41-90_fdg_clean_map_V.npy',
+#            '15hr_41-90_fdg_clean_map_U.npy',
+#            '15hr_41-90_fdg_clean_map_Q.npy',
+#            '15hr_41-90_fdg_clean_map_I.npy']
+#filelist = ['15hr_41-90_RM_clean_map_I.npy',
+#            '15hr_41-90_RM_clean_map_Q.npy',
+#            '15hr_41-90_RM_clean_map_U.npy',
+#            '15hr_41-90_RM_clean_map_V.npy']
+filelist = ['secA_15hr_41-90_clean_map_I_762.npy',
+            'secB_15hr_41-90_clean_map_I_762.npy',
+            'secC_15hr_41-90_clean_map_I_762.npy',
+            'secD_15hr_41-90_clean_map_I_762.npy']
+#dirname = '/mnt/raid-project/gmrt/tcv/maps/'
+dirname = "/mnt/raid-project/gmrt/kiyo/gbt_out_new/maps/may04.2012/"
 
 for filenam in filelist:
     outputdir = "/cita/d/www/home/eswitzer/movies/"

@@ -207,11 +207,11 @@ class MemoizeBatch(object):
     Example to generate the cache table:
     >>> caller1 = MemoizeBatch("trial_function", "./testdata/", generate=True)
     >>> caller1.execute("ok",3, arg1=True, arg2=3)
-    '1d6e885be47e6f350befb10fd4b28318'
+    '4a1e33dbab4b660fcddbe98d604d87ed28a3dce9c4844190df3c05c5'
     >>> import numpy as np
     >>> bins = np.arange(0,1, 0.2)
     >>> caller1.execute(5, "ok2", arg1="stringy", arg2=bins)
-    'fc3eb86900a1f325fb3369d7f686d475'
+    'cc9dd30e2b656e96bfdec98a219c030d5dc4792391bdfa54ad209d3c'
     >>> caller1.execute("ok2",4)
     '5b81c329717a428261f3bebe2b4b5bba'
     >>> caller1.multiprocess_stack()

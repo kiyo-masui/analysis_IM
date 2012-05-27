@@ -15,10 +15,15 @@ def plot_gbt_mapset(outputdir="/cita/d/www/home/eswitzer/movies/",
                     make_map=True, make_dirty_map=False,
                     make_noise_inv=False, make_noise_diag=False):
 
-    pc.plot_gbt_maps('GBT_15hr_map_oldcal', outputdir=outputdir,
+    pc.plot_gbt_maps('GBT_15hr_map_mapcal', outputdir=outputdir,
                      make_map=make_map, make_dirty_map=make_dirty_map,
                      make_noise_inv=make_noise_inv,
                      make_noise_diag=make_noise_diag)
+
+    #pc.plot_gbt_maps('GBT_15hr_map_oldcal', outputdir=outputdir,
+    #                 make_map=make_map, make_dirty_map=make_dirty_map,
+    #                 make_noise_inv=make_noise_inv,
+    #                 make_noise_diag=make_noise_diag)
 
     #pc.plot_gbt_maps('GBT_15hr_optimalmap_fluxpolcal', outputdir=outputdir,
     #                 make_map=make_map, make_dirty_map=make_dirty_map,
@@ -153,20 +158,23 @@ def plot_gbt_diff_tests(outputdir="/cita/d/www/home/eswitzer/movies/",
 def plot_gbt_comb_modeset(map_key, outputdir="/cita/d/www/home/eswitzer/movies/",
                           convolve=False, divider_token=";"):
     datapath_db = data_paths.DataPath()
-    input_fdb = datapath_db.fetch(map_key, intend_read=True, silent=False)
+    input_fdb = datapath_db.fetch(map_key, intend_read=True, silent=True)
 
     map_treatments = []
     for filekey in input_fdb[0]:
         keyparse = filekey.split(divider_token)
         if len(keyparse) == 2:
-            map_treatments.append(keyparse[-1])
+            treatment = keyparse[-1]
+            if "modes" in treatment:
+                map_treatments.append(treatment)
 
     map_treatments = unique_list(map_treatments)
 
     for treatment in map_treatments:
         source_key = "db:%s:map;%s" % (map_key, treatment)
+        print source_key, treatment
         pc.make_cube_movie(source_key, "Temperature (mK)", pc.cube_frame_dir,
-                        sigmarange=1.5, outputdir=outputdir, multiplier=1000.,
+                        sigmarange=1.5/10., outputdir=outputdir, multiplier=1000.,
                         transverse=False, convolve=convolve)
 
         source_key = "db:%s:product;%s" % (map_key, treatment)
@@ -279,13 +287,20 @@ if __name__ == "__main__":
 
     #plot_mode_amplitudes('GBT_15hr_map_fdgcal_cleaned')
     #plot_mode_amplitudes('GBT_15hr_map_fdgcal_cleaned_noconv')
-    plot_gbt_mapset()
+    #plot_gbt_mapset()
     #plot_cleaned_gbt15hr_mapset()
     #plot_gbt_simset('sim_15hr')
     #plot_gbt_simset('simvel_15hr')
     #plot_gbt_simset('simideal_15hr')
     #plot_gbt_simset('22hr')
     #plot_gbt_newmapset()
+
+    plot_gbt_comb_modeset('GBT_15hr_optimalmap_selfcal_762_cleaned_combined', convolve=True)
+    plot_gbt_comb_modeset('GBT_15hr_optimalmap_selfcal_762_cleaned_combined', convolve=False)
+    #plot_gbt_comb_modeset('GBT_15hr_map_mapcal2_cleaned_combined', convolve=True)
+    #plot_gbt_comb_modeset('GBT_15hr_map_mapcal2_cleaned_combined', convolve=False)
+    #plot_gbt_comb_modeset('GBT_15hr_map_mapcal_cleaned_combined', convolve=True)
+    #plot_gbt_comb_modeset('GBT_15hr_map_mapcal_cleaned_combined', convolve=False)
 
     #plot_gbt_comb_modeset('GBT_15hr_map_fluxcal_cleaned_noconv_combined', convolve=False)
     #plot_gbt_comb_modeset('GBT_15hr_map_fluxcal_cleaned_noconv_combined', convolve=True)

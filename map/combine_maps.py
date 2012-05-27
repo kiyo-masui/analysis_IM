@@ -175,5 +175,14 @@ if __name__ == '__main__':
     #wrap_combine_old("GBT_15hr_map_oldcal")
     #wrap_combine_old("GBT_15hr_map_fluxcal")
 
-    wrap_combine("GBT_15hr_map_oldcal")
-    wrap_combine("GBT_15hr_map_oldcal", simalt="_simx1p1")
+    #combine_maps("GBT_15hr_map_mapcal_cleaned",
+    #             "GBT_15hr_map_mapcal_cleaned_combined")
+
+    #combine_maps("GBT_15hr_map_mapcal2_cleaned",
+    #             "GBT_15hr_map_mapcal2_cleaned_combined")
+
+    combine_maps("GBT_15hr_optimalmap_selfcal_762_cleaned",
+                 "GBT_15hr_optimalmap_selfcal_762_cleaned_combined")
+
+    #wrap_combine("GBT_15hr_map_oldcal")
+    #wrap_combine("GBT_15hr_map_oldcal", simalt="_simx1p1")
