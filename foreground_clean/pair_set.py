@@ -42,9 +42,7 @@ params_init = {
                'subtract_inputmap_from_sim': False,
                'subtract_sim_from_inputmap': False,
                'freq_list': (),
-                # in deg: (unused)
                'tack_on': None,
-               'lags': (0.1, 0.2),
                'convolve': True,
                'factorizable_noise': True,
                'sub_weighted_mean': True,
@@ -103,7 +101,6 @@ class PairSet(ft.ClassPersistence):
                                           prefix=prefix)
 
         self.freq_list = sp.array(self.params['freq_list'], dtype=int)
-        self.lags = sp.array(self.params['lags'])
         self.output_root = self.datapath_db.fetch(self.params['output_root'],
                                                   tack_on=self.params['tack_on'])
         #self.output_root = self.params['output_root']
@@ -129,23 +126,11 @@ class PairSet(ft.ClassPersistence):
 
     def execute(self, processes):
         r"""main call to execute the various steps in foreground removal"""
-        self.calculate_corr_svd()
-        self.clean_maps()
-
-    def calculate_corr_svd(self):
-        r""" "macro" which finds the correlation functions for the pairs of
-        given maps, then the SVD.
-        """
         self.load_pairs()
         self.preprocess_pairs()
         self.calculate_correlation()
         self.calculate_svd()
 
-    def clean_maps(self):
-        r""" "macro" which open the data, does pre-processing, loads the
-        pre-calculated SVD modes, subtracts them, and saves the data.
-        This is the second stage.
-        """
         self.uncleaned_pairs = copy.deepcopy(self.pairs)
         for n_modes in self.params['modes']:
             # clean self.pairs and save its components
@@ -201,7 +186,6 @@ class PairSet(ft.ClassPersistence):
 
             pair.set_names(pdict['tag1'], pdict['tag2'])
 
-            pair.lags = self.lags
             pair.params = self.params
             self.pairs[pairitem] = pair
 
@@ -218,7 +202,6 @@ class PairSet(ft.ClassPersistence):
                                                   self.freq_list)
 
                 pair_parallel_track.set_names(pdict['tag1'], pdict['tag2'])
-                pair_parallel_track.lags = self.lags
                 pair_parallel_track.params = self.params
                 self.pairs_parallel_track[pairitem] = pair_parallel_track
 
@@ -268,10 +251,10 @@ class PairSet(ft.ClassPersistence):
             print filename_corr
             if os.access(filename_corr, os.F_OK):
                 print "SVD loading corr. functions: " + filename
-                (corr, counts) = ft.load_pickle(filename_corr)
+                (freq_cov, counts) = ft.load_pickle(filename_corr)
 
                 # (vals, modes1, modes2)
-                svd_info = ce.get_freq_svd_modes(corr, len(self.freq_list))
+                svd_info = ce.get_freq_svd_modes(freq_cov, len(self.freq_list))
                 ft.save_pickle(svd_info, filename_svd)
             else:
                 print "ERROR: in SVD, correlation functions not loaded"
@@ -301,6 +284,13 @@ class PairSet(ft.ClassPersistence):
                                                 svd_info[1][:n_modes],
                                                 svd_info[2][:n_modes])
 
+                self.pairs[pairitem].map1 -= \
+                    self.pairs_parallel_track[pairitem].map1
+
+                self.pairs[pairitem].map2 -= \
+                    self.pairs_parallel_track[pairitem].map2
+
+
     @batch_handler.log_timing
     def save_data(self, n_modes):
         ''' Save the all of the clean data.
@@ -323,14 +313,8 @@ class PairSet(ft.ClassPersistence):
             modes2_file = "%s/sec_%s_modes_clean_map_I_with_%s_%s.npy" % \
                             (self.output_root, tag2, tag1, n_modes)
 
-            if self.params['subtract_inputmap_from_sim'] or \
-               self.params['subtract_sim_from_inputmap']:
-                pair_parallel_track = self.pairs_parallel_track[pairitem]
-                algebra.save(map1_file, pair.map1 - pair_parallel_track.map1)
-                algebra.save(map2_file, pair.map2 - pair_parallel_track.map2)
-            else:
-                algebra.save(map1_file, pair.map1)
-                algebra.save(map2_file, pair.map2)
+            algebra.save(map1_file, pair.map1)
+            algebra.save(map2_file, pair.map2)
             algebra.save(noise_inv1_file, pair.noise_inv1)
             algebra.save(noise_inv2_file, pair.noise_inv2)
             algebra.save(modes1_file, pair.left_modes)
@@ -369,8 +353,8 @@ def wrap_corr(pair, filename):
     Correlations in the `pair` (map_pair type) are saved to `filename`
     """
     name = current_process().name
-    (corr, counts) = pair.correlate(pair.lags, speedup=True)
-    ft.save_pickle((corr, counts), filename)
+    (freq_cov, counts) = pair.freq_covariance()
+    ft.save_pickle((freq_cov, counts), filename)
 
 
 if __name__ == '__main__':

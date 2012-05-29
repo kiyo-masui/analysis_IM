@@ -422,6 +422,12 @@ class MapPair(object):
 
         return xspec
 
+    def freq_covariance(self):
+        return corr_estimation.freq_covariance(self.map1, self.map2,
+                                               self.noise_inv1,
+                                               self.noise_inv2,
+                                               self.freq, self.freq)
+
     def correlate(self, lags=(), speedup=False, verbose=False):
         r"""Calculate the cross correlation function of the maps.
 
@@ -446,16 +452,11 @@ class MapPair(object):
 
         """
         # TODO: possibly revert to old correlation function calc?
-        #return corr_estimation.corr_est(self.map1, self.map2,
-        #                                self.noise_inv1, self.noise_inv2,
-        #                                self.freq, self.freq,
-        #                                lags=lags, speedup=speedup,
-        #                                verbose=verbose)
-
-        return corr_estimation.freq_covariance(self.map1, self.map2,
-                                               self.noise_inv1,
-                                               self.noise_inv2,
-                                               self.freq, self.freq)
+        return corr_estimation.corr_est(self.map1, self.map2,
+                                        self.noise_inv1, self.noise_inv2,
+                                        self.freq, self.freq,
+                                        lags=lags, speedup=speedup,
+                                        verbose=verbose)
 
 
 if __name__ == '__main__':
