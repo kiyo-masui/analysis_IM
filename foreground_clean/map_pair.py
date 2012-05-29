@@ -11,8 +11,8 @@ from map import beam
 from map import physical_gridding as pg
 from kiyopy import parse_ini
 import kiyopy.utils
-from correlate import corr_estimation
-from correlate import pwrspec_estimation as pe
+from pwrspec_estimation import corr_estimation
+from pwrspec_estimation import pwrspec_estimation as pe
 from utils import data_paths
 from utils import batch_handler as bh
 # TODO: move single map operations to a separate class
@@ -64,23 +64,28 @@ class MapPair(object):
 
     """
 
-    def __init__(self, map1, map2, noise_inv1, noise_inv2, freq, avoid_db=False):
+    def __init__(self, map1, map2, noise_inv1, noise_inv2, freq,
+                 input_filenames=False):
         r"""
         arguments: map1, map2, noise_inv1, noise_inv2, freq
         """
-        # just take filenames to these objects to avoid independent db lookups
-        # which get expensive to do for e.g. 10000 quadratic products
-        if avoid_db:
+        if input_filenames:
             self.map1 = algebra.make_vect(algebra.load(map1))
             self.map2 = algebra.make_vect(algebra.load(map2))
             self.noise_inv1 = algebra.make_vect(algebra.load(noise_inv1))
             self.noise_inv2 = algebra.make_vect(algebra.load(noise_inv2))
         else:
-            self.datapath_db = data_paths.DataPath()
-            self.map1 = self.datapath_db.fetch_multi(map1)
-            self.map2 = self.datapath_db.fetch_multi(map2)
-            self.noise_inv1 = self.datapath_db.fetch_multi(noise_inv1)
-            self.noise_inv2 = self.datapath_db.fetch_multi(noise_inv2)
+            self.map1 = map1
+            self.map2 = map2
+            self.noise_inv1 = noise_inv1
+            self.noise_inv2 = noise_inv2
+
+        # older method that uses the database
+        #     self.datapath_db = data_paths.DataPath()
+        #     self.map1 = self.datapath_db.fetch_multi(map1)
+        #     self.map2 = self.datapath_db.fetch_multi(map2)
+        #     self.noise_inv1 = self.datapath_db.fetch_multi(noise_inv1)
+        #     self.noise_inv2 = self.datapath_db.fetch_multi(noise_inv2)
 
         self.freq = freq
 
@@ -294,6 +299,56 @@ class MapPair(object):
         self.map2[self.noise_inv2 < 1.e-20] = 0.
 
     def subtract_frequency_modes(self, modes1, modes2=None):
+        r"""Subtract frequency mode from the map.
+
+        Parameters
+        ---------
+        modes1: list of 1D arrays.
+            Arrays must be the same length as self.freq.  Modes to subtract out
+            of the map one.
+        modes2: list of 1D arrays.
+            Modes to subtract out of map 2.  If `None` set to `modes1`.
+
+        """
+
+        if modes2 == None:
+            modes2 = modes1
+
+        map1 = self.map1
+        map2 = self.map2
+        freq = self.freq
+
+        # First map.
+        outmap_left = sp.empty((len(modes1), ) + map1.shape[1:])
+        outmap_left = algebra.make_vect(outmap_left,
+                                     axis_names=('freq', 'ra', 'dec'))
+        outmap_left.copy_axis_info(map1)
+
+        for mode_index, mode_vector in enumerate(modes1):
+            mode_vector = mode_vector.reshape(freq.shape)
+            amp = sp.tensordot(mode_vector, map1, axes=(0,0))
+            fitted = mode_vector[:, None, None] * amp[None, :, :]
+            map1[freq, :, :] -= fitted
+            outmap_left[mode_index, :, :] = amp
+
+        self.left_modes = outmap_left
+
+        # Second map.
+        outmap_right = sp.empty((len(modes2), ) + map2.shape[1:])
+        outmap_right = algebra.make_vect(outmap_right,
+                                     axis_names=('freq', 'ra', 'dec'))
+        outmap_right.copy_axis_info(map2)
+
+        for mode_index, mode_vector in enumerate(modes2):
+            mode_vector = mode_vector.reshape(freq.shape)
+            amp = sp.tensordot(mode_vector, map2, axes=(0,0))
+            fitted = mode_vector[:, None, None] * amp[None, :, :]
+            map2[freq, :, :] -= fitted
+            outmap_right[mode_index, :, :] = amp
+
+        self.right_modes = outmap_right
+
+    def subtract_frequency_modes_slow(self, modes1, modes2=None):
         r"""Subtract frequency mode from the map.
 
         Parameters

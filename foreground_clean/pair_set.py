@@ -17,11 +17,11 @@ import time
 import scipy as sp
 from utils import file_tools as ft
 from utils import data_paths as dp
-from correlate import corr_estimation as ce
+from pwrspec_estimation import corr_estimation as ce
 from kiyopy import parse_ini
 import kiyopy.utils
 from core import algebra
-from correlate import map_pair
+from foreground_clean import map_pair
 from multiprocessing import Process, current_process
 from utils import batch_handler
 # TODO: make map cleaning multiprocess; could also use previous cleaning, e.g.
@@ -69,8 +69,6 @@ def memoize_find_weight(filename):
     return find_weight(filename)
 
 
-# TODO: make this handle the dimensions of the new map noise inv more
-# automatically
 def find_weight(filename):
     r"""rather than read the full noise_inv and find its diagonal, cache the
     diagonal values.
@@ -78,11 +76,11 @@ def find_weight(filename):
     Note that the .info does not get shelved (class needs to be made
     serializeable). Return the info separately.
     """
-    print "loading noise: " + filename
-    noise_inv = algebra.make_mat(algebra.open_memmap(filename, mode='r'))
-    noise_inv_diag = noise_inv.mat_diag()
+    #print "loading noise: " + filename
+    #noise_inv = algebra.make_mat(algebra.open_memmap(filename, mode='r'))
+    #noise_inv_diag = noise_inv.mat_diag()
     # if optimal map:
-    #noise_inv_diag = algebra.make_vect(algebra.load(filename))
+    noise_inv_diag = algebra.make_vect(algebra.load(filename))
 
     return noise_inv_diag, noise_inv_diag.info
 
@@ -91,7 +89,8 @@ class PairSet(ft.ClassPersistence):
     r"""Class to manage a set of map pairs
     """
 
-    def __init__(self, parameter_file=None, params_dict=None):
+    @batch_handler.log_timing
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
         # recordkeeping
         self.pairs = {}
         self.pairs_parallel_track = {}
@@ -128,7 +127,7 @@ class PairSet(ft.ClassPersistence):
         parse_ini.write_params(self.params, self.output_root + 'params.ini',
                                prefix=prefix)
 
-    def execute(self):
+    def execute(self, processes):
         r"""main call to execute the various steps in foreground removal"""
         self.calculate_corr_svd()
         self.clean_maps()
@@ -152,9 +151,9 @@ class PairSet(ft.ClassPersistence):
             # clean self.pairs and save its components
             self.subtract_foregrounds(n_modes)
             self.save_data(n_modes)
-            # reset the all the pair data; vestigial?
             self.pairs = copy.deepcopy(self.uncleaned_pairs)
 
+    @batch_handler.log_timing
     def load_pairs(self):
         r"""load the set of map/noise pairs specified by keys handed to the
         database. This sets up operations on the quadratic product
@@ -164,7 +163,9 @@ class PairSet(ft.ClassPersistence):
         (self.pairlist, pairdict) = dp.cross_maps(par['map1'], par['map2'],
                                              par['noise_inv1'],
                                              par['noise_inv2'],
-                                             verbose=False)
+                                             noise_inv_suffix=";noise_weight",
+                                             verbose=False,
+                                             db_to_use=self.datapath_db)
 
         for pairitem in self.pairlist:
             pdict = pairdict[pairitem]
@@ -222,6 +223,7 @@ class PairSet(ft.ClassPersistence):
                 self.pairs_parallel_track[pairitem] = pair_parallel_track
 
 
+    @batch_handler.log_timing
     def preprocess_pairs(self):
         r"""perform several preparation tasks on the data
         1. convolve down to a common beam
@@ -237,6 +239,7 @@ class PairSet(ft.ClassPersistence):
         if self.params["sub_weighted_mean"]:
             self.call_pairs("subtract_weighted_mean")
 
+    @batch_handler.log_timing
     def calculate_correlation(self):
         r"""Note that multiprocessing's map() is more elegant than Process,
         but fails for handing in complex map_pair objects
@@ -255,6 +258,7 @@ class PairSet(ft.ClassPersistence):
         for process in process_list:
             process.join()
 
+    @batch_handler.log_timing
     def calculate_svd(self):
         r"""calculate the SVD of all pairs"""
         for pairitem in self.pairlist:
@@ -273,6 +277,7 @@ class PairSet(ft.ClassPersistence):
                 print "ERROR: in SVD, correlation functions not loaded"
                 sys.exit()
 
+    @batch_handler.log_timing
     def subtract_foregrounds(self, n_modes):
         r"""call subtract_frequency_modes on the maps with the modes as found
         in the svd, removing the first `n_modes`
@@ -296,6 +301,7 @@ class PairSet(ft.ClassPersistence):
                                                 svd_info[1][:n_modes],
                                                 svd_info[2][:n_modes])
 
+    @batch_handler.log_timing
     def save_data(self, n_modes):
         ''' Save the all of the clean data.
         '''
@@ -363,10 +369,8 @@ def wrap_corr(pair, filename):
     Correlations in the `pair` (map_pair type) are saved to `filename`
     """
     name = current_process().name
-    print "starting at %s on pair %s => %s" % (name, time.asctime(), filename)
     (corr, counts) = pair.correlate(pair.lags, speedup=True)
     ft.save_pickle((corr, counts), filename)
-    print "%s finished at %s" % (name, time.asctime())
 
 
 if __name__ == '__main__':

@@ -13,6 +13,42 @@ import shelve
 import functools
 import os
 import copy
+import logging as log
+
+
+def log_timing_func():
+    '''Decorator generator that logs the time it takes a function to execute'''
+    def decorator(func_to_decorate):
+        def wrapper(*args, **kwargs):
+            start = time.time()
+            result = func_to_decorate(*args, **kwargs)
+            elapsed = (time.time() - start)
+
+            log.debug("[TIMING] %s: %s" % (func_to_decorate.__name__, elapsed))
+
+            return result
+        wrapper.__doc__ = func_to_decorate.__doc__
+        wrapper.__name__ = func_to_decorate.__name__
+        return wrapper
+    return decorator
+
+
+# for classes
+def log_timing(func_to_decorate):
+    '''Decorator generator that logs the time it takes a function to execute'''
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        result = func_to_decorate(*args, **kwargs)
+        elapsed = (time.time() - start)
+
+        #log.debug("[TIMING] %s: %s" % (func_to_decorate.__name__, elapsed))
+        print "[TIMING] %s: %s" % (func_to_decorate.__name__, elapsed)
+
+        return result
+
+    wrapper.__doc__ = func_to_decorate.__doc__
+    wrapper.__name__ = func_to_decorate.__name__
+    return wrapper
 
 
 def short_repr(input_var, maxlen=None):
