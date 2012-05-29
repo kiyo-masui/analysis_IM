@@ -15,6 +15,7 @@ import sys
 import copy
 import time
 import scipy as sp
+import numpy as np
 from utils import file_tools as ft
 from utils import data_paths as dp
 from pwrspec_estimation import corr_estimation as ce
@@ -285,6 +286,9 @@ class PairSet(ft.ClassPersistence):
 
     @batch_handler.log_timing
     def save_data(self, n_modes):
+        prodmap_list = []
+        weight_list = []
+
         n_modes = "%dmodes" % n_modes
         for pairitem in self.pairlist:
             pair = self.pairs[pairitem]
@@ -305,9 +309,17 @@ class PairSet(ft.ClassPersistence):
 
             if self.params['subtract_inputmap_from_sim'] or \
                self.params['subtract_sim_from_inputmap']:
-                map1 = pairs.map1 - self.pairs_parallel_track[pairitem].map1
+                map1 = pair.map1 - self.pairs_parallel_track[pairitem].map1
 
-                map2 = pairs.map2 - self.pairs_parallel_track[pairitem].map2
+                map2 = pair.map2 - self.pairs_parallel_track[pairitem].map2
+            else:
+                map1 = copy.deepcopy(pair.map1)
+                map2 = copy.deepcopy(pair.map2)
+
+            prodmap_list.append(map1 * pair.noise_inv1)
+            prodmap_list.append(map2 * pair.noise_inv2)
+            weight_list.append(pair.noise_inv1)
+            weight_list.append(pair.noise_inv2)
 
             algebra.save(map1_file, map1)
             algebra.save(map2_file, map2)
@@ -315,6 +327,48 @@ class PairSet(ft.ClassPersistence):
             algebra.save(noise_inv2_file, pair.noise_inv2)
             algebra.save(modes1_file, pair.left_modes)
             algebra.save(modes2_file, pair.right_modes)
+
+        cumulative_product = algebra.zeros_like(prodmap_list[0])
+        cumulative_weight = algebra.zeros_like(prodmap_list[0])
+        for mapind in range(0, len(prodmap_list)):
+            cumulative_product += prodmap_list[mapind]
+            cumulative_weight += weight_list[mapind]
+
+        algebra.compressed_array_summary(cumulative_weight, "weight map")
+        algebra.compressed_array_summary(cumulative_product, "product map")
+
+        cumulative_weight[cumulative_weight < 1.e-20] = 0.
+        cumulative_product[cumulative_weight < 1.e-20] = 0.
+
+        newmap = cumulative_product / cumulative_weight
+
+        # if the new map is nan or inf, set it and the wieghts to zero
+        nan_array = np.isnan(newmap)
+        newmap[nan_array] = 0.
+        cumulative_product[nan_array] = 0.
+        cumulative_weight[nan_array] = 0.
+        inf_array = np.isinf(newmap)
+        newmap[inf_array] = 0.
+        cumulative_product[inf_array] = 0.
+        cumulative_weight[inf_array] = 0.
+        algebra.compressed_array_summary(newmap, "new map")
+        algebra.compressed_array_summary(cumulative_product, "final map * weight")
+        algebra.compressed_array_summary(cumulative_weight, "final weight map")
+
+        combined = "combined_clean"
+        combined_map_file = "%s/%s_map_%s.npy" % \
+                            (self.output_root, combined, n_modes)
+        combined_weight_file = "%s/%s_weight_%s.npy" % \
+                            (self.output_root, combined, n_modes)
+        combined_product_file = "%s/%s_product_%s.npy" % \
+                            (self.output_root, combined, n_modes)
+        combined_ones_file = "%s/%s_ones_%s.npy" % \
+                            (self.output_root, combined, n_modes)
+
+        algebra.save(combined_map_file, newmap)
+        algebra.save(combined_product_file, cumulative_product)
+        algebra.save(combined_weight_file, cumulative_weight)
+        algebra.save(combined_ones_file, algebra.ones_like(newmap))
 
     # Service functions ------------------------------------------------------
     def call_pairs(self, call):
