@@ -298,7 +298,7 @@ class MapPair(object):
         self.map1[self.noise_inv1 < 1.e-20] = 0.
         self.map2[self.noise_inv2 < 1.e-20] = 0.
 
-    def subtract_frequency_modes(self, modes1, modes2=None):
+    def subtract_frequency_modes(self, modes1, modes2=None, weighted=False):
         r"""Subtract frequency mode from the map.
 
         Parameters
@@ -322,7 +322,14 @@ class MapPair(object):
 
         for mode_index, mode_vector in enumerate(modes1):
             mode_vector = mode_vector.reshape(self.freq.shape)
-            amp = sp.tensordot(mode_vector, self.map1, axes=(0,0))
+
+            if weighted:
+                amp = sp.tensordot(mode_vector, self.map1 * self.noise_inv1, axes=(0,0))
+                amp /= sp.tensordot(mode_vector, mode_vector[:, None, None] * self.noise_inv1, axes=(0,0))
+            else:
+                amp = sp.tensordot(mode_vector, self.map1, axes=(0,0))
+                #amp /= sp.dot(mode_vector, mode_vector)
+
             fitted = mode_vector[:, None, None] * amp[None, :, :]
             self.map1[self.freq, :, :] -= fitted
             outmap_left[mode_index, :, :] = amp
@@ -337,7 +344,14 @@ class MapPair(object):
 
         for mode_index, mode_vector in enumerate(modes2):
             mode_vector = mode_vector.reshape(self.freq.shape)
-            amp = sp.tensordot(mode_vector, self.map2, axes=(0,0))
+
+            if weighted:
+                amp = sp.tensordot(mode_vector, self.map2 * self.noise_inv2, axes=(0,0))
+                amp /= sp.tensordot(mode_vector, mode_vector[:, None, None] * self.noise_inv2, axes=(0,0))
+            else:
+                amp = sp.tensordot(mode_vector, self.map2, axes=(0,0))
+                #amp /= sp.dot(mode_vector, mode_vector)
+
             fitted = mode_vector[:, None, None] * amp[None, :, :]
             self.map2[self.freq, :, :] -= fitted
             outmap_right[mode_index, :, :] = amp
