@@ -146,7 +146,8 @@ class PathForms(object):
         self._set_key(key, val)
 
     def register_maprun(self, key, group_key, parent, field_tag, desc,
-                        notes=None, status=None):
+                        notes=None, status=None, sectag="sec",
+                        skip_firstpass=False):
         r"""register all the files produced in a mapping run
         """
         val = {'desc': desc}
@@ -162,10 +163,17 @@ class PathForms(object):
         if status is not None:
             val['status'] = status
 
-        sections = ['A', 'B', 'C', 'D', 'firstpass']
-        suffixes = ['history.hist', 'noise_diag_I.npy', 'clean_map_I.npy',
+        if skip_firstpass:
+            sections = ['A', 'B', 'C', 'D']
+        else:
+            sections = ['A', 'B', 'C', 'D', 'firstpass']
+        #suffixes = ['history.hist', 'noise_diag_I.npy', 'clean_map_I.npy',
+        #            'params.ini', 'noise_inv_I.npy', 'dirty_map_I.npy']
+        #suffixdesc = ['log', 'noise_diag', 'clean_map', 'params', 'noise_inv',
+        #          'dirty_map']
+        suffixes = ['noise_diag_I.npy', 'clean_map_I.npy',
                     'params.ini', 'noise_inv_I.npy', 'dirty_map_I.npy']
-        suffixdesc = ['log', 'noise_diag', 'clean_map', 'params', 'noise_inv',
+        suffixdesc = ['noise_diag', 'clean_map', 'params', 'noise_inv',
                   'dirty_map']
 
         filelist = {}
@@ -175,8 +183,8 @@ class PathForms(object):
             for (suffix, sdesc) in zip(suffixes, suffixdesc):
                 filekey = "%s;%s" % (sec, sdesc)
                 if (sec != 'firstpass'):
-                    filelist[filekey] = "%ssec_%s_%s_%s" % \
-                                        (fileroot, sec, field_tag, suffix)
+                    filelist[filekey] = "%s%s_%s_%s_%s" % \
+                                        (fileroot, sectag, sec, field_tag, suffix)
                     listindex.append(filekey)
                 else:
                     if suffix != "noise_diag_I.npy":
@@ -199,7 +207,8 @@ class PathForms(object):
     # /mnt/raid-project/gmrt/kiyo/gbt_out/maps/dec29.2011/secA_15hr_41-90_noise_diag_I_737.npy
     # /mnt/raid-project/gmrt/kiyo/gbt_out/maps/dec29.2011/secA_15hr_41-90_noise_inv_I_737.npy
     def register_optimalmap_section_run(self, key, group_key, parent, field_tag, band, desc,
-                                        notes=None, status=None):
+                                        notes=None, status=None,
+                                        no_weight=False):
         r"""register all the files produced in a mapping run
         """
         val = {'desc': desc}
@@ -216,10 +225,18 @@ class PathForms(object):
             val['status'] = status
 
         sections = ['A', 'B', 'C', 'D']
-        suffixes = ['clean_map_I', 'dirty_map_I',
-                    'noise_diag_I', 'noise_inv_I']
-        suffixdesc = ['clean_map', 'dirty_map',
-                      'noise_diag', 'noise_inv']
+        if no_weight:
+            suffixes = ['clean_map_I', 'dirty_map_I',
+                        'noise_diag_I', 'noise_inv_I']
+            suffixdesc = ['clean_map', 'dirty_map',
+                          'noise_diag', 'noise_inv']
+        else:
+            suffixes = ['clean_map_I', 'dirty_map_I',
+                        'noise_diag_I', 'noise_inv_I',
+                        'noise_weight_I']
+            suffixdesc = ['clean_map', 'dirty_map',
+                          'noise_diag', 'noise_inv',
+                          'noise_weight']
 
         filelist = {}
         listindex = []

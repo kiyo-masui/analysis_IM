@@ -118,6 +118,32 @@ notes = 'optimal maps, proposal-era cal, some bugs fixed following Jan 16 2012, 
 dbcl.register_path('GBT_maps_Kiyo_23feb2012', pathname,
                     "Kiyo's map directory", notes=notes)
 
+pathname = dbcl.fetch_path('GBTDATA_KIYO') + "gbt_out/maps/apr11.2012/"
+notes = 'map where each session is calibrated wrt session 1 using zero mode'
+dbcl.register_path('GBT_maps_Kiyo_11apr2012', pathname,
+                    "Kiyo's map directory", notes=notes)
+
+pathname = dbcl.fetch_path('GBTDATA_KIYO') + "gbt_out/maps/apr16.2012/"
+notes = 'individual sessions for map self-calibration; including combined map'
+dbcl.register_path('GBT_maps_Kiyo_16apr2012', pathname,
+                    "Kiyo's map directory", notes=notes)
+
+pathname = dbcl.fetch_path('GBTDATA_KIYO') + "gbt_out_new/maps/may04.2012/"
+notes = '15hr optimal mapper, best band, self-calibration'
+dbcl.register_path('GBT_maps_Kiyo_04may2012', pathname,
+                    "Kiyo's map directory", notes=notes)
+
+# Temporary (until noise_weight is included in the map directory)
+pathname = dbcl.fetch_path('GBTDATA_ESWITZER') + "GBT/maps/optimal_15hr_selfcal/"
+notes = '15hr optimal mapper, best band, self-calibration'
+dbcl.register_path('GBT_maps_Eric_04may2012', pathname,
+                    "Eric's version of Kiyo map with noise weight", notes=notes)
+
+pathname = dbcl.fetch_path('GBTDATA_KIYO') + "gbt_out_new/maps/may07.2012/"
+notes = '15hr optimal mapper, best band, self-calibration'
+dbcl.register_path('GBT_maps_Kiyo_07may2012', pathname,
+                    "Kiyo's map directory", notes=notes)
+
 #pathname = dbcl.fetch_path('GBTDATA_ESWITZER') + "GBT/maps/oldcal_plussim10pct/"
 #notes = 'oldcal plus sim * 1.1'
 #dbcl.register_path('GBT_maps_Eric_oldcal_plussim10pct', pathname,
@@ -213,6 +239,13 @@ dbcl.register_maprun(key, group_key, parent, field_tag, desc,
 group_key = 'GBTmaps'
 status = 'in development'
 
+key = 'GBT_15hr_optimalmap_selfcal_762'
+parent = 'GBT_maps_Eric_04may2012'
+desc = "15hr optimal mapper, best band, self-calibration"
+field_tag = '15hr_41-90'
+dbcl.register_optimalmap_section_run(key, group_key, parent, field_tag, '762', desc,
+                        status=status)
+
 #key = 'GBT_15hr_optimalmap737'
 #parent = 'GBT_maps_Kiyo'
 #desc = "optimal (section) maps from Kiyo"
@@ -259,6 +292,20 @@ desc = "optimal maps glued into one cube; some bugs fixed following 16Jan2012, f
 field_tag = '15hr_41-90'
 dbcl.register_optimalmap_glued_run(key, group_key, parent, field_tag, desc,
                         status=status)
+
+key = 'GBT_15hr_map_mapcal'
+parent = 'GBT_maps_Kiyo_11apr2012'
+desc = 'map where each session is calibrated wrt session 1 using zero mode'
+field_tag = 'calib_15hr_41-73'
+dbcl.register_maprun(key, group_key, parent, field_tag, desc,
+                     status=status, sectag="comb", skip_firstpass=True)
+
+key = 'GBT_15hr_map_mapcal2'
+parent = 'GBT_maps_Kiyo_16apr2012'
+desc = 'map where each session is calibrated wrt stack w factorize noise'
+field_tag = 'calib_15hr_41-73'
+dbcl.register_maprun(key, group_key, parent, field_tag, desc,
+                     status=status, sectag="comb", skip_firstpass=True)
 
 #-----------------------------------------------------------------------------
 # register alternate calibrations from Nidhi; 'register_maprun'
@@ -376,15 +423,44 @@ modelist = range(0, 105, 5)
 #                   tag=tag, status=status, notes=notes, sim=None,
 #                   alt=alt, extdesc=extdesc)
 
-mode_clean_run('GBT_15hr_map_oldcal', 'Eric', modelist,
+# TODO: uncomment these: ONLY TEMPORARY
+#mode_clean_run('GBT_15hr_map_oldcal', 'Eric', modelist,
+#               status=status, notes=notes, simkey=None,
+#               alt="", extdesc=extdesc)
+
+#mapsim_mode_clean_run('GBT_15hr_map_oldcal', 'sim_15hr_oldmap_str_beam',
+#                      "Eric", modelist, status=status, notes=notes,
+#                      extdesc=extdesc)
+
+#mapsim_mode_clean_run('GBT_15hr_map_oldcal', 'sim_15hr_oldmap_str_beam',
+#                      "Eric", modelist, status=status, notes=notes,
+#                      extdesc=extdesc, alt="_simx1p1")
+
+notes = "map calibration round 1: old pixelization, 1x1, no factorization"
+status = 'development'
+mode_clean_run('GBT_15hr_map_mapcal', 'Eric', modelist,
                status=status, notes=notes, simkey=None,
                alt="", extdesc=extdesc)
 
-mapsim_mode_clean_run('GBT_15hr_map_oldcal', 'sim_15hr_oldmap_str_beam',
+mapsim_mode_clean_run('GBT_15hr_map_mapcal', 'sim_15hr_oldmap_str_beam',
                       "Eric", modelist, status=status, notes=notes,
                       extdesc=extdesc)
 
-mapsim_mode_clean_run('GBT_15hr_map_oldcal', 'sim_15hr_oldmap_str_beam',
+mapsim_mode_clean_run('GBT_15hr_map_mapcal', 'sim_15hr_oldmap_str_beam',
+                      "Eric", modelist, status=status, notes=notes,
+                      extdesc=extdesc, alt="_simx1p1")
+
+notes = "map calibration round 1: old pixelization, 1xcomb, factorization"
+status = 'development'
+mode_clean_run('GBT_15hr_map_mapcal2', 'Eric', modelist,
+               status=status, notes=notes, simkey=None,
+               alt="", extdesc=extdesc)
+
+mapsim_mode_clean_run('GBT_15hr_map_mapcal2', 'sim_15hr_oldmap_str_beam',
+                      "Eric", modelist, status=status, notes=notes,
+                      extdesc=extdesc)
+
+mapsim_mode_clean_run('GBT_15hr_map_mapcal2', 'sim_15hr_oldmap_str_beam',
                       "Eric", modelist, status=status, notes=notes,
                       extdesc=extdesc, alt="_simx1p1")
 
@@ -400,7 +476,9 @@ def mode_clean_run_old(source_key, username, modelist,
     if sim:
         mapsim = "_sims"
 
-    key = '%s_oldcleaned%s%s' % (source_key, mapsim, alt)
+    # TODO: REVERT THIS TO OLDCLEAN
+    key = '%s_cleaned%s%s' % (source_key, mapsim, alt)
+    #key = '%s_oldcleaned%s%s' % (source_key, mapsim, alt)
     combined_key = '%s_combined' % key
     group_key = 'GBTcleaned'
     parent_key = '%s_path_%s' % (key, username)
@@ -521,6 +599,11 @@ mapsimnoconv_mode_clean_run('GBT_15hr_optimalmap_mapv2fdgcal', 'sim_15hr_optimal
 notes = "Tabitha fdg calibration calibration and new mapmaker v2 with time modes removed"
 status = 'active development'
 mapsimnoconv_mode_clean_run('GBT_15hr_optimalmap_mapv2fdgcalmoderm', 'sim_15hr_optimalmap_str_beam',
+                             status=status, notes=notes)
+
+notes = "Kiyo optimal maps, map-domain calibration, funny border"
+status = 'active development'
+mapsimnoconv_mode_clean_run('GBT_15hr_optimalmap_selfcal_762', 'sim_15hr_optimalmap762_str_beam',
                              status=status, notes=notes)
 
 #notes = "Tabitha flux-only calibration calibration and old mapmaker"
@@ -751,6 +834,7 @@ register_strsim("oldmap", "22hr", "old-style map pixelization")
 register_strsim("oldmap", "1hr", "old-style map pixelization")
 register_strsim("oldmap_HI5em4", "15hr", "old-style map pixelization, Omega_HI=5e-4")
 register_strsim("optimalmap", "15hr", "optimal map pixelization")
+register_strsim("optimalmap762", "15hr", "optimal map pixelization, best region")
 
 #-----------------------------------------------------------------------------
 # register quadratic product output and cache directories
