@@ -107,11 +107,6 @@ class PairSet(ft.ClassPersistence):
         if not os.path.isdir(self.output_root):
             os.mkdir(self.output_root)
 
-        # check that it exists (TODO: do this more simply)
-        self.output_root = self.datapath_db.fetch(self.params['output_root'],
-                                                  intend_write=True,
-                                                  tack_on=self.params['tack_on'])
-
         if self.params['SVD_root']:
             self.SVD_root = self.datapath_db.fetch(self.params['SVD_root'],
                                                    intend_write=True)
@@ -131,12 +126,18 @@ class PairSet(ft.ClassPersistence):
         self.calculate_correlation()
         self.calculate_svd()
 
-        self.uncleaned_pairs = copy.deepcopy(self.pairs)
-        for n_modes in self.params['modes']:
-            # clean self.pairs and save its components
-            self.subtract_foregrounds(n_modes)
-            self.save_data(n_modes)
-            self.pairs = copy.deepcopy(self.uncleaned_pairs)
+        mode_list_stop = self.params['modes']
+        mode_list_start = copy.deepcopy(self.params['modes'])
+        mode_list_start[1:] = mode_list_start[:-1]
+
+        #self.uncleaned_pairs = copy.deepcopy(self.pairs)
+        for (n_modes_start, n_modes_stop) in zip(mode_list_start,
+                                             mode_list_stop):
+            self.subtract_foregrounds(n_modes_start, n_modes_stop)
+            self.save_data(n_modes_stop)
+
+            # NOTE: if you use this you also need to copy the parallel pairs!
+            #self.pairs = copy.deepcopy(self.uncleaned_pairs)
 
     @batch_handler.log_timing
     def load_pairs(self):
@@ -261,40 +262,29 @@ class PairSet(ft.ClassPersistence):
                 sys.exit()
 
     @batch_handler.log_timing
-    def subtract_foregrounds(self, n_modes):
-        r"""call subtract_frequency_modes on the maps with the modes as found
-        in the svd, removing the first `n_modes`
-        """
+    def subtract_foregrounds(self, n_modes_start, n_modes_stop):
         for pairitem in self.pairlist:
             filename_svd = "%s/SVD_pair_%s.pkl" % (self.SVD_root, pairitem)
-            print "subtracting %d modes from %s using %s" % (n_modes, \
-                                                             pairitem, \
-                                                             filename_svd)
+            print "subtracting %d to %d modes from %s using %s" % (n_modes_start, \
+                                                                n_modes_stop, \
+                                                                pairitem, \
+                                                                filename_svd)
 
             # svd_info: 0 is vals, 1 is modes1 (left), 2 is modes2 (right)
             svd_info = ft.load_pickle(filename_svd)
 
             self.pairs[pairitem].subtract_frequency_modes(
-                                    svd_info[1][:n_modes],
-                                    svd_info[2][:n_modes])
+                                    svd_info[1][n_modes_start:n_modes_stop],
+                                    svd_info[2][n_modes_start:n_modes_stop])
 
             if self.params['subtract_inputmap_from_sim'] or \
                self.params['subtract_sim_from_inputmap']:
                 self.pairs_parallel_track[pairitem].subtract_frequency_modes(
-                                                svd_info[1][:n_modes],
-                                                svd_info[2][:n_modes])
-
-                self.pairs[pairitem].map1 -= \
-                    self.pairs_parallel_track[pairitem].map1
-
-                self.pairs[pairitem].map2 -= \
-                    self.pairs_parallel_track[pairitem].map2
-
+                                        svd_info[1][n_modes_start:n_modes_stop],
+                                        svd_info[2][n_modes_start:n_modes_stop])
 
     @batch_handler.log_timing
     def save_data(self, n_modes):
-        ''' Save the all of the clean data.
-        '''
         n_modes = "%dmodes" % n_modes
         for pairitem in self.pairlist:
             pair = self.pairs[pairitem]
@@ -313,8 +303,14 @@ class PairSet(ft.ClassPersistence):
             modes2_file = "%s/sec_%s_modes_clean_map_I_with_%s_%s.npy" % \
                             (self.output_root, tag2, tag1, n_modes)
 
-            algebra.save(map1_file, pair.map1)
-            algebra.save(map2_file, pair.map2)
+            if self.params['subtract_inputmap_from_sim'] or \
+               self.params['subtract_sim_from_inputmap']:
+                map1 = pairs.map1 - self.pairs_parallel_track[pairitem].map1
+
+                map2 = pairs.map2 - self.pairs_parallel_track[pairitem].map2
+
+            algebra.save(map1_file, map1)
+            algebra.save(map2_file, map2)
             algebra.save(noise_inv1_file, pair.noise_inv1)
             algebra.save(noise_inv2_file, pair.noise_inv2)
             algebra.save(modes1_file, pair.left_modes)

@@ -314,36 +314,32 @@ class MapPair(object):
         if modes2 == None:
             modes2 = modes1
 
-        map1 = self.map1
-        map2 = self.map2
-        freq = self.freq
-
         # First map.
-        outmap_left = sp.empty((len(modes1), ) + map1.shape[1:])
+        outmap_left = sp.empty((len(modes1), ) + self.map1.shape[1:])
         outmap_left = algebra.make_vect(outmap_left,
                                      axis_names=('freq', 'ra', 'dec'))
-        outmap_left.copy_axis_info(map1)
+        outmap_left.copy_axis_info(self.map1)
 
         for mode_index, mode_vector in enumerate(modes1):
-            mode_vector = mode_vector.reshape(freq.shape)
-            amp = sp.tensordot(mode_vector, map1, axes=(0,0))
+            mode_vector = mode_vector.reshape(self.freq.shape)
+            amp = sp.tensordot(mode_vector, self.map1, axes=(0,0))
             fitted = mode_vector[:, None, None] * amp[None, :, :]
-            map1[freq, :, :] -= fitted
+            self.map1[self.freq, :, :] -= fitted
             outmap_left[mode_index, :, :] = amp
 
         self.left_modes = outmap_left
 
         # Second map.
-        outmap_right = sp.empty((len(modes2), ) + map2.shape[1:])
+        outmap_right = sp.empty((len(modes2), ) + self.map2.shape[1:])
         outmap_right = algebra.make_vect(outmap_right,
                                      axis_names=('freq', 'ra', 'dec'))
-        outmap_right.copy_axis_info(map2)
+        outmap_right.copy_axis_info(self.map2)
 
         for mode_index, mode_vector in enumerate(modes2):
-            mode_vector = mode_vector.reshape(freq.shape)
-            amp = sp.tensordot(mode_vector, map2, axes=(0,0))
+            mode_vector = mode_vector.reshape(self.freq.shape)
+            amp = sp.tensordot(mode_vector, self.map2, axes=(0,0))
             fitted = mode_vector[:, None, None] * amp[None, :, :]
-            map2[freq, :, :] -= fitted
+            self.map2[self.freq, :, :] -= fitted
             outmap_right[mode_index, :, :] = amp
 
         self.right_modes = outmap_right
