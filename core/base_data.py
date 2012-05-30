@@ -15,7 +15,7 @@ class BaseData(object) :
     # This should be overwritten by classes inheriting from this one.
     axes = ()
 
-    def __init__(self, data=None) :
+    def __init__(self, data=None, copy=True) :
         """Can either be initialized with a raw data array or with None"""
         
         # Dictionary that holds all data other than .data.  This is safe to 
@@ -40,12 +40,12 @@ class BaseData(object) :
             self.data = ma.zeros(tuple(sp.zeros(len(self.axes))), float)
             self.data_set = False
         else :
-            self.set_data(data)
+            self.set_data(data, copy=copy)
 
-    def set_data(self, data) :
+    def set_data(self, data, copy=True) :
         """Set the data to passed array."""
         # Feel free to play around with the precision.
-        self.data = ma.array(data, dtype=sp.float64, copy=True)
+        self.data = ma.array(data, dtype=sp.float64, copy=copy)
         self.data_set = True
         self.dims = sp.shape(data)
 
