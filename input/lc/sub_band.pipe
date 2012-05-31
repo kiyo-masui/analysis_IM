@@ -61,8 +61,8 @@ data_dir = os.getenv('GBT_OUT')
 base_km = os.getenv('GBT_KM')
 base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
-map_base = base_dir + 'maps/may04.2012/'
-
+#map_base = base_dir + 'maps/may04.2012/'
+map_base = base_dir + 'maps/'
 
 # IO directory and file prefixes.
 prefix = ''
@@ -80,8 +80,8 @@ pipe_modules = []
 #from time_stream import flag_data
 #pipe_modules.append(flag_data.FlagData)
 
-from time_stream import rebin
-pipe_modules.append(rebin.Rebin)
+#from time_stream import rebin
+#pipe_modules.append(rebin.Rebin)
 
 #from time_stream import band_stop
 #pipe_modules.append(band_stop.BandStop)
@@ -104,8 +104,8 @@ pipe_modules.append(rebin.Rebin)
 #from map import dirty_map
 #pipe_modules.append(dirty_map.DirtyMapMaker)
 
-#from map import clean_map
-#pipe_modules.append(clean_map.CleanMapMaker)
+from map import clean_map
+pipe_modules.append(clean_map.CleanMapMaker)
 
 
 #### Second Map making iteration ####
@@ -275,11 +275,14 @@ dm_deweight_time_slope = True
 dm_interpolation = 'cubic'
 
 # clean_map
-cm_input_root = dm_output_root
-cm_output_root = cm_input_root
+#cm_input_root = dm_output_root
+cm_input_root = map_base + 'secA_15hr_41-90_'
+#cm_output_root = cm_input_root
+cm_output_root = map_base + 'test/'
 cm_polarizations = ('I',)
 cm_bands = (762,)
 cm_save_noise_diag = True
+cm_save_noise_inv_diag = True
 
 #### Second round of map making #####
 
