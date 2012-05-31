@@ -99,7 +99,6 @@ class AggregateOutputs(object):
             execute_key = args_package[0]
             outshelve[execute_key] = result_item
 
-        print outshelve
         outshelve.close()
 
 def test_function(arg1, arg2, kwarg=None):

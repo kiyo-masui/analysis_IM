@@ -1,11 +1,15 @@
 import os
+import math
+import numpy as np
 from utils import aggregate_outputs
 from kiyopy import parse_ini
-from correlate import pwrspec_estimation as pe
+from quadratic_products import pwrspec_estimator as pe
 from foreground_clean import map_pair as mp
+from utils import data_paths as dp
 
 params_init = {
         "map_key": "test_map",
+        "outfile": "test_file.shelve",
         "unitless": True,
         "return_3d": False,
         "truncate": False,
@@ -18,13 +22,15 @@ params_init = {
                }
 prefix = 'xs_'
 
+
 def pwrspec_caller(map1_key, map2_key,
                    noiseinv1_key, noiseinv2_key,
                    params):
 
     simpair = mp.MapPair(map1_key, map2_key,
                          noiseinv1_key, noiseinv2_key,
-                         params['freq_list'], avoid_db=True)
+                         params['freq_list'],
+                         input_filenames=True)
 
     bparam = params['bins']
     bins = np.logspace(math.log10(bparam[0]),
@@ -42,6 +48,7 @@ def pwrspec_caller(map1_key, map2_key,
 
     return retval
 
+
 class PwrspecCombinations(object):
     r"""Handler to call the power spectral estimation for different
     combinations of auto, cross-powers
@@ -54,16 +61,20 @@ class PwrspecCombinations(object):
             self.params = parse_ini.parse(parameter_file, params_init,
                                           prefix=prefix)
 
-        self.freq_list = sp.array(self.params['freq_list'], dtype=int)
+        self.freq_list = np.array(self.params['freq_list'], dtype=int)
 
 
     def execute(self, processes):
-        caller = aggregate_outputs.AggregateOutputs("pwrspec_caller")
+        funcname = "quadratic_products.pwrspec_combinations.pwrspec_caller"
+        caller = aggregate_outputs.AggregateOutputs(funcname)
 
-        map_cases = self.datapath_db.fileset_cases(map_key, "pair;type;treatment")
-        unique_pairs = data_paths.GBTauto_cross_pairs(map_cases['pair'],
-                                                      map_cases['pair'],
-                                                      cross_sym="_with_")
+        map_key = self.params['map_key']
+        map_cases = self.datapath_db.fileset_cases(map_key,
+                                                   "pair;type;treatment")
+
+        unique_pairs = dp.GBTauto_cross_pairs(map_cases['pair'],
+                                              map_cases['pair'],
+                                              cross_sym="_with_")
 
         for treatment in map_cases['treatment']:
             for item in unique_pairs:
@@ -74,10 +85,10 @@ class PwrspecCombinations(object):
                 dbkeydict['map2_key'] = "%s:%s;map;%s" % mapset1
                 dbkeydict['noiseinv1_key'] = "%s:%s;noise_inv;%s" % mapset0
                 dbkeydict['noiseinv2_key'] = "%s:%s;noise_inv;%s" % mapset1
-                files = data_paths.convert_dbkeydict_to_filedict(dbkeydict,
-                                                          datapath_db=self.datapath_db)
+                files = dp.convert_dbkeydict_to_filedict(dbkeydict,
+                                                         datapath_db=self.datapath_db)
 
-                execute_key = "%s_with_%s:%s" % (item[0], item[1], treatment)
+                execute_key = "%s:%s" % (item[0], treatment)
                 caller.execute(files['map1_key'],
                                files['map2_key'],
                                files['noiseinv1_key'],
@@ -86,7 +97,7 @@ class PwrspecCombinations(object):
                                execute_key=execute_key)
 
 
-        caller.multiprocess_stack("test.shelve")
+        caller.multiprocess_stack(self.params["outfile"], debug=False)
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:

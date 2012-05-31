@@ -18,7 +18,7 @@ import scipy as sp
 import numpy as np
 from utils import file_tools as ft
 from utils import data_paths as dp
-from pwrspec_estimation import corr_estimation as ce
+from quadratic_products import corr_estimation as ce
 from kiyopy import parse_ini
 import kiyopy.utils
 from core import algebra

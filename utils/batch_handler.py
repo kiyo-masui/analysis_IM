@@ -335,6 +335,7 @@ class MemoizeBatch(object):
         if debug:
             result = []
             for item in self.call_stack:
+                print_call(item)
                 result.append(function_wrapper(item))
         else:
             num_cpus = multiprocessing.cpu_count() - save_cpu

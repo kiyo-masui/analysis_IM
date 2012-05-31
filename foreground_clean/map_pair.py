@@ -11,8 +11,8 @@ from map import beam
 from map import physical_gridding as pg
 from kiyopy import parse_ini
 import kiyopy.utils
-from pwrspec_estimation import corr_estimation
-from pwrspec_estimation import pwrspec_estimation as pe
+from quadratic_products import corr_estimation
+from quadratic_products import pwrspec_estimation as pe
 from utils import data_paths
 from utils import batch_handler as bh
 # TODO: move single map operations to a separate class
