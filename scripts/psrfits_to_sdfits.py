@@ -250,7 +250,7 @@ class Scan(object):
         times_and_files = zip(guppi_file_start_times, guppi_files)
         times_and_files.sort()
         sorted_times, self.guppi_files = zip(*times_and_files)
-        if self.feedback > 1:
+        if self.feedback >= 1:
             msg = ("Using antenna file: " + self.antenna_file 
                    + " and guppi files: " + repr(self.guppi_files))
             print msg
@@ -431,7 +431,7 @@ class Scan(object):
             ncal = 1
         # Open up the fits file.  Be sure to memory map it in case it doesn't
         # fit in memory.
-        if self.feedback > 1:
+        if self.feedback >= 1:
             print "Converting guppi file: " + guppi_file
         psrhdu_list = pyfits.open(guppi_file, 'readonly', memmap=True)
         # A record array with each row holding about 2 seconds of data.
@@ -556,13 +556,13 @@ class Scan(object):
                 division_starts = range(start_record, n_records+1)
 
         # Loop over the records and modify the data.
-        if self.feedback > 2 :
+        if self.feedback > 3 :
             print "Record: ",
         for jj in range(start_record, n_records) :
             record = psrdata[jj]
             # Print the record we are currently on and force a flush to
             # standard out (so we can watch the progress update).
-            if self.feedback > 2 :
+            if self.feedback > 3 :
                 print jj,
                 sys.stdout.flush()
             # Do one pass through the current division of the data to find the
@@ -657,7 +657,7 @@ class Scan(object):
                           utils.abbreviate_file_path(self.antenna_file),
                           utils.abbreviate_file_path(self.go_file)))
         # End loop over records.
-        if self.feedback > 2 :
+        if self.feedback > 3 :
             print
         return Data
 
@@ -665,6 +665,8 @@ class Converter(object):
 
     def __init__(self, input_file_or_dict=None, feedback=2) :    
         self.feedback = feedback
+        if self.feedback > 1:
+            print "Starting Data Converter."
         # Read the parameter file.
         self.params = parse_ini.parse(input_file_or_dict, params_init, 
                                       prefix=prefix)
@@ -901,7 +903,10 @@ params_init_checker = {
 
 class DataChecker(object) :
 
-    def __init__(self, parameter_file_or_dict, feedback=2) :    
+    def __init__(self, parameter_file_or_dict, feedback=2):
+        self.feedback = feedback
+        if self.feedback > 1:
+            print "Starting Data Checker."
         self.params = parse_ini.parse(parameter_file_or_dict, 
                 params_init_checker, prefix="")
 
@@ -925,7 +930,7 @@ class DataChecker(object) :
         params = self.params
         # Construct the file name and read in all scans.
         file_name = params["input_root"] + middle + ".fits"
-        Reader = fitsGBT.Reader(file_name)
+        Reader = fitsGBT.Reader(file_name, feedback=self.feedback)
         Blocks = Reader.read((), (), force_tuple=True)
         # Plotting limits need to be adjusted for on-off scans.
         if file_name.find("onoff") != -1 :
@@ -1072,8 +1077,11 @@ params_init_manager = {
 
 class DataManager(object) :
 
-    def __init__(self, data_log, feedback=2) :    
+    def __init__(self, data_log, feedback=2):
+        self.feedback = feedback
         # Read the data log.
+        if self.feedback > 1:
+            print "Starting Data Manager."
         self.params = parse_ini.parse(data_log, params_init_manager, 
                                       prefix="")
 
@@ -1199,7 +1207,7 @@ class DataManager(object) :
                     converter_params["guppi_input_roots"].append(dir)
                 # Convert the files from this session.
                 if not params["dry_run"] :
-                    C = Converter(converter_params, feedback=1)
+                    C = Converter(converter_params, feedback=self.feedback)
                     C.execute(params['nprocesses'])
             # Check that the new files are in fact present.
             # Make a list of these files for the next section of the pipeline.
@@ -1243,7 +1251,8 @@ class DataManager(object) :
                                   "output_root" : params["quality_check_root"]
                                   }
                 # Execute the data checker.
-                DataChecker(checker_params).execute(params["nprocesses"])
+                DataChecker(checker_params).execute(params["nprocesses"],
+                                                    feedback=self.feedback)
             # Wait for the rsync to terminate:
             if number in params['sessions_to_archive']:
                 SyncProc.wait()
