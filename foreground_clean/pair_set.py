@@ -84,7 +84,7 @@ def find_weight(filename):
     return noise_inv_diag, noise_inv_diag.info
 
 
-class PairSet(ft.ClassPersistence):
+class PairSet():
     r"""Class to manage a set of map pairs
     """
 
@@ -116,10 +116,10 @@ class PairSet(ft.ClassPersistence):
             self.SVD_root = self.output_root
 
         # Write parameter file.
-        kiyopy.utils.mkparents(self.output_root)
         parse_ini.write_params(self.params, self.output_root + 'params.ini',
                                prefix=prefix)
 
+    @batch_handler.log_timing
     def execute(self, processes):
         r"""main call to execute the various steps in foreground removal"""
         self.load_pairs()
@@ -169,6 +169,7 @@ class PairSet(ft.ClassPersistence):
 
                 sim = algebra.make_vect(algebra.load(par['simfile']))
                 sim *= par['sim_multiplier']
+                print sim.shape, map1.shape
             else:
                 sim = algebra.zeros_like(map1)
 
@@ -410,6 +411,5 @@ def wrap_corr(pair, filename):
 if __name__ == '__main__':
     if len(sys.argv) == 2:
         PairSet(str(sys.argv[1])).execute()
-        #PairSet(str(sys.argv[1])).clean_maps()
     else:
         print 'Need one argument: parameter file name.'

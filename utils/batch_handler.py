@@ -333,9 +333,9 @@ class MemoizeBatch(object):
         handling in multiprocessing
         """
         if debug:
-            results = []
+            result = []
             for item in self.call_stack:
-                results.append(function_wrapper(item))
+                result.append(function_wrapper(item))
         else:
             num_cpus = multiprocessing.cpu_count() - save_cpu
             pool = multiprocessing.Pool(processes=num_cpus)

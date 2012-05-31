@@ -296,7 +296,7 @@ if __name__ == "__main__":
     #plot_gbt_newmapset()
 
     plot_gbt_comb_modeset('GBT_15hr_optimalmap_selfcal_762_cleaned_combined', convolve=True)
-    plot_gbt_comb_modeset('GBT_15hr_optimalmap_selfcal_762_cleaned_combined', convolve=False)
+    #plot_gbt_comb_modeset('GBT_15hr_optimalmap_selfcal_762_cleaned_combined', convolve=False)
     #plot_gbt_comb_modeset('GBT_15hr_map_mapcal2_cleaned_combined', convolve=True)
     #plot_gbt_comb_modeset('GBT_15hr_map_mapcal2_cleaned_combined', convolve=False)
     #plot_gbt_comb_modeset('GBT_15hr_map_mapcal_cleaned_combined', convolve=True)
