@@ -27,7 +27,7 @@ def pwrspec_caller(map1_key, map2_key,
                    noiseinv1_key, noiseinv2_key,
                    params):
 
-    simpair = mp.MapPair(map1_key, map2_key,
+    mappair = mp.MapPair(map1_key, map2_key,
                          noiseinv1_key, noiseinv2_key,
                          params['freq_list'],
                          input_filenames=True)
@@ -37,7 +37,11 @@ def pwrspec_caller(map1_key, map2_key,
                        math.log10(bparam[1]),
                        num=bparam[2], endpoint=True)
 
-    retval = simpair.pwrspec_summary(window=params['window'],
+    #mappair.degrade_resolution()
+    #mappair.make_noise_factorizable()
+    #mappair.subtract_weighted_mean()
+
+    retval = mappair.pwrspec_summary(window=params['window'],
                                      unitless=params['unitless'],
                                      bins=bins,
                                      truncate=params['truncate'],

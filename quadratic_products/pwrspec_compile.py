@@ -77,6 +77,13 @@ class CompileAutopower(object):
             mean_cleaned_sim = np.mean(pwr_cleaned_sim_1d[treatment], axis=1)
             trans = (mean_map_plussim - mean_map) / reference_pwr
 
+            #trans = (pwr_map_plussim_1d[treatment]-pwr_map_1d[treatment]) / \
+            #        pwr_cleaned_sim_1d["0modes"]
+            #corrected_pwr = pwr_map_1d[treatment]/trans
+            #trans = np.mean(trans, axis=1)
+            #mean_map = np.mean(corrected_pwr, axis=1)
+            #std_map = np.mean(corrected_pwr, axis=1)
+
             outfile = open("pk_%s.dat" % treatment, "w")
             for k, p0, tk, pk_mean, pk_err in zip(k_vec, reference_pwr, trans, mean_map, std_map):
                 outfile.write("%10.15g %10.15g %10.15g %10.15g %10.15g\n" % (k, p0, tk, pk_mean, pk_err))
