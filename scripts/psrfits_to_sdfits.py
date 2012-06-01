@@ -649,8 +649,8 @@ class Scan(object):
                     raise RuntimeError("Huh?")
                 # Truncation better than rounding (corner case errors).
                 milliseconds = milliseconds[:3]
-                this_time_str = (this_date_time.strftime("%Y-%m-%dT%H:%M:%S.") +
-                                 milliseconds)
+                this_time_str = (this_date_time.strftime("%Y-%m-%dT%H:%M:%S.") 
+                                 + milliseconds)
                 Data.field["DATE-OBS"][kk] = this_time_str
         Data.add_history('Converted from a guppi sub-integration fits file.',
                          (utils.abbreviate_file_path(guppi_file),
@@ -677,7 +677,7 @@ class Converter(object):
         # Make sure that the output directory exists.
         utils.mkparents(params["output_root"])
         
-        if nprocesses == 1:
+        if False: # Alwasys multiprocess to avoid memory leaks.
             # Single process case.
             # Loop though all the listed scans and convert them.
             for scan in initial_scans:
@@ -693,11 +693,11 @@ class Converter(object):
                     proc_list[ii % n_new].join()
                     if proc_list[ii % n_new].exitcode != 0:
                         raise RuntimeError("A thread failed with exit code: "
-                                           + str(proc_list[ii%n_new].exitcode))
+                                          + str(proc_list[ii%n_new].exitcode))
                 # Start task number ii.
                 if ii < n_tasks:
-                    proc_list[ii % n_new] = mp.Process(target=self.execute_set,
-                                                       args=(initial_scans[ii],))
+                    proc_list[ii % n_new] = mp.Process(
+                            target=self.execute_set, args=(initial_scans[ii],))
                     proc_list[ii % n_new].start()
 
     def execute_set(self, scan):
@@ -770,7 +770,7 @@ def get_cal_mask(data, n_bins_cal) :
     
     # For solving for the cal phase, throw away high varience channels (RFI).
     I_data = data[:,0,:]
-    I_vars = sp.var(data, 0)
+    I_vars = sp.var(I_data, 0)
     mean_var = sp.mean(I_vars)
     good_chans = I_vars < 5 * mean_var
     I_data = I_data * good_chans
@@ -1251,8 +1251,8 @@ class DataManager(object) :
                                   "output_root" : params["quality_check_root"]
                                   }
                 # Execute the data checker.
-                DataChecker(checker_params).execute(params["nprocesses"],
-                                                    feedback=self.feedback)
+                DC = DataChecker(checker_params, feedback=self.feedback)
+                DC.execute(params["nprocesses"])
             # Wait for the rsync to terminate:
             if number in params['sessions_to_archive']:
                 SyncProc.wait()
