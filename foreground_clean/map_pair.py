@@ -12,7 +12,7 @@ from map import physical_gridding as pg
 from kiyopy import parse_ini
 import kiyopy.utils
 from quadratic_products import corr_estimation
-from quadratic_products import pwrspec_estimation as pe
+from quadratic_products import pwrspec_estimator as pe
 from utils import data_paths
 from utils import batch_handler as bh
 # TODO: move single map operations to a separate class
@@ -324,10 +324,13 @@ class MapPair(object):
             mode_vector = mode_vector.reshape(self.freq.shape)
 
             if weighted:
-                amp = sp.tensordot(mode_vector, self.map1 * self.noise_inv1, axes=(0,0))
-                amp /= sp.tensordot(mode_vector, mode_vector[:, None, None] * self.noise_inv1, axes=(0,0))
+                amp = sp.tensordot(mode_vector, self.map1[self.freq, :, :] *
+                                self.noise_inv1[self.freq, :, :], axes=(0,0))
+                amp /= sp.tensordot(mode_vector, mode_vector[:, None, None] *
+                                self.noise_inv1[self.freq, :, :], axes=(0,0))
             else:
-                amp = sp.tensordot(mode_vector, self.map1, axes=(0,0))
+                amp = sp.tensordot(mode_vector,
+                                   self.map1[self.freq, :, :], axes=(0,0))
                 #amp /= sp.dot(mode_vector, mode_vector)
 
             fitted = mode_vector[:, None, None] * amp[None, :, :]
@@ -346,10 +349,13 @@ class MapPair(object):
             mode_vector = mode_vector.reshape(self.freq.shape)
 
             if weighted:
-                amp = sp.tensordot(mode_vector, self.map2 * self.noise_inv2, axes=(0,0))
-                amp /= sp.tensordot(mode_vector, mode_vector[:, None, None] * self.noise_inv2, axes=(0,0))
+                amp = sp.tensordot(mode_vector, self.map2[self.freq, :, :] *
+                                self.noise_inv2[self.freq, :, :], axes=(0,0))
+                amp /= sp.tensordot(mode_vector, mode_vector[:, None, None] *
+                                self.noise_inv2[self.freq, :, :], axes=(0,0))
             else:
-                amp = sp.tensordot(mode_vector, self.map2, axes=(0,0))
+                amp = sp.tensordot(mode_vector,
+                                   self.map2[self.freq, :, :], axes=(0,0))
                 #amp /= sp.dot(mode_vector, mode_vector)
 
             fitted = mode_vector[:, None, None] * amp[None, :, :]
