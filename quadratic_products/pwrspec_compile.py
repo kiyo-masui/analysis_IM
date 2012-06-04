@@ -1,6 +1,7 @@
 import numpy as np
 from utils import data_paths as dp
 from quadratic_products import pwrspec_estimator as pe
+from quadratic_products import power_spectrum as ps
 from kiyopy import parse_ini
 import shelve
 import glob
@@ -22,26 +23,18 @@ class CompileAutopower(object):
                                           prefix=prefix)
 
     def execute(self, processes):
-        pwr_map = shelve.open(self.params["p_map"], "r")
-        pwr_map_plussim = shelve.open(self.params["p_map_plussim"], "r")
-        pwr_cleaned_sim = shelve.open(self.params["p_cleaned_sim"], "r")
+        pwr_map = ps.PowerSpectrum(self.params["p_map"])
+        pwr_map_plussim = ps.PowerSpectrum(self.params["p_map_plussim"])
+        pwr_cleaned_sim = ps.PowerSpectrum(self.params["p_cleaned_sim"])
 
-        plussim_basename = self.params["p_map_plussim"].split(".")[0]
-        plussim_list = glob.glob("%s_[0-9]*.shelve" % plussim_basename)
+        pwr_map_1d = pwr_map.combination_array()
+        pwr_map_plussim_1d = pwr_map_plussim.combination_array()
+        pwr_cleaned_sim_1d = pwr_cleaned_sim.combination_array()
+        k_vec = pwr_map.bin_center_1d
+        reference_pwr = np.mean(pwr_cleaned_sim_1d["0modes"], axis=1)
 
-        case_key = "combination:treatment"
-        pwr_cases = dp.unpack_cases(pwr_map.keys(), case_key, divider=":")
-
-        pwr_map_1d = pe.repackage_1d_power(pwr_map)
-        pwr_map.close()
-        k_vec = pwr_map_1d[1]
-        pwr_map_1d = pwr_map_1d[4]
-
-        pwr_map_plussim_1d = pe.repackage_1d_power(pwr_map_plussim)[4]
-        pwr_cleaned_sim_1d = pe.repackage_1d_power(pwr_cleaned_sim)[4]
-        pwr_cleaned_sim.close()
-        pwr_map_plussim.close()
-
+        #plussim_basename = self.params["p_map_plussim"].split(".")[0]
+        #plussim_list = glob.glob("%s_[0-9]*.shelve" % plussim_basename)
         #plussim_1d_list = []
         #for filename in plussim_list:
         #    print filename
@@ -63,9 +56,7 @@ class CompileAutopower(object):
         #    avg_plussim[treatment] = np.mean(avg_treatment, axis=ndim_plussim)
         #    print avg_plussim[treatment].shape, shape_plussim
 
-        reference_pwr = np.mean(pwr_cleaned_sim_1d["0modes"], axis=1)
-
-        for treatment in pwr_cases["treatment"]:
+        for treatment in pwr_map.treatment_cases:
             mean_map = np.mean(pwr_map_1d[treatment], axis=1)
             std_map = np.std(pwr_map_1d[treatment], axis=1)
             mean_map_plussim = np.mean(pwr_map_plussim_1d[treatment], axis=1)
