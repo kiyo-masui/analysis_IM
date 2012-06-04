@@ -29,6 +29,10 @@ from utils import batch_handler
 # 5 modes to clean 10 modes = modes 5 to 10 (but no need to do this)
 # TODO: move all magic strings to __init__ or params
 # TODO: replace print with logging
+# Special parameters that rarely need to get used
+# no_weights: do not weight before finding nu-nu' covariance (False by default)
+# SVD_root: use the SVD from another cleaning run on this run (None by default)
+# regenerate_noise_inv: do not use memoize to save previous diag(N^-1) calc
 
 
 params_init = {

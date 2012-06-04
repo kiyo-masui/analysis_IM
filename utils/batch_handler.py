@@ -109,9 +109,7 @@ def memoize_persistent(func):
     note that shelve protocol=-1 does not handle Kiyo-style array metadata.
     The repackage_kiyo function above handles this.
 
-    There seems to be a race condition where two threads can open the same
-    shelve because of the finite time it takes to write the shelve. Currently
-    trying a simpler lock.
+    This should really be transferred to a database than can handle concurrency
     """
     def memoize(*args, **kwargs):
         funcname = func.__name__
@@ -125,7 +123,9 @@ def memoize_persistent(func):
         done_filename = filename + ".done"
         busy_filename = filename + ".busy"
 
-        #if os.access(filename, os.F_OK):
+        # prevent the race condition where many threads want to
+        # start writing a new cache file at the same time
+        time.sleep(random.uniform(0, 0.5))
         if (os.access(done_filename, os.F_OK) or \
             os.access(busy_filename, os.F_OK)):
             printed = False
@@ -135,7 +135,9 @@ def memoize_persistent(func):
                     print "waiting for %s" % filename
                     printed = True
 
-            time.sleep(random.uniform(0, 2.))
+            # if many threads were waiting to read, space their reads
+            # so that they don't attack at once.
+            time.sleep(random.uniform(0, 0.5))
             print "ready to read %s" % filename
             try:
                 input_shelve = shelve.open(filename, "r", protocol=-1)
@@ -145,13 +147,17 @@ def memoize_persistent(func):
             except:
                 raise ValueError
         else:
+            # first flag the cachefile as busy so other threads wait
             busyfile = open(busy_filename, "w")
             busyfile.write("working")
             busyfile.close()
+
+            # recalculate the function
             print "no cache, recalculating %s" % filename
-            outfile = shelve.open(filename, "n", protocol=-1)
             start = time.time()
             retval = func(*args, **kwargs)
+
+            outfile = shelve.open(filename, "n", protocol=-1)
             outfile["signature"] = arghash
             outfile["filename"] = filename
             outfile["funcname"] = funcname
@@ -159,9 +165,13 @@ def memoize_persistent(func):
             outfile["kwargs"] = kwargs
             outfile["result"] = retval
             outfile.close()
+            time.sleep(0.2)     # TODO: this is a trial; remove?
+
+            # indicate that the function is done being recalculated
             donefile = open(done_filename, "w")
             donefile.write("%10.15f\n" % (time.time() - start))
             donefile.close()
+            # and remove the busy flag
             os.remove(busy_filename)
 
         return retval

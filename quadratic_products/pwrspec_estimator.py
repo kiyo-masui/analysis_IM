@@ -506,5 +506,41 @@ def convert_2d_to_1d(pwrspec2d_product, logbins=True,
 
     return entry
 
+
+def repackage_1d_power(pwrspec_compilation):
+    case_key = "combination:treatment"
+    pwr_cases = dp.unpack_cases(pwrspec_compilation.keys(), case_key, divider=":")
+
+    comb_cases = pwr_cases["combination"]
+    # note that the dictionary may not be in any order
+    comb_cases.sort()
+
+    summary = {}
+    for pwrspec_case in pwrspec_compilation:
+        pwrspec_entry = pwrspec_compilation[pwrspec_case]
+        parameters = pwrspec_entry[0]
+        pwrdata_2d = pwrspec_entry[1][0]
+        pwrdata_1d = pwrspec_entry[1][1]
+        summary[pwrspec_case] = pwrdata_1d["binavg"]
+        bin_left = pwrdata_1d["bin_left"]
+        bin_center = pwrdata_1d["bin_center"]
+        bin_right = pwrdata_1d["bin_right"]
+        histo_counts = pwrdata_1d["counts_histo"]
+        #print pwrspec_case, parameters
+
+    num_k = bin_center.shape[0]
+    num_pk = len(comb_cases)
+
+    summary_treatment = {}
+    for treatment in pwr_cases["treatment"]:
+        pwr_treatment = np.zeros((num_k, num_pk))
+        for comb, comb_index in zip(comb_cases, range(num_pk)):
+            pwrcase = "%s:%s" % (comb, treatment)
+            pwr_treatment[:, comb_index] = summary[pwrcase]
+        summary_treatment[treatment] = pwr_treatment
+
+    return (bin_left, bin_center, bin_right, histo_counts, summary_treatment)
+
+
 if __name__ == '__main__':
     test_with_random(unitless=False)

@@ -72,7 +72,7 @@ class AggregateOutputs(object):
 
         self.call_stack.append(args_package)
 
-    def multiprocess_stack(self, filename, save_cpu=4, debug=False):
+    def multiprocess_stack(self, filename, save_cpu=4, debug=False, ncpu=8):
         r"""process the call stack built up by 'execute' calls using
         multiprocessing.
         filename is the output to write the shelve to
@@ -83,9 +83,12 @@ class AggregateOutputs(object):
         if debug:
             results = []
             for item in self.call_stack:
+                print item
                 results.append(function_wrapper(item))
         else:
             num_cpus = multiprocessing.cpu_count() - save_cpu
+            if ncpu:
+                num_cpus = ncpu
             pool = multiprocessing.Pool(processes=num_cpus)
             results = pool.map(function_wrapper, self.call_stack)
             pool.close()
@@ -93,6 +96,7 @@ class AggregateOutputs(object):
         # after running the jobs reset the batch
         self.call_stack = []
 
+        print "multiprocessing_stack: jobs finished"
         outshelve = shelve.open(filename, "n", protocol=-1)
         for result_item in results:
             args_package = result_item[0]

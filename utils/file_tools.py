@@ -239,7 +239,7 @@ def path_properties(pathname, intend_write=False, intend_read=False,
     return (exists, readable, writable, executable, modtime)
 
 
-def hashfile(filename, hasher=hashlib.md5(), blocksize=65536, max_size=1.e8):
+def hashfile(filename, hasher=hashlib.md5(), blocksize=65536, max_size=1.e12):
     r"""determine the hash of a file in blocks
     if it exceeds `max_size` just report the modification time
     if the file does not exist, report '-1'
