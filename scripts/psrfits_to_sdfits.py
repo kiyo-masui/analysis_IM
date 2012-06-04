@@ -80,6 +80,11 @@ class ScanSet(object):
 
         self.feedback = feedback
         self.fits_data_dir = fits_data_dir
+        # Make sure we aren't initializing with a blacklisted scan.
+        if initial_scan in blacklist:
+            msg = ("You can't initialize a set of scans with a black listed"
+                   " scan. Choose another scan from proceedure for initialization.")
+            raise ValueError(msg)
         # Get the fits log file.
         scan_log_hdulist = pyfits.open(fits_data_dir + "/ScanLog.fits", "readonly")
         # From the header we need the project session.
@@ -1222,7 +1227,7 @@ class DataManager(object) :
             for scan in scans :
                 converted_file = check_file_matching_scan(scan,
                         converted_pattern)
-                if converted_file is None :
+                if converted_file is None:
                     raise RuntimeError("Scan not converted: " + str(scan))
                 # Get the middle (unique) part of the file name.
                 converted_file = converted_file.split('/')[-1]
