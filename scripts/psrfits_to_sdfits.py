@@ -918,7 +918,10 @@ class DataChecker(object) :
         # Loop over files, make one set of plots per file.
         for ii in range(n+np) :
             if ii >= np :
-                procs[ii%np].join()
+                procs[ii % np].join()
+                if procs[ii % np].exitcode != 0:
+                    raise RuntimeError("A thread failed with exit code: "
+                                      + str(procs[ii % np].exitcode))
             if ii < n :
                 p = mp.Process(target=self.process_file,
                                args=(params["file_middles"][ii],))
