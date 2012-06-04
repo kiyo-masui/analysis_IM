@@ -209,7 +209,7 @@ class Scan(object):
         # check the headers for the session number.  In addition
         candidate_guppi_files = []
         for input_root in guppi_data_roots:
-            candidate_guppi_files += glob.glob(input_root + '*' + ("%04d" % scan_no)
+            candidate_guppi_files += glob.glob(input_root + '*' + ("_%04d_" % scan_no)
                                      + '*' + guppi_data_extension)
         # Now open the headers of these candidate files to see which acctually
         # belong to this scan.
