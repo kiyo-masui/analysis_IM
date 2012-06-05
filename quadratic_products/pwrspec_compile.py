@@ -27,12 +27,6 @@ class CompileAutopower(object):
         pwr_map_plussim = ps.PowerSpectrum(self.params["p_map_plussim"])
         pwr_cleaned_sim = ps.PowerSpectrum(self.params["p_cleaned_sim"])
 
-        pwr_map_1d = pwr_map.combination_array()
-        pwr_map_plussim_1d = pwr_map_plussim.combination_array()
-        pwr_cleaned_sim_1d = pwr_cleaned_sim.combination_array()
-        k_vec = pwr_map.bin_center_1d
-        reference_pwr = np.mean(pwr_cleaned_sim_1d["0modes"], axis=1)
-
         #plussim_basename = self.params["p_map_plussim"].split(".")[0]
         #plussim_list = glob.glob("%s_[0-9]*.shelve" % plussim_basename)
         #plussim_1d_list = []
@@ -56,14 +50,19 @@ class CompileAutopower(object):
         #    avg_plussim[treatment] = np.mean(avg_treatment, axis=ndim_plussim)
         #    print avg_plussim[treatment].shape, shape_plussim
 
+        pwr_map_summary = pwr_map.agg_stat_1d_pwrspec()
+        pwr_map_plussim_summary = pwr_map_plussim.agg_stat_1d_pwrspec()
+        pwr_cleaned_sim_summary = pwr_cleaned_sim.agg_stat_1d_pwrspec()
+        reference_pwr = pwr_cleaned_sim_summary["0modes"]["mean"]
+        k_vec = pwr_map.bin_center_1d
+
         for treatment in pwr_map.treatment_cases:
-            mean_map = np.mean(pwr_map_1d[treatment], axis=1)
-            std_map = np.std(pwr_map_1d[treatment], axis=1)
-            mean_map_plussim = np.mean(pwr_map_plussim_1d[treatment], axis=1)
-            #mean_map_plussim = np.mean(avg_plussim[treatment], axis=1)
-            mean_cleaned_sim = np.mean(pwr_cleaned_sim_1d[treatment], axis=1)
+            mean_map_plussim = pwr_map_plussim_summary[treatment]["mean"]
+            mean_map = pwr_map_summary[treatment]["mean"]
+            std_map = pwr_map_summary[treatment]["std"]
             trans = (mean_map_plussim - mean_map) / reference_pwr
 
+            #mean_map_plussim = np.mean(avg_plussim[treatment], axis=1)
             ##trans = (pwr_map_plussim_1d[treatment]-pwr_map_1d[treatment]) / \
             ##        pwr_cleaned_sim_1d["0modes"]
             #trans = (avg_plussim[treatment]-pwr_map_1d[treatment]) / \
