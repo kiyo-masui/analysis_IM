@@ -94,6 +94,42 @@ def make_unitless(xspec_arr, radius_arr=None, ndim=None):
     return xspec_arr * radius_arr ** ndim * factor
 
 
+def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d):
+    """take a 2D power spectrum and the counts matrix (number of modex per k
+    cell) and return the binned 1D power spectrum
+    pwr_2d is the 2D power
+    counts_2d is the counts matrix
+    bin_kx is the x-axis
+    bin_ky is the x-axis
+    bin_1d is the k vector over which to return the result
+    """
+    # find |k| across the array
+    index_array = np.indices(pwr_2d.shape)
+    scale_array = np.zeros(index_array.shape)
+    scale_array[0, ...] = bin_kx[index_array[0, ...]]
+    scale_array[1, ...] = bin_ky[index_array[1, ...]]
+    scale_array = np.rollaxis(scale_array, 0, scale_array.ndim)
+    radius_array = np.sum(scale_array ** 2., axis=-1) ** 0.5
+
+    radius_flat = radius_array.flatten()
+    pwr_2d_flat = pwr_2d.flatten()
+    counts_2d_flat = counts_2d.flatten()
+
+    count_pwr_prod = counts_2d_flat * pwr_2d_flat
+    count_pwr_prod[np.isnan(count_pwr_prod)] = 0
+    count_pwr_prod[np.isinf(count_pwr_prod)] = 0
+    count_pwr_prod[counts_2d_flat == 0] = 0
+
+    counts_histo = np.histogram(radius_flat, bin_1d,
+                                weights=counts_2d_flat)[0]
+    binsum_histo = np.histogram(radius_flat, bin_1d,
+                                weights=count_pwr_prod)[0]
+
+    binavg = binsum_histo / counts_histo.astype(float)
+
+    return counts_histo, binavg
+
+
 def calculate_xspec(cube1, cube2, weight1, weight2,
                     window="blackman", unitless=True, bins=None,
                     truncate=False, nbins=40, logbins=True, return_3d=False):

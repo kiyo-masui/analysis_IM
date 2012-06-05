@@ -1,42 +1,7 @@
 import numpy as np
 import shelve
 from utils import data_paths as dp
-
-def convert_2d_to_1d_driver(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d):
-    """take a 2D power spectrum and the counts matrix (number of modex per k
-    cell) and return the binned 1D power spectrum
-    pwr_2d is the 2D power
-    counts_2d is the counts matrix
-    bin_kx is the x-axis
-    bin_ky is the x-axis
-    bin_1d is the k vector over which to return the result
-    """
-    # find |k| across the array
-    index_array = np.indices(pwr_2d.shape)
-    scale_array = np.zeros(index_array.shape)
-    scale_array[0, ...] = bin_kx[index_array[0, ...]]
-    scale_array[1, ...] = bin_ky[index_array[1, ...]]
-    scale_array = np.rollaxis(scale_array, 0, scale_array.ndim)
-    radius_array = np.sum(scale_array ** 2., axis=-1) ** 0.5
-
-    radius_flat = radius_array.flatten()
-    pwr_2d_flat = pwr_2d.flatten()
-    counts_2d_flat = counts_2d.flatten()
-
-    count_pwr_prod = counts_2d_flat * pwr_2d_flat
-    count_pwr_prod[np.isnan(count_pwr_prod)] = 0
-    count_pwr_prod[np.isinf(count_pwr_prod)] = 0
-    count_pwr_prod[counts_2d_flat == 0] = 0
-
-    counts_histo = np.histogram(radius_flat, bin_1d,
-                                weights=counts_2d_flat)[0]
-    binsum_histo = np.histogram(radius_flat, bin_1d,
-                                weights=count_pwr_prod)[0]
-
-    binavg = binsum_histo / counts_histo.astype(float)
-
-    return counts_histo, binavg
-
+from quadratic_products import pwrspec_estimator as pe
 
 class PowerSpectrum(object):
     r"""
@@ -156,32 +121,36 @@ class PowerSpectrum(object):
             for comb in self.comb_cases:
                 pwrcase = "%s:%s" % (comb, treatment)
                 (self.counts_1d_from_2d[pwrcase], \
-                 self.pwrspec_1d_from_2d[pwrcase]) = convert_2d_to_1d_driver(
-                                                     self.pwrspec_2d[pwrcase],
-                                                     self.counts_2d[pwrcase],
-                                                     self.bin_center_x,
-                                                     self.bin_center_y,
-                                                     bins)
+                self.pwrspec_1d_from_2d[pwrcase]) = \
+                                                pe.convert_2d_to_1d_pwrspec(
+                                                    self.pwrspec_2d[pwrcase],
+                                                    self.counts_2d[pwrcase],
+                                                    self.bin_center_x,
+                                                    self.bin_center_y,
+                                                    bins)
 
         bin_left, bin_center, bin_right = binning.bin_edges(bins, log=logbins)
         self.bin_left_1d_from_2d = bin_left
         self.bin_center_1d_from_2d = bin_center
         self.bin_right_1d_from_2d = bin_right
 
-    def combination_array_1d(self):
+    def combination_array_1d(self, from_2d=False):
         r"""pack the various pair combinations for each treatment into an array"""
         summary_treatment = {}
         for treatment in self.treatment_cases:
             pwr_treatment = np.zeros((self.num_k, self.num_comb))
             for comb, comb_index in zip(self.comb_cases, range(self.num_comb)):
                 pwrcase = "%s:%s" % (comb, treatment)
-                pwr_treatment[:, comb_index] = self.pwrspec_1d[pwrcase]
+                if from_2d:
+                    pwr_treatment[:, comb_index] = self.pwrspec_1d_from_2d[pwrcase]
+                else:
+                    pwr_treatment[:, comb_index] = self.pwrspec_1d[pwrcase]
             summary_treatment[treatment] = pwr_treatment
 
         return summary_treatment
 
-    def agg_stat_1d_pwrspec(self):
-        comb_arr = self.combination_array_1d()
+    def agg_stat_1d_pwrspec(self, from_2d=False):
+        comb_arr = self.combination_array_1d(from_2d=from_2d)
 
         stat_summary = {}
         for treatment in self.treatment_cases:
@@ -203,11 +172,12 @@ class PowerSpectrum(object):
             outfile.write(("%10.15g " * 4 + "\n") % specdata)
         outfile.close()
 
-    def summarize_1d_agg_pwrspec(treatment, filename, corr_file=None):
+    def summarize_1d_agg_pwrspec(treatment, filename, corr_file=None,
+                                 from_2d=False):
         # TODO: add counts histo to the summary
         # this could be made more efficient by looping over treatments
         # or calculating values -> self
-        stat_summary = self.agg_stat_1d_pwrspec()
+        stat_summary = self.agg_stat_1d_pwrspec(from_2d=from_2d)
         mean_1d = stat_summary[treatment]["mean"]
         std_1d = stat_summary[treatment]["std"]
         corrmat_1d = stat_summary[treatment]["corr"]
@@ -234,7 +204,7 @@ class PowerSpectrum(object):
 
             outfile.close()
 
-    def summarize_1d_pwrspec_by_treatment(basename):
+    def summarize_1d_pwrspec_by_treatment(basename, from_2d=False):
         for treatment in self.treatment_cases:
             print "WRITE THIS!"
 
