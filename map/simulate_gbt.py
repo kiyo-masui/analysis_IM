@@ -15,6 +15,8 @@ import struct
 from kiyopy import parse_ini
 from utils import file_tools
 from utils import units
+from utils import batch_handler
+import os
 
 
 # TODO: confirm ra=x, dec=y (thetax = 5, thetay = 3 in 15hr)
@@ -55,7 +57,7 @@ def realize_simulation(template_map, scenario=None, seed=None, refinement=2):
 
 def make_simulation_set(template_file, outfile_physical,
                         outfile_raw, outfile_beam, outfile_beam_plus_data,
-                        verbose=True, scenario=None):
+                        verbose=True, scenario=None, seed=None):
     """Produce simulated GBT data volumes of three types:
     (from dimensions of a given template file)
     0. the simulation in a physical volume
@@ -66,9 +68,11 @@ def make_simulation_set(template_file, outfile_physical,
     template_map = algebra.make_vect(algebra.load(template_file))
 
     # The usual seed is not fine enough for parallel jobs
-    randsource = open("/dev/random", "rb")
-    seed = struct.unpack("I", randsource.read(4))[0]
-    #seed = abs(long(outfile_physical.__hash__()))
+    if not seed:
+        randsource = open("/dev/random", "rb")
+        seed = struct.unpack("I", randsource.read(4))[0]
+        #seed = abs(long(outfile_physical.__hash__()))
+
     (gbtsim, gbtphys, physdim) = realize_simulation(template_map,
                                                     scenario=scenario,
                                                     seed=seed)
@@ -115,20 +119,6 @@ def make_simulation_set(template_file, outfile_physical,
 
     sim_map_withbeam += template_map
     algebra.save(outfile_beam_plus_data, sim_map_withbeam)
-
-
-def wrap_sim(runitem):
-    (template_mapname, outfile_physical, outfile_raw, outfile_beam, \
-                                outfile_beam_plus_data, scenario) = runitem
-
-    print "using template: " + template_mapname
-    print "using physical-space cube file: " + outfile_physical
-    print "using raw output cube file: " + outfile_raw
-    print "using raw output cube file conv. by beam: " + outfile_beam
-    print "using raw output cube file conv. by beam plus data: " + outfile_beam_plus_data
-
-    make_simulation_set(template_mapname, outfile_physical, outfile_raw, outfile_beam,
-                        outfile_beam_plus_data, scenario=scenario)
 
 
 def generate_delta_sim(input_file, output_file):
@@ -185,134 +175,44 @@ def generate_proc_sim(input_file, weightfile, output_file,
     algebra.save(output_file, simmap)
 
 
-def generate_sim(params, parallel=True, silent=True, datapath_db=None):
-    """generate simulations
-    here, assuming the sec A of the set is the template map
-    """
-
-    if datapath_db is None:
-        datapath_db = data_paths.DataPath()
-
-    template_mapname = datapath_db.fetch(params['template_key'],
-                                         intend_read=True,
-                                         purpose="template_map",
-                                         silent=silent)
-
-    physlist = datapath_db.fetch(params['sim_physical_key'],
-                                 intend_write=True,
-                                 purpose="output sim (physical)",
-                                 silent=silent)
-
-    rawlist = datapath_db.fetch(params['sim_key'],
-                                intend_write=True,
-                                purpose="output sim",
-                                silent=silent)
-
-    beamlist = datapath_db.fetch(params['sim_beam_key'],
-                                 intend_write=True,
-                                 purpose="output sim+beam",
-                                 silent=silent)
-
-    bpdlist = datapath_db.fetch(params['sim_beam_plus_data_key'],
-                                intend_write=True,
-                                purpose="output sim+beam+data",
-                                silent=silent)
-
-    runlist = [(template_mapname, physlist[1][index], rawlist[1][index],
-                beamlist[1][index], bpdlist[1][index],
-                params['pwrspec_scenario'])
-                for index in rawlist[0]]
-
-    print runlist
-    #sys.exit()
-    if parallel:
-        pool = multiprocessing.Pool(processes=multiprocessing.cpu_count()-4)
-        pool.map(wrap_sim, runlist)
-    else:
-        for runitem in runlist:
-            wrap_sim(runitem)
-
-
-def generate_aux_simset(params, silent=False, datapath_db=None):
-
-    if datapath_db is None:
-        datapath_db = data_paths.DataPath()
-
-    weightfile = datapath_db.fetch(params['weight_key'],
-                                         intend_read=True,
-                                         purpose="weight map",
-                                         silent=silent)
-
-    input_rawsimset = datapath_db.fetch(params['sim_key'],
-                                        intend_read=True, silent=silent)
-
-    output_deltasimset = datapath_db.fetch(params['sim_delta_key'],
-                                           intend_write=True, silent=silent)
-
-    input_beamsimset = datapath_db.fetch(params['sim_beam_key'],
-                                         intend_read=True, silent=silent)
-
-    output_meansubsimset = datapath_db.fetch(params['sim_beam_meansub_key'],
-                                         intend_write=True, silent=silent)
-
-    output_convsimset = datapath_db.fetch(params['sim_beam_conv_key'],
-                                         intend_write=True, silent=silent)
-
-    output_meansubconvsimset = datapath_db.fetch(
-                                         params['sim_beam_meansubconv_key'],
-                                         intend_write=True, silent=silent)
-
-    # TODO: actually implement the foreground simulations
-    output_fgsimset = datapath_db.fetch(params['sim_beam_plus_fg_key'],
-                                         intend_write=True, silent=silent)
-
-    for index in input_rawsimset[0]:
-        generate_delta_sim(input_rawsimset[1][index],
-                           output_deltasimset[1][index])
-
-        generate_proc_sim(input_beamsimset[1][index], weightfile,
-                          output_meansubsimset[1][index],
-                          meansub=True, degrade=False)
-
-        generate_proc_sim(input_beamsimset[1][index], weightfile,
-                          output_convsimset[1][index],
-                          meansub=False, degrade=True)
-
-        generate_proc_sim(input_beamsimset[1][index], weightfile,
-                          output_meansubconvsimset[1][index],
-                          meansub=True, degrade=True)
-
-
-# cases: [15hr, 22hr, 1hr], [ideal, nostr, str]
 params_init = {
-               'output_root': '',
-               'sim_physical_key': '',
-               'sim_key': '',
-               'sim_beam_key': '',
-               'sim_beam_plus_fg_key': '',
-               'sim_beam_plus_data_key': '',
-               'sim_delta_key': '',
-               'sim_beam_meansub_key': '',
-               'sim_beam_conv_key': '',
-               'sim_beam_meansubconv_key': '',
-               'template_key': '',
-               'weight_key': '',
-               'pwrspec_scenario': '',
-               'omega_HI': ''
+               'output_root': "./",
+               'template_file': "ok.npy",
+               'outfile_physical': "ok.npy",
+               'outfile_raw': "ok.npy",
+               'outfile_beam': "ok.npy",
+               'outfile_beam_plus_data': "ok.npy",
+               'scenario': 'str',
+               'seed': -1
                }
 prefix = 'sg_'
 
+class SimulateGbt():
+    r"""Class to handle signal-only sim ini files"""
+    @batch_handler.log_timing
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file, params_init,
+                                          prefix=prefix)
+
+        if not os.path.isdir(self.params['output_root']):
+            os.mkdir(self.params['output_root'])
+
+    @batch_handler.log_timing
+    def execute(self, processes):
+        make_simulation_set(self.params['template_file'],
+                            self.params['outfile_physical'],
+                            self.params['outfile_raw'],
+                            self.params['outfile_beam'],
+                            self.params['outfile_beam_plus_data'],
+                            verbose=True,
+                            scenario=self.params['scenario'],
+                            seed=self.params['seed'])
+
+
 if __name__ == '__main__':
-    params = parse_ini.parse(str(sys.argv[1]), params_init,
-                             prefix=prefix)
-    print params
-
-    datapath_db = data_paths.DataPath()
-    output_root = datapath_db.fetch(params['output_root'])
-
-    file_tools.mkparents(output_root)
-    parse_ini.write_params(params, output_root + 'params.ini',
-                           prefix=prefix)
-
-    generate_sim(params, parallel=True, datapath_db=datapath_db)
-    generate_aux_simset(params, datapath_db=datapath_db)
+    if len(sys.argv) == 2:
+        PairSet(str(sys.argv[1])).execute()
+    else:
+        print 'Need one argument: parameter file name.'
