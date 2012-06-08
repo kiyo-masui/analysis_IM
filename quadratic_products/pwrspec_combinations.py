@@ -21,10 +21,14 @@ def pwrspec_caller(map1_key, map2_key,
                        math.log10(bparam[1]),
                        num=bparam[2], endpoint=True)
 
-    #mappair.degrade_resolution()
-    #mappair.make_noise_factorizable()
-    # TODO: REMOVE ME!!!!!!!!!!!!!!
-    mappair.subtract_weighted_mean()
+    if params["degrade_resolution"]:
+        mappair.degrade_resolution()
+
+    if params["factorizable_noise"]:
+        mappair.make_noise_factorizable()
+
+    if params["meansub"]:
+        mappair.subtract_weighted_mean()
 
     retval = mappair.pwrspec_summary(window=params['window'],
                                      unitless=params['unitless'],
@@ -45,6 +49,9 @@ gbtdataautopower_init = {
         "return_3d": False,
         "truncate": False,
         "window": None,
+        "degrade_resolution": False,
+        "factorizable_noise": False,
+        "meansub": False,
         "refinement": 2,
         "pad": 5,
         "order": 2,
@@ -113,6 +120,9 @@ batchsimautopower_init = {
         "return_3d": False,
         "truncate": False,
         "window": None,
+        "degrade_resolution": False,
+        "factorizable_noise": False,
+        "meansub": False,
         "refinement": 2,
         "pad": 5,
         "order": 2,
