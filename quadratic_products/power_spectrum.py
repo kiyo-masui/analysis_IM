@@ -49,6 +49,8 @@ class PowerSpectrum(object):
             self.bin_right_y = pwrdata_2d["bin_y_right"]
 
         self.num_k = self.bin_center_1d.shape[0]
+        self.num_kx = self.bin_center_x.shape[0]
+        self.num_ky = self.bin_center_y.shape[0]
         self.num_comb = len(self.comb_cases)
         self.num_treat = len(self.treatment_cases)
 
@@ -149,6 +151,20 @@ class PowerSpectrum(object):
 
         return summary_treatment
 
+    def combination_array_2d(self):
+        r"""pack the various pair combinations for each treatment into an array"""
+        summary_treatment = {}
+        for treatment in self.treatment_cases:
+            pwr_treatment = np.zeros((self.num_kx, self.num_ky,
+                                      self.num_comb))
+
+            for comb, comb_index in zip(self.comb_cases, range(self.num_comb)):
+                pwrcase = "%s:%s" % (comb, treatment)
+                pwr_treatment[:, :, comb_index] = self.pwrspec_2d[pwrcase]
+            summary_treatment[treatment] = pwr_treatment
+
+        return summary_treatment
+
     def agg_stat_1d_pwrspec(self, from_2d=False):
         comb_arr = self.combination_array_1d(from_2d=from_2d)
 
@@ -159,6 +175,19 @@ class PowerSpectrum(object):
             entry['std'] = np.std(comb_arr[treatment], axis=1, ddof=1)
             entry['corr'] = np.corrcoef(comb_arr[treatment])
             entry['cov'] = np.cov(comb_arr[treatment])
+            stat_summary[treatment] = entry
+
+        return stat_summary
+
+    def agg_stat_2d_pwrspec(self):
+        r"""TODO: add corr and cov"""
+        comb_arr = self.combination_array_2d()
+
+        stat_summary = {}
+        for treatment in self.treatment_cases:
+            entry = {}
+            entry['mean'] = np.mean(comb_arr[treatment], axis=2)
+            entry['std'] = np.std(comb_arr[treatment], axis=2, ddof=1)
             stat_summary[treatment] = entry
 
         return stat_summary
@@ -231,19 +260,6 @@ class PowerSpectrum(object):
                 outfile.write(outstr)
 
         outfile.close()
-
-    def agg_stat_2d_pwrspec(pwr_2d, dataname='binavg'):
-        pwrshp_2d = pwr_2d[0][dataname].shape
-        n_runs = len(pwr_2d)
-
-        pwrmat_2d = np.zeros((n_runs, pwrshp_2d[0], pwrshp_2d[1]))
-        for index in range(n_runs):
-            pwrmat_2d[index, :, :] = pwr_2d[index][dataname]
-
-        mean_2d = np.mean(pwrmat_2d, axis=0)
-        std_2d = np.std(pwrmat_2d, axis=0, ddof=1)
-
-        return (mean_2d, std_2d)
 
     def summarize_2d_agg_pwrspec(pwr_2d, filename, dataname='binavg', resetnan=0.):
         r"""Combine a list of 2D power runs and write out
