@@ -30,11 +30,8 @@ middles_a = middles_firs[:n_files//4]
 middles_b = middles_firs[n_files//4:2*n_files//4]
 middles_c = middles_firs[2*n_files//4:3*n_files//4]
 middles_d = middles_firs[3*n_files//4:n_files]
-# XXX
-nm = len(middles_d)
-middles_d = middles_d[nm//4:nm//2]
-#middles_d = list(middles_d)
-#middles_d.remove('GBT10B_036/71_wigglez15hrst_ralongmap_82-89')
+# Known bad index.
+#middles_d = ['GBT10B_036/71_wigglez15hrst_ralongmap_82-89'
 #middles_d = tuple(middles_d)
 
 middles_temp = tuple(dir_data.get_data_files([47], field='15hr', 
@@ -60,7 +57,8 @@ base_dir = "/mnt/raid-project/gmrt/kiyo/gbt_out_new/"
 data_dir = os.getenv('GBT_DATA')
 base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
-map_base = base_dir + 'maps/may22.2012_D_2_4/'
+#map_base = base_dir + 'maps/may22/'
+map_base = '/mnt/scratch-pen/kiyo/gbt_out/' + 'maps/june8/'
 
 
 # IO directory and file prefixes.
@@ -68,7 +66,7 @@ prefix = ''
 map_prefix = '' + field + '_' + '41-90' + '_'
 
 # Maximum number of processes to use.
-pipe_processes = 12
+pipe_processes = 10
 
 
 ####  List of modules to execute.  ####
@@ -118,15 +116,15 @@ pipe_modules = []
 #pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
 from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
 pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
 from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
 pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
 
 
@@ -344,7 +342,6 @@ dmA_time_block = 'scan'
 dmA_n_files_group = 280  # tpb nodes.
 #dmA_n_files_group = 120
 dmA_frequency_correlations = 'measured'
-#dmA_number_frequency_modes = 3
 dmA_number_frequency_modes = 3  # Probably most appropriate.
 dmA_number_frequency_modes_discard = 1
 dmA_noise_parameter_file = mn2_output_root + mn2_output_filename

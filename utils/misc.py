@@ -318,7 +318,7 @@ def ortho_poly(x, n, window=1., axis=-1):
     if major <= 0 and minor < 8:
         new_sp = False
         if n > 20:
-            raise NotImplementedError("High ordre polynomials unstable.")
+            raise NotImplementedError("High order polynomials unstable.")
     else:
         new_sp = True
     # The following is the only way I know how to get the broadcast shape of

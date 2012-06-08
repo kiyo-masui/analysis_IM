@@ -283,11 +283,11 @@ def get_freq_modes_over_f(power_mat, window_function, frequency, n_modes,
         output_params['over_f_mode_' + str(ii)] = this_mode_params
         # Remove the mode from the power matrix.
         tmp_amp = sp.sum(reduced_power * mode, -1)
+        tmp_amp2 = sp.sum(reduced_power * mode[:,None], -2)
+        tmp_amp3 = sp.sum(tmp_amp2 * mode, -1)
         reduced_power -= tmp_amp[:,:,None] * mode
-        tmp_amp = sp.sum(reduced_power * mode[:,None], -2)
-        reduced_power -= tmp_amp[:,None,:] * mode[:,None]
-        tmp_amp = sp.sum(tmp_amp * mode, -1)
-        reduced_power += tmp_amp[:,None,None] * mode[:,None] * mode
+        reduced_power -= tmp_amp2[:,None,:] * mode[:,None]
+        reduced_power += tmp_amp3[:,None,None] * mode[:,None] * mode
         mode_list.append(mode)
     # Initialize the compensation matrix, that will be used to restore thermal
     # noise that gets subtracted out.  See Jan 29, Feb 17th, 2012 of Kiyo's
