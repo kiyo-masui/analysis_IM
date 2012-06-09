@@ -2,6 +2,7 @@ import numpy as np
 import shelve
 from utils import data_paths as dp
 from quadratic_products import pwrspec_estimator as pe
+from utils import binning
 
 class PowerSpectrum(object):
     r"""
@@ -48,7 +49,8 @@ class PowerSpectrum(object):
             self.bin_center_y = pwrdata_2d["bin_y_center"]
             self.bin_right_y = pwrdata_2d["bin_y_right"]
 
-        self.num_k = self.bin_center_1d.shape[0]
+        self.num_k1d = self.bin_center_1d.shape[0]
+        self.num_k1d_from_2d = None
         self.num_kx = self.bin_center_x.shape[0]
         self.num_ky = self.bin_center_y.shape[0]
         self.num_comb = len(self.comb_cases)
@@ -115,10 +117,16 @@ class PowerSpectrum(object):
                 if self.pwrspec_1d_from_2d:
                     self.counts_1d_from_2d[pwrcase][mask] = 0
 
-    def convert_2d_to_1d(pwrspec2d_product, logbins=True,
-                     bins=None, transfer=None):
+    def convert_2d_to_1d(self, logbins=True,
+                         bins=None, transfer=None):
         r"""bin the 2D powers onto 1D (the _from_2d variables)"""
-        bins = self.bin_center_1d
+        bins_1d = np.zeros(self.num_k1d + 1)
+        bins_1d[0: -1] = self.bin_left_1d
+        bins_1d[-1] = self.bin_right_1d[-1]
+
+        if bins is None:
+            bins = bins_1d
+
         for treatment in self.treatment_cases:
             for comb in self.comb_cases:
                 pwrcase = "%s:%s" % (comb, treatment)
@@ -135,12 +143,18 @@ class PowerSpectrum(object):
         self.bin_left_1d_from_2d = bin_left
         self.bin_center_1d_from_2d = bin_center
         self.bin_right_1d_from_2d = bin_right
+        self.num_k1d_from_2d = bin_center.shape[0]
 
     def combination_array_1d(self, from_2d=False):
         r"""pack the various pair combinations for each treatment into an array"""
         summary_treatment = {}
+        if from_2d:
+            num_k = self.num_k1d_from_2d
+        else:
+            num_k = self.num_k1d
+
         for treatment in self.treatment_cases:
-            pwr_treatment = np.zeros((self.num_k, self.num_comb))
+            pwr_treatment = np.zeros((num_k, self.num_comb))
             for comb, comb_index in zip(self.comb_cases, range(self.num_comb)):
                 pwrcase = "%s:%s" % (comb, treatment)
                 if from_2d:
