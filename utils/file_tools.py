@@ -11,6 +11,31 @@ import errno
 # TODO: use path_properties to check on files other functions here try to write
 
 
+def print_multicolumn(*args, **kwargs):
+    """given a series of arrays of the same size as arguments, write these as
+    columns to a file (kwarg "outfile"), each with format string (kwarg format)
+    """
+    outfile = "multicolumns.dat"
+    format = "%10.15g"
+
+    if "outfile" in kwargs:
+        outfile = kwargs["outfile"]
+
+    if "format" in kwargs:
+        format = kwargs["format"]
+
+    numarg = len(args)
+    fmt_string = (format + " ") * numarg + "\n"
+    print "writing %d columns to file %s" % (numarg, outfile)
+
+    outfd = open(outfile, "w")
+    for column_data in zip(*args):
+        print column_data
+        outfd.write(fmt_string % column_data)
+
+    outfd.close()
+
+
 # The next three functions are from kiyopy utils but are here to avoid
 # installed package stuff on scinet, which is a pain
 def mkdir_p(path) :

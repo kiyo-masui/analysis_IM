@@ -11,6 +11,11 @@ class PowerSpectrum(object):
         cross-power: 1 pair signal, N pairs sim; T treatments for all
         cleaning transfer function: N pairs sim, 1 pair signal, (T treatments); M pairs template
         beam transfer function: N pairs sim, M pairs template
+
+    TODO:
+    add mean counts to summary
+    support operations on aggregate (mean + error) power spectra?
+    support having a different trans. for each cross-pair (A with B, etc.)
     """
 
     def __init__(self, filename):
@@ -24,10 +29,17 @@ class PowerSpectrum(object):
         self.treatment_cases = self.pwr_cases["treatment"]
         self.treatment_cases.sort()
 
+        # the 2D power can be binned onto 1D
+        # this is not done automatically because one can apply transfer
+        # functions in 2D, etc. before this rebinning
         self.pwrspec_1d = {}
+        self.pwrspec_1d_from_2d = {}
         self.pwrspec_2d = {}
+
         self.counts_1d = {}
+        self.counts_1d_from_2d = {}
         self.counts_2d = {}
+
         for pwrspec_case in pwrspec_compilation:
             pwrspec_entry = pwrspec_compilation[pwrspec_case]
             self.parameters = pwrspec_entry[0]
@@ -36,34 +48,30 @@ class PowerSpectrum(object):
 
             self.pwrspec_1d[pwrspec_case] = pwrdata_1d["binavg"]
             self.counts_1d[pwrspec_case] = pwrdata_1d["counts_histo"]
-            self.bin_left_1d = pwrdata_1d["bin_left"]
-            self.bin_center_1d = pwrdata_1d["bin_center"]
-            self.bin_right_1d = pwrdata_1d["bin_right"]
-
             self.pwrspec_2d[pwrspec_case] = pwrdata_2d["binavg"]
             self.counts_2d[pwrspec_case] = pwrdata_2d["counts_histo"]
-            self.bin_left_x = pwrdata_2d["bin_x_left"]
-            self.bin_center_x = pwrdata_2d["bin_x_center"]
-            self.bin_right_x = pwrdata_2d["bin_x_right"]
-            self.bin_left_y = pwrdata_2d["bin_y_left"]
-            self.bin_center_y = pwrdata_2d["bin_y_center"]
-            self.bin_right_y = pwrdata_2d["bin_y_right"]
 
-        self.num_k1d = self.bin_center_1d.shape[0]
-        self.num_k1d_from_2d = None
-        self.num_kx = self.bin_center_x.shape[0]
-        self.num_ky = self.bin_center_y.shape[0]
+        self.k_1d = {}
+        self.k_1d["left"] = pwrdata_1d["bin_left"]
+        self.k_1d["center"] = pwrdata_1d["bin_center"]
+        self.k_1d["right"] = pwrdata_1d["bin_right"]
+        self.k_1d_from_2d = {}
+
+        self.kx_2d = {}
+        self.kx_2d["left"] = pwrdata_2d["bin_x_left"]
+        self.kx_2d["center"] = pwrdata_2d["bin_x_center"]
+        self.kx_2d["right"] = pwrdata_2d["bin_x_right"]
+        self.ky_2d = {}
+        self.ky_2d["left"] = pwrdata_2d["bin_y_left"]
+        self.ky_2d["center"] = pwrdata_2d["bin_y_center"]
+        self.ky_2d["right"] = pwrdata_2d["bin_y_right"]
+
+        self.num_kx = pwrdata_2d["bin_x_center"].shape[0]
+        self.num_ky = pwrdata_2d["bin_y_center"].shape[0]
+        self.num_k_1d = pwrdata_1d["bin_center"].shape[0]
+        self.num_k_1d_from_2d = None
         self.num_comb = len(self.comb_cases)
         self.num_treat = len(self.treatment_cases)
-
-        # the 2D power can be binned onto 1D
-        # this is not done automatically because one can apply transfer
-        # functions in 2D, etc. before this rebinning
-        self.pwrspec_1d_from_2d = {}
-        self.counts_1d_from_2d = {}
-        self.bin_left_1d_from_2d = None
-        self.bin_center_1d_from_2d = None
-        self.bin_right_1d_from_2d = None
 
         pwrspec_compilation.close()
 
@@ -120,9 +128,9 @@ class PowerSpectrum(object):
     def convert_2d_to_1d(self, logbins=True,
                          bins=None, transfer=None):
         r"""bin the 2D powers onto 1D (the _from_2d variables)"""
-        bins_1d = np.zeros(self.num_k1d + 1)
-        bins_1d[0: -1] = self.bin_left_1d
-        bins_1d[-1] = self.bin_right_1d[-1]
+        bins_1d = np.zeros(self.num_k_1d + 1)
+        bins_1d[0: -1] = self.k_1d["left"]
+        bins_1d[-1] = self.k_1d["right"][-1]
 
         if bins is None:
             bins = bins_1d
@@ -135,37 +143,48 @@ class PowerSpectrum(object):
                                                 pe.convert_2d_to_1d_pwrspec(
                                                     self.pwrspec_2d[pwrcase],
                                                     self.counts_2d[pwrcase],
-                                                    self.bin_center_x,
-                                                    self.bin_center_y,
+                                                    self.kx_2d["center"],
+                                                    self.ky_2d["center"],
                                                     bins)
 
         bin_left, bin_center, bin_right = binning.bin_edges(bins, log=logbins)
-        self.bin_left_1d_from_2d = bin_left
-        self.bin_center_1d_from_2d = bin_center
-        self.bin_right_1d_from_2d = bin_right
-        self.num_k1d_from_2d = bin_center.shape[0]
+        self.k_1d_from_2d["left"] = bin_left
+        self.k_1d_from_2d["center"] = bin_center
+        self.k_1d_from_2d["right"] = bin_right
+        self.num_k_1d_from_2d = bin_center.shape[0]
 
-    def combination_array_1d(self, from_2d=False):
+    def combination_array_1d(self, from_2d=False, counts=False):
         r"""pack the various pair combinations for each treatment into an array"""
         summary_treatment = {}
         if from_2d:
-            num_k = self.num_k1d_from_2d
+            num_k = self.num_k_1d_from_2d
         else:
-            num_k = self.num_k1d
+            num_k = self.num_k_1d
 
         for treatment in self.treatment_cases:
             pwr_treatment = np.zeros((num_k, self.num_comb))
             for comb, comb_index in zip(self.comb_cases, range(self.num_comb)):
                 pwrcase = "%s:%s" % (comb, treatment)
-                if from_2d:
-                    pwr_treatment[:, comb_index] = self.pwrspec_1d_from_2d[pwrcase]
+                if counts:
+                    if from_2d:
+                        pwr_treatment[:, comb_index] = \
+                                self.counts_1d_from_2d[pwrcase]
+                    else:
+                        pwr_treatment[:, comb_index] = \
+                                self.counts_1d[pwrcase]
                 else:
-                    pwr_treatment[:, comb_index] = self.pwrspec_1d[pwrcase]
+                    if from_2d:
+                        pwr_treatment[:, comb_index] = \
+                                self.pwrspec_1d_from_2d[pwrcase]
+                    else:
+                        pwr_treatment[:, comb_index] = \
+                                self.pwrspec_1d[pwrcase]
+
             summary_treatment[treatment] = pwr_treatment
 
         return summary_treatment
 
-    def combination_array_2d(self):
+    def combination_array_2d(self, counts=False):
         r"""pack the various pair combinations for each treatment into an array"""
         summary_treatment = {}
         for treatment in self.treatment_cases:
@@ -174,17 +193,24 @@ class PowerSpectrum(object):
 
             for comb, comb_index in zip(self.comb_cases, range(self.num_comb)):
                 pwrcase = "%s:%s" % (comb, treatment)
-                pwr_treatment[:, :, comb_index] = self.pwrspec_2d[pwrcase]
+                if counts:
+                    pwr_treatment[:, :, comb_index] = self.counts_2d[pwrcase]
+                else:
+                    pwr_treatment[:, :, comb_index] = self.pwrspec_2d[pwrcase]
+
             summary_treatment[treatment] = pwr_treatment
 
         return summary_treatment
 
     def agg_stat_1d_pwrspec(self, from_2d=False):
-        comb_arr = self.combination_array_1d(from_2d=from_2d)
+        r"""TODO: use masked array here"""
+        comb_arr = self.combination_array_1d(from_2d=from_2d, counts=False)
+        counts_arr = self.combination_array_1d(from_2d=from_2d, counts=True)
 
         stat_summary = {}
         for treatment in self.treatment_cases:
             entry = {}
+            entry['counts'] = np.mean(counts_arr[treatment], axis=1)
             entry['mean'] = np.mean(comb_arr[treatment], axis=1)
             entry['std'] = np.std(comb_arr[treatment], axis=1, ddof=1)
             entry['corr'] = np.corrcoef(comb_arr[treatment])
@@ -195,11 +221,13 @@ class PowerSpectrum(object):
 
     def agg_stat_2d_pwrspec(self):
         r"""TODO: add corr and cov"""
-        comb_arr = self.combination_array_2d()
+        comb_arr = self.combination_array_2d(counts=False)
+        counts_arr = self.combination_array_2d(counts=True)
 
         stat_summary = {}
         for treatment in self.treatment_cases:
             entry = {}
+            entry['counts'] = np.mean(counts_arr[treatment], axis=2)
             entry['mean'] = np.mean(comb_arr[treatment], axis=2)
             entry['std'] = np.std(comb_arr[treatment], axis=2, ddof=1)
             stat_summary[treatment] = entry
