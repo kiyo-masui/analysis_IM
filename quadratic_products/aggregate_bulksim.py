@@ -6,6 +6,7 @@ from plotting import plot_slice
 import shelve
 from kiyopy import parse_ini
 from utils import file_tools
+# TODO: better interaction between mask and counts
 
 aggregatesummary_init = {
         "directory": "dir",

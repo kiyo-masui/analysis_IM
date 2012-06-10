@@ -30,7 +30,6 @@ def print_multicolumn(*args, **kwargs):
 
     outfd = open(outfile, "w")
     for column_data in zip(*args):
-        print column_data
         outfd.write(fmt_string % column_data)
 
     outfd.close()
