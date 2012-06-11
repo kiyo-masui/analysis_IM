@@ -232,7 +232,20 @@ class Scan(object):
             # Check if the guppi file matchs up with the fits files.
             session = hdr['PROJID'].split('_')[-1]
             object = hdr['SRC_NAME']
-            scan_start_time = misc.time2float(hdr['DATE-OBS'])
+            try:
+                scan_start_time = misc.time2float(hdr['DATE-OBS'])
+            except ValueError:
+                # Oddly, the time is occationally (minute):60.00
+                # instead of (minute+1):00.00.  Deal with this explicitly.
+                s = hdr['DATE-OBS'].split(':')[-1]
+                if s == '60.000':
+                    tmp = hdr['DATE-OBS']
+                    # Decrease by 60 seconds.
+                    tmp = tmp[:-6] + '00.000'
+                    # Convert then add the 60 seconds back in.
+                    scan_start_time = misc.time2float(tmp) + 60.0
+                else:
+                    raise
             file_start_time = misc.time2float(hdr['DATE'])
             if session != self.session:
                 # Guppi and GO don't agree on session.
@@ -979,10 +992,9 @@ class DataChecker(object) :
             cal_sum += ma.sum(Data.data[:,:,0,:] + Data.data[:,:,1,:], 0)
             # Take power spectrum of on-off/on+off.
             rebin_freq.rebin(Data, 512, mean=True, by_nbins=True)
-            cal_diff = ((Data.data[:,[0,-1],0,:] 
-                         - Data.data[:,[0,-1],1,:])
-                        / (Data.data[:,[0,-1],0,:] 
-                           + Data.data[:,[0,-1],1,:]))
+            cal_diff = ((Data.data[:,[0,-1],0,:] - Data.data[:,[0,-1],1,:])
+                        / ma.mean(Data.data[:,[0,-1],0,:] 
+                                  + Data.data[:,[0,-1],1,:], 0))
             cal_diff -= ma.mean(cal_diff, 0)
             cal_diff = cal_diff.filled(0)[0:nt,...]
             power = abs(fft.fft(cal_diff, axis=0)[range(nt//2+1)])
