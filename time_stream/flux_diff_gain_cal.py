@@ -4,6 +4,7 @@ import scipy as sp
 import numpy.ma as ma
 import pylab as pl
 import numpy as np
+from scipy import optimize
 
 import kiyopy.custom_exceptions as ce
 import base_single
@@ -201,30 +202,64 @@ def calibrate_pol(Data, m_total,RM_dir) :
 #    U_test = Tcal[1,230]/sp.sqrt(Tcal[1,230]**2+Tcal[2,230]**2)
 #    print Tcal[:,191]
 #    print Tcal[1,:]
-    U_test = Tcal[1,191]
+#    U_test = Tcal[1,191]
 #    print U_test
-    chi_sq =sp.zeros(4)
-    dp_dat = sp.zeros((4,2))
-    dp_dat[0] = [0.1354,2.341]
+#    chi_sq =sp.zeros(4)
+#    dp_dat = sp.zeros((4,2))
+#    dp_dat[0] = [0.1354,2.341]
 #    dp_dat[1] = [0.0723, 2.4575]
-    dp_dat[1] = [0.0730,2.611] #calculated specifically for sess 81
-    dp_dat[2] = [0.1029,0.045]
-    dp_dat[3] = [0,0]
+#    dp_dat[1] = [0.0730,2.611] #calculated specifically for sess 81
+#    dp_dat[2] = [0.1029,0.045]
+#    dp_dat[3] = [0,0]
 #    dp_dat[3] = [0.1669,5.609] # giving problems because closer for sess 81 at given freq
-    min = 10
-    val = 5
-    for i in range(0,4):
+#    min = 10
+#    val = 5
+#    for i in range(0,4):
 #       chi_sq[i] = U_test-sp.cos(dp_dat[i,0]*Data.freq[230]/1000000+dp_dat[i,1])/sp.sqrt(Tcal[1,230]**2+Tcal[2,230]**2)
 #        print sp.cos(dp_dat[i,0]*Data.freq[191]/1000000+dp_dat[i,1])
-        chi_sq[i] = U_test-sp.cos(dp_dat[i,0]*Data.freq[191]/1000000+dp_dat[i,1])
-        if abs(chi_sq[i]) < min:
-            min = abs(chi_sq[i])
-            val = i
+#        chi_sq[i] = U_test-sp.cos(dp_dat[i,0]*Data.freq[191]/1000000+dp_dat[i,1])
+#        if abs(chi_sq[i]) < min:
+#            min = abs(chi_sq[i])
+#            val = i
 # val tells which of the correction functions to use.    
-    print chi_sq
-    print val
+#    print chi_sq
+#    print val
 #    print Data.freq[191]
 
+# alternate code for actually solving  differential phase for each scan...
+    fitfunc = lambda p,x: sp.cos(p[0]*x+p[1])
+    errfunc = lambda p,x,y: fitfunc(p,x)-y
+    freqs = sp.zeros(Data.dims[3])
+    U_data = sp.zeros(Data.dims[3])
+    V_data = sp.zeros(Data.dims[3])
+    R_data = sp.zeros(Data.dims[3])
+    for i in range(0,Data.dims[3]):
+        freqs[i] = Data.freq[Data.dims[3]-i-1]/1000000
+        U_data[i] = Tcal[1,Data.dims[3]-i-1]
+        V_data[i] = Tcal[2,Data.dims[3]-i-1]
+        R_data[i] = U_data[i]/sp.sqrt(U_data[i]**2+V_data[i]**2)
+    print np.any(np.isnan(R_data))
+    print np.any(np.isinf(R_data))
+#    print freqs    
+
+    for j in range(0,Data.dims[3]):
+        if int(freqs[j])==710:
+            mask_num = j
+        if int(freqs[j])==740:
+            mask_num2 = j
+    Datain = R_data[mask_num:mask_num2]
+    fin = freqs[mask_num:mask_num2]
+    bad_pts = np.logical_or(np.isnan(Datain),np.isinf(Datain))
+    good_ind = np.where(np.logical_not(bad_pts))
+    Datain = Datain[good_ind]
+    fin = fin[good_ind]
+    R0 = [0.18,1.0]
+    R,success = optimize.leastsq(errfunc,R0[:],args=(fin,Datain),maxfev=10000)
+    R[1] = R[1]%(2*sp.pi)
+    print R
+
+
+         
     for time_index in range(0,Data.dims[0]):
 #        RA = Data.field['CRVAL2'][time_index]
 #        DEC = Data.field['CRVAL3'][time_index]
@@ -315,8 +350,8 @@ def calibrate_pol(Data, m_total,RM_dir) :
 
     # Add in correction for differential phase
 
-               XY_params[1] = XY_params[1]*sp.cos(dp_dat[val,0]*frequency/1000+dp_dat[val,1])-XY_params[2]*sp.sin(dp_dat[val,0]*frequency/1000+dp_dat[val,1])
-               XY_params[2] = XY_params[1]*sp.sin(dp_dat[val,0]*frequency/1000+dp_dat[val,1])+XY_params[2]*sp.cos(dp_dat[val,0]*frequency/1000+dp_dat[val,1])
+               XY_params[1] = XY_params[1]*sp.cos(R[0]*frequency/1000+R[1])-XY_params[2]*sp.sin(R[0]*frequency/1000+R[1])
+               XY_params[2] = XY_params[1]*sp.sin(R[0]*frequency/1000+R[1])+XY_params[2]*sp.cos(R[0]*frequency/1000+R[1])
 
     #Rotate to sky coordinates
 #               XY_params = np.dot(M_sky,XY_params)

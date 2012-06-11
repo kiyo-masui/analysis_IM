@@ -71,7 +71,7 @@ class Calibrate(base_single.BaseSingle) :
 # If using directory of fpc parameters from point source generation
 #        mueler_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_mueller_matrix_from_inverted_params.txt'
 # If using single mueller matrix from victor 
-        mueler_file_name = self.params['mueler_file']+'Mueller_81_pulsar.txt'
+        mueler_file_name = self.params['mueler_file']+'Mueller_61_pulsar.txt'
         self.flux_status = self.params['flux_cal_only']
         self.mueler = mueller(mueler_file_name)
         calibrate_pol(Data, self.mueler, self.flux_status)

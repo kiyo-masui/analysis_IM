@@ -192,15 +192,15 @@ class MuellerGen(object) :
                 freqs[j,i] = freq_val[len(freq_val)-i-1]
 #           for j in range(0,self.file_num):
 # If input is in XYformat
-                U_data[j,i] = self.d[4*j+1,len(freq_val)-i-1]
-                V_data[j,i] = self.d[4*j+2,len(freq_val)-i-1]
-                X_data[j,i] = self.d[4*j,len(freq_val)-i-1]
-                Y_data[j,i] = self.d[4*j+3,len(freq_val)-i-1]
+#                U_data[j,i] = self.d[4*j+1,len(freq_val)-i-1]
+#                V_data[j,i] = self.d[4*j+2,len(freq_val)-i-1]
+#                X_data[j,i] = self.d[4*j,len(freq_val)-i-1]
+#                Y_data[j,i] = self.d[4*j+3,len(freq_val)-i-1]
 # If input is in IQ format
-#                I_data[j,i] = self.d[4*j,len(freq_val)-i-1]
-#                Q_data[j,i] = self.d[4*j+1,len(freq_val)-i-1]
-#                U_data[j,i] = self.d[4*j+2,len(freq_val)-i-1]
-#                V_data[j,i] = self.d[4*j+3,len(freq_val)-i-1]
+                I_data[j,i] = self.d[4*j,len(freq_val)-i-1]
+                Q_data[j,i] = self.d[4*j+1,len(freq_val)-i-1]
+                U_data[j,i] = self.d[4*j+2,len(freq_val)-i-1]
+                V_data[j,i] = self.d[4*j+3,len(freq_val)-i-1]
 
 #               R_data[j,i] = sp.sin(2*sp.arctan(V_data[j,i]/U_data[j,i]))
 #                R_data[j,i] = U_data[j,i]/sp.sqrt(U_data[j,i]**2+ V_data[j,i]**2)
@@ -225,33 +225,41 @@ class MuellerGen(object) :
         pV_out = sp.zeros((3,self.file_num))
         for i in range(0,self.file_num):     
 #            pI0 = [1.0,1.0,0.5]
-            pI0 = [0.0,0.0]
+#            pI0 = [0.0,0.0]
 #            I_diff = I_src[i,:]-I_data[i,:]
-            I_diff = I_src[i,:] - 0.5*(X_data[i,:]+Y_data[i,:])
-            print np.mean(I_diff)
-            print np.std(I_diff)
-            for j in range(0,len(freqs[i,:])):
-                if I_diff[j]>2:
-                    I_diff[j] = 2
-                elif I_diff[j]<-2:
-                    I_diff[j] = -2
+#            I_diff = I_src[i,:] - 0.5*(X_data[i,:]+Y_data[i,:])
+#Want to try version in units of % of expected.
+#            I_diff = (I_src[i,:]-0.5*(X_data[i,:]+Y_data[i,:]))/I_src[i,:]
+            I_diff = (I_src[i,:]-I_data[i,:])/I_src[i,:]
+#            print np.mean(I_diff)
+#            print np.std(I_diff)
+#            for j in range(0,len(freqs[i,:])):
+#                if I_diff[j]>2:
+#                    I_diff[j] = 2
+#                elif I_diff[j]<-2:
+#                    I_diff[j] = -2
 
-            print np.mean(I_diff)
-            print np.std(I_diff)
+#            print np.mean(I_diff)
+#            print np.std(I_diff)
 
-            pI = optimize.leastsq(errfunc,pI0[:],args=(freqs[i,:],I_diff),full_output=1)
-            pI_out[:,i] = pI[0]
-            print pI[1]
-            print pI[0]
+#            pI = optimize.leastsq(errfunc,pI0[:],args=(freqs[i,:],I_diff),full_output=1)
+#            pI_out[:,i] = pI[0]
+#            print pI[1]
+#            print pI[0]
 
 #            pQ0 = [1.0,1.0,0.5]
-#            Q_diff = Q_src[i,:]*sp.cos(2*self.theta[i])-U_src[i,:]*sp.sin(2*self.theta[i])-Q_data[i,:]
+#            Q_diff = (Q_src[i,:]*sp.cos(2*self.theta[i])+U_src[i,:]*sp.sin(2*self.theta[i])-0.5*(Y_data[i,:]-X_data[i,:]))/(Q_src[i,:]*sp.cos(2*self.theta[i])+U_src[i,:]*sp.sin(2*self.theta[i]))
+            Q_diff = (Q_src[i,:]*sp.cos(2*self.theta[i])+U_src[i,:]*sp.sin(2*self.theta[i])+Q_data[i,:])/(Q_src[i,:]*sp.cos(2*self.theta[i])+U_src[i,:]*sp.sin(2*self.theta[i]))
+#            Q_diff = Q_src[i,:]*sp.cos(2*self.theta[i])+U_src[i,:]*sp.sin(2*self.theta[i])+Q_data[i,:]
 #            Q_diff = Q_src[i,:]-0.5*(Y_data[i,:]-X_data[i,:])
-            Q_diff = Q_src[i,:]*sp.cos(2*self.theta[i])-U_src[i,:]*sp.sin(2*self.theta[i])-0.5*(Y_data[i,:]-X_data[i,:])
+#            Q_diff = Q_src[i,:]*sp.cos(2*self.theta[i])+U_src[i,:]*sp.sin(2*self.theta[i])-0.5*(Y_data[i,:]-X_data[i,:])
 #            pQ = optimize.leastsq(errfunc,pQ0[:],args=(freqs[i,:],Q_diff),full_output=1)
 #            pU0 = [1.0,1.0,0.5]
 #            U_diff = -Q_src[i,:]*sp.sin(2*self.theta[i])+U_src[i,:]*sp.cos(2*self.theta[i])-U_data[i,:] 
-            U_diff = -Q_src[i,:]*sp.sin(2*self.theta[i])+U_src[i,:]*sp.cos(2*self.theta[i])-U_data[i,:]
+            U_diff = (-Q_src[i,:]*sp.sin(2*self.theta[i])+U_src[i,:]*sp.cos(2*self.theta[i])-U_data[i,:])/(-Q_src[i,:]*sp.sin(2*self.theta[i])+U_src[i,:]*sp.cos(2*self.theta[i]))
+#            U_diff = (-Q_src[i,:]*sp.sin(2*self.theta[i])+U_src[i,:]*sp.cos(2*self.theta[i])-U_data[i,:])/(-Q_src[i,:]*sp.sin(2*self.theta[i])+U_src[i,:]*sp.cos(2*self.theta[i]))
+
+#            U_diff = -Q_src[i,:]*sp.sin(2*self.theta[i])+U_src[i,:]*sp.cos(2*self.theta[i])-U_data[i,:]
 #            U_diff = U_src[i,:]-U_data[i,:]
 #            pU = optimize.leastsq(errfunc,pU0[:],args=(freqs[i,:],U_diff),full_output=1)
 #            pV0 = [1.0,1.0,0.5]
@@ -261,27 +269,27 @@ class MuellerGen(object) :
 #            pylab.plot(freqs[i,:],Y_data[i,:],label='Y'+str(i))
 
 #Last session examined
-        pylab.plot(freqs[-1,:],fitfunc(pI_out[:,-1],freqs[-1,:]),c='r',label = 'I_line1')
+#        pylab.plot(freqs[-1,:],fitfunc(pI_out[:,-1],freqs[-1,:]),c='r',label = 'I_line1')
         pylab.scatter(freqs[-1,:],I_diff[:],s=4,c='r',edgecolors='none',label='I_diff1')
-#        pylab.scatter(freqs[-1,:],Q_diff[:],s=4,c='c',edgecolors='none',label='Q_diff')
-#        pylab.scatter(freqs[-1,:],U_diff[:],s=4,c='g',edgecolors='none',label='U_diff')
-#        pylab.scatter(freqs[-1,:],-V_data[-1,:],s=4,c='y',edgecolors='none',label='V_diff')
+        pylab.scatter(freqs[-1,:],Q_diff[:],s=4,c='c',edgecolors='none',label='Q_diff')
+        pylab.scatter(freqs[-1,:],U_diff[:],s=4,c='g',edgecolors='none',label='U_diff')
+        pylab.scatter(freqs[-1,:],-V_data[-1,:],s=4,c='y',edgecolors='none',label='V_diff')
 #First session examined (fdg)
-        pylab.plot(freqs[0,:],fitfunc(pI_out[:,0],freqs[0,:]),c='m',label='I_line2')
-        pylab.scatter(freqs[0,:],I_src[0,:]-0.5*(X_data[0,:]+Y_data[0,:]),s=4,c='m',edgecolors='none',label='I_diff2')
+#        pylab.plot(freqs[0,:],fitfunc(pI_out[:,0],freqs[0,:]),c='m',label='I_line2')
+#        pylab.scatter(freqs[0,:],I_src[0,:]-0.5*(X_data[0,:]+Y_data[0,:]),s=4,c='r',edgecolors='none',label='I_diff2')
 #        pylab.scatter(freqs[0,:],Q_src[0,:]*sp.cos(2*self.theta[0])+U_src[0,:]*sp.sin(2*self.theta[0])-0.5*(Y_data[0,:]-X_data[0,:]),s=4,c='c',edgecolors='none',label='Q_diff')
 #        pylab.scatter(freqs[0,:],-Q_src[0,:]*sp.sin(2*self.theta[0])+U_src[0,:]*sp.cos(2*self.theta[0])-U_data[0,:],s=4,c='g',edgecolors='none',label='U_diff')
 #        pylab.scatter(freqs[0,:],V_src[-0,:]-V_data[0,:],s=4,c='y',edgecolors='none',label='V_diff')
 # First session examined (pulsar)
 #        pylab.scatter(freqs[0,:],I_src[0,:]-I_data[0,:],s=4,c='m',edgecolors='none',label='I_diff')
-#        pylab.scatter(freqs[0,:],Q_src[0,:]*sp.cos(2*self.theta[0])-U_src[0,:]*sp.sin(2*self.theta[0])-Q_data[0,:],s=4,c='c',edgecolors='none',label='Q_diff')
-#        pylab.scatter(freqs[0,:],Q_src[0,:]*sp.sin(2*self.theta[0])+U_src[0,:]*sp.cos(2*self.theta[0])-U_data[0,:],s=4,c='g',edgecolors='none',label='U_diff')
-#        pylab.scatter(freqs[0,:],V_src[-0,:]-V_data[0,:],s=4,c='y',edgecolors='none',label='V_diff')
+#        pylab.scatter(freqs[0,:],Q_src[0,:]*sp.cos(2*self.theta[0])+U_src[0,:]*sp.sin(2*self.theta[0])+Q_data[0,:],s=4,c='c',edgecolors='none',label='Q_diff')
+#        pylab.scatter(freqs[0,:],-Q_src[0,:]*sp.sin(2*self.theta[0])+U_src[0,:]*sp.cos(2*self.theta[0])-U_data[0,:],s=4,c='g',edgecolors='none',label='U_diff')
+#        pylab.scatter(freqs[0,:],V_src[0,:]-V_data[0,:],s=4,c='y',edgecolors='none',label='V_diff')
 
 #        pylab.plot(freqs[0,:],fitfunc(pI_out[:,0],freqs[0,:]),c='b')
 #        pylab.scatter(freqs[0,:],pI_out[1,:],c='g')
-        pylab.ylim(-2,2)
-
+#        pylab.ylim(-5,5)
+        pylab.ylim(-0.1,0.1)
  
 #        for i in range(0,self.file_num):
 #            mask_num = 5 # if working with 256 values
@@ -391,7 +399,8 @@ class MuellerGen(object) :
 #        pylab.ylim(-1,1)
 #        pylab.legend()
         pylab.xlabel('Frequency (MHz)')
-        pylab.ylabel('Temperature (Kelvin)')
+#        pylab.ylabel('Temperature (Kelvin)')
+        pylab.ylabel('Fractional Temperature Difference (deltaT/Tsrc)')
         pylab.savefig('test.png')
         pylab.clf()
         

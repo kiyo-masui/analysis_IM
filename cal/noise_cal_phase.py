@@ -162,13 +162,13 @@ class MuellerGen(object) :
 #                    self.d[k+3,:] = 0.5*(S_med_calon_src[:,3]+S_med_caloff_src[:,3]-S_med_calon[:,3]-S_med_caloff[:,3])
                     k+=4
 
-        for a in range(0,4*self.file_num):
-            for b in range(0,freq_num):
+#        for a in range(0,4*self.file_num):
+#            for b in range(0,freq_num):
 #                print self.d[a,b]
-                if self.d[a,b] > 3 :
-                   self.d[a,b] = 3
-                elif self.d[a,b]<-3:
-                   self.d[a,b] = -3
+#                if self.d[a,b] > 3 :
+#                   self.d[a,b] = 3
+#                elif self.d[a,b]<-3:
+#                   self.d[a,b] = -3
 
 #        fitfunc = lambda p,x: sp.arccos(sp.cos(p*x))
 #        fitfunc = lambda p,x: sp.arccos(sp.cos(p[0]*x+p[1]))
