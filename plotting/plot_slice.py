@@ -5,7 +5,7 @@ import subprocess
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
+import os
 
 def gnuplot_2D(outfilename, region, xaxis, yaxis, vaxis, xylabels,
                aspect, fulltitle, cbar_title, eps_outfile=None,
@@ -103,6 +103,14 @@ def simpleplot_2D(outfilename, region, xaxis, yaxis, xylabels,
     """
 
     print fulltitle, repr(region.shape)
+
+    # if there is a root directory that does not yet exist
+    rootdir = "/".join(outfilename.split("/")[0:-1])
+    print rootdir
+    if len(rootdir) > 0 and rootdir != ".":
+        if not os.path.isdir(rootdir):
+            print "print_multicolumn: making dir " + rootdir
+            os.mkdir(rootdir)
 
     if logscale:
         # TODO: this is a kludge

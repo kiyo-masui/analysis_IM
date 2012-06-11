@@ -232,3 +232,61 @@ class AggregateStatistics(object):
         plot_slice.simpleplot_2D(outplot_file, stat_2d['corr'],
                                  stat_2d['flat_axis'], stat_2d['flat_axis'],
                                  ["k", "k"], 1., "2D power corr", "corr")
+
+calculatetransfer_init = {
+        "shelvefile_in": "file",
+        "shelvefile_out": "file",
+        "transferfile": "file",
+        "outputdir": "dir",
+    }
+
+calculatetransfer_prefix = 'atr_'
+
+class CalculateTransfer(object):
+    """Calculate a transfer function in 1d/2d
+    """
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file,
+                                          calculatetransfer_init,
+                                          prefix=calculatetransfer_prefix)
+
+        self.stats_in = shelve.open(self.params["shelvefile_in"])
+        self.stats_out = shelve.open(self.params["shelvefile_out"])
+
+    def execute(self, processes):
+        """produce a list of files to combine and run"""
+        stats_1d_in = self.stats_in["pk_1d_stat"]["mean"]
+        stats_1d_out = self.stats_out["pk_1d_stat"]["mean"]
+        stats_2d_in = self.stats_in["pk_2d_stat"]["mean"]
+        stats_2d_out = self.stats_out["pk_2d_stat"]["mean"]
+
+        counts_1d_in = self.stats_in["pk_1d_counts"]["mean"]
+        counts_1d_out = self.stats_out["pk_1d_counts"]["mean"]
+        counts_2d_in = self.stats_in["pk_2d_counts"]["mean"]
+        counts_2d_out = self.stats_out["pk_2d_counts"]["mean"]
+
+        counts_prod = counts_2d_in * counts_2d_out
+        transfer_2d = stats_2d_out / stats_2d_in
+        transfer_2d[counts_prod == 0] = 0.
+
+        k_1d = self.stats_in["k_1d"]
+        k_1d_from_2d = self.stats_in["k_1d_from_2d"]
+        kx_2d = self.stats_in["kx_2d"]
+        ky_2d = self.stats_in["ky_2d"]
+
+        outplot_file = self.params['outputdir'] + "transfer_2d.png"
+        logkx = np.log10(kx_2d['center'])
+        logky = np.log10(ky_2d['center'])
+        plot_slice.simpleplot_2D(outplot_file, transfer_2d,
+                                 logkx, logky,
+                                 ["logkx", "logky"], 1., "2D beam transfer", "T")
+
+        transferfile = shelve.open(self.params["transferfile"])
+        transferfile["transfer_2d"] = transfer_2d
+        transferfile.close()
+
+        self.stats_in.close()
+        self.stats_out.close()
