@@ -24,6 +24,13 @@ def print_multicolumn(*args, **kwargs):
     if "format" in kwargs:
         format = kwargs["format"]
 
+    # if there is a root directory that does not yet exist
+    rootdir = "/".join(outfile.split("/")[0:-1])
+    if len(rootdir) > 0 and rootdir != ".":
+        if not os.path.isdir(rootdir):
+            print "print_multicolumn: making dir " + rootdir
+            os.mkdir(rootdir)
+
     numarg = len(args)
     fmt_string = (format + " ") * numarg + "\n"
     print "writing %d columns to file %s" % (numarg, outfile)

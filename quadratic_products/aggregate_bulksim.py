@@ -119,12 +119,13 @@ class AggregateStatistics(object):
                                           aggregatestatistics_init,
                                           prefix=aggregatestatistics_prefix)
 
-        self.summary = shelve.open(self.params["shelvefile"], "r")
+        self.summary = shelve.open(self.params["shelvefile"])
 
     def execute(self, processes):
         """produce a list of files to combine and run"""
         self.aggregate_1d_statistics(from2d = False)
         self.aggregate_1d_statistics(from2d = True)
+        self.aggregate_2d_statistics()
         self.summary.close()
 
     def calc_stat_1d(self, trial_array):
@@ -143,18 +144,6 @@ class AggregateStatistics(object):
 
         return stat_1d
 
-    def calc_stat_2d(trial_array):
-        mtrial_array = ma.masked_invalid(trial_array)
-
-        mean2d = np.ma.mean(mtrial_array_2d, axis=0)
-        num_flat = num_kx * num_ky
-        flat_axis = range(num_flat)
-        mtrial_array_2d_flat = np.ma.reshape(mtrial_array_2d, (num_sim, num_flat))
-        print mtrial_array_2d_flat.shape
-        #corr2d = np.corrcoef(np.ma.transpose(mtrial_array_2d_flat), ddof=1)
-        corr2d = np.ma.cov(np.ma.transpose(mtrial_array_2d_flat), ddof=1)
-        print corr2d.shape
-
     def aggregate_1d_statistics(self, from2d = False):
         r"""Find the mean, std, cov, corr etc of 1D p(k)'s"""
 
@@ -172,6 +161,13 @@ class AggregateStatistics(object):
         stat_1d = self.calc_stat_1d(trial_array_1d)
         counts_1d = self.calc_stat_1d(counts_array_1d)
 
+        if from2d:
+            self.summary["pk_1d_from_2d_stat"] = stat_1d
+            self.summary["pk_1d_from_2d_counts"] = counts_1d
+        else:
+            self.summary["pk_1d_stat"] = stat_1d
+            self.summary["pk_1d_counts"] = counts_1d
+
         file_tools.print_multicolumn(k_1d["left"],
                                      k_1d["center"],
                                      k_1d["right"],
@@ -180,34 +176,59 @@ class AggregateStatistics(object):
                                      stat_1d["std"],
                                      outfile = outfile)
 
-        #logk_1d = np.log10(k_1d)
-        #plot_slice.simpleplot_2D("sim_cov_1d.png", corr1d, logk_1d, logk_1d,
-        #                     ["logk", "logk"], 1., "1D covariance", "corr")
+        logk_1d = np.log10(k_1d['center'])
+        outplot_file = self.params['outputdir'] + "sim_corr_1d.png"
+        plot_slice.simpleplot_2D(outplot_file, stat_1d['corr'], logk_1d, logk_1d,
+                             ["logk", "logk"], 1., "1D corr", "corr")
 
+        outplot_file = self.params['outputdir'] + "sim_cov_1d.png"
+        plot_slice.simpleplot_2D(outplot_file, stat_1d['cov'], logk_1d, logk_1d,
+                             ["logk", "logk"], 1., "1D covariance", "cov")
 
-        #for specdata in zip(k_1d["left"], k_1d["center"], k_1d["right"], mean1d, std1d):
-        #    outfile.write(("%10.15g " * 5 + "\n") % specdata)
-        #outfile.close()
+    def calc_stat_2d(self, trial_array):
+        stat_2d = {}
+        mtrial_array = ma.masked_invalid(trial_array)
 
-        #for (k, pk, err) in zip(k_1d, mean1d, std1d):
-        #    print k, pk, err
+        stat_2d['mean'] = np.ma.mean(mtrial_array, axis=0)
+        stat_2d['std'] = np.ma.std(mtrial_array, axis=0, ddof=1)
+        stat_2d['mean'] = np.ma.filled(stat_2d['mean'], fill_value=np.nan)
+        stat_2d['std'] = np.ma.filled(stat_2d['std'], fill_value=np.nan)
 
-    def aggregate_2d_statistics(summary_shelvefile):
+        num_flat = trial_array.shape[1] * trial_array.shape[2]
+        num_sim = trial_array.shape[0]
+        stat_2d['flat_axis'] = range(num_flat)
+        mtrial_array_flat = np.ma.reshape(mtrial_array, (num_sim, num_flat))
+        stat_2d['corr'] = np.corrcoef(np.ma.transpose(mtrial_array_flat), ddof=1)
+        stat_2d['cov'] = np.ma.cov(np.ma.transpose(mtrial_array_flat), ddof=1)
+
+        return stat_2d
+
+    def aggregate_2d_statistics(self):
         kx_2d = self.summary["kx_2d"]
         ky_2d = self.summary["ky_2d"]
         trial_array_2d = self.summary["pk_2d"]
+        counts_array_2d = self.summary["counts_2d"]
+        outfile = self.params['outputdir'] + "power_2d.dat"
+
+        stat_2d = self.calc_stat_2d(trial_array_2d)
+        counts_2d = self.calc_stat_2d(counts_array_2d)
+        self.summary["pk_2d_stat"] = stat_2d
+        self.summary["pk_2d_counts"] = counts_2d
 
         #mean2d[np.isnan(mean2d)] = 0.
-        mean2d[np.isnan(mean2d)] = 1.e-16
+        #mean2d[np.isnan(mean2d)] = 1.e-16
         np.set_printoptions(threshold='nan')
-        print mean2d
-        logkx = np.log10(kx_2d)
-        logky = np.log10(ky_2d)
-        # TODO: why not logky?
-        plot_slice.simpleplot_2D("sim_2d.png", mean2d*10**12., logkx, logky,
+
+        logkx = np.log10(kx_2d['center'])
+        logky = np.log10(ky_2d['center'])
+
+        outplot_file = self.params['outputdir'] + "sim_mean_2d.png"
+        plot_slice.simpleplot_2D(outplot_file, stat_2d['mean'], logkx, logky,
                                  ["logkx", "logky"], 1., "2D power", "logP(k)",
                                  logscale=True)
 
         # can use C or F to do column or row-major
-        plot_slice.simpleplot_2D("sim_2d_corr.png", corr2d, flat_axis, flat_axis,
+        outplot_file = self.params['outputdir'] + "sim_corr_2d.png"
+        plot_slice.simpleplot_2D(outplot_file, stat_2d['corr'],
+                                 stat_2d['flat_axis'], stat_2d['flat_axis'],
                                  ["k", "k"], 1., "2D power corr", "corr")
