@@ -24,15 +24,21 @@ map_cln = os.getenv('MAP_CLN')
 hour = int(os.getenv('HOUR'))
 mode = int(os.getenv('MODE'))
 
-output_root = WORKROOT + 'power_auto_%s_%d/'%(map_cln, mode)
-resultf = 'auto_%s_%d'%(map_cln, mode)
+imaps = []
+if os.path.exists(map_cln):
+    output_root = WORKROOT + 'power_auto_%s_%d/'%(map_cln.split('/')[-2], mode)
+    resultf = 'auto_%s_%d'%(map_cln.split('/')[-2], mode)
+    imaps = data_paths.get_mapdict(map_cln)
+else:
+    output_root = WORKROOT + 'power_auto_%s_%d/'%(map_cln, mode)
+    resultf = 'auto_%s_%d'%(map_cln, mode)
 
-# get the maps dict
-datadb = data_paths.DataPath()
-imaps = datadb.fetch(map_cln, silent=True)
+    datadb = data_paths.DataPath()
+    imaps = datadb.fetch(map_cln, silent=True)
 
-#MAPPATH = os.getenv('MAP_%dhr%s'%(hour, string.upper(FLAG)))
-#WETPATH = os.getenv('MAP_%dhr%s'%(hour, string.upper(FLAG)))
+print
+print imaps
+print
 
 imap_root = []
 imap_list = []
@@ -73,11 +79,12 @@ print
 print pkc_imap_list
 print pkc_nmap_list
 
-cldir = WORKROOT + 'bias/auto_%s_combined_%d/'%(map_cln, mode)
+#cldir = WORKROOT + 'bias/auto_%s_combined_%d/'%(map_cln, mode)
 #if FLAG=='_optimalmap' or FLAG=='_oldcal':
 #	cldir = WORKROOT + 'bias/auto_15hr_%02dmodes/'%(MODE)
 #if COMP=='_nocomp':
 #	cldir = ''
+cldir = ''
 
 cutlist = []
 #if hour==15 and FLAG!='_optimalmap' \
@@ -109,11 +116,11 @@ print
 print
 
 #""" Pipe line """
-#from mkpower import prepare
-#pipe_modules.append(prepare.Prepare)
-#
-#from mkpower import mkpower_combine
-#pipe_modules.append(mkpower_combine.PowerSpectrumMaker)
+from mkpower import prepare
+pipe_modules.append(prepare.Prepare)
+
+from mkpower import mkpower_combine
+pipe_modules.append(mkpower_combine.PowerSpectrumMaker)
 
 from mkpower import pycamb
 pipe_modules.append(pycamb.CAMB)

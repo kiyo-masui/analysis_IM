@@ -1,16 +1,13 @@
 #! /usr/bin/env python
 
 import numpy as np
-from scipy.special import legendre as leg
+#from scipy.special import legendre as leg
+from scipy.special import eval_legendre as leg
 from scipy.integrate import romberg
 from scipy.integrate import simps
 from scipy.integrate import quadrature
 import matplotlib.pyplot as plt
 from math import *
-
-def p(n, fn=512):
-    x = np.linspace(-1, 1, fn)
-    return np.polyval(leg(n), x)
 
 def fdot(u, v):
     #return romberg(lambda x: u(x)*v(x), -1, 1)
@@ -26,9 +23,10 @@ def proj(u, v):
     u, v should be array
     '''
 
-    return fdot(u, v)/fdot(v, v)*v
+    #return fdot(u, v)/fdot(v, v)*v
+    return np.dot(u, v)/np.dot(v, v)*v
 
-def gs(v):
+def gs(v, weight=None):
     r'''
     gram-schmidt operator:
     it will generate a new base using legendre 
@@ -39,22 +37,35 @@ def gs(v):
 
     vn = v.shape[0]
     x = np.linspace(-1, 1, v.shape[1])
-    u = leg(vn)(x)
+    u = leg(vn, x)
+    if weight!=None:
+        u = u*weight
     for i in range(vn):
         u = u - proj(u, v[i])
-    return u
+    return u/np.sqrt(np.dot(u,u))
 
-def gs_array(v):
+def gs_array(v, weight=None):
     r'''
     same as gs(v), but the return is the whole base array
     '''
 
-    u = gs(v)
+    u = gs(v, weight=weight)
     v = np.resize(v, (v.shape[0]+1, v.shape[1]))
     v[-1] = u
     return v
-    
 
+def discrete_leg_array(mode_n, freq_n):
+    p = np.zeros(shape=(mode_n, freq_n))
+    freq = np.linspace(-1,1,freq_n)
+    p[0] = leg(0, freq)
+    p[1] = leg(1, freq)
+    for i in range(1,mode_n):
+        p[i] = gs(p[:i,:])
+    return p
+
+def gs_array_newleg(v, mode_n, freq_n, weight=None):
+    newleg = discrete_leg_array(mode_n, freq_n)
+    mode_start = v.shape[0]
 
 if __name__=='__main__':
     
@@ -62,7 +73,7 @@ if __name__=='__main__':
     num = 30
     v = np.zeros((num,len(x)))
     for i in range(num):
-        v[i] = leg(i)(x)
+        v[i] = leg(i, x)
 
     plt.figure(figsize=(8,7))
     #plt.plot(x, gs(v), label='gram-schmidt')
@@ -73,21 +84,21 @@ if __name__=='__main__':
     plt.subplot(311)
     plt.plot(x, v[30], label='gs legendre P(30)')
 
-    plt.plot(x, leg(num)(x), label='scipy legendre P(30)')
+    plt.plot(x, leg(num, x), label='scipy legendre P(30)')
     plt.ylim(ymax=1, ymin=-1)
     plt.legend()
     
     plt.subplot(312)
     plt.plot(x, v[35], label='gs legendre P(35)')
 
-    plt.plot(x, leg(num+5)(x), label='scipy legendre P(35)')
+    plt.plot(x, leg(num+5, x), label='scipy legendre P(35)')
     plt.ylim(ymax=1, ymin=-1)
     plt.legend()
 
     plt.subplot(313)
     plt.plot(x, v[60], label='gs legendre P(60)')
 
-    plt.plot(x, leg(num+30)(x), label='scipy legendre P(60)')
+    plt.plot(x, leg(num+30, x), label='scipy legendre P(60)')
     plt.ylim(ymax=1, ymin=-1)
     plt.legend()
 

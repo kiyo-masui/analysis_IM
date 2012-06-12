@@ -797,6 +797,31 @@ class DataPath(object):
         print_dictionary(hashdict, hashobj, key_list=hashlist)
         hashobj.close()
 
+def get_mapdict(dir):
+    r"""
+    Generate a map dict according to the map file in a dir
+    """
+    maplist = os.listdir(dir)
+    mapdict = {}
+    for map in maplist:
+        if os.path.isfile(dir+map) and map.split('.')[-1]=='npy':
+            mapsplit = map.split('_')
+            if mapsplit[0] == 'sec':
+                key1 = mapsplit[1] + '_with_' + mapsplit[7]
+                if mapsplit[2] == 'modes':
+                    key2 = mapsplit[2]
+                else:
+                    key2 = mapsplit[4]
+                if key2 == 'inv':
+                    key2 = mapsplit[3] + '_' + key2
+                key3 = mapsplit[-1].split('.')[0]
+
+                mapdict['%s;%s;%s'%(key1, key2, key3)] = dir + map
+    
+    maps = [mapdict.keys(), mapdict]
+    return maps
+
+
 
 if __name__ == "__main__":
     import doctest

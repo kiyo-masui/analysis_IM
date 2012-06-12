@@ -8,25 +8,26 @@ pipe_modules = []
 from foregroundclean import pair_set
 pipe_modules.append(pair_set.PairSet)
 
-fs_good_modes = 4
+fs_good_modes = 0
 
-fs_modes = range(0, 30, 5)
-fs_output_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
-fs_output_root = fs_output_root + 'mode_changed_%dgoodmode/'%fs_good_modes
 fs_map1 = 'GBT_15hr_map_oldcal'
 fs_map2 = 'GBT_15hr_map_oldcal'
 fs_noise_inv1 = 'GBT_15hr_map_oldcal'
 fs_noise_inv2 = 'GBT_15hr_map_oldcal'
+fs_modes = range(0, 105, 5)
+fs_output_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
+fs_output_root += fs_map1 + '_legendre_modes_%dgwj/'%fs_good_modes
 
-fs_convolve = True
+fs_convolve = False
 fs_sub_weighted_mean = True
 fs_factorizable_noise = True
 fs_no_weights = False
 
 
+fs_ferq_n_all = 256
 fs_freq_list = range(50,60)
 if True :
-  fs_freq_list = range(256)
+  fs_freq_list = range(fs_ferq_n_all)
   fs_freq_list.remove(6)
   fs_freq_list.remove(7)
   fs_freq_list.remove(8)

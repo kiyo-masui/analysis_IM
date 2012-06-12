@@ -15,6 +15,7 @@ import sys
 import copy
 import time
 import scipy as sp
+import numpy as np
 from utils import file_tools as ft
 from utils import data_paths as dp
 from correlate import corr_estimation as ce
@@ -45,6 +46,7 @@ params_init = {
                'subtract_inputmap_from_sim': False,
                'subtract_sim_from_inputmap': False,
                'freq_list': (),
+               'freq_n_all': 256,
                 # in deg: (unused)
                'tack_on': None,
                'lags': (0.1, 0.2),
@@ -294,10 +296,26 @@ class PairSet(ft.ClassPersistence):
             # replace svd modes by Legendre polymodial
             if self.params['good_modes'] > 0:
                 good_modes = self.params['good_modes']
+                freq_n_all = self.params['freq_n_all']
+                mode_n = len(svd_info[1])
+                svd_info_all = np.zeros(shape=(2, mode_n, freq_n_all))
+                for i in range(mode_n):
+                    np.put(svd_info_all[0][i], self.freq_list, svd_info[1][i])
+                    np.put(svd_info_all[1][i], self.freq_list, svd_info[2][i])
                 print 'replace mode from %d to the end' %good_modes
+
                 svd_info = (svd_info[0],
-                    rpmode.replace_modes(svd_info[1], good_modes, m=n_modes),
-                    rpmode.replace_modes(svd_info[2], good_modes, m=n_modes))
+                    rpmode.replace_modes(svd_info_all[0], good_modes, m=n_modes, 
+                                         weight=svd_info_all[0][0]),
+                    rpmode.replace_modes(svd_info_all[1], good_modes, m=n_modes,
+                                         weight=svd_info_all[1][0]))
+                #svd_info = (svd_info[0],
+                #    rpmode.replace_modes(svd_info_all[0], good_modes, m=n_modes),
+                #    rpmode.replace_modes(svd_info_all[1], good_modes, m=n_modes))
+                
+                svd_info = (svd_info[0],
+                    np.take(svd_info[1], self.freq_list, axis=1),
+                    np.take(svd_info[2], self.freq_list, axis=1))
 
             self.pairs[pairitem].subtract_frequency_modes(
                                     svd_info[1][:n_modes],
