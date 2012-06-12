@@ -3,6 +3,7 @@ import shelve
 from utils import data_paths as dp
 from quadratic_products import pwrspec_estimator as pe
 from utils import binning
+import copy
 
 class PowerSpectrum(object):
     r"""
@@ -79,6 +80,7 @@ class PowerSpectrum(object):
         r"""here transfer_dict has keys for each treament and the value is the
         2d transfer function. Note that this changes the values saved in the
         class."""
+        print "power_spectrum: applying 2D transfer function"
         for treatment in self.treatment_cases:
             transfer = transfer_dict[treatment]
             for comb in self.comb_cases:
@@ -87,6 +89,7 @@ class PowerSpectrum(object):
 
                 self.pwrspec_2d[pwrcase] /= transfer
                 self.counts_2d[pwrcase] *= transfer * transfer
+                #print self.pwrspec_2d[pwrcase].shape, np.max(transfer), transfer.shape
 
                 nanmask = np.isnan(self.counts_2d[pwrcase])
                 infmask = np.isnan(self.counts_2d[pwrcase])
@@ -153,7 +156,7 @@ class PowerSpectrum(object):
         self.k_1d_from_2d["right"] = bin_right
         self.num_k_1d_from_2d = bin_center.shape[0]
 
-    def combination_array_1d(self, from_2d=False, counts=False):
+    def combination_array_1d(self, from_2d=False, counts=False, debug=False):
         r"""pack the various pair combinations for each treatment into an array"""
         summary_treatment = {}
         if from_2d:
@@ -167,16 +170,24 @@ class PowerSpectrum(object):
                 pwrcase = "%s:%s" % (comb, treatment)
                 if counts:
                     if from_2d:
+                        if debug:
+                            print "combining 2D->1D counts"
                         pwr_treatment[:, comb_index] = \
                                 self.counts_1d_from_2d[pwrcase]
                     else:
+                        if debug:
+                            print "combining 1D counts"
                         pwr_treatment[:, comb_index] = \
                                 self.counts_1d[pwrcase]
                 else:
                     if from_2d:
+                        if debug:
+                            print "combining 2D->1D P(k)"
                         pwr_treatment[:, comb_index] = \
                                 self.pwrspec_1d_from_2d[pwrcase]
                     else:
+                        if debug:
+                            print "combining 1D P(k)"
                         pwr_treatment[:, comb_index] = \
                                 self.pwrspec_1d[pwrcase]
 
@@ -335,7 +346,7 @@ class PowerSpectrum(object):
     def summarize_pwrspec(self, tag, outdir="./plot_data"):
         r"""Plot the 1D and 2D power spectra from a run
         """
-        fileout = outdir + "/" + tag + "_from2d.dat"
+        fileout = outdir + "/" + tag + "_from_2d.dat"
         summarize_1d_pwrspec(pwr_1d_from_2d, fileout)
 
         fileout = outdir + "/" + tag + ".dat"
@@ -349,8 +360,8 @@ class PowerSpectrum(object):
 
     def summarize_agg_pwrspec(self, treatment, tag, outdir="./plot_data"):
         r"""Unclear what this will do here"""
-        fileout = outdir + "/" + tag + "_avg_from2d.dat"
-        corr_fileout = outdir + "/" + tag + "_corr_from2d.dat"
+        fileout = outdir + "/" + tag + "_avg_from_2d.dat"
+        corr_fileout = outdir + "/" + tag + "_corr_from_2d.dat"
         agg_1d_pwrspec_f2d = summarize_1d_agg_pwrspec(pwr_1d_from_2d,
                                     fileout,
                                     corr_file=corr_fileout)

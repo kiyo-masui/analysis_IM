@@ -1,5 +1,6 @@
 import numpy as np
 from utils import data_paths as dp
+from utils import file_tools
 from quadratic_products import pwrspec_estimator as pe
 from quadratic_products import power_spectrum as ps
 from kiyopy import parse_ini
@@ -10,6 +11,7 @@ params_init = {
         "p_map": "test_map",
         "p_map_plussim": "test_map",
         "p_cleaned_sim": "test_map",
+        "apply_2d_transfer": None,
         "outdir": "./"
                }
 prefix = 'autopower_'
@@ -50,11 +52,35 @@ class CompileAutopower(object):
         #    avg_plussim[treatment] = np.mean(avg_treatment, axis=ndim_plussim)
         #    print avg_plussim[treatment].shape, shape_plussim
 
-        pwr_map_summary = pwr_map.agg_stat_1d_pwrspec()
-        pwr_map_plussim_summary = pwr_map_plussim.agg_stat_1d_pwrspec()
-        pwr_cleaned_sim_summary = pwr_cleaned_sim.agg_stat_1d_pwrspec()
+        if self.params["apply_2d_transfer"] is not None:
+            # copy the same beam transfer function for all cases
+
+            trans_shelve = shelve.open(self.params["apply_2d_transfer"])
+            transfer_2d = trans_shelve["transfer_2d"]
+            trans_shelve.close()
+
+            transfer_dict = {}
+            for treatment in pwr_map.treatment_cases:
+                transfer_dict[treatment] = transfer_2d
+
+            pwr_map.apply_2d_trans_by_treatment(transfer_dict)
+            pwr_map_plussim.apply_2d_trans_by_treatment(transfer_dict)
+            pwr_cleaned_sim.apply_2d_trans_by_treatment(transfer_dict)
+
+        pwr_map.convert_2d_to_1d()
+        pwr_map_plussim.convert_2d_to_1d()
+        pwr_cleaned_sim.convert_2d_to_1d()
+
+        pwr_map_summary = pwr_map.agg_stat_1d_pwrspec(from_2d=True)
+
+        pwr_map_plussim_summary = \
+            pwr_map_plussim.agg_stat_1d_pwrspec(from_2d=True)
+
+        pwr_cleaned_sim_summary = \
+            pwr_cleaned_sim.agg_stat_1d_pwrspec(from_2d=True)
+
         reference_pwr = pwr_cleaned_sim_summary["0modes"]["mean"]
-        k_vec = pwr_map.bin_center_1d
+        k_vec = pwr_map.k_1d_from_2d["center"]
 
         for treatment in pwr_map.treatment_cases:
             mean_map_plussim = pwr_map_plussim_summary[treatment]["mean"]
@@ -72,9 +98,10 @@ class CompileAutopower(object):
             #mean_map = np.mean(corrected_pwr, axis=1)
             #std_map = np.mean(corrected_pwr, axis=1)
 
-            outfile = open("%s/pk_%s.dat" % (self.params["outdir"], treatment), "w")
-            for k, p0, tk, pk_mean, pk_err in zip(k_vec, reference_pwr, trans, mean_map, std_map):
-                outfile.write("%10.15g %10.15g %10.15g %10.15g %10.15g\n" % (k, p0, tk, pk_mean, pk_err))
+            outfile = "%s/pk_%s.dat" % (self.params["outdir"], treatment)
+            file_tools.print_multicolumn(k_vec, reference_pwr, trans,
+                                         mean_map, std_map, outfile=outfile)
+            print "writing to " + outfile
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:

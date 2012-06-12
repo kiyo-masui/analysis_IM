@@ -11,6 +11,7 @@ from utils import file_tools
 aggregatesummary_init = {
         "directory": "dir",
         "basefile": "file",
+        "apply_2d_transfer": None,
         "outfile": "file"
     }
 
@@ -56,7 +57,6 @@ class AggregateSummary(object):
 
         print "k_1d bins: %d, %d, kx bins: %d, ky bins: %d" % \
                (num_k_1d, num_k_1d_from_2d, num_kx, num_ky)
-        del sim_toread
 
         trial_array_1d = np.zeros((num_sim, num_k_1d))
         trial_array_1d_from_2d = np.zeros((num_sim, num_k_1d_from_2d))
@@ -65,9 +65,22 @@ class AggregateSummary(object):
         counts_array_1d_from_2d = np.zeros((num_sim, num_k_1d_from_2d))
         counts_array_2d = np.zeros((num_sim, num_kx, num_ky))
 
+        if self.params["apply_2d_transfer"] is not None:
+            trans_shelve = shelve.open(self.params["apply_2d_transfer"])
+            transfer_2d = trans_shelve["transfer_2d"]
+            trans_shelve.close()
+
+            transfer_dict = {}
+            for treatment in sim_toread.treatment_cases:
+                transfer_dict[treatment] = transfer_2d
+
         for (simfile, index) in zip(filelist, range(num_sim)):
             print simfile, index
             sim_toread = ps.PowerSpectrum(simfile)
+
+            if self.params["apply_2d_transfer"] is not None:
+                sim_toread.apply_2d_trans_by_treatment(transfer_dict)
+
             sim_toread.convert_2d_to_1d()
 
             agg1d = sim_toread.agg_stat_1d_pwrspec()
@@ -225,7 +238,7 @@ class AggregateStatistics(object):
         outplot_file = self.params['outputdir'] + "sim_mean_2d.png"
         plot_slice.simpleplot_2D(outplot_file, stat_2d['mean'], logkx, logky,
                                  ["logkx", "logky"], 1., "2D power", "logP(k)",
-                                 logscale=True)
+                                 logscale=False)
 
         # can use C or F to do column or row-major
         outplot_file = self.params['outputdir'] + "sim_corr_2d.png"
