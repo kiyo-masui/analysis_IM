@@ -168,25 +168,27 @@ def cross_maps(map1key, map2key, noise_inv1key, noise_inv2key,
                map_suffix=";clean_map", noise_inv_suffix=";noise_inv",
                verbose=True, ignore=['firstpass'], cross_sym="_with_",
                pair_former="unique_cross_pairs",
-               tag1prefix="", tag2prefix=""):
+               tag1prefix="", tag2prefix="", db_to_use=None):
     r"""Use the database to report all unique crossed map maps given map and
     noise_inv keys.
     """
-    dbp = DataPath()
+    if db_to_use is None:
+        db_to_use = DataPath()
+
     retpairs = {}
     retpairslist = []
 
-    (map1keys, map1set) = dbp.fetch(map1key, intend_read=True,
+    (map1keys, map1set) = db_to_use.fetch(map1key, intend_read=True,
                                     silent=True)
 
-    (map2keys, map2set) = dbp.fetch(map2key, intend_read=True,
+    (map2keys, map2set) = db_to_use.fetch(map2key, intend_read=True,
                                     silent=True)
 
-    (noise_inv1keys, noise_inv1set) = dbp.fetch(noise_inv1key,
+    (noise_inv1keys, noise_inv1set) = db_to_use.fetch(noise_inv1key,
                                         intend_read=True,
                                         silent=True)
 
-    (noise_inv2keys, noise_inv2set) = dbp.fetch(noise_inv2key,
+    (noise_inv2keys, noise_inv2set) = db_to_use.fetch(noise_inv2key,
                                         intend_read=True,
                                         silent=True)
 
@@ -590,7 +592,8 @@ class DataPath(object):
         else:
             print "%s has no parent directory field" % db_key
 
-    def fetch_multi(self, data_obj, db_token="db:", silent=False):
+    def fetch_multi(self, data_obj, db_token="db:", silent=False,
+                    intend_read=True):
         r"""Handle various sorts of file pointers/data
         if `data_obj`
             is an array, return a deep copy of it
@@ -601,11 +604,13 @@ class DataPath(object):
         if isinstance(data_obj, str):
             if data_obj[0:len(db_token)] == db_token:
                 db_key = data_obj[len(db_token):]
-                filename = self.fetch(db_key, intend_read=True, silent=silent)
+                filename = self.fetch(db_key, intend_read=intend_read,
+                                      silent=silent)
             else:
                 filename = data_obj
                 prefix = "non-db filename "
-                ft.path_properties(filename, intend_read=True, is_file=True,
+                ft.path_properties(filename, intend_read=intend_read,
+                                   is_file=True,
                                    prefix=prefix, silent=silent)
 
             ret_data = algebra.make_vect(algebra.load(filename))

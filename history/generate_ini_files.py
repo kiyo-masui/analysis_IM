@@ -118,14 +118,16 @@ def gen_old_inis():
         write_map_cleanerini_old(mapname, cutlist, 256, simfile=None)
         write_map_cleanerini_old(mapname, cutlist, 256, simfile=simfile)
 
-    simfile = '/mnt/raid-project/gmrt/eswitzer/GBT/simulations/15hr_optimalmap_str/sim_beam_000.npy'
+    #simfile = '/mnt/raid-project/gmrt/eswitzer/GBT/simulations/15hr_optimalmap_str/sim_beam_000.npy'
+    simfile = '/mnt/raid-project/gmrt/eswitzer/GBT/simulations/15hr_optimalmap762_str/sim_beam_000.npy'
     maplist = ["GBT_15hr_optimalmap_fluxpolcal",
                "GBT_15hr_optimalmap_mapv2fdgcal",
                "GBT_15hr_optimalmap_mapv2oldcal"]
+    cutlist = []
 
     for mapname in maplist:
-        write_map_cleanerini_old(mapname, cutlist, 120, simfile=None)
-        write_map_cleanerini_old(mapname, cutlist, 120, simfile=simfile)
+        write_map_cleanerini_old(mapname, cutlist, 40, simfile=None)
+        write_map_cleanerini_old(mapname, cutlist, 40, simfile=simfile)
 
 
 def gen_new_inis(sim_multiplier=1.):
@@ -135,7 +137,8 @@ def gen_new_inis(sim_multiplier=1.):
                212, 213, 218, 219, 229, 233, 237, 244, 254, 255]
 
     simfile = '/mnt/raid-project/gmrt/eswitzer/GBT/simulations/15hr_oldmap_str/sim_beam_000.npy'
-    maplist = ["GBT_15hr_map_oldcal", "GBT_15hr_map_mapcal"]
+    maplist = ["GBT_15hr_map_oldcal", "GBT_15hr_map_mapcal",
+               "GBT_15hr_map_mapcal2"]
 
     for mapname in maplist:
         write_map_cleanerini(mapname, cutlist, 256, simfile=None)
@@ -154,6 +157,29 @@ def gen_new_inis(sim_multiplier=1.):
                              subtract_inputmap_from_sim=False,
                              subtract_sim_from_inputmap=True,
                              sim_multiplier=sim_multiplier)
+
+    simfile = '/mnt/raid-project/gmrt/eswitzer/GBT/simulations/15hr_optimalmap762_str/sim_beam_000.npy'
+    maplist = ["GBT_15hr_optimalmap_selfcal_762"]
+    cutlist = []
+
+    for mapname in maplist:
+        write_map_cleanerini(mapname, cutlist, 40, simfile=None)
+
+        write_map_cleanerini(mapname, cutlist, 40, simfile=simfile,
+                             subtract_inputmap_from_sim=False,
+                             subtract_sim_from_inputmap=False,
+                             sim_multiplier=sim_multiplier)
+
+        write_map_cleanerini(mapname, cutlist, 40, simfile=simfile,
+                             subtract_inputmap_from_sim=True,
+                             subtract_sim_from_inputmap=False,
+                             sim_multiplier=sim_multiplier)
+
+        write_map_cleanerini(mapname, cutlist, 40, simfile=simfile,
+                             subtract_inputmap_from_sim=False,
+                             subtract_sim_from_inputmap=True,
+                             sim_multiplier=sim_multiplier)
+
 
 if __name__ == '__main__':
     #gen_old_inis()

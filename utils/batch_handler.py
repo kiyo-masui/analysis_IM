@@ -13,6 +13,42 @@ import shelve
 import functools
 import os
 import copy
+import logging as log
+
+
+def log_timing_func():
+    '''Decorator generator that logs the time it takes a function to execute'''
+    def decorator(func_to_decorate):
+        def wrapper(*args, **kwargs):
+            start = time.time()
+            result = func_to_decorate(*args, **kwargs)
+            elapsed = (time.time() - start)
+
+            log.debug("[TIMING] %s: %s" % (func_to_decorate.__name__, elapsed))
+
+            return result
+        wrapper.__doc__ = func_to_decorate.__doc__
+        wrapper.__name__ = func_to_decorate.__name__
+        return wrapper
+    return decorator
+
+
+# for classes
+def log_timing(func_to_decorate):
+    '''Decorator generator that logs the time it takes a function to execute'''
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        result = func_to_decorate(*args, **kwargs)
+        elapsed = (time.time() - start)
+
+        #log.debug("[TIMING] %s: %s" % (func_to_decorate.__name__, elapsed))
+        print "[TIMING] %s: %s" % (func_to_decorate.__name__, elapsed)
+
+        return result
+
+    wrapper.__doc__ = func_to_decorate.__doc__
+    wrapper.__name__ = func_to_decorate.__name__
+    return wrapper
 
 
 def short_repr(input_var, maxlen=None):
@@ -73,9 +109,7 @@ def memoize_persistent(func):
     note that shelve protocol=-1 does not handle Kiyo-style array metadata.
     The repackage_kiyo function above handles this.
 
-    There seems to be a race condition where two threads can open the same
-    shelve because of the finite time it takes to write the shelve. Currently
-    trying a simpler lock.
+    This should really be transferred to a database than can handle concurrency
     """
     def memoize(*args, **kwargs):
         funcname = func.__name__
@@ -89,7 +123,9 @@ def memoize_persistent(func):
         done_filename = filename + ".done"
         busy_filename = filename + ".busy"
 
-        #if os.access(filename, os.F_OK):
+        # prevent the race condition where many threads want to
+        # start writing a new cache file at the same time
+        time.sleep(random.uniform(0, 0.5))
         if (os.access(done_filename, os.F_OK) or \
             os.access(busy_filename, os.F_OK)):
             printed = False
@@ -99,7 +135,9 @@ def memoize_persistent(func):
                     print "waiting for %s" % filename
                     printed = True
 
-            time.sleep(random.uniform(0, 2.))
+            # if many threads were waiting to read, space their reads
+            # so that they don't attack at once.
+            time.sleep(random.uniform(0, 0.5))
             print "ready to read %s" % filename
             try:
                 input_shelve = shelve.open(filename, "r", protocol=-1)
@@ -109,13 +147,17 @@ def memoize_persistent(func):
             except:
                 raise ValueError
         else:
+            # first flag the cachefile as busy so other threads wait
             busyfile = open(busy_filename, "w")
             busyfile.write("working")
             busyfile.close()
+
+            # recalculate the function
             print "no cache, recalculating %s" % filename
-            outfile = shelve.open(filename, "n", protocol=-1)
             start = time.time()
             retval = func(*args, **kwargs)
+
+            outfile = shelve.open(filename, "n", protocol=-1)
             outfile["signature"] = arghash
             outfile["filename"] = filename
             outfile["funcname"] = funcname
@@ -123,9 +165,13 @@ def memoize_persistent(func):
             outfile["kwargs"] = kwargs
             outfile["result"] = retval
             outfile.close()
+            time.sleep(0.2)     # TODO: this is a trial; remove?
+
+            # indicate that the function is done being recalculated
             donefile = open(done_filename, "w")
             donefile.write("%10.15f\n" % (time.time() - start))
             donefile.close()
+            # and remove the busy flag
             os.remove(busy_filename)
 
         return retval
@@ -207,11 +253,11 @@ class MemoizeBatch(object):
     Example to generate the cache table:
     >>> caller1 = MemoizeBatch("trial_function", "./testdata/", generate=True)
     >>> caller1.execute("ok",3, arg1=True, arg2=3)
-    '1d6e885be47e6f350befb10fd4b28318'
+    '4a1e33dbab4b660fcddbe98d604d87ed28a3dce9c4844190df3c05c5'
     >>> import numpy as np
     >>> bins = np.arange(0,1, 0.2)
     >>> caller1.execute(5, "ok2", arg1="stringy", arg2=bins)
-    'fc3eb86900a1f325fb3369d7f686d475'
+    'cc9dd30e2b656e96bfdec98a219c030d5dc4792391bdfa54ad209d3c'
     >>> caller1.execute("ok2",4)
     '5b81c329717a428261f3bebe2b4b5bba'
     >>> caller1.multiprocess_stack()
@@ -297,9 +343,10 @@ class MemoizeBatch(object):
         handling in multiprocessing
         """
         if debug:
-            results = []
+            result = []
             for item in self.call_stack:
-                results.append(function_wrapper(item))
+                print_call(item)
+                result.append(function_wrapper(item))
         else:
             num_cpus = multiprocessing.cpu_count() - save_cpu
             pool = multiprocessing.Pool(processes=num_cpus)

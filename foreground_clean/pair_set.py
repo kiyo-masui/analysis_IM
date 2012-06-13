@@ -15,19 +15,24 @@ import sys
 import copy
 import time
 import scipy as sp
+import numpy as np
 from utils import file_tools as ft
 from utils import data_paths as dp
-from correlate import corr_estimation as ce
+from quadratic_products import corr_estimation as ce
 from kiyopy import parse_ini
 import kiyopy.utils
 from core import algebra
-from correlate import map_pair
+from foreground_clean import map_pair
 from multiprocessing import Process, current_process
 from utils import batch_handler
 # TODO: make map cleaning multiprocess; could also use previous cleaning, e.g.
 # 5 modes to clean 10 modes = modes 5 to 10 (but no need to do this)
 # TODO: move all magic strings to __init__ or params
 # TODO: replace print with logging
+# Special parameters that rarely need to get used
+# no_weights: do not weight before finding nu-nu' covariance (False by default)
+# SVD_root: use the SVD from another cleaning run on this run (None by default)
+# regenerate_noise_inv: do not use memoize to save previous diag(N^-1) calc
 
 
 params_init = {
@@ -42,9 +47,7 @@ params_init = {
                'subtract_inputmap_from_sim': False,
                'subtract_sim_from_inputmap': False,
                'freq_list': (),
-                # in deg: (unused)
                'tack_on': None,
-               'lags': (0.1, 0.2),
                'convolve': True,
                'factorizable_noise': True,
                'sub_weighted_mean': True,
@@ -69,8 +72,6 @@ def memoize_find_weight(filename):
     return find_weight(filename)
 
 
-# TODO: make this handle the dimensions of the new map noise inv more
-# automatically
 def find_weight(filename):
     r"""rather than read the full noise_inv and find its diagonal, cache the
     diagonal values.
@@ -78,20 +79,21 @@ def find_weight(filename):
     Note that the .info does not get shelved (class needs to be made
     serializeable). Return the info separately.
     """
-    print "loading noise: " + filename
-    noise_inv = algebra.make_mat(algebra.open_memmap(filename, mode='r'))
-    noise_inv_diag = noise_inv.mat_diag()
+    #print "loading noise: " + filename
+    #noise_inv = algebra.make_mat(algebra.open_memmap(filename, mode='r'))
+    #noise_inv_diag = noise_inv.mat_diag()
     # if optimal map:
-    #noise_inv_diag = algebra.make_vect(algebra.load(filename))
+    noise_inv_diag = algebra.make_vect(algebra.load(filename))
 
     return noise_inv_diag, noise_inv_diag.info
 
 
-class PairSet(ft.ClassPersistence):
+class PairSet():
     r"""Class to manage a set of map pairs
     """
 
-    def __init__(self, parameter_file=None, params_dict=None):
+    @batch_handler.log_timing
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
         # recordkeeping
         self.pairs = {}
         self.pairs_parallel_track = {}
@@ -104,17 +106,11 @@ class PairSet(ft.ClassPersistence):
                                           prefix=prefix)
 
         self.freq_list = sp.array(self.params['freq_list'], dtype=int)
-        self.lags = sp.array(self.params['lags'])
         self.output_root = self.datapath_db.fetch(self.params['output_root'],
                                                   tack_on=self.params['tack_on'])
         #self.output_root = self.params['output_root']
         if not os.path.isdir(self.output_root):
             os.mkdir(self.output_root)
-
-        # check that it exists (TODO: do this more simply)
-        self.output_root = self.datapath_db.fetch(self.params['output_root'],
-                                                  intend_write=True,
-                                                  tack_on=self.params['tack_on'])
 
         if self.params['SVD_root']:
             self.SVD_root = self.datapath_db.fetch(self.params['SVD_root'],
@@ -124,37 +120,31 @@ class PairSet(ft.ClassPersistence):
             self.SVD_root = self.output_root
 
         # Write parameter file.
-        kiyopy.utils.mkparents(self.output_root)
         parse_ini.write_params(self.params, self.output_root + 'params.ini',
                                prefix=prefix)
 
-    def execute(self):
+    @batch_handler.log_timing
+    def execute(self, processes):
         r"""main call to execute the various steps in foreground removal"""
-        self.calculate_corr_svd()
-        self.clean_maps()
-
-    def calculate_corr_svd(self):
-        r""" "macro" which finds the correlation functions for the pairs of
-        given maps, then the SVD.
-        """
         self.load_pairs()
         self.preprocess_pairs()
         self.calculate_correlation()
         self.calculate_svd()
 
-    def clean_maps(self):
-        r""" "macro" which open the data, does pre-processing, loads the
-        pre-calculated SVD modes, subtracts them, and saves the data.
-        This is the second stage.
-        """
-        self.uncleaned_pairs = copy.deepcopy(self.pairs)
-        for n_modes in self.params['modes']:
-            # clean self.pairs and save its components
-            self.subtract_foregrounds(n_modes)
-            self.save_data(n_modes)
-            # reset the all the pair data; vestigial?
-            self.pairs = copy.deepcopy(self.uncleaned_pairs)
+        mode_list_stop = self.params['modes']
+        mode_list_start = copy.deepcopy(self.params['modes'])
+        mode_list_start[1:] = mode_list_start[:-1]
 
+        #self.uncleaned_pairs = copy.deepcopy(self.pairs)
+        for (n_modes_start, n_modes_stop) in zip(mode_list_start,
+                                             mode_list_stop):
+            self.subtract_foregrounds(n_modes_start, n_modes_stop)
+            self.save_data(n_modes_stop)
+
+            # NOTE: if you use this you also need to copy the parallel pairs!
+            #self.pairs = copy.deepcopy(self.uncleaned_pairs)
+
+    @batch_handler.log_timing
     def load_pairs(self):
         r"""load the set of map/noise pairs specified by keys handed to the
         database. This sets up operations on the quadratic product
@@ -164,7 +154,9 @@ class PairSet(ft.ClassPersistence):
         (self.pairlist, pairdict) = dp.cross_maps(par['map1'], par['map2'],
                                              par['noise_inv1'],
                                              par['noise_inv2'],
-                                             verbose=False)
+                                             noise_inv_suffix=";noise_weight",
+                                             verbose=False,
+                                             db_to_use=self.datapath_db)
 
         for pairitem in self.pairlist:
             pdict = pairdict[pairitem]
@@ -178,9 +170,10 @@ class PairSet(ft.ClassPersistence):
             if par['simfile'] is not None:
                 print "adding %s with multiplier %s" % (par['simfile'],
                                                         par['sim_multiplier'])
- 
+
                 sim = algebra.make_vect(algebra.load(par['simfile']))
                 sim *= par['sim_multiplier']
+                print sim.shape, map1.shape
             else:
                 sim = algebra.zeros_like(map1)
 
@@ -200,7 +193,6 @@ class PairSet(ft.ClassPersistence):
 
             pair.set_names(pdict['tag1'], pdict['tag2'])
 
-            pair.lags = self.lags
             pair.params = self.params
             self.pairs[pairitem] = pair
 
@@ -217,11 +209,11 @@ class PairSet(ft.ClassPersistence):
                                                   self.freq_list)
 
                 pair_parallel_track.set_names(pdict['tag1'], pdict['tag2'])
-                pair_parallel_track.lags = self.lags
                 pair_parallel_track.params = self.params
                 self.pairs_parallel_track[pairitem] = pair_parallel_track
 
 
+    @batch_handler.log_timing
     def preprocess_pairs(self):
         r"""perform several preparation tasks on the data
         1. convolve down to a common beam
@@ -237,6 +229,7 @@ class PairSet(ft.ClassPersistence):
         if self.params["sub_weighted_mean"]:
             self.call_pairs("subtract_weighted_mean")
 
+    @batch_handler.log_timing
     def calculate_correlation(self):
         r"""Note that multiprocessing's map() is more elegant than Process,
         but fails for handing in complex map_pair objects
@@ -255,6 +248,7 @@ class PairSet(ft.ClassPersistence):
         for process in process_list:
             process.join()
 
+    @batch_handler.log_timing
     def calculate_svd(self):
         r"""calculate the SVD of all pairs"""
         for pairitem in self.pairlist:
@@ -264,41 +258,42 @@ class PairSet(ft.ClassPersistence):
             print filename_corr
             if os.access(filename_corr, os.F_OK):
                 print "SVD loading corr. functions: " + filename
-                (corr, counts) = ft.load_pickle(filename_corr)
+                (freq_cov, counts) = ft.load_pickle(filename_corr)
 
                 # (vals, modes1, modes2)
-                svd_info = ce.get_freq_svd_modes(corr, len(self.freq_list))
+                svd_info = ce.get_freq_svd_modes(freq_cov, len(self.freq_list))
                 ft.save_pickle(svd_info, filename_svd)
             else:
                 print "ERROR: in SVD, correlation functions not loaded"
                 sys.exit()
 
-    def subtract_foregrounds(self, n_modes):
-        r"""call subtract_frequency_modes on the maps with the modes as found
-        in the svd, removing the first `n_modes`
-        """
+    @batch_handler.log_timing
+    def subtract_foregrounds(self, n_modes_start, n_modes_stop):
         for pairitem in self.pairlist:
             filename_svd = "%s/SVD_pair_%s.pkl" % (self.SVD_root, pairitem)
-            print "subtracting %d modes from %s using %s" % (n_modes, \
-                                                             pairitem, \
-                                                             filename_svd)
+            print "subtracting %d to %d modes from %s using %s" % (n_modes_start, \
+                                                                n_modes_stop, \
+                                                                pairitem, \
+                                                                filename_svd)
 
             # svd_info: 0 is vals, 1 is modes1 (left), 2 is modes2 (right)
             svd_info = ft.load_pickle(filename_svd)
 
             self.pairs[pairitem].subtract_frequency_modes(
-                                    svd_info[1][:n_modes],
-                                    svd_info[2][:n_modes])
+                                    svd_info[1][n_modes_start:n_modes_stop],
+                                    svd_info[2][n_modes_start:n_modes_stop])
 
             if self.params['subtract_inputmap_from_sim'] or \
                self.params['subtract_sim_from_inputmap']:
                 self.pairs_parallel_track[pairitem].subtract_frequency_modes(
-                                                svd_info[1][:n_modes],
-                                                svd_info[2][:n_modes])
+                                        svd_info[1][n_modes_start:n_modes_stop],
+                                        svd_info[2][n_modes_start:n_modes_stop])
 
+    @batch_handler.log_timing
     def save_data(self, n_modes):
-        ''' Save the all of the clean data.
-        '''
+        prodmap_list = []
+        weight_list = []
+
         n_modes = "%dmodes" % n_modes
         for pairitem in self.pairlist:
             pair = self.pairs[pairitem]
@@ -319,16 +314,66 @@ class PairSet(ft.ClassPersistence):
 
             if self.params['subtract_inputmap_from_sim'] or \
                self.params['subtract_sim_from_inputmap']:
-                pair_parallel_track = self.pairs_parallel_track[pairitem]
-                algebra.save(map1_file, pair.map1 - pair_parallel_track.map1)
-                algebra.save(map2_file, pair.map2 - pair_parallel_track.map2)
+                map1 = pair.map1 - self.pairs_parallel_track[pairitem].map1
+
+                map2 = pair.map2 - self.pairs_parallel_track[pairitem].map2
             else:
-                algebra.save(map1_file, pair.map1)
-                algebra.save(map2_file, pair.map2)
+                map1 = copy.deepcopy(pair.map1)
+                map2 = copy.deepcopy(pair.map2)
+
+            prodmap_list.append(map1 * pair.noise_inv1)
+            prodmap_list.append(map2 * pair.noise_inv2)
+            weight_list.append(pair.noise_inv1)
+            weight_list.append(pair.noise_inv2)
+
+            algebra.save(map1_file, map1)
+            algebra.save(map2_file, map2)
             algebra.save(noise_inv1_file, pair.noise_inv1)
             algebra.save(noise_inv2_file, pair.noise_inv2)
             algebra.save(modes1_file, pair.left_modes)
             algebra.save(modes2_file, pair.right_modes)
+
+        cumulative_product = algebra.zeros_like(prodmap_list[0])
+        cumulative_weight = algebra.zeros_like(prodmap_list[0])
+        for mapind in range(0, len(prodmap_list)):
+            cumulative_product += prodmap_list[mapind]
+            cumulative_weight += weight_list[mapind]
+
+        algebra.compressed_array_summary(cumulative_weight, "weight map")
+        algebra.compressed_array_summary(cumulative_product, "product map")
+
+        cumulative_weight[cumulative_weight < 1.e-20] = 0.
+        cumulative_product[cumulative_weight < 1.e-20] = 0.
+
+        newmap = cumulative_product / cumulative_weight
+
+        # if the new map is nan or inf, set it and the wieghts to zero
+        nan_array = np.isnan(newmap)
+        newmap[nan_array] = 0.
+        cumulative_product[nan_array] = 0.
+        cumulative_weight[nan_array] = 0.
+        inf_array = np.isinf(newmap)
+        newmap[inf_array] = 0.
+        cumulative_product[inf_array] = 0.
+        cumulative_weight[inf_array] = 0.
+        algebra.compressed_array_summary(newmap, "new map")
+        algebra.compressed_array_summary(cumulative_product, "final map * weight")
+        algebra.compressed_array_summary(cumulative_weight, "final weight map")
+
+        combined = "combined_clean"
+        combined_map_file = "%s/%s_map_%s.npy" % \
+                            (self.output_root, combined, n_modes)
+        combined_weight_file = "%s/%s_weight_%s.npy" % \
+                            (self.output_root, combined, n_modes)
+        combined_product_file = "%s/%s_product_%s.npy" % \
+                            (self.output_root, combined, n_modes)
+        combined_ones_file = "%s/%s_ones_%s.npy" % \
+                            (self.output_root, combined, n_modes)
+
+        algebra.save(combined_map_file, newmap)
+        algebra.save(combined_product_file, cumulative_product)
+        algebra.save(combined_weight_file, cumulative_weight)
+        algebra.save(combined_ones_file, algebra.ones_like(newmap))
 
     # Service functions ------------------------------------------------------
     def call_pairs(self, call):
@@ -363,15 +408,12 @@ def wrap_corr(pair, filename):
     Correlations in the `pair` (map_pair type) are saved to `filename`
     """
     name = current_process().name
-    print "starting at %s on pair %s => %s" % (name, time.asctime(), filename)
-    (corr, counts) = pair.correlate(pair.lags, speedup=True)
-    ft.save_pickle((corr, counts), filename)
-    print "%s finished at %s" % (name, time.asctime())
+    (freq_cov, counts) = pair.freq_covariance()
+    ft.save_pickle((freq_cov, counts), filename)
 
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:
         PairSet(str(sys.argv[1])).execute()
-        #PairSet(str(sys.argv[1])).clean_maps()
     else:
         print 'Need one argument: parameter file name.'

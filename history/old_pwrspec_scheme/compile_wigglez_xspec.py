@@ -60,7 +60,9 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
             dbkeydict = {}
             dbkeydict['map1_key'] = "%s:map;%s" % (gbt_map_key, treatment)
             dbkeydict['map2_key'] = "%s:%s" % (wigglez_mock_key, index)
-            dbkeydict['noiseinv1_key'] = "%s:weight;%s" % (gbt_map_key, treatment)
+            dbkeydict['noiseinv1_key'] = "%s:weight;%s" % \
+                                         (gbt_map_key, treatment)
+
             dbkeydict['noiseinv2_key'] = wigglez_selection_key
             files = data_paths.convert_dbkeydict_to_filedict(dbkeydict,
                                                       datapath_db=datapath_db)
@@ -136,6 +138,10 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
                 outfile.write(("%10.15g " * 8 + "\n") % specdata)
             outfile.close()
 
+            # TODO: kludge to make a fast fit; remove
+            theory_curve = np.genfromtxt("plots/sim_15hr_oldmap_str_temperature_xWigglez/sim_15hr_oldmap_str_temperature_xWigglez_avg_from2d.dat")
+            theory_curve = theory_curve[:, 4]
+
             if theory_curve is not None:
                 restrict = np.where(np.logical_and(bin_center > 0.09,
                                                    bin_center < 1.1))
@@ -144,7 +150,7 @@ def batch_gbtxwigglez_data_run(gbt_map_key, wigglez_map_key,
                 #restrict_alt = np.where(restrict)[0][np.newaxis, :]
                 #restricted_cov = covmock[restrict_alt][0]
 
-                #from core import utils
+                from core import utils
                 amplitude = utils.ampfit(pwr_1d_from_2d[res_slice],
                                          covmock[res_slice, res_slice],
                                          theory_curve[res_slice])
@@ -168,7 +174,7 @@ def wrap_batch_gbtxwigglez_data_run(inifile, generate=False,
                    "beam_transfer_ini": "ini file -> 2d beam trans. function",
                    "spec_ini": "ini file for the spectral estimation",
                    "output_tag": "tag identifying the output somehow"}
-    prefix="cwx_"
+    prefix = "cwx_"
 
     params = parse_ini.parse(inifile, params_init, prefix=prefix)
     print params
@@ -187,7 +193,7 @@ def wrap_batch_gbtxwigglez_data_run(inifile, generate=False,
 
     datapath_db = data_paths.DataPath()
 
-    mode_transfer_1d=None
+    mode_transfer_1d = None
     if params["mode_transfer_1d_ini"]:
         mode_transfer_1d = cct.wrap_batch_crosspwr_transfer(
                                             params["mode_transfer_1d_ini"],
@@ -228,4 +234,3 @@ if __name__ == '__main__':
     wrap_batch_gbtxwigglez_data_run(inifile,
                                     generate=optparam['generate'],
                                     outdir=optparam['outdir'])
-

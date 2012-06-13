@@ -16,6 +16,7 @@ def process_mode_files(path_key):
              "B_with_C", "B_with_D", "C_with_D"]
 
     # open one file to get the dimensions
+    print root + "SVD_pair_%s.pkl" % pairs[0]
     modepkl = cPickle.load(open(root + "SVD_pair_%s.pkl" % pairs[0], "r"))
     (amp_ind, mode0_ind, mode1_ind) = (0,1,2)
     num_modes = len(modepkl[amp_ind])
@@ -198,8 +199,20 @@ def plot_svd_series_comparison(path_key1, path_key2):
 #plot_svd_series_comparison("GBT_cleaned_noconv_15hr_maps_Eric", "GBT_cleaned_noconv_15hr_sims_Eric")
 #plot_svd_series_comparison("GBT_cleaned_15hr_maps_Eric", "GBT_cleaned_15hr_sims_Eric")
 
-average_mode_amplitudes("GBT_cleaned_optimalmap_15hr_maps_Eric")
-dot_mode_functions("GBT_cleaned_optimalmap_15hr_maps_Eric", "GBT_cleaned_optimalmap_15hr_maps_Eric")
+average_mode_amplitudes("GBT_15hr_optimalmap_selfcal_762_cleaned_path_Eric")
+dot_mode_functions("GBT_15hr_optimalmap_selfcal_762_cleaned_path_Eric",
+                   "GBT_15hr_optimalmap_selfcal_762_cleaned_path_Eric")
+#average_mode_amplitudes("GBT_15hr_map_oldcal_cleaned_path_Eric")
+#dot_mode_functions("GBT_15hr_map_oldcal_cleaned_path_Eric",
+#                   "GBT_15hr_map_oldcal_cleaned_path_Eric")
+#average_mode_amplitudes("GBT_15hr_map_mapcal_cleaned_path_Eric")
+#dot_mode_functions("GBT_15hr_map_mapcal_cleaned_path_Eric",
+#                   "GBT_15hr_map_mapcal_cleaned_path_Eric")
+#average_mode_amplitudes("GBT_15hr_map_mapcal2_cleaned_path_Eric")
+#dot_mode_functions("GBT_15hr_map_mapcal2_cleaned_path_Eric",
+#                   "GBT_15hr_map_mapcal2_cleaned_path_Eric")
+#average_mode_amplitudes("GBT_cleaned_optimalmap_15hr_maps_Eric")
+#dot_mode_functions("GBT_cleaned_optimalmap_15hr_maps_Eric", "GBT_cleaned_optimalmap_15hr_maps_Eric")
 #average_mode_amplitudes("GBT_cleaned_expt_15hr_maps_Eric")
 #dot_mode_functions("GBT_cleaned_expt_15hr_maps_Eric", "GBT_cleaned_expt_15hr_maps_Eric")
 #average_mode_amplitudes("GBT_cleaned_15hr_maps_Eric")

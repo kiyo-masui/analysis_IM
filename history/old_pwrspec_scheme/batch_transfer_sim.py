@@ -66,7 +66,7 @@ def run_sim_batch(params, optdict):
                               batchsim=sim_id)
 
 
-def main():
+if __name__ == "__main__":
     r"""main command-line interface"""
 
     parser = OptionParser(usage="usage: %prog [options] filename",
@@ -107,7 +107,3 @@ def main():
                              prefix=prefix)
 
     run_sim_batch(params, optdict)
-
-
-if __name__ == "__main__":
-    main()
