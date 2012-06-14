@@ -282,10 +282,15 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
         Datain = Datain[good_ind]
         fin = fin[good_ind]
         R0 = [0.18,1.0]
-        R,success = optimize.leastsq(errfunc,R0[:],args=(fin,Datain),maxfev=10000)
-        R[1] = R[1]%(2*sp.pi)
-#    print R
-
+        if len(good_ind[0])>1:
+            print good_ind[0]
+            R,success = optimize.leastsq(errfunc,R0[:],args=(fin,Datain),maxfev=10000)
+            R[1] = R[1]%(2*sp.pi)
+            print R
+        else:
+            R=[0.0,0.0]
+            print "Not able to resolve a noise cal phase"
+  
 
 # This starts the actual data processing for the given scan
          
