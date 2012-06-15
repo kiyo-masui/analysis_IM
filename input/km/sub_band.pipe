@@ -57,8 +57,8 @@ base_dir = "/mnt/raid-project/gmrt/kiyo/gbt_out_new/"
 data_dir = os.getenv('GBT_DATA')
 base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
-#map_base = base_dir + 'maps/may22/'
-map_base = '/mnt/scratch-pen/kiyo/gbt_out/' + 'maps/june8/'
+map_base = base_dir + 'maps/june15/'
+#map_base = '/mnt/scratch-pen/kiyo/gbt_out/' + 'maps/june8/'
 
 
 # IO directory and file prefixes.
@@ -94,26 +94,26 @@ pipe_modules = []
 
 #### First Map making interation ####
 
-#from map import dirty_map
-#pipe_modules.append(dirty_map.DirtyMapMaker)
+from map import dirty_map
+pipe_modules.append(dirty_map.DirtyMapMaker)
 
-#from map import clean_map
-#pipe_modules.append(clean_map.CleanMapMaker)
+from map import clean_map
+pipe_modules.append(clean_map.CleanMapMaker)
 
 
 #### Second Map making iteration ####
 
-#from cal import correlate_map
-#pipe_modules.append((correlate_map.Measure, ('mc2_', 'mc_')))
+from cal import correlate_map
+pipe_modules.append((correlate_map.Measure, ('mc2_', 'mc_')))
 
-#from time_stream import subtract_map_data
-#pipe_modules.append((subtract_map_data.Subtract, ('sm2_', 'sm_')))
+from time_stream import subtract_map_data
+pipe_modules.append((subtract_map_data.Subtract, ('sm2_', 'sm_')))
 
-#from time_stream import reflag
-#pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
+from time_stream import reflag
+pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
 
-#from noise import measure_noise
-#pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
+from noise import measure_noise
+pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
 from map import dirty_map
 pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))

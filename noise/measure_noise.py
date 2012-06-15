@@ -270,7 +270,7 @@ def get_freq_modes_over_f(power_mat, window_function, frequency, n_modes,
             this_mode_params['amplitude'] = 0.
             this_mode_params['index'] = 0.
             this_mode_params['f_0'] = 1.
-            this_mode_params['thermal'] = T_infinity**2
+            this_mode_params['thermal'] = T_infinity**2 * dt
         else:
             # Fit the spectrum.
             p = fit_overf_const(mode_power, mode_window, frequency)
@@ -374,7 +374,7 @@ def get_freq_modes_over_f(power_mat, window_function, frequency, n_modes,
     thermal = linalg.solve(compensation, thermal)
     # Normalize
     thermal /= thermal_norms
-    thermal[bad_inds] = T_infinity**2
+    thermal[bad_inds] = T_infinity**2 * dt
     # Occationally the compensation fails horribly on a few channels.
     # When this happens, zero out the offending indices.
     thermal[thermal<0] = 0
@@ -388,7 +388,7 @@ def get_freq_modes_over_f(power_mat, window_function, frequency, n_modes,
         # definate.
         new_white = max(mode_params['thermal'] - thermal_contribution, 
                         0.1 * mode_params['thermal'] )
-        if mode_params['thermal'] < 0.5 * T_infinity**2:
+        if mode_params['thermal'] < 0.5 * T_infinity**2 * dt: 
             mode_params['thermal'] = new_white
     return output_params
 

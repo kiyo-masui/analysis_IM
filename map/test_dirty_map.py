@@ -361,7 +361,7 @@ class TestClasses(unittest.TestCase):
         Noise2.add_mask(mask_inds)
         Noise2.deweight_time_slope()
         Noise2.add_correlated_over_f(0.01, -1.2, 0.1)
-        Noise2.freq_mode_noise += dirty_map.T_large**2
+        Noise2.freq_mode_noise += dirty_map.T_huge**2
         Noise2.finalize()
         N2 = Noise2.get_inverse()
         N2_m = N2.view()
@@ -407,7 +407,7 @@ class TestClasses(unittest.TestCase):
             mode = sp.cos(mode)
             mode /= sp.sqrt(sp.sum(mode**2))
             N.add_over_f_freq_mode(amps[ii], index[ii], f_0, 
-                                   0.0003 * BW * 2., mode)
+                                   0.0003 * BW * 2., mode, True)
         # All freq modes over_f.
         N.add_all_chan_low(thermal, -0.9, 0.01)
         N.finalize()
@@ -431,16 +431,18 @@ class TestClasses(unittest.TestCase):
         N = dirty_map.Noise(time_stream, time)
         # Thermal.
         thermal = sp.zeros(nf, dtype=float) + 0.0002 * BW * 2.
+        thermal[22] = dirty_map.T_infinity**2
         N.add_thermal(thermal)
         # Time mean and slope.
         N.deweight_time_mean()
         N.deweight_time_slope()
         # Extreem index over_f bit.
-        mode = -sp.ones(nf, dtype=float) / sp.sqrt(nf)
+        mode = -sp.ones(nf, dtype=float) / sp.sqrt(nf - 1)
+        mode[22] = 0
         # Parameters measured from one of the data sets.  Known to screw things
         # up.
-        N.add_over_f_freq_mode(8.128e-7, -4.586, 1.0, 1.422e-7, mode, True)
-        #N.add_over_f_freq_mode(8.128e-7, -2.586, 1.0, 1.422e-7, mode)
+        #N.add_over_f_freq_mode(8.128e-7, -4.586, 1.0, 1.422e-7, mode, True)
+        N.add_over_f_freq_mode(0.001729, -0.777, 1.0, 1e-8, mode, True)
         #N.orthogonalize_modes()
         N.finalize()
         # Check if the fast inverse works.
@@ -462,11 +464,6 @@ class TestClasses(unittest.TestCase):
         #plt.imshow(eye[:,1,:,1])
         #plt.colorbar()
         #plt.show()
-
-
-
-
-
 
     def test_uncoupled_channels(self):
         time_stream, ra, dec, az, el, time, mask_inds = \

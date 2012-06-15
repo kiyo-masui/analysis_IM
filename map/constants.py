@@ -14,7 +14,7 @@ them.
 
 # Constant that represents an infinite noise level.  Only use this when there
 # is no risk of creating numerical instability.
-T_infinity = 1000.0  # Kelvin
+T_infinity = 100.0  # Kelvin
 
 # Noise level much higher than any scale in the system but not so high that it
 # guarantees numerical instability if used.
@@ -24,8 +24,13 @@ T_huge = 10
 # signal.
 T_large = 1.0
 
+# Around the thermal noise scale.
 T_medium = 0.01
 
+# Temperture scale of the signal, and smaller than any noise scale in the
+# system (for a single scan).  Note that T_huge**2/T_small**2 < 10**14 (the
+# machine precision).  T_small can be used to regularize matricies without
+# interfering with the noise model.
 T_small = 1.e-4
 
 # The scale of the telescope system temperature. Approximate.
