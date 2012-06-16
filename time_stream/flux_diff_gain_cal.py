@@ -73,11 +73,11 @@ class Calibrate(base_single.BaseSingle) :
 
         fg_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_diff_gain_calc.txt'
         if self.params['RM_correct']==True:
-            fg_file_name = self.params['mueller_file']+project+'/'+str(sess_num)+'_diff_gain_calc_RM.txt'
+            fg_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_diff_gain_calc_RM.txt'
 
 #Alternative for average flux/differential gain calibration.
         if self.params['Flux_special']==True:
-            fg_file_name = self.params['mueller_file']
+            fg_file_name = self.params['mueler_file']
 #        fg_file_name = self.params['mueler_file']+'1hr_fdg_calc_avg.txt'
         self.flux_diff = flux_dg(fg_file_name)
         RM_dir = self.params['RM_file']
