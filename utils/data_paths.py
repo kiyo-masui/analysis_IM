@@ -810,8 +810,9 @@ def get_mapdict(dir):
     mapdict = {}
     for map in maplist:
         if os.path.isfile(dir+map) and map.split('.')[-1]=='npy':
-            mapsplit = map.split('_')
+            mapsplit = map.split('.')[0].split('_')
             if mapsplit[0] == 'sec':
+                #print map
                 key1 = mapsplit[1] + '_with_' + mapsplit[7]
                 if mapsplit[2] == 'modes':
                     key2 = mapsplit[2]
@@ -819,9 +820,24 @@ def get_mapdict(dir):
                     key2 = mapsplit[4]
                 if key2 == 'inv':
                     key2 = mapsplit[3] + '_' + key2
-                key3 = mapsplit[-1].split('.')[0]
+                key3 = mapsplit[-1]
 
                 mapdict['%s;%s;%s'%(key1, key2, key3)] = dir + map
+            if mapsplit[0] == 'combined':
+                key1 = mapsplit[2]
+                key2 = mapsplit[3]
+
+                mapdict['%s;%s'%(key1, key2)] = dir + map
+
+        if os.path.isfile(dir+map) and map.split('.')[-1]=='pkl':
+            mapsplit = map.split('.')[0].split('_')
+            if mapsplit[0] == 'SVD':
+                #print map
+                key1 = mapsplit[2] + '_with_' + mapsplit[4]
+                key2 = mapsplit[0]
+                #print key1, key2
+
+                mapdict['%s;%s'%(key1, key2)] = dir + map
     
     maps = [mapdict.keys(), mapdict]
     return maps

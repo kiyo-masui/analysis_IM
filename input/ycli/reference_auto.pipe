@@ -18,12 +18,11 @@ print "="*50
 print "reference for auto transfer function"
 print
 
-map_sim = os.getenv('MAP_SIM')
-map_cln = os.getenv('MAP_CLN')
-map_cln = map_cln + '_combined'  # we just use the combined weight
-
 hour = int(os.getenv('HOUR'))
 mode = int(os.getenv('MODE'))
+
+map_sim = os.getenv('MAP_SIM')
+map_cln = os.getenv('MAP_CLN')
 
 output_root = WORKROOT+'reference_auto_%s_%d/'%(map_sim, mode)
 resultf = 'simmaps'
@@ -31,7 +30,13 @@ resultf = 'simmaps'
 # get the maps dict
 datadb = data_paths.DataPath()
 imaps = datadb.fetch(map_sim + '_temperature', silent=True)
-nmaps = datadb.fetch(map_cln, silent=True)
+nmaps = []
+if os.path.exists(map_cln):
+    nmaps = data_paths.get_mapdict(map_cln)
+else:
+    map_cln = map_cln + '_combined'  # we just use the combined weight
+    nmaps = datadb.fetch(map_cln, silent=True)
+
 
 mappath = imaps[1]['0']
 imap_list = [mappath.split('/')[-1],]

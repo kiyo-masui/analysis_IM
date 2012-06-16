@@ -19,11 +19,12 @@ print "="*50
 print "auto power spectrum"
 print
 
-map_cln = os.getenv('MAP_CLN')
-
 hour = int(os.getenv('HOUR'))
 mode = int(os.getenv('MODE'))
 
+map_cln = os.getenv('MAP_CLN')
+
+# get the maps dict
 imaps = []
 if os.path.exists(map_cln):
     output_root = WORKROOT + 'power_auto_%s_%d/'%(map_cln.split('/')[-2], mode)

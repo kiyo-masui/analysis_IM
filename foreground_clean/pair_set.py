@@ -106,9 +106,9 @@ class PairSet():
                                           prefix=prefix)
 
         self.freq_list = sp.array(self.params['freq_list'], dtype=int)
-        self.output_root = self.datapath_db.fetch(self.params['output_root'],
-                                                  tack_on=self.params['tack_on'])
-        #self.output_root = self.params['output_root']
+        #self.output_root = self.datapath_db.fetch(self.params['output_root'],
+        #                                          tack_on=self.params['tack_on'])
+        self.output_root = self.params['output_root']
         if not os.path.isdir(self.output_root):
             os.mkdir(self.output_root)
 
