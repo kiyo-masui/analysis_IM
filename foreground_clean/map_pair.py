@@ -298,7 +298,8 @@ class MapPair(object):
         self.map1[self.noise_inv1 < 1.e-20] = 0.
         self.map2[self.noise_inv2 < 1.e-20] = 0.
 
-    def subtract_frequency_modes(self, modes1, modes2=None, weighted=False):
+    def subtract_frequency_modes(self, modes1, modes2=None,
+                                 weighted=False, defer=False):
         r"""Subtract frequency mode from the map.
 
         Parameters
@@ -320,6 +321,9 @@ class MapPair(object):
                                      axis_names=('freq', 'ra', 'dec'))
         outmap_left.copy_axis_info(self.map1)
 
+        if defer:
+            fitted = np.zeros_like(self.map1[self.freq, :, :])
+
         for mode_index, mode_vector in enumerate(modes1):
             mode_vector = mode_vector.reshape(self.freq.shape)
 
@@ -333,9 +337,16 @@ class MapPair(object):
                                    self.map1[self.freq, :, :], axes=(0,0))
                 #amp /= sp.dot(mode_vector, mode_vector)
 
-            fitted = mode_vector[:, None, None] * amp[None, :, :]
-            self.map1[self.freq, :, :] -= fitted
+            if defer:
+                fitted += mode_vector[:, None, None] * amp[None, :, :]
+            else:
+                fitted = mode_vector[:, None, None] * amp[None, :, :]
+                self.map1[self.freq, :, :] -= fitted
+
             outmap_left[mode_index, :, :] = amp
+
+        if defer:
+            self.map1 -= fitted
 
         self.left_modes = outmap_left
 
@@ -344,6 +355,9 @@ class MapPair(object):
         outmap_right = algebra.make_vect(outmap_right,
                                      axis_names=('freq', 'ra', 'dec'))
         outmap_right.copy_axis_info(self.map2)
+
+        if defer:
+            fitted = np.zeros_like(self.map2[self.freq, :, :])
 
         for mode_index, mode_vector in enumerate(modes2):
             mode_vector = mode_vector.reshape(self.freq.shape)
@@ -358,9 +372,16 @@ class MapPair(object):
                                    self.map2[self.freq, :, :], axes=(0,0))
                 #amp /= sp.dot(mode_vector, mode_vector)
 
-            fitted = mode_vector[:, None, None] * amp[None, :, :]
-            self.map2[self.freq, :, :] -= fitted
+            if defer:
+                fitted += mode_vector[:, None, None] * amp[None, :, :]
+            else:
+                fitted = mode_vector[:, None, None] * amp[None, :, :]
+                self.map2[self.freq, :, :] -= fitted
+
             outmap_right[mode_index, :, :] = amp
+
+        if defer:
+            self.map2 -= fitted
 
         self.right_modes = outmap_right
 

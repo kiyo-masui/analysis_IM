@@ -23,9 +23,10 @@ class Corr21cm(RedshiftCorrelation, Map3d):
         if ps == None:
             from os.path import join, dirname
             #psfile = join(dirname(__file__),"data/ps_z1.5.dat")
-            psfile = join(dirname(__file__),"data/wigglez_halofit_z1.5.dat")
+            #psfile = join(dirname(__file__),"data/wigglez_halofit_z1.5.dat")
+            psfile = join(dirname(__file__),"data/wigglez_halofit_z0.8.dat")
             print "loading matter power file: " + psfile
-            redshift = 1.5
+            redshift = 0.8
 
             kstar = 5.0
             c1 = cs.LogInterpolater.fromfile(psfile)
@@ -34,7 +35,7 @@ class Corr21cm(RedshiftCorrelation, Map3d):
         self._sigma_v = sigma_v
 
         RedshiftCorrelation.__init__(self, ps_vv=ps, redshift=redshift)
-        self._load_cache(join(dirname(__file__),"data/corr_z1.5.dat"))
+        #self._load_cache(join(dirname(__file__),"data/corr_z1.5.dat"))
         #self.load_fft_cache(join(dirname(__file__),"data/fftcache.npz"))
 
 

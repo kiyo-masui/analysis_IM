@@ -7,9 +7,11 @@ from quadratic_products import pwrspec_estimator as pe
 from foreground_clean import map_pair as mp
 from utils import data_paths as dp
 
+
 def pwrspec_caller(map1_key, map2_key,
                    noiseinv1_key, noiseinv2_key,
                    params):
+    r"""Call the cross-power estimator for the real data"""
 
     mappair = mp.MapPair(map1_key, map2_key,
                          noiseinv1_key, noiseinv2_key,
@@ -37,6 +39,24 @@ def pwrspec_caller(map1_key, map2_key,
                                      refinement=params['refinement'],
                                      pad=params['pad'],
                                      order=params['order'],
+                                     return_3d=params['return_3d'])
+
+    return retval
+
+
+def phys_pwrspec_caller(cube1_file, cube2_file, params):
+    r"""Call the cross-power estimator on simulations in physical
+    coordinates"""
+    bparam = params['bins']
+    bins = np.logspace(math.log10(bparam[0]),
+                       math.log10(bparam[1]),
+                       num=bparam[2], endpoint=True)
+
+    retval = pe.calculate_xspec_file(cube1_file, cube2_file, bins,
+                                     weight1_file=None, weight2_file=None,
+                                     unitless=params['unitless'],
+                                     window=params['window'],
+                                     truncate=params['truncate'],
                                      return_3d=params['return_3d'])
 
     return retval
@@ -180,5 +200,41 @@ class BatchSimAutopower(object):
                            files['noiseinv2_key'],
                            self.params,
                            execute_key=execute_key)
+
+        caller.multiprocess_stack(self.params["outfile"], debug=False)
+
+batchphysicalsim_init = {
+        "sim_key": "sim_stuff",
+        "outfile": "test_file.shelve",
+        "unitless": True,
+        "return_3d": False,
+        "truncate": False,
+        "window": None,
+        "bins": [0.00765314, 2.49977141, 35]
+               }
+batchphysicalsim_prefix = 'bps_'
+
+class BatchPhysicalSim(object):
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+        self.datapath_db = dp.DataPath()
+
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file,
+                                          batchphysicalsim_init,
+                                          prefix=batchphysicalsim_prefix)
+
+    def execute(self, processes):
+        funcname = "quadratic_products.pwrspec_combinations"
+        funcname += ".phys_pwrspec_caller"
+        caller = aggregate_outputs.AggregateOutputs(funcname)
+
+        sim_files = self.datapath_db.fetch(self.params['sim_key'])
+
+        for index in sim_files[0]:
+            caller.execute(sim_files[1][index],
+                           sim_files[1][index],
+                           self.params,
+                           execute_key=index)
 
         caller.multiprocess_stack(self.params["outfile"], debug=False)
