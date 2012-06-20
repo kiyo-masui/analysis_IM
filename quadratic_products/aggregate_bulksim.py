@@ -7,6 +7,9 @@ import shelve
 from kiyopy import parse_ini
 from utils import file_tools
 # TODO: better interaction between mask and counts
+# TODO: make object like AggregateSummary that recompiles the physical sims
+# TODO: call AggregateStatistics on the physical sims, make plots
+# TODO: make transfer from physical -> observed -> observed with beam/meansub
 
 aggregatesummary_init = {
         "directory": "dir",
@@ -121,6 +124,7 @@ aggregatestatistics_prefix = 'ast_'
 
 class AggregateStatistics(object):
     """take the summary shelve and find statistics on it
+    this extends the shelve object assembled in AggregateSummary
     TODO: extend this to include multiple treatments (mode subtraction, etc.)
     TODO: have this write plots out to uniform directories
     """
@@ -257,7 +261,10 @@ calculatetransfer_prefix = 'atr_'
 
 class CalculateTransfer(object):
     """Calculate a transfer function in 1d/2d
+    The shelve files in can either be those produced by AggregateSummary above,
+    (in the case that they are many sims for each 
     """
+
     def __init__(self, parameter_file=None, params_dict=None, feedback=0):
         self.params = params_dict
 
