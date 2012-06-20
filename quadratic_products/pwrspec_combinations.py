@@ -232,9 +232,10 @@ class BatchPhysicalSim(object):
         sim_files = self.datapath_db.fetch(self.params['sim_key'])
 
         for index in sim_files[0]:
+            execute_key = "%s:phys" % index
             caller.execute(sim_files[1][index],
                            sim_files[1][index],
                            self.params,
-                           execute_key=index)
+                           execute_key=execute_key)
 
         caller.multiprocess_stack(self.params["outfile"], debug=False)

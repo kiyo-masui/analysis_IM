@@ -103,8 +103,31 @@ class CompileAutopower(object):
                                          mean_map, std_map, outfile=outfile)
             print "writing to " + outfile
 
-if __name__ == '__main__':
-    if len(sys.argv) == 2:
-        PwrspecCombinations(str(sys.argv[1])).execute()
-    else:
-        print 'Need one argument: parameter file name.'
+params_init = {
+        "pwr_file": "ok.shelve",
+        "outdir": "./"
+               }
+prefix = 'physsim_'
+
+class CompilePhysSim(object):
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file, params_init,
+                                          prefix=prefix)
+
+    def execute(self, processes):
+        pwr_physsim = ps.PowerSpectrum(self.params["pwr_file"])
+
+        pwr_physsim.convert_2d_to_1d()
+        pwr_physsim_summary = pwr_physsim.agg_stat_1d_pwrspec(from_2d=True)
+        k_vec = pwr_physsim.k_1d_from_2d["center"]
+
+        treatment = "phys"
+        mean_sim = pwr_physsim_summary[treatment]["mean"]
+        std_sim = pwr_physsim_summary[treatment]["std"]
+
+        outfile = "%s/pk_%s.dat" % (self.params["outdir"], treatment)
+        file_tools.print_multicolumn(k_vec, mean_sim, std_sim, outfile=outfile)
+        print "writing to " + outfile

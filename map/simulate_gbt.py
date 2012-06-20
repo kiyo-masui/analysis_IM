@@ -58,7 +58,8 @@ def realize_simulation(template_map, scenario=None, seed=None, refinement=2):
 def make_simulation_set(template_file, outfile_physical=None,
                         outfile_raw=None, outfile_beam=None,
                         outfile_beam_plus_data=None,
-                        verbose=True, scenario=None, seed=None):
+                        verbose=True, scenario=None, seed=None,
+                        refinement=2):
     """Produce simulated GBT data volumes of three types:
     (from dimensions of a given template file)
     0. the simulation in a physical volume
@@ -76,7 +77,8 @@ def make_simulation_set(template_file, outfile_physical=None,
 
     (gbtsim, gbtphys, physdim) = realize_simulation(template_map,
                                                     scenario=scenario,
-                                                    seed=seed)
+                                                    seed=seed,
+                                                    refinement=refinement)
 
     phys_map = algebra.make_vect(gbtphys, axis_names=('freq', 'ra', 'dec'))
     pshp = phys_map.shape
@@ -190,7 +192,8 @@ params_init = {
                'outfile_beam': "ok.npy",
                'outfile_beam_plus_data': "ok.npy",
                'scenario': 'str',
-               'seed': -1
+               'seed': -1,
+               'refinement': 2
                }
 prefix = 'sg_'
 
@@ -215,11 +218,5 @@ class SimulateGbt():
                             self.params['outfile_beam_plus_data'],
                             verbose=True,
                             scenario=self.params['scenario'],
-                            seed=self.params['seed'])
-
-
-if __name__ == '__main__':
-    if len(sys.argv) == 2:
-        PairSet(str(sys.argv[1])).execute()
-    else:
-        print 'Need one argument: parameter file name.'
+                            seed=self.params['seed'],
+                            refinement=self.params['refinement'])
