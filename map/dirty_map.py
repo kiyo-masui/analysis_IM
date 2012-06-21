@@ -650,7 +650,7 @@ class DirtyMapMaker(object):
                             thread_N = noise_list[thread_kk]
                             thread_P.noise_to_map_domain(thread_N, 
                                     thread_f_ind, thread_ra_ind, 
-                                    thread_cov_inv_rw)
+                                    thread_cov_inv_row)
                         # Use a lock to try to stagger the processes and make
                         # them write at different times.
                         write_lock.acquire()

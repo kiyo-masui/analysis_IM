@@ -57,7 +57,7 @@ base_dir = "/mnt/raid-project/gmrt/kiyo/gbt_out_new/"
 data_dir = os.getenv('GBT_DATA')
 base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
-map_base = base_dir + 'maps/june15/'
+map_base = base_dir + 'maps/june21/'
 #map_base = '/mnt/scratch-pen/kiyo/gbt_out/' + 'maps/june8/'
 
 
@@ -94,26 +94,26 @@ pipe_modules = []
 
 #### First Map making interation ####
 
-from map import dirty_map
-pipe_modules.append(dirty_map.DirtyMapMaker)
+#from map import dirty_map
+#pipe_modules.append(dirty_map.DirtyMapMaker)
 
-from map import clean_map
-pipe_modules.append(clean_map.CleanMapMaker)
+#from map import clean_map
+#pipe_modules.append(clean_map.CleanMapMaker)
 
 
 #### Second Map making iteration ####
 
-from cal import correlate_map
-pipe_modules.append((correlate_map.Measure, ('mc2_', 'mc_')))
+#from cal import correlate_map
+#pipe_modules.append((correlate_map.Measure, ('mc2_', 'mc_')))
 
-from time_stream import subtract_map_data
-pipe_modules.append((subtract_map_data.Subtract, ('sm2_', 'sm_')))
+#from time_stream import subtract_map_data
+#pipe_modules.append((subtract_map_data.Subtract, ('sm2_', 'sm_')))
 
-from time_stream import reflag
-pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
+#from time_stream import reflag
+#pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
 
-from noise import measure_noise
-pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
+#from noise import measure_noise
+#pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
 from map import dirty_map
 pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
@@ -341,13 +341,17 @@ dmA_time_block = 'scan'
 #dmA_n_files_group = 420  # prawn
 dmA_n_files_group = 280  # tpb nodes.
 #dmA_n_files_group = 120
-dmA_frequency_correlations = 'measured'
+#dmA_frequency_correlations = 'measured'
+# XXX
+dmA_frequency_correlations = 'None'
 dmA_number_frequency_modes = 3  # Probably most appropriate.
 dmA_number_frequency_modes_discard = 1
 dmA_noise_parameter_file = mn2_output_root + mn2_output_filename
 dmA_deweight_time_mean = True
 dmA_deweight_time_slope = True
-dmA_interpolation = 'cubic'
+#dmA_interpolation = 'cubic'
+# XXX
+dmA_interpolation = 'nearest'
 dmA_ts_foreground_mode_file = ''
 dmA_n_ts_foreground_modes = 0
 
