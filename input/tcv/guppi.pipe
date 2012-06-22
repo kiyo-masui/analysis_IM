@@ -107,7 +107,7 @@ fgc_mueler_file = base_dir + 'diff_gain_params/'
 fgc_RM_file = base_dir +'RM_tables/'
 fgc_R_to_sky = True
 fgc_DP_correct = True
-fgc_RM_correct = True
+fgc_RM_correct = False
 fgc_Flux_special = False
 # set Flux special to True when using something like an average and set mueler file to the filename
 
