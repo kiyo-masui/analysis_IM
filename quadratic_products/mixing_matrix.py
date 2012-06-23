@@ -23,11 +23,6 @@ import copy
     # sum(w1*s2) is the assumption that W = delta(k) P(w1*w2, k=0)
     # dignostic: plot of 3D w(k), k-discs before/after mixing
 
-# given a radius array in 2D and bins, return 
-# flatten the perp, parallel (or mag), and digitize
-# dictionary out: for each bin (key) associate numpy vect of 3D indices
-# roll with 0 padding
-
 def sum_window(argt):
     """A given bin in 2D k-space (labelled by bin_index_2d) is the sum over a
     "washer" in 3D k-space, a band in k_parallel and an annulus in k_x, k_y.
@@ -190,18 +185,13 @@ def calculate_mixing(weight_file1, weight_file2, bins, xspec_fileout,
 
     # NOTE: assuming lowest k bin has only one point in 3D k-space
     # could make this floor of dimensions divided by 2 also
-    zerobin = ret_indices[repr(0)]
-    if zerobin.shape == (1,3):
-        center_3d = zerobin[0,:]
-    else:
-        print "you have no bin at exactly = 0"
-        return
+    center_3d = np.transpose(np.transpose(np.where(k_mag_arr == 0.))[0])
 
     # perform a test where the window function is a delta function at the
     # origin so that the mixing matrix is unity
     if unity_test:
         xspec = algebra.zeros_like(xspec)
-        xspec[center_3d] = 1.
+        xspec[center_3d[0], center_3d[1], center_3d[2]] = 1.
 
     # now save the window cross-power for downstream pooled users
     algebra.save(xspec_fileout, xspec)
@@ -235,4 +225,4 @@ weight_file2 = weightdir + "secB_15hr_41-90_noise_weight_I_762.npy"
 xspec_fileout = "./xspec_unity.npy"
 mixing_fileout = "mixing_summary_unity.shelve"
 calculate_mixing(weight_file1, weight_file2, bins, xspec_fileout,
-                mixing_fileout, unity_test=True)
+                mixing_fileout, unity_test=False)
