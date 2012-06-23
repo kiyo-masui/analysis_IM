@@ -10,18 +10,18 @@ import math
 import multiprocessing
 import shelve
 import copy
-# 1: movie of bin in k-space
-# 2: recovery of diagonal mixing
-# 3: movie of bin convolved by the window
-# 4: summary of mixing matrix
+import random
+import sys
+import numpy.ma as ma
+from plotting import plot_slice
+from numpy import linalg as LA
+# TODO movie of bin in 3D k-space, bin convolved by the window
 # TODO is it ever correct to make this unitless?
 # TODO: make 1D and 2D versions of this (shells vs. disks)
-    # for each k roll the weight and sum, mult by  1/N_k
-    # test this in the case that the window = 1 at the origin only
-    # this assumes periodicity in the region!
-    # can analytically find mixing from uniform cube to full space
-    # sum(w1*s2) is the assumption that W = delta(k) P(w1*w2, k=0)
-    # dignostic: plot of 3D w(k), k-discs before/after mixing
+# TODO: is counts normalization OK; identity matrix recovered
+# TODO: sum(w1*s2) is the assumption that W = delta(k) P(w1*w2, k=0)
+# TODO: mixing of uniform weighting = identity? embedded in infinite region?
+# TODO: analytic: mixing of uniform cube, asymptotically large?
 
 def sum_window(argt):
     """A given bin in 2D k-space (labelled by bin_index_2d) is the sum over a
@@ -146,7 +146,7 @@ def bin_indices_2d(k_perp_arr, k_parallel_arr, k_perp_bins, k_parallel_bins,
 def calculate_mixing(weight_file1, weight_file2, bins, xspec_fileout,
                      mixing_fileout,
                      unitless=False, refinement=2, pad=5, order=1,
-                     window='blackman', zero_pad=False, unity_test=False):
+                     window='blackman', zero_pad=False, identity_test=False):
     print "loading the weights and converting to physical coordinates"
     weight1_obs = algebra.make_vect(algebra.load(weight_file1))
     weight1 = bh.repackage_kiyo(pg.physical_grid(
@@ -168,7 +168,9 @@ def calculate_mixing(weight_file1, weight_file2, bins, xspec_fileout,
     print "calculating the cross-power of the spatial weighting functions"
     arr1 = algebra.ones_like(weight1)
     arr2 = algebra.ones_like(weight2)
-    xspec = pe.cross_power_est(weight1, weight2, arr1, arr2)
+
+    # no window applied here (applied above)
+    xspec = pe.cross_power_est(weight1, weight2, arr1, arr2, window=None)
 
     # for each point in the cube, find |k|, k_perp, k_parallel
     # TODO: speed this up by using one direct numpy call (not limiting)
@@ -179,17 +181,23 @@ def calculate_mixing(weight_file1, weight_file2, bins, xspec_fileout,
     if unitless:
         xspec = pe.make_unitless(xspec, radius_arr=k_mag_arr)
 
-    print "partitioning the 3D kspace up into the 2D k bins"
-    (kflat, ret_indices) = bin_indices_2d(k_perp_arr, k_parallel_arr,
-                                          bins, bins)
-
     # NOTE: assuming lowest k bin has only one point in 3D k-space
     # could make this floor of dimensions divided by 2 also
     center_3d = np.transpose(np.transpose(np.where(k_mag_arr == 0.))[0])
 
+    # In the estimator, we devide by 1/sum(w1 * w2) to get most of the effect
+    # of the weighing. The mixing matrix here can be thought of as a correction
+    # that that diagonal-only estimate.
+    xspec /= np.sum(weight1 * weight2)
+    #print xspec[center_3d[0], center_3d[1], center_3d[2]]
+
+    print "partitioning the 3D kspace up into the 2D k bins"
+    (kflat, ret_indices) = bin_indices_2d(k_perp_arr, k_parallel_arr,
+                                          bins, bins)
+
     # perform a test where the window function is a delta function at the
-    # origin so that the mixing matrix is unity
-    if unity_test:
+    # origin so that the mixing matrix is identity
+    if identity_test:
         xspec = algebra.zeros_like(xspec)
         xspec[center_3d[0], center_3d[1], center_3d[2]] = 1.
 
@@ -203,6 +211,8 @@ def calculate_mixing(weight_file1, weight_file2, bins, xspec_fileout,
             runlist.append((xspec_fileout, bin_index, bins, bin_3d, center_3d))
 
     pool = multiprocessing.Pool(processes=(multiprocessing.cpu_count() - 4))
+    # the longest runs get pushed to the end; randomize for better job packing
+    random.shuffle(runlist)
     results = pool.map(sum_window, runlist)
     #gnuplot_single_slice(runlist[0])  # for troubleshooting
 
@@ -210,9 +220,82 @@ def calculate_mixing(weight_file1, weight_file2, bins, xspec_fileout,
     # TODO: move this into this function -- one stop shopping
     outshelve = shelve.open(mixing_fileout, "n")
     outshelve["results"] = results
+    outshelve["xspec"] = xspec
     outshelve["bins"] = bins
     outshelve.close()
 
+
+def load_mixing_matrix(filename):
+    r"""load a mixing matrix produced by 'calculate_mixing'
+    The goal is to unmixing the 2D k-bins, but many of the k-bins have zero
+    counts, e.g. no bins in 3d k-space for that 2d bin. The inversion is
+    therefore performed on a subset of the indices.
+    """
+    mixing_shelve = shelve.open(filename, "r")
+
+    # first find the number of 2D k bins that have more than 0 modes
+    counts_reference = mixing_shelve['results'][0][1].flatten()
+    counts_nonzero = (counts_reference != 0)
+    n_nonzero_counts = np.sum(counts_nonzero)
+    where_nonzero_counts = np.where(counts_nonzero)[0]
+
+    # alternately: (these should be the same)
+    bins3d_nonzero = []
+    for results_entry in mixing_shelve['results']:
+        kindex = results_entry[0]
+        bins3d_nonzero.append(kindex)
+
+    # these are produced in a batch which is not necessarily ordered
+    bins3d_nonzero.sort()
+    bins3d_trans = {}
+    nonzero_index = 0
+    for full_index in bins3d_nonzero:
+        bins3d_trans[repr(full_index)] = nonzero_index
+        nonzero_index += 1
+
+    n_nonzero_bins3d = len(bins3d_nonzero)
+
+    print bins3d_nonzero
+    print where_nonzero_counts
+    assert np.array_equal(bins3d_nonzero, where_nonzero_counts), \
+           "load_mixing_matrix: unmatching bins"
+
+    mixing_array = np.zeros((n_nonzero_counts, n_nonzero_counts))
+    counts_array = np.zeros((n_nonzero_counts, n_nonzero_counts))
+
+    for result_entry in mixing_shelve['results']:
+        kindex = result_entry[0]
+        if kindex in bins3d_nonzero:
+            counts_vec = result_entry[1].flatten()
+            mixing_vec = result_entry[2].flatten()
+            counts_vec_nonzero = counts_vec[bins3d_nonzero]
+            mixing_vec_nonzero = mixing_vec[bins3d_nonzero]
+
+            nonzero_index = bins3d_trans[repr(kindex)]
+            counts_array[nonzero_index, :] = counts_vec_nonzero
+            mixing_array[nonzero_index, :] = mixing_vec_nonzero
+
+    mixing_shelve.close()
+
+    #masked_mixing = ma.masked_invalid(mixing_array)
+    zeroed_mixing = copy.deepcopy(mixing_array)
+    zeroed_mixing[np.isnan(zeroed_mixing)] = 0.
+    zeroed_mixing[np.isinf(zeroed_mixing)] = 0.
+    #print zeroed_mixing
+
+    inv_mixing = LA.pinv(zeroed_mixing)
+
+    plot_slice.simpleplot_2D("mixing.png", zeroed_mixing,
+                         range(n_nonzero_bins3d), range(n_nonzero_bins3d),
+                         ["X", "Y"], 1., "2D mixing", "mixing", logscale=False)
+
+    plot_slice.simpleplot_2D("inv_mixing.png", inv_mixing,
+                         range(n_nonzero_bins3d), range(n_nonzero_bins3d),
+                         ["X", "Y"], 1., "2D mixing", "mixing", logscale=False)
+
+    plot_slice.simpleplot_2D("counts.png", counts_array,
+                         range(n_nonzero_bins3d), range(n_nonzero_bins3d),
+                         ["X", "Y"], 1., "2D counts", "counts", logscale=False)
 
 bin_spec = [0.00765314, 2.49977141, 35]
 bins = np.logspace(math.log10(bin_spec[0]),
@@ -222,7 +305,10 @@ bins = np.logspace(math.log10(bin_spec[0]),
 weightdir = "/mnt/raid-project/gmrt/eswitzer/GBT/maps/june15/"
 weight_file1 = weightdir + "secA_15hr_41-90_noise_weight_I_762.npy"
 weight_file2 = weightdir + "secB_15hr_41-90_noise_weight_I_762.npy"
-xspec_fileout = "./xspec_unity.npy"
-mixing_fileout = "mixing_summary_unity.shelve"
+xspec_fileout = "./xspec_identity.npy"
+mixing_fileout = "mixing_summary_identity.shelve"
 calculate_mixing(weight_file1, weight_file2, bins, xspec_fileout,
-                mixing_fileout, unity_test=False)
+                 mixing_fileout, identity_test=False)
+
+load_mixing_matrix("mixing_summary_identity.shelve")
+
