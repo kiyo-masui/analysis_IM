@@ -229,6 +229,7 @@ def calculate_mixing(weight_file1, weight_file2, bins, xspec_fileout,
     outshelve["results"] = results
     outshelve["xspec"] = xspec
     outshelve["bins"] = bins
+    outshelve["weight_pair"] = [weight_file1, weight_file2]
     outshelve.close()
 
 
@@ -310,11 +311,15 @@ def load_mixing_matrix(filename):
 
 calc_mixing_init = {
         "map_key": "",
-        "combined_map_key": None,
-        "wigglez_sel_key": None,
+        "combined_map_key": "test",
+        "wigglez_sel_key": "test",
         "perpair_base": "test_file",
         "outfile": "mixing_matrix.shelve",
-        "window": None,
+        "xspec_file": "./xspec.npy", 
+        "refinement": 2,
+        "pad": 5,
+        "order": 1,
+        "window": "blackman",
         "summary_only": False,
         "bins": [0.00765314, 2.49977141, 35]
                }
@@ -336,6 +341,7 @@ class CalcMixingMatrix(object):
                            num=bin_spec[2], endpoint=True)
 
     def execute(self, processes):
+        self.generate_runlist()
         if not self.params['summary_only']:
             if self.params['wigglez_sel_key']:
                 self.execute_wigglez_calc()
@@ -344,7 +350,7 @@ class CalcMixingMatrix(object):
 
         self.execute_summary()
 
-    def execute_calc(self):
+    def generate_runlist(self):
         map_key = self.params['map_key']
         map_cases = self.datapath_db.fileset_cases(map_key,
                                                    "pair;type;treatment")
@@ -357,6 +363,7 @@ class CalcMixingMatrix(object):
         # assume the weights are the same for all cleaning treatments
         # TODO: this may change in the future
         treatment = "0modes"
+        self.all_pairs = {}
         for item in unique_pairs:
             dbkeydict = {}
             mapset0 = (map_key, item[0], treatment)
@@ -366,24 +373,49 @@ class CalcMixingMatrix(object):
             files = dp.convert_dbkeydict_to_filedict(dbkeydict,
                                                      datapath_db=self.datapath_db)
 
-            print files['noiseinv1_key'], files['noiseinv2_key']
-
+            self.all_pairs[item[0]] = (files['noiseinv1_key'],
+                                   files['noiseinv2_key'])
 
         # For the autopower (in noise assessment), we use the same cleaned maps
         # and the weights are the same for various pairs, e.g.
         # A_with_B is the same as A_with_C, etc. because the mode cleaning does
         # not impact the weighting functions
-        filelist = []
-        filelist.append(self.datapath_db.fetch(
+        A_file = (self.datapath_db.fetch(
                 '%s:A_with_B;noise_inv;0modes' % map_key, silent=True))
-        filelist.append(self.datapath_db.fetch(
-                '%s:B_with_A;noise_inv;0modes' % map_key, silent=True))
-        filelist.append(self.datapath_db.fetch(
-                '%s:C_with_A;noise_inv;0modes' % map_key, silent=True))
-        filelist.append(self.datapath_db.fetch(
-                '%s:D_with_A;noise_inv;0modes' % map_key, silent=True))
+        self.all_pairs["A_with_A"] = (A_file, A_file)
 
-        print filelist
+        B_file = (self.datapath_db.fetch(
+                '%s:B_with_A;noise_inv;0modes' % map_key, silent=True))
+        self.all_pairs["B_with_B"] = (B_file, B_file)
+
+        C_file = (self.datapath_db.fetch(
+                '%s:C_with_A;noise_inv;0modes' % map_key, silent=True))
+        self.all_pairs["C_with_C"] = (C_file, C_file)
+
+        D_file = (self.datapath_db.fetch(
+                '%s:D_with_A;noise_inv;0modes' % map_key, silent=True))
+        self.all_pairs["D_with_D"] = (D_file, D_file)
+
+        self.mixing_fileout = {}
+        for pair in self.all_pairs:
+            self.mixing_fileout[pair] = "%s_%s.shelve" % \
+                                   (self.params['perpair_base'], pair)
+
+
+    def execute_calc(self):
+        for pair in self.all_pairs:
+            weight_file1, weight_file2 = self.all_pairs[pair]
+            print pair, weight_file1, weight_file2, self.mixing_fileout[pair]
+
+            calculate_mixing(weight_file1, weight_file2, self.bins,
+                             self.params['xspec_file'],
+                             self.mixing_fileout[pair],
+                             unitless=False,
+                             refinement=self.params['refinement'],
+                             pad=self.params['pad'],
+                             order=self.params['order'],
+                             window=self.params['window'],
+                             zero_pad=False, identity_test=False)
 
     def execute_wigglez_calc(self):
         r"""TODO: finish this once we need mixing matrices for xspec"""
