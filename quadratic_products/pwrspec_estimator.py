@@ -16,7 +16,8 @@ from utils import fftutil
 from utils import binning
 
 
-def cross_power_est(arr1, arr2, weight1, weight2, window="blackman"):
+def cross_power_est(arr1, arr2, weight1, weight2,
+                    window="blackman", nonorm=False):
     """Calculate the radially average cross-power spectrum of a two nD fields.
 
     The arrays must be identical and have the same length (physically
@@ -74,7 +75,8 @@ def cross_power_est(arr1, arr2, weight1, weight2, window="blackman"):
     xspec_arr.info = info
     #print xspec_arr.get_axis("k_dec")
 
-    xspec_arr *= width.prod()
+    if not nonorm:
+        xspec_arr *= width.prod()
 
     return xspec_arr
 

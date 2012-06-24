@@ -15,13 +15,16 @@ import sys
 import numpy.ma as ma
 from plotting import plot_slice
 from numpy import linalg as LA
-# TODO movie of bin in 3D k-space, bin convolved by the window
-# TODO is it ever correct to make this unitless?
-# TODO: make 1D and 2D versions of this (shells vs. disks)
+from utils import data_paths as dp
+from kiyopy import parse_ini
+# TODO: implement freq cut list: but this should already zero out the input weights
+# TODO: make 1D version of this (shells vs. disks)
 # TODO: is counts normalization OK; identity matrix recovered
-# TODO: sum(w1*s2) is the assumption that W = delta(k) P(w1*w2, k=0)
+# TODO: confirm that P(k=0) should be less than sum(w1*s2) for any mixing
 # TODO: mixing of uniform weighting = identity? embedded in infinite region?
 # TODO: analytic: mixing of uniform cube, asymptotically large?
+# TODO: movie of bin in 3D k-space, bin convolved by the window
+# TODO: is it ever correct to make this unitless?
 
 def sum_window(argt):
     """A given bin in 2D k-space (labelled by bin_index_2d) is the sum over a
@@ -170,7 +173,8 @@ def calculate_mixing(weight_file1, weight_file2, bins, xspec_fileout,
     arr2 = algebra.ones_like(weight2)
 
     # no window applied here (applied above)
-    xspec = pe.cross_power_est(weight1, weight2, arr1, arr2, window=None)
+    xspec = pe.cross_power_est(weight1, weight2, arr1, arr2,
+                               window=None, nonorm=True)
 
     # for each point in the cube, find |k|, k_perp, k_parallel
     # TODO: speed this up by using one direct numpy call (not limiting)
@@ -188,8 +192,11 @@ def calculate_mixing(weight_file1, weight_file2, bins, xspec_fileout,
     # In the estimator, we devide by 1/sum(w1 * w2) to get most of the effect
     # of the weighing. The mixing matrix here can be thought of as a correction
     # that that diagonal-only estimate.
+    leakage_ratio = xspec[center_3d[0], center_3d[1], center_3d[2]] / \
+                    np.sum(weight1 * weight2)
+    print "power leakage ratio: %10.5g" % leakage_ratio
+
     xspec /= np.sum(weight1 * weight2)
-    #print xspec[center_3d[0], center_3d[1], center_3d[2]]
 
     print "partitioning the 3D kspace up into the 2D k bins"
     (kflat, ret_indices) = bin_indices_2d(k_perp_arr, k_parallel_arr,
@@ -289,6 +296,9 @@ def load_mixing_matrix(filename):
                          range(n_nonzero_bins3d), range(n_nonzero_bins3d),
                          ["X", "Y"], 1., "2D mixing", "mixing", logscale=False)
 
+    print np.diag(inv_mixing)
+    inv_mixing[inv_mixing < 0.] = -np.sqrt(-inv_mixing[inv_mixing < 0.])
+    inv_mixing[inv_mixing > 0.] = np.sqrt(inv_mixing[inv_mixing > 0.])
     plot_slice.simpleplot_2D("inv_mixing.png", inv_mixing,
                          range(n_nonzero_bins3d), range(n_nonzero_bins3d),
                          ["X", "Y"], 1., "2D mixing", "mixing", logscale=False)
@@ -297,18 +307,105 @@ def load_mixing_matrix(filename):
                          range(n_nonzero_bins3d), range(n_nonzero_bins3d),
                          ["X", "Y"], 1., "2D counts", "counts", logscale=False)
 
-bin_spec = [0.00765314, 2.49977141, 35]
-bins = np.logspace(math.log10(bin_spec[0]),
-                       math.log10(bin_spec[1]),
-                       num=bin_spec[2], endpoint=True)
 
-weightdir = "/mnt/raid-project/gmrt/eswitzer/GBT/maps/june15/"
-weight_file1 = weightdir + "secA_15hr_41-90_noise_weight_I_762.npy"
-weight_file2 = weightdir + "secB_15hr_41-90_noise_weight_I_762.npy"
-xspec_fileout = "./xspec_identity.npy"
-mixing_fileout = "mixing_summary_identity.shelve"
-calculate_mixing(weight_file1, weight_file2, bins, xspec_fileout,
-                 mixing_fileout, identity_test=False)
+calc_mixing_init = {
+        "map_key": "",
+        "combined_map_key": None,
+        "wigglez_sel_key": None,
+        "perpair_base": "test_file",
+        "outfile": "mixing_matrix.shelve",
+        "window": None,
+        "summary_only": False,
+        "bins": [0.00765314, 2.49977141, 35]
+               }
+calc_mixing_prefix = 'cm_'
 
-load_mixing_matrix("mixing_summary_identity.shelve")
+class CalcMixingMatrix(object):
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+        self.datapath_db = dp.DataPath()
+
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file,
+                                          calc_mixing_init,
+                                          prefix=calc_mixing_prefix)
+
+        bin_spec = self.params["bins"]
+        self.bins = np.logspace(math.log10(bin_spec[0]),
+                           math.log10(bin_spec[1]),
+                           num=bin_spec[2], endpoint=True)
+
+    def execute(self, processes):
+        if not self.params['summary_only']:
+            if self.params['wigglez_sel_key']:
+                self.execute_wigglez_calc()
+
+            self.execute_calc()
+
+        self.execute_summary()
+
+    def execute_calc(self):
+        map_key = self.params['map_key']
+        map_cases = self.datapath_db.fileset_cases(map_key,
+                                                   "pair;type;treatment")
+
+        # first compute the mixing matrix for the crossed (AxB) weightings
+        unique_pairs = dp.GBTauto_cross_pairs(map_cases['pair'],
+                                              map_cases['pair'],
+                                              cross_sym="_with_")
+
+        # assume the weights are the same for all cleaning treatments
+        # TODO: this may change in the future
+        treatment = "0modes"
+        for item in unique_pairs:
+            dbkeydict = {}
+            mapset0 = (map_key, item[0], treatment)
+            mapset1 = (map_key, item[1], treatment)
+            dbkeydict['noiseinv1_key'] = "%s:%s;noise_inv;%s" % mapset0
+            dbkeydict['noiseinv2_key'] = "%s:%s;noise_inv;%s" % mapset1
+            files = dp.convert_dbkeydict_to_filedict(dbkeydict,
+                                                     datapath_db=self.datapath_db)
+
+            print files['noiseinv1_key'], files['noiseinv2_key']
+
+
+        # For the autopower (in noise assessment), we use the same cleaned maps
+        # and the weights are the same for various pairs, e.g.
+        # A_with_B is the same as A_with_C, etc. because the mode cleaning does
+        # not impact the weighting functions
+        filelist = []
+        filelist.append(self.datapath_db.fetch(
+                '%s:A_with_B;noise_inv;0modes' % map_key, silent=True))
+        filelist.append(self.datapath_db.fetch(
+                '%s:B_with_A;noise_inv;0modes' % map_key, silent=True))
+        filelist.append(self.datapath_db.fetch(
+                '%s:C_with_A;noise_inv;0modes' % map_key, silent=True))
+        filelist.append(self.datapath_db.fetch(
+                '%s:D_with_A;noise_inv;0modes' % map_key, silent=True))
+
+        print filelist
+
+    def execute_wigglez_calc(self):
+        r"""TODO: finish this once we need mixing matrices for xspec"""
+        map_files = self.datapath_db.fetch(self.params['combined_map_key'])
+        combined_weightfile = map_files["weight;0modes"]
+        wigglez_files = self.datapath_db.fetch(self.params['wigglez_sel_key'])
+
+    def execute_summary(self):
+        #load_mixing_matrix(self.cross_pairs)
+        print "ok"
+
+#bins = np.logspace(math.log10(0.00765314),
+#                           math.log10(2.49977141),
+#                           num=35, endpoint=True)
+
+#weightdir = "/mnt/raid-project/gmrt/eswitzer/GBT/maps/june15/"
+#weight_file1 = weightdir + "secA_15hr_41-90_noise_weight_I_762.npy"
+#weight_file2 = weightdir + "secB_15hr_41-90_noise_weight_I_762.npy"
+#xspec_fileout = "./xspec_identity.npy"
+#mixing_fileout = "mixing_summary_identity.shelve"
+#calculate_mixing(weight_file1, weight_file2, bins, xspec_fileout,
+#                 mixing_fileout, identity_test=False, refinement=1)
+
+#load_mixing_matrix("mixing_summary_identity.shelve")
 
