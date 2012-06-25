@@ -81,8 +81,7 @@ gbtdataautopower_init = {
 gbtdataautopower_prefix = 'xs_'
 
 class GbtDataAutopower(object):
-    r"""Handler to call the power spectral estimation for different
-    combinations of auto, cross-powers
+    r"""Handle GBT x GBT
     """
     def __init__(self, parameter_file=None, params_dict=None, feedback=0):
         self.params = params_dict
@@ -130,6 +129,102 @@ class GbtDataAutopower(object):
 
 
         caller.multiprocess_stack(self.params["outfile"], debug=False)
+
+
+crosspower_init = {
+        "map_key": "test_map",
+        "wigglez_key": "WiggleZ_15hr_binned_data",
+        "wigglez_sel_key": "WiggleZ_15hr_montecarlo",
+        "wigglez_mock_key": "WiggleZ_15hr_mock",
+        "outfile": "test_file.shelve",
+        "unitless": True,
+        "return_3d": False,
+        "truncate": False,
+        "window": None,
+        "degrade_resolution": False,
+        "factorizable_noise": False,
+        "meansub": False,
+        "refinement": 2,
+        "pad": 5,
+        "order": 2,
+        "freq_list": tuple(range(256)),
+        "bins": [0.00765314, 2.49977141, 35]
+               }
+crosspower_prefix = 'wxs_'
+
+class WiggleZxGBT(object):
+    r"""Handle GBT x WiggleZ
+    """
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+        self.datapath_db = dp.DataPath()
+
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file,
+                                          crosspower_init,
+                                          prefix=crosspower_prefix)
+
+        print self.params
+        self.freq_list = np.array(self.params['freq_list'], dtype=int)
+
+
+    def execute(self, processes):
+        funcname = "quadratic_products.pwrspec_combinations.pwrspec_caller"
+        caller = aggregate_outputs.AggregateOutputs(funcname)
+
+        wigglez_key = self.params['wigglez_key']
+        sel_key = self.params['wigglez_sel_key']
+        mock_key = self.params['wigglez_mock_key']
+        mock_files = self.datapath_db.fetch(mock_key)
+
+        map_key = self.params['map_key']
+        map_cases = self.datapath_db.fileset_cases(map_key,
+                                                   "type;treatment")
+
+        for treatment in map_cases['treatment']:
+            dbkeydict = {}
+            dbkeydict['map1_key'] = "%s:map;%s" % (map_key, treatment)
+            dbkeydict['map2_key'] = wigglez_key
+
+            dbkeydict['noiseinv1_key'] = "%s:weight;%s" % \
+                                             (map_key, treatment)
+
+            dbkeydict['noiseinv2_key'] = sel_key
+            files = dp.convert_dbkeydict_to_filedict(dbkeydict,
+                                                         datapath_db=self.datapath_db)
+            execute_key = "%s:data" % treatment
+            #print files, execute_key
+
+            caller.execute(files['map1_key'],
+                           files['map2_key'],
+                           files['noiseinv1_key'],
+                           files['noiseinv2_key'],
+                           self.params,
+                           execute_key=execute_key)
+
+            for item in mock_files[0]:
+                dbkeydict = {}
+                dbkeydict['map1_key'] = "%s:map;%s" % (map_key, treatment)
+                dbkeydict['map2_key'] = "%s:%s" % (mock_key, item)
+
+                dbkeydict['noiseinv1_key'] = "%s:weight;%s" % \
+                                             (map_key, treatment)
+
+                dbkeydict['noiseinv2_key'] = sel_key
+                files = dp.convert_dbkeydict_to_filedict(dbkeydict,
+                                                         datapath_db=self.datapath_db)
+                execute_key = "%s:mock%s" % (treatment, item)
+                #print files, execute_key
+
+                caller.execute(files['map1_key'],
+                               files['map2_key'],
+                               files['noiseinv1_key'],
+                               files['noiseinv2_key'],
+                               self.params,
+                               execute_key=execute_key)
+
+
+        caller.multiprocess_stack(self.params["outfile"], debug=False, ncpu=18)
 
 
 batchsimautopower_init = {

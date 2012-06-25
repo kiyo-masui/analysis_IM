@@ -225,6 +225,7 @@ def produce_delta_map(optical_file, optical_selection_file):
 
     return map_delta
 
+
 def bin_wigglez_delta(fieldname, selection_key, complete=False):
     """Process the WiggleZ optical catalog, binning against a template map
     given by the template_file.
