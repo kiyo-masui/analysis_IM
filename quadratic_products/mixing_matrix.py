@@ -224,16 +224,23 @@ def calculate_mixing(weight_file1, weight_file2, bins, xspec_fileout,
     #gnuplot_single_slice(runlist[0])  # for troubleshooting
 
     # now save the results for post-processing
-    # TODO: move this into this function -- one stop shopping
+    params = {"unitless": unitless, "refinement": refinement, "pad": pad,
+              "order": order, "window": window, "zero_pad": zero_pad,
+              "identity_test": identity_test, "weight_file1":weight_file1,
+              "weight_file2":weight_file2, "bins": bins}
+
     outshelve = shelve.open(mixing_fileout, "n")
-    outshelve["results"] = results
-    outshelve["xspec"] = xspec
-    outshelve["bins"] = bins
-    outshelve["weight_pair"] = [weight_file1, weight_file2]
+    outshelve["params"] = params        # parameters for this run
+    outshelve["weight1"] = weight1      # weight map 1
+    outshelve["weight2"] = weight2      # weight map 2
+    outshelve["xspec"] = xspec          # copy of the weight spectra
+    outshelve["kflat"] = kflat          # 2D k bin vector
+    outshelve["bins_3d"] = ret_indices  # indices to k3d for a 2d k bin
+    outshelve["results"] = results      # mixing matrix columns
     outshelve.close()
 
 
-def load_mixing_matrix(filename):
+def load_mixing_matrix(filename, outplot_tag):
     r"""load a mixing matrix produced by 'calculate_mixing'
     The goal is to unmixing the 2D k-bins, but many of the k-bins have zero
     counts, e.g. no bins in 3d k-space for that 2d bin. The inversion is
@@ -293,20 +300,31 @@ def load_mixing_matrix(filename):
 
     inv_mixing = LA.pinv(zeroed_mixing)
 
-    plot_slice.simpleplot_2D("mixing.png", zeroed_mixing,
+    filename = "mixing_%s.png" % outplot_tag
+    plot_slice.simpleplot_2D(filename, zeroed_mixing,
                          range(n_nonzero_bins3d), range(n_nonzero_bins3d),
                          ["X", "Y"], 1., "2D mixing", "mixing", logscale=False)
 
     print np.diag(inv_mixing)
-    inv_mixing[inv_mixing < 0.] = -np.sqrt(-inv_mixing[inv_mixing < 0.])
-    inv_mixing[inv_mixing > 0.] = np.sqrt(inv_mixing[inv_mixing > 0.])
-    plot_slice.simpleplot_2D("inv_mixing.png", inv_mixing,
+    filename = "inv_mixing_%s.png" % outplot_tag
+    #inv_mixing[inv_mixing < 0.] = -np.sqrt(-inv_mixing[inv_mixing < 0.])
+    #inv_mixing[inv_mixing > 0.] = np.sqrt(inv_mixing[inv_mixing > 0.])
+    plot_slice.simpleplot_2D(filename, inv_mixing,
                          range(n_nonzero_bins3d), range(n_nonzero_bins3d),
                          ["X", "Y"], 1., "2D mixing", "mixing", logscale=False)
 
-    plot_slice.simpleplot_2D("counts.png", counts_array,
+    filename = "counts_%s.png" % outplot_tag
+    plot_slice.simpleplot_2D(filename, counts_array,
                          range(n_nonzero_bins3d), range(n_nonzero_bins3d),
                          ["X", "Y"], 1., "2D counts", "counts", logscale=False)
+
+    return {'params': mixing_shelve['params'],
+            'kflat': mixing_shelve['kflat'],
+            'counts_reference': counts_reference,
+            'bins3d_nonzero': bins3d_nonzero,
+            'counts_array': counts_array,
+            'mixing_array': mixing_array,
+            'inv_mixing': inv_mixing}
 
 
 calc_mixing_init = {
@@ -315,7 +333,7 @@ calc_mixing_init = {
         "wigglez_sel_key": "test",
         "perpair_base": "test_file",
         "outfile": "mixing_matrix.shelve",
-        "xspec_file": "./xspec.npy", 
+        "xspec_file": "./xspec.npy",
         "refinement": 2,
         "pad": 5,
         "order": 1,
@@ -424,8 +442,9 @@ class CalcMixingMatrix(object):
         wigglez_files = self.datapath_db.fetch(self.params['wigglez_sel_key'])
 
     def execute_summary(self):
-        #load_mixing_matrix(self.cross_pairs)
-        print "ok"
+        for pair in self.all_pairs:
+            mixing_file = self.mixing_fileout[pair]
+            load_mixing_matrix(mixing_file, pair)
 
 #bins = np.logspace(math.log10(0.00765314),
 #                           math.log10(2.49977141),
