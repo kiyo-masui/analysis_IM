@@ -84,7 +84,7 @@ class Reader(object) :
     # going to modify should be forced to assign by value with the
     # sp.array(an_array) function.
 
-    def __init__(self, fname, feedback=2, checking=1) :
+    def __init__(self, fname, feedback=2, checking=1, memmap=False) :
         """Init script for the fitsGBT Reader class.
 
         The reader is initialised with the fits file name to be read.
@@ -103,7 +103,7 @@ class Reader(object) :
         self.fname = fname
 
         # The passed file name is assumed to be a GBT spectrometer fits file.
-        self.hdulist = pyfits.open(self.fname, 'readonly')
+        self.hdulist = pyfits.open(self.fname, 'readonly', memmap=memmap)
         if len(self.hdulist) < 2 :
             raise ce.DataError("File missing data extension")
         if self.feedback > 0 :

@@ -945,6 +945,8 @@ class DataChecker(object) :
                                args=(params["file_middles"][ii],))
                 p.start()
                 procs[ii%np] = p
+        #for ii in range(n):
+        #    self.process_file(params["file_middles"][ii])
 
     def process_file(self, middle) :
         """Split off to fix pyfits memory leak."""
@@ -953,8 +955,19 @@ class DataChecker(object) :
         file_name = params["input_root"] + middle + ".fits"
         Reader = fitsGBT.Reader(file_name, feedback=self.feedback)
         Blocks = Reader.read((), (), force_tuple=True)
+        del Reader
+        #p_here, p_there = mp.Pipe()
+        #p = mp.Process(target=read_data,
+        #               args=(file_name, p_there, self.feedback))
+        #p.start()
+        #Blocks = p_here.recv()
+        #p.join()
+        #if p.exitcode != 0:
+        #    raise RuntimeError("A process failed with exit code: "
+        #                      + str(procs[ii % np].exitcode))
+        nb = len(Blocks)
         # Plotting limits need to be adjusted for on-off scans.
-        if file_name.find("onoff") != -1 :
+        if file_name.find("onoff") != -1 or file_name.find("track") != -1:
             onoff=True
         else :
             onoff=False
@@ -970,8 +983,14 @@ class DataChecker(object) :
         nt = int(Blocks[0].dims[0]*.9)
         # Get the frequency axis.  Must be before loop because the data is
         # rebined in the loop.
-        Blocks[0].calc_freq()
-        f = Blocks[0].freq
+        Data = Blocks[0]
+        Data.calc_freq()
+        f = Data.freq
+        # Get time steps and frequency wdith for noise power normalization.
+        Data.calc_time()
+        dt = abs(sp.mean(sp.diff(Data.time)))
+        # Note that Data was rebined in the loop.
+        dnu = abs(Data.field["CDELT1"])
         for Data in Blocks :
             # Rotate to XX, YY etc.
             rotate_pol.rotate(Data, (-5, -7, -8, -6))
@@ -998,18 +1017,16 @@ class DataChecker(object) :
             cal_diff -= ma.mean(cal_diff, 0)
             cal_diff = cal_diff.filled(0)[0:nt,...]
             power = abs(fft.fft(cal_diff, axis=0)[range(nt//2+1)])
+            del cal_diff
             power = power**2/nt
             cal_noise_spec += power
+            del power
+        # Recover memory.
+        del Data, Blocks
         # Normalize.
         cal_sum_unscaled /= 2*counts
         cal_sum /= 2*counts
-        # Get time steps and frequency wdith for noise power normalization.
-        Data = Blocks[0]
-        Data.calc_time()
-        dt = abs(sp.mean(sp.diff(Data.time)))
-        # Note that Data was rebined in the loop.
-        dnu = abs(Data.field["CDELT1"])
-        cal_noise_spec *= dt*dnu/len(Blocks)
+        cal_noise_spec *= dt*dnu/nb
         # Power spectrum independant axis.
         ps_freqs = sp.arange(nt//2 + 1, dtype=float)
         ps_freqs /= (nt//2 + 1)*dt*2
@@ -1073,6 +1090,12 @@ class DataChecker(object) :
         plt.savefig(params['output_root'] + middle
                 + params['output_end'])
 
+
+def read_data(fname, pipe, feedback=2):
+    """Wraper for reading fits files.  Used to avoind pyfits memory leak."""
+    Reader = fitsGBT.Reader(fname, feedback=feedback)
+    Blocks = Reader.read((), (), force_tuple=True)
+    pipe.send(Blocks)
 
 # -------- Data Manager --------
 
