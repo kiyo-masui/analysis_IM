@@ -7,22 +7,22 @@ from kiyopy import parse_ini
 import shelve
 import glob
 
-params_init = {
+autopowerparams_init = {
         "p_map": "test_map",
         "p_map_plussim": "test_map",
         "p_cleaned_sim": "test_map",
         "apply_2d_transfer": None,
         "outdir": "./"
                }
-prefix = 'autopower_'
+autopowerprefix = 'autopower_'
 
 class CompileAutopower(object):
     def __init__(self, parameter_file=None, params_dict=None, feedback=0):
         self.params = params_dict
 
         if parameter_file:
-            self.params = parse_ini.parse(parameter_file, params_init,
-                                          prefix=prefix)
+            self.params = parse_ini.parse(parameter_file, autopowerparams_init,
+                                          prefix=autopowerprefix)
 
     def execute(self, processes):
         pwr_map = ps.PowerSpectrum(self.params["p_map"])
@@ -52,6 +52,7 @@ class CompileAutopower(object):
         #    avg_plussim[treatment] = np.mean(avg_treatment, axis=ndim_plussim)
         #    print avg_plussim[treatment].shape, shape_plussim
 
+        # TODOi!!!!!: is this a proper function of treatment?
         if self.params["apply_2d_transfer"] is not None:
             # copy the same beam transfer function for all cases
 
@@ -103,19 +104,87 @@ class CompileAutopower(object):
                                          mean_map, std_map, outfile=outfile)
             print "writing to " + outfile
 
-params_init = {
+crosspowerparams_init = {
+        "p_data": "test_map",
+        "p_mock": "test_map",
+        "apply_2d_transfer": None,
+        "use_noiseweights_2dto1d": True,
+        "outdir": "./"
+               }
+crosspowerprefix = 'crosspower_'
+
+class CompileCrosspower(object):
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file, crosspowerparams_init,
+                                          prefix=crosspowerprefix)
+            print self.params
+
+    def execute(self, processes):
+        pwr_data = ps.PowerSpectrum(self.params["p_data"])
+        pwr_mock = ps.PowerSpectrum(self.params["p_mock"])
+
+        # TODOi!!!!!: is this a proper function of treatment?
+        if self.params["apply_2d_transfer"] is not None:
+            trans_shelve = shelve.open(self.params["apply_2d_transfer"])
+            transfer_2d = trans_shelve["transfer_2d"]
+            trans_shelve.close()
+
+            transfer_dict = {}
+            for treatment in pwr_data.treatment_cases:
+                transfer_dict[treatment] = transfer_2d
+
+            pwr_data.apply_2d_trans_by_treatment(transfer_dict)
+            pwr_mock.apply_2d_trans_by_treatment(transfer_dict)
+
+        # gather the rms of each 2D k-bin over the realizations of mock
+        # catalogs; this is used for the 2D->1D weighting
+        mock2d_agg = pwr_mock.agg_stat_2d_pwrspec()
+
+        weights_2d = {}
+        for treatment in pwr_mock.treatment_cases:
+            weights_2d[treatment] = mock2d_agg[treatment]["std"]
+
+        if self.params["use_noiseweights_2dto1d"]:
+            pwr_data.convert_2d_to_1d(weights_2d=weights_2d)
+            pwr_mock.convert_2d_to_1d(weights_2d=weights_2d)
+        else:
+            # use the counts to weight instead by default
+            pwr_data.convert_2d_to_1d()
+            pwr_mock.convert_2d_to_1d()
+
+        pwr_data_summary = pwr_data.agg_stat_1d_pwrspec(from_2d=True)
+        pwr_mock_summary = pwr_mock.agg_stat_1d_pwrspec(from_2d=True)
+
+        k_vec = pwr_data.k_1d_from_2d["center"]
+
+        for treatment in pwr_data.treatment_cases:
+            mean_data = pwr_data_summary[treatment]["mean"]
+            mean_mock = pwr_mock_summary[treatment]["mean"]
+            std_mock = pwr_mock_summary[treatment]["std"]
+
+            outfile = "%s/pk_%s.dat" % (self.params["outdir"], treatment)
+            file_tools.print_multicolumn(k_vec, mean_data, mean_mock, std_mock,
+                                         outfile=outfile)
+
+            print "writing to " + outfile
+
+
+physsimparams_init = {
         "pwr_file": "ok.shelve",
         "outdir": "./"
                }
-prefix = 'physsim_'
+physsimprefix = 'physsim_'
 
 class CompilePhysSim(object):
     def __init__(self, parameter_file=None, params_dict=None, feedback=0):
         self.params = params_dict
 
         if parameter_file:
-            self.params = parse_ini.parse(parameter_file, params_init,
-                                          prefix=prefix)
+            self.params = parse_ini.parse(parameter_file, physsimparams_init,
+                                          prefix=physsimprefix)
 
     def execute(self, processes):
         pwr_physsim = ps.PowerSpectrum(self.params["pwr_file"])

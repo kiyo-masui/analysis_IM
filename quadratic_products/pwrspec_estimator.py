@@ -96,7 +96,8 @@ def make_unitless(xspec_arr, radius_arr=None, ndim=None):
     return xspec_arr * radius_arr ** ndim * factor
 
 
-def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d):
+def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
+                             weights_2d=None):
     """take a 2D power spectrum and the counts matrix (number of modex per k
     cell) and return the binned 1D power spectrum
     pwr_2d is the 2D power
@@ -104,6 +105,7 @@ def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d):
     bin_kx is the x-axis
     bin_ky is the x-axis
     bin_1d is the k vector over which to return the result
+    weights_2d is an optional weight matrix in 2d; otherwise use counts (BAD!)
     """
     # find |k| across the array
     index_array = np.indices(pwr_2d.shape)
@@ -116,18 +118,29 @@ def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d):
     radius_flat = radius_array.flatten()
     pwr_2d_flat = pwr_2d.flatten()
     counts_2d_flat = counts_2d.flatten()
+    if weights_2d is not None:
+        weights_2d_flat = weights_2d.flatten()
+    else:
+        weights_2d_flat = counts_2d_flat
 
-    count_pwr_prod = counts_2d_flat * pwr_2d_flat
-    count_pwr_prod[np.isnan(count_pwr_prod)] = 0
-    count_pwr_prod[np.isinf(count_pwr_prod)] = 0
-    count_pwr_prod[counts_2d_flat == 0] = 0
+    weight_pwr_prod = weights_2d_flat * pwr_2d_flat
+    weight_pwr_prod[np.isnan(weight_pwr_prod)] = 0.
+    weight_pwr_prod[np.isinf(weight_pwr_prod)] = 0.
+    weight_pwr_prod[counts_2d_flat == 0] = 0.
+    weights_2d_flat[np.isnan(weight_pwr_prod)] = 0.
+    weights_2d_flat[np.isinf(weight_pwr_prod)] = 0.
+    weights_2d_flat[counts_2d_flat == 0] = 0.
 
     counts_histo = np.histogram(radius_flat, bin_1d,
                                 weights=counts_2d_flat)[0]
-    binsum_histo = np.histogram(radius_flat, bin_1d,
-                                weights=count_pwr_prod)[0]
 
-    binavg = binsum_histo / counts_histo.astype(float)
+    weights_histo = np.histogram(radius_flat, bin_1d,
+                                weights=weights_2d_flat)[0]
+
+    binsum_histo = np.histogram(radius_flat, bin_1d,
+                                weights=weight_pwr_prod)[0]
+
+    binavg = binsum_histo / weights_histo.astype(float)
 
     return counts_histo, binavg
 

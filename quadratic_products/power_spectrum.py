@@ -131,8 +131,10 @@ class PowerSpectrum(object):
                     self.counts_1d_from_2d[pwrcase][mask] = 0
 
     def convert_2d_to_1d(self, logbins=True,
-                         bins=None, transfer=None):
-        r"""bin the 2D powers onto 1D (the _from_2d variables)"""
+                         bins=None, weights_2d=None):
+        r"""bin the 2D powers onto 1D (the _from_2d variables)
+        optionally, weights for each treatment class can be given
+        """
         bins_1d = np.zeros(self.num_k_1d + 1)
         bins_1d[0: -1] = self.k_1d["left"]
         bins_1d[-1] = self.k_1d["right"][-1]
@@ -141,16 +143,22 @@ class PowerSpectrum(object):
             bins = bins_1d
 
         for treatment in self.treatment_cases:
+            if weights_2d is not None:
+                weights_2d_treat = weights_2d[treatment]
+            else:
+                weights_2d_treat = None
+
             for comb in self.comb_cases:
                 pwrcase = "%s:%s" % (comb, treatment)
                 (self.counts_1d_from_2d[pwrcase], \
                 self.pwrspec_1d_from_2d[pwrcase]) = \
-                                                pe.convert_2d_to_1d_pwrspec(
-                                                    self.pwrspec_2d[pwrcase],
-                                                    self.counts_2d[pwrcase],
-                                                    self.kx_2d["center"],
-                                                    self.ky_2d["center"],
-                                                    bins)
+                                        pe.convert_2d_to_1d_pwrspec(
+                                            self.pwrspec_2d[pwrcase],
+                                            self.counts_2d[pwrcase],
+                                            self.kx_2d["center"],
+                                            self.ky_2d["center"],
+                                            bins,
+                                            weights_2d=weights_2d_treat)
 
         bin_left, bin_center, bin_right = binning.bin_edges(bins, log=logbins)
         self.k_1d_from_2d["left"] = bin_left
@@ -325,12 +333,12 @@ class PowerSpectrum(object):
         std_2d = stat_summary[treatment]["std"]
         counts_2d = stat_summary[treatment]["counts"]
 
-        bin_x_left = np.log10(pwr_2d[0]['bin_x_left'])
-        bin_x_center = np.log10(pwr_2d[0]['bin_x_center'])
-        bin_x_right = np.log10(pwr_2d[0]['bin_x_right'])
-        bin_y_left = np.log10(pwr_2d[0]['bin_y_left'])
-        bin_y_center = np.log10(pwr_2d[0]['bin_y_center'])
-        bin_y_right = np.log10(pwr_2d[0]['bin_y_right'])
+        bin_x_left = np.log10(self.kx_2d["left"])
+        bin_x_center = np.log10(self.kx_2d["center"])
+        bin_x_right = np.log10(self.kx_2d["right"])
+        bin_y_left = np.log10(self.ky_2d["left"])
+        bin_y_center = np.log10(self.ky_2d["center"])
+        bin_y_right = np.log10(self.ky_2d["right"])
 
         plot_mean_2d = copy.deepcopy(mean_2d)
         plot_std_2d = copy.deepcopy(std_2d)
