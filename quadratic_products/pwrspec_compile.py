@@ -9,8 +9,10 @@ import glob
 
 autopowerparams_init = {
         "p_map": "test_map",
+        "p_noise": "test_map",
         "p_map_plussim": "test_map",
         "p_cleaned_sim": "test_map",
+        "use_noiseweights_2dto1d": True,
         "apply_2d_transfer": None,
         "outdir": "./"
                }
@@ -26,6 +28,7 @@ class CompileAutopower(object):
 
     def execute(self, processes):
         pwr_map = ps.PowerSpectrum(self.params["p_map"])
+        pwr_noise = ps.PowerSpectrum(self.params["p_noise"])
         pwr_map_plussim = ps.PowerSpectrum(self.params["p_map_plussim"])
         pwr_cleaned_sim = ps.PowerSpectrum(self.params["p_cleaned_sim"])
 
@@ -68,9 +71,28 @@ class CompileAutopower(object):
             pwr_map_plussim.apply_2d_trans_by_treatment(transfer_dict)
             pwr_cleaned_sim.apply_2d_trans_by_treatment(transfer_dict)
 
-        pwr_map.convert_2d_to_1d()
-        pwr_map_plussim.convert_2d_to_1d()
-        pwr_cleaned_sim.convert_2d_to_1d()
+        # combine AxA, BxB, CxC, DxD into a noise bias estimate
+        noise2d_agg = pwr_noise.agg_stat_2d_pwrspec()
+        # also combine the AxB, etc. into a signal piece that is subtracted
+        signal2d_agg = pwr_map.agg_stat_2d_pwrspec()
+
+        weights_2d = {}
+        # weight by the variance as determined in the mock runs
+        for treatment in pwr_map.treatment_cases:
+            weight = noise2d_agg[treatment]["mean"] - \
+                     signal2d_agg[treatment]["mean"]
+
+            print weight
+            weights_2d[treatment] = weight * weight
+
+        if self.params["use_noiseweights_2dto1d"]:
+            pwr_map.convert_2d_to_1d(weights_2d=weights_2d)
+            pwr_map_plussim.convert_2d_to_1d(weights_2d=weights_2d)
+            pwr_cleaned_sim.convert_2d_to_1d(weights_2d=weights_2d)
+        else:
+            pwr_map.convert_2d_to_1d()
+            pwr_map_plussim.convert_2d_to_1d()
+            pwr_cleaned_sim.convert_2d_to_1d()
 
         pwr_map_summary = pwr_map.agg_stat_1d_pwrspec(from_2d=True)
 
