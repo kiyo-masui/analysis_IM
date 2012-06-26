@@ -170,7 +170,8 @@ class WiggleZxGBT(object):
 
     def execute(self, processes):
         funcname = "quadratic_products.pwrspec_combinations.pwrspec_caller"
-        caller = aggregate_outputs.AggregateOutputs(funcname)
+        caller_data = aggregate_outputs.AggregateOutputs(funcname)
+        caller_mock = aggregate_outputs.AggregateOutputs(funcname)
 
         wigglez_key = self.params['wigglez_key']
         sel_key = self.params['wigglez_sel_key']
@@ -191,17 +192,22 @@ class WiggleZxGBT(object):
 
             dbkeydict['noiseinv2_key'] = sel_key
             files = dp.convert_dbkeydict_to_filedict(dbkeydict,
-                                                         datapath_db=self.datapath_db)
-            execute_key = "%s:data" % treatment
+                                        datapath_db=self.datapath_db)
+
+            execute_key = "data:%s" % treatment
             #print files, execute_key
 
-            caller.execute(files['map1_key'],
+            caller_data.execute(files['map1_key'],
                            files['map2_key'],
                            files['noiseinv1_key'],
                            files['noiseinv2_key'],
                            self.params,
                            execute_key=execute_key)
 
+        caller_data.multiprocess_stack(self.params["outfile_data"],
+                                       debug=False, ncpu=18)
+
+        for treatment in map_cases['treatment']:
             for item in mock_files[0]:
                 dbkeydict = {}
                 dbkeydict['map1_key'] = "%s:map;%s" % (map_key, treatment)
@@ -213,10 +219,10 @@ class WiggleZxGBT(object):
                 dbkeydict['noiseinv2_key'] = sel_key
                 files = dp.convert_dbkeydict_to_filedict(dbkeydict,
                                                          datapath_db=self.datapath_db)
-                execute_key = "%s:mock%s" % (treatment, item)
+                execute_key = "mock%s:%s" % (item, treatment)
                 #print files, execute_key
 
-                caller.execute(files['map1_key'],
+                caller_mock.execute(files['map1_key'],
                                files['map2_key'],
                                files['noiseinv1_key'],
                                files['noiseinv2_key'],
@@ -224,7 +230,7 @@ class WiggleZxGBT(object):
                                execute_key=execute_key)
 
 
-        caller.multiprocess_stack(self.params["outfile"], debug=False, ncpu=18)
+        caller_mock.multiprocess_stack(self.params["outfile_mock"], debug=False, ncpu=18)
 
 
 batchsimautopower_init = {

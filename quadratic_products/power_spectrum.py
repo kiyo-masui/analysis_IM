@@ -30,6 +30,8 @@ class PowerSpectrum(object):
         self.treatment_cases = self.pwr_cases["treatment"]
         self.treatment_cases.sort()
 
+        print self.comb_cases, self.treatment_cases
+
         # the 2D power can be binned onto 1D
         # this is not done automatically because one can apply transfer
         # functions in 2D, etc. before this rebinning
@@ -245,7 +247,7 @@ class PowerSpectrum(object):
 
         return stat_summary
 
-    def summarize_1d_pwrspec(pwr_1d, filename):
+    def summarize_1d_pwrspec(self, pwr_1d, filename):
         r"""Write out a 1d power spectrum
         """
         outfile = open(filename, "w")
@@ -254,7 +256,7 @@ class PowerSpectrum(object):
             outfile.write(("%10.15g " * 4 + "\n") % specdata)
         outfile.close()
 
-    def summarize_1d_agg_pwrspec(treatment, filename, corr_file=None,
+    def summarize_1d_agg_pwrspec(self, treatment, filename, corr_file=None,
                                  from_2d=False):
         # TODO: add counts histo to the summary
         # this could be made more efficient by looping over treatments
@@ -286,11 +288,11 @@ class PowerSpectrum(object):
 
             outfile.close()
 
-    def summarize_1d_pwrspec_by_treatment(basename, from_2d=False):
+    def summarize_1d_pwrspec_by_treatment(self, basename, from_2d=False):
         for treatment in self.treatment_cases:
             print "WRITE THIS!"
 
-    def summarize_2d_pwrspec(pwr_2d, filename, resetnan=0.):
+    def summarize_2d_pwrspec(self, pwr_2d, filename, resetnan=0.):
         r"""Write out a single pwrspec
         """
         lbin_x_left = np.log10(self.bin_x_left)
@@ -314,10 +316,14 @@ class PowerSpectrum(object):
 
         outfile.close()
 
-    def summarize_2d_agg_pwrspec(pwr_2d, filename, dataname='binavg', resetnan=0.):
+    def summarize_2d_agg_pwrspec(self, treatment, filename, resetnan=0.):
         r"""Combine a list of 2D power runs and write out
+        TODO: add 2D corr
         """
-        (mean_2d, std_2d) = agg_stat_2d_pwrspec(pwr_2d, dataname=dataname)
+        stat_summary = self.agg_stat_2d_pwrspec()
+        mean_2d = stat_summary[treatment]["mean"]
+        std_2d = stat_summary[treatment]["std"]
+        counts_2d = stat_summary[treatment]["counts"]
 
         bin_x_left = np.log10(pwr_2d[0]['bin_x_left'])
         bin_x_center = np.log10(pwr_2d[0]['bin_x_center'])
@@ -333,10 +339,14 @@ class PowerSpectrum(object):
         outfile = open(filename, "w")
         for xind in range(len(bin_x_center)):
             for yind in range(len(bin_y_center)):
-                outstr = ("%10.15g " * 8 + "\n") % \
-                        (bin_x_left[xind], bin_x_center[xind], bin_x_right[xind], \
-                         bin_y_left[yind], bin_y_center[yind], bin_y_right[yind], \
-                         plot_mean_2d[xind, yind], plot_std_2d[xind, yind])
+                outstr = ("%10.15g " * 9 + "\n") % \
+                        (bin_x_left[xind], bin_x_center[xind],
+                         bin_x_right[xind], \
+                         bin_y_left[yind], bin_y_center[yind],
+                         bin_y_right[yind], \
+                         counts_2d[xind, yind], plot_mean_2d[xind, yind],
+                         plot_std_2d[xind, yind])
+
                 outfile.write(outstr)
 
         outfile.close()
