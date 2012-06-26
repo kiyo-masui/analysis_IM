@@ -131,6 +131,80 @@ class GbtDataAutopower(object):
         caller.multiprocess_stack(self.params["outfile"], debug=False)
 
 
+gbtdatanoisepower_init = {
+        "map_key": "test_map",
+        "outfile": "test_file.shelve",
+        "unitless": True,
+        "return_3d": False,
+        "truncate": False,
+        "window": None,
+        "degrade_resolution": False,
+        "factorizable_noise": False,
+        "meansub": False,
+        "refinement": 2,
+        "pad": 5,
+        "order": 2,
+        "freq_list": tuple(range(256)),
+        "bins": [0.00765314, 2.49977141, 35]
+               }
+gbtdatanoisepower_prefix = 'ns_'
+
+class GbtDataNoisePower(object):
+    r"""Handle GBT x GBT; AxA, BxB, CxC, etc.
+    """
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+        self.datapath_db = dp.DataPath()
+
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file,
+                                          gbtdatanoisepower_init,
+                                          prefix=gbtdatanoisepower_prefix)
+
+        self.freq_list = np.array(self.params['freq_list'], dtype=int)
+
+
+    def execute(self, processes):
+        funcname = "quadratic_products.pwrspec_combinations.pwrspec_caller"
+        caller = aggregate_outputs.AggregateOutputs(funcname)
+
+        map_key = self.params['map_key']
+        map_cases = self.datapath_db.fileset_cases(map_key,
+                                                   "pair;type;treatment")
+
+        # We use the same cleaned maps and the weights are the same for
+        # various pairs, e.g. A_with_B is the same as A_with_C, etc. because
+        # the mode cleaning does not impact the weighting functions
+        noise_pairs = {"A_with_A": "A_with_B",
+                       "B_with_B": "B_with_A",
+                       "C_with_C": "C_with_A",
+                       "D_with_D": "D_with_A"
+                      }
+
+        for treatment in map_cases['treatment']:
+            for item in noise_pairs:
+                dbkeydict = {}
+                mapset0 = (map_key, noise_pairs[item], treatment)
+                mapset1 = (map_key, noise_pairs[item], treatment)
+                dbkeydict['map1_key'] = "%s:%s;map;%s" % mapset0
+                dbkeydict['map2_key'] = "%s:%s;map;%s" % mapset1
+                dbkeydict['noiseinv1_key'] = "%s:%s;noise_inv;%s" % mapset0
+                dbkeydict['noiseinv2_key'] = "%s:%s;noise_inv;%s" % mapset1
+                files = dp.convert_dbkeydict_to_filedict(dbkeydict,
+                                                         datapath_db=self.datapath_db)
+
+                execute_key = "%s:%s" % (item, treatment)
+                caller.execute(files['map1_key'],
+                               files['map2_key'],
+                               files['noiseinv1_key'],
+                               files['noiseinv2_key'],
+                               self.params,
+                               execute_key=execute_key)
+
+
+        caller.multiprocess_stack(self.params["outfile"], debug=False)
+
+
 crosspower_init = {
         "map_key": "test_map",
         "wigglez_key": "WiggleZ_15hr_binned_data",

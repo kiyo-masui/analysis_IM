@@ -144,8 +144,10 @@ class CompileCrosspower(object):
         mock2d_agg = pwr_mock.agg_stat_2d_pwrspec()
 
         weights_2d = {}
+        # weight by the variance as determined in the mock runs
         for treatment in pwr_mock.treatment_cases:
-            weights_2d[treatment] = mock2d_agg[treatment]["std"]
+            weights_2d[treatment] = mock2d_agg[treatment]["std"] * \
+                                    mock2d_agg[treatment]["std"]
 
         if self.params["use_noiseweights_2dto1d"]:
             pwr_data.convert_2d_to_1d(weights_2d=weights_2d)
