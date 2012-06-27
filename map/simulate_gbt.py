@@ -55,7 +55,7 @@ def realize_simulation(template_map, scenario=None, seed=None, refinement=2):
     return maps
 
 
-def make_simulation_set(template_file, outfile_physical=None,
+def make_simulation_set(template_file, output_root, outfile_physical=None,
                         outfile_raw=None, outfile_beam=None,
                         outfile_beam_plus_data=None,
                         verbose=True, scenario=None, seed=None,
@@ -107,10 +107,10 @@ def make_simulation_set(template_file, outfile_physical=None,
     sim_map.copy_axis_info(template_map)
 
     if outfile_raw:
-        algebra.save(outfile_raw, sim_map)
+        algebra.save(output_root + outfile_raw, sim_map)
 
     if outfile_physical:
-        algebra.save(outfile_physical, phys_map)
+        algebra.save(output_root + outfile_physical, phys_map)
 
     beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792,
                  0.281176247549, 0.270856788455, 0.26745856078,
@@ -123,11 +123,11 @@ def make_simulation_set(template_file, outfile_physical=None,
     sim_map_withbeam = beamobj.apply(sim_map)
 
     if outfile_beam:
-        algebra.save(outfile_beam, sim_map_withbeam)
+        algebra.save(output_root + outfile_beam, sim_map_withbeam)
 
     sim_map_withbeam += template_map
     if outfile_beam_plus_data:
-        algebra.save(outfile_beam_plus_data, sim_map_withbeam)
+        algebra.save(output_root + outfile_beam_plus_data, sim_map_withbeam)
 
 
 def generate_delta_sim(input_file, output_file):
@@ -212,6 +212,7 @@ class SimulateGbt():
     @batch_handler.log_timing
     def execute(self, processes):
         make_simulation_set(self.params['template_file'],
+                            self.params['output_root'],
                             self.params['outfile_physical'],
                             self.params['outfile_raw'],
                             self.params['outfile_beam'],

@@ -308,6 +308,67 @@ class WiggleZxGBT(object):
         caller_mock.multiprocess_stack(self.params["outfile_mock"], debug=False, ncpu=18)
 
 
+# this does not actually do any batch processing, but just wraps a single
+# quadratic estimator output in the same packaging/pipeline interaction
+batchsimcrosspower_init = {
+        "map_key": "test_map",
+        "sim_file": "sim.npy",
+        "wigglez_sim_file": "sim.npy",
+        "wigglez_sel_key": "WiggleZ_15hr_montecarlo",
+        "outfile": "test_file.shelve",
+        "unitless": True,
+        "return_3d": False,
+        "truncate": False,
+        "window": None,
+        "degrade_resolution": False,
+        "factorizable_noise": False,
+        "meansub": False,
+        "refinement": 2,
+        "pad": 5,
+        "order": 1,
+        "freq_list": tuple(range(256)),
+        "bins": [0.00765314, 2.49977141, 35]
+               }
+batchsimcrosspower_prefix = 'bxs_'
+
+class BatchSimCrosspower(object):
+    r"""Take cross-power relevant for finding the cross beam transfer function
+    """
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+        self.datapath_db = dp.DataPath()
+
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file,
+                                          batchsimcrosspower_init,
+                                          prefix=batchsimcrosspower_prefix)
+
+        self.freq_list = np.array(self.params['freq_list'], dtype=int)
+
+
+    def execute(self, processes):
+        funcname = "quadratic_products.pwrspec_combinations.pwrspec_caller"
+        caller = aggregate_outputs.AggregateOutputs(funcname)
+
+        dbkeydict = {}
+        dbkeydict['noiseinv1_key'] = "%s:weight;0modes" % \
+                                     self.params['map_key']
+
+        dbkeydict['noiseinv2_key'] = self.params['wigglez_sel_key']
+        files = dp.convert_dbkeydict_to_filedict(dbkeydict,
+                                                 datapath_db=self.datapath_db)
+
+        execute_key = "sim:0modes"
+        caller.execute(self.params['sim_file'],
+                       self.params['wigglez_sim_file'],
+                       files['noiseinv1_key'],
+                       files['noiseinv2_key'],
+                       self.params,
+                       execute_key=execute_key)
+
+        caller.multiprocess_stack(self.params["outfile"], debug=False)
+
+
 batchsimautopower_init = {
         "map_key": "test_map",
         "sim_file": "sim.npy",
@@ -413,5 +474,40 @@ class BatchPhysicalSim(object):
                            sim_files[1][index],
                            self.params,
                            execute_key=execute_key)
+
+        caller.multiprocess_stack(self.params["outfile"], debug=False)
+
+# this does not actually do any batch processing, but just wraps a single
+# quadratic estimator output in the same packaging/pipeline interaction
+singlephysicalsim_init = {
+        "sim_file_left": "sim_stuff",
+        "sim_file_right": "sim_stuff",
+        "outfile": "test_file.shelve",
+        "unitless": True,
+        "return_3d": False,
+        "truncate": False,
+        "window": None,
+        "bins": [0.00765314, 2.49977141, 35]
+               }
+singlephysicalsim_prefix = 'sps_'
+
+class SinglePhysicalSim(object):
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+        self.datapath_db = dp.DataPath()
+
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file,
+                                          singlephysicalsim_init,
+                                          prefix=singlephysicalsim_prefix)
+
+    def execute(self, processes):
+        funcname = "quadratic_products.pwrspec_combinations"
+        funcname += ".phys_pwrspec_caller"
+        caller = aggregate_outputs.AggregateOutputs(funcname)
+
+        execute_key = "sim:phys"
+        caller.execute(self.params['sim_file_left'], self.params['sim_file_right']
+                       self.params, execute_key=execute_key)
 
         caller.multiprocess_stack(self.params["outfile"], debug=False)
