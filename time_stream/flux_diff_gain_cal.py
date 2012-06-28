@@ -289,7 +289,7 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
             print R
         else:
             R=[0.0,0.0]
-            print "Not able to resolve a noise cal phase"
+            print "Not able to resolve a noise cal phase, setting phase to zero."
   
 
 # This starts the actual data processing for the given scan
