@@ -4,13 +4,14 @@ do
   #num=`ps aux | grep eswitzer | grep python | grep "R+" | wc -l`
   username=`whoami`
   num=`ls -1 /tmp | grep $username.busy | wc -l`
+  stamp=`date +%s`
   #num=`ps aux | grep python | wc -l`
   echo $num
-  if [ "$num" -lt "4" ]; then
-    echo "< 4 running; spawning one more"
-    python pipeline/manager.py input/ers/crosspower/GBT_15hr_map_oldcal_cross_bulksim.ini >& bulksim.log &
+  if [ "$num" -lt "18" ]; then
+    echo "< 18 running; spawning one more"
+    python pipeline/manager.py input/ers/crosspower/GBT_15hr_map_oldcal_cross_bulksim.ini >& bulksim$stamp.log &
   else
-    echo ">= 4 running"
+    echo ">= 18 running"
   fi
-  sleep 1
+  sleep 2
 done
