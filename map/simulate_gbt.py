@@ -23,13 +23,15 @@ from utils import batch_handler
 params_init = {
                'output_root': "./",
                'template_file': "ok.npy",
-               'outfile_physical': "ok.npy",
-               'outfile_raw': "ok.npy",
-               'outfile_delta': "ok.npy",
-               'outfile_beam': "ok.npy",
+               'outfile_physical': None,
+               'outfile_raw': None,
+               'outfile_delta': None,
+               'outfile_beam': None,
+               'outfile_meansub': None,
+               'outfile_degrade': None,
                'scenario': 'str',
                'seed': -1,
-               'refinement': 2
+               'refinement': 2,
                'weightfile': None
                }
 prefix = 'sg_'
@@ -54,7 +56,7 @@ class SimulateGbt(object):
         # here we use 300 h km/s from WiggleZ for streaming dispersion
         self.streaming_dispersion = 300.*0.72
 
-        self.template_map = algebra.make_vect
+        self.template_map = algebra.make_vect(
                                 algebra.load(self.template_file))
 
         # determine the beam model

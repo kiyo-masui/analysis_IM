@@ -40,6 +40,7 @@ class AggregateSummary(object):
                              (self.params['directory'],
                               self.params['basefile']))
 
+        print '%s/%s*.shelve' % (self.params['directory'], self.params['basefile'])
         self.produce_summary(filelist, outfile)
 
     def produce_summary(self, filelist, outfile, debug=False):

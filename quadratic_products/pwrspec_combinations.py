@@ -507,7 +507,8 @@ class SinglePhysicalSim(object):
         caller = aggregate_outputs.AggregateOutputs(funcname)
 
         execute_key = "sim:phys"
-        caller.execute(self.params['sim_file_left'], self.params['sim_file_right']
+        caller.execute(self.params['sim_file_left'],
+                       self.params['sim_file_right'],
                        self.params, execute_key=execute_key)
 
         caller.multiprocess_stack(self.params["outfile"], debug=False)
