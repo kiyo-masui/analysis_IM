@@ -1,6 +1,7 @@
 import os
 import math
 import numpy as np
+import shutil
 from utils import aggregate_outputs
 from kiyopy import parse_ini
 from quadratic_products import pwrspec_estimator as pe
@@ -308,6 +309,79 @@ class WiggleZxGBT(object):
         caller_mock.multiprocess_stack(self.params["outfile_mock"], debug=False, ncpu=18)
 
 
+crosspowersim_init = {
+        "map_key": "test_map",
+        "tack_on": None,
+        "wigglez_sim_file": "WiggleZ_15hr_binned_data",
+        "wigglez_sel_key": "WiggleZ_15hr_montecarlo",
+        "outfile_data": "test_file.shelve",
+        "unitless": True,
+        "return_3d": False,
+        "truncate": False,
+        "window": None,
+        "degrade_resolution": False,
+        "factorizable_noise": False,
+        "meansub": False,
+        "refinement": 2,
+        "pad": 5,
+        "order": 2,
+        "freq_list": tuple(range(256)),
+        "bins": [0.00765314, 2.49977141, 35]
+               }
+crosspowersim_prefix = 'wxss_'
+
+class WiggleZxGBT_modesim(object):
+    r"""Handle GBT x WiggleZ mode subtraction simulations
+    TODO: consider merging this with WiggleZxGBT
+    NOTE: in this case, it is better to parallelize over pipeline instance
+    (across many sims) rather than just parallelize the spectral est. -- here
+    ncpu=1 by default.
+    """
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+        self.datapath_db = dp.DataPath()
+
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file,
+                                          crosspowersim_init,
+                                          prefix=crosspowersim_prefix)
+
+        print self.params
+        self.freq_list = np.array(self.params['freq_list'], dtype=int)
+
+
+    def execute(self, processes):
+        funcname = "quadratic_products.pwrspec_combinations.pwrspec_caller"
+        caller_data = aggregate_outputs.AggregateOutputs(funcname)
+
+        wigglez_sim_file = self.params['wigglez_sim_file']
+        sel_key = self.params['wigglez_sel_key']
+        map_key = self.params['map_key']
+        tack_on = self.params['tack_on']
+
+        map_cases = self.datapath_db.fileset_cases(map_key,
+                                                   "type;treatment")
+
+        for treatment in map_cases['treatment']:
+            sim_mapkey = "%s:map;%s" % (map_key, treatment)
+            sim_mapfile = self.datapath_db.fetch(sim_mapkey, tack_on=tack_on)
+            sim_noisekey = "%s:weight;%s" % (map_key, treatment)
+            sim_noisefile = self.datapath_db.fetch(sim_noisekey, tack_on=tack_on)
+            wigglez_selfile = self.datapath_db.fetch(sel_key)
+
+            execute_key = "sim:%s" % treatment
+
+            caller_data.execute(sim_mapfile,
+                                wigglez_sim_file,
+                                sim_noisefile,
+                                wigglez_selfile,
+                                self.params,
+                                execute_key=execute_key)
+
+        caller_data.multiprocess_stack(self.params["outfile_data"],
+                                       debug=False, ncpu=1)
+
+
 # this does not actually do any batch processing, but just wraps a single
 # quadratic estimator output in the same packaging/pipeline interaction
 batchsimcrosspower_init = {
@@ -512,3 +586,31 @@ class SinglePhysicalSim(object):
                        self.params, execute_key=execute_key)
 
         caller.multiprocess_stack(self.params["outfile"], debug=False)
+
+
+cleanup_init = {
+    "path_key": "ok",
+    "tack_on": None
+    }
+
+cleanup_prefix = "clean_"
+
+class CleanupCleanedMaps(object):
+    r"""delete cleaned maps to save space (~4 GB each)"""
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+        self.datapath_db = dp.DataPath()
+
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file,
+                                          cleanup_init,
+                                          prefix=cleanup_prefix)
+
+    def execute(self, processes):
+        directory = self.datapath_db.fetch(self.params['path_key'],
+                                           tack_on=self.params['tack_on'])
+        print ">>> DELETE DIRECTORY: %s" % directory
+        try:
+            shutil.rmtree(directory)
+        except:
+            print "This directory does not exist"

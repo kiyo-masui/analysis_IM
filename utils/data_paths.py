@@ -9,6 +9,7 @@ import getpass
 import ast
 import re
 import os
+import copy
 from utils import file_tools as ft
 from core import algebra
 
@@ -656,7 +657,7 @@ class DataPath(object):
         prefix = "%s (%s) " % (purpose, db_key)
 
         if 'file' in dbentry:
-            pathout = dbentry['file']
+            pathout = copy.deepcopy(dbentry['file'])
             if tack_on:
                 pathout = tack_on_subdir(pathout, tack_on)
 
@@ -665,7 +666,7 @@ class DataPath(object):
                                prefix=prefix, silent=silent)
 
         if 'path' in dbentry:
-            pathout = dbentry['path']
+            pathout = copy.deepcopy(dbentry['path'])
             if tack_on:
                 pathout = tack_on_subdir(pathout, tack_on)
 
@@ -674,7 +675,9 @@ class DataPath(object):
                                prefix=prefix, silent=silent)
 
         if 'filelist' in dbentry:
-            pathout = (dbentry['listindex'], dbentry['filelist'])
+            pathout = (copy.deepcopy(dbentry['listindex']), \
+                       copy.deepcopy(dbentry['filelist']))
+
             if tack_on:
                 for item in pathout[0]:
                     pathout[1][item] = tack_on_subdir(pathout[1][item],

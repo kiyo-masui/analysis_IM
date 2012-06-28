@@ -150,7 +150,10 @@ class CompileCrosspower(object):
 
         # TODOi!!!!!: is this a proper function of treatment?
         if self.params["apply_2d_transfer"] is not None:
-            trans_shelve = shelve.open(self.params["apply_2d_transfer"])
+            print "Applying 2d transfer from " + \
+                  self.params["apply_2d_transfer"]
+
+            trans_shelve = shelve.open(self.params["apply_2d_transfer"], "r")
             transfer_2d = trans_shelve["transfer_2d"]
             trans_shelve.close()
 
