@@ -97,7 +97,7 @@ def make_unitless(xspec_arr, radius_arr=None, ndim=None):
 
 
 def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
-                             weights_2d=None):
+                             weights_2d=None, nullval=np.nan):
     """take a 2D power spectrum and the counts matrix (number of modex per k
     cell) and return the binned 1D power spectrum
     pwr_2d is the 2D power
@@ -121,7 +121,7 @@ def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
     if weights_2d is not None:
         weights_2d_flat = weights_2d.flatten()
     else:
-        weights_2d_flat = counts_2d_flat
+        weights_2d_flat = counts_2d_flat.astype(float)
 
     weight_pwr_prod = weights_2d_flat * pwr_2d_flat
     weight_pwr_prod[np.isnan(weight_pwr_prod)] = 0.
@@ -140,7 +140,15 @@ def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
     binsum_histo = np.histogram(radius_flat, bin_1d,
                                 weights=weight_pwr_prod)[0]
 
-    binavg = binsum_histo / weights_histo.astype(float)
+    # explicitly handle cases where the counts are zero
+    #binavg = np.zeros_like(binsum_histo)
+    #binavg[weights_histo > 0.] = binsum_histo[weights_histo > 0.] / \
+    #                             weights_histo[weights_histo > 0.]
+    #binavg[weights_histo <= 0.] = nullval
+    old_settings = np.seterr(invalid="ignore")
+    binavg = binsum_histo / weights_histo
+    binavg[np.isnan(binavg)] = nullval
+    np.seterr(**old_settings)
 
     return counts_histo, binavg
 

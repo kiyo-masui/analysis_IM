@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.ma as ma
 import shelve
 from utils import data_paths as dp
 from quadratic_products import pwrspec_estimator as pe
@@ -30,7 +31,7 @@ class PowerSpectrum(object):
         self.treatment_cases = self.pwr_cases["treatment"]
         self.treatment_cases.sort()
 
-        print self.comb_cases, self.treatment_cases
+        #print self.comb_cases, self.treatment_cases
 
         # the 2D power can be binned onto 1D
         # this is not done automatically because one can apply transfer
@@ -223,7 +224,7 @@ class PowerSpectrum(object):
 
         return summary_treatment
 
-    def agg_stat_1d_pwrspec(self, from_2d=False):
+    def agg_stat_1d_pwrspec(self, from_2d=False, use_masked=False):
         r"""TODO: use masked array here"""
         comb_arr = self.combination_array_1d(from_2d=from_2d, counts=False)
         counts_arr = self.combination_array_1d(from_2d=from_2d, counts=True)
@@ -231,16 +232,40 @@ class PowerSpectrum(object):
         stat_summary = {}
         for treatment in self.treatment_cases:
             entry = {}
-            entry['counts'] = np.mean(counts_arr[treatment], axis=1)
-            entry['mean'] = np.mean(comb_arr[treatment], axis=1)
-            entry['std'] = np.std(comb_arr[treatment], axis=1, ddof=1)
-            entry['corr'] = np.corrcoef(comb_arr[treatment])
-            entry['cov'] = np.cov(comb_arr[treatment])
+            if use_masked:
+                counts_ma = ma.masked_invalid(counts_arr[treatment])
+                comb_ma = ma.masked_invalid(comb_arr[treatment])
+                if self.num_comb > 1:
+                    entry['counts'] = np.ma.mean(counts_ma, axis=1)
+                    entry['mean'] = np.ma.mean(comb_ma, axis=1)
+                    entry['std'] = np.ma.std(comb_ma, axis=1, ddof=1)
+                    entry['corr'] = np.ma.corrcoef(comb_ma)
+                    entry['cov'] = np.ma.cov(comb_ma)
+                else:
+                    entry['counts'] = counts_ma[:,0]
+                    entry['mean'] = comb_ma[:,0]
+                    entry['std'] = 0.
+                    entry['corr'] = 0.
+                    entry['cov'] = 0.
+            else:
+                if self.num_comb > 1:
+                    entry['counts'] = np.mean(counts_arr[treatment], axis=1)
+                    entry['mean'] = np.mean(comb_arr[treatment], axis=1)
+                    entry['std'] = np.std(comb_arr[treatment], axis=1, ddof=1)
+                    entry['corr'] = np.corrcoef(comb_arr[treatment])
+                    entry['cov'] = np.cov(comb_arr[treatment])
+                else:
+                    entry['counts'] = counts_arr[treatment][:,0]
+                    entry['mean'] = comb_arr[treatment][:,0]
+                    entry['std'] = 0.
+                    entry['corr'] = 0.
+                    entry['cov'] = 0.
+
             stat_summary[treatment] = entry
 
         return stat_summary
 
-    def agg_stat_2d_pwrspec(self):
+    def agg_stat_2d_pwrspec(self, use_masked=False):
         r"""TODO: add corr and cov"""
         comb_arr = self.combination_array_2d(counts=False)
         counts_arr = self.combination_array_2d(counts=True)
@@ -248,9 +273,22 @@ class PowerSpectrum(object):
         stat_summary = {}
         for treatment in self.treatment_cases:
             entry = {}
-            entry['counts'] = np.mean(counts_arr[treatment], axis=2)
-            entry['mean'] = np.mean(comb_arr[treatment], axis=2)
-            entry['std'] = np.std(comb_arr[treatment], axis=2, ddof=1)
+            if use_masked:
+                counts_ma = ma.masked_invalid(counts_arr[treatment])
+                comb_ma = ma.masked_invalid(comb_arr[treatment])
+                entry['counts'] = np.ma.mean(counts_ma, axis=2)
+                entry['mean'] = np.ma.mean(comb_ma, axis=2)
+                if self.num_comb > 1:
+                    entry['std'] = np.ma.std(comb_ma, axis=2, ddof=1)
+                else:
+                    entry['std'] = 0.
+            else:
+                entry['counts'] = np.mean(counts_arr[treatment], axis=2)
+                entry['mean'] = np.mean(comb_arr[treatment], axis=2)
+                if self.num_comb > 1:
+                    entry['std'] = np.std(comb_arr[treatment], axis=2, ddof=1)
+                else:
+                    entry['std'] = 0.
             stat_summary[treatment] = entry
 
         return stat_summary
