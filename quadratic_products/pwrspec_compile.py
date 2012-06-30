@@ -1,3 +1,4 @@
+from plotting import plot_slice
 import numpy as np
 from utils import data_paths as dp
 from utils import file_tools
@@ -129,7 +130,8 @@ class CompileAutopower(object):
 crosspowerparams_init = {
         "p_data": "test_map",
         "p_mock": "test_map",
-        "apply_2d_transfer": None,
+        "apply_2d_beamtransfer": None,
+        "apply_2d_modetransfer": None,
         "use_noiseweights_2dto1d": True,
         "outdir": "./"
                }
@@ -148,18 +150,35 @@ class CompileCrosspower(object):
         pwr_data = ps.PowerSpectrum(self.params["p_data"])
         pwr_mock = ps.PowerSpectrum(self.params["p_mock"])
 
-        # TODOi!!!!!: is this a proper function of treatment?
-        if self.params["apply_2d_transfer"] is not None:
-            print "Applying 2d transfer from " + \
-                  self.params["apply_2d_transfer"]
+        if (self.params["apply_2d_beamtransfer"] is not None) or \
+           (self.params["apply_2d_modetransfer"] is not None):
 
-            trans_shelve = shelve.open(self.params["apply_2d_transfer"], "r")
-            transfer_2d = trans_shelve["transfer_2d"]
-            trans_shelve.close()
+            modetransfer_2d = None
+            if self.params["apply_2d_modetransfer"] is not None:
+                print "Applying 2d transfer from " + \
+                      self.params["apply_2d_modetransfer"]
+                trans_shelve = shelve.open(
+                                    self.params["apply_2d_modetransfer"], "r")
+                modetransfer_2d = trans_shelve["transfer_2d"]
+                trans_shelve.close()
+
+            beamtransfer_2d = None
+            if self.params["apply_2d_beamtransfer"] is not None:
+                print "Applying 2d transfer from " + \
+                      self.params["apply_2d_beamtransfer"]
+                trans_shelve = shelve.open(
+                                    self.params["apply_2d_beamtransfer"], "r")
+                beamtransfer_2d = trans_shelve["transfer_2d"]
+                trans_shelve.close()
 
             transfer_dict = {}
             for treatment in pwr_data.treatment_cases:
-                transfer_dict[treatment] = transfer_2d
+                if modetransfer_2d is not None:
+                    transfer_dict[treatment] = modetransfer_2d[treatment]
+                    if beamtransfer_2d is not None:
+                        transfer_dict[treatment] *= beamtransfer_2d["0modes"]
+                else:
+                    transfer_dict[treatment] = beamtransfer_2d["0modes"]
 
             pwr_data.apply_2d_trans_by_treatment(transfer_dict)
             pwr_mock.apply_2d_trans_by_treatment(transfer_dict)
@@ -173,6 +192,14 @@ class CompileCrosspower(object):
         for treatment in pwr_mock.treatment_cases:
             weights_2d[treatment] = mock2d_agg[treatment]["std"] * \
                                     mock2d_agg[treatment]["std"]
+
+            outplot_file = "%s/transfer_2d_%s.png" % (self.params['outdir'], treatment)
+            logkx = np.log10(pwr_mock.kx_2d['center'])
+            logky = np.log10(pwr_mock.ky_2d['center'])
+            plot_slice.simpleplot_2D(outplot_file, weights_2d[treatment],
+                                     logkx, logky,
+                                     ["logkx", "logky"], 1., "2D noise weight", "T")
+
 
         if self.params["use_noiseweights_2dto1d"]:
             pwr_data.convert_2d_to_1d(weights_2d=weights_2d)
