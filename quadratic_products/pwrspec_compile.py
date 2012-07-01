@@ -190,16 +190,16 @@ class CompileCrosspower(object):
         weights_2d = {}
         # weight by the variance as determined in the mock runs
         for treatment in pwr_mock.treatment_cases:
-            weights_2d[treatment] = mock2d_agg[treatment]["std"] * \
-                                    mock2d_agg[treatment]["std"]
+            weights_2d[treatment] = 1./ (mock2d_agg[treatment]["std"] * \
+                                         mock2d_agg[treatment]["std"])
 
             outplot_file = "%s/transfer_2d_%s.png" % (self.params['outdir'], treatment)
             logkx = np.log10(pwr_mock.kx_2d['center'])
             logky = np.log10(pwr_mock.ky_2d['center'])
             plot_slice.simpleplot_2D(outplot_file, weights_2d[treatment],
                                      logkx, logky,
-                                     ["logkx", "logky"], 1., "2D noise weight", "T")
-
+                                     ["logkx", "logky"], 1., "2D noise weight",
+                                     "T", logscale=False)
 
         if self.params["use_noiseweights_2dto1d"]:
             pwr_data.convert_2d_to_1d(weights_2d=weights_2d)
