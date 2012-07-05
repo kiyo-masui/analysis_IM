@@ -79,8 +79,8 @@ pipe_modules.append(band_stop.BandStop)
 from time_stream import split_bands
 pipe_modules.append(split_bands.SplitBands)
 
-#from time_stream import calibrate
-#pipe_modules.append(calibrate.Calibrate)
+#from time_stream import flux_diff_gain_cal
+#pipe_modules.append(flux_diff_gain_cal.Calibrate)
 
 #from time_stream import rotate_pol
 #pipe_modules.append(rotate_pol.RotatePol)
@@ -189,18 +189,23 @@ sb_n_bins_band = 80
 sb_offset = 136
 
 # calibrate
-cl_input_root = sb_output_root
-cl_file_middles = file_middles
-cl_input_end = '.fits'
-cl_output_root = base_dir + 'calibrated/' + prefix
-cl_output_end = '.fits'
-cl_scans = ()
-cl_IFs = ()
+fgc_input_root = sb_output_root
+fgc_file_middles = file_middles
+fgc_input_end = '.fits'
+fgc_output_root = base_dir + 'calibrated/' + prefix
+fgc_output_end = '.fits'
+fgc_scans = ()
+fgc_IFs = ()
 
-cl_cal_temperature_files = (os.getenv('GBT_KM') + 'kevin_cal/cal_21.fits',)
+fgc_mueler_file = os.getenv("GBT_TCV") + "diff_gain_params/1hr_fdg_calc_avg.txt"
+fgc_RM_file = ''
+fgc_R_to_sky = False
+fgc_DP_correct = False
+fgc_RM_correct = False
+fgc_Flux_special = True
 
 # rotate_pol
-rp_input_root = cl_output_root
+rp_input_root = fgc_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
 rp_output_root = base_dir + 'pol_selected/' + prefix
