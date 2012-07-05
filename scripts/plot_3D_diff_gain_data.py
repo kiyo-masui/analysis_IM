@@ -16,13 +16,17 @@ suffix = '_diff_gain_calc.txt'
 #May want to rebuild depending what sessions you want to grab.
 directory = 'GBT10B_036'
 directory2 = 'GBT11B_055'
+directory3 = 'GBT12A_418'
 min_sess = 41
 min_sess2 = 01
+min_sess3 = 01
 max_sess = 90
 max_sess2 = 19
+max_sess3 = 18
 #Number of sessions used
 len = max_sess - min_sess
 len2 = max_sess2-min_sess2
+len3 = max_sess3-min_sess3
 sessions = []
 filenames = []
 for i in range(0,len):
@@ -41,6 +45,15 @@ for i in range(0,len2):
       label = str(label)
    filenames.append(filedir+directory2+'/'+label+suffix)
    sessions.append(label)
+for i in range(0,len3): 
+   label = min_sess3+i
+   if label<10: 
+      label = '0'+str(label)
+   else: 
+      label = str(label)
+   filenames.append(filedir+directory3+'/'+label+suffix)
+   sessions.append(label)
+
 
 print sessions
 print filenames
@@ -52,7 +65,7 @@ scale = shape(test_dir)
 #print array
 
 #Database of mueller files
-tot_len = len+len2
+tot_len = len+len2+len3
 for j in range(0,tot_len):
    source = filenames[j]
    data = loadtxt(source)
