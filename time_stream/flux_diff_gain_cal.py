@@ -8,7 +8,11 @@ import numpy as np
 import kiyopy.custom_exceptions as ce
 import base_single
 import map.tools
+
 from core import fits_map
+from core import utils
+import time
+import ephem
 
 # base_single.BaseSingle is a base class that knows how to read an input file
 # loop over files, scans and IFs.  It does all the input and output.  The only
@@ -23,7 +27,8 @@ class Calibrate(base_single.BaseSingle) :
     prefix = 'fgc_'
     # These are the parameters that should be read from file.  These are in
     # addition to the ones defined at the top of base_single.py.
-    params_init = {'mueler_file' : 'default_fname' }
+    params_init = {'mueler_file' : 'default_fname', 
+                   'RM_file' : 'default_fname' }
     
     # The base single initialization method does a bunch of stuff, but we want
     # to add one thing.  We want to read a mueler matrix from file.
@@ -41,10 +46,11 @@ class Calibrate(base_single.BaseSingle) :
     def action(self, Data) :
 #        Data.calc_freq()
 #        frequency = Data.freq/1000000
-#        pl.plot(frequency,Data.data[0,0,0,:],label='XX-init')
-#        pl.plot(frequency,Data.data[0,1,0,:],label='Q-init')
-#        pl.plot(frequency,Data.data[0,2,0,:],label='U-init')
-#        pl.plot(frequency,Data.data[0,3,0,:],label='YY-init')
+#        print Data.data[0,0,1,:]
+#        pl.plot(frequency,ma.median(Data.data[:,0,0,:],axis=0),label='XX-init')
+#        pl.plot(frequency,Data.data[0,1,0,:]-Data.data[0,1,1,:],label='Q-init')
+#        pl.plot(frequency,Data.data[0,2,0,:]-Data.data[0,2,1,:],label='U-init')
+#        pl.plot(frequency,ma.median(Data.data[:,3,0,:],axis=0),label='YY-init')
 
         # Main Action
         i = self.file_ind
@@ -56,22 +62,28 @@ class Calibrate(base_single.BaseSingle) :
             sess_num = '0'+str(sess_num)
         project = file_middle.split('/')[0]
 #        print sess_num
-        fg_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_diff_gain_calc.txt'
+#        fg_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_diff_gain_calc.txt'
+
+#Alternative for average flux/differential gain calibration.
+        fg_file_name = self.params['mueler_file']+'1hr_fdg_calc_avg.txt'
         self.flux_diff = flux_dg(fg_file_name)
-        calibrate_pol(Data, self.flux_diff)
+        RM_dir = self.params['RM_file']
+        calibrate_pol(Data, self.flux_diff,RM_dir)
        	Data.add_history('Flux calibrated and Corrected for differential gain leakage.', 
                	         ('Gain file: ' + self.params['mueler_file'],))
         
-#        pl.plot(frequency,Data.data[0,0,0,:],label='XX-mod')
-#        pl.plot(frequency,Data.data[0,1,0,:],label='Q-mod')
-#        pl.plot(frequency,Data.data[0,2,0,:],label='U-mod')
-#        pl.plot(frequency,Data.data[0,3,0,:],label='YY-mod')
+#        pl.plot(frequency,ma.median(Data.data[:,0,0,:],axis=0),label='XX-mod')
+#        pl.plot(frequency,Data.data[0,1,0,:]-Data.data[0,1,1,:],label='Q-mod')
+#        pl.plot(frequency,Data.data[0,2,0,:]-Data.data[0,2,1,:],label='U-mod')
+#        pl.plot(frequency,ma.median(Data.data[:,3,0,:],axis=0),label='YY-mod')
+#        pl.plot(frequency,19.74748409*pow((750.0/frequency),0.49899785)*(2.28315426-0.000484307905*frequency),label='3C286-Isrc')
+#        pl.plot(frequency,25.15445092*pow((750.0/frequency),0.75578842)*(2.28315426-0.000484307905*frequency),label='3C48-Isrc')
 #        pl.legend()
 #        pl.ylim(-20,130)
 #        pl.xlabel("Frequency (MHz)")
 #        pl.ylabel("Sample Data")
-#        title0 = str(Data.field['SCAN'])+'_caloff_flux_diff_gain_'
-#        pl.savefig(title0+'Comparison_Test_for_3C286.png')
+#        title0 = str(sess_num)+'_'+str(Data.field['SCAN'])+'_caloff_flux_diff_gain_'
+#        pl.savefig(title0+'Comparison_Test.png')
 #        pl.clf()
 
        	return Data
@@ -94,7 +106,7 @@ def flux_dg(fg_file_name) :
         m_total[1,i] = mp[i,2]
     return m_total
 
-def calibrate_pol(Data, m_total) :
+def calibrate_pol(Data, m_total,RM_dir) :
     """Subtracts a Map out of Data."""
         
     # Data is a DataBlock object.  It holds everything you need to know about
@@ -134,30 +146,94 @@ def calibrate_pol(Data, m_total) :
     # Need to get parallactic angle:
     Data.calc_PA()
     # This gives an array (Data.PA) of PA values of length = time dim.
+#   print Data.dims[0]
 
+    # Since the RM Tables have half hour time divisions and scans are shorter, we can do 1 selection.
+
+#    Comp_Time = 0.0
+#    Full_date = Data.field['DATE-OBS'][Data.dims[0]/2]
+#    Date = Full_date.split('T')[0]
+#    Year = Date.split('-')[0]
+#    Month = Date.split('-')[1]
+#    Day = Date.split('-')[2]
+#    Full_time = Full_date.split('T')[1]
+#    Hour = Full_time.split(':')[0]
+#    Min = Full_time.split(':')[1]
+#    Sec = Full_time.split(':')[2]
+#    if int(Min)<=15:
+#        Comp_Time = float(Hour)+0.0
+#    elif int(Min)<=45:
+#        Comp_Time = float(Hour)+0.5
+#    else :
+#        Comp_Time = float(Hour)+1.0
+    #Victor's tables have time in format Hour (xx.xx), Az (deg), El (deg), RM
+    # Angle phi = RM*(wavelength)^2 where phi is in radians and wavelength is in meters
+
+#    RM_file_name = RM_dir + Year + Month + Day + '_RM.txt'
+#    RM_data = np.loadtxt(RM_file_name)
+#    RA_RM = sp.zeros(len(RM_data[:,0]))
+#    DEC_RM = sp.zeros(len(RM_data[:,0]))
+#    for i in range(0,len(RM_data[:,0])):
+#        RM_Hr = int(RM_data[i,0])
+#        if RM_data[i,0]%1 == 0 :
+#            RM_Min = '00'
+#            minutes = 0.0
+#        else:
+#            RM_Min = '30'
+#            minutes = 0.5
+#        Test = float(RM_Hr)+minutes
+#        if str(Comp_Time) == str(Test):
+#            UT_RM = Year+'-'+Month+'-'+Day+'T'+str(RM_Hr)+':'+RM_Min+':00.00'
+#            EL_RM = RM_data[i,2]
+#            AZ_RM = RM_data[i,1]
+#            RA_RM[i], DEC_RM[i] = utils.elaz2radecGBT(EL_RM,AZ_RM,UT_RM)
+
+    #Now have tables of RA/DEC to compare to actual RA/DEC
+
+#    RM = 0
     for time_index in range(0,Data.dims[0]):
-
+#        RA = Data.field['CRVAL2'][time_index]
+#        DEC = Data.field['CRVAL3'][time_index]
+#        print RA
+#        print DEC
+#        RM = 0
+#        valid = []
+#        for i in range(0,len(RA_RM)):
+#            if RA_RM[i] != 0:
+#                if abs(RA-RA_RM[i])<10.0:
+#                    if abs(DEC-DEC_RM[i])<10.0:
+#                        RM = RM_data[i,3]     
+#                        valid.append(i)
+#        RA_M = 10.0
+#        DEC_M = 10.0
+#        for j in range(0,len(valid)):
+#            if abs(RA-RA_RM[valid[j]])<RA_M:
+#                if abs(DEC-DEC_RM[valid[j]])<DEC_M:
+#                   RM = RM_data[valid[j],3]  
+                         
+#        print RM
+ 
     #Generate a sky matrix for this time index:
         m_sky = sp.zeros((4,4))
         m_sky[0,0] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180))
-        m_sky[0,1] = ma.sin(2*Data.PA[time_index]*sp.pi/180)
+        m_sky[0,1] = -ma.sin(2*Data.PA[time_index]*sp.pi/180)
         m_sky[0,3] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180))
-        m_sky[1,0] = -0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180)
+        m_sky[1,0] = 0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180)
         m_sky[1,1] = ma.cos(2*Data.PA[time_index]*sp.pi/180)
-        m_sky[1,3] = 0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180)
+        m_sky[1,3] = -0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180)
         m_sky[2,2] = 1
         m_sky[3,0] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180))
-        m_sky[3,1] = -ma.sin(2*Data.PA[time_index]*sp.pi/180)
+        m_sky[3,1] = ma.sin(2*Data.PA[time_index]*sp.pi/180)
         m_sky[3,3] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180))
 
         M_sky = sp.mat(m_sky)
         M_sky = M_sky.I
 #        print M_sky
 
-        for cal_index in range(0,Data.dims[2]):
+#        for cal_index in range(0,Data.dims[2]):
+        for cal_index in range(0,2):
         # Determines the Gains to use   
             for freq in range(0,Data.dims[3]):
-
      # Tells which mueller matrix to use. 
                freq_limit = len(m_total[0,:])
                frequency = int(Data.freq[freq]/1000)
@@ -170,13 +246,39 @@ def calibrate_pol(Data, m_total) :
 #               elif freq_limit == 260:
 #                   bin = 929-frequency
 #               print bin
+
+    #Generate a sky matrix for this time index:
+    #With faraday rotation  sky matrix now frequency dependent
+ 
+#               wavelength = 300000.0/float(frequency) # should be in meters given that frequency is in kHz
+#               print wavelength
+#               Phi = RM*wavelength*wavelength
+#               print Phi
+#               m_sky = sp.zeros((4,4)) 
+#               m_sky[0,0] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
+#               m_sky[0,1] = -ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi) 
+#               m_sky[0,3] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
+#               m_sky[1,0] = 0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi) 
+#               m_sky[1,1] = ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi) 
+#               m_sky[1,3] = -0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi)
+#               m_sky[2,2] = 1
+#               m_sky[3,0] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
+#               m_sky[3,1] = ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi)
+#               m_sky[3,3] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
+  
+#               M_sky = sp.mat(m_sky)
+#               M_sky = M_sky.I 
+#               print M_sky 
+
     # Converts files into vector format 
                XY_params = Data.data[time_index,:,cal_index,freq]       
     # Next there is a matrix multiplication that will generate 
     # a new set of xy values.
                XY_params[0] = XY_params[0]*m_total[0,bin]
                XY_params[3] = XY_params[3]*m_total[1,bin]
-               XY_params = np.dot(M_sky,XY_params)
+               XY_params[1] = XY_params[1]*sp.sqrt(m_total[0,bin]*m_total[1,bin])
+               XY_params[2] = XY_params[2]*sp.sqrt(m_total[0,bin]*m_total[1,bin])
+#               XY_params = np.dot(M_sky,XY_params)
 
     # Note the correction is only applied to XX and YY, but all terms are rotated to sky coordinates (PA rotation)
 

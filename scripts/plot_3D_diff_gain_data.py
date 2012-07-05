@@ -1,11 +1,14 @@
+# This script is set to make 3D plots of the XX and YY gain corrections oover a range of sessions.
+
 import pylab
 import sys
 from numpy import *
 import scipy as sp
+import scipy.interpolate as ip
 
 prefix = ''
 
-#This is $GBT_OUT/mueller_params/
+#This is $GBT_OUT/diff_gain_params/
 filedir = sys.argv[1]
 suffix = '_diff_gain_calc.txt'
 
@@ -15,8 +18,8 @@ directory = 'GBT10B_036'
 directory2 = 'GBT11B_055'
 min_sess = 41
 min_sess2 = 01
-max_sess = 89
-max_sess2 = 18
+max_sess = 90
+max_sess2 = 19
 #Number of sessions used
 len = max_sess - min_sess
 len2 = max_sess2-min_sess2
@@ -39,7 +42,8 @@ for i in range(0,len2):
    filenames.append(filedir+directory2+'/'+label+suffix)
    sessions.append(label)
 
-#print filenames
+print sessions
+print filenames
 
 #Need a test_dir to determine the number of frequency slices
 array =[] 
@@ -58,30 +62,60 @@ for j in range(0,tot_len):
 
 #List of frequencies for axis.
 freqs = test_dir[:,0]
+freqs_new = arange(freqs[-1],freqs[0]+0.78125,0.78125)
 
 #print freqs
 
 XG = sp.zeros((tot_len,scale[0]))
 YG = sp.zeros((tot_len,scale[0]))
+XG_mod = sp.zeros((tot_len,scale[0]))
+YG_mod = sp.zeros((tot_len,scale[0]))
 
 #Building separate tables for each param.
 for i in range(0,tot_len):
    for j in range(0,scale[0]):
       XG[i,j] = array[i][j][1]
       YG[i,j] = array[i][j][2]
+      XG_mod[i,j] = array[i][j][1]
+      YG_mod[i,j] = array[i][j][2]
+   for k in range(102,110):
+      XG_mod[i,k] = 0.5*(XG_mod[i,101]+XG_mod[i,111])
+      YG_mod[i,k] = 0.5*(YG_mod[i,101]+YG_mod[i,111])
+   for k in range(130,137):
+      XG_mod[i,k] = 0.5*(XG_mod[i,129]+XG_mod[i,138])
+      YG_mod[i,k] = 0.5*(YG_mod[i,129]+YG_mod[i,138])
+   for k in range(1,scale[0]-1):
+      if abs(XG_mod[i,k]-XG_mod[i,k-1])>0.5:
+         XG_mod[i,k] = XG_mod[i,k-1]
+      if abs(YG_mod[i,k]-YG_mod[i,k-1])>0.5:
+         YG_mod[i,k] = YG_mod[i,k-1]
+   Xmod = ip.UnivariateSpline(freqs_new,XG_mod[i,:],s=1,k=1)
+   Ymod = ip.UnivariateSpline(freqs_new,YG_mod[i,:],s=1,k=2)
+   XG_mod[i] = Xmod(freqs_new)
+   YG_mod[i] = Ymod(freqs_new)
+   
 
 
 #Going to make the two gains as subplots
 pylab.subplot(211)
 #pylab.imshow(m_II/m_II,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1.,vmax=1.,extent=(freqs.min(),freqs.max(),min_sess,max_sess))
-pylab.imshow(XG,interpolation='gaussian', cmap='hot', origin='lower',vmin=0.75,vmax=3.25,extent=(freqs.max(),freqs.min(),0,tot_len))
+pylab.imshow(XG, cmap='hot', origin='lower',vmin=0.75,vmax=3.25,extent=(freqs.max(),freqs.min(),0,tot_len))
 pylab.colorbar(orientation='horizontal')
 #pylab.savefig('XX_Gain_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
 #pylab.clf()
 
 pylab.subplot(212)
-pylab.imshow(YG,interpolation='gaussian', cmap='hot', origin='lower',vmin=0.75,vmax=3.25,extent=(freqs.max(),freqs.min(),0,tot_len))
+pylab.imshow(YG, cmap='hot', origin='lower',vmin=0.75,vmax=3.25,extent=(freqs.max(),freqs.min(),0,tot_len))
 pylab.colorbar(orientation='horizontal')
-pylab.savefig('XX_and_YY_gain_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
+pylab.savefig('XX_and_YY_gain_'+str(min_sess)+'-'+str(max_sess2-1)+'_compare.png')
 pylab.clf()
 
+pylab.subplot(211)
+pylab.imshow(XG_mod,cmap='hot',origin='lower',vmin=0.75,vmax=3.25,extent=(freqs_new.max(),freqs_new.min(),0,tot_len))
+pylab.colorbar(orientation='horizontal')
+
+pylab.subplot(212)
+pylab.imshow(YG_mod,cmap='hot',origin='lower',vmin=0.75,vmax=3.25,extent=(freqs_new.max(),freqs_new.min(),0,tot_len))
+pylab.colorbar(orientation='horizontal')
+pylab.savefig('XX_and_YY_gain_smoothed_'+str(min_sess)+'-'+str(max_sess2-1)+'_compare.png')
+pylab.clf()
