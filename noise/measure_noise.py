@@ -430,7 +430,8 @@ def fit_overf_const(power, window, freq):
         return spec
     # Residuals function.
     def residuals(params):
-        return (power - model(params))/weights
+        residuals = (power - model(params))/weights
+        return residuals
     # A function for the Jacobian matrix.
     def jacobian(params):
         a = params[0]

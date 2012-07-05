@@ -290,9 +290,10 @@ class DirtyMapMaker(object):
         # right one.
         n_bands_db = db_freq.shape[0]
         db_band = -1
+        epsilon = 1e-8
         for ii in range(n_bands_db):
-            if ((min(db_freq[ii,:]) <= min(freq))
-                and (max(db_freq[ii,:]) >= max(freq))):
+            if ((min(db_freq[ii,:]) <= min(freq) * (1 + epsilon))
+                and (max(db_freq[ii,:]) >= max(freq) * (1 - epsilon))):
                 db_band = ii
         if db_band == -1:
             raise RuntimeError("Did not find an overlapping band in foreground"
@@ -305,7 +306,7 @@ class DirtyMapMaker(object):
         n_chan_db = len(db_freq)
         n_chan = len(freq)
         chan_start_ind = -1
-        for ii in range(n_chan_db - n_chan):
+        for ii in range(n_chan_db - n_chan + 1):
             if sp.allclose(freq, db_freq[ii:ii + n_chan]):
                 chan_start_ind = ii
         if chan_start_ind == -1:
@@ -552,7 +553,8 @@ class DirtyMapMaker(object):
                 # If we've subtracted any modes out of the time stream,
                 # deweight them.
                 for mode_num in range(params['n_ts_foreground_modes']):
-                    N.deweight_freq_mode(self.get_ts_foreground_mode(mode_num))
+                    N.deweight_freq_mode(self.get_ts_foreground_mode(mode_num),
+                            T_large**2, params['deweight_time_slope'])
                 # Store all these for later.
                 pointing_list.append(P)
                 noise_list.append(N)
@@ -1212,16 +1214,28 @@ class Noise(object):
         thermal_var = max((thermal_var, T_small**2))
         noise_mat.flat[::self.n_time + 1] += thermal_var
         self.freq_mode_noise[start_mode,...] = noise_mat
-
-    def deweight_freq_mode(self, mode, T=T_large**2):
+        # XXX
+        if not hasattr(self, 'debug'):
+            self.debug = []
+        this_debug = {'amp' : amp, 'index' : index, 'f0' : f0,
+                      'thermal' : thermal_var,
+                      "max_corr" :  sp.amax(correlation_function)}
+        self.debug.append(this_debug)
+        
+    def deweight_freq_mode(self, mode, T=T_huge**2, ortho_mean_slope=False):
         """Completly deweight a frequency mode."""
         
         n_chan = self.n_chan
         n_time = self.n_time
         start_mode = self.add_freq_modes(1)
         self.freq_modes[start_mode,:] = mode
-        self.freq_mode_noise[start_mode,...]  = (sp.eye(n_time, dtype=float)
-                                                 * T * n_chan)
+        noise_mat = (sp.eye(n_time, dtype=float) * T * n_chan)
+        if ortho_mean_slope:
+            # This greatly improves numerical stability.
+            noise_mat = self.orthogonalize_mat_mean_slope(noise_mat)
+        # Add a bit to diagonal for conditioning.
+        noise_mat.flat[::n_time + 1] += T_small**2
+        self.freq_mode_noise[start_mode,...]  = noise_mat
 
     def add_all_chan_low(self, amps, index, f_0):
         """Deweight frequencies below, and a bit above 'f_0', 
@@ -1258,10 +1272,10 @@ class Noise(object):
         # Loop through and fill the modes.
         for ii, f in enumerate(frequencies):
             this_amp_factor = (f / f_0)**index * df
-            if sp.any(this_amp_factor > f_large * self.n_time):
-                print "time mode amplitude:", this_amp_factor
-                raise NoiseError("Deweighting amplitude too high.")
             this_amps = this_amp_factor * amps
+            if sp.any(this_amps > T_large**2):
+                print "time mode amplitude:", this_amps
+                raise NoiseError("Deweighting amplitude too high.")
             # The cosine (symetric) mode.
             cos_mode = sp.cos((ii+1) * time_normalized)
             norm_cos = sp.sqrt(sp.sum(cos_mode**2))
@@ -1361,7 +1375,9 @@ class Noise(object):
                 A = self.freq_mode_noise[ii].view()
                 A.shape = (n_time,) * 2
                 if get_scaled_cond_h(A) > 1.e11 :
-                    print "Freq cond:", max(e), min(e), max(e)/min(e)
+                    e, v = linalg.eigh(A)
+                    print "Freq cond:", max(e)/min(e), get_scaled_cond_h(A)
+                    print self.debug
                     msg = ("Some freq_mode noise components not positive"
                            " definate.")
                     raise RuntimeError(msg)
@@ -1376,7 +1392,8 @@ class Noise(object):
                 A = self.time_mode_noise[ii].view()
                 A.shape = (n_chan,) * 2
                 if get_scaled_cond_h(A) > 1.e11 :
-                    print "Time cond:", max(e)/min(e)
+                    e, v = linalg.eigh(A)
+                    print "Time cond:", max(e)/min(e), get_scaled_cond_h(A)
                     msg = ("Some time_mode noise components not positive"
                            " definate.")
                     raise RuntimeError(msg)

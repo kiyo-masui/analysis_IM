@@ -28,10 +28,10 @@ T_large = 1.0
 T_medium = 0.01
 
 # Temperture scale of the signal, and smaller than any noise scale in the
-# system (for a single scan).  Note that T_huge**2/T_small**2 < 10**14 (the
+# system (for a single scan).  Note that T_huge**2/T_small**2 << 10**14 (the
 # machine precision).  T_small can be used to regularize matricies without
 # interfering with the noise model.
-T_small = 1.e-4
+T_small = 1.e-3
 
 # The scale of the telescope system temperature. Approximate.
 T_sys = 25.  # K

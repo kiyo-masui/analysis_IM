@@ -6,35 +6,26 @@ from core import dir_data
 import scipy as sp
 
 # What data to process and how to split it up.
-field = '15hr'
+field = '1hr'
 
-#sessions = range(41, 90)
-# According to Tabitha, cal unstable in sessions 52 to 58.
-#sessions = range(41, 52) + range(59, 90)
-sessions = range(41, 90)
-#sessions = range(41, 44)
-#sessions = [50]
+sessions_10B = range(41, 90)
+sessions_11B = range(1, 19)
 
-file_middles = tuple(dir_data.get_data_files(sessions, field='15hr', 
+file_middles = tuple(dir_data.get_data_files(sessions_11B, field=field, 
+                                              project="GBT11B_055", 
+                                              type='ralongmap'))
+file_middles = (tuple(dir_data.get_data_files(sessions_10B, field=field, 
                                              project="GBT10B_036", 
 											 type='ralongmap'))
-# Excludes session 81 which has a huge cal change.
-sessions_firs = range(41,81)
-#sessions_firs.remove(71)
-middles_firs = tuple(dir_data.get_data_files(sessions_firs, field='15hr', 
-                                             project="GBT10B_036", 
-											 type='ralongmap'))
+				+ file_middles)
 
-n_files = len(middles_firs)
-middles_a = middles_firs[:n_files//4]
-middles_b = middles_firs[n_files//4:2*n_files//4]
-middles_c = middles_firs[2*n_files//4:3*n_files//4]
-middles_d = middles_firs[3*n_files//4:n_files]
-# Known bad index.
-#middles_d = ['GBT10B_036/71_wigglez15hrst_ralongmap_82-89'
-#middles_d = tuple(middles_d)
+n_files = len(file_middles)
+middles_a = file_middles[:n_files//4]
+middles_b = file_middles[n_files//4:2*n_files//4]
+middles_c = file_middles[2*n_files//4:3*n_files//4]
+middles_d = file_middles[3*n_files//4:n_files]
 
-middles_temp = tuple(dir_data.get_data_files([80], field='15hr', 
+middles_temp = tuple(dir_data.get_data_files([88], field=field, 
                                              project="GBT10B_036", 
                                              type='ralongmap'))
 #middles_temp = ['GBT10B_036/44_wigglez15hrst_ralongmap_249-256']
@@ -44,14 +35,14 @@ middles_temp = tuple(dir_data.get_data_files([80], field='15hr',
 # 22hr: RA center = 325.4190, DEC center = 0.0, Pixel spacing = 0.0627, map shape = (80,49)
 # 1hr: RA center = 13.0, DEC center = 1.85, Pixel spacing = 0.0627, map shape = (161,83)
 
-map_centre = (217.87, 2.0)
+map_centre = (13.0, 1.85)
 # For maps where performace isn't important.
-map0_shape = (96, 52)
-map0_spacing = .050
+map0_shape = (161, 83)
+map0_spacing = .0627
 # Performance limited maps.
 #map_shape = (64, 34)
 #map_spacing = .07
-map_shape = (72, 38)
+map_shape = (156, 80)
 map_spacing = .0627
 
 base_dir_main = os.getenv('GBT_OUT')
@@ -59,7 +50,7 @@ base_dir = "/mnt/raid-project/gmrt/kiyo/gbt_out_new/"
 data_dir = os.getenv('GBT_DATA')
 base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
-map_base = base_dir + 'maps/june25/'
+map_base = base_dir + 'maps/july5/'
 #map_base = '/mnt/scratch-pen/kiyo/gbt_out/' + 'maps/june8/'
 
 
@@ -68,7 +59,7 @@ prefix = ''
 map_prefix = '' + field + '_' + '41-90' + '_'
 
 # Maximum number of processes to use.
-pipe_processes = 24
+pipe_processes = 12
 
 
 ####  List of modules to execute.  ####
@@ -76,17 +67,17 @@ pipe_modules = []
 
 #### Calibration ####
 
-#from time_stream import flag_data
-#pipe_modules.append(flag_data.FlagData)
+from time_stream import flag_data
+pipe_modules.append(flag_data.FlagData)
 
-#from time_stream import rebin
-#pipe_modules.append(rebin.Rebin)
+from time_stream import rebin
+pipe_modules.append(rebin.Rebin)
 
-#from time_stream import band_stop
-#pipe_modules.append(band_stop.BandStop)
+from time_stream import band_stop
+pipe_modules.append(band_stop.BandStop)
 
-#from time_stream import split_bands
-#pipe_modules.append(split_bands.SplitBands)
+from time_stream import split_bands
+pipe_modules.append(split_bands.SplitBands)
 
 #from time_stream import calibrate
 #pipe_modules.append(calibrate.Calibrate)
@@ -117,11 +108,11 @@ pipe_modules = []
 #from noise import measure_noise
 #pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
-from map import dirty_map
+#from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
 #from map import clean_map
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
@@ -152,7 +143,6 @@ fd_time_cut = 10
 
 # Rebin the time and frequency axis.
 ##### Get input root from the normal data pipeline. #####
-# XXX this wasn't right for data generated before June 28.
 rb_input_root = fd_output_root
 #rb_input_root = base_dir + 'flagged/' + prefix
 rb_file_middles = file_middles
@@ -225,7 +215,7 @@ rp_average_cals = True
 # dirty_map
 dm_input_root = rp_output_root
 #dm_file_middles = file_middles
-dm_file_middles = middles_firs
+dm_file_middles = file_middles
 dm_input_end = '.fits'
 dm_output_root = map_base + 'fir_' + map_prefix
 dm_scans = ()

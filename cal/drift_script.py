@@ -74,32 +74,52 @@ def chi_2(params, data):
 
 initial_params = np.array([500., 100., 15., 15., 0., 0., 10., 10., 0., 0.,
                            0., 0., 0., 0., 0., 0., 0., 0.])
+npar = len(initial_params)
 
 for Data in Blocks:
     nt = Data.data.shape[0]
-    for ii in [30, 100]:
-        this_data = Data.data[:,:,:,ii]
+    nf = Data.data.shape[3]
+    p = np.zeros((npar, nf))
+    print
+    for ii in range(10,nf):
+        print ii,
+        this_data = Data.data[:,:,:,ii].copy()
         this_data = np.rollaxis(this_data, 0, 3)
         this_chi_2 = lambda x: chi_2(x, this_data)
         fit, err = optimize.leastsq(this_chi_2, initial_params)
+        p[:,ii] = fit
         this_model = model(*(nt,) + tuple(fit))
-        print fit
-        plt.figure()
-        plt.plot(this_data[0,1,:])
-        plt.plot(this_data[3,1,:])
-        plt.plot(this_model[0,1,:])
-        plt.plot(this_model[3,1,:])
-        plt.figure()
-        plt.plot(this_data[1,1,:])
-        plt.plot(this_data[2,1,:])
-        plt.plot(this_model[1,1,:])
-        plt.plot(this_model[2,1,:])
-        plt.figure()
-        plt.plot(this_data[0,0,:] - this_data[0,1,:])
-        plt.plot(this_data[3,0,:] - this_data[3,1,:])
-        plt.plot(this_data[1,0,:] - this_data[1,1,:])
-        plt.plot(this_model[0,0,:] - this_model[0,1,:])
-        plt.plot(this_model[3,0,:] - this_model[3,1,:])
-        plt.plot(this_model[1,0,:] - this_model[1,1,:])
+        #print fit
+        #plt.figure()
+        #plt.plot(this_data[0,1,:])
+        #plt.plot(this_data[3,1,:])
+        #plt.plot(this_model[0,1,:])
+        #plt.plot(this_model[3,1,:])
+        #plt.figure()
+        #plt.plot(this_data[1,1,:])
+        #plt.plot(this_data[2,1,:])
+        #plt.plot(this_model[1,1,:])
+        #plt.plot(this_model[2,1,:])
+        #plt.figure()
+        #plt.plot(this_data[0,0,:] - this_data[0,1,:])
+        #plt.plot(this_data[3,0,:] - this_data[3,1,:])
+        #plt.plot(this_data[1,0,:] - this_data[1,1,:])
+        #plt.plot(this_model[0,0,:] - this_model[0,1,:])
+        #plt.plot(this_model[3,0,:] - this_model[3,1,:])
+        #plt.plot(this_model[1,0,:] - this_model[1,1,:])
+    gains = np.sqrt(p[2,:] * p[3,:]).real
+    gains[gains < 0.6 * np.mean(gains)] = np.mean(gains) * 1000000
+    plt.figure()
+    plt.plot(gains)
+    plt.plot(p[2,:])
+    plt.plot(p[3,:])
+    U_data = Data.data[:,1,1,:].copy().filled(0) / gains
+    plt.figure()
+    plt.imshow(U_data)
+    plt.colorbar()
+    V_data = Data.data[:,2,1,:].copy().filled(0) / gains
+    plt.figure()
+    plt.imshow(V_data)
+    plt.colorbar()
 
 
