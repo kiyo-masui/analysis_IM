@@ -86,6 +86,8 @@ class PowerSpectrumMaker(object):
         fkpp = params['FKPpk']
         FKPweight = params['FKPweight']
 
+        print params['imap_pair']
+        print params['nmap_pair']
         PK, k, PK2, k2 = self.GetPower()
 
         B = []

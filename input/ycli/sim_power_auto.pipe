@@ -21,7 +21,7 @@ print
 
 map_sim = os.getenv('MAP_SIM')
 map_cln = os.getenv('MAP_CLN')   # This is used for noise weight
-map_cln = map_cln + '_combined'  # we just use the combined weight
+#map_cln = map_cln + '_combined'  # we just use the combined weight
 
 hour = int(os.getenv('HOUR'))
 mode = int(os.getenv('MODE'))
@@ -32,7 +32,11 @@ resultf = 'simmaps'
 # get the maps dict
 datadb = data_paths.DataPath()
 imaps = datadb.fetch(map_sim + "_temperature", silent=True)
-nmaps = datadb.fetch(map_cln, silent=True)
+#imaps = datadb.fetch(map_sim + "_beam", silent=True)
+if os.path.exists(map_cln):
+    nmaps = data_paths.get_mapdict(map_cln + 'mapmode_map/')
+else:
+    nmaps = datadb.fetch(map_cln + '_combined', silent=True)
 
 
 imap_root = []
@@ -89,8 +93,8 @@ print
 print
 
 #""" Pipe line """
-#from mkpower import prepare
-#pipe_modules.append(prepare.Prepare)
+from mkpower import prepare
+pipe_modules.append(prepare.Prepare)
 
 from mkpower import mkpower_combine
 pipe_modules.append(mkpower_combine.PowerSpectrumMaker)
@@ -98,8 +102,8 @@ pipe_modules.append(mkpower_combine.PowerSpectrumMaker)
 #from mkpower import mkpower
 #pipe_modules.append(mkpower.PowerSpectrumMaker)
 #
-#from mkpower import pycamb
-#pipe_modules.append(pycamb.CAMB)
+from mkpower import pycamb
+pipe_modules.append(pycamb.CAMB)
 #
 #from mkpower import plot_single
 #pipe_modules.append(plot_single.PowerSpectrumPlot)
@@ -112,7 +116,7 @@ pipe_modules.append(mkpower_combine.PowerSpectrumMaker)
 """  Prepare """
 #from mkpower import prepare
 #pipe_modules.append(prepare.Prepare)
-pre_processes = 17
+pre_processes = 9
 pre_plot = False
 #pre_plot = True
 pre_output_root = output_root

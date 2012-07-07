@@ -53,7 +53,8 @@ params_init = {
                'sub_weighted_mean': True,
                'regenerate_noise_inv': True,
                'modes': [10, 15],
-               'no_weights': False
+               'no_weights': False,
+               'save_section': True,
                }
 prefix = 'fs_'
 
@@ -326,12 +327,13 @@ class PairSet():
             weight_list.append(pair.noise_inv1)
             weight_list.append(pair.noise_inv2)
 
-            algebra.save(map1_file, map1)
-            algebra.save(map2_file, map2)
-            algebra.save(noise_inv1_file, pair.noise_inv1)
-            algebra.save(noise_inv2_file, pair.noise_inv2)
-            algebra.save(modes1_file, pair.left_modes)
-            algebra.save(modes2_file, pair.right_modes)
+            if self.params['save_section']:
+                algebra.save(map1_file, map1)
+                algebra.save(map2_file, map2)
+                algebra.save(noise_inv1_file, pair.noise_inv1)
+                algebra.save(noise_inv2_file, pair.noise_inv2)
+                algebra.save(modes1_file, pair.left_modes)
+                algebra.save(modes2_file, pair.right_modes)
 
         cumulative_product = algebra.zeros_like(prodmap_list[0])
         cumulative_weight = algebra.zeros_like(prodmap_list[0])

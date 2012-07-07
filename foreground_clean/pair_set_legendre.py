@@ -60,7 +60,8 @@ params_init = {
                'modes': [10, 15],
                'good_modes': 0, # number of modes remained. 
                                 # set it <=0, if no modes need to be replaced. 
-               'no_weights': False
+               'no_weights': False,
+               'save_section': True,
                }
 prefix = 'fs_'
 
@@ -116,7 +117,8 @@ class PairSet_LegendreSVD(pair_set.PairSet):
         #                                          tack_on=self.params['tack_on'])
         self.output_root = self.params['output_root']
         if not os.path.isdir(self.output_root):
-            os.mkdir(self.output_root)
+            os.makedirs(self.output_root)
+            #os.mkdir(self.output_root)
 
         if self.params['SVD_root']:
             self.SVD_root = self.datapath_db.fetch(self.params['SVD_root'],
@@ -145,6 +147,7 @@ class PairSet_LegendreSVD(pair_set.PairSet):
             # replace svd modes by Legendre polymodial
             if self.params['good_modes'] > 0:
                 good_modes = self.params['good_modes']
+                print "replace SVD mode from %d to the end" % good_modes
                 freq_n_all = self.params['freq_n_all']
                 mode_n = len(svd_info[1])
                 svd_info_all = np.zeros(shape=(2, mode_n, freq_n_all))

@@ -31,8 +31,8 @@ export MODE="15"
 export HOUR="15"
 # -----------------------------------------------------------
 
-#export COMP="_nocomp"
-#export HOUR=15
-#export MODE=15
-#export FLAG="_noconv"
-#export BEAM="_beam"
+export GOODMODES="5"
+export SIMFILE="sim_beam_000.npy"
+export MAPFILE="sim_15hr_oldmap_str_beam_plus_fg"
+export CLEAN_REAL=True
+export CLEAN_SIM=False

@@ -78,7 +78,7 @@ def replace_modes(mode_functions, n, m=None, weight=None):
     if m==None: m = n_mode
     for i in range(n, m):
         mode_functions_new = gs.gs_array(mode_functions_new, 
-            legendre_order = i-n, weight=weight)
+            legendre_order = i-n+1, weight=weight)  # note: start from P1
         #mode_functions_new[-1] *= 0.1
     #print mode_functions_new.shape
     return mode_functions_new
