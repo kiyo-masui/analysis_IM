@@ -14,7 +14,8 @@ from utils.cosmology import Cosmology
 from utils import units
 import sys
 
-cube_frame_dir = "/scratch/eswitzer/cube_frames/"
+#cube_frame_dir = "/scratch/eswitzer/cube_frames/"
+cube_frame_dir = "/mnt/raid-project/gmrt/eswitzer/GBT/cube_frames/"
 
 
 # TODO make a more general kwargs wrapper
