@@ -702,6 +702,118 @@ class DirtyMapMaker(object):
 
 #### Classes ####
 
+class DataSet(object):
+    """Contains all the information about a data set, including noise, pointing
+    and data."""
+
+    def __init__(self, Blocks, map, pol_ind):
+        data = sel.preprocess_data(Blocks, map, pol_ind)
+        self.time_stream, ra, dec, az, el, time, mask_inds = data
+        n_time = time_stream.shape[1]
+        if n_time < 5:
+            continue
+        self.Pointing = Pointing(("ra", "dec"), (ra, dec), map,
+                     params['interpolation'])
+        # Now build up our noise model for this piece of data.
+        self.Noise = Noise(time_stream, time)
+
+    def preprocess_data(self, Blocks, map, pol_ind):
+        """The method converts data to a mapmaker friendly format."""
+        
+        # On the first pass just get dimensions and do some checks.
+        nt = 0
+        first_block = True
+        map_freq = map.get_axis('freq')
+        for Data in Blocks:
+            nt += Data.dims[0]
+            Data.calc_freq()
+            if not np.allclose(Data.freq, map_freq):
+                raise ValueError("Frequency axis of Data Block does not"
+                                 " match.")
+            if first_block:
+                self.pol = Data.field('CRVAL4')[pol_ind]
+            elif self.pol == Data.field('CRVAL4')[pol_ind]:
+                raise ValueError("Polarization of Data Block inconsistant.")
+        # Allocate memory for the outputs.
+        time_stream = sp.empty((self.n_chan, nt), dtype=float)
+        time_stream = al.make_vect(time_stream, axis_names=('freq', 'time'))
+        # This mask is inverted, i.e. False = masked.
+        mask = sp.empty((self.n_chan, nt), dtype=bool)
+        ra = sp.empty(nt, dtype=float)
+        dec = sp.empty(nt, dtype=float)
+        az = sp.empty(nt, dtype=float)
+        el = sp.empty(nt, dtype=float)
+        time = sp.empty(nt, dtype=float)
+        # Now loop through and copy the data.
+        tmp_time_ind = 0
+        tmp_dt = []
+        for Data in Blocks:
+            # First deal with the data.
+            this_nt = Data.dims[0]
+            this_data = Data.data[:,pol_ind,0,:]
+            time_stream[:,tmp_time_ind:tmp_time_ind + this_nt] = \
+                    this_data.filled(0).transpose()
+            # Now figure out if any of the data is masked.
+            this_mask = sp.logical_not(ma.getmaskarray(
+                Data.data[:,pol_ind,0,:]).transpose())
+            mask[:,tmp_time_ind:tmp_time_ind + this_nt] = this_mask
+            # Copy the other fields.
+            Data.calc_pointing()
+            ra[tmp_time_ind:tmp_time_ind + this_nt] = Data.ra
+            dec[tmp_time_ind:tmp_time_ind + this_nt] = Data.dec
+            Data.calc_time()
+            time[tmp_time_ind:tmp_time_ind + this_nt] = Data.time
+            tmp_dt.append(abs(sp.mean(sp.diff(Data.time))))
+            az[tmp_time_ind:tmp_time_ind + this_nt] = Data.field['CRVAL2']
+            el[tmp_time_ind:tmp_time_ind + this_nt] = Data.field['CRVAL3']
+            tmp_time_ind += this_nt
+        # Make sure the bandwidths are the same for all Data Blocks.
+        dt = sp.mean(tmp_dt)
+        if not sp.allclose(tmp_dt, dt, rtol=1e-2):
+            print tmp_dt, dt
+            raise RuntimeError("Samplings not uniform.")
+        self.BW = 1./2./dt
+        # Now that we have all the data in one place, subtract mean, slope.
+        # XXX
+        if self.params['deweight_time_slope']:
+            n_poly = 2
+        else:
+            n_poly = 1
+        polys = misc.ortho_poly(time[None,:], n_poly, mask, -1)
+        amps = sp.sum(polys * time_stream, -1)
+        time_stream -= sp.sum(amps[:,:,None] * polys, 0)
+        time_stream *= mask
+        # Calculate variances.
+        channel_vars = sp.sum(time_stream**2, -1)
+        channel_counts = sp.sum(mask, -1)
+        channel_counts[channel_counts==0] = 1.
+        channel_vars /= channel_counts
+        # Get rid of any wierd channels.
+        bad_channels =  (channel_vars < 1.e-4 
+                        * sp.median(channel_vars[channel_counts > 5]))
+        bad_channels = sp.logical_or(channel_counts < 5, bad_channels)
+        channel_vars[bad_channels] = T_infinity**2
+        # Store the variances in case they are needed as noise weights.
+        self.channel_vars = channel_vars
+        # Trim this down to exculd all data points that are outside the map
+        # bounds.
+        time_stream, inds = trim_time_stream(time_stream, (ra, dec),
+                (min(map.get_axis('ra')), min(map.get_axis('dec'))),
+                (max(map.get_axis('ra')), max(map.get_axis('dec'))))
+        mask = mask[:,inds]
+        ra = ra[inds]
+        dec = dec[inds]
+        time = time[inds]
+        az = az[inds]
+        el = el[inds]
+        # Change the format of the mask.
+        mask_inds = sp.where(sp.logical_not(mask))
+        return time_stream, ra, dec, az, el, time, mask_inds
+
+    # Don't forget to check the polarization matches outside of file.
+
+
+
 class Pointing(object):
     """Class represents the pointing operator.
 
