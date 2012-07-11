@@ -19,7 +19,7 @@ from utils import data_paths
 
 
 def bin_catalog_data(catalog, freq_axis, ra_axis,
-                     dec_axis, verbose=False):
+                     dec_axis, debug=False, use_histogramdd=False):
     """
     bin catalog data onto a grid in RA, Dec, and frequency
     This currently assumes that all of the axes are uniformly spaced
@@ -35,20 +35,21 @@ def bin_catalog_data(catalog, freq_axis, ra_axis,
     ra_edges = binning.find_edges(ra_axis)
     dec_edges = binning.find_edges(dec_axis)
 
-    if verbose:
-        #print len(freq_axis), len(ra_axis), len(dec_axis)
-        #print len(freq_edges), len(ra_edges), len(dec_edges)
+    if debug:
         binning.print_edges(sample[:, 0], freq_edges, "frequency")
         binning.print_edges(sample[:, 1], ra_edges, "RA")
         binning.print_edges(sample[:, 2], dec_edges, "Dec")
+        print sample, freq_edges, ra_edges, dec_edges
 
-    #print sample, freq_edges, ra_edges, dec_edges
+    if use_histogramdd:
+        count_cube, edges = np.histogramdd(sample,
+                                            bins=[freq_edges,
+                                                  ra_edges, dec_edges])
+        print edges
+    else:
+        count_cube = binning.histogram3d(sample, freq_edges,
+                                         ra_edges, dec_edges)
 
-    count_cube = binning.histogram3d(sample, freq_edges, ra_edges, dec_edges)
-    #count_cube, edges = np.histogramdd(sample,
-    #                                    bins=[freq_edges,
-    #                                          ra_edges, dec_edges])
-    #print edges
     return count_cube
 
 
