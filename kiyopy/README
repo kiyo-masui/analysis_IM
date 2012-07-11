@@ -1,0 +1,3 @@
+This package contains Kiyoshi Masui's general python utilities that are reused
+between projects.  Most code that I write depends on this package.  For
+more information, Email me at kiyo@cita.utoronto.ca.
