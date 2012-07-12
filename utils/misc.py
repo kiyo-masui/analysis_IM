@@ -105,8 +105,13 @@ def time2float(UT) :
 
     time_array = sp.empty(UT.shape, dtype=float)
     
-    for ii in xrange(UT.size) :
-        UT_wholesec, partial_sec = UT.flat[ii].split('.', 1)
+    for ii in xrange(UT.size):
+        split_UT = UT.flat[ii].split('.', 1)
+        if len(split_UT) == 2:
+            UT_wholesec, partial_sec = split_UT
+        else:
+            UT_wholesec = split_UT[0]
+            partial_sec = '0'
         to = datetime.datetime(*time.strptime(UT_wholesec,
                                               "%Y-%m-%dT%H:%M:%S")[:6])
         epoch_start = datetime.datetime(2000, 1, 1)
@@ -318,7 +323,7 @@ def ortho_poly(x, n, window=1., axis=-1):
     if major <= 0 and minor < 8:
         new_sp = False
         if n > 20:
-            raise NotImplementedError("High ordre polynomials unstable.")
+            raise NotImplementedError("High order polynomials unstable.")
     else:
         new_sp = True
     # The following is the only way I know how to get the broadcast shape of

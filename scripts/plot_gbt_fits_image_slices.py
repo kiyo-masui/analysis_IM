@@ -1,3 +1,4 @@
+# This script plots image slices from a fits file format (written for an early version of the mapmaker that had a fits output).
 import pylab
 import pyfits
 import sys
