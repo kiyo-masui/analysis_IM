@@ -173,7 +173,6 @@ def plot_gbt_comb_modeset(map_key, outputdir="/cita/d/www/home/eswitzer/movies/"
     for treatment in map_treatments:
         source_key = "db:%s:map;%s" % (map_key, treatment)
         print source_key, treatment
-        # 1.5/10
         pc.make_cube_movie(source_key, "Temperature (mK)", pc.cube_frame_dir,
                         sigmarange=3., outputdir=outputdir, multiplier=1000.,
                         transverse=False, convolve=convolve)
@@ -296,7 +295,9 @@ if __name__ == "__main__":
     #plot_gbt_simset('22hr')
     #plot_gbt_newmapset()
 
-    plot_gbt_comb_modeset('GBT_1hr_map_oldcal_cleaned_combined', convolve=True)
+    plot_gbt_comb_modeset('GBT_1hr_map_oldcal_cleaned_combined', convolve=True,
+                          outputdir="/mnt/raid-project/gmrt/eswitzer/GBT/movies/")
+
     #plot_gbt_comb_modeset('GBT_15hr_optimalmap_selfcal_762_cleaned_combined', convolve=True)
     #plot_gbt_comb_modeset('GBT_15hr_optimalmap_selfcal_762_cleaned_combined', convolve=False)
     #plot_gbt_comb_modeset('GBT_15hr_map_mapcal2_cleaned_combined', convolve=True)
