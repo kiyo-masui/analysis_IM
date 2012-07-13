@@ -1,12 +1,9 @@
-
 import numpy as np
-
 from corr import RedshiftCorrelation
 from simulations.maps import Map3d
-
 from utils import cubicspline as cs
+from scipy import interpolate
 from utils import units
-
 
 
 class Corr21cm(RedshiftCorrelation, Map3d):
@@ -28,16 +25,26 @@ class Corr21cm(RedshiftCorrelation, Map3d):
             print "loading matter power file: " + psfile
             redshift = 0.8
 
-            kstar = 5.0
-            c1 = cs.LogInterpolater.fromfile(psfile)
-            ps = lambda k: np.exp(-0.5 * k**2 / kstar**2) * c1(k)
+            #pk_interp = cs.LogInterpolater.fromfile(psfile)
+            pwrspec_data = np.genfromtxt(psfile)
+
+            (log_k, log_pk) = (np.log(pwrspec_data[:,0]), \
+                               np.log(pwrspec_data[:,1]))
+
+            logpk_interp = interpolate.interp1d(log_k, log_pk,
+                                                bounds_error=False,
+                                                fill_value=np.min(log_pk))
+
+            pk_interp = lambda k: np.exp(logpk_interp(np.log(k)))
+
+            kstar = 7.0
+            ps = lambda k: np.exp(-0.5 * k**2 / kstar**2) * pk_interp(k)
 
         self._sigma_v = sigma_v
 
         RedshiftCorrelation.__init__(self, ps_vv=ps, redshift=redshift)
         #self._load_cache(join(dirname(__file__),"data/corr_z1.5.dat"))
         #self.load_fft_cache(join(dirname(__file__),"data/fftcache.npz"))
-
 
     def T_b(self, z):
         r"""Mean 21cm brightness temperature at a given redshift.
