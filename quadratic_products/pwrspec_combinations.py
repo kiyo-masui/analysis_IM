@@ -281,7 +281,7 @@ class WiggleZxGBT(object):
                            execute_key=execute_key)
 
         caller_data.multiprocess_stack(self.params["outfile_data"],
-                                       debug=False, ncpu=18)
+                                       debug=False, ncpu=6)
 
         for treatment in map_cases['treatment']:
             for item in mock_files[0]:
@@ -306,7 +306,8 @@ class WiggleZxGBT(object):
                                execute_key=execute_key)
 
 
-        caller_mock.multiprocess_stack(self.params["outfile_mock"], debug=False, ncpu=18)
+        caller_mock.multiprocess_stack(self.params["outfile_mock"],
+                                       debug=False, ncpu=18)
 
 
 crosspowersim_init = {

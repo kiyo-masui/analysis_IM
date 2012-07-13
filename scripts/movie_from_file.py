@@ -58,18 +58,32 @@ from plotting import plot_cube as pc
 #            "15hr_41-90_fdgp_clean_map_Q.npy",
 #            "15hr_41-90_fdgp_clean_map_I.npy"]
 
-dirname = "/mnt/raid-project/gmrt/kiyo/gbt_out_fg/maps/july9/"
-filelist = ["secA_15hr_41-90_clean_map_I_762.npy",
-            "secB_15hr_41-90_clean_map_I_762.npy",
-            "secC_15hr_41-90_clean_map_I_762.npy",
-            "secD_15hr_41-90_clean_map_I_762.npy"]
+#dirname = "/mnt/raid-project/gmrt/kiyo/gbt_out_fg/maps/july9/"
+#filelist = ["secA_15hr_41-90_clean_map_I_762.npy",
+#            "secB_15hr_41-90_clean_map_I_762.npy",
+#            "secC_15hr_41-90_clean_map_I_762.npy",
+#            "secD_15hr_41-90_clean_map_I_762.npy"]
+#full_list = [ dirname + filename for filename in filelist ]
+#cbtitle = "Temperature (mK)"
+#multiplier = 1000.
+#sigmarange = 3.
 
-for filename in filelist:
+#full_list = ["/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_delta/15hr/reg15data.npy",
+#             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr/reg15separable.npy",
+#             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr/reg15selection.npy"]
+full_list = ["/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_delta/1hr/reg01data.npy",
+             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/1hr/reg01separable.npy",
+             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/1hr/reg01selection.npy"]
+cbtitle = ""
+multiplier = 1.
+sigmarange = -1.
+
+for filename in full_list:
     outputdir = "/cita/d/www/home/eswitzer/movies/"
     tag = ".".join(filename.split(".")[:-1])  # extract root name
     tag = tag.split("/")[-1]
-    tag += "_v2"
-    pc.make_cube_movie(dirname + filename, "Temperature (mK)", pc.cube_frame_dir,
-                        sigmarange=3., outputdir=outputdir, multiplier=1000.,
+    pc.make_cube_movie(filename, cbtitle, pc.cube_frame_dir,
+                        sigmarange=sigmarange, outputdir=outputdir,
+                        multiplier=multiplier,
                         transverse=False, filetag_suffix="", tag=tag)
 

@@ -3,6 +3,7 @@ r"""Program that calculates the correlation function across frequency slices.
 
 import time
 import sys
+import gc
 import scipy as sp
 import numpy as np
 import numpy.ma as ma
@@ -182,10 +183,11 @@ class MapPair(object):
 
         return (map, weightmap)
 
-    def make_physical(self, refinement=1, pad=5, order=2):
+    def make_physical(self, refinement=1, pad=5, order=2, clear_obs=True):
         r"""Project the maps and weights into physical coordinates
         refinement allows the physical bins to be e.g. =2 times finer
         pad puts a number of padded pixels on all sides of the physical vol.
+        the clear_obs flag deletes the obs. coord maps
         """
 
         self.phys_map1 = bh.repackage_kiyo(pg.physical_grid(self.map1,
@@ -205,6 +207,9 @@ class MapPair(object):
                                                  self.noise_inv2,
                                                  refinement=refinement,
                                                  pad=pad, order=order))
+
+        del self.map1, self.map2, self.noise_inv1, self.noise_inv2
+        gc.collect()
 
         return
 
