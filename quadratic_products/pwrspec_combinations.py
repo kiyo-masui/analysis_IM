@@ -307,7 +307,7 @@ class WiggleZxGBT(object):
 
 
         caller_mock.multiprocess_stack(self.params["outfile_mock"],
-                                       debug=False, ncpu=18)
+                                       debug=False, ncpu=24)
 
 
 crosspowersim_init = {
