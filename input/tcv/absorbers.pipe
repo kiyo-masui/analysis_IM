@@ -38,7 +38,7 @@ data_dir = os.getenv('GBT_DATA')
 #raw_data_dir = os.getenv('GBT10B_DATA')
 kiyo_dir = os.getenv('GBT10B_KM')
 prefix = ''
-map_prefix = '' + field +'_41-80_absorb_'
+map_prefix = '' + field +'_41-80_absorb_fine_'
 IFs = ()
 
 
@@ -90,8 +90,8 @@ rf_channel_width = 0.
 rf_n_bins_combined = 1
 rf_mean_instead_median = False
 
-from time_stream import flux_diff_gain_cal
-pipe_modules.append(flux_diff_gain_cal.Calibrate)
+#from time_stream import flux_diff_gain_cal
+#pipe_modules.append(flux_diff_gain_cal.Calibrate)
 #fgc_input_root = base_dir+'rebinned/'
 #fgc_input_root = rf_output_root
 fgc_input_root = base_dir + 'flagged/'
@@ -112,9 +112,9 @@ fgc_RM_correct = False
 fgc_Flux_special = True
 # set Flux special to True when using something like an average and set mueler file to the filename
 
-from time_stream import rotate_pol
+#from time_stream import rotate_pol
 # Comment this line to skip this step in pipline.
-pipe_modules.append(rotate_pol.RotatePol)
+#pipe_modules.append(rotate_pol.RotatePol)
 rp_input_root = fgc_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
@@ -166,8 +166,8 @@ dm_field_centre = (217.8688,2.0)
 #dm_map_shape = (100, 80)
 #dm_map_shape = (135,70)
 # for absorber data, want to use large spatial pixels (~1 deg^2)
-dm_map_shape = (10,6)
-dm_pixel_spacing = 0.5
+dm_map_shape = (20,12)
+dm_pixel_spacing = 0.25
 #Don't want to change pixel spacing to too high (affects beam quality)
 #dm_pixel_spacing = 0.0627
 #dm_pixel_spacing = .075

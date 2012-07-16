@@ -8,6 +8,16 @@ from numpy import *
 #from utils import * 
 import core.algebra as al
 import scipy
+import scipy.optimize as opt
+
+def function(freq,params):
+   base = 750./freq
+   function = params[0]*power(base,params[1])
+   return function
+
+def residuals(params,freq,signal):
+   err = signal-function(freq,params)
+   return err
 
 filename1 = sys.argv[1]
 
@@ -27,10 +37,39 @@ freqs = freqs/1e6
 for slice, dec in enumerate(decs):
     for line, ra in enumerate(ras):
         # Now have "slice" being the dec index, "line" being the ra index
-        pylab.plot(freqs,array[:,line,slice])
-        pylab.savefig(filename2+'_'+str(ra)+'_'+str(dec)+'_.png')
+#        pylab.plot(freqs,array[:,line,slice])
+#        pylab.ylim(-0.5,0.5)
+#        pylab.savefig(filename2+'_'+str(ra)+'_'+str(dec)+'_.png')
+#        pylab.clf()
+        data = array[:,line,slice]
+        bad_pts = logical_or(isnan(data),isinf(data))
+        good_pts = where(logical_not(bad_pts))
+        data = data[good_pts]
+#        mean_sig = mean(data)
+#        print mean_sig
+#        data = data/mean_sig
+#        print data
+        freqs_good = freqs[good_pts]
+        params0=[19.6,0.495]
+        plsq = opt.leastsq(residuals,params0,args=(freqs_good,data),full_output=1,maxfev=5000)
+#        print ra, dec, plsq[0]
+        remainder = data-function(freqs_good,plsq[0])
+#        pylab.plot(freqs_good,remainder)
+#        pylab.ylim(-0.5,0.5)
+#        pylab.savefig(filename2+'_dev_'+str(ra)+'_'+str(dec)+'.png')
+#        pylab.clf()
+        filter = remainder
+        for f in range(1, len(data)-1):
+#            filter[f] = filter[f]-filter[f-1]
+            filter[f] = filter[f]-0.5*(filter[f+1]+filter[f-1])
+        filter[0] = 0
+        filter[-1] = 0
+#        pylab.hist(filter,bins=200)
+#        pylab.savefig(filename2+'_hist_'+str(ra)+'_'+str(dec)+'.png')
+#        pylab.clf()
+        pylab.hist(filter,bins=200, range=(-1.0,-0.05))
+        pylab.savefig(filename2+'_hist_trunc_'+str(ra)+'_'+str(dec)+'.png')
         pylab.clf()
-
 
 #for slice, freq in enumerate(freqs):
 #   nancut = (array[slice] < 10e10) & ( array[slice] != NaN )
