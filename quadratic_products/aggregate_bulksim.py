@@ -5,6 +5,7 @@ import glob
 import copy
 from plotting import plot_slice
 import shelve
+import h5py
 from kiyopy import parse_ini
 from utils import file_tools
 # TODO: better interaction between mask and counts
@@ -350,8 +351,9 @@ class CalculateTransfer(object):
                                           calculatetransfer_init,
                                           prefix=calculatetransfer_prefix)
 
-        self.stats_in = shelve.open(self.params["shelvefile_in"])
-        self.stats_out = shelve.open(self.params["shelvefile_out"])
+        print self.params["shelvefile_in"], "->", self.params["shelvefile_out"]
+        self.stats_in = shelve.open(self.params["shelvefile_in"], "r")
+        self.stats_out = shelve.open(self.params["shelvefile_out"], "w")
         self.treatments_in = self.stats_in["results"].keys()
         self.treatments_out = self.stats_out["results"].keys()
 
@@ -405,8 +407,13 @@ class CalculateTransfer(object):
 
             transfer_compilation[treatment] = transfer_2d
 
-        transferfile = shelve.open(self.params["transferfile"])
-        transferfile["transfer_2d"] = transfer_compilation
+        #transferfile = shelve.open(self.params["transferfile"], protocol=0)
+        #transferfile["transfer_2d"] = transfer_compilation
+
+        transferfile = h5py.File(self.params["transferfile"], "w")
+        for treatment in self.treatments_out:
+            transferfile[treatment] = transfer_compilation[treatment]
+
         transferfile.close()
 
         self.stats_in.close()
