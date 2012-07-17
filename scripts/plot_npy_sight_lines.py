@@ -9,6 +9,8 @@ from numpy import *
 import core.algebra as al
 import scipy
 import scipy.optimize as opt
+import scipy.stats as stat
+#from pylab import *
 
 def function(freq,params):
    base = 750./freq
@@ -59,18 +61,60 @@ for slice, dec in enumerate(decs):
 #        pylab.savefig(filename2+'_dev_'+str(ra)+'_'+str(dec)+'.png')
 #        pylab.clf()
         filter = remainder
-        for f in range(1, len(data)-1):
+        for f in range(5, len(data)-5):
 #            filter[f] = filter[f]-filter[f-1]
-            filter[f] = filter[f]-0.5*(filter[f+1]+filter[f-1])
+#            filter[f] = filter[f]-0.5*(filter[f+1]+filter[f-1])
+            filter[f] = filter[f]-0.1*(filter[f+1]+filter[f+2]+filter[f+3]+filter[f+4]+filter[f+5]+filter[f-1]+filter[f-2]+filter[f-3]+filter[f-4]+filter[f-5])
         filter[0] = 0
+        filter[1] = 0
+        filter[2] = 0
+        filter[3] = 0
+        filter[4] = 0
         filter[-1] = 0
-#        pylab.hist(filter,bins=200)
+        filter[-2] = 0
+        filter[-3] = 0
+        filter[-4] = 0
+        filter[-5] = 0
+#        print len(filter)
+#        pylab.hist(filter,200,normed=1)
 #        pylab.savefig(filename2+'_hist_'+str(ra)+'_'+str(dec)+'.png')
 #        pylab.clf()
-        pylab.hist(filter,bins=200, range=(-1.0,-0.05))
-        pylab.savefig(filename2+'_hist_trunc_'+str(ra)+'_'+str(dec)+'.png')
+#        pylab.hist(filter,bins=200, range=(-1.0,-0.05))
+#        pylab.savefig(filename2+'_hist_trunc_'+str(ra)+'_'+str(dec)+'.png')
+#        pylab.clf()
+#        mean = stat.gmean(filter)
+#        var = stat.variation(filter)
+        f_hist = stat.histogram(filter,350)
+#        print f_hist
+        scale = arange(f_hist[1],f_hist[1]+350*f_hist[2],f_hist[2])
+#        print len(scale), len(f_hist[0])
+        fitfunc = lambda p,x: p[0]*exp(-(p[1]-x)**2/(2*p[2]**2))
+        errfunc = lambda p,x,y: fitfunc(p,x)-y
+        pylab.plot(scale,f_hist[0])
+#        a =1.
+#        mean = float(mean)
+#        var = float(var)
+#        print a
+#        p0 = [a,mean,var]
+        p0 = [1000.0,0.00001,0.001]
+#        print any(isnan(f_hist[0])),any(isinf(f_hist[0])), any(isnan(scale)), any(isinf(scale))
+        fit = opt.leastsq(errfunc,p0[:],args=(scale,f_hist[0]),maxfev=500000)
+#        print mean,var
+#        print fit[0]
+#        print '________________'
+        pylab.plot(scale,fitfunc(fit[0],scale))
+        pylab.savefig(filename2+'_gauss_fit_'+str(ra)+'_'+str(dec)+'.png')
         pylab.clf()
+        pylab.plot(scale,abs(fitfunc(fit[0],scale)-f_hist[0]))
+        pylab.savefig(filename2+'_gauss_resid_'+str(ra)+'_'+str(dec)+'.png')
+        pylab.clf()
+        
 
+
+
+
+
+# Old code for npy plotting maps
 #for slice, freq in enumerate(freqs):
 #   nancut = (array[slice] < 10e10) & ( array[slice] != NaN )
 #   cut = ( array[slice] > 3.0*array[slice][nancut].std() ) 
