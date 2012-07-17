@@ -160,7 +160,8 @@ def make_unitless(xspec_arr, radius_arr=None, ndim=None):
 
 
 def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
-                             weights_2d=None, nullval=np.nan):
+                             weights_2d=None, nullval=np.nan,
+                             null_zero_counts=True):
     """take a 2D power spectrum and the counts matrix (number of modex per k
     cell) and return the binned 1D power spectrum
     pwr_2d is the 2D power
@@ -168,7 +169,10 @@ def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
     bin_kx is the x-axis
     bin_ky is the x-axis
     bin_1d is the k vector over which to return the result
-    weights_2d is an optional weight matrix in 2d; otherwise use counts (BAD!)
+    weights_2d is an optional weight matrix in 2d; otherwise use counts
+
+    null_zero_counts sets elements of the weight where there are zero counts to
+    zero.
     """
     # find |k| across the array
     index_array = np.indices(pwr_2d.shape)
@@ -189,10 +193,12 @@ def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
     weight_pwr_prod = weights_2d_flat * pwr_2d_flat
     weight_pwr_prod[np.isnan(weight_pwr_prod)] = 0.
     weight_pwr_prod[np.isinf(weight_pwr_prod)] = 0.
-    weight_pwr_prod[counts_2d_flat == 0] = 0.
     weights_2d_flat[np.isnan(weight_pwr_prod)] = 0.
     weights_2d_flat[np.isinf(weight_pwr_prod)] = 0.
-    weights_2d_flat[counts_2d_flat == 0] = 0.
+
+    if null_zero_counts:
+        weight_pwr_prod[counts_2d_flat == 0] = 0.
+        weights_2d_flat[counts_2d_flat == 0] = 0.
 
     counts_histo = np.histogram(radius_flat, bin_1d,
                                 weights=counts_2d_flat)[0]

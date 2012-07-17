@@ -6,6 +6,7 @@ from quadratic_products import pwrspec_estimator as pe
 from quadratic_products import power_spectrum as ps
 from kiyopy import parse_ini
 import shelve
+import h5py
 import glob
 
 autopowerparams_init = {
@@ -157,28 +158,33 @@ class CompileCrosspower(object):
             if self.params["apply_2d_modetransfer"] is not None:
                 print "Applying 2d transfer from " + \
                       self.params["apply_2d_modetransfer"]
-                trans_shelve = shelve.open(
+                #trans_shelve = shelve.open(
+                #                    self.params["apply_2d_modetransfer"], "r")
+                #modetransfer_2d = trans_shelve["transfer_2d"]
+                #trans_shelve.close()
+                modetransfer_2d = h5py.File(
                                     self.params["apply_2d_modetransfer"], "r")
-                modetransfer_2d = trans_shelve["transfer_2d"]
-                trans_shelve.close()
 
             beamtransfer_2d = None
             if self.params["apply_2d_beamtransfer"] is not None:
                 print "Applying 2d transfer from " + \
                       self.params["apply_2d_beamtransfer"]
-                trans_shelve = shelve.open(
+                #trans_shelve = shelve.open(
+                #                    self.params["apply_2d_beamtransfer"], "r")
+                #beamtransfer_2d = trans_shelve["transfer_2d"]
+                #trans_shelve.close()
+                beamtransfer_2d = h5py.File(
                                     self.params["apply_2d_beamtransfer"], "r")
-                beamtransfer_2d = trans_shelve["transfer_2d"]
-                trans_shelve.close()
 
             transfer_dict = {}
             for treatment in pwr_data.treatment_cases:
                 if modetransfer_2d is not None:
-                    transfer_dict[treatment] = modetransfer_2d[treatment]
+                    transfer_dict[treatment] = modetransfer_2d[treatment].value
                     if beamtransfer_2d is not None:
-                        transfer_dict[treatment] *= beamtransfer_2d["0modes"]
+                        transfer_dict[treatment] *= \
+                                    beamtransfer_2d["0modes"].value
                 else:
-                    transfer_dict[treatment] = beamtransfer_2d["0modes"]
+                    transfer_dict[treatment] = beamtransfer_2d["0modes"].value
 
             pwr_data.apply_2d_trans_by_treatment(transfer_dict)
             pwr_mock.apply_2d_trans_by_treatment(transfer_dict)
@@ -190,16 +196,31 @@ class CompileCrosspower(object):
         weights_2d = {}
         # weight by the variance as determined in the mock runs
         for treatment in pwr_mock.treatment_cases:
-            weights_2d[treatment] = 1./ (mock2d_agg[treatment]["std"] * \
+            weights_2d[treatment] = 1. / (mock2d_agg[treatment]["std"] * \
                                          mock2d_agg[treatment]["std"])
 
-            outplot_file = "%s/transfer_2d_%s.png" % (self.params['outdir'], treatment)
+            outplot_weight_file = "%s/noiseweight_2d_%s.png" % \
+                                  (self.params['outdir'], treatment)
+
+            outplot_count_file = "%s/countweight_2d_%s.png" % \
+                                 (self.params['outdir'], treatment)
+
             logkx = np.log10(pwr_mock.kx_2d['center'])
             logky = np.log10(pwr_mock.ky_2d['center'])
-            plot_slice.simpleplot_2D(outplot_file, weights_2d[treatment],
+            plot_slice.simpleplot_2D(outplot_weight_file,
+                                     np.abs(weights_2d[treatment]),
                                      logkx, logky,
-                                     ["logkx", "logky"], 1., "2D noise weight",
-                                     "T", logscale=False)
+                                     ["logkx", "logky"], 1., "Log-weight",
+                                     "log-weight", logscale=True)
+
+            # comb is used for autopower AxB etc.; here just use a placeholder
+            comb = pwr_mock.comb_cases[0]
+            pwrcase = "%s:%s" % (comb, treatment)
+            plot_slice.simpleplot_2D(outplot_count_file,
+                                     np.abs(pwr_mock.counts_2d[pwrcase]),
+                                     logkx, logky,
+                                     ["logkx", "logky"], 1., "Log-counts",
+                                     "log-counts", logscale=True)
 
         if self.params["use_noiseweights_2dto1d"]:
             pwr_data.convert_2d_to_1d(weights_2d=weights_2d)

@@ -114,7 +114,7 @@ def simpleplot_2D(outfilename, region, xaxis, yaxis, xylabels,
 
     if logscale:
         # TODO: this is a kludge
-        region += np.max(region)/1.e6
+        #region += np.max(region)/1.e6
         try:
             region = np.log10(region)
         except FloatingPointError:
