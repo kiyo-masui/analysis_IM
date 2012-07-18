@@ -199,21 +199,42 @@ class CompileCrosspower(object):
             weights_2d[treatment] = 1. / (mock2d_agg[treatment]["std"] * \
                                          mock2d_agg[treatment]["std"])
 
+            outplot_power_file = "%s/power_2d_%s.png" % \
+                                  (self.params['outdir'], treatment)
+
+            outplot_transfer_file = "%s/transfer_2d_%s.png" % \
+                                  (self.params['outdir'], treatment)
+
             outplot_weight_file = "%s/noiseweight_2d_%s.png" % \
                                   (self.params['outdir'], treatment)
 
             outplot_count_file = "%s/countweight_2d_%s.png" % \
                                  (self.params['outdir'], treatment)
 
+            # comb is used for autopower AxB etc.; here just use a placeholder
             logkx = np.log10(pwr_mock.kx_2d['center'])
             logky = np.log10(pwr_mock.ky_2d['center'])
+
+            comb = pwr_data.comb_cases[0]
+            pwrcase = "%s:%s" % (comb, treatment)
+            plot_slice.simpleplot_2D(outplot_power_file,
+                                     np.abs(pwr_data.pwrspec_2d[pwrcase]),
+                                     logkx, logky,
+                                     ["logkx", "logky"], 1., "2d power",
+                                     "log(abs(2d power))", logscale=True)
+
+            plot_slice.simpleplot_2D(outplot_transfer_file,
+                                     transfer_dict[treatment],
+                                     logkx, logky,
+                                     ["logkx", "logky"], 1., "2d trans",
+                                     "2d trans", logscale=False)
+
             plot_slice.simpleplot_2D(outplot_weight_file,
                                      np.abs(weights_2d[treatment]),
                                      logkx, logky,
                                      ["logkx", "logky"], 1., "Log-weight",
                                      "log-weight", logscale=True)
 
-            # comb is used for autopower AxB etc.; here just use a placeholder
             comb = pwr_mock.comb_cases[0]
             pwrcase = "%s:%s" % (comb, treatment)
             plot_slice.simpleplot_2D(outplot_count_file,
