@@ -24,25 +24,32 @@ decs = array.get_axis('dec')
 freqs = array.get_axis('freq')
 freqs = freqs/1e6
 
+for slice, dec in enumerate(decs):
+    for line, ra in enumerate(ras):
+        # Now have "slice" being the dec index, "line" being the ra index
+        pylab.plot(freqs,array[:,line,slice])
+        pylab.savefig(filename2+'_'+str(ra)+'_'+str(dec)+'_.png')
+        pylab.clf()
 
-for slice, freq in enumerate(freqs):
-   nancut = (array[slice] < 10e10) & ( array[slice] != NaN )
-   cut = ( array[slice] > 3.0*array[slice][nancut].std() ) 
-   array[slice][cut] = 3.0*array[slice][nancut].std()
-   cut = ( array[slice] < -3.0*array[slice][nancut].std() ) 
-   array[slice][cut] = -3.0*array[slice][nancut].std()
+
+#for slice, freq in enumerate(freqs):
+#   nancut = (array[slice] < 10e10) & ( array[slice] != NaN )
+#   cut = ( array[slice] > 3.0*array[slice][nancut].std() ) 
+#   array[slice][cut] = 3.0*array[slice][nancut].std()
+#   cut = ( array[slice] < -3.0*array[slice][nancut].std() ) 
+#   array[slice][cut] = -3.0*array[slice][nancut].std()
 
 #   Need to rotate array[slice] because axes were flipped
-   new_array = scipy.transpose(array[slice])
-   medianv = median(array[slice][nancut])
+#   new_array = scipy.transpose(array[slice])
+#   medianv = median(array[slice][nancut])
 
 #   Alternate plotting command to set temperature limits
-   pylab.imshow(new_array, cmap='hot', vmin=-0.1, vmax=0.1, extent=(ras.max(),ras.min(),decs.min(),decs.max()), origin='lower')
+#   pylab.imshow(new_array, cmap='hot', vmin=-0.1, vmax=0.1, extent=(ras.max(),ras.min(),decs.min(),decs.max()), origin='lower')
 #   pylab.imshow(new_array, interpolation='gaussian', cmap='hot', extent=(ras.max(),ras.min(),decs.min(),decs.max()), origin='lower')
-   pylab.colorbar() #For some reason this isn't working, fixed...
-   pylab.savefig(filename2+str(freq)[:3]+'.png')
+#   pylab.colorbar() #For some reason this isn't working, fixed...
+#   pylab.savefig(filename2+str(freq)[:3]+'.png')
 #   pylab.savefig('v_'+filename2+str(freq)[:3]+'.png')
-   pylab.clf()
+#   pylab.clf()
 
 #Alternate code if want to plot in term of dec instead of freq.
 #for slice, dec in enumerate(decs):

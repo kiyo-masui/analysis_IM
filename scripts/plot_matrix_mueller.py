@@ -1,3 +1,4 @@
+# Very early version of the mueller matrix plotting script. Expects the matrix in four files.
 import pylab
 from numpy import *
 import scipy as sp

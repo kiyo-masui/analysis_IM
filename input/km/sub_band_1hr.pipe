@@ -6,31 +6,28 @@ from core import dir_data
 import scipy as sp
 
 # What data to process and how to split it up.
-field = '15hr'
+field = '1hr'
 
-#sessions = range(41, 90)
-# According to Tabitha, cal unstable in sessions 52 to 58.
-#sessions = range(41, 52) + range(59, 90)
-sessions = range(41, 90)
-#sessions = range(41, 44)
-#sessions = [50]
+sessions_10B = range(41, 90)
+# The data for session 14 really messed up.
+sessions_11B = range(1, 14) + range(15, 19)
 
-file_middles = tuple(dir_data.get_data_files(sessions, field='15hr', 
+
+file_middles = tuple(dir_data.get_data_files(sessions_11B, field=field, 
+                                              project="GBT11B_055", 
+                                              type='ralongmap'))
+file_middles = (tuple(dir_data.get_data_files(sessions_10B, field=field, 
                                              project="GBT10B_036", 
 											 type='ralongmap'))
-# Excludes session 81 which has a huge cal change.
-# For first round of map making before cal change can be corrected.
-middles_firs = tuple(dir_data.get_data_files(range(41,81), field='15hr', 
-                                             project="GBT10B_036", 
-											 type='ralongmap'))
+				+ file_middles)
 
 n_files = len(file_middles)
-middles_a = middles_firs[:n_files//4]
-middles_b = middles_firs[n_files//4:2*n_files//4]
-middles_c = middles_firs[2*n_files//4:3*n_files//4]
-middles_d = middles_firs[3*n_files//4:n_files]
+middles_a = file_middles[:n_files//4]
+middles_b = file_middles[n_files//4:2*n_files//4]
+middles_c = file_middles[2*n_files//4:3*n_files//4]
+middles_d = file_middles[3*n_files//4:n_files]
 
-middles_temp = tuple(dir_data.get_data_files([47], field='15hr', 
+middles_temp = tuple(dir_data.get_data_files([88], field=field, 
                                              project="GBT10B_036", 
                                              type='ralongmap'))
 #middles_temp = ['GBT10B_036/44_wigglez15hrst_ralongmap_249-256']
@@ -39,26 +36,24 @@ middles_temp = tuple(dir_data.get_data_files([47], field='15hr',
 # 15hr: RA center = 217.8688, DEC center = 2.0, Pixel spacing = 0.0627, map shape = (78,43)
 # 22hr: RA center = 325.4190, DEC center = 0.0, Pixel spacing = 0.0627, map shape = (80,49)
 # 1hr: RA center = 13.0, DEC center = 1.85, Pixel spacing = 0.0627, map shape = (161,83)
-#      adjusted to (140,81) due to memory limits.
 
-map_centre = (217.87, 2.0)
+map_centre = (13.0, 1.85)
 # For maps where performace isn't important.
-#map0_shape = (100, 60)
-#map0_spacing = .040
-map0_shape = (86, 48)
-map0_spacing = .050
-#map0_shape = (78, 43)
-#map0_spacing = .0627
+map0_shape = (161, 83)
+map0_spacing = .0627
 # Performance limited maps.
-map_shape = (70, 38)
-map_spacing = .07
+#map_shape = (64, 34)
+#map_spacing = .07
+map_shape = (156, 80)
+map_spacing = .0627
 
 base_dir_main = os.getenv('GBT_OUT')
 base_dir = "/mnt/raid-project/gmrt/kiyo/gbt_out_new/"
 data_dir = os.getenv('GBT_DATA')
 base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
-map_base = base_dir + 'maps/may03.2012/'
+map_base = base_dir + 'maps/july5/'
+#map_base = '/mnt/scratch-pen/kiyo/gbt_out/' + 'maps/june8/'
 
 
 # IO directory and file prefixes.
@@ -66,7 +61,7 @@ prefix = ''
 map_prefix = '' + field + '_' + '41-90' + '_'
 
 # Maximum number of processes to use.
-pipe_processes = 12
+pipe_processes = 22
 
 
 ####  List of modules to execute.  ####
@@ -86,12 +81,8 @@ pipe_modules = []
 #from time_stream import split_bands
 #pipe_modules.append(split_bands.SplitBands)
 
-# Not used.
-##from time_stream import cal_filter
-##pipe_modules.append(cal_filter.CalFilter)
-
-#from time_stream import calibrate
-#pipe_modules.append(calibrate.Calibrate)
+#from time_stream import flux_diff_gain_cal
+#pipe_modules.append(flux_diff_gain_cal.Calibrate)
 
 #from time_stream import rotate_pol
 #pipe_modules.append(rotate_pol.RotatePol)
@@ -107,66 +98,29 @@ pipe_modules = []
 
 #### Second Map making iteration ####
 
-from cal import correlate_map
-pipe_modules.append((correlate_map.Measure, ('mc2_', 'mc_')))
+#from cal import correlate_map
+#pipe_modules.append((correlate_map.Measure, ('mc2_', 'mc_')))
 
-from time_stream import subtract_map_data
-pipe_modules.append((subtract_map_data.Subtract, ('sm2_', 'sm_')))
+#from time_stream import subtract_map_data
+#pipe_modules.append((subtract_map_data.Subtract, ('sm2_', 'sm_')))
 
-from time_stream import reflag
-pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
+#from time_stream import reflag
+#pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
 
 from noise import measure_noise
 pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
 #from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dm2_', 'dm_')))
-
-#from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cm2_', 'cm_')))
-
-
-#### Third Map making iteration ####
-
-#from cal import correlate_map
-#pipe_modules.append((correlate_map.Measure, ('mc3_', 'mc_')))
-
-#from time_stream import subtract_map_data
-#pipe_modules.append((subtract_map_data.Subtract, ('sb3_', 'sb_')))
-
-#from time_stream import reflag
-#pipe_modules.append((reflag.ReFlag, ('rf3_', 'rf_')))
-
-#from noise import measure_noise
-#pipe_modules.append((measure_noise.Measure, ('mn3_', 'mn_')))
-
-#from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
-##pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
 #from map import clean_map
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
-
-#from map import glue_maps
-#pipe_modules.append((glue_maps.GlueMaps, ('gmA_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmB_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmC_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmD_', 'gm_')))
-
-#pipe_modules.append((glue_maps.GlueMaps, ('gmnA_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmnB_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmnC_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmnD_', 'gm_')))
-
-#pipe_modules.append((glue_maps.GlueMaps, ('gmdA_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmdB_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmdC_', 'gm_')))
-#pipe_modules.append((glue_maps.GlueMaps, ('gmdD_', 'gm_')))
 
 
 #### Parameters for the various modules. ####
@@ -184,14 +138,15 @@ fd_IFs = ()
 fd_perform_hanning = False
 fd_rotate = True
 fd_cal_scale = True
+fd_cal_phase = True
 fd_sigma_thres = 3.5
 fd_badness_thres = 0.1
 fd_time_cut = 10
 
 # Rebin the time and frequency axis.
 ##### Get input root from the normal data pipeline. #####
-#rb_input_root = fd_output_root
-rb_input_root = base_dir_main + 'flagged/' + prefix
+rb_input_root = fd_output_root
+#rb_input_root = base_dir + 'flagged/' + prefix
 rb_file_middles = file_middles
 rb_input_end = '.fits'
 rb_output_root = base_dir + 'rebinned/' + prefix
@@ -199,7 +154,7 @@ rb_output_end = '.fits'
 rb_scans = ()
 rb_IFs = ()
 
-rb_n_bins_combined_freq = 32
+rb_n_bins_combined_freq = 16
 rb_n_bins_combined_time = 2
 
 # band stop
@@ -232,47 +187,27 @@ sb_IFs = ()
 # For now deal with a single lowish noise band that misses resonances, rfi,
 # etc. Band chosen such the upper end is ~5MHz from resonance.
 sb_n_bands = 1
-sb_n_bins_band = 40
-sb_offset = 68
-
-# scale by filtered cal.
-#cf_input_root = sb_output_root
-#cf_file_middles = file_middles
-#cf_input_end = '.fits'
-#cf_output_root = base_dir + 'cal_filter_scaled/' + prefix
-#cf_output_end = '.fits'
-#cf_scans = ()
-#cf_IFs = ()
-
-#cf_filter_type = 'rectangular'
-#cf_filter_size = 4.
-#cf_filter_size_units = 'seconds'
+sb_n_bins_band = 80
+sb_offset = 136
 
 # calibrate
-# Using older calibration.  These parameters not used.
-#fgc_input_root = sb_output_root
-#fgc_file_middles = file_middles
-#fgc_input_end = '.fits'
-#fgc_output_root = base_dir + 'flux_dg_cal/'
-#fgc_output_end = '.fits'
-#fgc_scans = ()
-#fgc_IFs = ()
-#
-#fgc_mueler_file = base_tcv + 'diff_gain_params/'
+fgc_input_root = sb_output_root
+fgc_file_middles = file_middles
+fgc_input_end = '.fits'
+fgc_output_root = base_dir + 'calibrated/' + prefix
+fgc_output_end = '.fits'
+fgc_scans = ()
+fgc_IFs = ()
 
-# These parameters used instead.
-cl_input_root = sb_output_root
-cl_file_middles = file_middles
-cl_input_end = '.fits'
-cl_output_root = base_dir + 'calibrated/' + prefix
-cl_output_end = '.fits'
-cl_scans = ()
-cl_IFs = ()
-
-cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
+fgc_mueler_file = os.getenv("GBT_TCV") + "diff_gain_params/1hr_fdg_calc_avg.txt"
+fgc_RM_file = ''
+fgc_R_to_sky = False
+fgc_DP_correct = False
+fgc_RM_correct = False
+fgc_Flux_special = True
 
 # rotate_pol
-rp_input_root = cl_output_root
+rp_input_root = fgc_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
 rp_output_root = base_dir + 'pol_selected/' + prefix
@@ -287,7 +222,7 @@ rp_average_cals = True
 # dirty_map
 dm_input_root = rp_output_root
 #dm_file_middles = file_middles
-dm_file_middles = middles_firs
+dm_file_middles = file_middles
 dm_input_end = '.fits'
 dm_output_root = map_base + 'fir_' + map_prefix
 dm_scans = ()
@@ -315,10 +250,11 @@ cm_save_noise_diag = True
 
 #### Second round of map making #####
 
-# measure gain relative to map.
+# measure gain relative to map (stokes I).
 mc2_input_root = rp_output_root
-#mc2_file_middles = middles_temp
 mc2_file_middles = file_middles
+# XXX
+#mc2_file_middles = middles_temp
 mc2_input_end = '.fits'
 mc2_output_root = base_dir + 'map_correlation_sec/'
 mc2_output_filename = "correlations.shelve"
@@ -332,8 +268,6 @@ mc2_map_bands = cm_bands
 mc2_map_input_root = cm_output_root
 mc2_map_type = 'clean_map_'
 mc2_diff_gain_cal_only = False
-#mc2_smooth_modes_subtract = 4
-#mc2_filter_type = 'gaussian/edge'
 mc2_smooth_modes_subtract = 2
 mc2_filter_type = 'edge'
 
@@ -376,7 +310,7 @@ mn2_input_root = sf2_subtracted_output_root
 mn2_file_middles = file_middles
 mn2_input_end = '.fits'
 mn2_output_root = base_dir + 'noise_measurments_sec/'
-mn2_output_filename = "noise_parameters.shelve"
+mn2_output_filename = "noise_parameters_1hr.shelve"
 mn2_save_spectra_plots = True
 mn2_time_block = 'scan'
 mn2_scans = ()
@@ -388,62 +322,146 @@ mn2_parameters = ["channel_var", "freq_modes_over_f_0",
                  "freq_modes_over_f_5", "freq_modes_over_f_6",
                  "freq_modes_over_f_7", "freq_modes_over_f_8"]
 
+# dirty_map
+# Map A
+dmA_input_root = sf2_output_root
+dmA_file_middles = middles_a
+dmA_input_end = '.fits'
+dmA_output_root = map_base + 'secA_' + map_prefix
+dmA_scans = ()
+dmA_IFs = ()
 
-# dirty_map, second iteration
-dm2_input_root = sf2_output_root
-#dm2_file_middles = file_middles
-dm2_file_middles = middles_firs
-dm2_input_end = '.fits'
-dm2_output_root = map_base + 'sec_' + map_prefix
-dm2_scans = ()
-dm2_IFs = ()
+dmA_polarizations = ('I',)
+dmA_field_centre = map_centre
+dmA_pixel_spacing = map_spacing
+dmA_map_shape = map_shape
+dmA_time_block = 'scan'
+#dmA_n_files_group = 420  # prawn
+dmA_n_files_group = 280  # tpb nodes.
+#dmA_n_files_group = 120
+dmA_frequency_correlations = 'measured'
+dmA_number_frequency_modes = 3  # Probably most appropriate.
+dmA_number_frequency_modes_discard = 1
+dmA_noise_parameter_file = mn2_output_root + mn2_output_filename
+dmA_deweight_time_mean = True
+dmA_deweight_time_slope = True
+dmA_interpolation = 'cubic'
+dmA_ts_foreground_mode_file = ''
+dmA_n_ts_foreground_modes = 0
 
-dm2_polarizations = ('I',)
-dm2_field_centre = map_centre
-dm2_pixel_spacing = map0_spacing
-dm2_map_shape = map0_shape
-dm2_time_block = 'scan'
-dm2_interpolation = 'cubic'
-dm2_n_files_group = 0
-dm2_frequency_correlations = 'None'
-dm2_number_frequency_modes = 0
-dm2_noise_parameter_file = mn2_output_root + mn2_output_filename
-dm2_deweight_time_mean = True
-dm2_deweight_time_slope = True
-dm2_ts_foreground_mode_file = ''
-dm2_n_ts_foreground_modes = 0
+# Other maps mostly copy parameters of map A.
+dmB_file_middles = middles_b
+dmB_output_root = map_base + 'secB_' + map_prefix
 
-# clean_map, second iteration
-cm2_input_root = dm2_output_root
-cm2_output_root = cm2_input_root
+dmC_file_middles = middles_c
+dmC_output_root = map_base + 'secC_' + map_prefix
 
-cm2_polarizations = ('I',)
-cm2_bands = (762,)
-cm2_save_noise_diag = True
-cm2_save_cholesky = False
-cm2_from_eig = False
+dmD_file_middles = middles_d
+dmD_output_root = map_base + 'secD_' + map_prefix
+
+# clean_map
+# Map A
+cmA_input_root = dmA_output_root
+cmA_output_root = cmA_input_root
+
+cmA_polarizations = ('I',)
+cmA_bands = (762,)
+cmA_save_noise_diag = False
+cmA_save_cholesky = False
+cmA_from_eig = False
+cmA_save_noise_inv_diag = True
+
+# Other maps
+cmB_input_root = dmB_output_root
+cmB_output_root = cmB_input_root
+
+cmC_input_root = dmC_output_root
+cmC_output_root = cmC_input_root
+
+cmD_input_root = dmD_output_root
+cmD_output_root = cmD_input_root
+
+# Parameters that are set to be the same as the A case.
+dmB_input_root = dmA_input_root
+dmB_input_end = dmA_input_end
+dmB_scans = dmA_scans
+dmB_IFs = dmA_IFs
+dmB_polarizations = dmA_polarizations
+dmB_field_centre = dmA_field_centre
+dmB_map_shape = dmA_map_shape
+dmB_pixel_spacing = dmA_pixel_spacing 
+dmB_time_block = dmA_time_block
+dmB_n_files_group = dmA_n_files_group
+dmB_frequency_correlations =  dmA_frequency_correlations
+dmB_number_frequency_modes = dmA_number_frequency_modes
+dmB_number_frequency_modes_discard = dmA_number_frequency_modes_discard
+dmB_noise_parameter_file = dmA_noise_parameter_file
+dmB_deweight_time_mean = dmA_deweight_time_mean
+dmB_deweight_time_slope = dmA_deweight_time_slope
+dmB_interpolation = dmA_interpolation
+dmB_ts_foreground_mode_file = dmA_ts_foreground_mode_file
+dmB_n_ts_foreground_modes = dmA_n_ts_foreground_modes
+
+dmC_input_root = dmA_input_root
+dmC_input_end = dmA_input_end
+dmC_scans = dmA_scans
+dmC_IFs = dmA_IFs
+dmC_polarizations = dmA_polarizations
+dmC_field_centre = dmA_field_centre
+dmC_map_shape = dmA_map_shape
+dmC_pixel_spacing = dmA_pixel_spacing 
+dmC_time_block = dmA_time_block
+dmC_n_files_group = dmA_n_files_group
+dmC_frequency_correlations =  dmA_frequency_correlations
+dmC_number_frequency_modes = dmA_number_frequency_modes
+dmC_number_frequency_modes_discard = dmA_number_frequency_modes_discard
+dmC_noise_parameter_file = dmA_noise_parameter_file
+dmC_deweight_time_mean = dmA_deweight_time_mean
+dmC_deweight_time_slope = dmA_deweight_time_slope
+dmC_interpolation = dmA_interpolation
+dmC_ts_foreground_mode_file = dmA_ts_foreground_mode_file
+dmC_n_ts_foreground_modes = dmA_n_ts_foreground_modes
+
+dmD_input_root = dmA_input_root
+dmD_input_end = dmA_input_end
+dmD_scans = dmA_scans
+dmD_IFs = dmA_IFs
+dmD_polarizations = dmA_polarizations
+dmD_field_centre = dmA_field_centre
+dmD_map_shape = dmA_map_shape
+dmD_pixel_spacing = dmA_pixel_spacing 
+dmD_time_block = dmA_time_block
+dmD_n_files_group = dmA_n_files_group
+dmD_frequency_correlations =  dmA_frequency_correlations
+dmD_number_frequency_modes = dmA_number_frequency_modes
+dmD_number_frequency_modes_discard = dmA_number_frequency_modes_discard
+dmD_noise_parameter_file = dmA_noise_parameter_file
+dmD_deweight_time_mean = dmA_deweight_time_mean
+dmD_deweight_time_slope = dmA_deweight_time_slope
+dmD_interpolation = dmA_interpolation
+dmD_ts_foreground_mode_file = dmA_ts_foreground_mode_file
+dmD_n_ts_foreground_modes = dmA_n_ts_foreground_modes
 
 
-#### Third round of map making. ####
+cmB_polarizations = cmA_polarizations
+cmB_bands = cmA_bands
+cmB_save_noise_diag = cmA_save_noise_diag
+cmB_save_cholesky = cmA_save_cholesky
+cmB_from_eig = cmA_from_eig
+cmB_save_noise_inv_diag = cmA_save_noise_inv_diag
 
-# measure gain relative to map.
-mc3_input_root = sf2_output_root
-# XXX
-mc3_file_middles = middles_temp
-#mc3_file_middles = file_middles
-mc3_input_end = '.fits'
-mc3_output_root = base_dir + 'map_correlation_thir/'
-mc3_output_filename = "correlations.shelve"
-mc3_output_end = '.fits'
-mc3_scans = ()
-mc3_IFs = ()
+cmC_polarizations = cmA_polarizations
+cmC_bands = cmA_bands
+cmC_save_noise_diag = cmA_save_noise_diag
+cmC_save_cholesky = cmA_save_cholesky
+cmC_from_eig = cmA_from_eig
+cmC_save_noise_inv_diag = cmA_save_noise_inv_diag
 
-mc3_interpolation = 'cubic'
-mc3_map_polarizations = ('I',)
-mc3_map_bands = cm2_bands
-mc3_map_input_root = cm2_output_root
-mc3_map_type = 'clean_map_'
-mc3_diff_gain_cal_only = False
-mc3_smooth_modes_subtract = mc2_smooth_modes_subtract
-mc3_filter_type = mc2_filter_type
+cmD_polarizations = cmA_polarizations
+cmD_bands = cmA_bands
+cmD_save_noise_diag = cmA_save_noise_diag
+cmD_save_cholesky = cmA_save_cholesky
+cmD_from_eig = cmA_from_eig
+cmD_save_noise_inv_diag = cmA_save_noise_inv_diag
+
 

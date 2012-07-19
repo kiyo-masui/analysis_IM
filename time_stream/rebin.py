@@ -24,13 +24,13 @@ class Rebin(base_single.BaseSingle) :
     prefix = 'rb_'
 
     def action(self, Data, ) :
-        if params['n_bins_combined_freq'] > 1:
+        if self.params['n_bins_combined_freq'] > 1:
             rebin_freq.rebin(Data, self.params['n_bins_combined_freq'],
                              True, True)
             Data.add_history('Rebinned freq axis.', 
                              ('Number of freq bins averaged: '
                               + str(self.params['n_bins_combined_freq']), ))
-        if params['n_bins_combined_time'] > 1:
+        if self.params['n_bins_combined_time'] > 1:
             rebin_time.rebin(Data, self.params['n_bins_combined_time'])
             Data.add_history('Rebinned time axis.', 
                              ('Number of time bins averaged: '

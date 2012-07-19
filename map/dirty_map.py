@@ -33,6 +33,7 @@ from kiyopy import parse_ini
 import _mapmaker as _mapmaker_c
 from constants import T_infinity, T_huge, T_large, T_medium, T_small, T_sys
 from constants import f_medium, f_large
+from utils import misc
 
 prefix ='dm_'
 params_init = {# IO:
@@ -111,19 +112,12 @@ class DirtyMapMaker(object):
             else:
                 msg = "time_block parameter must be 'scan' or 'file'."
                 raise ValueError(msg)
-
+        
     def preprocess_data(self, Blocks):
         """The method converts data to a mapmaker friendly format."""
-
-        # On the first loop through the data, figure out the total number 
-        # of time elements and check that the
-        # data has expected properties (right number of channels, right band,
-        # right polarization axis, etc.).
-        # Also calculate the mean in each channel and subtract it off.
+        
+        # On the first pass just get dimensions and do some checks.
         nt = 0
-        channel_sums = 0
-        channel_sq_sums = 0
-        channel_counts = 0
         for Data in Blocks:
             nt += Data.dims[0]
             if Data.dims[3] != self.n_chan:
@@ -137,46 +131,30 @@ class DirtyMapMaker(object):
             if (self.pols[self.pol_ind] != Data.field['CRVAL4'][self.pol_ind]):
                 msg = "Data doesn't all have the same polarizations."
                 raise ce.DataError(msg)
-            filled_data = Data.data[:,self.pol_ind,0,:].filled(0)
-            channel_sums += sp.sum(filled_data, 0)
-            channel_sq_sums += sp.sum(filled_data**2, 0)
-            channel_counts += ma.count(Data.data[:,self.pol_ind,0,:], 0)
-        channel_counts[channel_counts == 0] = 1
-        channel_means = channel_sums / channel_counts
-        channel_vars = channel_sq_sums / channel_counts
-        channel_vars = channel_vars - channel_means**2
-        # Get rid of any wierd channels.
-        bad_channels =  (channel_vars < 1.e-4 
-                        * sp.median(channel_vars[channel_counts > 5]))
-        bad_channels = sp.logical_or(channel_counts < 5, bad_channels)
-        channel_vars[bad_channels] = T_infinity**2
-        # Store the variances in case they are needed as noise weights.
-        self.channel_vars = channel_vars
         # Allocate memory for the outputs.
         time_stream = sp.empty((self.n_chan, nt), dtype=float)
         time_stream = al.make_vect(time_stream, axis_names=('freq', 'time'))
+        # This mask is inverted, i.e. False = masked.
+        mask = sp.empty((self.n_chan, nt), dtype=bool)
         ra = sp.empty(nt, dtype=float)
         dec = sp.empty(nt, dtype=float)
         az = sp.empty(nt, dtype=float)
         el = sp.empty(nt, dtype=float)
         time = sp.empty(nt, dtype=float)
-        mask_inds_time = sp.zeros(0, dtype=int)
-        mask_inds_chan = sp.zeros(0, dtype=int)
         # Now loop through and copy the data.
         tmp_time_ind = 0
         tmp_dt = []
         for Data in Blocks:
             # First deal with the data.
             this_nt = Data.dims[0]
-            this_data = Data.data[:,self.pol_ind,0,:] - channel_means
+            this_data = Data.data[:,self.pol_ind,0,:]
             time_stream[:,tmp_time_ind:tmp_time_ind + this_nt] = \
                     this_data.filled(0).transpose()
             # Now figure out if any of the data is masked.
-            mask = ma.getmaskarray(Data.data[:,self.pol_ind,0,:])
-            masked = sp.where(mask)
-            mask_inds_time = sp.concatenate((mask_inds_time, masked[0]), 0)
-            mask_inds_chan = sp.concatenate((mask_inds_chan, masked[1]), 0)
-            # Finially, copy the other fields.
+            this_mask = sp.logical_not(ma.getmaskarray(
+                Data.data[:,self.pol_ind,0,:]).transpose())
+            mask[:,tmp_time_ind:tmp_time_ind + this_nt] = this_mask
+            # Copy the other fields.
             Data.calc_pointing()
             ra[tmp_time_ind:tmp_time_ind + this_nt] = Data.ra
             dec[tmp_time_ind:tmp_time_ind + this_nt] = Data.dec
@@ -186,32 +164,47 @@ class DirtyMapMaker(object):
             az[tmp_time_ind:tmp_time_ind + this_nt] = Data.field['CRVAL2']
             el[tmp_time_ind:tmp_time_ind + this_nt] = Data.field['CRVAL3']
             tmp_time_ind += this_nt
-        mask_inds = (mask_inds_chan, mask_inds_time)
         # Make sure the bandwidths are the same for all Data Blocks.
         dt = sp.mean(tmp_dt)
         if not sp.allclose(tmp_dt, dt, rtol=1e-2):
             print tmp_dt, dt
             raise RuntimeError("Samplings not uniform.")
         self.BW = 1./2./dt
-        # Now trim this down to exculd all data points that are outside the map
+        # Now that we have all the data in one place, subtract mean, slope.
+        if self.params['deweight_time_slope']:
+            n_poly = 2
+        else:
+            n_poly = 1
+        polys = misc.ortho_poly(time[None,:], n_poly, mask, -1)
+        amps = sp.sum(polys * time_stream, -1)
+        time_stream -= sp.sum(amps[:,:,None] * polys, 0)
+        time_stream *= mask
+        # Calculate variances.
+        channel_vars = sp.sum(time_stream**2, -1)
+        channel_counts = sp.sum(mask, -1)
+        channel_counts[channel_counts==0] = 1.
+        channel_vars /= channel_counts
+        # Get rid of any wierd channels.
+        bad_channels =  (channel_vars < 1.e-4 
+                        * sp.median(channel_vars[channel_counts > 5]))
+        bad_channels = sp.logical_or(channel_counts < 5, bad_channels)
+        channel_vars[bad_channels] = T_infinity**2
+        # Store the variances in case they are needed as noise weights.
+        self.channel_vars = channel_vars
+        # Trim this down to exculd all data points that are outside the map
         # bounds.
         map = self.map
         time_stream, inds = trim_time_stream(time_stream, (ra, dec),
                 (min(map.get_axis('ra')), min(map.get_axis('dec'))),
                 (max(map.get_axis('ra')), max(map.get_axis('dec'))))
+        mask = mask[:,inds]
         ra = ra[inds]
         dec = dec[inds]
         time = time[inds]
         az = az[inds]
         el = el[inds]
-        new_mask_inds = ([], [])
-        for jj in range(len(mask_inds[0])):
-            if mask_inds[1][jj] in inds:
-                new_time_ind = sp.where(inds == mask_inds[1][jj])[0][0]
-                new_mask_inds[0].append(mask_inds[0][jj])
-                new_mask_inds[1].append(new_time_ind)
-        mask_inds = (sp.asarray(new_mask_inds[0], dtype=int),
-                     sp.asarray(new_mask_inds[1], dtype=int))
+        # Change the format of the mask.
+        mask_inds = sp.where(sp.logical_not(mask))
         return time_stream, ra, dec, az, el, time, mask_inds
 
     def get_noise_parameter(self, parameter_name):
@@ -263,8 +256,9 @@ class DirtyMapMaker(object):
                 elif parameter_name[:12] == "over_f_mode_":
                     p = noise_entry[parameter_name]
                     # Factors of the band width applied in Noise object.
+                    orthog = self.params['deweight_time_slope']
                     return (p["amplitude"], p['index'], p['f_0'], p['thermal'],
-                            p['mode'])
+                            p['mode'], orthog)
                 elif parameter_name == "all_channel":
                     # When specifying as a cross over, thermal is the
                     # amplitude.
@@ -296,9 +290,10 @@ class DirtyMapMaker(object):
         # right one.
         n_bands_db = db_freq.shape[0]
         db_band = -1
+        epsilon = 1e-8
         for ii in range(n_bands_db):
-            if ((min(db_freq[ii,:]) <= min(freq))
-                and (max(db_freq[ii,:]) >= max(freq))):
+            if ((min(db_freq[ii,:]) <= min(freq) * (1 + epsilon))
+                and (max(db_freq[ii,:]) >= max(freq) * (1 - epsilon))):
                 db_band = ii
         if db_band == -1:
             raise RuntimeError("Did not find an overlapping band in foreground"
@@ -311,7 +306,7 @@ class DirtyMapMaker(object):
         n_chan_db = len(db_freq)
         n_chan = len(freq)
         chan_start_ind = -1
-        for ii in range(n_chan_db - n_chan):
+        for ii in range(n_chan_db - n_chan + 1):
             if sp.allclose(freq, db_freq[ii:ii + n_chan]):
                 chan_start_ind = ii
         if chan_start_ind == -1:
@@ -328,8 +323,9 @@ class DirtyMapMaker(object):
         self.n_processes = n_processes
         params = self.params
         kiyopy.utils.mkparents(params['output_root'])
-        parse_ini.write_params(params, params['output_root'] + 'params.ini',
-                               prefix='mm_')
+        parse_ini.write_params(params, params['output_root']
+                               + 'dirty_map_params.ini',
+                               prefix='dm_')
         if self.feedback > 0:
             print "Input root is: " + params["input_root"]
             print "Output root is: " + params["output_root"]
@@ -551,19 +547,14 @@ class DirtyMapMaker(object):
                 # correlations, things are more stable.  Also, thermal noise
                 # estimate will be high, so you need to deweight things extra.
                 if params['deweight_time_mean']:
-                    if params["frequency_correlations"] == 'None':
-                        N.deweight_time_mean(T_large**2)
-                    else:
-                        N.deweight_time_mean(T_large**2)
+                    N.deweight_time_mean(T_huge**2)
                 if params['deweight_time_slope']:
-                    if params["frequency_correlations"] == 'None':
-                        N.deweight_time_slope(T_large**2)
-                    else:
-                        N.deweight_time_slope(T_large**2)
+                    N.deweight_time_slope(T_huge**2)
                 # If we've subtracted any modes out of the time stream,
                 # deweight them.
                 for mode_num in range(params['n_ts_foreground_modes']):
-                    N.deweight_freq_mode(self.get_ts_foreground_mode(mode_num))
+                    N.deweight_freq_mode(self.get_ts_foreground_mode(mode_num),
+                            T_large**2, params['deweight_time_slope'])
                 # Store all these for later.
                 pointing_list.append(P)
                 noise_list.append(N)
@@ -588,7 +579,6 @@ class DirtyMapMaker(object):
                         if self.feedback > 1:
                             sys.stdout.write('.')
                             sys.stdout.flush()
-
             # Start the worker threads.
             thread_list = []
             for ii in range(self.n_processes):
@@ -647,6 +637,12 @@ class DirtyMapMaker(object):
                             thread_N = noise_list[thread_kk]
                             thread_P.noise_channel_to_map(thread_N, 
                                         thread_f_ind, thread_cov_inv_block)
+                        if start_file_ind == 0:
+                            # This is our first time through the matrix.  Add
+                            # prior to the diagonal.
+                            thread_cov_inv_block.flat \
+                                    [::self.n_ra * self.n_dec + 1] += \
+                                    1.0 / T_large**2
                         cov_inv[thread_f_ind,...] += thread_cov_inv_block
                         if self.feedback > 1:
                             print thread_f_ind,
@@ -673,7 +669,6 @@ class DirtyMapMaker(object):
                             and thread_ra_ind == self.n_ra - 1):
                             print thread_f_ind,
                             sys.stdout.flush()
-
             # Start the worker threads.
             thread_list = []
             for ii in range(self.n_processes):
@@ -703,12 +698,18 @@ class DirtyMapMaker(object):
         # setting a prior that all pixels are 0 += T_large. This does
         # bias the map maker slightly, but really shouldn't matter.
         if self.uncorrelated_channels:
-            cov_view = cov_inv.view()
-            cov_view.shape = (self.n_chan, (self.n_ra * self.n_dec)**2)
-            cov_view[:,::self.n_ra * self.n_dec + 1] += 1.0 / T_large**2
+            #cov_view = cov_inv.view()
+            #cov_view.shape = (self.n_chan, (self.n_ra * self.n_dec)**2)
+            #cov_view[:,::self.n_ra * self.n_dec + 1] += 1.0 / T_large**2
+            #for ii in xrange(self.n_chan):
+            #    cov_inv[ii].flat[::self.n_ra * self.n_dec + 1] += \
+            #            1.0 / T_large**2
+            # This is dealt with more efficiently in thread work.
+            pass
         else:
             cov_inv.flat[::self.n_chan * self.n_ra * self.n_dec + 1] += \
                 1.0 / T_large**2
+
 
 #### Classes ####
 
@@ -931,6 +932,7 @@ class NoiseError(Exception):
     """
     pass
 
+
 class Noise(object):
     """Object that represents the noise matrix for time stream data.
     
@@ -1097,40 +1099,70 @@ class Noise(object):
         """
         
         self.initialize_diagonal()
-        self.diagonal[mask_inds] = T_infinity**2
+        self.diagonal[mask_inds] += T_infinity**2
 
-    def deweight_time_mean(self, T=T_large**2):
+    def get_mean_mode(self):
+        mode = sp.empty(self.n_time, dtype=float)
+        mode[:] = 1.0 / sp.sqrt(self.n_time)
+        return mode
+    
+    def get_slope_mode(self):
+        mode = self.time - sp.mean(self.time)
+        mode *= 1.0 / sp.sqrt(sp.sum(mode**2)) 
+        return mode
+
+    def deweight_time_mean(self, T=T_huge**2):
         """Deweights time mean in each channel.
 
         This modifies the part of the noise matrix that is the same for each
         channel.
         """
         
-        start = self.add_time_modes(1)
-        self.time_modes[start,:] = 1.0 / sp.sqrt(self.n_time)
-        # We deweight by T_medium, enough such that the mean doesn't interfere
-        # with other modes in the map making, but not enough to actually
-        # eliminate mean information (will have to be done explicitly) as doing
-        # so would kill numerical stability.
-        self.time_mode_noise[start,...] = (sp.eye(self.n_chan, dtype=float) 
-                                           * T * self.n_time)
+        mode = self.get_mean_mode()
+        self.deweight_time_mode(mode, T=T)
 
-    def deweight_time_slope(self, T=T_large**2):
+    def deweight_time_slope(self, T=T_huge**2):
         """Deweights time slope in each channel.
         
         This modifies the part of the noise matrix that is the same for each
         channel.
         """
 
+        mode = self.get_slope_mode()
+        self.deweight_time_mode(mode, T=T)
+
+    def deweight_time_mode(self, mode, T=T_huge**2):
+        """Dewieghts a given time mode in each channel.
+        
+        This modifies the part of the noise matrix that is the same for each
+        channel.
+        """
+
         start = self.add_time_modes(1)
-        mode = self.time - sp.mean(self.time)
-        mode *= 1.0 / sp.sqrt(sp.sum(mode**2)) 
         self.time_modes[start,:] = mode
         self.time_mode_noise[start,...] = (sp.eye(self.n_chan, dtype=float) 
                                            * T * self.n_time)
 
+    def orthogonalize_mat_mean_slope(self, mat):
+        """Removes the time mode and the slope mode from a matrix."""
+
+        if mat.shape != (self.n_time, self.n_time):
+            msg = "Expected a time-time matrix."
+            raise ValueError(msg)
+        modes = [self.get_mean_mode(), self.get_slope_mode()]
+        for mode in modes:
+            tmp1 = np.sum(mat * mode, 1)
+            tmp2 = np.sum(mat * mode[:,None], 0)
+            tmp3 = np.sum(tmp2 * mode)
+            mat[:,:] -= tmp1[:,None] * mode
+            mat[:,:] -= tmp2[None,:] * mode[:,None]
+            mat[:,:] += (tmp3 * mode[:,None] * mode[None,:])
+        return mat
+
     def add_correlated_over_f(self, amp, index, f0):
         """Add 1/f noise that is perfectly correlated between frequencies.
+        
+        # XXX: Out of date.
 
         This modifies the the correlated mode part of the noise matrix. It adds
         a single mode with equal amplitude in all frequencies.
@@ -1153,10 +1185,14 @@ class Noise(object):
         self.add_over_f_freq_mode(amp, index, f0, thermal, mode)
         return
         
-    def add_over_f_freq_mode(self, amp, index, f0, thermal, mode):
+    def add_over_f_freq_mode(self, amp, index, f0, thermal, mode,
+                             ortho_mean_slope=False):
         """Add `1/f + const` noise to a given frequency mode."""
         
         # Too steep a spectra will crash finialize.
+        if index < -3.5:
+            print "Index:", index
+            raise NoiseError("Extremely steep index risks singular noise.")
         time = self.time
         # Build the matrix.
         time_deltas = abs(time[:, None] - time)
@@ -1179,28 +1215,38 @@ class Noise(object):
             interpolate.interp1d(sp.arange(n_lags) * dt_calc,
                                  correlation_function, kind='linear')
         noise_mat = corr_func_interpolator(time_deltas)
+        if ortho_mean_slope:
+            # This greatly improves numerical stability.
+            noise_mat = self.orthogonalize_mat_mean_slope(noise_mat)
         # Add the thermal part to the diagonal.
-        # XXX This is acctually quite wrong.  The below is probably a bit
-        # better.
         BW = 1. / 2. / dt
-        noise_mat.flat[::self.n_time + 1] += thermal * BW * 2
-        # XXX This isn't strictly being done correctly, but to do better we
-        # need to measure the noise differently.
-        #mode_norm = sp.sum(mode**2)  # Usually unity.
-        #self.initialize_diagonal()
-        #BW = 1. / 2. / dt
-        #self.diagonal += mode[:,None]**2 * thermal * BW * 2 / mode_norm
+        thermal_var = thermal * BW * 2
+        # Minimum noise level for numerical stability.
+        thermal_var = max((thermal_var, T_small**2))
+        noise_mat.flat[::self.n_time + 1] += thermal_var
         self.freq_mode_noise[start_mode,...] = noise_mat
-
-    def deweight_freq_mode(self, mode, T=T_large**2):
+        # XXX
+        if not hasattr(self, 'debug'):
+            self.debug = []
+        this_debug = {'amp' : amp, 'index' : index, 'f0' : f0,
+                      'thermal' : thermal_var,
+                      "max_corr" :  sp.amax(correlation_function)}
+        self.debug.append(this_debug)
+        
+    def deweight_freq_mode(self, mode, T=T_huge**2, ortho_mean_slope=False):
         """Completly deweight a frequency mode."""
         
         n_chan = self.n_chan
         n_time = self.n_time
         start_mode = self.add_freq_modes(1)
         self.freq_modes[start_mode,:] = mode
-        self.freq_mode_noise[start_mode,...]  = (sp.eye(n_time, dtype=float)
-                                                 * T * n_chan)
+        noise_mat = (sp.eye(n_time, dtype=float) * T * n_chan)
+        if ortho_mean_slope:
+            # This greatly improves numerical stability.
+            noise_mat = self.orthogonalize_mat_mean_slope(noise_mat)
+        # Add a bit to diagonal for conditioning.
+        noise_mat.flat[::n_time + 1] += T_small**2
+        self.freq_mode_noise[start_mode,...]  = noise_mat
 
     def add_all_chan_low(self, amps, index, f_0):
         """Deweight frequencies below, and a bit above 'f_0', 
@@ -1220,23 +1266,27 @@ class Noise(object):
         # If there are no frequencies below f_0, do nothing.
         if f_0 * 1.5 <= df :
             return
+        # If a channel is already deweighted completly, do nothing to it.
+        # XXX BW factors.
+        amps = amps.copy()
+        amps[amps > T_huge**2] = T_small**2
         # Figure out how many modes to deweight.
         # I could concievably make the cut-off index dependant.
         frequencies = sp.arange(df, f_0 * 2.0, df)
         n_f = len(frequencies)
         n_modes = 2 * n_f
-        if n_modes > self.n_time // 4:
+        if n_modes > self.n_time * 0.15:
             print f_0, n_modes, self.n_time
             raise NoiseError("To many time modes to deweight.")
-        # Add allowcate mememory for the new modes.
+        # Allowcate mememory for the new modes.
         start_mode = self.add_time_modes(n_modes)
         # Loop through and fill the modes.
         for ii, f in enumerate(frequencies):
             this_amp_factor = (f / f_0)**index * df
-            if sp.any(this_amp_factor > f_large * self.n_time):
-                print "time mode amplitude:", this_amp_factor
-                raise NoiseError("Deweighting amplitude too high.")
             this_amps = this_amp_factor * amps
+            if sp.any(this_amps > T_large**2):
+                print "time mode amplitude:", this_amps
+                raise NoiseError("Deweighting amplitude too high.")
             # The cosine (symetric) mode.
             cos_mode = sp.cos((ii+1) * time_normalized)
             norm_cos = sp.sqrt(sp.sum(cos_mode**2))
@@ -1255,11 +1305,64 @@ class Noise(object):
             sin_noise = sp.zeros((n_chan, n_chan), dtype=float)
             sin_noise.flat[::n_chan + 1] = sin_amp
             self.time_mode_noise[start_mode + 2*ii + 1,:,:] = sin_noise
-      
+
+    def orthogonalize_modes(self):
+        """
+        Orthogonalize modes with high overlap, for numerical stability.
+        
+        XXX: Not used and untested.
+
+        Look for modes with both high noise and high overlap with other modes
+        of high noise. Move the noise into one mode or the other to improve
+        numerical stability.
+
+        Note that this method does change the noise model.  It decreases the
+        overall information and as such is conservative.  In addition it should
+        only affect very noisy modes.
+        """
+
+        m = self.time_modes.shape[0]
+        q = self.freq_modes.shape[0]
+        # Find time modes with big noise.
+        hi_noise_time_modes = []
+        for ii in range(m):
+            if np.any(self.time_mode_noise[ii].flat[::self.n_chan + 1]
+                      > 0.9 * T_large**2):
+                hi_noise_time_modes.append(ii)
+        # For each frequency mode, check the overlap with the hi noise time
+        # modes.
+        print hi_noise_time_modes
+        for ii in range(q):
+            freq_mode_noise = self.freq_mode_noise[ii]
+            freq_mode = self.freq_modes[ii]
+            for jj in hi_noise_time_modes:
+                time_mode = self.time_modes[jj]
+                amp = np.sum(time_mode
+                             * np.sum(freq_mode_noise * time_mode, 1))
+                print jj, amp
+                #if amp > T_large**2: # Very noisy mode.
+                if True:
+                    # Subtract this mode out of the freq mode noise.
+                    tmp = np.sum(freq_mode_noise * time_mode, 1)
+                    tmp2 = np.sum(freq_mode_noise * time_mode[:,None], 0)
+                    freq_mode_noise[:,:] -= tmp[:,None] * time_mode
+                    freq_mode_noise[:,:] -= tmp2[None,:] * time_mode[:,None]
+                    freq_mode_noise[:,:] += (amp * time_mode[:,None]
+                                             * time_mode[None,:])
+                    # Add the subtracted noise into the time mode noise.  Add
+                    # it in as diagonal even though it isn't (conservative).
+                    self.time_mode_noise[jj,:,:] += np.diag(amp * freq_mode**2)
+        # TODO: Similar proceedure could be done with time_modes and freq_modes
+        # reversed. Also overlap between time_modes and time_modes as well as
+        # freq_modes and freq_modes.
+
     def finalize(self, frequency_correlations=True, preserve_matrices=True):
         """Tell the class that you are done building the matrix.
         """
         
+        # Flag for performing extra checking and debugging.
+        CHECKS = False
+
         self._assert_not_finalized()
         n_time = self.n_time
         n_chan = self.n_chan
@@ -1278,34 +1381,38 @@ class Noise(object):
             freq_mode_inv = al.empty_like(self.freq_mode_noise)
             for ii in xrange(self.freq_mode_noise.shape[0]):
                 freq_mode_inv[ii,...] = \
-                        linalg.inv(self.freq_mode_noise[ii,...])
+                        scaled_inv(self.freq_mode_noise[ii,...])
                 # Check that its positive definiate.
                 A = self.freq_mode_noise[ii].view()
                 A.shape = (n_time,) * 2
-                e, v = linalg.eigh(A)
-                e_max = max(e)
-                if not sp.all(e > -1e-7*e_max) or e_max < 0:
-                    print e
+                if get_scaled_cond_h(A) > 1.e11 :
+                    e, v = linalg.eigh(A)
+                    print "Freq cond:", max(e)/min(e), get_scaled_cond_h(A)
+                    print self.debug
                     msg = ("Some freq_mode noise components not positive"
                            " definate.")
                     raise RuntimeError(msg)
-                if hasattr(self, 'flag'):
+                if CHECKS:
+                    e, v = linalg.eigh(A)
+                    print "freq_mode eigs:", min(e), max(e)
                     print "Initial freq_mode condition number:", max(e)/min(e)
             time_mode_inv = al.empty_like(self.time_mode_noise)
             for ii in xrange(self.time_mode_noise.shape[0]):
-                time_mode_inv[ii,...] = linalg.inv(
+                time_mode_inv[ii,...] = scaled_inv(
                     self.time_mode_noise[ii,...])
                 A = self.time_mode_noise[ii].view()
                 A.shape = (n_chan,) * 2
-                e, v = linalg.eigh(A)
-                e_max = max(e)
-                if not sp.all(e > -1e-7*e_max) or e_max < 0:
-                    print e
+                if get_scaled_cond_h(A) > 1.e11 :
+                    e, v = linalg.eigh(A)
+                    print "Time cond:", max(e)/min(e), get_scaled_cond_h(A)
                     msg = ("Some time_mode noise components not positive"
                            " definate.")
-                if hasattr(self, 'flag'):
+                    raise RuntimeError(msg)
+                if CHECKS:
+                    e, v = linalg.eigh(A)
+                    print "time_mode eigs:", min(e), max(e)
                     print "Initial time_mode condition number:", max(e)/min(e)
-            # The normal case when se are considering the full noise.
+            # The normal case when we are considering the full noise.
             # Calculate the term in the bracket in the matrix inversion lemma.
             # Get the size of the update term.
             # First, the rank of the correlated frequency part.
@@ -1328,12 +1435,7 @@ class Noise(object):
                 axis_names=('time_mode', 'freq', 'time_mode', 'freq'),
                 row_axes=(0, 1), col_axes=(2, 3))
             # Build the matrices.
-            # Add the update mode noise in thier proper space.
-            for ii in range(m):
-                freq_mode_update[ii,:,ii,:] = freq_mode_inv[ii,:,:]
-            for ii in range(q):
-                time_mode_update[ii,:,ii,:] = time_mode_inv[ii,:,:]
-            # Now transform the diagonal noise to this funny space and add
+            # Transform the diagonal noise to this funny space and add
             # it to the update term. Do this one pair of modes at a time
             # to make things less complicated.
             for ii in xrange(m):
@@ -1356,6 +1458,16 @@ class Noise(object):
                                              * diagonal_inv[:,:], 1)
                     time_mode_update[ii,:,jj,:].flat[::n_chan + 1] += \
                             tmp_time_update
+            if CHECKS:
+                # Make a copy of these for testing.
+                diag_freq_space = freq_mode_update.copy()
+                diag_time_space = time_mode_update.copy()
+                diag_cross_space = cross_update.copy()
+            # Add the update mode noise in thier proper space.
+            for ii in range(m):
+                freq_mode_update[ii,:,ii,:] += freq_mode_inv[ii,:,:]
+            for ii in range(q):
+                time_mode_update[ii,:,ii,:] += time_mode_inv[ii,:,:]
             # Put all the update terms in one big matrix and invert it.
             update_matrix = sp.empty((n_update, n_update), dtype=float)
             # Top left.
@@ -1372,11 +1484,42 @@ class Noise(object):
             tmp_mat = sp.swapaxes(tmp_mat, 1, 3)
             update_matrix[m * n_time:,:m * n_time].flat[...] = \
                 tmp_mat.flat
-            update_matrix_inv = linalg.inv(update_matrix)
-            # TODO: Some sort of condition number check here?
-            #if hasattr(self, 'flag'):
-            #    e, v = linalg.eigh(update_matrix)
-            #    print "Update term condition number:", max(e)/min(e)
+            update_matrix_inv = scaled_inv(update_matrix)
+            if CHECKS:
+                diag_space = sp.empty((n_update, n_update), dtype=float)
+                # Top left.
+                diag_space[:m * n_time,:m * n_time].flat[...] = \
+                    diag_freq_space.flat
+                # Bottom right.
+                diag_space[m * n_time:,m * n_time:].flat[...] = \
+                    diag_time_space.flat
+                # Top right.
+                diag_space[:m * n_time,m * n_time:].flat[...] = \
+                    diag_cross_space.flat
+                # Bottom left.
+                tmp_mat = sp.swapaxes(diag_cross_space, 0, 2)
+                tmp_mat = sp.swapaxes(tmp_mat, 1, 3)
+                diag_space[m * n_time:,:m * n_time].flat[...] = \
+                    tmp_mat.flat
+                e, v = linalg.eig(diag_space)
+                print "rotated diagonal eigs:", min(e.real), max(e.real)
+                subtraction_term = sp.dot(update_matrix_inv, diag_space)
+                e, v = linalg.eig(subtraction_term)
+                print "cond:",  1. - max(e.real)
+                print "reduced update eigs:", min(e.real), max(e.real)
+                if 1. - max(e.real) < 1e-7 or max(e.real) < 0.9:
+                    print "Whao!!!"
+                    print 1. - max(e)
+                    print n_time, n_chan, m, q
+                    #time_mod.sleep(300)
+                    #raise NoiseError('Negitive eigenvalue detected.')
+            # A condition number check on the update matrix.
+            if CHECKS:
+                e = linalg.eigvalsh(update_matrix)
+                print "Update eigs:", min(e), max(e), max(e)/min(e)
+            if get_scaled_cond_h(update_matrix) > 1e11:
+                msg = "Update term too ill conditioned."
+                raise NoiseError(msg)
             # Copy the update terms back to thier own matrices and store them.
             freq_mode_update.flat[...] = \
                     update_matrix_inv[:m * n_time,:m * n_time].flat
@@ -1392,11 +1535,10 @@ class Noise(object):
             # Check that the diagonal is positive to catch catastrophic
             # inversion faileurs.
             self.check_inv_pos_diagonal()
-
         else:
             # Ignore the channel correlations in the noise.  Ignore freq_modes.
             self._frequency_correlations = False
-            # TODO: raise a warning?
+            # TODO: raise a warning (as opposed to printing)?
             if hasattr(self, "freq_modes"):
                 print "Warning, frequency mode noise ignored."
             # Calculate a time mode update term for each frequency.
@@ -1421,9 +1563,9 @@ class Noise(object):
                                                    * self.time_modes[:,None,:] 
                                                    * self.time_modes[None,:,:],
                                                    -1)
-                time_mode_update[ii,...] = linalg.inv(time_mode_update[ii,...])
+                time_mode_update[ii,...] = scaled_inv(time_mode_update[ii,...])
             self.time_mode_update = time_mode_update
-            # Set flag so no more modifications to the matricies can occure.
+            # Set flag so no more modifications to the matricies can occur.
             self._finalized = True
         # If desired, delete the noise matrices to recover memory.  Doing
         # this means the Noise cannot be 'unfinalized'.
@@ -1445,6 +1587,40 @@ class Noise(object):
                              "diagonal.")
 
     # ---- Methods for using the Noise Matrix. ----
+
+    def get_mat(self):
+        """Get dense representation of noise matrix.
+        
+        Not particularly useful except for testing.
+        """
+ 
+        n_chan = self.n_chan
+        n_time = self.n_time
+        n = n_chan * n_time
+        freq_modes = self.freq_modes
+        time_modes = self.time_modes
+        # Allowcate memory.
+        out = sp.zeros((n_chan, n_time, n_chan, n_time), dtype=float)
+        out = al.make_mat(out, axis_names=('freq','time','freq','time'),
+                          row_axes=(0, 1), col_axes=(2, 3))
+        # Add the diagonal part.
+        if hasattr(self, 'diagonal'):
+             out.flat[::n + 1] += self.diagonal.flat
+        # Time mode update part.
+        if hasattr(self, 'time_mode_noise'):
+            m = self.time_modes.shape[0]
+            for ii in range(m):
+                mode = self.time_modes[ii,:]
+                out += (self.time_mode_noise[ii,:,None,:,None]
+                        * mode[:,None,None] * mode)
+        # Time mode update part.
+        if hasattr(self, 'freq_mode_noise'):
+            q = self.freq_modes.shape[0]
+            for ii in range(q):
+                mode = self.freq_modes[ii,:]
+                out += (self.freq_mode_noise[ii,None,:,None,:]
+                        * mode[:,None,None,None] * mode[:,None])
+        return out
 
     def get_inverse_diagonal(self):
         self._assert_finalized()
@@ -1629,3 +1805,38 @@ def trim_time_stream(data, coords, lower_bounds, upper_bounds):
     trimmed_data = sp.ascontiguousarray(data[:,inds])
     trimmed_data = al.make_vect(trimmed_data, axis_names=('freq', 'time'))
     return trimmed_data, inds
+
+def get_scaled_cond_h(mat):
+    """Gets the condition number of a hermition matrix after rescaling."""
+
+    n = mat.shape[0]
+    if mat.shape != (n, n):
+        raise ValueError("Matrix must be square.")
+    diag = abs(mat.flat[::n + 1])
+    scal = 1./sp.sqrt(diag)
+    scaled_mat = scal[:,None] * mat * scal[None,:]
+    e = linalg.eigvalsh(scaled_mat)
+    cond = max(e) / min(e)
+    return cond
+
+def scaled_inv(mat):
+    """Performs the matrix inverse by first scaling by the diagonal.
+
+    This performs a scaling operation on a matrix before inverting it and then
+    applies the appropriate scaling back to the inverse. This opperation should
+    improve the conditioning on symetric positive definate matricies such as
+    covariance matricies.
+    """
+
+    n = mat.shape[0]
+    if mat.shape != (n, n):
+        raise ValueError("Matrix must be square.")
+    diag = abs(mat.flat[::n + 1])
+    scal_inv = sp.sqrt(diag)
+    scal = 1. / scal_inv
+    out_mat = scal[:,None] * mat * scal[None,:]
+    out_mat = linalg.inv(out_mat)
+    out_mat = scal[:,None] * out_mat * scal[None,:]
+    return out_mat
+
+
