@@ -186,8 +186,8 @@ class CompileCrosspower(object):
                 else:
                     transfer_dict[treatment] = beamtransfer_2d["0modes"].value
 
-            pwr_data.apply_2d_trans_by_treatment(transfer_dict)
             pwr_mock.apply_2d_trans_by_treatment(transfer_dict)
+            pwr_data.apply_2d_trans_by_treatment(transfer_dict)
 
         # gather the rms of each 2D k-bin over the realizations of mock
         # catalogs; this is used for the 2D->1D weighting
@@ -248,24 +248,52 @@ class CompileCrosspower(object):
             pwr_mock.convert_2d_to_1d(weights_2d=weights_2d)
         else:
             # use the counts to weight instead by default
+            # just be sure the transfer function is applied
             pwr_data.convert_2d_to_1d()
             pwr_mock.convert_2d_to_1d()
 
         pwr_data_summary = pwr_data.agg_stat_1d_pwrspec(from_2d=True)
         pwr_mock_summary = pwr_mock.agg_stat_1d_pwrspec(from_2d=True)
 
+        # build the hd5 summary file
+        sum_filename = "%s/cross_summary.hd5" % self.params["outdir"]
+        summaryfile = h5py.File(sum_filename, "w")
+        power_1d_out = summaryfile.create_group("power_1d")
+        power_1d_cov_out = summaryfile.create_group("power_1d_cov")
+        kvec_out = summaryfile.create_group("kvec")
+
         k_vec = pwr_data.k_1d_from_2d["center"]
+        kvec_out["k_1d_left"] = pwr_data.k_1d_from_2d["left"]
+        kvec_out["k_1d_center"] = pwr_data.k_1d_from_2d["center"]
+        kvec_out["k_1d_right"] = pwr_data.k_1d_from_2d["right"]
 
         for treatment in pwr_data.treatment_cases:
             mean_data = pwr_data_summary[treatment]["mean"]
             mean_mock = pwr_mock_summary[treatment]["mean"]
             std_mock = pwr_mock_summary[treatment]["std"]
+            cov_mock = pwr_mock_summary[treatment]["cov"]
+            corr_mock = pwr_mock_summary[treatment]["corr"]
+
+            power_1d_out[treatment] = mean_data
+            power_1d_cov_out[treatment] = cov_mock
+
+            logk = np.log10(k_vec)
+            outplot_corr_file = "%s/covariance_1d_%s.png" % \
+                                 (self.params['outdir'], treatment)
+
+            plot_slice.simpleplot_2D(outplot_corr_file,
+                                     corr_mock,
+                                     logk, logk,
+                                     ["log k", "log k"], 1., "1d corr",
+                                     "1d corr", logscale=False)
 
             outfile = "%s/pk_%s.dat" % (self.params["outdir"], treatment)
             file_tools.print_multicolumn(k_vec, mean_data, mean_mock, std_mock,
                                          outfile=outfile)
 
             print "writing to " + outfile
+
+        summaryfile.close()
 
 
 physsimparams_init = {

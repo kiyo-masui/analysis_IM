@@ -2,10 +2,12 @@
 
 import time
 
+import numpy as np
 import scipy as sp
 from scipy.interpolate import interp1d
 from scipy import linalg
 import ephem
+from scipy.stats import chisqprob
 
 def elaz2radec_lst(el, az, lst, lat = 38.43312) :
     """DO NOT USE THIS ROUTINE FOR ANTHING THAT NEEDS TO BE RIGHT.  IT DOES NOT
@@ -185,7 +187,7 @@ def polint2str(pol_int) :
         raise ValueError("Polarization integer must be in range(-8, 5) and "
                          "nonzero")
 
-def ampfit(data, covariance, theory):
+def ampfit(data, covariance, theory, rank_thresh=1e-12):
     """Fits the amplitude of the theory curve to the data.
 
     Finds `amp` such that `amp`*`theory` is the best fit to `data`.
@@ -201,24 +203,34 @@ def ampfit(data, covariance, theory):
     data = sp.asarray(data)
     covariance = sp.asarray(covariance)
     theory = sp.asarray(theory)
-    # Sanity check inputs.
+
     if len(data.shape) != 1:
         raise ValueError("`data` must be a 1D vector.")
+
     n = len(data)
+
     if data.shape != theory.shape:
         raise ValueError("`theory` must be the same shape as `data`.")
+
     if covariance.shape != (n,n):
         msg = "`covariance` must be a square matrix compatible with data."
         raise ValueError(msg)
-    # Linear fit for the amplitude.  Formulas July 24, 2011 of Kiyo's notebook.
+
     covariance_inverse = linalg.inv(covariance)
     weighted_data = sp.dot(covariance_inverse, data)
     amp = sp.dot(theory, weighted_data)
     normalization = sp.dot(covariance_inverse, theory)
     normalization = sp.dot(theory, normalization)
     amp /= normalization
-    # Calculate the Error.
     error = sp.sqrt(1/normalization)
 
-    return amp, error
+    u, s, v = np.linalg.svd(covariance)
+    dof = np.sum(s > rank_thresh)
+    resid = data - amp * theory
+    chi2 = sp.dot(covariance_inverse, resid)
+    chi2 = sp.dot(resid, chi2)
+    pte = sp.stats.chisqprob(chi2, dof - 1)
 
+    return {"amp":amp, "error":error, \
+            "chi2":chi2, "dof":dof - 1, \
+            "pte":pte}
