@@ -637,6 +637,12 @@ class DirtyMapMaker(object):
                             thread_N = noise_list[thread_kk]
                             thread_P.noise_channel_to_map(thread_N, 
                                         thread_f_ind, thread_cov_inv_block)
+                        if start_file_ind == 0:
+                            # This is our first time through the matrix.  Add
+                            # prior to the diagonal.
+                            thread_cov_inv_block.flat \
+                                    [::self.n_ra * self.n_dec + 1] += \
+                                    1.0 / T_large**2
                         cov_inv[thread_f_ind,...] += thread_cov_inv_block
                         if self.feedback > 1:
                             print thread_f_ind,
@@ -692,9 +698,14 @@ class DirtyMapMaker(object):
         # setting a prior that all pixels are 0 += T_large. This does
         # bias the map maker slightly, but really shouldn't matter.
         if self.uncorrelated_channels:
-            cov_view = cov_inv.view()
-            cov_view.shape = (self.n_chan, (self.n_ra * self.n_dec)**2)
-            cov_view[:,::self.n_ra * self.n_dec + 1] += 1.0 / T_large**2
+            #cov_view = cov_inv.view()
+            #cov_view.shape = (self.n_chan, (self.n_ra * self.n_dec)**2)
+            #cov_view[:,::self.n_ra * self.n_dec + 1] += 1.0 / T_large**2
+            #for ii in xrange(self.n_chan):
+            #    cov_inv[ii].flat[::self.n_ra * self.n_dec + 1] += \
+            #            1.0 / T_large**2
+            # This is dealt with more efficiently in thread work.
+            pass
         else:
             cov_inv.flat[::self.n_chan * self.n_ra * self.n_dec + 1] += \
                 1.0 / T_large**2
@@ -1264,7 +1275,7 @@ class Noise(object):
         frequencies = sp.arange(df, f_0 * 2.0, df)
         n_f = len(frequencies)
         n_modes = 2 * n_f
-        if n_modes > self.n_time // 10:
+        if n_modes > self.n_time * 0.15:
             print f_0, n_modes, self.n_time
             raise NoiseError("To many time modes to deweight.")
         # Allowcate mememory for the new modes.
