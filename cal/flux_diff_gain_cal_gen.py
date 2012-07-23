@@ -71,14 +71,14 @@ class MuellerGen(object) :
 #        print Phi
 #        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*2 
 #        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*(2.28315426-0.000484307905*freq_val[f]) # Added linear fit for Jansky to Kelvin conversion.
-#        Isrc = 19.74748409*pow((750.0/freq_val[f]),0.49899785)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C286
+        Isrc = 19.74748409*pow((750.0/freq_val[f]),0.49899785)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C286
 #        Isrc = 25.15445092*pow((750.0/freq_val[f]),0.75578842)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for  3C48
 #        Isrc = 4.56303633*pow((750.0/freq_val[f]),0.59237327)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C67
 #        Isrc = 31.32846821*pow((750.0/freq_val[f]),0.52113534)*(2.28315426-0.000484307905*freq_val[f]) #My fit solution for 3C147
-        Isrc = 34.11187767*pow((750.0/freq_val[f]),0.62009421)*(2.28315426-0.000484307905*freq_val[f]) #My fit solution for 3C295
+#        Isrc = 34.11187767*pow((750.0/freq_val[f]),0.62009421)*(2.28315426-0.000484307905*freq_val[f]) #My fit solution for 3C295
         PAsrc = 33.0*sp.pi/180.0 # for 3C286, doesn't matter for unpolarized. 
-#        Psrc = 0.07 #for 3C286 
-        Psrc = 0 #for #3C48,3C67, 3C147, 3C295
+        Psrc = 0.07 #for 3C286 
+#        Psrc = 0 #for #3C48,3C67, 3C147, 3C295
         Qsrc = Isrc*Psrc*sp.cos(2*PAsrc) 
         Usrc = Isrc*Psrc*sp.sin(2*PAsrc) 
         Vsrc = 0
@@ -258,7 +258,7 @@ class MuellerGen(object) :
 #            print time_len
 #            print freq_len
 #            print m
-            print RM
+#            print RM
 #Building the measured data into arrays (guppi version)         
             if guppi_result == True : 
                 if n_scans == 2 : 
@@ -336,19 +336,26 @@ class MuellerGen(object) :
         #Note that error can be used to weight the equations if not all set to one.
 
         p_val_out = sp.zeros((freq_len, 3))
+        p_err_out = sp.zeros((freq_len,3))
  #       p_err_out = sp.zeros((freq_len, 17))
      
         for f in range(0,freq_len):   
-            plsq = leastsq(self.residuals,p0,args=(error,f,freq_val),full_output=0, maxfev=5000)
+            plsq = leastsq(self.residuals,p0,args=(error,f,freq_val),full_output=1, maxfev=5000)
             pval = plsq[0] # this is the 1-d array of results0
-
+            perr = plsq[1]
+#            print perr
             p_val_out[f,0] = freq_val[f]
             p_val_out[f,1] = pval[0]
             p_val_out[f,2] = pval[1]
+            p_err_out[f,0] = freq_val[f]
+            p_err_out[f,1] = perr[0,0]
+            p_err_out[f,2] = perr[1,1]
 
 #        sess_num = int(session_nums[0])
 #        print sess_num
 #        np.savetxt(output_root+str(sess_num)+'_flux_mueller_matrix_calc'+output_end, p_val_out, delimiter = ' ')
+        err_out_path = output_root+sess+'_diff_gain_err'+output_end
+        np.savetxt(err_out_path,p_err_out,delimiter=' ')
         out_path = output_root+sess+'_diff_gain_calc'+output_end
         np.savetxt(out_path,p_val_out,delimiter = ' ')
 #        np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')
