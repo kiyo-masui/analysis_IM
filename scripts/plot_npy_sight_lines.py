@@ -45,10 +45,10 @@ for slice, dec in enumerate(decs):
     for line, ra in enumerate(ras):
         # Now have "slice" being the dec index, "line" being the ra index
 # Making initial sight line plots
-#        pylab.plot(freqs,array[:,line,slice])
-#        pylab.ylim(-0.5,0.5)
-#        pylab.savefig(filename2+'_'+str(ra)+'_'+str(dec)+'_.png')
-#        pylab.clf()
+        pylab.plot(freqs,array[:,line,slice])
+        pylab.ylim(-1.0,1.0)
+        pylab.savefig(filename2+'_'+str(ra)+'_'+str(dec)+'_.png')
+        pylab.clf()
 
 # Subtracting off the "first mode" power law slope to the data
         data = array[:,line,slice]
@@ -64,10 +64,10 @@ for slice, dec in enumerate(decs):
         plsq = opt.leastsq(residuals,params0,args=(freqs_good,data),full_output=1,maxfev=5000)
 #        print ra, dec, plsq[0]
         remainder = data-function(freqs_good,plsq[0])
-#        pylab.plot(freqs_good,remainder)
-#        pylab.ylim(-0.5,0.5)
-#        pylab.savefig(filename2+'_dev_'+str(ra)+'_'+str(dec)+'.png')
-#        pylab.clf()
+        pylab.plot(freqs_good,remainder)
+        pylab.ylim(-0.2,0.2)
+        pylab.savefig(filename2+'_dev_'+str(ra)+'_'+str(dec)+'.png')
+        pylab.clf()
 
 #Applying a filter to the remainder to extract the significant points
 #        filter = data
@@ -87,9 +87,13 @@ for slice, dec in enumerate(decs):
         filter[-4] = 0
         filter[-5] = 0
 #        print len(filter)
-#        pylab.hist(filter,200,normed=1)
-#        pylab.savefig(filename2+'_hist_'+str(ra)+'_'+str(dec)+'.png')
-#        pylab.clf()
+        pylab.plot(freqs_good,filter)
+        pylab.ylim(-0.2,0.2)
+        pylab.savefig(filename2+'_filtered_'+str(ra)+'_'+str(dec)+'.png')
+        pylab.clf()
+#       pylab.hist(filter,200,normed=1)
+#       pylab.savefig(filename2+'_hist_'+str(ra)+'_'+str(dec)+'.png')
+#       pylab.clf()
 #        pylab.hist(filter,bins=200, range=(-1.0,-0.05))
 #        pylab.savefig(filename2+'_hist_trunc_'+str(ra)+'_'+str(dec)+'.png')
 #        pylab.clf()
@@ -97,13 +101,25 @@ for slice, dec in enumerate(decs):
 # Manipulating the histogram data for fitting gaussians
 #        mean = stat.gmean(filter)
 #        var = stat.variation(filter)
-        f_hist = stat.histogram(filter,350)
+        f_hist = stat.histogram(filter,500)
 #        print f_hist
-        scale = arange(f_hist[1],f_hist[1]+350*f_hist[2],f_hist[2])
+        scale = arange(f_hist[1],f_hist[1]+500*f_hist[2],f_hist[2])
 #        print len(scale), len(f_hist[0])
+        hist_out = []
+        for l in range(0,len(f_hist[0])):
+            hist_out.append(f_hist[0][l])
+#        print hist_out
+#        print f_hist
+        if len(f_hist) !=len(scale):
+            if len(f_hist[0])>len(scale):
+                scale.append(f_hist[1]+500*f_hist[2])
+                print scale
+            elif len(f_hist[0])<len(scale):
+                hist_out.append(0.0)                
+#                print len(scale),len(f_hist[0])
         fitfunc = lambda p,x: p[0]*exp(-(p[1]-x)**2/(2*p[2]**2))
         errfunc = lambda p,x,y: fitfunc(p,x)-y
-#        pylab.plot(scale,f_hist[0])
+        pylab.plot(scale,hist_out)
 #        a =1.
 #        mean = float(mean)
 #        var = float(var)
@@ -111,14 +127,14 @@ for slice, dec in enumerate(decs):
 #        p0 = [a,mean,var]
         p0 = [100.0,0.001,0.001]
 #        print any(isnan(f_hist[0])),any(isinf(f_hist[0])), any(isnan(scale)), any(isinf(scale))
-        fit = opt.leastsq(errfunc,p0[:],args=(scale,f_hist[0]),maxfev=50000)
+        fit = opt.leastsq(errfunc,p0[:],args=(scale,hist_out),maxfev=50000)
 #        print mean,var
 #        print fit[0]
 #        print '________________'
-#        pylab.plot(scale,fitfunc(fit[0],scale))
-
-#        pylab.savefig(filename2+'_gauss_fit_'+str(ra)+'_'+str(dec)+'.png')
-#        pylab.clf()
+        pylab.plot(scale,fitfunc(fit[0],scale))
+        pylab.xlim(-0.2,0.2)
+        pylab.savefig(filename2+'_gauss_fit_'+str(ra)+'_'+str(dec)+'.png')
+        pylab.clf()
 #        pylab.plot(scale,abs(fitfunc(fit[0],scale)-f_hist[0]))
 #        pylab.savefig(filename2+'_gauss_resid_'+str(ra)+'_'+str(dec)+'.png')
 #        pylab.clf()
@@ -160,15 +176,15 @@ for slice, dec in enumerate(decs):
             if 900>out_freq[f]>800:
                 cutoff_out.append(outliers[f])
                 cutoff_freq.append(out_freq[f])
-        print ra,dec
-        print len(outliers)
-        if len(outliers)<200:
+#       print ra,dec
+#       print len(outliers)
+#       if len(outliers)<200:
 #            print ra, dec
 #            print outliers
 #            print out_freq
-           print cutoff_out
-           print cutoff_freq
-        print '__________'
+#          print cutoff_out
+#          print cutoff_freq
+#       print '__________'
 
 # List of outliers to investigate based upon analysis of lower frequency data.
 total_freq = [794.48,791.45,784.72,776.07,771.68,771.19,771.04,771.0,768.21,767.92,758.64,752.05,750.88,747.75,747.17,746.68,745.17,744.73,744.04,743.9,743.85,743.6,743.6,743.55,743.46,742.63,742.63,742.63,742.48,742.33,742.09,741.89,741.85,741.85,741.75,741.6,741.55,741.55,741.5,739.11,737.35,735.99,735.79,735.74,733.4,733.25,730.37,729.74,729.49,729.39,729.39,728.96,728.91,728.76,727.93,727.05,725.1,724.61,723.97,721.58,721.58,720.41,720.31,720.02,719.68,718.75,718.65,718.6,718.55,718.07,717.87,717.82,717.43,716.85,716.46,716.41,716.31,715.09,714.84,714.45,714.36,714.11,713.13,711.91,711.72,711.13,711.08,710.84,710.3,710.21,709.67,709.57,709.47,708.54,707.67,707.28,706.69,706.69,706.69,706.59,706.49,706.49,706.45,705.47,705.47,705.42,705.37,705.27,705.18,705.13,705.08,705.08]
