@@ -87,6 +87,66 @@ def LSTatGBT(UT) :
 
     return LST*180.0/sp.pi
 
+
+def radec_to_sexagesimal(ra, dec):
+    """
+    Accepts float values for ra and dec
+    returns ra, dec in the form (hh,mm,ss), abs(deg,mm,ss), sign
+    where the absolute value of the declination is returned and the
+    sign is the sign of the declination ('+' or '-')
+    """
+    if ra < 0:
+        ra += 360.
+
+    ra_hr = int(ra / 15.)
+    minsec = np.mod(ra, 15.) / 15. * 60
+    ra_min = int(minsec)
+    ra_sec = np.mod(minsec, 1.) * 60
+
+    if dec >= 0.:
+        sign = '+'
+    else:
+        sign = '-'
+
+    dec_deg = int(abs(dec))
+    minsec = np.mod(abs(dec), 1.) * 60
+    dec_min = int(minsec)
+    dec_sec = np.mod(minsec, 1.) * 60
+    return (ra_hr, ra_min, ra_sec), (dec_deg, dec_min, dec_sec), sign
+
+
+def sexagesimal_to_radec(ra, dec):
+    """
+    Assumes ra, dec arguments are of the form "hh:mm:ss", "deg:mm:ss"
+    Returns float values for ra and dec
+    """
+    ra_hr, ra_min, ra_sec= ra.split(':')
+
+    sign = ra_hr[0]
+    if sign == '-':
+        sign_ra = -1.
+        ra_hr = ra_hr[1:]
+    else:
+        sign_ra = 1.
+
+    ra = sign_ra * 15. * ( float(ra_hr) + float(ra_min)/60. + \
+                           float(ra_sec)/3600. )
+
+    dec_deg, dec_min, dec_sec= dec.split(':')
+
+    sign = dec_deg[0]
+    if sign == '-':
+        sign_dec = -1.
+        dec_deg  = dec_deg[1:]
+    else:
+        sign_dec = 1.
+
+    dec =  sign_dec * (float(dec_deg) + float(dec_min)/60. + \
+                       float(dec_sec)/3600.)
+
+    return ra, dec
+
+
 def time2float(UT) :
     """Calculates float seconds from a time string.
 

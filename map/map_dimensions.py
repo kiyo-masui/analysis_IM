@@ -3,6 +3,7 @@ from scipy.interpolate import interp1d
 import core.algebra as algebra
 from utils.cosmology import Cosmology
 from utils import units
+from core import utils
 from core import constants as cc
 # TODO: clean up the variable names, shorten code
 
@@ -181,6 +182,13 @@ def find_map_dimensions(map_in, silent=False):
         for key in infolist:
             print "%s: %s" % (key, map_in.info[key])
 
+        sexagesimal = utils.radec_to_sexagesimal(map_in.info["ra_centre"],
+                                                 map_in.info["dec_centre"])
+        (ralong, declong, decsign) = sexagesimal
+        print "RA: %dH:%dm:%10.5fs, dec %s %dd:%dm:%10.5fs" % \
+              (ralong[0], ralong[1], ralong[2], decsign, declong[0], declong[1],
+               declong[2])
+
         shp = map_in.shape
         print shp
         # 2^30 or 10^9...
@@ -223,14 +231,12 @@ def find_map_dimensions(map_in, silent=False):
 
 
 def print_map_summary():
-    #print "former 15hr field dimensions"
-    #find_map_dimensions('/mnt/raid-project/gmrt/kiyo/wiggleZ/maps/sec_A_15hr_41-73_clean_map_I.npy')
     print "15hr field dimensions"
-    find_map_dimensions('/mnt/raid-project/gmrt/tcv/maps/sec_A_15hr_41-90_clean_map_I.npy')
-    print "22hr field dimensions"
-    find_map_dimensions('/mnt/raid-project/gmrt/tcv/maps/sec_A_22hr_41-90_clean_map_I.npy')
+    find_map_dimensions('/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/sec_A_15hr_41-90_clean_map_I.npy')
+    #print "22hr field dimensions"
+    #find_map_dimensions('/mnt/raid-project/gmrt/tcv/maps/sec_A_22hr_41-90_clean_map_I.npy')
     print "1hr field dimensions"
-    find_map_dimensions('/mnt/raid-project/gmrt/tcv/maps/sec_A_1hr_none_clean_map_I.npy')
+    find_map_dimensions('/mnt/raid-project/gmrt/eswitzer/GBT/maps/1hr_oldcal/secA_1hr_41-18_clean_map_I_800.npy')
 
 
 def new_map_templates(target_sample=0.25, multiplier=16, search_start=16):
@@ -312,8 +318,8 @@ def complete_wigglez_regions(target_sample=0.25, multiplier=16,
 
 if __name__ == '__main__':
     #new_map_templates(target_sample=0.25, multiplier=1, search_start=2)
-    complete_wigglez_regions(target_sample=0.25, multiplier=1, search_start=2)
+    #complete_wigglez_regions(target_sample=0.25, multiplier=1, search_start=2)
     #print "previous map dimensions"
     #print "="*80
-    #print_map_summary()
+    print_map_summary()
     #new_map_templates(target_sample=0.25, multiplier=16, search_start=16)

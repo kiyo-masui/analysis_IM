@@ -253,16 +253,18 @@ class MapPair(object):
         self.noise_inv1 = algebra.as_alg_like(noise1, self.noise_inv1)
         self.noise_inv2 = algebra.as_alg_like(noise2, self.noise_inv2)
 
-    def make_noise_factorizable(self):
+    def make_noise_factorizable(self, weight_prior=2):
         r"""Convert noise weights such that the factor into a function a
         frequency times a function of pixel by taking means over the original
         weights.
+
+        weight_prior used to be 10^-30 before prior applied
         """
         print "making the noise factorizable"
 
         def make_factorizable(noise):
             r"""factorize the noise"""
-            noise[noise < 1.e-30] = 1.e-30
+            noise[noise < weight_prior] = 1.e-30
             noise = 1. / noise
             noise = ma.array(noise)
             # Get the freqency averaged noise per pixel.  Propagate mask in any
