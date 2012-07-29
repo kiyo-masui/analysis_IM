@@ -134,6 +134,7 @@ crosspowerparams_init = {
         "apply_2d_beamtransfer": None,
         "apply_2d_modetransfer": None,
         "use_noiseweights_2dto1d": True,
+        "kmin_xy": [None, None],
         "outdir": "./"
                }
 crosspowerprefix = 'crosspower_'
@@ -151,10 +152,11 @@ class CompileCrosspower(object):
         pwr_data = ps.PowerSpectrum(self.params["p_data"])
         pwr_mock = ps.PowerSpectrum(self.params["p_mock"])
 
+        modetransfer_2d = None
+        beamtransfer_2d = None
         if (self.params["apply_2d_beamtransfer"] is not None) or \
            (self.params["apply_2d_modetransfer"] is not None):
 
-            modetransfer_2d = None
             if self.params["apply_2d_modetransfer"] is not None:
                 print "Applying 2d transfer from " + \
                       self.params["apply_2d_modetransfer"]
@@ -165,7 +167,6 @@ class CompileCrosspower(object):
                 modetransfer_2d = h5py.File(
                                     self.params["apply_2d_modetransfer"], "r")
 
-            beamtransfer_2d = None
             if self.params["apply_2d_beamtransfer"] is not None:
                 print "Applying 2d transfer from " + \
                       self.params["apply_2d_beamtransfer"]
@@ -186,18 +187,37 @@ class CompileCrosspower(object):
                 else:
                     transfer_dict[treatment] = beamtransfer_2d["0modes"].value
 
-            pwr_mock.apply_2d_trans_by_treatment(transfer_dict)
-            pwr_data.apply_2d_trans_by_treatment(transfer_dict)
+            if (modetransfer_2d is not None) or (beamtransfer_2d is not None):
+                pwr_mock.apply_2d_trans_by_treatment(transfer_dict)
+                pwr_data.apply_2d_trans_by_treatment(transfer_dict)
 
         # gather the rms of each 2D k-bin over the realizations of mock
         # catalogs; this is used for the 2D->1D weighting
+        #mock2d_agg = pwr_mock.agg_stat_2d_pwrspec(debug="./plotheap/")
         mock2d_agg = pwr_mock.agg_stat_2d_pwrspec()
 
         weights_2d = {}
         # weight by the variance as determined in the mock runs
         for treatment in pwr_mock.treatment_cases:
-            weights_2d[treatment] = 1. / (mock2d_agg[treatment]["std"] * \
+            weight_for_treatment = 1. / (mock2d_agg[treatment]["std"] * \
                                          mock2d_agg[treatment]["std"])
+
+            kx = pwr_mock.kx_2d['center']
+            ky = pwr_mock.ky_2d['center']
+            kmin_x = self.params['kmin_xy'][0]
+            kmin_y = self.params['kmin_xy'][1]
+            if kmin_x is not None:
+                restrict = np.where(kx < kmin_x)
+                weight_for_treatment[restrict, :] = 0.
+
+            if kmin_y is not None:
+                restrict = np.where(ky < kmin_y)
+                weight_for_treatment[:, restrict] = 0.
+
+            weight_for_treatment[np.isnan(weight_for_treatment)] = 0.
+            weight_for_treatment[np.isinf(weight_for_treatment)] = 0.
+
+            weights_2d[treatment] = weight_for_treatment
 
             outplot_power_file = "%s/power_2d_%s.png" % \
                                   (self.params['outdir'], treatment)
@@ -223,11 +243,17 @@ class CompileCrosspower(object):
                                      ["logkx", "logky"], 1., "2d power",
                                      "log(abs(2d power))", logscale=True)
 
-            plot_slice.simpleplot_2D(outplot_transfer_file,
-                                     transfer_dict[treatment],
-                                     logkx, logky,
-                                     ["logkx", "logky"], 1., "2d trans",
-                                     "2d trans", logscale=False)
+            if (modetransfer_2d is not None) or (beamtransfer_2d is not None):
+                plot_slice.simpleplot_2D(outplot_transfer_file,
+                                         transfer_dict[treatment],
+                                         logkx, logky,
+                                         ["logkx", "logky"], 1., "2d trans",
+                                         "2d trans", logscale=False)
+
+            #if treatment == "20modes":
+            #    np.set_printoptions(threshold=np.nan)
+            #    print mock2d_agg[treatment]["std"]
+            #    print np.abs(weights_2d[treatment])
 
             plot_slice.simpleplot_2D(outplot_weight_file,
                                      np.abs(weights_2d[treatment]),

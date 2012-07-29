@@ -4,6 +4,7 @@ import shelve
 from utils import data_paths as dp
 from quadratic_products import pwrspec_estimator as pe
 from utils import binning
+from plotting import plot_slice
 import copy
 
 class PowerSpectrum(object):
@@ -206,7 +207,7 @@ class PowerSpectrum(object):
 
         return summary_treatment
 
-    def combination_array_2d(self, counts=False):
+    def combination_array_2d(self, counts=False, debug=None):
         r"""pack the various pair combinations for each treatment into an array"""
         summary_treatment = {}
         for treatment in self.treatment_cases:
@@ -217,8 +218,23 @@ class PowerSpectrum(object):
                 pwrcase = "%s:%s" % (comb, treatment)
                 if counts:
                     pwr_treatment[:, :, comb_index] = self.counts_2d[pwrcase]
+                    if debug is not None:
+                        outplot_power_file = "%s/counts_%s_%s.png" % \
+                                             (debug, treatment, comb)
+
                 else:
                     pwr_treatment[:, :, comb_index] = self.pwrspec_2d[pwrcase]
+                    if debug is not None:
+                        outplot_power_file = "%s/power_%s_%s.png" % \
+                                             (debug, treatment, comb)
+
+                if (debug is not None) and (treatment == "20modes"):
+                    plot_slice.simpleplot_2D(outplot_power_file,
+                                         np.abs(pwr_treatment[:, :, comb_index]),
+                                         np.log10(self.kx_2d['center']),
+                                         np.log10(self.ky_2d['center']),
+                                         ["logkx", "logky"], 1., "2d array",
+                                         "log(abs(array))", logscale=True)
 
             summary_treatment[treatment] = pwr_treatment
 
@@ -248,15 +264,16 @@ class PowerSpectrum(object):
                     entry['corr'] = 0.
                     entry['cov'] = 0.
             else:
+                comb_treat = comb_arr[treatment]
                 if self.num_comb > 1:
                     entry['counts'] = np.mean(counts_arr[treatment], axis=1)
-                    entry['mean'] = np.mean(comb_arr[treatment], axis=1)
-                    entry['std'] = np.std(comb_arr[treatment], axis=1, ddof=1)
-                    entry['corr'] = np.corrcoef(comb_arr[treatment])
-                    entry['cov'] = np.cov(comb_arr[treatment])
+                    entry['mean'] = np.mean(comb_treat, axis=1)
+                    entry['std'] = np.std(comb_treat, axis=1, ddof=1)
+                    entry['corr'] = np.corrcoef(comb_treat)
+                    entry['cov'] = np.cov(comb_treat)
                 else:
                     entry['counts'] = counts_arr[treatment][:,0]
-                    entry['mean'] = comb_arr[treatment][:,0]
+                    entry['mean'] = comb_treat[:,0]
                     entry['std'] = 0.
                     entry['corr'] = 0.
                     entry['cov'] = 0.
@@ -265,10 +282,10 @@ class PowerSpectrum(object):
 
         return stat_summary
 
-    def agg_stat_2d_pwrspec(self, use_masked=False):
+    def agg_stat_2d_pwrspec(self, use_masked=False, debug=None):
         r"""TODO: add corr and cov"""
-        comb_arr = self.combination_array_2d(counts=False)
-        counts_arr = self.combination_array_2d(counts=True)
+        comb_arr = self.combination_array_2d(counts=False, debug=debug)
+        counts_arr = self.combination_array_2d(counts=True, debug=debug)
 
         stat_summary = {}
         for treatment in self.treatment_cases:
