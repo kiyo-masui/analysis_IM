@@ -30,7 +30,7 @@ pipe_modules = []
 # Chime has 8 cores, but you should save a few for other people.  Use 6 max.
 # Prawn has 12 cores.
 # Sunnyvale must have more 12*2
-pipe_processes = 8
+pipe_processes =10
 
 base_dir = os.getenv('GBT_OUT')
 
@@ -139,8 +139,8 @@ tc_IFs = ()
 tc_mueler_file = base_dir + 'mueller_params/'
 tc_flux_cal_only = 'True'
 
-from map import dirty_map
-pipe_modules.append(dirty_map.DirtyMapMaker)
+#from map import dirty_map
+#pipe_modules.append(dirty_map.DirtyMapMaker)
 #dm_input_root = tc_output_root
 dm_input_root = rp_output_root
 dm_file_middles = file_middles
@@ -176,8 +176,8 @@ dm_noise_model = 'disjoint_scans'
 dm_polarizations = ('I',)
 dm_noise_parameters_input_root = 'None'
 
-from map import clean_map
-pipe_modules.append(clean_map.CleanMapMaker)
+#from map import clean_map
+#pipe_modules.append(clean_map.CleanMapMaker)
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
 #cm_polarizations = ('I','Q','U','V')
@@ -224,67 +224,71 @@ mn_model = "scan_var"
 
 #### Make sub map A ####
 
-#from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
 dmA_file_middles = middles_a
-dmA_input_root = sf_output_root
+dmA_input_root = dm_input_root
+#dmA_input_root = sf_output_root
 dmA_output_root = base_dir + 'maps/' + "sec_A_" + map_prefix
 
-dmA_noise_parameters_input_root = mn_output_root
+#dmA_noise_parameters_input_root = mn_output_root
 
-#from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
 cmA_input_root = dmA_output_root
 cmA_output_root = dmA_output_root
-cmA_save_noise_diag = True
+#cmA_save_noise_diag = True
 
 #### Make sub map B ####
 
-#from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
 dmB_file_middles = middles_b
-dmB_input_root = sf_output_root
+dmB_input_root = dm_input_root
+#dmB_input_root = sf_output_root
 dmB_output_root = base_dir + 'maps/' + "sec_B_" + map_prefix
 
-dmB_noise_parameters_input_root = mn_output_root
+#dmB_noise_parameters_input_root = mn_output_root
 
-#from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
 cmB_input_root = dmB_output_root
 cmB_output_root = dmB_output_root
-cmB_save_noise_diag = True
+#cmB_save_noise_diag = True
 
 #### Make sub map C ####
 
-#from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
 dmC_file_middles = middles_c
-dmC_input_root = sf_output_root
+dmC_input_root = dm_input_root
+#dmC_input_root = sf_output_root
 dmC_output_root = base_dir + 'maps/' + "sec_C_" + map_prefix
 
-dmC_noise_parameters_input_root = mn_output_root
+#dmC_noise_parameters_input_root = mn_output_root
 
-#from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
 cmC_input_root = dmC_output_root
 cmC_output_root = dmC_output_root
-cmC_save_noise_diag = True
+#cmC_save_noise_diag = True
 
 #### Make sub map D ####
 
-#from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 dmD_file_middles = middles_d
-dmD_input_root = sf_output_root
+dmD_input_root = dm_input_root
+#dmD_input_root = sf_output_root
 dmD_output_root = base_dir + 'maps/' + "sec_D_" + map_prefix
 
-dmD_noise_parameters_input_root = mn_output_root
+#dmD_noise_parameters_input_root = mn_output_root
 
-#from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
 cmD_input_root = dmD_output_root
 cmD_output_root = dmD_output_root
-cmD_save_noise_diag = True
+#cmD_save_noise_diag = True
 
 
 # Not actually nessesary, but good do do anyway.
