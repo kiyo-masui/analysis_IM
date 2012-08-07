@@ -4,13 +4,10 @@ import pylab
 import pyfits
 import sys
 from numpy import *
-#from core import algebra as al
-#from utils import * 
 import core.algebra as al
 import scipy
 import scipy.optimize as opt
 import scipy.stats as stat
-#from pylab import *
 
 def function(freq,params):
    base = 750./freq
@@ -27,8 +24,6 @@ filename2 = filename1.split('.')[0]
 
 array = al.load(filename1)
 array = al.make_vect(array)
-
-#print array
 #   creates a 3D array with indices (freq, ra, dec)
 
 ras = array.get_axis('ra')
@@ -36,13 +31,9 @@ decs = array.get_axis('dec')
 freqs = array.get_axis('freq')
 freqs = freqs/1e6
 
-
-#total_outliers = array
-#total_freq = []
-#total_ra = []
-#total_dec = []
 sizing = scipy.zeros((len(ras),len(decs)))
 
+#figuring out length of arrays without nans or infs
 for slice, dec in enumerate(decs):
     for line, ra in enumerate(ras):
         data = array[:,line,slice]
@@ -50,15 +41,19 @@ for slice, dec in enumerate(decs):
         good_pts = where(logical_not(bad_pts))
         data = data[good_pts]
         sizing[line,slice] = len(data)
+#        if sizing[line,slice]!=sizing[line-1,slice]:
+#            print "Not an even amount of NaNs/Infs"
 
-#print sizing
-total_outliers = scipy.zeros((4094,len(ras),len(decs)))        
-total_freq = scipy.zeros((4094,len(ras),len(decs)))
+#Initializing arrays for outlier lists.
+total_outliers = scipy.zeros((sizing[0,0],len(ras),len(decs)))        
+total_freq = scipy.zeros((sizing[0,0],len(ras),len(decs)))
 total_stats = scipy.zeros((2,len(ras),len(decs)))
 
+# Initial Processing of Data.
 for slice, dec in enumerate(decs):
     for line, ra in enumerate(ras):
-        # Now have "slice" being the dec index, "line" being the ra index
+# Now have "slice" being the dec index, "line" being the ra index
+
 # Making initial sight line plots
 #        pylab.plot(freqs,array[:,line,slice])
 #        pylab.ylim(-1.0,1.0)
@@ -67,35 +62,26 @@ for slice, dec in enumerate(decs):
 
 # Subtracting off the "first mode" power law slope to the data
         data = array[:,line,slice]
-#       total_outliers[:,line,slice] = array[:,line,slice]
         bad_pts = logical_or(isnan(data),isinf(data))
-#        print bad_pts        
         good_pts = where(logical_not(bad_pts))
         data = data[good_pts]
-#        total_outliers = total_outliers[good_pts]
-#        total_outliers = total_outliers[good_pts]
-#        mean_sig = mean(data)
-#        print mean_sig
-#        data = data/mean_sig
-#        print data
         freqs_good = freqs[good_pts]
-#        freqs_good = freqs
         params0=[19.6,0.495]
         plsq = opt.leastsq(residuals,params0,args=(freqs_good,data),full_output=1,maxfev=5000)
-#        print ra, dec, plsq[0]
         remainder = data-function(freqs_good,plsq[0])
- #       pylab.plot(freqs_good,remainder)
+
+#Making plots of the subtracted data.
+#        pylab.plot(freqs_good,remainder)
 #        pylab.ylim(-0.2,0.2)
 #        pylab.savefig(filename2+'_dev_'+str(ra)+'_'+str(dec)+'.png')
 #        pylab.clf()
 
 #Applying a filter to the remainder to extract the significant points
-#        filter = data
         filter = remainder
         for f in range(5, len(data)-5):
-#            filter[f] = filter[f]-filter[f-1]
-#            filter[f] = filter[f]-0.5*(filter[f+1]+filter[f-1])
-            filter[f] = filter[f]-0.1*(filter[f+1]+filter[f+2]+filter[f+3]+filter[f+4]+filter[f+5]+filter[f-1]+filter[f-2]+filter[f-3]+filter[f-4]+filter[f-5])
+#            filter[f] = filter[f]-filter[f-1] #most basic filter
+#            filter[f] = filter[f]-0.5*(filter[f+1]+filter[f-1]) #only looks at +/- 1 of data.
+            filter[f] = filter[f]-0.1*(filter[f+1]+filter[f+2]+filter[f+3]+filter[f+4]+filter[f+5]+filter[f-1]+filter[f-2]+filter[f-3]+filter[f-4]+filter[f-5]) # similar to previous filter (but with wider "shelf"
         filter[0] = 0
         filter[1] = 0
         filter[2] = 0
@@ -106,121 +92,64 @@ for slice, dec in enumerate(decs):
         filter[-3] = 0
         filter[-4] = 0
         filter[-5] = 0
-#        print len(filter)
-#       pylab.plot(freqs_good,filter)
-#       pylab.ylim(-0.2,0.2)
-#       pylab.savefig(filename2+'_filtered_'+str(ra)+'_'+str(dec)+'.png')
-#       pylab.clf()
-#       pylab.hist(filter,200,normed=1)
-#       pylab.savefig(filename2+'_hist_'+str(ra)+'_'+str(dec)+'.png')
-#       pylab.clf()
+
+#Making plots of the filtered data (slowly varying features are smoothed out). 
+#        pylab.plot(freqs_good,filter)
+#        pylab.ylim(-0.2,0.2)
+#        pylab.savefig(filename2+'_filtered_'+str(ra)+'_'+str(dec)+'.png')
+#        pylab.clf()
+
+#Making histogram plots (uses pylab to do histogram so don't have histogram data)
+#        pylab.hist(filter,200,normed=1)
+#        pylab.savefig(filename2+'_hist_'+str(ra)+'_'+str(dec)+'.png')
+#        pylab.clf()
+#Making truncated histogram plots to look at far end of the negative outliers.
 #        pylab.hist(filter,bins=200, range=(-1.0,-0.05))
 #        pylab.savefig(filename2+'_hist_trunc_'+str(ra)+'_'+str(dec)+'.png')
 #        pylab.clf()
 
 # Manipulating the histogram data for fitting gaussians
-#        mean = stat.gmean(filter)
-#        var = stat.variation(filter)
         f_hist = stat.histogram(filter,500)
-#        print f_hist
         scale = arange(f_hist[1],f_hist[1]+500*f_hist[2],f_hist[2])
-#        print len(scale), len(f_hist[0])
         hist_out = []
         for l in range(0,len(f_hist[0])):
             hist_out.append(f_hist[0][l])
-#        print hist_out
-#        print f_hist
-        if len(f_hist) !=len(scale):
+
+        if len(f_hist)!=len(scale):
             if len(f_hist[0])>len(scale):
                 scale.append(f_hist[1]+500*f_hist[2])
-                print scale
             elif len(f_hist[0])<len(scale):
                 hist_out.append(0.0)                
-#                print len(scale),len(f_hist[0])
-        fitfunc = lambda p,x: p[0]*exp(-(p[1]-x)**2/(2*p[2]**2))
+
+        fitfunc = lambda p,x: p[0]*exp(-(p[1]-x)**2/(2*p[2]**2)) 
+        #Gaussian fit. If want to normalize, just multiply by p[2]*sqrt(2*scipy.pi())/p[0]
         errfunc = lambda p,x,y: fitfunc(p,x)-y
-#       pylab.plot(scale,hist_out)
-#        a =1.
-#        mean = float(mean)
-#        var = float(var)
-#        print a
-#        p0 = [a,mean,var]
         p0 = [100.0,0.001,0.001]
-#        print any(isnan(f_hist[0])),any(isinf(f_hist[0])), any(isnan(scale)), any(isinf(scale))
         fit = opt.leastsq(errfunc,p0[:],args=(scale,hist_out),maxfev=50000)
-#        print mean,var
 #        print fit[0]
-#        print '________________'
-#       pylab.plot(scale,fitfunc(fit[0],scale))
-#       pylab.xlim(-0.2,0.2)
-#       pylab.savefig(filename2+'_gauss_fit_'+str(ra)+'_'+str(dec)+'.png')
-#       pylab.clf()
+#Making histogram plots with fitting
+#        pylab.plot(scale,hist_out)
+#        pylab.plot(scale,fitfunc(fit[0],scale))
+#        pylab.xlim(-0.2,0.2)
+#        pylab.savefig(filename2+'_gauss_fit_'+str(ra)+'_'+str(dec)+'.png')
+#        pylab.clf()
+#Making remainder plots after subtracting off gaussian fit.
 #        pylab.plot(scale,abs(fitfunc(fit[0],scale)-f_hist[0]))
 #        pylab.savefig(filename2+'_gauss_resid_'+str(ra)+'_'+str(dec)+'.png')
 #        pylab.clf()
 
-# Isolating frequencies that may be absorption features
-        #pick limit based on gaussian. start at 2 sigma
+# Isolating frequencies that may be absorption features, saving them in a matrix.
+        #pick limit based on gaussian. 3sigma makes sense.
         edge = fit[0][1]-3*fit[0][2]
-#       edge = -1
-
-        outliers = []
-        out_freq = []
-        out_ra = []
-        out_dec = []
-        for f in range(0,len(data)):
-            if filter[f]<edge:
-#                if freqs_good[f]<850:
-                if freqs_good[f]<795:
-                    outliers.append(filter[f])
-                    out_freq.append(freqs_good[f])
-                    out_ra.append(ra)
-                    out_dec.append(dec)
-                elif 815>freqs_good[f]>798:
-                    outliers.append(filter[f])
-                    out_freq.append(freqs_good[f])
-                    out_ra.append(ra)
-                    out_dec.append(dec)
-                elif freqs_good[f]>819:
-                    outliers.append(filter[f])
-                    out_freq.append(freqs_good[f])
-                    out_ra.append(ra)
-                    out_dec.append(dec)
+#        print edge
         for f in range(0,len(filter)):
             total_outliers[f,line,slice] = filter[f]
             total_freq[f,line,slice] = freqs_good[f]
         total_stats[:,line,slice] = [fit[0][1],fit[0][2]]
-#        for f in range(0,len(freqs_good)):
-
-#            total_ra.append(ra)
-#            total_dec.append(dec) 
-        cutoff_out = []
-        cutoff_freq = []
-        for f in range(0,len(outliers)):
-            if 900>out_freq[f]>800:
-                cutoff_out.append(outliers[f])
-                cutoff_freq.append(out_freq[f])
-#       print ra,dec
-#       print len(outliers)
-#       if len(outliers)<200:
-#            print ra, dec
-#            print outliers
-#            print out_freq
-#          print cutoff_out
-#          print cutoff_freq
-#       print '__________'
 
 
-##Now total_outliers is the filtered data, total_freq is the corresponding frequencies, total_stat is mean and std for each pixel
-#print total_outliers[100,1,1]
-#print total_freq
-#print total_ra
-#print total_dec
-#print total_stats
-
-#Want to create an array that will simply flag which frequencies are "bad"
+#Creating an array of filtered data without "bad" frequencies which have many pixels with >3sigma outliers.
 total_3sig_outliers = scipy.zeros((len(total_outliers[:,0,0]),len(total_outliers[0,:,0]),len(total_outliers[0,0,:])))
-#outlier_freqs = scipy.zeros(len(total_outliers[:,0,0]))
 #print len(total_3sig_outliers[:,0,0]),len(total_3sig_outliers[0,:,0]),len(total_3sig_outliers[0,0,:])
 num = scipy.zeros(len(total_freq[:,0,0]))
 for f in range(0,len(total_freq[:,0,0])):
@@ -229,22 +158,46 @@ for f in range(0,len(total_freq[:,0,0])):
             if total_outliers[f,i,j]<(total_stats[0,i,j]-3*total_stats[1,i,j]):
                 total_3sig_outliers[f,i,j] = 1.0
     num[f] = sum(total_3sig_outliers[f])
-#    print num
-#    if num>3.0:
-#        outlier_freqs[f] = 1
-outlier_freqs = where(num<4,1,0)
-#print outlier_freqs
-good_freq = len(compress(outlier_freqs,total_outliers[:,0,0]))
+
+outlier_freqs = where(num<4,1,0) #sub array used to remove "bad" frequencies 
+good_freq = len(compress(outlier_freqs,total_outliers[:,0,0])) #Tells us how long the list of "good" frequencies is.
+#print good_freq
+
 limited_tot_out = scipy.zeros((good_freq,len(total_outliers[0,:,0]),len(total_outliers[0,0,:])))
 limited_tot_freq = scipy.zeros((good_freq,len(total_outliers[0,:,0]),len(total_outliers[0,0,:])))
+
 for i in range(0,len(total_outliers[0,:,0])):
     for j in range(0,len(total_outliers[0,0,:])):
-#        test = compress(outlier_freqs,total_outliers[:,i,j])
-#        print len(test)
         limited_tot_out[:,i,j] = compress(outlier_freqs,total_outliers[:,i,j])
         limited_tot_freq[:,i,j] = compress(outlier_freqs,total_freq[:,i,j])   
+#print limited_tot_out[:,0,0]
 
-#now limited_tot_out is the total_outliers data with the outlier bad frequencies removed. Need to redo histograms
+updated_stats = scipy.zeros((2,len(ras),len(decs)))
+#The gaussian fit fails in a few occasions due to extreme outliers, so need to redo the fit based upon the "good" frequency data.
+for slice, dec in enumerate(decs):
+    for line, ra in enumerate(ras):
+        f_hist = stat.histogram(limited_tot_out[:,line,slice],500)
+        scale = arange(f_hist[1],f_hist[1]+500*f_hist[2],f_hist[2])
+        hist_out = []
+        for l in range(0,len(f_hist[0])):
+            hist_out.append(f_hist[0][l])
+
+        if len(f_hist)!=len(scale):
+            if len(f_hist[0])>len(scale):
+                scale.append(f_hist[1]+500*f_hist[2])
+            elif len(f_hist[0])<len(scale):
+                hist_out.append(0.0)
+ 
+        fitfunc = lambda p,x: p[0]*exp(-(p[1]-x)**2/(2*p[2]**2))
+        #Gaussian fit. If want to normalize, just multiply by p[2]*sqrt(2*scipy.pi())/p[0]
+        errfunc = lambda p,x,y: fitfunc(p,x)-y
+        p0 = [100.0,0.001,0.001]
+        fit = opt.leastsq(errfunc,p0[:],args=(scale,hist_out),maxfev=50000)
+        updated_stats[:,line,slice] = [fit[0][1],fit[0][2]]        
+
+
+#Building an Array of >3sigma outliers after the removal of the "bad frequencies". 
+#Skip data within 5 MHz of band edges and data within FWHM of GBT Resnances.
 outliers = []
 out_freq = []
 out_ra = []
@@ -252,69 +205,78 @@ out_dec = []
 
 for slice, dec in enumerate(decs):
     for line, ra in enumerate(ras):
-        f_hist = stat.histogram(limited_tot_out[:,line,slice],500)
-#        print f_hist
-        scale = arange(f_hist[1],f_hist[1]+500*f_hist[2],f_hist[2])
-#        print len(scale), len(f_hist[0])
-        hist_out = []
-        for l in range(0,len(f_hist[0])):
-            hist_out.append(f_hist[0][l])
-#        print hist_out
-#        print f_hist
-        if len(f_hist) !=len(scale):
-            if len(f_hist[0])>len(scale):
-                scale.append(f_hist[1]+500*f_hist[2])
-#                print scale
-            elif len(f_hist[0])<len(scale):
-                hist_out.append(0.0)
-#                print len(scale),len(f_hist[0])
-        fitfunc = lambda p,x: p[0]*exp(-(p[1]-x)**2/(2*p[2]**2))
-        errfunc = lambda p,x,y: fitfunc(p,x)-y
-        pylab.scatter(scale,hist_out)
-#        a =1.
-#        mean = float(mean)
-#        var = float(var)
-#        print a
-#        p0 = [a,mean,var]
-        p0 = [100.0,0.001,0.001]
-#        print any(isnan(f_hist[0])),any(isinf(f_hist[0])), any(isnan(scale)), any(isinf(scale))
-        fit = opt.leastsq(errfunc,p0[:],args=(scale,hist_out),maxfev=50000)
-#        print mean,var
-#        print fit[0]
-#        print '________________'
-        pylab.plot(scale,fitfunc(fit[0],scale))
-#        pylab.xlim(-0.2,0.2)
-        pylab.savefig(filename2+'_limited_gauss_fit_'+str(ra)+'_'+str(dec)+'.png')
-        pylab.clf()
-#        pylab.plot(scale,abs(fitfunc(fit[0],scale)-f_hist[0]))
-#        pylab.savefig(filename2+'_gauss_resid_'+str(ra)+'_'+str(dec)+'.png')
-#        pylab.clf()
-# Isolating frequencies that may be absorption features
-        #pick limit based on gaussian. start at 3 sigma
-        edge = fit[0][1]-3*fit[0][2]
-#        outliers = []
-#        out_freq = []
-#        out_ra = []
-#        out_dec = []
+        edge1 = total_stats[0,line,slice]-3*total_stats[1,line,slice]
+        edge2 = updated_stats[0,line,slice]-3*updated_stats[1,line,slice]
+#        print edge1,edge2
+        edge = edge2
         for f in range(0,len(limited_tot_out[:,0,0])):
-            if limited_tot_out[f,line,slice]<edge:
-                outliers.append(limited_tot_out[f,line,slice])
-                out_freq.append(limited_tot_freq[f,line,slice])
-                out_ra.append(ra)
-                out_dec.append(dec)
+            if 794.51>limited_tot_freq[f,line,slice]>705.0:
+                if limited_tot_out[f,line,slice]<edge:
+                    outliers.append(limited_tot_out[f,line,slice])
+                    out_freq.append(limited_tot_freq[f,line,slice])
+                    out_ra.append(line)
+                    out_dec.append(slice)
+            elif 798.69<limited_tot_freq[f,line,slice]<814.11:
+                if limited_tot_out[f,line,slice]<edge:
+                    outliers.append(limited_tot_out[f,line,slice])
+                    out_freq.append(limited_tot_freq[f,line,slice])
+                    out_ra.append(line)
+                    out_dec.append(slice)
+            elif 820.69<limited_tot_freq[f,line,slice]<895.00:
+                if limited_tot_out[f,line,slice]<edge:
+                    outliers.append(limited_tot_out[f,line,slice])
+                    out_freq.append(limited_tot_freq[f,line,slice])
+                    out_ra.append(line)
+                    out_dec.append(slice)
+#        print len(outliers)
 
+#If want outliers saved to a text file.
 output_array = scipy.zeros((4,len(outliers)))
 output_array[0] = outliers
 output_array[1] = out_freq
 output_array[2] = out_ra
 output_array[3] = out_dec
 savetxt('test.txt',output_array,delimiter=' ')
-print len(outliers)
-#print out_freq
-#print out_ra
-#print out_dec       
+#print len(outliers)
+
+#Making frequency plots of potential absorbers to rule out obvious bad data.
+#for i in range(0,len(outliers)): 
+#    for j in range(0,len(freqs)):
+#        if freqs[j]>out_freq[i]:
+#            freq_index = j
+#    if freq_index>40:
+#        sub_data = array[freq_index-40:freq_index+40,out_ra[i],out_dec[i]]
+#        sub_freq = freqs[freq_index-40:freq_index+40]
+#    else: 
+#        sub_data = array[0:2*freq_index,out_ra[i],out_dec[i]]
+#        sub_freq = freqs[0:2*freq_index]
+#    pylab.plot(sub_freq,sub_data,'bo-') 
+#    pylab.savefig(filename2+'outlier_test_'+str(out_freq[i])+'_'+str(ras[out_ra[i]])+'_'+str(decs[out_dec[i]])+'.png')
+#    pylab.clf() 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Old tests of code:
 
 # For making 2D plots, setting scale based upon mean 
 #smallest_min = 0.0 
