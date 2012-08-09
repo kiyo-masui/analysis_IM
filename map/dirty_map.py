@@ -6,6 +6,8 @@ the pointing operator (`Pointing`) and the time domain noise operator
 (`Noise`).
 """
 
+from mpi4py import MPI
+
 import math
 import threading
 from Queue import Queue
@@ -80,6 +82,8 @@ params_init = {# IO:
                'ts_foreground_mode_file' : ''
                }
 
+comm = MPI.COMM_WORLD
+
 class DirtyMapMaker(object):
     """Dirty map maker.
     """
@@ -88,7 +92,10 @@ class DirtyMapMaker(object):
         # Read in the parameters.
         self.params = parse_ini.parse(parameter_file_or_dict, params_init, 
                                  prefix=prefix, feedback=feedback)
+        print self.params['file_middles']
         self.feedback = feedback
+        self.rank = comm.Get_rank()
+        self.nproc = comm.Get_size()
     
     def iterate_data(self, file_middles):
         """An iterator over the input data.
@@ -117,9 +124,10 @@ class DirtyMapMaker(object):
                 raise ValueError(msg)
         
         
-    def execute(self, n_processes):
+    def execute(self, n_processes=1):
         """Driver method."""
         
+        # n_processes do not matter when using mpirun from MPI.COMM_WORLD
         self.n_processes = n_processes
         params = self.params
         kiyopy.utils.mkparents(params['output_root'])
@@ -233,11 +241,15 @@ class DirtyMapMaker(object):
                                                   'freq', 'ra', 'dec'),
                                       row_axes=(0, 1, 2), col_axes=(3, 4, 5))
                 cov_inv.copy_axis_info(map)
-                cov_inv[...] = 0
+                # The zeroing takes too long. Do it in memory, not hard disk.
+                #print 'zeroing cov_inv'
+                #cov_inv[...] = 0
+                #print 'zeroed'
                 self.map = map
                 self.cov_inv = cov_inv
                 # Do work.
                 try:
+                    print "self.make_map() now"
                     self.make_map()
                 except:
                     # I think yo need to do this to get a sensible error
@@ -276,9 +288,18 @@ class DirtyMapMaker(object):
         if n_files_group == 0:
             n_files_group = n_files
         for start_file_ind in range(0, n_files, n_files_group):
-            this_file_middles = file_middles[start_file_ind
+            all_this_file_middles = file_middles[start_file_ind
                                              :start_file_ind + n_files_group]
+            # Each process will handle an equal number of input files.
+            # (Numbers that do not divide are taken care of as evenly as
+            # possible). This way is most efficient in memory and efficiency.
+            # This also allows a smaller number of mpi calls when passing
+            # DataSets around later to fill cov_inv.
+            this_file_middles = split_elems(all_this_file_middles,
+                                             self.nproc)[self.nrank]
             if self.feedback > 1:
+                # Will have to change for each process saying something
+                # unique.
                 print ("Processing data files %d to %d of %d."
                        % (start_file_ind, start_file_ind + n_files_group,
                           n_files))
@@ -290,7 +311,10 @@ class DirtyMapMaker(object):
             # all talk to each other through class attributes.
             for this_Data, middle in self.iterate_data(this_file_middles):
                 try:
-                    this_DataSet = DataSet(this_Data, map, self.pol_ind)
+                    this_DataSet = DataSet(params, this_Data, map, 
+                                       self.n_chan, self.pols, 
+                                       self.pol_ind, self.band_centres,
+                                       self.band_ind, middle)
                 except DataSetError:
                     continue
                 # Check that the polarization for this data is the correct
@@ -299,7 +323,8 @@ class DirtyMapMaker(object):
                     raise RuntimeError("Data polarizations not consistant.")
                 # Get the noise parameter database for this data.
                 if params['noise_parameter_file']:
-                    noise_entry = (self.noise_params[middle]
+#                    noise_entry = (self.noise_params[middle]
+                    noise_entry = (this_DataSet.noise_params[middle]
                         [int(round(band_centre/1e6))][pol])
                 else:
                     noise_entry = None
@@ -323,6 +348,126 @@ class DirtyMapMaker(object):
                         params['n_ts_foreground_modes'], 
                         ts_foregrounds_entry)
                 data_set_list.append(this_DataSet)
+            # Finalize the noises. Each process has a subset of the total
+            # noises, so no threading, just a loop.
+            if self.feedback > 1:
+                print "Finalizing %d noise blocks: " % len(data_set_list)
+            for a_DataSet in data_set_list:
+                a_DataSet.finalize(frequency_correlations=
+                                       not self.uncorrelated_channels,
+                                   preserve_matrices=False)
+                if self.feedback > 1:
+                    sys.stdout.write('.')
+                    sys.stdout.flush()
+            if self.feedback > 1:
+                print
+                print "Noise finalized."
+
+            # Each process holds a subset of the DataSets. They will be
+            # passed around "in a circle" with mpi so that each process
+            # sees all the sets. Right now, find the "previous" and "next"
+            # process that will make the above statement true.
+            # Note: This ordering will make others see the package
+            #       in "numerical" order.
+            if ((self.rank+1) == self.nproc):
+                self.prev_guy = 0
+            else:
+                self.prev_guy = self.rank + 1
+
+            if (self.rank == 0):
+                self.next_guy = self.nproc - 1
+            else:
+                self.next_guy = self.rank - 1
+            # Each process will handle an equal subset of indices of
+            # the cov_inv to fill.
+            # This does not have to be rediscovered for every DataSet list
+            # passed in, so get the indices first.
+            chan_index_list = range(self.n_chan)
+            if self.uncorrelated_channels:
+                index_list = split_elems(chan_index_list,nprocs)[rank]
+            else:
+                ra_index_list = range(self.n_ra)
+                # cross product = A x B = (a,b) for all a in A, for all b in B
+                chan_ra_index_list = cross([chan_index_list,ra_index_list])
+                index_list = split_elems(chan_ra_index_list,nprocs)[rank]
+            # Since the DataSets are split evenly over the processes,
+            # have to put in the pointing/noise at each index for
+            # each DataSet list that the processes hold.
+            for run in range(self.size):
+                if self.uncorrelated_channels:
+                    # No actual threading going on.
+                    for thread_f_ind in index_list:
+                        thread_cov_inv_block = sp.zeros((self.n_ra, self.n_dec,
+                                    self.n_ra, self.n_dec), dtype=float)
+                        for thread_D in data_set_list:
+                            thread_D.Pointing.noise_channel_to_map(
+                                  thread_D.Noise, f_ind, thread_cov_inv_block)
+                        if start_file_ind = 0:
+                            # The first time through the matrix. We 'zero'
+                            # everything by just assigning a value instead of
+                            # setting to zero then += value.
+                            # TODO: writing to same place might hiccup.
+                            cov_inv[thread_f_ind,...] = thread_cov_ind_block
+                            # Add stuff to diagonal now since it's not
+                            # very fun later.
+                            thread_cov_inv_block.flat \
+                                    [::self.n_ra * self.n_dec + 1] += \
+                                    1.0 / T_large**2
+                        else:
+                            # Not the first time through. Just add in vals.
+                            cov_inv[thread_f_ind,...] += thread_cov_inv_block
+                        if self.feedback > 1:
+                            print thread_f_ind,
+                            sys.stdout.flush()
+                else:
+                    for thread_f_ind,thread_ra_ind in index_list:
+                        thread_cov_inv_row = sp.zeros((self.n_dec, self.n_chan,
+                                                       self.n_ra, self.n_dec),
+                                                      dtype=float)
+                        for thread_D in data_set_list:
+                            thread_D.Pointing.noise_to_map_domain(
+                                             thread_D.Noise, thread_f_ind,
+                                             thread_ra_ind, thread_ind_cov_row)
+                        if start_file_ind = 0:
+                            cov_inv[thread_f_ind,thread_ra_ind,...] = \
+                                                      thread_cov_inv_row
+                            # Add the diagonal stuff.
+                        else:
+                            cov_inv[thread_f_ind,thread_ra_ind,...] += \
+                                                      thread_cov_inv_row
+
+                        #writeout_filename = self.cov_filename \
+                        #                  + repr(thread_inds).zfill(20)
+                        #f = open(writeout_filename, 'w')
+                        #np.save(f,thread_cov_inv_row)
+                        #f.close()
+                        if (self.feedback > 1
+                            and thread_ra_ind == self.n_ra - 1):
+                            print thread_f_ind,
+                            sys.stdout.flush()
+                # Once done with one list of DataSets, do next.
+                # Note: No need to pass anything the last time since
+                #       that data was the process' original data and
+                #       has already been processed.
+                if (run != (self.size - 1)):
+                    # Send out the DataSet list I have to next guy.
+                    comm.send(data_set_list,dest=self.next_guy)
+                    # Receive the DataSet list being sent to me by prev guy.
+                    data_set_list = comm.recv(source=self.prev_guy)
+                    # Processes will be relatively in sync here since they
+                    # will block on read until the "previous" process
+                    # sends over its data.
+    
+                    
+
+
+# Close self.noise_params in each DataSet.
+# Along those lines, might want to open and close self.foreground_modes, too.
+        #for a_data in data_set_list:
+        #    if not a_data.noise_params is None:
+        #        a_data.noise_params.close()
+        #    if not a_data.foreground_modes is None:
+        #        a_data.foreground_modes.close()
 
 
     def make_map_old(self):
@@ -509,6 +654,12 @@ class DirtyMapMaker(object):
                             thread_N = noise_list[thread_kk]
                             thread_P.noise_channel_to_map(thread_N, 
                                         thread_f_ind, thread_cov_inv_block)
+                        if start_file_ind == 0:
+                            # This is our first time through the matrix.  Add
+                            # prior to the diagonal.
+                            thread_cov_inv_block.flat \
+                                    [::self.n_ra * self.n_dec + 1] += \
+                                    1.0 / T_large**2
                         cov_inv[thread_f_ind,...] += thread_cov_inv_block
                         if self.feedback > 1:
                             print thread_f_ind,
@@ -527,10 +678,16 @@ class DirtyMapMaker(object):
                                     thread_cov_inv_row)
                         # Use a lock to try to stagger the processes and make
                         # them write at different times.
-                        write_lock.acquire()
-                        cov_inv[thread_f_ind,thread_ra_ind,...] += \
-                                thread_cov_inv_row
-                        write_lock.release()
+#                        write_lock.acquire()
+#                        cov_inv[thread_f_ind,thread_ra_ind,...] += \
+#                                thread_cov_inv_row
+#                        write_lock.release()
+                        # Just writing separate processes' jobs to disk.
+                        writeout_filename = self.cov_filename \
+                                          + repr(thread_inds).zfill(20)
+                        f = open(writeout_filename, 'w')
+                        np.save(f,thread_cov_inv_row)
+                        f.close()
                         if (self.feedback > 1
                             and thread_ra_ind == self.n_ra - 1):
                             print thread_f_ind,
@@ -542,12 +699,26 @@ class DirtyMapMaker(object):
                 T.start()
                 thread_list.append(T)
             # Now put work on the queue for the threads to do.
-            for ii in xrange(self.n_chan):
-                if self.uncorrelated_channels:
-                    index_queue.put(ii)
-                else:
-                    for jj in xrange(self.n_ra):
-                        index_queue.put((ii, jj))
+#            for ii in xrange(self.n_chan):
+#                if self.uncorrelated_channels:
+#                    index_queue.put(ii)
+#                else:
+#                    for jj in xrange(self.n_ra):
+#                        index_queue.put((ii, jj))
+            # Since each process needs all of the noises and pointing info,
+            # the split to multiple cores is done by not doing all the
+            # ra and decs at the same time.
+            rank = comm.Get_rank() # rank < nproc
+            nproc = comm.Get_size()
+            chan_index_list = range(self.n_chan)
+            if self.uncorrelated_channels:
+                indices_to_put = split_elems(chan_index_list,nprocs)[rank]
+            else:
+                ra_index_list = range(self.n_ra)
+                chan_ra_index_list = cross([chan_index_list,ra_index_list])
+                indices_to_put = split_elems(chan_ra_index_list,nprocs)[rank]
+            for indexx in indices_to_put:
+                index_queue.put(indexx)
             # At the end of the queue, tell the threads that they are done.
             for ii in range(self.n_processes):
                 index_queue.put(None)
@@ -564,9 +735,9 @@ class DirtyMapMaker(object):
         # setting a prior that all pixels are 0 += T_large. This does
         # bias the map maker slightly, but really shouldn't matter.
         if self.uncorrelated_channels:
-            cov_view = cov_inv.view()
-            cov_view.shape = (self.n_chan, (self.n_ra * self.n_dec)**2)
-            cov_view[:,::self.n_ra * self.n_dec + 1] += 1.0 / T_large**2
+            #cov_view = cov_inv.view()
+            #cov_view.shape = (self.n_chan, (self.n_ra * self.n_dec)**2)
+            #cov_view[:,::self.n_ra * self.n_dec + 1] += 1.0 / T_large**2
         else:
             cov_inv.flat[::self.n_chan * self.n_ra * self.n_dec + 1] += \
                 1.0 / T_large**2
@@ -581,8 +752,17 @@ class DataSet(object):
     """Contains all the information about a data set, including noise, pointing
     and data."""
 
-    def __init__(self, Blocks, map, pol_ind):
-        data = sel.preprocess_data(Blocks, map, pol_ind)
+    def __init__(self, params, Blocks, map, n_chan, pols, pol_ind,
+                       band_centres, band_ind, file_middle):
+        self.params = params
+        self.freq = map.get_axis('freq')
+        self.n_chan = n_chan
+        self.pols = pols
+        self.pol_ind = pol_ind
+        self.band_centres = band_centres
+        self.band_ind = band_ind
+        self.file_middle = file_middle
+        data = self.preprocess_data(Blocks, map)
         self.time_stream, ra, dec, az, el, time, mask_inds = data
         n_time = time_stream.shape[1]
         if n_time < 5:
@@ -592,9 +772,10 @@ class DataSet(object):
         # Now build up our noise model for this piece of data.
         self.Noise = Noise(time_stream, time)
 
-    def preprocess_data(self, Blocks, map, pol_ind):
+    def preprocess_data(self, Blocks, map):
         """The method converts data to a mapmaker friendly format."""
         
+        pol_ind = self.pol_ind
         # On the first pass just get dimensions and do some checks.
         nt = 0
         first_block = True
@@ -607,6 +788,7 @@ class DataSet(object):
                                  " match.")
             if first_block:
                 self.pol_val = Data.field('CRVAL4')[pol_ind]
+                first_block = False
             elif self.pol_val != Data.field('CRVAL4')[pol_ind]:
                 raise ValueError("Polarization of Data Block inconsistant.")
         # Allocate memory for the outputs.
@@ -705,6 +887,10 @@ class DataSet(object):
                 raise ValueError('Only thermal parameter can be measured '
                                  'with no noise parameter database.')
         else :
+            if params['noise_parameter_file']:
+                self.noise_params = shelve.open(params['noise_parameter_file'], 'r')
+            else:
+                self.noise_params = None
             # Get the data base entry that corresponds to the current file.
             noise_entry = (self.noise_params[self.file_middle]
                            [int(round(self.band_centres[self.band_ind]/1e6))]
@@ -762,11 +948,19 @@ class DataSet(object):
 
     def get_ts_foreground_mode(self, mode_number):
         # Collect the variables we need from the class.
+#        foreground_modes_db = self.foreground_modes
+        if params['ts_foreground_mode_file']:
+            self.foreground_modes = shelve.open(
+                params['ts_foreground_mode_file'], 'r')
+        else:
+            self.foreground_modes = None
         foreground_modes_db = self.foreground_modes
         pol_ind = self.pol_ind
         cal_ind = 0
         file_middle = self.file_middle
-        freq = self.map.get_axis('freq')
+        # freq saved in constructor of DataSet.
+        #freq = self.map.get_axis('freq')
+        freq = self.freq
         # Get the data base key.
         key = ts_measure.get_key(file_middle)
         # From the database, read the data for this file.
@@ -1931,4 +2125,63 @@ def scaled_inv(mat):
     out_mat = scal[:,None] * out_mat * scal[None,:]
     return out_mat
 
+
+def split_elems(points, num_splits):
+    '''Split a list of arbitrary type elements, points, into num_splits sets.'''
+    size = len(points)
+    big_list = []
+    for i in range(num_splits):
+        big_list.append([])
+    # Number of elements per split/process.
+    divdiv = size / num_splits
+    # Number of processes that get one extra element.
+    modmod = size % num_splits
+    # Put in the right number of elements for each process. The 'extra'
+    # elements from mod get put into the first processes, so the difference
+    # in the number of elements per process is either 1 or 0.
+    start = 0
+    end = divdiv
+    for i in range(num_splits):
+        if i < modmod:
+            end += 1
+        for j in range(start,end):
+            try:
+                big_list[i].append(tuple(points[j]))
+            except TypeError:
+                big_list[i].append(points[j])
+        start = end
+        end += divdiv
+    return big_list
+
+
+def cross(set_list):
+        '''Given a list of sets, return the cross product.'''
+        # By associativity of cross product, cross the first two sets together
+        # then cross that with the rest. The big conditional in the list
+        # comprehension is just to make sure that there are no nested lists
+        # in the final answer.
+        if len(set_list) == 1:
+                ans = []
+                for elem in set_list[0]:
+                        # In the 1D case, these elements are not lists.
+                        if type(elem) == list:
+                                ans.append(np.array(elem))
+                        else:
+                                ans.append(np.array([elem]))
+                return ans
+        else:
+                A = set_list[0]
+                B = set_list[1]
+                cross_2 = [a+b if ((type(a) == list) and (type(b) == list)) else \
+                (a+[b] if type(a) == list else ([a]+b if type(b) == list else \
+                [a]+[b])) for a in A for b in B]
+                remaining = set_list[2:]
+                remaining.insert(0,cross_2)
+                return cross(remaining)
+
+
+# If this file is run from the command line, execute the main function.
+if __name__ == "__main__":
+    import sys
+    DirtyMapMaker(str(sys.argv[1])).execute()
 

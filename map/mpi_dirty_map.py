@@ -661,6 +661,12 @@ class DirtyMapMaker(object):
                             thread_N = noise_list[thread_kk]
                             thread_P.noise_channel_to_map(thread_N, 
                                         thread_f_ind, thread_cov_inv_block)
+                        if start_file_ind == 0:
+                            # This is our first time through the matrix.  Add
+                            # prior to the diagonal.
+                            thread_cov_inv_block.flat \
+                                    [::self.n_ra * self.n_dec + 1] += \
+                                    1.0 / T_large**2
                         cov_inv[thread_f_ind,...] += thread_cov_inv_block
                         if self.feedback > 1:
                             print thread_f_ind,
@@ -737,9 +743,10 @@ class DirtyMapMaker(object):
         # setting a prior that all pixels are 0 += T_large. This does
         # bias the map maker slightly, but really shouldn't matter.
         if self.uncorrelated_channels:
-            cov_view = cov_inv.view()
-            cov_view.shape = (self.n_chan, (self.n_ra * self.n_dec)**2)
-            cov_view[:,::self.n_ra * self.n_dec + 1] += 1.0 / T_large**2
+            #cov_view = cov_inv.view()
+            #cov_view.shape = (self.n_chan, (self.n_ra * self.n_dec)**2)
+            #cov_view[:,::self.n_ra * self.n_dec + 1] += 1.0 / T_large**2\
+            pass
         else:
             pass
 #            cov_inv.flat[::self.n_chan * self.n_ra * self.n_dec + 1] += \
