@@ -295,8 +295,11 @@ class DirtyMapMaker(object):
             # possible). This way is most efficient in memory and efficiency.
             # This also allows a smaller number of mpi calls when passing
             # DataSets around later to fill cov_inv.
-            this_file_middles = split_elems(all_this_file_middles,
-                                             self.nproc)[self.nrank]
+            this_file_middles,junk = split_elems(all_this_file_middles,
+                                             self.nproc)
+            this_file_middles = this_file_middles[self.rank]
+            # Don't need the 'junk' from above right now. That was added
+            # at a later point for something else.
             if self.feedback > 1:
                 # Will have to change for each process saying something
                 # unique.
@@ -384,12 +387,22 @@ class DirtyMapMaker(object):
             # passed in, so get the indices first.
             chan_index_list = range(self.n_chan)
             if self.uncorrelated_channels:
-                index_list = split_elems(chan_index_list,nprocs)[rank]
+                # Using self.rank after gets the info for
+                # the approproate process.
+                # 'junk' for now.
+                index_list,junk = split_elems(chan_index_list,nprocs)
+                index_list = index_list[self.rank]
             else:
                 ra_index_list = range(self.n_ra)
                 # cross product = A x B = (a,b) for all a in A, for all b in B
                 chan_ra_index_list = cross([chan_index_list,ra_index_list])
-                index_list = split_elems(chan_ra_index_list,nprocs)[rank]
+                index_list,start_list = split_elems(chan_ra_index_list,
+                                                                nprocs)
+                index_list = index_list[self.rank]
+                # This is the point in n_chan x n_ra that the first index
+                # is at. This is needed for knowing which part of the
+                # total matrix a process has.
+                f_ra_start_ind = start_list[self.rank]
             # Since the DataSets are split evenly over the processes,
             # have to put in the pointing/noise at each index for
             # each DataSet list that the processes hold.
@@ -420,21 +433,35 @@ class DirtyMapMaker(object):
                             print thread_f_ind,
                             sys.stdout.flush()
                 else:
-                    for thread_f_ind,thread_ra_ind in index_list:
+                    # Keep all of a process' rows in memory, then use
+                    # MPI and file views to write it out fast.
+                    thread_cov_inv_chunk = sp.zeros((len(index_list),
+                                                     self.n_dec, self.n_chan,
+                                                     self.n_ra, self.n_dec),
+                                                     dtype=float)
+                    #for thread_f_ind,thread_ra_ind in index_list:
+                    for ii in xrange(len(index_list)):
                         thread_cov_inv_row = sp.zeros((self.n_dec, self.n_chan,
                                                        self.n_ra, self.n_dec),
                                                       dtype=float)
+                        thread_f_ind = index_list[ii][0]
+                        thread_ra_ind = index_list[ii][1]
                         for thread_D in data_set_list:
                             thread_D.Pointing.noise_to_map_domain(
                                              thread_D.Noise, thread_f_ind,
                                              thread_ra_ind, thread_ind_cov_row)
                         if start_file_ind = 0:
-                            cov_inv[thread_f_ind,thread_ra_ind,...] = \
+                            #cov_inv[thread_f_ind,thread_ra_ind,...] = \
+                            #                          thread_cov_inv_row
+                            thread_cov_inv_chunk[ii,...] = \
                                                       thread_cov_inv_row
                             # Add the diagonal stuff.
                         else:
-                            cov_inv[thread_f_ind,thread_ra_ind,...] += \
+                            #cov_inv[thread_f_ind,thread_ra_ind,...] += \
+                            #                          thread_cov_inv_row
+                            thread_cov_inv_chunk[ii,...] += \
                                                       thread_cov_inv_row
+
 
                         #writeout_filename = self.cov_filename \
                         #                  + repr(thread_inds).zfill(20)
@@ -457,6 +484,19 @@ class DirtyMapMaker(object):
                     # Processes will be relatively in sync here since they
                     # will block on read until the "previous" process
                     # sends over its data.
+
+            # Now that thread_cov_inv_chunk is all filled with
+            # data from all DataSets, write it out.
+            # Only dealing with correlated channels now.
+            if not self.uncorrelated_channels:
+                total_shape = (self.n_chan*self.n_ra, self.n_dec,
+                               self.n_chan, self.n_ra, self.n_dec)
+                start_ind = (f_ra_start_ind,0,0,0,0)
+                dtype = thread_cov_inv_chunk.dtype
+                # Save array.
+                mpi_writearray(self.cov_filename, thread_cov_inv_chunk,
+                               comm, total_shape, start_ind, dtype,
+                               order='C', displacement=0)
     
                     
 
@@ -2127,8 +2167,11 @@ def scaled_inv(mat):
 
 
 def split_elems(points, num_splits):
-    '''Split a list of arbitrary type elements, points, into num_splits sets.'''
+    '''Split a list of arbitrary type elements, points, into num_splits sets.
+    Also, returns a list of the index that each set starts at.'''
+
     size = len(points)
+    start_list = []
     big_list = []
     for i in range(num_splits):
         big_list.append([])
@@ -2149,9 +2192,10 @@ def split_elems(points, num_splits):
                 big_list[i].append(tuple(points[j]))
             except TypeError:
                 big_list[i].append(points[j])
+        start_list.append(start)
         start = end
         end += divdiv
-    return big_list
+    return big_list, start_list
 
 
 def cross(set_list):
@@ -2178,6 +2222,73 @@ def cross(set_list):
                 remaining = set_list[2:]
                 remaining.insert(0,cross_2)
                 return cross(remaining)
+
+
+def mpi_writearray(fname, local_array, comm, total_shape, start_ind, dtype,
+                   order='F', displacement=0):
+    '''Write a block of an array to file. Each process should be
+    looking at the next "chunk" of the file (order based on mpi rank).
+    It is assumed that the processes' chunks are unique and completely
+    fill the total array. Unexpected errors may occur if not taken care of.
+
+    Parameters
+    ----------
+    fname : string
+        Name of file to read.
+    local_array : np.ndarray
+        The array to write.
+    comm : mpi4py.MPI.COMM
+        MPI communicator to use.
+    total_shape : (dim1, dim2, ...)
+        Shape of the global matrix.
+    start_ind : (dim1, dim2, ...)
+        The index where the local_array block starts in the global matrix.
+    order : 'F' or 'C', optional
+        Is the matrix on disk is 'F' (Fortran/column major), or 'C' (C/row
+        major) order. Defaults to Fortran ordered.
+    displacement : integer, optional
+        Use a displacement from the start of the file. That is ignore the first
+        `displacement` bytes.
+    '''
+
+    _typemap = { np.float32 : MPI.FLOAT,
+                 np.float64 : MPI.DOUBLE,
+                 np.complex128 : MPI.COMPLEX16 }
+
+    # Set up mpi and the process grid.
+    nproc = comm.Get_size()
+    rank = comm.Get_rank()
+
+    if dtype not in _typemap:
+        raise Exception("Unsupported type.")
+
+    # Get MPI type
+    mpitype = _typemap[dtype]
+
+    # Set file ordering
+    mpiorder = MPI.ORDER_FORTRAN if order=='F' else MPI.ORDER_C
+
+    # Get local_shape
+    local_shape = local_array.shape
+
+    # Create array view (which part of the whole matrix the process sees)
+    sub_arr = mpitype.Create_subarray(total_shape,local_shape,start_ind,mpiorder)
+    # must commit for some reason
+    sub_arr.Commit()
+
+    # Check to see if the type has the same shape.
+    if local_array.size != sub_arr.Get_size() / mpitype.Get_size():
+        raise Exception("Local array size is not consistent with array description.")
+
+    # Open the file, and read out the segments. MODE_RDWR - read/write.
+    f = MPI.File.Open(comm, fname, MPI.MODE_WRONLY | MPI.MODE_CREATE)
+
+    # Set view and write out.
+    #Set_view(self, Offset disp=0, Datatype etype=None, 
+    #         Datatype filetype=None, datarep=None, Info info=INFO_NULL)
+    f.Set_view(displacement, mpitype, sub_arr, 'native')
+    f.Write_all(local_array)
+    f.Close()
 
 
 # If this file is run from the command line, execute the main function.
