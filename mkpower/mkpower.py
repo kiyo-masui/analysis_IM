@@ -40,9 +40,9 @@ params_init = {
     'boxshape' : (60,12,6),
     'boxunit' : 15., # in unit Mpc h-1
     'discrete' : 3,
-    'Xrange' : (1400,),
-    'Yrange' : (-6*15,6*15),
-    'Zrange' : (0.,6*15),
+    #'Xrange' : (1400,),
+    #'Yrange' : (-6*15,6*15),
+    #'Zrange' : (0.,6*15),
 
     'kbinNum' : 20,
     'kmin' : -1,
@@ -88,20 +88,27 @@ class PowerSpectrumMaker(object):
 
         print params['imap_pair']
         print params['nmap_pair']
-        PK, k, PK2, k2 = self.GetPower()
+        PK, kn, k, PK2, kn2, k2 = self.GetPower()
 
         B = []
+        B2= []
         Bk= []
         if (params['cldir']!=''):
             B = sp.load(params['cldir']+'b_bias.npy')
             Bk= sp.load(params['cldir']+'k_bias.npy')
             PK= PK*B
+            B2= sp.load(params['cldir']+'b2_bias.npy')
+            PK2=PK2*B2
 
         shortnoise_fname = \
             params['input_root'] + resultf + '_p_combined.npy'
+        shortnoise2_fname = \
+            params['input_root'] + resultf + '_p2_combined.npy'
         try:
             shortnoise = np.load(shortnoise_fname)
             PK = PK - shortnoise
+            shortnoise2 = np.load(shortnoise2_fname)
+            PK2 = PK2 - shortnoise
             print '\t:Subtracte shortnoise!!'
         except IOError:
             print '\t:No shortnoise found!!'
@@ -118,12 +125,18 @@ class PowerSpectrumMaker(object):
         if params['saveweight']:
             if FKPweight:
                 sp.save(out_root+resultf+'_p_fkp', PK)
+                sp.save(out_root+resultf+'_n_fkp', kn)
                 sp.save(out_root+resultf+'_k_fkp', k)
                 sp.save(out_root+resultf+'_p2_fkp', PK2)
+                sp.save(out_root+resultf+'_n2_fkp', kn2)
+                sp.save(out_root+resultf+'_k2_fkp', k2)
             else:
                 sp.save(out_root+resultf+'_p', PK)
+                sp.save(out_root+resultf+'_n', kn)
                 sp.save(out_root+resultf+'_k', k)
-                #sp.save(out_root+resultf+'_p2', PK2)
+                sp.save(out_root+resultf+'_p2', PK2)
+                sp.save(out_root+resultf+'_n2', kn2)
+                sp.save(out_root+resultf+'_k2', k2)
 
 
         if self.plot==True:
@@ -163,22 +176,8 @@ class PowerSpectrumMaker(object):
             else:
                 plt.savefig(out_root+resultf+'_p'+'.eps', format='eps')
 
-    #       #PK2 = np.log10(PK2)
-    #       plt.figure(figsize=(6,6))
-    #       extent = (k2[0][0], k2[0][-1], k2[1][0], k2[1][-1])
-    #       plt.imshow(PK2, origin='lower', extent = extent, interpolation='nearest')
-    #       plt.xlabel('$k vertical (h Mpc^{-1})$')
-    #       plt.ylabel('$k parallel (h Mpc^{-1})$')
-    #       cb = plt.colorbar()
-    #       cb.set_label('$lg(P^{2D}_{k_pk_v}) (Kelvin^2(h^{-1}Mpc)^3)$')
-    #       plt.loglog()
-    #       if FKPweight:
-    #           plt.savefig(out_root+'power2_fkp_'+resultf+'.eps', format='eps')
-    #       else:
-    #           plt.savefig(out_root+'power2_'+resultf+'.eps', format='eps')
 
             plt.show()
-            #print 'Finished @_@ '
         return PK
 
     def GetPower(self):
@@ -191,7 +190,10 @@ class PowerSpectrumMaker(object):
         kmax = params['kmax']
 
         kunit = 2.*pi/(params['boxunit'])
+
+        # 1d
         PK = np.zeros(kbn)
+        kn = np.zeros(kbn)
         if (kmin==-1) or (kmax==-1):
             k = np.logspace(
                 log10(1./params['boxshape'][0]), log10(sqrt(3)), num=kbn+1)
@@ -199,14 +201,20 @@ class PowerSpectrumMaker(object):
             kmin = kmin
             kmax = kmax
             k = np.logspace(log10(kmin), log10(kmax), num=kbn+1)
-        PK2 = np.zeros(shape=(10, 10))
-        k2 = np.zeros(shape=(2, 10))
-        #print k
-        MakePower.Make(fftbox, PK, k, PK2, k2, kunit)
-        k = k[:-1]
-        k2 = k2*kunit
 
-        return PK, k, PK2, k2
+        # 2d
+        PK2 = np.zeros(shape=(kbn, kbn))
+        kn2 = np.zeros([kbn, kbn])
+        k2 = np.zeros(shape=(2, kbn+1))
+        k2[0] = k
+        k2[1] = k
+
+        MakePower.Make(fftbox, PK, kn, k, PK2, kn2, k2, kunit)
+
+        k = k[:-1]
+        k2 = k2[:,:-1]
+
+        return PK, kn, k, PK2, kn2, k2
         
     def GetDelta(self, box, nbox, mbox):
         """

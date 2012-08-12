@@ -157,14 +157,16 @@ static PyObject * Make(PyObject *self, PyObject *args){
 	PK *pk = (PK *)malloc(sizeof(PK));
 	PyArrayObject *Pyfftbox;
 	PyArrayObject *Pypk;
+	PyArrayObject *Pykn;
 	PyArrayObject *Pyk;
 	PyArrayObject *Pypk2;
+	PyArrayObject *Pykn2;
 	PyArrayObject *Pyk2;
 
-	if(!PyArg_ParseTuple(args, "O!O!O!O!O!d", 
+	if(!PyArg_ParseTuple(args, "O!O!O!O!O!O!O!d", 
 		&PyArray_Type, &Pyfftbox, 
-		&PyArray_Type, &Pypk, &PyArray_Type, &Pyk,
-		&PyArray_Type, &Pypk2, &PyArray_Type, &Pyk2,
+		&PyArray_Type, &Pypk, &PyArray_Type, &Pykn, &PyArray_Type, &Pyk,
+		&PyArray_Type, &Pypk2, &PyArray_Type, &Pykn2, &PyArray_Type, &Pyk2,
 		&pk->kunit))
 		return NULL;
 	fft->dim = Pyfftbox->nd;
@@ -177,10 +179,12 @@ static PyObject * Make(PyObject *self, PyObject *args){
 	//printf("%d %d %d\n", fft->sizex, fft->sizey, fft->sizez);
 	pk->N = Pypk->dimensions[0];
 	pk->val = (double*)Pypk->data;
+	pk->kn = (double*)Pykn->data;
 	pk->k = (double*)Pyk->data;
 	pk->Np = Pypk2->dimensions[0];
 	pk->Nv = Pypk2->dimensions[1];
 	pk->val2 = (double*)Pypk2->data;
+    pk->kn2 = (double*)Pykn2->data;
 	pk->k2 = (double*)Pyk2->data;
 	//printf("kunit = %f\n", pk->kunit);
 	//printf("knum = %d\n", pk->N);

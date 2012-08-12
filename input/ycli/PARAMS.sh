@@ -34,5 +34,6 @@ export HOUR="15"
 export GOODMODES="5"
 export SIMFILE="sim_beam_000.npy"
 export MAPFILE="sim_15hr_oldmap_str_beam_plus_fg"
+export NOISEWEIGHT="sim_15hr_oldmap_str_beam_plus_fg"
 export CLEAN_REAL=True
 export CLEAN_SIM=False

@@ -178,17 +178,23 @@ def cross_maps(map1key, map2key, noise_inv1key, noise_inv2key,
     retpairs = {}
     retpairslist = []
 
-    (map1keys, map1set) = db_to_use.fetch(map1key, intend_read=True,
-                                    silent=True)
-
-    (map2keys, map2set) = db_to_use.fetch(map2key, intend_read=True,
-                                    silent=True)
-
-    (noise_inv1keys, noise_inv1set) = db_to_use.fetch(noise_inv1key,
+    if os.path.exists(map1key):
+        (map1keys, map1set) = get_mapdict(map1key)
+        (noise_inv1keys, noise_inv1set) = get_mapdict(noise_inv1key)
+    else:
+        (map1keys, map1set) = db_to_use.fetch(map1key, intend_read=True,
+                                        silent=True)
+        (noise_inv1keys, noise_inv1set) = db_to_use.fetch(noise_inv1key,
                                         intend_read=True,
                                         silent=True)
 
-    (noise_inv2keys, noise_inv2set) = db_to_use.fetch(noise_inv2key,
+    if os.path.exists(map2key):
+        (map2keys, map2set) = get_mapdict(map2key)
+        (noise_inv2keys, noise_inv2set) = get_mapdict(noise_inv2key)
+    else:
+        (map2keys, map2set) = db_to_use.fetch(map2key, intend_read=True,
+                                        silent=True)
+        (noise_inv2keys, noise_inv2set) = db_to_use.fetch(noise_inv2key,
                                         intend_read=True,
                                         silent=True)
 
@@ -826,6 +832,17 @@ def get_mapdict(dir):
             if mapsplit[0] == 'combined':
                 key1 = mapsplit[2]
                 key2 = mapsplit[3]
+
+                mapdict['%s;%s'%(key1, key2)] = dir + map
+
+            if mapsplit[0] == 'secA' or\
+               mapsplit[0] == 'secB' or\
+               mapsplit[0] == 'secC' or\
+               mapsplit[0] == 'secD':
+                key1 = mapsplit[0][-1]
+                key2 = mapsplit[3] + '_' + mapsplit[4]
+                #if key2=='noise_inv' and mapsplit[5] == 'diag':
+                #    key2='noise_weight'
 
                 mapdict['%s;%s'%(key1, key2)] = dir + map
 

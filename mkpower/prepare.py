@@ -94,9 +94,9 @@ params_init = {
     'boxshape' : (60,12,6),
     'boxunit' : 15., # in unit Mpc h-1
     'discrete' : 3.,
-    'Xrange' : (1400,),
-    'Yrange' : (-6*15,6*15),
-    'Zrange' : (0.,6*15),
+    'Xrange' : None,
+    'Yrange' : None,
+    'Zrange' : None,
 
     'cutlist': [],
 }
@@ -119,16 +119,32 @@ class Prepare(object):
 
         # Make parent directory and write parameter file.
         kiyopy.utils.mkparents(params['output_root'])
-        #parse_ini.write_params(params, 
-        #   params['output_root']+'params.ini',prefix='pk_')
-        #hr = params['hr']
-        #mid = params['mid']
-        #last = params['last']
-        #pol_str = params['polarizations'][0]
 
         imap_list = params['imap_list']
         nmap_list = params['nmap_list']
         mmap_list = params['mmap_list']
+
+        if not params['Xrange']:
+            map_tmp = algebra.load(params['imap_root'][0] + imap_list[0])
+            map_tmp = algebra.make_vect(map_tmp)
+            rangex, rangey, rangez = functions.getedge(map_tmp)
+            self.params['boxunit'] = max((rangex[1]-rangex[0])/params['boxshape'][0],
+                                         (rangey[1]-rangey[0])/params['boxshape'][1],
+                                         (rangez[1]-rangez[0])/params['boxshape'][2])
+            rangexc = (rangex[1]-rangex[0])/2.+rangex[0]
+            rangeyc = (rangey[1]-rangey[0])/2.+rangey[0]
+            rangezc = (rangez[1]-rangez[0])/2.+rangez[0]
+            rangexh = floor(self.params['boxunit']*params['boxshape'][0]/2.) + 1.
+            rangeyh = floor(self.params['boxunit']*params['boxshape'][1]/2.) + 1.
+            rangezh = floor(self.params['boxunit']*params['boxshape'][2]/2.) + 1.
+            self.params['Xrange'] = (rangexc-rangexh, rangexc+rangexh)
+            self.params['Yrange'] = (rangeyc-rangeyh, rangeyc+rangeyh)
+            self.params['Zrange'] = (rangezc-rangezh, rangezc+rangezh)
+            params = self.params
+            print 'X : [%f, %f]'%self.params['Xrange']
+            print 'Y : [%f, %f]'%self.params['Yrange']
+            print 'Z : [%f, %f]'%self.params['Zrange']
+            print 'Box Unit: %f'%self.params['boxunit']
 
         n_processes = params['processes']
         out_root = params['output_root']

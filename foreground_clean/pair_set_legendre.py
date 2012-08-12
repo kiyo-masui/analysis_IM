@@ -40,11 +40,16 @@ import replace_svd_mode as rpmode
 
 params_init = {
                'SVD_root': None,
+               'SVD_file': None,
                'output_root': "local_test",
+               'pairlist' : None,
+               'pairdict' : None,
+
                'map1': 'GBT_15hr_map',
                'map2': 'GBT_15hr_map',
                'noise_inv1': 'GBT_15hr_map',
                'noise_inv2': 'GBT_15hr_map',
+               'calc_diagnal' : False,
                'simfile': None,
                'sim_multiplier': 1.,
                'subtract_inputmap_from_sim': False,
@@ -66,18 +71,18 @@ params_init = {
 prefix = 'fs_'
 
 
-def wrap_find_weight(filename, regenerate=False):
-    if regenerate:
-        retval = find_weight(filename)
-    else:
-        retval = memoize_find_weight(filename)
-
-    return batch_handler.repackage_kiyo(retval)
-
-
-@batch_handler.memoize_persistent
-def memoize_find_weight(filename):
-    return find_weight(filename)
+#def wrap_find_weight(filename, regenerate=False):
+#    if regenerate:
+#        retval = find_weight(filename)
+#    else:
+#        retval = memoize_find_weight(filename)
+#
+#    return batch_handler.repackage_kiyo(retval)
+#
+#
+#@batch_handler.memoize_persistent
+#def memoize_find_weight(filename):
+#    return find_weight(filename)
 
 
 def find_weight(filename):
@@ -121,7 +126,10 @@ class PairSet_LegendreSVD(pair_set.PairSet):
             #os.mkdir(self.output_root)
 
         if self.params['SVD_root']:
-            self.SVD_root = self.datapath_db.fetch(self.params['SVD_root'],
+            if os.path.exists(self.params['SVD_root']):
+                self.SVD_root = self.params['SVD_root']
+            else:
+                self.SVD_root = self.datapath_db.fetch(self.params['SVD_root'],
                                                    intend_write=True)
             print "WARNING: using %s to clean (intended?)" % self.SVD_root
         else:
@@ -135,7 +143,10 @@ class PairSet_LegendreSVD(pair_set.PairSet):
     @batch_handler.log_timing
     def subtract_foregrounds(self, n_modes_start, n_modes_stop):
         for pairitem in self.pairlist:
-            filename_svd = "%s/SVD_pair_%s.pkl" % (self.SVD_root, pairitem)
+            if self.params['SVD_file'] != None:
+                filename_svd = "%s/%s" % (self.SVD_root, self.params['SVD_file'])
+            else:
+                filename_svd = "%s/SVD_pair_%s.pkl" % (self.SVD_root, pairitem)
             print "subtracting %d to %d modes from %s using %s" % (n_modes_start, \
                                                                 n_modes_stop, \
                                                                 pairitem, \

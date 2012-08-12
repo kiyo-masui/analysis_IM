@@ -64,6 +64,33 @@ def elaz2radecGBT(el, az, UT) :
 
     return ra*180.0/sp.pi, dec*180.0/sp.pi
 
+def elaz2radecParkes(el, az, ut) :
+    """Calculates the Ra and Dec from the elevation, azimuth and UT for an
+    observer at Parkes.
+
+    All input should be formated to correspond to the data in a Parkes fits file.
+    El, and Az in degrees and UT a string like in the Parkes DATE-OBS field.
+
+    Largely copied from Kevin's code.
+    """
+
+    Parkes = ephem.Observer()
+    Parkes.long = '148:15:44.3591'
+    Parkes.lat = '-38:25:59.23'
+    Parkes.pressure = 0 # no refraction correction.
+    Parkes.temp = 0
+
+    ut_wholesec, partial_sec = ut.split('.', 1)
+    time_obj = time.strptime(ut_wholesec, "%Y-%m-%dT%H:%M:%S")
+    ut_reformated = time.strftime("%Y/%m/%d %H:%M:%S", time_obj)
+    Parkes.date = ut_reformated + "." + partial_sec
+
+    el_r = el.flatten()*sp.pi/180.0
+    az_r = az.flatten()*sp.pi/180.0
+    ra, dec = Parkes.radec_of(az_r,el_r)
+
+    return ra*180.0/sp.pi, dec*180.0/sp.pi
+
 def LSTatGBT(UT) :
     """Calculates the LST from the UT of an observer at GBT.
 
@@ -85,6 +112,30 @@ def LSTatGBT(UT) :
     GBT.date = UT_reformated + "." + partial_sec
 
     LST = GBT.sidereal_time() #IN format xx:xx:xx.xx ?
+
+    return LST*180.0/sp.pi
+
+def LSTatParkes(UT) :
+    """Calculates the LST from the UT of an observer at Parkes 
+
+    All input should be formated to correspond to the data in a Parkes fits file.
+    UT a string like in the Parkes DATE-OBS field.
+
+    Largely copied from Kevin's code.
+    """
+
+    Parkes = ephem.Observer()
+    Parkes.long = '148:15:44.3591'
+    Parkes.lat = '-38:25:59.23'
+    Parkes.pressure = 0 # no refraction correction.
+    Parkes.temp = 0
+
+    UT_wholesec, partial_sec = UT.split('.', 1)
+    time_obj = time.strptime(UT_wholesec, "%Y-%m-%dT%H:%M:%S")
+    UT_reformated = time.strftime("%Y/%m/%d %H:%M:%S", time_obj)
+    Parkes.date = UT_reformated + "." + partial_sec
+
+    LST = Parkes.sidereal_time() #IN format xx:xx:xx.xx ?
 
     return LST*180.0/sp.pi
 

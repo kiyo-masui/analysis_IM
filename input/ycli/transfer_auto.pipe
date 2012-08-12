@@ -109,7 +109,11 @@ print wetpath
 pk0_imap_pair = ('0_' + mappath.split('/')[-1], '0_' +  mappath.split('/')[-1])
 pk0_nmap_pair = ('0_' + wetpath.split('/')[-1], '0_' +  wetpath.split('/')[-1])
 
-bc_simmap_root = WORKROOT + 'reference_auto_%s_%d/'%(map_sim, mode)
+if os.path.exists(map_cln):
+    bc_simmap_root = WORKROOT + 'reference_auto_%s_%d/'%(map_cln.split('/')[-2],mode)
+else:
+    bc_simmap_root = WORKROOT + 'reference_auto_%s_%d/'%(map_cln, mode)
+    
 
 cutlist = []
 if hour==15:

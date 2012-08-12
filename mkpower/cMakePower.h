@@ -67,8 +67,10 @@ typedef struct{
 	int Np;
 	int Nv;
 	double *val;
+    double *kn;
 	double *k;
 	double *val2;
+    double *kn2;
 	double *k2;
 	double kunit;
 }PK;

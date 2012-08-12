@@ -146,22 +146,22 @@ pre_nmap_list = nmap_list
 pre_boxshape = (512, 128, 64)
 pre_discrete = 2
 pre_boxunit = 2.
-pre_Xrange = (1400, pre_boxunit*pre_boxshape[0]+1400)
-pre_Yrange = (-pre_boxunit*pre_boxshape[1]*0.5, 
-   	 		  pre_boxunit*pre_boxshape[1]*0.5)
-pre_Zrange = (10.0, pre_boxunit*pre_boxshape[2]+10.0)
-
-if hour==22:
-	pre_Zrange = (-pre_boxunit*pre_boxshape[2]*0.5,
-						pre_boxunit*pre_boxshape[2]*0.5)
-elif hour==1:
-	#pre_boxunit = 3.2
-	#pre_boxshape = (512, 128, 64)
-	pre_boxshape = (512, 256, 128)
-	pre_Xrange = (1400, pre_boxunit*pre_boxshape[0]+1400)
-	pre_Yrange = (-pre_boxunit*pre_boxshape[1]*0.5, 
-	   	 		  pre_boxunit*pre_boxshape[1]*0.5)
-	pre_Zrange = (-30.0, pre_boxunit*pre_boxshape[2]-30)
+#pre_Xrange = (1400, pre_boxunit*pre_boxshape[0]+1400)
+#pre_Yrange = (-pre_boxunit*pre_boxshape[1]*0.5, 
+#   	 		  pre_boxunit*pre_boxshape[1]*0.5)
+#pre_Zrange = (10.0, pre_boxunit*pre_boxshape[2]+10.0)
+#
+#if hour==22:
+#	pre_Zrange = (-pre_boxunit*pre_boxshape[2]*0.5,
+#						pre_boxunit*pre_boxshape[2]*0.5)
+#elif hour==1:
+#	#pre_boxunit = 3.2
+#	#pre_boxshape = (512, 128, 64)
+#	pre_boxshape = (512, 256, 128)
+#	pre_Xrange = (1400, pre_boxunit*pre_boxshape[0]+1400)
+#	pre_Yrange = (-pre_boxunit*pre_boxshape[1]*0.5, 
+#	   	 		  pre_boxunit*pre_boxshape[1]*0.5)
+#	pre_Zrange = (-30.0, pre_boxunit*pre_boxshape[2]-30)
 
 pre_cutlist = cutlist
 pre_window = 'blackman'
@@ -202,9 +202,9 @@ pk_cldir = cldir
 pk_boxshape = pre_boxshape
 pk_discrete = pre_discrete
 pk_boxunit = pre_boxunit
-pk_Xrange = pre_Xrange
-pk_Yrange = pre_Yrange
-pk_Zrange = pre_Zrange
+#pk_Xrange = pre_Xrange
+#pk_Yrange = pre_Yrange
+#pk_Zrange = pre_Zrange
 
 pk_kbinNum = kbinNum
 pk_kmin = kmin
@@ -233,9 +233,9 @@ pkc_cldir = cldir
 pkc_boxshape = pre_boxshape
 pkc_discrete = pre_discrete
 pkc_boxunit = pre_boxunit
-pkc_Xrange = pre_Xrange
-pkc_Yrange = pre_Yrange
-pkc_Zrange = pre_Zrange
+#pkc_Xrange = pre_Xrange
+#pkc_Yrange = pre_Yrange
+#pkc_Zrange = pre_Zrange
 
 pkc_kbinNum = pk_kbinNum 
 pkc_kmin = kmin
@@ -339,9 +339,9 @@ jm_output_root = output_root + 'jkmap/'
 jm_boxshape = pre_boxshape
 jm_discrete = pre_discrete
 jm_boxunit = pre_boxunit
-jm_Xrange = pre_Xrange
-jm_Yrange = pre_Yrange
-jm_Zrange = pre_Zrange
+#jm_Xrange = pre_Xrange
+#jm_Yrange = pre_Yrange
+#jm_Zrange = pre_Zrange
 
 
 """  Calculate the jk error (Better run in mpi)"""
@@ -355,9 +355,9 @@ jk_output_root = output_root
 jk_boxshape = pk_boxshape
 jk_discrete = pk_discrete
 jk_boxunit = pk_boxunit
-jk_Xrange = pk_Xrange
-jk_Yrange = pk_Yrange
-jk_Zrange = pk_Zrange
+#jk_Xrange = pk_Xrange
+#jk_Yrange = pk_Yrange
+#jk_Zrange = pk_Zrange
 jk_kbinNum = pk_kbinNum
 
 #jk_FKPweight = False

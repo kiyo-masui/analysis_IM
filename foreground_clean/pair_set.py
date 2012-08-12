@@ -37,11 +37,15 @@ from utils import batch_handler
 
 params_init = {
                'SVD_root': None,
+               'SVD_file': None,
                'output_root': "local_test",
+               'pairlist' : None,
+               'pairdict' : None,
                'map1': 'GBT_15hr_map',
                'map2': 'GBT_15hr_map',
                'noise_inv1': 'GBT_15hr_map',
                'noise_inv2': 'GBT_15hr_map',
+               'calc_diagnal' : False,
                'simfile': None,
                'sim_multiplier': 1.,
                'subtract_inputmap_from_sim': False,
@@ -53,17 +57,22 @@ params_init = {
                'sub_weighted_mean': True,
                'regenerate_noise_inv': True,
                'modes': [10, 15],
-               'no_weights': False,
-               'save_section': True,
+               'no_weights': False
                }
 prefix = 'fs_'
 
 
-def wrap_find_weight(filename, regenerate=False):
-    if regenerate:
-        retval = find_weight(filename)
+def wrap_find_weight(filename, regenerate=False, calc_diagnal=False):
+    if not calc_diagnal:
+        if regenerate:
+            retval = find_weight(filename)
+        else:
+            retval = memoize_find_weight(filename)
     else:
-        retval = memoize_find_weight(filename)
+        if regenerate:
+            retval = find_weight_re_diagnal(filename)
+        else:
+            retval = memoize_find_weight_re_diagnal(filename)
 
     return batch_handler.repackage_kiyo(retval)
 
@@ -80,11 +89,25 @@ def find_weight(filename):
     Note that the .info does not get shelved (class needs to be made
     serializeable). Return the info separately.
     """
-    #print "loading noise: " + filename
-    #noise_inv = algebra.make_mat(algebra.open_memmap(filename, mode='r'))
-    #noise_inv_diag = noise_inv.mat_diag()
-    # if optimal map:
     noise_inv_diag = algebra.make_vect(algebra.load(filename))
+
+    return noise_inv_diag, noise_inv_diag.info
+
+@batch_handler.memoize_persistent
+def memoize_find_weight_re_diagnal(filename):
+    return find_weight_re_diagnal(filename)
+
+
+def find_weight_re_diagnal(filename):
+    r"""rather than read the full noise_inv and find its diagonal, cache the
+    diagonal values.
+
+    Note that the .info does not get shelved (class needs to be made
+    serializeable). Return the info separately.
+    """
+    print "loading noise: " + filename
+    noise_inv = algebra.make_mat(algebra.open_memmap(filename, mode='r'))
+    noise_inv_diag = noise_inv.mat_diag()
 
     return noise_inv_diag, noise_inv_diag.info
 
@@ -152,12 +175,20 @@ class PairSet():
             Q = map1^T noise_inv1 B noise_inv2 map2
         """
         par = self.params
-        (self.pairlist, pairdict) = dp.cross_maps(par['map1'], par['map2'],
-                                             par['noise_inv1'],
-                                             par['noise_inv2'],
-                                             noise_inv_suffix=";noise_weight",
-                                             verbose=False,
-                                             db_to_use=self.datapath_db)
+        if not par['pairlist']:
+            if par['calc_diagnal']:
+                noise_inv_suffix = ";noise_inv"
+            else:
+                noise_inv_suffix = ";noise_weight"
+            (self.pairlist, pairdict) = dp.cross_maps(par['map1'], par['map2'],
+                                                 par['noise_inv1'],
+                                                 par['noise_inv2'],
+                                                 noise_inv_suffix=noise_inv_suffix,
+                                                 verbose=False,
+                                                 db_to_use=self.datapath_db)
+        else:
+            self.pairlist = par['pairlist']
+            pairdict = par['pairdict']
 
         for pairitem in self.pairlist:
             pdict = pairdict[pairitem]
@@ -180,10 +211,12 @@ class PairSet():
 
             if not par['no_weights']:
                 noise_inv1 = wrap_find_weight(pdict['noise_inv1'],
-                                regenerate=par['regenerate_noise_inv'])
+                                regenerate=par['regenerate_noise_inv'],
+                                calc_diagnal = par['calc_diagnal'])
 
                 noise_inv2 = wrap_find_weight(pdict['noise_inv2'],
-                                regenerate=par['regenerate_noise_inv'])
+                                regenerate=par['regenerate_noise_inv'],
+                                calc_diagnal = par['calc_diagnal'])
             else:
                 noise_inv1 = algebra.ones_like(map1)
                 noise_inv2 = algebra.ones_like(map2)

@@ -32,7 +32,8 @@ def make_cube_movie(source_key, colorbar_title, frame_dir,
                     filetag_suffix="", saveslice=None, saveslice_file=None,
                     outputdir="./", sigmarange=6., ignore=None, multiplier=1.,
                     transverse=False, title=None, sigmacut=None,
-                    logscale=False, physical=False, convolve=False, tag=None):
+                    logscale=False, physical=False, convolve=False, tag=None,
+                    beam_data=None, freq_data=None):
     """Make a stack of spatial slice maps and animate them
     transverse plots along RA and freq and image plane is in Dec
     First mask any points that exceed `sigmacut`, and then report the extent of
@@ -42,12 +43,16 @@ def make_cube_movie(source_key, colorbar_title, frame_dir,
     cosmology = Cosmology()
     littleh = (cosmology.H0 / 100.0)
 
-    beam_data = np.array([0.316148488246, 0.306805630985, 0.293729620792,
-                          0.281176247549, 0.270856788455, 0.26745856078,
-                          0.258910010848, 0.249188429031])
+    if not beam_data:
+        beam_data = np.array([0.316148488246, 0.306805630985, 0.293729620792,
+                              0.281176247549, 0.270856788455, 0.26745856078,
+                              0.258910010848, 0.249188429031])
 
-    freq_data = np.array([695, 725, 755, 785, 815, 845, 875, 905],
-                             dtype=float)
+        freq_data = np.array([695, 725, 755, 785, 815, 845, 875, 905],
+                              dtype=float)
+    else:
+        beam_data = np.array(beam_data)
+        freq_data = np.array(freq_data)
 
     beam_fwhm = interp1d(freq_data, beam_data)
     freq_data_Hz = freq_data * 1.0e6

@@ -83,26 +83,31 @@ class BiasCalibrate(object):
         k1 = sp.load(in_root + resultf + '_k_combined.npy')
         if FKPweight:
             pk1 = sp.load(in_root + resultf + '_p_fkp_combined.npy')
+            pk12= sp.load(in_root + resultf + '_p2_fkp_combined.npy')
         else:
             pk1 = sp.load(in_root + resultf + '_p_combined.npy')
+            pk12= sp.load(in_root + resultf + '_p2_combined.npy')
 
-        non0 = pk1.nonzero()
-        pk1 = pk1.take(non0)[0]
-        k1 = k1.take(non0)[0]
+        #non0 = pk1.nonzero()
+        #pk1 = pk1.take(non0)[0]
+        #k1 = k1.take(non0)[0]
         # clean_{map}(map)
         k0 = sp.load(in_root + resultf0 + '_k.npy')
         if FKPweight:
             pk0 = sp.load(in_root + resultf0 + '_p_fkp.npy')
+            pk02= sp.load(in_root + resultf0 + '_p2_fkp.npy')
         else:
             pk0 = sp.load(in_root + resultf0 + '_p.npy')
+            pk02= sp.load(in_root + resultf0 + '_p2.npy')
 
-        pk0 = pk0.take(non0)[0]
-        k0 = k0.take(non0)[0]
+        #pk0 = pk0.take(non0)[0]
+        #k0 = k0.take(non0)[0]
 
         # Read the Pwer Spectrum without mode subtraction
         simmap_root = params['simmap_root']
-        k = sp.load(simmap_root + 'simmaps_k.npy')
-        pk= sp.load(simmap_root + 'simmaps_p.npy')
+        k  = sp.load(simmap_root + 'simmaps_k.npy')
+        pk = sp.load(simmap_root + 'simmaps_p.npy')
+        pk2= sp.load(simmap_root + 'simmaps_p2.npy')
 
         # Test if k and k0 are match
         #print simmap_root 
@@ -111,11 +116,20 @@ class BiasCalibrate(object):
         #print
         #print k
         #print
+        print k.shape
+        print k0.shape
+        print k1.shape
         if (k-k0).any() or (k-k1).any():
             print "k and k0 are not match!!"
             return 0
 
-        dpk = pk/(pk1-pk0)
+        dpk = pk1-pk0
+        dpk[dpk<=0] = np.inf
+        dpk = pk/dpk
+
+        dpk2= (pk12-pk02)
+        dpk2[dpk2<=0] = np.inf
+        dpk2= pk2/dpk2
 
         B = interp1d(k, dpk, kind='cubic')
 
@@ -124,9 +138,11 @@ class BiasCalibrate(object):
 
         if params['cross']:
             dpk = np.sqrt(dpk)
+            dpk2 = np.sqrt(dpk2)
 
         sp.save(out_root + 'k_bias', k)
         sp.save(out_root + 'b_bias', dpk)
+        sp.save(out_root + 'b2_bias', dpk2)
 
 
         if self.plot==True:
