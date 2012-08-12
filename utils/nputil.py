@@ -16,6 +16,9 @@ def save_ndarray_list(fname, la):
         list of arrays to save.
     """
     d1 = { repr(i) : v for i, v in enumerate(la)}
+    #d1 = {}
+    #for i, v in enumerate(la):
+    #    d1[repr(i)] = v
 
     np.savez(fname, **d1)
 
@@ -36,5 +39,6 @@ def load_ndarray_list(fname):
 
     d1 = np.load(fname)
     la = [ v for i, v in sorted(d1.iteritems(), key=lambda kv: int(kv[0]))]
+    #la = [ v for i, v in sorted(d1.items(), key=lambda kv: int(kv[0]))]
 
     return la

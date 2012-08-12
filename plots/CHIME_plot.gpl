@@ -1,0 +1,26 @@
+set style line 1 lt 1 lw 6 linecolor rgb "blue"
+set style line 6 lt 1 pt 10 lw 6 linecolor rgb "blue"
+set style line 7 lt 1 pt 6 lw 1 linecolor rgb "blue"
+set style line 11 lt 1 lw 1 linecolor rgb "gray"
+set style line 12 lt 2 lw 3 linecolor rgb "black"
+
+
+set size 1., 1.
+set terminal postscript eps enhanced color "Helvetica" 20
+set logscale
+set xlabel "|k| (h cMpc^{-1})"
+set ylabel "{/Symbol D}(k)^2 (K)"
+set title "{/Helvetica=23 GBT x WiggleZ, 15 hr field}"
+set key at screen 0.5, 0.85
+#set key below
+set yrange [1e-6: 6e-3]
+set xrange [0.08: 1.1]
+set output "GBT_xspec_for_CHIME.eps"
+set nokey
+# "GBT_15hr_map_oldcal_cleaned_noconv_combined_xspec-1dmodecomp-corrfg/GBT_15hr_map_oldcal_cleaned_noconv_combined_xspec-1dmodecomp-corrfg_25modes.dat" using ($2):($7-$6):($8) notitle with yerrorbars ls 6
+plot "sim_15hr_oldmap_str_temperature_xWigglez/sim_15hr_oldmap_str_temperature_xWigglez_avg_from2d.dat" using 2:($5*0.58):($5*0.80) notitle with filledcu ls 11,\
+     "sim_15hr_oldmap_str_temperature_xWigglez/sim_15hr_oldmap_str_temperature_xWigglez_avg_from2d.dat" using 2:($5*0.69) t "{/Helvetica=13 sim. {/Symbol W}_{HI} = 7 10^{-4}}" with lines ls 12, \
+     "GBT_15hr_map_oldcal_cleaned_noconv_combined_xspec-1dmodecomp-corrfg/GBT_15hr_map_oldcal_cleaned_noconv_combined_xspec-1dmodecomp-corrfg_25modes.dat" using ($2):($6-$7):($8) t "{/Helvetica=13 25 modes}" with yerrorbars ls 1, \
+     "GBT_15hr_map_oldcal_cleaned_noconv_combined_xspec-1dmodecomp-corrfg/GBT_15hr_map_oldcal_cleaned_noconv_combined_xspec-1dmodecomp-corrfg_25modes.dat" using ($2):(($6-$7+2*$8)*(($6-abs($6))/$6/2.)) notitle with points ls 6, \
+     "GBT_15hr_map_oldcal_cleaned_noconv_combined_xspec-1dmodecomp-corrfg/GBT_15hr_map_oldcal_cleaned_noconv_combined_xspec-1dmodecomp-corrfg_25modes.dat" using ($2):($7-$6) notitle with points ls 7
+

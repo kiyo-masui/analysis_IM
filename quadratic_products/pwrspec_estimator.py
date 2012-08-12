@@ -12,23 +12,87 @@ import scipy.special
 import math
 from core import algebra
 import copy
+import gc
 from utils import fftutil
 from utils import binning
 
 
-def cross_power_est(arr1, arr2, weight1, weight2, window="blackman"):
-    """Calculate the radially average cross-power spectrum of a two nD fields.
+def cross_power_est(arr1, arr2, weight1, weight2,
+                    window="blackman", nonorm=False):
+    """Calculate the cross-power spectrum of a two nD fields.
 
     The arrays must be identical and have the same length (physically
     and in pixel number) along each axis.
 
-    Parameters
-    ----------
-    arr1, arr2: np.ndarray
-        The cubes to calculate the cross-power spectrum of. If arr2 is
-        None then return the standard (auto-)power spectrum.
-    window: boolean
-        Apply an additional named window
+    inputs are clobbered to save memory
+    """
+
+    # make the axes
+    ndim = arr1.ndim
+    k_axes = tuple(["k_" + axis_name for axis_name in arr1.axes])
+    info = {'axes': k_axes, 'type': 'vect'}
+    width = np.zeros(ndim)
+    for axis_index in range(ndim):
+        n_axis = arr1.shape[axis_index]
+        axis_name = arr1.axes[axis_index]
+        axis_vector = arr1.get_axis(axis_name)
+        delta_axis = abs(axis_vector[1] - axis_vector[0])
+        width[axis_index] = delta_axis
+
+        k_axis = np.fft.fftshift(np.fft.fftfreq(n_axis, d=delta_axis))
+        k_axis *= 2. * math.pi
+        delta_k_axis = abs(k_axis[1] - k_axis[0])
+
+        k_name = k_axes[axis_index]
+        info[k_name + "_delta"] = delta_k_axis
+        info[k_name + "_centre"] = 0.
+        #print k_axis
+        #print k_name, n_axis, delta_axis
+
+    if window:
+        window_function = fftutil.window_nd(arr1.shape, name=window)
+        weight1 *= window_function
+        weight2 *= window_function
+        del window_function
+
+    arr1 *= weight1
+    arr2 *= weight2
+
+    # correct for the weighting
+    fisher_diagonal = np.sum(weight1 * weight2)
+
+    fft_arr1 = np.fft.fftshift(np.fft.fftn(arr1))
+
+    fft_arr2 = np.fft.fftshift(np.fft.fftn(arr2))
+
+    fft_arr1 *= fft_arr2.conj()
+    xspec = fft_arr1.real
+    del fft_arr1, fft_arr2
+    gc.collect()
+
+    xspec /= fisher_diagonal
+
+    # make the axes
+    xspec_arr = algebra.make_vect(xspec, axis_names=k_axes)
+
+    xspec_arr.info = info
+    #print xspec_arr.get_axis("k_dec")
+
+    if not nonorm:
+        xspec_arr *= width.prod()
+
+    return xspec_arr
+
+
+def cross_power_est_highmem(arr1, arr2, weight1, weight2,
+                    window="blackman", nonorm=False):
+    """Calculate the cross-power spectrum of a two nD fields.
+
+    The arrays must be identical and have the same length (physically
+    and in pixel number) along each axis.
+
+    Same goal as above without the emphasis on saving memory.
+    This is the "tried and true" legacy function.
     """
     if window:
         window_function = fftutil.window_nd(arr1.shape, name=window)
@@ -74,7 +138,8 @@ def cross_power_est(arr1, arr2, weight1, weight2, window="blackman"):
     xspec_arr.info = info
     #print xspec_arr.get_axis("k_dec")
 
-    xspec_arr *= width.prod()
+    if not nonorm:
+        xspec_arr *= width.prod()
 
     return xspec_arr
 
@@ -94,7 +159,9 @@ def make_unitless(xspec_arr, radius_arr=None, ndim=None):
     return xspec_arr * radius_arr ** ndim * factor
 
 
-def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d):
+def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
+                             weights_2d=None, nullval=np.nan,
+                             null_zero_counts=True):
     """take a 2D power spectrum and the counts matrix (number of modex per k
     cell) and return the binned 1D power spectrum
     pwr_2d is the 2D power
@@ -102,6 +169,10 @@ def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d):
     bin_kx is the x-axis
     bin_ky is the x-axis
     bin_1d is the k vector over which to return the result
+    weights_2d is an optional weight matrix in 2d; otherwise use counts
+
+    null_zero_counts sets elements of the weight where there are zero counts to
+    zero.
     """
     # find |k| across the array
     index_array = np.indices(pwr_2d.shape)
@@ -114,18 +185,39 @@ def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d):
     radius_flat = radius_array.flatten()
     pwr_2d_flat = pwr_2d.flatten()
     counts_2d_flat = counts_2d.flatten()
+    if weights_2d is not None:
+        weights_2d_flat = weights_2d.flatten()
+    else:
+        weights_2d_flat = counts_2d_flat.astype(float)
 
-    count_pwr_prod = counts_2d_flat * pwr_2d_flat
-    count_pwr_prod[np.isnan(count_pwr_prod)] = 0
-    count_pwr_prod[np.isinf(count_pwr_prod)] = 0
-    count_pwr_prod[counts_2d_flat == 0] = 0
+    weight_pwr_prod = weights_2d_flat * pwr_2d_flat
+    weight_pwr_prod[np.isnan(weight_pwr_prod)] = 0.
+    weight_pwr_prod[np.isinf(weight_pwr_prod)] = 0.
+    weights_2d_flat[np.isnan(weight_pwr_prod)] = 0.
+    weights_2d_flat[np.isinf(weight_pwr_prod)] = 0.
+
+    if null_zero_counts:
+        weight_pwr_prod[counts_2d_flat == 0] = 0.
+        weights_2d_flat[counts_2d_flat == 0] = 0.
 
     counts_histo = np.histogram(radius_flat, bin_1d,
                                 weights=counts_2d_flat)[0]
-    binsum_histo = np.histogram(radius_flat, bin_1d,
-                                weights=count_pwr_prod)[0]
 
-    binavg = binsum_histo / counts_histo.astype(float)
+    weights_histo = np.histogram(radius_flat, bin_1d,
+                                weights=weights_2d_flat)[0]
+
+    binsum_histo = np.histogram(radius_flat, bin_1d,
+                                weights=weight_pwr_prod)[0]
+
+    # explicitly handle cases where the counts are zero
+    #binavg = np.zeros_like(binsum_histo)
+    #binavg[weights_histo > 0.] = binsum_histo[weights_histo > 0.] / \
+    #                             weights_histo[weights_histo > 0.]
+    #binavg[weights_histo <= 0.] = nullval
+    old_settings = np.seterr(invalid="ignore")
+    binavg = binsum_histo / weights_histo
+    binavg[np.isnan(binavg)] = nullval
+    np.seterr(**old_settings)
 
     return counts_histo, binavg
 
@@ -136,17 +228,9 @@ def calculate_xspec(cube1, cube2, weight1, weight2,
 
     print "finding the signal power spectrum"
     pwrspec3d_signal = cross_power_est(cube1, cube2, weight1, weight2,
-                               window=window)
+                                       window=window)
 
     radius_arr = binning.radius_array(pwrspec3d_signal)
-
-    # find the k_perp by not including k_nu in the distance
-    radius_arr_perp = binning.radius_array(pwrspec3d_signal,
-                                           zero_axes=[0])
-
-    # find the k_perp by not including k_RA,Dec in the distance
-    radius_arr_parallel = binning.radius_array(pwrspec3d_signal,
-                                               zero_axes=[1, 2])
 
     if bins is None:
         bins = binning.suggest_bins(pwrspec3d_signal,
@@ -160,7 +244,22 @@ def calculate_xspec(cube1, cube2, weight1, weight2,
         pwrspec3d_signal = make_unitless(pwrspec3d_signal,
                                          radius_arr=radius_arr)
 
+    print "calculating the 1D histogram"
+    counts_histo, binavg = binning.bin_an_array(pwrspec3d_signal, bins,
+                                                radius_arr=radius_arr)
+
+    del radius_arr
+    gc.collect()
+
     print "calculating the 2D histogram"
+    # find the k_perp by not including k_nu in the distance
+    radius_arr_perp = binning.radius_array(pwrspec3d_signal,
+                                           zero_axes=[0])
+
+    # find the k_perp by not including k_RA,Dec in the distance
+    radius_arr_parallel = binning.radius_array(pwrspec3d_signal,
+                                               zero_axes=[1, 2])
+
     # TODO: do better independent binning; for now:
     bins_x = copy.deepcopy(bins)
     bins_y = copy.deepcopy(bins)
@@ -169,9 +268,9 @@ def calculate_xspec(cube1, cube2, weight1, weight2,
                                                          radius_arr_parallel,
                                                          bins_x, bins_y)
 
-    print "calculating the 1D histogram"
-    counts_histo, binavg = binning.bin_an_array(pwrspec3d_signal, bins,
-                                                radius_arr=radius_arr)
+    del radius_arr_perp
+    del radius_arr_parallel
+    gc.collect()
 
     bin_left_x, bin_center_x, bin_right_x = binning.bin_edges(bins_x,
                                                               log=logbins)

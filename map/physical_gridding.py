@@ -1,5 +1,6 @@
 import numpy as np
 import scipy as sp
+import scipy.ndimage
 from core import algebra
 from utils import data_paths
 from utils import units

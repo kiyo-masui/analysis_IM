@@ -6,6 +6,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
+import copy
 
 def gnuplot_2D(outfilename, region, xaxis, yaxis, vaxis, xylabels,
                aspect, fulltitle, cbar_title, eps_outfile=None,
@@ -36,7 +37,7 @@ def gnuplot_2D(outfilename, region, xaxis, yaxis, vaxis, xylabels,
     input_data_file.flush()
 
     gplfile.write("set view map\n")
-    gplfile.write("set xrange [%g:%g]\n" % xminmax)
+    gplfile.write("set xrange [%g:%g] reverse\n" % xminmax)
     gplfile.write("set yrange [%g:%g]\n" % yminmax)
     gplfile.write("set cbrange [%g:%g]\n" % cminmax)
     gplfile.write("set size ratio -1\n")
@@ -94,15 +95,15 @@ def gnuplot_2D(outfilename, region, xaxis, yaxis, vaxis, xylabels,
     outplot_file.close()
 
 
-def simpleplot_2D(outfilename, region, xaxis, yaxis, xylabels,
+def simpleplot_2D(outfilename, region_in, xaxis, yaxis, xylabels,
                aspect, fulltitle, cbar_title, eps_outfile=None,
                draw_objects=[], density='300', size=5., logscale=False,
-               debug_datafile=None):
+               debug_datafile=None, reverse_x=False, no_nan=True):
     r"""similar to above
     TODO: find options that make this call identical
     """
 
-    print fulltitle, repr(region.shape)
+    print fulltitle, repr(region_in.shape)
 
     # if there is a root directory that does not yet exist
     rootdir = "/".join(outfilename.split("/")[0:-1])
@@ -112,9 +113,14 @@ def simpleplot_2D(outfilename, region, xaxis, yaxis, xylabels,
             print "print_multicolumn: making dir " + rootdir
             os.mkdir(rootdir)
 
+    region = copy.deepcopy(region_in)
+    if no_nan:
+        region[np.isnan(region)] = 0.
+        region[np.isinf(region)] = 0.
+
     if logscale:
         # TODO: this is a kludge
-        region += np.max(region)/1.e6
+        #region += np.max(region)/1.e6
         try:
             region = np.log10(region)
         except FloatingPointError:
@@ -145,7 +151,11 @@ def simpleplot_2D(outfilename, region, xaxis, yaxis, xylabels,
     input_data_file.flush()
 
     gplfile.write("set view map\n")
-    gplfile.write("set xrange [%g:%g]\n" % xminmax)
+    if reverse_x:
+        gplfile.write("set xrange [%g:%g] reverse\n" % xminmax)
+    else:
+        gplfile.write("set xrange [%g:%g]\n" % xminmax)
+
     gplfile.write("set yrange [%g:%g]\n" % yminmax)
     #gplfile.write("set cbrange [%g:%g]\n" % cminmax)
     gplfile.write("set size ratio -1\n")

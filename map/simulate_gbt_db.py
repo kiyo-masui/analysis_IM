@@ -15,10 +15,11 @@ from kiyopy import parse_ini
 from utils import file_tools
 from utils import units
 from map import simulate_gbt as sg
+# TODO: update this/phase out
 
 def wrap_sim(runitem):
     (template_mapname, outfile_physical, outfile_raw, outfile_beam, \
-                                outfile_beam_plus_data, scenario) = runitem
+                       outfile_beam_plus_data, scenario, refinement) = runitem
 
     print "using template: " + template_mapname
     print "using physical-space cube file: " + outfile_physical
@@ -27,7 +28,8 @@ def wrap_sim(runitem):
     print "using raw output cube file conv. by beam plus data: " + outfile_beam_plus_data
 
     sg.make_simulation_set(template_mapname, outfile_physical, outfile_raw, outfile_beam,
-                        outfile_beam_plus_data, scenario=scenario)
+                        outfile_beam_plus_data, scenario=scenario,
+                        refinement=refinement)
 
 
 def generate_sim(params, parallel=True, silent=True, datapath_db=None):
@@ -65,7 +67,7 @@ def generate_sim(params, parallel=True, silent=True, datapath_db=None):
 
     runlist = [(template_mapname, physlist[1][index], rawlist[1][index],
                 beamlist[1][index], bpdlist[1][index],
-                params['pwrspec_scenario'])
+                params['pwrspec_scenario'], params['refinement'])
                 for index in rawlist[0]]
 
     print runlist
@@ -143,6 +145,7 @@ params_init = {
                'template_key': '',
                'weight_key': '',
                'pwrspec_scenario': '',
+               'refinement': 2,
                'omega_HI': ''
                }
 prefix = 'sg_'
