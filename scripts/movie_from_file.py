@@ -68,14 +68,14 @@ from plotting import plot_cube as pc
 #multiplier = 1000.
 #sigmarange = 3.
 
-#full_list = ["/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_delta/15hr/reg15data.npy",
-#             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr/reg15separable.npy",
-#             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr/reg15selection.npy"]
+full_list = ["/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_delta/15hr_v2/reg15data.npy",
+             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr_v2/reg15separable.npy",
+             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr_v2/reg15selection.npy"]
 #full_list = ["/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_delta/1hr_v2/reg01data.npy",
 #             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/1hr_v2/reg01separable.npy",
 #             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/1hr_v2/reg01selection.npy"]
-full_list = ["/mnt/raid-project/gmrt/eswitzer/GBT/maps/1hr_oldcal_july16/secA_1hr_41-90_clean_map_I_800.npy",
-             "/mnt/raid-project/gmrt/eswitzer/GBT/maps/1hr_oldcal/secA_1hr_41-18_clean_map_I_800.npy"]
+#full_list = ["/mnt/raid-project/gmrt/eswitzer/GBT/maps/1hr_oldcal_july16/secA_1hr_41-90_clean_map_I_800.npy",
+#             "/mnt/raid-project/gmrt/eswitzer/GBT/maps/1hr_oldcal/secA_1hr_41-18_clean_map_I_800.npy"]
 #full_list = ["/mnt/raid-project/gmrt/eswitzer/GBT/maps/1hr_oldcal_july16/secA_1hr_41-90_clean_map_I_800.npy",
 #             "/mnt/raid-project/gmrt/eswitzer/GBT/maps/1hr_oldcal_july16/secA_1hr_41-90_noise_weight_I_800.npy"]
 #             "/mnt/raid-project/gmrt/eswitzer/GBT/maps/1hr_oldcal_july16/secA_1hr_41-90_noise_weight_I_800.npy"]
@@ -83,6 +83,15 @@ full_list = ["/mnt/raid-project/gmrt/eswitzer/GBT/maps/1hr_oldcal_july16/secA_1h
 #full_list = ["/mnt/raid-project/gmrt/eswitzer/GBT/maps/1hr_oldcal_july16/secB_1hr_41-90_noise_weight_I_800.npy",
 #             "/mnt/raid-project/gmrt/eswitzer/GBT/maps/1hr_oldcal_july16/secC_1hr_41-90_noise_weight_I_800.npy",
 #             "/mnt/raid-project/gmrt/eswitzer/GBT/maps/1hr_oldcal_july16/secD_1hr_41-90_noise_weight_I_800.npy"]
+#full_list = ["/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_optimal_july11/secA_15hr_41-90_clean_map_I_all.npy",
+#             "/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_optimal_july11/secB_15hr_41-90_clean_map_I_all.npy",
+#             "/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_optimal_july11/secC_15hr_41-90_clean_map_I_all.npy",
+#             "/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_optimal_july11/secD_15hr_41-90_clean_map_I_all.npy",
+#            "/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_optimal_july11/secA_15hr_41-90_noise_inv_diag_I_all.npy",
+#             "/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_optimal_july11/secB_15hr_41-90_noise_inv_diag_I_all.npy",
+#             "/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_optimal_july11/secC_15hr_41-90_noise_inv_diag_I_all.npy",
+#             "/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_optimal_july11/secD_15hr_41-90_noise_inv_diag_I_all.npy"]
+
 cbtitle = ""
 multiplier = 1.
 #sigmarange = -1.

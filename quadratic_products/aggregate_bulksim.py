@@ -22,6 +22,7 @@ aggregatesummary_init = {
 
 aggregatesummary_prefix = 'as_'
 
+
 class AggregateSummary(object):
     """take a directory of simulation outputs and merge them into a single
     numpy array/shelve file
@@ -42,7 +43,9 @@ class AggregateSummary(object):
                              (self.params['directory'],
                               self.params['basefile']))
 
-        print '%s/%s*.shelve' % (self.params['directory'], self.params['basefile'])
+        print '%s/%s*.shelve' % \
+              (self.params['directory'], self.params['basefile'])
+
         self.produce_summary(filelist, outfile)
 
     def produce_summary(self, filelist, outfile, debug=False):
@@ -98,11 +101,19 @@ class AggregateSummary(object):
                 agg2d = sim_toread.agg_stat_2d_pwrspec()
 
                 trial_array_1d[index, :] = agg1d[treatment]['mean']
-                trial_array_1d_from_2d[index, :] = agg1d_from_2d[treatment]['mean']
+
+                trial_array_1d_from_2d[index, :] = \
+                                            agg1d_from_2d[treatment]['mean']
+
                 trial_array_2d[index, :, :] = agg2d[treatment]['mean']
+
                 counts_array_1d[index, :] = agg1d[treatment]['counts']
-                counts_array_1d_from_2d[index, :] = agg1d_from_2d[treatment]['counts']
+
+                counts_array_1d_from_2d[index, :] = \
+                                            agg1d_from_2d[treatment]['counts']
+
                 counts_array_2d[index, :, :] = agg2d[treatment]['counts']
+
                 if debug:
                     nanarray = np.isnan(trial_array_2d[index, :, :])
                     print "is nan", np.sum(nanarray)
@@ -135,6 +146,7 @@ aggregatestatistics_init = {
     }
 
 aggregatestatistics_prefix = 'ast_'
+
 
 class AggregateStatistics(object):
     """take the summary shelve and find statistics on it
@@ -176,7 +188,6 @@ class AggregateStatistics(object):
 
             (stat_2d, counts_2d) = self.aggregate_2d_statistics(treatment)
 
-
             stat_summary["pk_2d_stat"] = stat_2d
             stat_summary["pk_2d_counts"] = counts_2d
 
@@ -202,7 +213,8 @@ class AggregateStatistics(object):
                                       fill_value=np.nan)
 
         if calc_corr:
-            mtrial_array_trans = np.ma.transpose(ma.masked_invalid(trial_array))
+            mtrial_array_trans = np.ma.transpose(
+                                        ma.masked_invalid(trial_array))
 
             stat_1d['corr'] = np.ma.filled(np.ma.corrcoef(mtrial_array_trans,
                                            ddof=1), fill_value=np.nan)
@@ -214,19 +226,22 @@ class AggregateStatistics(object):
 
         return stat_1d
 
-    def aggregate_1d_statistics(self, treatment, from2d = False):
+    def aggregate_1d_statistics(self, treatment, from2d=False):
         r"""Find the mean, std, cov, corr etc of 1D p(k)'s"""
+        results = self.summary["results"][treatment]
 
         if from2d:
             k_1d = self.summary["k_1d_from_2d"]
-            trial_array_1d = self.summary["results"][treatment]["pk_1d_from_2d"]
-            counts_array_1d = self.summary["results"][treatment]["counts_1d_from_2d"]
+            trial_array_1d = results["pk_1d_from_2d"]
+            counts_array_1d = results["counts_1d_from_2d"]
+
             outfile = "%s/power_1d_from_2d_%s.dat" % \
                       (self.params['outputdir'], treatment)
         else:
             k_1d = self.summary["k_1d"]
-            trial_array_1d = self.summary["results"][treatment]["pk_1d"]
-            counts_array_1d = self.summary["results"][treatment]["counts_1d"]
+            trial_array_1d = results["pk_1d"]
+            counts_array_1d = results["counts_1d"]
+
             outfile = "%s/power_1d_%s.dat" % \
                       (self.params['outputdir'], treatment)
 
@@ -239,7 +254,7 @@ class AggregateStatistics(object):
                                      counts_1d["mean"],
                                      stat_1d["mean"],
                                      stat_1d["std"],
-                                     outfile = outfile)
+                                     outfile=outfile)
 
         logk_1d = np.log10(k_1d['center'])
         if self.make_plot:
@@ -329,11 +344,13 @@ class AggregateStatistics(object):
 calculatetransfer_init = {
         "shelvefile_in": "file",
         "shelvefile_out": "file",
+        "shelvedatalike_out": "file",
         "transferfile": "file",
         "outputdir": "dir",
     }
 
 calculatetransfer_prefix = 'atr_'
+
 
 class CalculateTransfer(object):
     """Calculate a transfer function in 1d/2d
@@ -352,7 +369,12 @@ class CalculateTransfer(object):
                                           prefix=calculatetransfer_prefix)
 
         print self.params["shelvefile_in"], "->", self.params["shelvefile_out"]
+
+        print "saving sims to data-like file: ", \
+              self.params["shelvedatalike_out"]
+
         self.stats_in = shelve.open(self.params["shelvefile_in"], "r")
+        self.stats_dataout = shelve.open(self.params["shelvedatalike_out"])
         self.stats_out = shelve.open(self.params["shelvefile_out"], "w")
         self.treatments_in = self.stats_in["results"].keys()
         self.treatments_out = self.stats_out["results"].keys()
@@ -375,22 +397,26 @@ class CalculateTransfer(object):
         for treatment in self.treatments_out:
             print treatment
             print self.stats_out["results"][treatment].keys()
-            #stats_1d_in = self.stats_in["stats"]["0modes"]["pk_1d_stat"]["mean"]
-            #stats_1d_out = self.stats_out["stats"][treatment]["pk_1d_stat"]["mean"]
-            stats_2d_in = self.stats_in["stats"]["0modes"]["pk_2d_stat"]["mean"]
-            stats_2d_out = self.stats_out["stats"][treatment]["pk_2d_stat"]["mean"]
 
-            #counts_1d_in = self.stats_in["stats"]["0modes"]["pk_1d_counts"]["mean"]
-            #counts_1d_out = self.stats_out["stats"][treatment]["pk_1d_counts"]["mean"]
-            counts_2d_in = self.stats_in["stats"]["0modes"]["pk_2d_counts"]["mean"]
-            counts_2d_out = self.stats_out["stats"][treatment]["pk_2d_counts"]["mean"]
+            stat_in = self.stats_in["stats"]
+            stat_out = self.stats_out["stats"]
+
+            stats_1d_in = stat_in["0modes"]["pk_1d_stat"]["mean"]
+            stats_1d_out = stat_out[treatment]["pk_1d_stat"]["mean"]
+            stats_2d_in = stat_in["0modes"]["pk_2d_stat"]["mean"]
+            stats_2d_out = stat_out[treatment]["pk_2d_stat"]["mean"]
+
+            counts_1d_in = stat_in["0modes"]["pk_1d_counts"]["mean"]
+            counts_1d_out = stat_out[treatment]["pk_1d_counts"]["mean"]
+            counts_2d_in = stat_in["0modes"]["pk_2d_counts"]["mean"]
+            counts_2d_out = stat_out[treatment]["pk_2d_counts"]["mean"]
 
             counts_prod = counts_2d_in * counts_2d_out
             transfer_2d = stats_2d_out / stats_2d_in
             transfer_2d[counts_prod == 0] = 0.
 
-            #k_1d = self.stats_in["k_1d"]
-            #k_1d_from_2d = self.stats_in["k_1d_from_2d"]
+            k_1d = self.stats_in["k_1d"]
+            k_1d_from_2d = self.stats_in["k_1d_from_2d"]
             kx_2d = self.stats_in["kx_2d"]
             ky_2d = self.stats_in["ky_2d"]
 
@@ -398,12 +424,38 @@ class CalculateTransfer(object):
             transfer_2d_plot[transfer_2d_plot < 0.] = 0.
             transfer_2d_plot[transfer_2d_plot > 1.] = 1.
 
-            outplot_file = "%s/transfer_2d_%s.png" % (self.params['outputdir'], treatment)
+            outplot_file = "%s/transfer_2d_%s.png" % \
+                           (self.params['outputdir'], treatment)
+
             logkx = np.log10(kx_2d['center'])
             logky = np.log10(ky_2d['center'])
+
             plot_slice.simpleplot_2D(outplot_file, transfer_2d_plot,
                                      logkx, logky,
-                                     ["logkx", "logky"], 1., "2D beam transfer", "T")
+                                     ["logkx", "logky"], 1.,
+                                     "2D beam transfer", "T")
+
+            # make a package that looks like the data
+            pwrspec2d_product = {}
+            pwrspec2d_product["bin_x_left"] = kx_2d["left"]
+            pwrspec2d_product["bin_x_center"] = kx_2d["center"]
+            pwrspec2d_product["bin_x_right"] = kx_2d["right"]
+            pwrspec2d_product["bin_y_left"] = ky_2d["left"]
+            pwrspec2d_product["bin_y_center"] = ky_2d["center"]
+            pwrspec2d_product["bin_y_right"] = ky_2d["right"]
+            pwrspec2d_product["counts_histo"] = counts_2d_out
+            pwrspec2d_product["binavg"] = stats_2d_out
+
+            pwrspec1d_product = {}
+            pwrspec1d_product["bin_left"] = k_1d["left"]
+            pwrspec1d_product["bin_center"] = k_1d["center"]
+            pwrspec1d_product["bin_right"] = k_1d["right"]
+            pwrspec1d_product["counts_histo"] = counts_1d_out
+            pwrspec1d_product["binavg"] = stats_1d_out
+
+            datakey = "data:%s" % treatment
+            self.stats_dataout[datakey] = (0, (pwrspec2d_product,
+                                               pwrspec1d_product))
 
             transfer_compilation[treatment] = transfer_2d
 
@@ -417,4 +469,5 @@ class CalculateTransfer(object):
         transferfile.close()
 
         self.stats_in.close()
+        self.stats_dataout.close()
         self.stats_out.close()

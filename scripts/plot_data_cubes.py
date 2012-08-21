@@ -295,7 +295,10 @@ if __name__ == "__main__":
     #plot_gbt_simset('22hr')
     #plot_gbt_newmapset()
 
-    plot_gbt_comb_modeset('GBT_1hr_map_oldcalkiyo_cleaned_combined', convolve=True,
+    #plot_gbt_comb_modeset('GBT_1hr_map_oldcalkiyo_cleaned_combined', convolve=True,
+    #                      outputdir="/mnt/raid-project/gmrt/eswitzer/GBT/movies/")
+
+    plot_gbt_comb_modeset('GBT_15hr_optimalmap_cleaned_combined', convolve=True,
                           outputdir="/mnt/raid-project/gmrt/eswitzer/GBT/movies/")
 
     #plot_gbt_comb_modeset('GBT_15hr_optimalmap_selfcal_762_cleaned_combined', convolve=True)

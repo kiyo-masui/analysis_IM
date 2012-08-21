@@ -20,9 +20,14 @@ def freq_covariance(map1, map2, weight1, weight2, freq1, freq2):
     map2shp = input_map2.shape
 
     map1_flat = np.reshape(input_map1, (map1shp[0], map1shp[1] * map1shp[2]))
-    weight1_flat = np.reshape(input_weight1, (map1shp[0], map1shp[1] * map1shp[2]))
+
+    weight1_flat = np.reshape(input_weight1,
+                              (map1shp[0], map1shp[1] * map1shp[2]))
+
     map2_flat = np.reshape(input_map2, (map2shp[0], map2shp[1] * map2shp[2]))
-    weight2_flat = np.reshape(input_weight2, (map2shp[0], map2shp[1] * map2shp[2]))
+
+    weight2_flat = np.reshape(input_weight2,
+                              (map2shp[0], map2shp[1] * map2shp[2]))
 
     wprod1 = map1_flat * weight1_flat
     wprod2 = map2_flat * weight2_flat
@@ -164,6 +169,7 @@ def corr_est(map1, map2, noise1, noise2, freq1, freq2,
     counts[mask] = 0
 
     return corr, counts
+
 
 def get_corr_and_std_3d(corr_list):
     '''Return the average correlation and its standard deviation.

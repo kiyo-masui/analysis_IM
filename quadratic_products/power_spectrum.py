@@ -7,12 +7,18 @@ from utils import binning
 from plotting import plot_slice
 import copy
 
+
 class PowerSpectrum(object):
     r"""
     All power spectra are in groups:
+
         autopower: 6 pairs, T treatments
+
         cross-power: 1 pair signal, N pairs sim; T treatments for all
-        cleaning transfer function: N pairs sim, 1 pair signal, (T treatments); M pairs template
+
+        cleaning transfer function: N pairs sim, 1 pair signal, (T treatments);
+        M pairs template
+
         beam transfer function: N pairs sim, M pairs template
 
     TODO:
@@ -24,7 +30,8 @@ class PowerSpectrum(object):
     def __init__(self, filename):
         pwrspec_compilation = shelve.open(filename, "r")
         case_key = "combination:treatment"
-        self.pwr_cases = dp.unpack_cases(pwrspec_compilation.keys(), case_key, divider=":")
+        self.pwr_cases = dp.unpack_cases(pwrspec_compilation.keys(),
+                                         case_key, divider=":")
 
         # gather the lists if pair combinations and treatments (cleaning)
         self.comb_cases = self.pwr_cases["combination"]
@@ -93,7 +100,8 @@ class PowerSpectrum(object):
 
                 self.pwrspec_2d[pwrcase] /= transfer
                 self.counts_2d[pwrcase] *= transfer * transfer
-                #print self.pwrspec_2d[pwrcase].shape, np.max(transfer), transfer.shape
+                #print self.pwrspec_2d[pwrcase].shape, transfer.shape
+                #print np.max(transfer)
 
                 nanmask = np.isnan(self.counts_2d[pwrcase])
                 infmask = np.isnan(self.counts_2d[pwrcase])
@@ -169,7 +177,9 @@ class PowerSpectrum(object):
         self.num_k_1d_from_2d = bin_center.shape[0]
 
     def combination_array_1d(self, from_2d=False, counts=False, debug=False):
-        r"""pack the various pair combinations for each treatment into an array"""
+        r"""pack the various pair combinations for each treatment -> array
+        """
+
         summary_treatment = {}
         if from_2d:
             num_k = self.num_k_1d_from_2d
@@ -208,7 +218,9 @@ class PowerSpectrum(object):
         return summary_treatment
 
     def combination_array_2d(self, counts=False, debug=None):
-        r"""pack the various pair combinations for each treatment into an array"""
+        r"""pack the various pair combinations for each treatment into an array
+        """
+
         summary_treatment = {}
         for treatment in self.treatment_cases:
             pwr_treatment = np.zeros((self.num_kx, self.num_ky,
@@ -230,11 +242,11 @@ class PowerSpectrum(object):
 
                 if (debug is not None) and (treatment == "20modes"):
                     plot_slice.simpleplot_2D(outplot_power_file,
-                                         np.abs(pwr_treatment[:, :, comb_index]),
-                                         np.log10(self.kx_2d['center']),
-                                         np.log10(self.ky_2d['center']),
-                                         ["logkx", "logky"], 1., "2d array",
-                                         "log(abs(array))", logscale=True)
+                                    np.abs(pwr_treatment[:, :, comb_index]),
+                                    np.log10(self.kx_2d['center']),
+                                    np.log10(self.ky_2d['center']),
+                                    ["logkx", "logky"], 1., "2d array",
+                                    "log(abs(array))", logscale=True)
 
             summary_treatment[treatment] = pwr_treatment
 
@@ -258,8 +270,8 @@ class PowerSpectrum(object):
                     entry['corr'] = np.ma.corrcoef(comb_ma)
                     entry['cov'] = np.ma.cov(comb_ma)
                 else:
-                    entry['counts'] = counts_ma[:,0]
-                    entry['mean'] = comb_ma[:,0]
+                    entry['counts'] = counts_ma[:, 0]
+                    entry['mean'] = comb_ma[:, 0]
                     entry['std'] = 0.
                     entry['corr'] = 0.
                     entry['cov'] = 0.
@@ -272,8 +284,8 @@ class PowerSpectrum(object):
                     entry['corr'] = np.corrcoef(comb_treat)
                     entry['cov'] = np.cov(comb_treat)
                 else:
-                    entry['counts'] = counts_arr[treatment][:,0]
-                    entry['mean'] = comb_treat[:,0]
+                    entry['counts'] = counts_arr[treatment][:, 0]
+                    entry['mean'] = comb_treat[:, 0]
                     entry['std'] = 0.
                     entry['corr'] = 0.
                     entry['cov'] = 0.
@@ -344,8 +356,9 @@ class PowerSpectrum(object):
             for xind in range(len(bin_center)):
                 for yind in range(len(bin_center)):
                     outstr = ("%10.15g " * 7 + "\n") % \
-                            (bin_left_lt[xind], bin_center_lt[xind], bin_right_lt[xind], \
-                             bin_left_lt[yind], bin_center_lt[yind], bin_right_lt[yind], \
+                            (bin_left_lt[xind], bin_center_lt[xind], \
+                             bin_right_lt[xind], bin_left_lt[yind], \
+                             bin_center_lt[yind], bin_right_lt[yind], \
                              corrmat_1d[xind, yind])
                     outfile.write(outstr)
 

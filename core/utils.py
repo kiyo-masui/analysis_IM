@@ -2,6 +2,7 @@
 
 import time
 
+import copy
 import numpy as np
 import scipy as sp
 from scipy.interpolate import interp1d
@@ -247,7 +248,7 @@ def polint2str(pol_int) :
         raise ValueError("Polarization integer must be in range(-8, 5) and "
                          "nonzero")
 
-def ampfit(data, covariance, theory, rank_thresh=1e-12):
+def ampfit(data, covariance, theory, rank_thresh=1e-12, diag_only=False):
     """Fits the amplitude of the theory curve to the data.
 
     Finds `amp` such that `amp`*`theory` is the best fit to `data`.
@@ -261,7 +262,7 @@ def ampfit(data, covariance, theory, rank_thresh=1e-12):
     """
 
     data = sp.asarray(data)
-    covariance = sp.asarray(covariance)
+    covariance = sp.asarray(copy.deepcopy(covariance))
     theory = sp.asarray(theory)
 
     if len(data.shape) != 1:
@@ -275,6 +276,11 @@ def ampfit(data, covariance, theory, rank_thresh=1e-12):
     if covariance.shape != (n,n):
         msg = "`covariance` must be a square matrix compatible with data."
         raise ValueError(msg)
+
+    if diag_only:
+        covariance = sp.diag(sp.diag(covariance))
+        print data
+        print sp.diag(sp.sqrt(covariance))
 
     covariance_inverse = linalg.inv(covariance)
     weighted_data = sp.dot(covariance_inverse, data)

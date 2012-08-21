@@ -17,7 +17,7 @@ from plotting import plot_slice
 from numpy import linalg as LA
 from utils import data_paths as dp
 from kiyopy import parse_ini
-# TODO: implement freq cut list: but this should already zero out the input weights
+# TODO: implement freq cut list: but this should already zero the input weights
 # TODO: make 1D version of this (shells vs. disks)
 # TODO: is counts normalization OK; identity matrix recovered
 # TODO: confirm that P(k=0) should be less than sum(w1*s2) for any mixing
@@ -25,6 +25,7 @@ from kiyopy import parse_ini
 # TODO: analytic: mixing of uniform cube, asymptotically large?
 # TODO: movie of bin in 3D k-space, bin convolved by the window
 # TODO: is it ever correct to make this unitless?
+
 
 def sum_window(argt):
     """A given bin in 2D k-space (labelled by bin_index_2d) is the sum over a
@@ -112,8 +113,8 @@ def bin_indices_2d(k_perp_arr, k_parallel_arr, k_perp_bins, k_parallel_bins,
                                                      i_perp_shell))[0]
 
             # find the index in the flattened 2D k-space for this bin
-            flatk_ind = np.where(np.logical_and(kflat[:,0] == i_perp,
-                                        kflat[:,1] == i_parallel))[0][0]
+            flatk_ind = np.where(np.logical_and(kflat[:, 0] == i_perp,
+                                        kflat[:, 1] == i_parallel))[0][0]
             # writing to a dictionary, so make it a string key
             flatk_ind = repr(flatk_ind)
             # numpy > 1.6
@@ -132,7 +133,7 @@ def bin_indices_2d(k_perp_arr, k_parallel_arr, k_perp_bins, k_parallel_bins,
 
                 for (count, ind3d) in zip(range(num_in_shell), index_in_shell):
                     ind_in_bin[count, :] = \
-                                np.unravel_index(index_in_shell[count], arr_shp)
+                               np.unravel_index(index_in_shell[count], arr_shp)
 
                 ret_indices[flatk_ind] = ind_in_bin
             else:
@@ -226,8 +227,8 @@ def calculate_mixing(weight_file1, weight_file2, bins, xspec_fileout,
     # now save the results for post-processing
     params = {"unitless": unitless, "refinement": refinement, "pad": pad,
               "order": order, "window": window, "zero_pad": zero_pad,
-              "identity_test": identity_test, "weight_file1":weight_file1,
-              "weight_file2":weight_file2, "bins": bins}
+              "identity_test": identity_test, "weight_file1": weight_file1,
+              "weight_file2": weight_file2, "bins": bins}
 
     outshelve = shelve.open(mixing_fileout, "n")
     outshelve["params"] = params        # parameters for this run
@@ -343,6 +344,7 @@ calc_mixing_init = {
                }
 calc_mixing_prefix = 'cm_'
 
+
 class CalcMixingMatrix(object):
     def __init__(self, parameter_file=None, params_dict=None, feedback=0):
         self.params = params_dict
@@ -389,7 +391,7 @@ class CalcMixingMatrix(object):
             dbkeydict['noiseinv1_key'] = "%s:%s;noise_inv;%s" % mapset0
             dbkeydict['noiseinv2_key'] = "%s:%s;noise_inv;%s" % mapset1
             files = dp.convert_dbkeydict_to_filedict(dbkeydict,
-                                                     datapath_db=self.datapath_db)
+                                                datapath_db=self.datapath_db)
 
             self.all_pairs[item[0]] = (files['noiseinv1_key'],
                                    files['noiseinv2_key'])
@@ -418,7 +420,6 @@ class CalcMixingMatrix(object):
         for pair in self.all_pairs:
             self.mixing_fileout[pair] = "%s_%s.shelve" % \
                                    (self.params['perpair_base'], pair)
-
 
     def execute_calc(self):
         for pair in self.all_pairs:
@@ -459,4 +460,3 @@ class CalcMixingMatrix(object):
 #                 mixing_fileout, identity_test=False, refinement=1)
 
 #load_mixing_matrix("mixing_summary_identity.shelve")
-

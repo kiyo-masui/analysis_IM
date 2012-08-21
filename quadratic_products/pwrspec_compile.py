@@ -20,6 +20,7 @@ autopowerparams_init = {
                }
 autopowerprefix = 'autopower_'
 
+
 class CompileAutopower(object):
     def __init__(self, parameter_file=None, params_dict=None, feedback=0):
         self.params = params_dict
@@ -139,16 +140,20 @@ crosspowerparams_init = {
                }
 crosspowerprefix = 'crosspower_'
 
+
 class CompileCrosspower(object):
     def __init__(self, parameter_file=None, params_dict=None, feedback=0):
         self.params = params_dict
 
         if parameter_file:
-            self.params = parse_ini.parse(parameter_file, crosspowerparams_init,
+            self.params = parse_ini.parse(parameter_file,
+                                          crosspowerparams_init,
                                           prefix=crosspowerprefix)
             print self.params
 
     def execute(self, processes):
+        print "using data: ", self.params["p_data"]
+        print "using mock: ", self.params["p_mock"]
         pwr_data = ps.PowerSpectrum(self.params["p_data"])
         pwr_mock = ps.PowerSpectrum(self.params["p_mock"])
 
@@ -327,6 +332,7 @@ physsimparams_init = {
         "outdir": "./"
                }
 physsimprefix = 'physsim_'
+
 
 class CompilePhysSim(object):
     def __init__(self, parameter_file=None, params_dict=None, feedback=0):
