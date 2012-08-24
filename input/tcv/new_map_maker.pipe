@@ -23,8 +23,8 @@ field = '1hr'
 #middles_firs = tuple(dir_data.get_data_files(range(41,81), field='15hr', 
 #                                             project="GBT10B_036", 
 #											 type='ralongmap'))
-#file_middles = tuple(dir_data.get_data_files(range(41,90), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(0,14), field='1hr', project='GBT11B_055',type='ralongmap')+dir_data.get_data_files(range(15,19), field='1hr', project='GBT11B_055', type='ralongmap'))
-file_middles = tuple(dir_data.get_data_files(range(17,19),field='1hr',project='GBT11B_055', type='ralongmap'))
+file_middles = tuple(dir_data.get_data_files(range(41,90), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(0,14), field='1hr', project='GBT11B_055',type='ralongmap')+dir_data.get_data_files(range(15,19), field='1hr', project='GBT11B_055', type='ralongmap'))
+#file_middles = tuple(dir_data.get_data_files(range(17,19),field='1hr',project='GBT11B_055', type='ralongmap'))
 
 n_files = len(file_middles)
 middles_a = file_middles[:n_files//4]
@@ -62,11 +62,11 @@ data_dir = os.getenv('GBT_DATA')
 base_dir = spare_dir + 'gbt_out_new/'
 #base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
-map_base = base_dir + 'maps/may09.2012/'
+map_base = base_dir + 'maps/'
 
 # IO directory and file prefixes.
 prefix = ''
-map_prefix = '' + field + '_' + '41-18' + '_'
+map_prefix = '' + field + '_' + '41-18_avg_fdgp' + '_'
 
 # Maximum number of processes to use.
 pipe_processes = 12
@@ -77,11 +77,11 @@ pipe_modules = []
 
 #### Calibration ####
 
-from time_stream import flag_data
-pipe_modules.append(flag_data.FlagData)
+#from time_stream import flag_data
+#pipe_modules.append(flag_data.FlagData)
 
-from time_stream import rebin
-pipe_modules.append(rebin.Rebin)
+#from time_stream import rebin
+#pipe_modules.append(rebin.Rebin)
 
 #from time_stream import band_stop
 #pipe_modules.append(band_stop.BandStop)
@@ -101,8 +101,8 @@ pipe_modules.append(rebin.Rebin)
 
 #### First Map making interation ####
 
-#from map import dirty_map
-#pipe_modules.append(dirty_map.DirtyMapMaker)
+from map import dirty_map
+pipe_modules.append(dirty_map.DirtyMapMaker)
 
 #from map import clean_map
 #pipe_modules.append(clean_map.CleanMapMaker)
@@ -277,7 +277,7 @@ rp_average_cals = True
 
 # dirty_map
 #dm_input_root = rp_output_root
-dm_input_root = base_dir_main + 'rotated_to_I_Q/' + prefix
+dm_input_root = base_dir_main + 'rotated_to_I_Q_avg_fdgp/' + prefix
 dm_file_middles = file_middles
 #dm_file_middles = middles_firs
 dm_input_end = '.fits'
@@ -308,7 +308,7 @@ cm_save_noise_diag = True
 #### Second round of map making #####
 
 # measure gain relative to map.
-mc2_input_root = base_dir_main + 'rotated_to_I_Q/' + prefix
+mc2_input_root = base_dir_main + 'rotated_to_I_Q_fdgp/' + prefix
 #mc2_input_root = rp_output_root
 #mc2_file_middles = middles_temp
 mc2_file_middles = file_middles
@@ -320,7 +320,7 @@ mc2_scans = ()
 mc2_IFs = ()
 
 mc2_interpolation = 'cubic'
-mc2_map_polarizations = ('I', )
+mc2_map_polarizations = ('I','Q','U','V')
 mc2_map_bands = cm_bands
 mc2_map_input_root = cm_output_root
 mc2_map_type = 'clean_map_'
@@ -340,7 +340,7 @@ sm2_scans = ()
 sm2_IFs = ()
 
 sm2_interpolation = 'cubic'
-sm2_map_polarizations = ('I',)
+sm2_map_polarizations = ('I','Q','U','V')
 sm2_map_nbands = cm_bands
 sm2_map_input_root = cm_output_root
 sm2_map_type = 'clean_map_'
