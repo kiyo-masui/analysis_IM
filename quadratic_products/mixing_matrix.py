@@ -1,6 +1,5 @@
 from utils import fftutil
 import numpy as np
-import scipy as sp
 from map import physical_gridding as pg
 from utils import batch_handler as bh
 from quadratic_products import pwrspec_estimator as pe
@@ -11,8 +10,6 @@ import multiprocessing
 import shelve
 import copy
 import random
-import sys
-import numpy.ma as ma
 from plotting import plot_slice
 from numpy import linalg as LA
 from utils import data_paths as dp
