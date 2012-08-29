@@ -1,7 +1,7 @@
 import numpy as np
 from kiyopy import parse_ini
 import h5py
-from core import utils
+from utils import misc as utils
 
 crosssumparams_init = {
         "summary_file": "file",

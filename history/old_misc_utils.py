@@ -3,8 +3,8 @@
 import time
 
 import copy
-import numpy as np
 import scipy as sp
+import numpy as np
 from scipy.interpolate import interp1d
 from scipy import linalg
 import ephem
