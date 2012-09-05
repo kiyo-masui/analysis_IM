@@ -93,16 +93,21 @@ pipe_modules = []
 ##from time_stream import cal_filter
 ##pipe_modules.append(cal_filter.CalFilter)
 
+#Old calibraion module
 #from time_stream import calibrate
 #pipe_modules.append(calibrate.Calibrate)
+
+#new calibration module
+#from time_stream import flux_diff_gain_cal
+#pip_modules.append(flux_diff_gain_cal.Calibrate)
 
 #from time_stream import rotate_pol
 #pipe_modules.append(rotate_pol.RotatePol)
 
 #### First Map making interation ####
 
-from map import dirty_map
-pipe_modules.append(dirty_map.DirtyMapMaker)
+#from map import dirty_map
+#pipe_modules.append(dirty_map.DirtyMapMaker)
 
 #from map import clean_map
 #pipe_modules.append(clean_map.CleanMapMaker)
@@ -238,8 +243,6 @@ cl_IFs = ()
 cl_cal_temperature_files = (os.getenv('GBT_KM') + 'kevin_cal/cal_21.fits',)
 
 #calibrate using new calibration
-from time_stream import flux_diff_gain_cal
-pipe_modules.append(flux_diff_gain_cal.Calibrate)
 fgc_input_root = base_dir+'rebinned/'
 #fgc_input_root = rf_output_root
 fgc_file_middles = file_middles
