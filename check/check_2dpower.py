@@ -34,7 +34,7 @@ def plot2dpower(fileroot, filename, savename, cros=False):
     plt.savefig('./png/'+savename+'_2d.png', format='png')
 
 
-def plot1dpower(fileroot, filename, savename=None, weights=None, cros=False):
+def plot1dpower(fileroot, filename, ax1, ax2=None, savename=None, weights=None, cros=False):
     print 'using map:'
     print fileroot+filename
     if cros:
@@ -44,7 +44,7 @@ def plot1dpower(fileroot, filename, savename=None, weights=None, cros=False):
     dp2 = np.load(fileroot + filename + '_p2_var_combined.npy')
     k2 = np.load(fileroot + filename + '_k2_combined.npy')
  
-    if os.path.exists('/mnt/raid-project/gmrt/ycli/ps_result/_bias/' + filename):
+    if os.path.exists('/mnt/raid-project/gmrt/ycli/ps_result/bias/' + filename):
         b = np.load('/mnt/raid-project/gmrt/ycli/ps_result/bias/'
                     + filename + '/b2_bias.npy')
         if weights=='count':
@@ -86,8 +86,13 @@ def plot1dpower(fileroot, filename, savename=None, weights=None, cros=False):
         label = filename + ' ' + weights
     else:
         label = filename
-    plt.errorbar(bin_cent, p, pe, ke, fmt='o',  
+    #f, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+    #plt.errorbar(bin_cent, p, pe, ke, fmt='o',  
+    ax1.errorbar(bin_cent, p, pe, ke, fmt='o',  
         label=label , capsize=4.5, elinewidth=1)
+    if not ax2 is None:
+        #p[p==0] = np.inf
+        ax2.plot(bin_cent, pe[1], 'o', label=label)
 
     if savename!=None:
         plt.loglog()
@@ -102,7 +107,7 @@ def plot1dpower(fileroot, filename, savename=None, weights=None, cros=False):
         
         plt.savefig('./png/'+savename+'_1d.png', format='png')
 
-def plotth(fileroot, maptype):
+def plotth(fileroot, maptype, ax):
     p_root = fileroot + 'pk_camb.npy'
     p = np.load(p_root)
 
@@ -133,7 +138,8 @@ def plotth(fileroot, maptype):
     #p[1] = p[1]*b_gbt*b_gbt*t_gbt
     p[1] = p[1]*p[0]*p[0]*p[0]/2./3.1415926/3.1415926
 
-    plt.plot(p[0], p[1], label="theoretical power spectrum", 
+    #plt.plot(p[0], p[1], label="theoretical power spectrum", 
+    ax.plot(p[0], p[1], label="theoretical power spectrum", 
         c='0.65', linewidth=3)
 
 def twod2oned(p2, k2, dp2, weight=None):
@@ -157,6 +163,7 @@ def twod2oned(p2, k2, dp2, weight=None):
     dp2 = dp2**2
     dp, bin_edges = np.histogram(kmode[goodlist], bins=bins, weights=dp2[goodlist])
     dp = np.sqrt(dp)
+    modenum[modenum==0] = np.inf
     p = p/modenum
     dp= dp/modenum
     bin_cent = bin_edges[:-1]*math.sqrt(dk)
@@ -168,6 +175,7 @@ def getcountweight(count, transfer_f=None):
         weight = count/transfer_f/transfer_f
     else:
         weight = count
+    weight[np.isnan(weight)] = 0.
     return weight
 def getnoiseweight(noise, transfer_f=None):
     if not transfer_f==None:
@@ -185,8 +193,9 @@ if __name__=='__main__':
     workroot = '/mnt/raid-project/gmrt/ycli/ps_result/'
 
     #maplist = ['cros_GBT_1hr_map_oldcal'] #['cros_GBT_15hr_map_oldcal']
-    #maplist = ['cros_IQ', 'cros_IU']
-    maplist = ['cros_IQ', 'cros_GBT_15hr_map_oldcal']
+    #maplist = ['cros_IQ', 'cros_IU', 'cros_GBT_15hr_41-90_fdgp_RM']
+    maplist = ['cros_II', 'cros_II_extend']
+    #maplist = ['cros_IU',]# 'cros_GBT_15hr_map_oldcal']
     maptype = 'cros'#'auto' 
     modelist = [20, ]
     svdnlist = [0, ]
@@ -196,7 +205,9 @@ if __name__=='__main__':
     #savename = 'auto_15hr_oldmap_str_25gwj_80'
     #savename = 'cros_15hr_oldmap_str_0gwj_20'
     #savename = 'cros_1hr_oldmap_str_0gwj_50'
-    savename = 'auto_15hr_IQ_0gwj_20'
+    #savename = 'cros_15hr_IQ_first_0gwj_1gwj3'
+    savename = 'cros_15hr_II_extend_0gwj_20'
+    #savename = 'cros_15hr_IU_II_0gwj_20'
 
     if power_2d:
         #fileroot = workroot + 'simulation_auto_sim_15hr_oldmap_str_50/'
@@ -232,20 +243,45 @@ if __name__=='__main__':
 
 
     if power_1d:
-        plt.figure(figsize=(8,7))
+        #plt.figure(figsize=(10,7))
+        #plt.subplots_adjust(hspace=0.0)
+        f, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+        f.set_figheight(10)
+        f.set_figwidth(8)
+        f.subplots_adjust(hspace=0.0)
+        
         for map in maplist:
             for mode in modelist:
                 for svdn in svdnlist:
                     fileroot = workroot
-                    fileroot += 'power_%s_legendre_modes_%dgwj_%d/'%(map, svdn, mode)
+                    fileroot += 'power_%s_legendre_modes_%dgwj_%d/'\
+                                 %(map,svdn,mode)
                     filename = '%s_legendre_modes_%dgwj_%d'%(map, svdn, mode)
+                    
+                    #fileroot += 'power_%s_first_legendre_modes_%dgwj_%d/'\
+                    #            %(map, svdn, mode)
+                    #filename = '%s_first_legendre_modes_%dgwj_%d'%(map, svdn, mode)
+
+                    #fileroot += 'power_%s_legendre_modes_%dgwj_%d/'%(map,svdn,mode)
+                    #filename = '%s_legendre_modes_%dgwj_%d'%(map, svdn, mode)
+
+                    #fileroot += 'power_%s_extend_legendre_modes_%dgwj_%d/'\
+                    #             %(map,svdn,mode)
+                    #filename = '%s_extend_legendre_modes_%dgwj_%d'%(map, svdn, mode)
+
+                    #fileroot += 'power_%s_legendre_modes_%dgwj_conv_%d/'\
+                    #             %(map,svdn,mode)
+                    #filename = '%s_legendre_modes_%dgwj_conv_%d'%(map, svdn, mode)
+
                     #fileroot += 'power_%s_cleaned_%d/'%(map, mode)
                     #filename = '%s_cleaned_%d'%(map, mode)
                     if not os.path.exists(fileroot): 
                         print 'No such file %s' %(fileroot)
                         continue
                     for weights in weightlist:
-                        plot1dpower(fileroot, filename, weights=weights, cros=True)
+                        plot1dpower(fileroot, filename, ax1, ax2, 
+                                    weights=weights, cros=True)
+                        #plot1dpower(fileroot, filename, weights=weights, cros=True)
                         #plot1dpower(fileroot, filename, weights=weights)
 
         if maptype == 'auto':
@@ -260,9 +296,9 @@ if __name__=='__main__':
 
             fileroot = workroot + 'simulation_auto_sim_15hr_oldmap_str_25/'
             filename = 'simmaps'
-            plot1dpower(fileroot, filename, weights='noise')
+            plot1dpower(fileroot, filename, ax1, ax2, weights='noise')
 
-            plotth(fileroot, maptype)
+            plotth(fileroot, maptype, ax1)
 
             plt.ylim(ymin=3.e-12, ymax=3.e-4)
             plt.xlim(xmin=0.025, xmax=1.5)
@@ -271,7 +307,11 @@ if __name__=='__main__':
 
         if maptype == 'cros':
             # -- compare weight --
-            fileroot = workroot + 'simulation_cros_sim_15hr_oldmap_str_20/'
+            fileroot = workroot + 'simulation_cros_15hr_20/'
+            filename = 'simmaps'
+            #plot1dpower(fileroot, filename, ax1, )
+
+            #fileroot = workroot + 'simulation_cros_sim_15hr_oldmap_str_20/'
             #filename = 'simmaps'
             #plot1dpower(fileroot, filename)
 
@@ -287,18 +327,39 @@ if __name__=='__main__':
             #filename = 'simmaps'
             #plot1dpower(fileroot, filename, weights='count')
 
-            plotth(fileroot, maptype)
+            plotth(fileroot, maptype, ax1)
 
-            plt.ylim(ymin=3.e-8, ymax=3.e-1)
-            plt.xlim(xmin=0.025, xmax=1.5)
+            ax1.set_xlim(xmin=0.025, xmax=1.5)
+            #ax1.set_ylim(ymin=3.e-9, ymax=3.e3)
+            ax1.set_ylim(ymin=3.e-9, ymax=3.e-1)
+            ax1.set_ylabel('$\Delta^2$ [$K$]')
+            ax1.loglog()
+            ax1.legend(loc=0, scatterpoints=1, frameon=False)
+            #ax1.ylim(ymin=3.e-8, ymax=3.e-1)
+            #ax1.xlim(xmin=0.025, xmax=1.5)
+            #ax1.xlabel('k [h/Mpc]')
+            #ax1.ylabel('$\Delta^2$ [$K$]')
+
+            ax2.set_xlim(xmin=0.025, xmax=1.5)
+            #ax2.set_ylim(ymin=3.e-8, ymax=3.e-1)
+            ax2.set_ylabel('Error')
+            ax2.legend(loc=0, scatterpoints=1, frameon=False)
+            ax2.loglog()
+            #ax2.ylim(ymin=3.e-8, ymax=3.e-1)
+            #ax2.xlim(xmin=0.025, xmax=1.5)
+            #ax2.xlabel('k [h/Mpc]')
+            #ax2.ylabel('Error')
+
+            #plt.ylim(ymin=3.e-8, ymax=3.e-1)
+            #plt.xlim(xmin=0.025, xmax=1.5)
             plt.xlabel('k [h/Mpc]')
-            plt.ylabel('$\Delta^2$ [$K$]')
+            #3plt.ylabel('$\Delta^2$ [$K$]')
 
         savename = savename
 
-        plt.loglog()
+        #plt.loglog()
         #plt.ylabel('$\Delta$ [$K$]')
-        plt.legend(loc=0, scatterpoints=1, frameon=False )
+        #plt.legend(loc=0, scatterpoints=1, frameon=False )
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
         

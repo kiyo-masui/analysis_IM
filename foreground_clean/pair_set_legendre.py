@@ -71,35 +71,6 @@ params_init = {
 prefix = 'fs_'
 
 
-#def wrap_find_weight(filename, regenerate=False):
-#    if regenerate:
-#        retval = find_weight(filename)
-#    else:
-#        retval = memoize_find_weight(filename)
-#
-#    return batch_handler.repackage_kiyo(retval)
-#
-#
-#@batch_handler.memoize_persistent
-#def memoize_find_weight(filename):
-#    return find_weight(filename)
-
-
-def find_weight(filename):
-    r"""rather than read the full noise_inv and find its diagonal, cache the
-    diagonal values.
-
-    Note that the .info does not get shelved (class needs to be made
-    serializeable). Return the info separately.
-    """
-    #print "loading noise: " + filename
-    #noise_inv = algebra.make_mat(algebra.open_memmap(filename, mode='r'))
-    #noise_inv_diag = noise_inv.mat_diag()
-    # if optimal map:
-    noise_inv_diag = algebra.make_vect(algebra.load(filename))
-
-    return noise_inv_diag, noise_inv_diag.info
-
 
 class PairSet_LegendreSVD(pair_set.PairSet):
     r"""Class to manage a set of map pairs
@@ -167,18 +138,32 @@ class PairSet_LegendreSVD(pair_set.PairSet):
                     np.put(svd_info_all[1][i], self.freq_list, svd_info[2][i])
                 print 'replace mode from %d to the end' %good_modes
 
-                svd_info = (svd_info[0],
-                    rpmode.replace_modes(svd_info_all[0], good_modes, m=n_modes_stop,
-                                         weight=svd_info_all[0][0]),
-                    rpmode.replace_modes(svd_info_all[1], good_modes, m=n_modes_stop,
-                                         weight=svd_info_all[1][0]))
+                if good_modes == 1:
+                    svd_info = (svd_info[0],
+                                rpmode.replace_modes(svd_info_all[0], 
+                                                     good_modes,),
+                                rpmode.replace_modes(svd_info_all[1], 
+                                                     good_modes,))
+                else:
+                    svd_info = (svd_info[0],
+                                rpmode.replace_modes(svd_info_all[0], 
+                                                     good_modes, 
+                                                     m=n_modes_stop,
+                                                     weight=svd_info_all[0][0]),
+                                rpmode.replace_modes(svd_info_all[1], 
+                                                     good_modes, 
+                                                     m=n_modes_stop,
+                                                     weight=svd_info_all[1][0]))
                 #svd_info = (svd_info[0],
                 #    rpmode.replace_modes(svd_info_all[0], good_modes, m=n_modes_stop),
                 #    rpmode.replace_modes(svd_info_all[1], good_modes, m=n_modes_stop))
-                
+
                 svd_info = (svd_info[0],
                     np.take(svd_info[1], self.freq_list, axis=1),
                     np.take(svd_info[2], self.freq_list, axis=1))
+
+                ft.save_pickle(svd_info, 
+                               filename_svd.replace('pair', 'pair_legendre'))
 
             self.pairs[pairitem].subtract_frequency_modes(
                                     svd_info[1][n_modes_start:n_modes_stop],

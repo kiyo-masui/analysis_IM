@@ -84,12 +84,24 @@ import math
 ##mapname = "sec_U_cleaned_clean_map_I_with_I_1modes"
 #mapidex = 150
 
-maproot = "/mnt/data-pen3/ycli/map_result/maps/parkes/"
+#maproot = "/mnt/data-pen3/ycli/map_result/maps/parkes_linear_highres/"
 #mapname = "fir_dirty_map_I_1315"
 #mapname = "fir_clean_map_I_1315"
 #mapname = "fir_parkes_2008_09_12_west_dirty_map_I_1315"
-mapname = "fir_parkes_2008_09_12_west_clean_map_I_1315"
-mapidex = 150
+#mapname = "fir_parkes_2008_09_12_west_clean_map_I_1315"
+#mapname = "fir_parkes_2008_09_13_west_dirty_map_I_1315"
+#mapname = "fir_parkes_2008_09_13_west_clean_map_I_1315"
+#mapidex = 150
+
+maproot = "/mnt/data-pen3/ycli/map_result/maps/parkes/"
+#maproot = "/mnt/data-pen3/ycli/map_result/maps/parkes_linear_highres_combine/"
+#mapname = "fir_parkes_2008_09_12-13_west_dirty_map_I_1315"
+#mapname = "fir_parkes_2008_09_12-13_west_clean_map_I_1315"
+#mapname = "fir_parkes_2008_09_12-13-14_west_dirty_map_I_1315"
+#mapname = "fir_parkes_2008_09_11-12-13-14_clean_map_I_1315"
+#mapname = "fir_parkes_2008_09_12w-13-14_beam0testclean_map_I_1315"
+mapname = "fir_parkes_2008_09_12w-13-14_beam0testdirty_map_I_1315"
+mapidex = 32
 
 def getedge(map):
     deg2rad = 3.1415926/180.
@@ -98,6 +110,10 @@ def getedge(map):
     dec  = map.get_axis('dec')*deg2rad
     freq = map.get_axis('freq')
     r    = functions.fq2r(freq)
+
+    print 'freq range: %f ~ %f'%(freq[0], freq[-1])
+    print 'r    range: %f ~ %f'%(r[0], r[-1])
+    print r.max() - r.min()
 
     r.shape   = r.shape + (1, 1)
     ra.shape  = (1,) + ra.shape + (1,)
@@ -154,17 +170,96 @@ if mapidex>=map.shape[0]:
     exit()
 
 if len(sys.argv) == 1:
-    plt.figure(figsize=(34, 8))
-    ra = map.get_axis('ra')
-    dec= map.get_axis('dec')
-    extent = (ra.min(), ra.max(), dec.min(), dec.max())
-    print extent
-    plt.imshow(map[mapidex].swapaxes(0,1), 
-               interpolation='nearest', 
-               origin='lower',
-               extent = extent)
+    freq = map.get_axis('freq') - 0.5*map.info['freq_delta']
+    ra = map.get_axis('ra') - 0.5*map.info['ra_delta']
+    dec= map.get_axis('dec') - 0.5*map.info['dec_delta']
+
+    freq = np.resize(freq, freq.shape[0]+1)
+    ra = np.resize(ra, ra.shape[0]+1)
+    dec = np.resize(dec, dec.shape[0]+1)
+
+    freq[-1] = freq[-2] + map.info['freq_delta']
+    ra[-1] = ra[-2] + map.info['ra_delta']
+    dec[-1] = dec[-2] + map.info['dec_delta']
+
+    #vmax = map[mapidex].flatten().max()
+    #vmin = map[mapidex].flatten().min()
+    vmax = map.flatten().max()
+    vmin = map.flatten().min()
+    vmax = 10.
+    vmin = -10.
+    if vmax<np.fabs(vmin):
+        vmax = np.fabs(vmin)
+    else:
+        vmin = -np.fabs(vmax)
+
+    #map = np.ma.masked_equal(map, 0)
+    #vmax = 1.
+    #vmin = -1.
+
+    #plt.figure(figsize=(34, 8))
+    plt.figure(figsize=(9,8))
+    #cax = ax.imshow(map[mapidex].swapaxes(0,1), 
+    #                interpolation='nearest', 
+    #                origin='lower',)
+    #                #extent = extent)
     #plt.imshow(map[mapidex].swapaxes(0,1))
+    #fig.colorbar(cax)
+
+    #plt.pcolor(ra, dec, map[mapidex].swapaxes(0,1), vmax=vmax, vmin=vmin)
+    plt.pcolor(ra, dec, np.mean(map, 0).swapaxes(0,1), vmax=vmax, vmin=vmin)
     plt.colorbar()
+    plt.xlim(ra.min(), ra.max())
+    plt.ylim(dec.min(), dec.max())
+    plt.xlabel('RA [deg]')
+    plt.ylabel('DEC[deg]')
+
+elif len(sys.argv) == 2 and sys.argv[1]=='freq':
+    mapname += '_freq'
+
+    freq = map.get_axis('freq') - 0.5*map.info['freq_delta']
+    ra = map.get_axis('ra') - 0.5*map.info['ra_delta']
+    dec= map.get_axis('dec') - 0.5*map.info['dec_delta']
+
+    freq = np.resize(freq, freq.shape[0]+1)
+    ra = np.resize(ra, ra.shape[0]+1)
+    dec = np.resize(dec, dec.shape[0]+1)
+
+    freq[-1] = freq[-2] + map.info['freq_delta']
+    ra[-1] = ra[-2] + map.info['ra_delta']
+    dec[-1] = dec[-2] + map.info['dec_delta']
+
+    vmax = map.flatten().max()
+    vmin = map.flatten().min()
+
+    #map = np.ma.masked_equal(map, 0)
+
+    freq /= 1.e9
+    print freq
+
+    f, (ax1, ax2, ax3) = plt.subplots(3, 1, sharex=True, figsize=(10,10))
+    f.subplots_adjust(hspace=0)
+    pc1 = ax1.pcolor(freq, ra,  map.swapaxes(0,1)[:,:,30], vmin=vmin, vmax=vmax)
+    ax1.set_ylim(ra.min(), ra.max())
+    ax1.set_ylabel('RA [deg]')
+    pc2 = ax2.pcolor(freq, dec, map.swapaxes(0,2)[:,30,:], vmin=vmin, vmax=vmax)
+    ax2.set_ylim(dec.min(), dec.max())
+    ax2.set_ylabel('DEC[deg]')
+    #for i in range(ra.shape[0]-1):
+    #    for j in range(dec.shape[0]-1):
+    #        ax3.plot(freq[:-1]+0.5*map.info['freq_delta']/1.e9, map[:,i,j])
+    for i in range(ra.shape[0]-1):
+        ax3.plot(freq[:-1]+0.5*map.info['freq_delta']/1.e9, map[:,i,30])
+    for i in range(dec.shape[0]-1):
+        ax3.plot(freq[:-1]+0.5*map.info['freq_delta']/1.e9, map[:,30,i])
+        
+    ax3.set_ylabel('Flux [Jy]')
+    ax3.set_xlabel('Freqency [GHz]')
+    ax3.set_xlim(freq.min(), freq.max())
+
+    #f.colorbar(pc1, ax1, orientation='horizontal')
+
+
 elif len(sys.argv) == 2:
     freq = map.get_axis('freq')
     z = 1.42e9/freq - 1.

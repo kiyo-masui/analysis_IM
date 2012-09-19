@@ -106,11 +106,13 @@ class DirtyMapMaker(object):
                                  force_tuple=True)
             if params['time_block'] == 'scan':
                 for Data in Blocks:
-                    for beam in Data.field['BEAM']:
-                        yield self.preprocess_data((Data,), beam)
+                    yield self.preprocess_data((Data,), 0)
+                    #for beam in Data.field['BEAM']:
+                    #    yield self.preprocess_data((Data,), beam)
             elif params['time_block'] == 'file':
-                for beam in Blocks[0].field['BEAM']:
-                    yield self.preprocess_data(Blocks, beam)
+                yield self.preprocess_data((Data,), 0)
+                #for beam in Blocks[0].field['BEAM']:
+                #    yield self.preprocess_data(Blocks, beam)
             else:
                 msg = "time_block parameter must be 'scan' or 'file'."
                 raise ValueError(msg)

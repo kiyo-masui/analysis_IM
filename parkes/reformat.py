@@ -131,7 +131,8 @@ class ReformatParkes(object):
         azimuth = np.array(azimuth)
 
         if data.ndim != 6:
-            print 'error: data dim : '
+            print 'error: data dim : %d' %data.ndim
+            print 'data shape is :', data.shape
             exit()
         #data = data[:,beam-1::13,:,:,:,:]
         # Note:  The raw Parkes data have 5 dims. We
@@ -197,7 +198,7 @@ class ReformatParkes(object):
 
         delta_azimuth = beamoffsetxy[:,0]/np.cos(elevation[:]*pi/180.)
         azimuth = azimuth.repeat(13).reshape(-1,13)
-        azimuth[:] -= delta_azimuth[:]/60
+        azimuth[:] += delta_azimuth[:]/60
 
         return elevation, azimuth
 
@@ -228,7 +229,17 @@ class ReformatParkes(object):
         self.parkes_data = []
 
         for (i, file) in enumerate(parkes_file):
-            hdulist = pyfits.open( parkes_root + file )
+            try:
+                hdulist = pyfits.open( parkes_root + file )
+            except IOError:
+                print "Ignore: [%s]"%file
+                continue
+
+            if hdulist[1].data['DATA'].shape != (1170, 1, 1, 2, 1024):
+                print 'DATA Ignore: %s'%file
+                print '             do not have the regular data shape'
+                print '             ',hdulist[1].data['DATA'].shape
+                continue
 
             # get all the label name
             for j in range(hdulist[1].header['TFIELDS']):

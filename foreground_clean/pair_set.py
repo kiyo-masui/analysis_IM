@@ -111,6 +111,119 @@ def find_weight_re_diagnal(filename):
 
     return noise_inv_diag, noise_inv_diag.info
 
+def diag_noise(source_dict, target):
+    if not os.path.exists(target):
+        os.mkdir(target)
+    for map_pair in source_dict.keys():
+            fileroot = source_dict[map_pair]
+            filename = fileroot.split('/')[-1]
+            filename = filename.replace('inv', 'weight')
+            if not os.path.exists(target+filename):
+                #os.symlink(fileroot, target + filename)
+                noise_inv_diag, info = find_weight_re_diagnal(fileroot)
+                algebra.save(target+filename, noise_inv_diag)
+
+            source_dict[map_pair][key] = target + filename
+
+    return source_dict
+
+def mklink_for_mappair(source_dict, target):
+    r"""to make a link from target direction to the source_dic direction.
+    """
+    if not os.path.exists(target):
+        os.mkdir(target)
+    for map_pair in source_dict.keys():
+        for key in ['map1', 'map2']:
+            fileroot = source_dict[map_pair][key]
+            filename = fileroot.split('/')[-1]
+            if not os.path.exists(target+filename):
+                print target+filename
+                os.symlink(fileroot, target + filename)
+                os.symlink(fileroot+'.meta', target+filename+'.meta')
+
+            source_dict[map_pair][key] = target + filename
+
+        for key in ['noise_inv1', 'noise_inv2']:
+            fileroot = source_dict[map_pair][key]
+            filename = fileroot.split('/')[-1]
+            filename = filename.replace('inv', 'weight')
+            if not os.path.exists(target+filename):
+                #os.symlink(fileroot, target + filename)
+                noise_inv_diag, info = find_weight_re_diagnal(fileroot)
+                algebra.save(target+filename, noise_inv_diag)
+
+            source_dict[map_pair][key] = target + filename
+
+    return source_dict
+
+def extend_iquv_map(source_dict, target_dict):
+    imap = algebra.make_vect(algebra.load(source_dict['imap']))
+    qmap = algebra.make_vect(algebra.load(source_dict['qmap']))
+    umap = algebra.make_vect(algebra.load(source_dict['umap']))
+    vmap = algebra.make_vect(algebra.load(source_dict['vmap']))
+
+    if source_dict.has_key('imap_weight'):
+        imap_weight = algebra.make_vect(algebra.load(source_dict['imap_weight']))
+        qmap_weight = algebra.make_vect(algebra.load(source_dict['qmap_weight']))
+        umap_weight = algebra.make_vect(algebra.load(source_dict['umap_weight']))
+        vmap_weight = algebra.make_vect(algebra.load(source_dict['vmap_weight']))
+    elif source_dict.has_key('imap_inv'):
+        imap_weight, info = find_weight_re_diagnal(source_dict['imap_inv'])
+        qmap_weight, info = find_weight_re_diagnal(source_dict['qmap_inv'])
+        umap_weight, info = find_weight_re_diagnal(source_dict['umap_inv'])
+        vmap_weight, info = find_weight_re_diagnal(source_dict['vmap_inv'])
+    else:
+        print 'Warning: no weight'
+        imap_weight = algebra.ones_like(imap)
+        qmap_weight = algebra.ones_like(imap)
+        umap_weight = algebra.ones_like(imap)
+        vmap_weight = algebra.ones_like(imap)
+
+    iquv = algebra.info_array(imap.tolist() + qmap.tolist() +
+                              umap.tolist() + vmap.tolist())
+    iquv.info = imap.info
+    iquv_weight = algebra.info_array(imap_weight.tolist() + qmap_weight.tolist() + 
+                                     umap_weight.tolist() + vmap_weight.tolist())
+    iquv_weight.info = imap_weight.info
+
+    algebra.save(target_dict['map'], iquv)
+    algebra.save(target_dict['weight'], iquv_weight)
+
+def divide_iquv_map(source_dict, target_dict):
+    iquv        = algebra.make_vect(algebra.load(source_dict['map']))
+    iquv_weight = algebra.make_vect(algebra.load(source_dict['weight']))
+
+    nfreq = iquv.shape[0]/4
+
+    imap = iquv[ 0*nfreq : 1*nfreq, ...]
+    qmap = iquv[ 1*nfreq : 2*nfreq, ...]
+    umap = iquv[ 2*nfreq : 3*nfreq, ...]
+    vmap = iquv[ 3*nfreq : 4*nfreq, ...]
+
+    imap.info = iquv.info
+    qmap.info = iquv.info
+    umap.info = iquv.info
+    vmap.info = iquv.info
+
+    imap_weight = iquv_weight[ 0*nfreq : 1*nfreq, ...]
+    qmap_weight = iquv_weight[ 1*nfreq : 2*nfreq, ...]
+    umap_weight = iquv_weight[ 2*nfreq : 3*nfreq, ...]
+    vmap_weight = iquv_weight[ 3*nfreq : 4*nfreq, ...]
+
+    imap_weight.info = iquv_weight.info
+    qmap_weight.info = iquv_weight.info
+    umap_weight.info = iquv_weight.info
+    vmap_weight.info = iquv_weight.info
+
+    algebra.save(target_dict['imap'], imap)
+    algebra.save(target_dict['qmap'], qmap)
+    algebra.save(target_dict['umap'], umap)
+    algebra.save(target_dict['vmap'], vmap)
+
+    algebra.save(target_dict['imap_weight'], imap_weight)
+    algebra.save(target_dict['qmap_weight'], qmap_weight)
+    algebra.save(target_dict['umap_weight'], umap_weight)
+    algebra.save(target_dict['vmap_weight'], vmap_weight)
 
 class PairSet():
     r"""Class to manage a set of map pairs

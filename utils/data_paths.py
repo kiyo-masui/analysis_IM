@@ -811,7 +811,7 @@ class DataPath(object):
         print_dictionary(hashdict, hashobj, key_list=hashlist)
         hashobj.close()
 
-def get_mapdict(dir):
+def get_mapdict(dir, selection=None):
     r"""
     Generate a map dict according to the map file in a dir
     """
@@ -848,6 +848,11 @@ def get_mapdict(dir):
                 #    key2='noise_weight'
 
                 mapdict['%s;%s'%(key1, key2)] = dir + map
+
+            if  mapsplit[0] == 'sim' and mapsplit[1] == selection:
+                key1 = int(mapsplit[2])
+
+                mapdict['%d'%key1] = dir + map
 
         if os.path.isfile(dir+map) and map.split('.')[-1]=='pkl':
             mapsplit = map.split('.')[0].split('_')

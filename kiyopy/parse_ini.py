@@ -191,6 +191,7 @@ def _execute_parameter_file(this_parameter_file_name):
     try:
         exec(open(this_parameter_file_name).read())
     except Exception as E:
+        print locals()
         msg = ("Execution of parameter file " + this_parameter_file_name +
                " caused an error.  The error message was: " + repr(E))
         raise ce.ParameterFileError(msg)

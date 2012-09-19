@@ -13,6 +13,8 @@ import numpy as np
 #from numpy.fft import *
 import scipy.linalg as linalg
 
+import os
+
 from core import algebra, hist
 from kiyopy import parse_ini
 import kiyopy.utils
@@ -92,44 +94,73 @@ class BiasCalibrate(object):
         #pk1 = pk1.take(non0)[0]
         #k1 = k1.take(non0)[0]
         # clean_{map}(map)
-        k0 = sp.load(in_root + resultf0 + '_k.npy')
-        if FKPweight:
-            pk0 = sp.load(in_root + resultf0 + '_p_fkp.npy')
-            pk02= sp.load(in_root + resultf0 + '_p2_fkp.npy')
+        if resultf0 != '':
+            k0 = sp.load(in_root + resultf0 + '_k.npy')
+            if FKPweight:
+                pk0 = sp.load(in_root + resultf0 + '_p_fkp.npy')
+                pk02= sp.load(in_root + resultf0 + '_p2_fkp.npy')
+            else:
+                pk0 = sp.load(in_root + resultf0 + '_p.npy')
+                pk02= sp.load(in_root + resultf0 + '_p2.npy')
         else:
-            pk0 = sp.load(in_root + resultf0 + '_p.npy')
-            pk02= sp.load(in_root + resultf0 + '_p2.npy')
+            k0  = k1
+            pk0 = np.zeros(pk1.shape)
+            pk02=np.zeros(pk12.shape)
 
         #pk0 = pk0.take(non0)[0]
         #k0 = k0.take(non0)[0]
 
         # Read the Pwer Spectrum without mode subtraction
         simmap_root = params['simmap_root']
-        k  = sp.load(simmap_root + 'simmaps_k.npy')
-        pk = sp.load(simmap_root + 'simmaps_p.npy')
-        pk2= sp.load(simmap_root + 'simmaps_p2.npy')
+        k  = sp.load(simmap_root + 'simmaps_k_combined.npy')
+        pk = sp.load(simmap_root + 'simmaps_p_combined.npy')
+        pk2= sp.load(simmap_root + 'simmaps_p2_combined.npy')
 
-        # Test if k and k0 are match
-        #print simmap_root 
-        #print 
-        #print k0
-        #print
-        #print k
-        #print
-        print k.shape
-        print k0.shape
-        print k1.shape
-        if (k-k0).any() or (k-k1).any():
-            print "k and k0 are not match!!"
-            return 0
+        if os.path.exists(simmap_root + 'simmaps_beam_k_combined.npy'):
+            k_beam  = sp.load(simmap_root + 'simmaps_beam_k_combined.npy')
+            pk_beam = sp.load(simmap_root + 'simmaps_beam_p_combined.npy')
+            pk2_beam= sp.load(simmap_root + 'simmaps_beam_p2_combined.npy')
 
-        dpk = pk1-pk0
-        dpk[dpk<=0] = np.inf
-        dpk = pk/dpk
+            if (k_beam-k0).any() or (k_beam-k1).any() or (k_beam-k).any():
+                print "k_beam and k0 are not match!!"
+                return 0
 
-        dpk2= (pk12-pk02)
-        dpk2[dpk2<=0] = np.inf
-        dpk2= pk2/dpk2
+            dpk = pk1-pk0
+            dpk[dpk<=0] = np.inf
+            pk_beam[pk_beam<=0] = np.inf
+            dpk_beam = pk/pk_beam
+            pk_beam[pk_beam==np.inf] = 0.
+            dpk_lose = pk_beam/dpk
+            dpk = dpk_beam*dpk_lose
+
+            dpk2= (pk12-pk02)
+            dpk2[dpk2<=0] = np.inf
+            pk2_beam[pk2_beam<=0] = np.inf
+            dpk2_beam = pk2/pk2_beam
+            pk2_beam[pk2_beam==np.inf] = 0.
+            dpk2_lose = pk2_beam/dpk2
+            dpk2= dpk2_beam*dpk2_lose
+
+            sp.save(out_root + 'k_beam_bias', k_beam)
+            sp.save(out_root + 'b_beam_bias', dpk_beam)
+            sp.save(out_root + 'b2_beam_bias', dpk2_beam)
+
+            sp.save(out_root + 'k_lose_bias', k_beam)
+            sp.save(out_root + 'b_lose_bias', dpk_lose)
+            sp.save(out_root + 'b2_lose_bias', dpk2_lose)
+        else:
+            # Test if k and k0 are match
+            if (k-k0).any() or (k-k1).any():
+                print "k and k0 are not match!!"
+                return 0
+
+            dpk = pk1-pk0
+            dpk[dpk<=0] = np.inf
+            dpk = pk/dpk
+
+            dpk2= (pk12-pk02)
+            dpk2[dpk2<=0] = np.inf
+            dpk2= pk2/dpk2
 
         B = interp1d(k, dpk, kind='cubic')
 

@@ -191,12 +191,6 @@ class RedshiftCorrelation(object):
             ps = self.ps_vv(k) * (b1 + mu2 * f1) * (b2 + mu2 * f2)
         else:
             ps = (b1*b2*self.ps_dd(k) + mu2 * self.ps_dv(k) * (f1*b2 + f2*b1) + mu2**2 * f1*f2 * self.ps_vv(k))
-<<<<<<< HEAD
-
-
-        return D1*D2*pf1*pf2*ps
-
-=======
 
         return D1*D2*pf1*pf2*ps
 
@@ -239,7 +233,6 @@ class RedshiftCorrelation(object):
         vfactor = np.mean(Dz * pz * fz)
 
         return self.ps_vv(k_vec) * dfactor * dfactor
->>>>>>> 2bb5253943ff6d75ecc81895ad37e53d3a7aaae5
 
 
     def redshiftspace_correlation(self, pi, sigma, z1 = None, z2 = None):
@@ -417,11 +410,6 @@ class RedshiftCorrelation(object):
         rnum : integer
             The number of points to generate (using a log spacing).
         """
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 2bb5253943ff6d75ecc81895ad37e53d3a7aaae5
         ra  = np.logspace(np.log10(rmin), np.log10(rmax), rnum)
 
         vv0 = _integrate(ra, 0, self.ps_vv)
@@ -660,28 +648,19 @@ class RedshiftCorrelation(object):
         # Make cube pixelisation finer, such that angular cube will
         # have sufficient resolution on the closest face.
         d = np.array([c2-c1, thetax * d2 * units.degree, thetay * d2 * units.degree])
-<<<<<<< HEAD
-        #n = np.array([numz, int(c2 / c1 * numx), int(c2 / c1 * numy)])
-=======
         # Note that the ratio of deltas in Ra, Dec in degrees may
         # be different than the Ra, Dec in physical coordinates due to
         # rounding onto this grid
->>>>>>> 2bb5253943ff6d75ecc81895ad37e53d3a7aaae5
         n = np.array([numz, int(d2 / d1 * numx), int(d2 / d1 * numy)])
 
         # Enlarge cube size by 1 in each dimension, so raytraced cube
         # sits exactly within the gridded points.
-<<<<<<< HEAD
-        d = d * (n + 1) / n
-        n = n + 1
-=======
         d = d * (n + pad).astype(float) / n.astype(float)
         c1 = c_center - (c_center - c1)*(n[0] + pad) / float(n[0])
         c2 = c_center + (c2 - c_center)*(n[0] + pad) / float(n[0])
         n = n + pad
         # now multiply by scaling for a finer sub-grid
         n = refinement*n
->>>>>>> 2bb5253943ff6d75ecc81895ad37e53d3a7aaae5
 
         print "Generating cube: (%f to %f) x %f x %f (%d, %d, %d) (h^-1 cMpc)^3" % \
               (c1, c2, d[1], d[2], n[0], n[1], n[2])
@@ -739,12 +718,8 @@ class RedshiftCorrelation(object):
         acube = np.zeros((numz, numx, numy))
 
         # Iterate over redshift slices, constructing the coordinates
-<<<<<<< HEAD
-        # and interpolating into the 3d cube.
-=======
         # and interpolating into the 3d cube. Note that the multipliers scale
         # from 0 to 1, or from i=0 to i=N-1
->>>>>>> 2bb5253943ff6d75ecc81895ad37e53d3a7aaae5
         for i in range(numz):
             tgrid2[0,:,:] = (xa[i] - c1) / (c2-c1) * (n[0] - 1.)
             tgrid2[1,:,:] = (tgridx * da[i]) / d[1] * (n[1] - 1.) + \
@@ -757,15 +732,10 @@ class RedshiftCorrelation(object):
             #acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=2)
             acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=1)
 
-<<<<<<< HEAD
-
-        return acube #, rsf
-=======
         if report_physical:
             return acube, rsf, (c1, c2, d[1], d[2])
         else:
             return acube
->>>>>>> 2bb5253943ff6d75ecc81895ad37e53d3a7aaae5
 
 
     def angular_powerspectrum(self, la, za1, za2):
@@ -1008,35 +978,6 @@ class RedshiftCorrelation(object):
 
         return D1*D2*pf1*pf2*(b1*b2*psdd + (f1*b2 + f2*b1)*psdv + f1*f2*psvv) / (xc**2 * np.pi)
 
-<<<<<<< HEAD
-
-def inverse_approx(f, x1, x2):
-    r"""Generate the inverse function on the interval x1 to x2.
-
-    Periodically sample a function and use interpolation to construct
-    its inverse. Function must be monotonic on the given interval.
-
-    Parameters
-    ----------
-    f : callable
-        The function to invert, must accept a single argument.
-    x1, x2 : scalar
-        The lower and upper bounds of the interval on which to
-        construct the inverse.
-
-    Returns
-    -------
-    inv : cubicspline.Interpolater
-        A callable function holding the inverse.
-    """
-
-    xa = np.linspace(x1, x2, 1000)
-    fa = f(xa)
-
-    return cs.Interpolater(fa, xa)
-
-=======
->>>>>>> 2bb5253943ff6d75ecc81895ad37e53d3a7aaae5
 
 @np.vectorize
 def _pl(l, x):

@@ -16,13 +16,6 @@ class Corr21cm(RedshiftCorrelation, Map3d):
 
     add_mean = False
 
-<<<<<<< HEAD
-    def __init__(self, ps = None, redshift = 0.0, **kwargs):
-        from os.path import join, dirname
-        if ps == None:
-
-            psfile = join(dirname(__file__),"data/ps_z1.5.dat")
-=======
     def __init__(self, ps=None, sigma_v=0.0, redshift=0.0, **kwargs):
         if ps == None:
             from os.path import join, dirname
@@ -30,15 +23,10 @@ class Corr21cm(RedshiftCorrelation, Map3d):
             #psfile = join(dirname(__file__),"data/wigglez_halofit_z1.5.dat")
             psfile = join(dirname(__file__),"data/wigglez_halofit_z0.8.dat")
             print "loading matter power file: " + psfile
-<<<<<<< HEAD
->>>>>>> 2bb5253943ff6d75ecc81895ad37e53d3a7aaae5
-            redshift = 1.5
-=======
             redshift = 0.8
 
             #pk_interp = cs.LogInterpolater.fromfile(psfile)
             pwrspec_data = np.genfromtxt(psfile)
->>>>>>> eric_switzer
 
             (log_k, log_pk) = (np.log(pwrspec_data[:,0]), \
                                np.log(pwrspec_data[:,1]))

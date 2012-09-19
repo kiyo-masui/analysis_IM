@@ -356,7 +356,10 @@ def destroy_time_with_mean_arrays(Data, flag_size=40):
                 bad_times.append(time)
         # Mask bad times and those +- flag_size around.
         for time in bad_times:
-            Data.data[(time-flag_size):(time+flag_size),ii,:,:,:].mask = True
+            if time-flag_size < 0:
+                Data.data[0:(time+flag_size),ii,:,:,:].mask = True
+            else:
+                Data.data[(time-flag_size):(time+flag_size),ii,:,:,:].mask = True
     return
 
 def destroy_time_with_mean_arrays_4pol2cal(Data, flag_size=40):

@@ -2,12 +2,15 @@ import pyfits
 import scipy as sp
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import ImageGrid
 
 from parkes import fitsGBT
 
 #rawdatapath = ('/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA/p641/sdfits/rawdata/sept11/east/2008-09-11_1217_east1_1392_P641.sdfits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA/p641/sdfits/rawdata/sept14/east/2008-09-14_2027_west2_1315_P641.sdfits',)
 #rawdatapath = ('/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA/p641/sdfits/rawdata/sept12/west/2008-09-12_1534_west2_1315_P641.sdfits',)
 #rawdatapath = ('/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA/p641/sdfits/rawdata/sept11/west/2008-09-11_1647_west1_1290_drift_P641.sdfits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA/p641/sdfits/rawdata/sept13/west/2008-09-13_1737_west1_1315_P641.sdfits',)
 
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/86_wigglez1hr_centre_ralongmap_19-28.fits',)
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/55_wigglez15hrst_ralongmap_272-279.fits',)
@@ -15,12 +18,34 @@ from parkes import fitsGBT
 #rawdatapath = ('/mnt/data-pen3/ycli/map_result/parkes/parkes_2008_09_12_west_P641.fits',)
 #rawdatapath = ('/mnt/data-pen3/ycli/map_result/flagged/parkes_2008_09_12_west_P641.fits',)
 #rawdatapath = ('/mnt/data-pen3/ycli/map_result/rebinned/parkes_2008_09_12_west_P641.fits',)
-rawdatapath = ('/mnt/data-pen3/ycli/map_result/pol_selected/parkes_2008_09_12_west_P641.fits',)
+#rawdatapath = ('/mnt/data-pen3/ycli/map_result/pol_selected/parkes_2008_09_12_west_P641.fits',)
+#rawdatapath = ('/mnt/data-pen3/ycli/map_result/parkes/parkes_2008_09_13_west_P641.fits',)
+#rawdatapath = ('/mnt/data-pen3/ycli/map_result/flagged/parkes_2008_09_13_west_P641.fits',)
+#rawdatapath = ('/mnt/data-pen3/ycli/map_result/parkes/parkes_2008_09_14_west_P641.fits',)
+#rawdatapath = ('/mnt/data-pen3/ycli/map_result/flagged/parkes_2008_09_14_west_P641.fits',)
+#rawdatapath = ('/mnt/data-pen3/ycli/map_result/parkes/parkes_2008_09_11_west_P641.fits',)
+#rawdatapath = ('/mnt/data-pen3/ycli/map_result/parkes/parkes_2008_09_11_east_P641.fits',)
+#rawdatapath = ('/mnt/data-pen3/ycli/map_result/parkes/parkes_2008_09_12_east_P641.fits',)
+
+#rawdatapath = ('/mnt/data-pen3/ycli/map_result/rebinned/parkes_2008_09_11_west_P641.fits',)
+#rawdatapath = ('/mnt/data-pen3/ycli/map_result/rebinned/parkes_2008_09_11_east_P641.fits',)
+#rawdatapath = ('/mnt/data-pen3/ycli/map_result/rebinned/parkes_2008_09_12_west_P641.fits',)
+#rawdatapath = ('/mnt/data-pen3/ycli/map_result/rebinned/parkes_2008_09_12_east_P641.fits',)
+#rawdatapath = ('/mnt/data-pen3/ycli/map_result/rebinned/parkes_2008_09_13_west_P641.fits',)
+#rawdatapath = ('/mnt/data-pen3/ycli/map_result/rebinned/parkes_2008_09_13_east_P641.fits',)
+#rawdatapath = ('/mnt/data-pen3/ycli/map_result/rebinned/parkes_2008_09_14_west_P641.fits',)
+rawdatapath = ('/mnt/data-pen3/ycli/map_result/rebinned/parkes_2008_09_14_east_P641.fits',)
 
 class CheckFitsFile(object):
 
     def __init__(self, datapath):
-        self.hdulist = pyfits.open(datapath)
+        try:
+            self.hdulist = pyfits.open(datapath)
+        except IOError:
+            print 'Can not open file %s' % datapath
+            exit()
+        
+        self.datapath = datapath
         
         self.tbdata = self.hdulist[1].data
         
@@ -64,7 +89,7 @@ class CheckFitsFile(object):
             plt.plot(x, spectrum_xx[i], c='0.6')
 
         plt.ylim(ymax=350,ymin=0)
-        plt.savefig('./png/parkes_test_pol.png', format='png')
+        plt.savefig('./png/parkes_test_flag.png', format='png')
 
     def plotradec(self):
         scan_inds = self.reader.scan_set
@@ -165,15 +190,77 @@ class CheckFitsFile(object):
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
         plt.savefig('./png/parkes_test_elaz_one.png', format='png')
+
+    def plotonepoint(self, scan=0, cycle=0):
+        scan_inds = self.reader.scan_set
+        beamfwhp = 14.0/60.
+        #f = plt.figure(figsize=(10, 6))
+        #ax = ImageGrid(f, 111,
+        #               nrows_ncols = (1, 2),
+        #               direction = "row",
+        #               axes_pad = 1,
+        #               add_all = True,
+        #               label_mode = "all",
+        #               share_all = False,
+        #               cbar_location = "right",
+        #               cbar_mode = "single",
+        #               cbar_size = "5%",
+        #               cbar_pad = 0.05,
+        #               )
+
+        f, ax = plt.subplots(1, 2, figsize=(13,6))
+        block = self.reader.read(scan_inds[scan])
+        block.calc_pointing()
+        for i in range(13):
+            cir0 = plt.Circle((block.field['CRVAL2'][cycle,i],
+                              block.field['CRVAL3'][cycle,i]),
+                              radius=beamfwhp/2., 
+                              fc='none', 
+                              ec='k')
+            ax[0].add_patch(cir0)
+            ax[0].text(block.field['CRVAL2'][cycle,i],
+                       block.field['CRVAL3'][cycle,i],
+                       '%d'%i)
+
+            cir1 = plt.Circle((block.ra[cycle,i],
+                              block.dec[cycle,i]),
+                              radius=beamfwhp/2., 
+                              fc="none", 
+                              edgecolor='k')
+            ax[1].add_patch(cir1)
+            ax[1].text(block.ra[cycle,i], 
+                       block.dec[cycle,i],
+                       '%d'%i)
+        ax[0].autoscale_view()
+        ax[0].set_xlabel('Azimuth [deg]')
+        ax[0].set_ylabel('Elevation [deg]')
+
+        ax[0].axis('equal')
+        ax[0].tick_params(length=6, width=1.)
+        ax[0].tick_params(which='minor', length=3, width=1.)
+        
+        ax[1].autoscale_view()
+        ax[1].set_xlabel('RA [deg]')
+        ax[1].set_ylabel('DEC [deg]')
+
+        ax[1].axis('equal')
+        ax[1].tick_params(length=6, width=1.)
+        ax[1].tick_params(which='minor', length=3, width=1.)
+
+        plt.savefig('./png/parkes_test_one_point.png', format='png')
         
 if __name__=="__main__":
     checkfits = CheckFitsFile(rawdatapath[0])
 
     #checkfits.printhead()
     #checkfits.printlabel()
+
     #checkfits.plotfreq()
-    checkfits.plotradec()
-    checkfits.plotelaz()
-    checkfits.plotradec_one()
-    checkfits.plotelaz_one()
+    #checkfits.plotradec()
+    #checkfits.plotelaz()
+    #checkfits.plotradec_one()
+    #checkfits.plotelaz_one()
+
+    checkfits.plotonepoint()
+
 

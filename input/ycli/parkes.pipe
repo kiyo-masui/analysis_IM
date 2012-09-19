@@ -5,19 +5,27 @@ import os
 from core import dir_data
 import scipy as sp
 
-map_centre = (-10.0, -33.0)
+map_centre = (10.0, -33.0)
 ra_centre = 'W'
 # For maps where performace isn't important.
 #map0_shape = (100, 60)
 #map0_spacing = .040
-map0_shape = (128, 32)
-map0_spacing = .2
+
+#map0_shape = (64, 64)
+#map0_spacing = .05
+
+map0_shape = (64, 64)
+map0_spacing = .05
+
+#map0_shape = (128, 32)
+#map0_spacing = .2
+
 #map0_shape = (78, 43)
 #map0_spacing = .0627
 
 # Performance limited maps.
-map_shape = (128, 32)
-map_spacing = .2
+map_shape = (64, 64)
+map_spacing = .05
 
 base_dir_main = os.getenv('GBT_OUT')
 base_dir = os.getenv("YICHAO_WORK_MAP")
@@ -27,18 +35,124 @@ base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
 map_base = base_dir + 'maps/parkes/'
 
-parkes_session = 'sept12/west/'
+#parkes_session = 'sept11/west/'
+#parkesfiles = [] 
+#for file in os.listdir(data_dir + parkes_session):
+#    if file.split('.')[-1] == 'sdfits':
+#        parkesfiles.append(file)
+#outputname = 'parkes_2008_09_11_west_P641'
+#file_middles = tuple(['parkes_2008_09_11_west_P641',])
+#prefix = ''
+#map_prefix = '' + 'parkes_2008_09_11_west_'
+
+#parkes_session = 'sept11/east/'
+#parkesfiles = [] 
+#for file in os.listdir(data_dir + parkes_session):
+#    if file.split('.')[-1] == 'sdfits':
+#        parkesfiles.append(file)
+#outputname = 'parkes_2008_09_11_east_P641'
+#file_middles = tuple(['parkes_2008_09_11_east_P641',])
+#prefix = ''
+#map_prefix = '' + 'parkes_2008_09_11_east_'
+
+#parkes_session = 'sept12/west/'
+#parkesfiles = [] 
+#for file in os.listdir(data_dir + parkes_session):
+#    if file.split('.')[-1] == 'sdfits':
+#        parkesfiles.append(file)
+#outputname = 'parkes_2008_09_12_west_P641'
+#file_middles = tuple(['parkes_2008_09_12_west_P641',])
+#prefix = ''
+#map_prefix = '' + 'parkes_2008_09_12_west_'
+
+#parkes_session = 'sept12/east/'
+#parkesfiles = [] 
+#for file in os.listdir(data_dir + parkes_session):
+#    if file.split('.')[-1] == 'sdfits':
+#        parkesfiles.append(file)
+#outputname = 'parkes_2008_09_12_east_P641'
+#file_middles = tuple(['parkes_2008_09_12_east_P641',])
+#prefix = ''
+#map_prefix = '' + 'parkes_2008_09_12_east_'
+
+#parkes_session = 'sept13/west/'
+#parkesfiles = [] 
+#for file in os.listdir(data_dir + parkes_session):
+#    if file.split('.')[-1] == 'sdfits':
+#        parkesfiles.append(file)
+#outputname = 'parkes_2008_09_13_west_P641'
+#file_middles = tuple([outputname,])
+#prefix = ''
+#map_prefix = '' + 'parkes_2008_09_13_west_'
+
+#parkes_session = 'sept13/east/'
+#parkesfiles = [] 
+#for file in os.listdir(data_dir + parkes_session):
+#    if file.split('.')[-1] == 'sdfits':
+#        parkesfiles.append(file)
+#outputname = 'parkes_2008_09_13_east_P641'
+#file_middles = tuple([outputname,])
+#prefix = ''
+#map_prefix = '' + 'parkes_2008_09_13_east_'
+
+#parkes_session = 'sept13/zenith/'
+#parkesfiles = [] 
+#for file in os.listdir(data_dir + parkes_session):
+#    if file.split('.')[-1] == 'sdfits':
+#        parkesfiles.append(file)
+#outputname = 'parkes_2008_09_13_znth_P641'
+#file_middles = tuple([outputname,])
+#prefix = ''
+#map_prefix = '' + 'parkes_2008_09_13_znth_'
+
+#parkes_session = 'sept14/east/'
+#parkesfiles = [] 
+#for file in os.listdir(data_dir + parkes_session):
+#    if file.split('_')[2] == 'east1' or\
+#       file.split('_')[2] == 'east2' :
+#        continue
+#    if file.split('.')[-1] == 'sdfits':
+#        parkesfiles.append(file)
+#print parkesfiles
+#outputname = 'parkes_2008_09_14_west_P641'
+#file_middles = tuple([outputname,])
+#prefix = ''
+#map_prefix = '' + 'parkes_2008_09_14_west_'
+
+#parkes_session = 'sept14/east/'
+#parkesfiles = [] 
+#for file in os.listdir(data_dir + parkes_session):
+#    if file.split('_')[2] == 'west1' or\
+#       file.split('_')[2] == 'west2' :
+#        continue
+#    if file.split('.')[-1] == 'sdfits':
+#        parkesfiles.append(file)
+#print parkesfiles
+#outputname = 'parkes_2008_09_14_east_P641'
+#file_middles = tuple([outputname,])
+#prefix = ''
+#map_prefix = '' + 'parkes_2008_09_14_east_'
+
+# for combined maps
+parkes_session = ''
 parkesfiles = [] 
-for file in os.listdir(data_dir + parkes_session):
-    if file.split('.')[-1] == 'sdfits':
-        parkesfiles.append(file)
+outputname = ''
+file_middles = tuple([
+                      #'parkes_2008_09_11_west_P641',
+                      #'parkes_2008_09_11_east_P641',
 
-file_middles = tuple(['parkes_2008_09_12_west_P641',])
+                      'parkes_2008_09_12_west_P641',
 
-# IO directory and file prefixes.
+                      #'parkes_2008_09_12_east_P641',
+
+                      #'parkes_2008_09_13_west_P641',
+                      #'parkes_2008_09_13_east_P641',
+                      #'parkes_2008_09_14_west_P641',
+                      #'parkes_2008_09_14_east_P641',
+                      ])
 prefix = ''
-map_prefix = '' + 'parkes_2008_09_12_west_'
-#map_prefix = '' + field + '_' + '41-90' + '_'
+#map_prefix = '' + 'parkes_2008_09_12w-13-14_beam0test'
+map_prefix = '' + 'parkes_2008_09_12w_beam0test'
 
 # Maximum number of processes to use.
 pipe_processes = 12
@@ -77,12 +191,11 @@ pipe_modules = []
 
 #### First Map making interation ####
 
-#from parkes import dirty_map
-#pipe_modules.append(dirty_map.DirtyMapMaker)
+from parkes import dirty_map
+pipe_modules.append(dirty_map.DirtyMapMaker)
 
 from map import clean_map
 pipe_modules.append(clean_map.CleanMapMaker)
-
 
 #### Second Map making iteration ####
 
@@ -116,7 +229,7 @@ pipe_modules.append(clean_map.CleanMapMaker)
 # reformat 
 rfparkes_parkesroot = data_dir + parkes_session
 rfparkes_parkesfile = parkesfiles
-rfparkes_outputname = 'parkes_2008_09_12_west_P641'
+rfparkes_outputname = outputname 
 rfparkes_outputroot = base_dir + 'parkes/'
 
 # flag_data, RFI flagger.
@@ -125,6 +238,7 @@ fd_file_middles = file_middles
 fd_input_end = '.fits'
 fd_output_root = base_dir + 'flagged/' + prefix
 fd_output_end = '.fits'
+fd_time_cut = 10
 fd_scans = ()
 fd_IFs = ()
 
@@ -149,8 +263,8 @@ rb_output_end = '.fits'
 rb_scans = ()
 rb_IFs = ()
 
-rb_n_bins_combined_freq = 4 
-rb_n_bins_combined_time = 2
+rb_n_bins_combined_freq = 16
+rb_n_bins_combined_time = 0 
 
 # band stop
 #bs_input_root = rb_output_root

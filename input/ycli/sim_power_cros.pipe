@@ -26,17 +26,28 @@ map_wgz = os.getenv('MAP_WGZ')
 hour = int(os.getenv('HOUR'))
 mode = int(os.getenv('MODE'))
 
-output_root = WORKROOT+'simulation_cros_%s_%d/'%(map_sim, mode)
 resultf = 'simmaps'
 
 # get the maps dict
 datadb = data_paths.DataPath()
-imaps_a = datadb.fetch(map_sim + "_temperature", silent=True)
+if os.path.exists(map_sim):
+    imaps_a = data_paths.get_mapdict(map_sim, selection='raw')
+    #imaps_a = data_paths.get_mapdict(map_sim, selection='beammeansub')
+    output_root = WORKROOT+'simulation_cros_%s_%d/'%(map_sim.split('/')[-2], mode)
+else:
+    imaps_a = datadb.fetch(map_sim + "_temperature", silent=True)
+    output_root = WORKROOT+'simulation_cros_%s_%d/'%(map_sim, mode)
+
 if os.path.exists(map_cln):
     nmaps_a = data_paths.get_mapdict(map_cln + 'mapmode_map/')
 else:
     nmaps_a = datadb.fetch(map_cln + '_combined', silent=True)
-imaps_b = datadb.fetch(map_sim + "_delta", silent=True)
+
+if os.path.exists(map_sim):
+    imaps_b = data_paths.get_mapdict(map_sim, selection='delta')
+else:
+    imaps_b = datadb.fetch(map_sim + "_delta", silent=True)
+
 #nmaps_b = datadb.fetch(map_wgz + "_montecarlo", silent=True)
 nmaps_b = datadb.fetch(map_wgz + "_selection", silent=True)
 

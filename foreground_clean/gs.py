@@ -40,6 +40,8 @@ def gs(v, legendre_order=None, weight=None):
         legendre_order=vn
     x = np.linspace(-1, 1, v.shape[1])
     u = leg(legendre_order, x)
+    if vn == 1:
+        v[0] = leg(0, x)
     if  weight!=None:
         u = u*weight
     for i in range(vn):

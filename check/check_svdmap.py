@@ -32,22 +32,27 @@ from mkpower import functions
 #                          physical=False)
 
 
-#maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/IQV_legendre_modes_0gwj/IxI5svd/"
-#maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/IQV_legendre_modes_0gwj/IQUmap_clean_withIxIsvd/"
-maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/IQV_legendre_modes_0gwj/IQUmap_clean_themselves/"
-mapfile = "sec_U_modes_clean_map_I_with_I_5modes.npy"
+#maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/IQU_legendre_modes_0gwj/IxI5svd/"
+#maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/IQU_legendre_modes_0gwj/IQUmap_clean_withIxIsvd/"
+#maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/IQU_legendre_modes_0gwj/IQUmap_clean_themselves/"
+#mapfile = "sec_U_modes_clean_map_I_with_I_5modes.npy"
+
+#maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/IQU_legendre_modes_1gwj/IxI5svd/"
+maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/Parkes_sept12-14_west_legendre_modes_0gwj/mapmode_map/"
+mapfile = "sec_I_modes_clean_map_I_with_I_5modes.npy"
 
 map = algebra.load(maproot + mapfile)
 map = algebra.make_vect(map)
 print map.shape
 
 for i in range(map.shape[0]):
-    plt.figure(figsize=(8, 4))
+    #plt.figure(figsize=(8, 4))
+    plt.figure(figsize=(34, 8))
     plt.imshow(map[i].swapaxes(0,1), interpolation='nearest', origin='lower')
     #plt.imshow(map[mapidex].swapaxes(0,1))
     plt.colorbar()
     
     pngname = mapfile.replace(mapfile.split('_')[-1], '%dmodes')
     pngname = './png/' + pngname + '.png'
-    plt.savefig(pngname % (i+4), format='png')
+    plt.savefig(pngname % (i), format='png')
     

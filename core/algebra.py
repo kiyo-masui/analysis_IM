@@ -66,7 +66,8 @@ import numpy as np
 import numpy.lib.format as npfor
 from numpy.lib.utils import safe_eval
 
-import utils.cubic_conv_interpolation as cci
+#import utils.cubic_conv_interpolation as cci
+#from utils import cubic_conv_interpolation as cci
 
 # TODO:
 # when submitted as batch on Sunnyvale, the PYTHONPATH seems to get clobbered
@@ -782,6 +783,7 @@ class alg_object(object) :
                     raise ce.DataError(message)
                 points[0, ii] = round(index)
         elif kind == 'cubic':
+            import utils.cubic_conv_interpolation as cci
             # Make sure the given point is an array.
             pnt = sp.array(coord)
             # Get the array containing the first value in each dimension.
