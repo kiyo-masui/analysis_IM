@@ -7,17 +7,17 @@ from core import dir_data
 import scipy as sp
 
 # Here you choose which files to process.
-field = '1hr'
-#field = '15hr'
+#field = '1hr'
+field = '15hr'
 #dm_field_centre = (218.25, 2.0) 
 #Here I'm grabbing the guppi data
 #file_middles = tuple(dir_data.get_data_files(range(17,19),field='1hr',project='GBT11B_055', type='ralongmap'))
 #file_middles = ('GBT12A_418/02_wigglez11hr_centre_ralongmap_101',)
 #file_middles = tuple(dir_data.get_data_files(range(01,03), field='11hr', project='GBT12A_418', type = 'ralongmap'))
-#file_middles = tuple(dir_data.get_data_files(range(41,57), field='15hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(58,90), field='15hr', project='GBT10B_036', type='ralongmap')) # some kind of corruption in session 57. - overall uncertainty 52-58 
+file_middles = tuple(dir_data.get_data_files(range(41,57), field='15hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(58,80), field='15hr', project='GBT10B_036', type='ralongmap')) # some kind of corruption in session 57. - overall uncertainty 52-58 
 #file_middles = tuple(dir_data.get_data_files(range(41,90), field='22hr', project='GBT10B_036', type='ralongmap')) 
 #file_middles = tuple(dir_data.get_data_files(range(15,17), field='1hr', project='GBT11B_055', type='ralongmap'))
-file_middles = tuple(dir_data.get_data_files(range(41,90), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(0,14), field='1hr', project='GBT11B_055',type='ralongmap')+dir_data.get_data_files(range(15,19), field='1hr', project='GBT11B_055', type='ralongmap'))
+#file_middles = tuple(dir_data.get_data_files(range(41,90), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(0,14), field='1hr', project='GBT11B_055',type='ralongmap')+dir_data.get_data_files(range(15,19), field='1hr', project='GBT11B_055', type='ralongmap'))
 
 #file_middles = tuple(dir_data.get_data_files(range(8,9), field='1hr', project='GBT11B_055', type='ralongmap'))
 
@@ -39,7 +39,7 @@ data_dir = os.getenv('GBT_DATA')
 #raw_data_dir = os.getenv('GBT10B_DATA')
 kiyo_dir = os.getenv('GBT10B_KM')
 prefix = ''
-map_prefix = '' + field +'_41-18_fdgp_'
+map_prefix = '' + field +'_41-80_avg_fdgp_'
 IFs = ()
 
 
@@ -91,8 +91,8 @@ rf_channel_width = 0.
 rf_n_bins_combined = 16
 rf_mean_instead_median = False
 
-from time_stream import flux_diff_gain_cal
-pipe_modules.append(flux_diff_gain_cal.Calibrate)
+#from time_stream import flux_diff_gain_cal
+#pipe_modules.append(flux_diff_gain_cal.Calibrate)
 #fgc_input_root = base_dir+'rebinned/'
 fgc_input_root = rf_output_root
 fgc_file_middles = file_middles
@@ -106,7 +106,7 @@ fgc_IFs = ()
 
 #fgc_mueler_file = base_dir + 'diff_gain_params/'
 #fgc_mueler_file = ''
-fgc_mueler_file = base_dir + 'diff_gain_params/1hr_fdg_calc_avg.txt'
+fgc_mueler_file = base_dir + 'diff_gain_params/15hr_fdg_calc_avg.txt'
 fgc_RM_file = base_dir +'RM_tables/'
 fgc_R_to_sky = True
 fgc_DP_correct = True
@@ -215,8 +215,8 @@ sf_thres = 5.0
 sf_subtracted_input_root = sm_output_root
 sf_subtracted_output_root = base_dir + 'reflag_sub/'
 
-#from noise import measure_noise
-#pipe_modules.append(measure_noise.Measure)
+from noise import measure_noise
+pipe_modules.append(measure_noise.Measure)
 mn_input_root = sf_subtracted_input_root
 mn_file_middles = file_middles
 mn_input_end = '.fits'
@@ -226,64 +226,64 @@ mn_model = "scan_var"
 
 #### Make sub map A ####
 
-#from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
 dmA_file_middles = middles_a
 dmA_input_root = sf_output_root
 dmA_output_root = base_dir + 'maps/' + "sec_A_" + map_prefix
 
 dmA_noise_parameters_input_root = mn_output_root
 
-#from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
 cmA_input_root = dmA_output_root
 cmA_output_root = dmA_output_root
 cmA_save_noise_diag = True
 
 #### Make sub map B ####
 
-#from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
 dmB_file_middles = middles_b
 dmB_input_root = sf_output_root
 dmB_output_root = base_dir + 'maps/' + "sec_B_" + map_prefix
 
 dmB_noise_parameters_input_root = mn_output_root
 
-#from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
 cmB_input_root = dmB_output_root
 cmB_output_root = dmB_output_root
 cmB_save_noise_diag = True
 
 #### Make sub map C ####
 
-#from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
 dmC_file_middles = middles_c
 dmC_input_root = sf_output_root
 dmC_output_root = base_dir + 'maps/' + "sec_C_" + map_prefix
 
 dmC_noise_parameters_input_root = mn_output_root
 
-#from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
 cmC_input_root = dmC_output_root
 cmC_output_root = dmC_output_root
 cmC_save_noise_diag = True
 
 #### Make sub map D ####
 
-#from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 dmD_file_middles = middles_d
 dmD_input_root = sf_output_root
 dmD_output_root = base_dir + 'maps/' + "sec_D_" + map_prefix
 
 dmD_noise_parameters_input_root = mn_output_root
 
-#from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
 cmD_input_root = dmD_output_root
 cmD_output_root = dmD_output_root
 cmD_save_noise_diag = True
