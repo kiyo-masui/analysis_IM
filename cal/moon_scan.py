@@ -9,6 +9,7 @@ from time_stream import combine_cal
 import pickle
 import utils.misc as utils
 import matplotlib.pyplot as plt
+import h5py
 """This is some quick code analyze moon scan data"""
 
 def load_moonscan(filename):
@@ -25,10 +26,22 @@ def load_moonscan(filename):
     moon_dataobj = Reader.read(0,0)
 
     rotate_pol.rotate(moon_dataobj, (-5, -7, -8, -6))
-    cal_scale.scale_by_cal(moon_dataobj, True, False, False, False, True)
+    cal_scale.scale_by_cal(moon_dataobj, scale_t_ave=True, scale_f_ave=False,
+                           sub_med=False, scale_f_ave_mod=False, rotate=True)
     flag_data.flag_data(moon_dataobj, 5, 0.1, 40)
     rebin_freq.rebin(moon_dataobj, 16, True, True)
     #rebin_time.rebin(moon_dataobj, 4)
+
+    fgc_mueler_file = '/mnt/raid-project/gmrt/tcv/diff_gain_params/GBT12A_418/22_diff_gain_calc.txt'
+    fgc_RM_file = ' '
+    fgc_R_to_sky = True
+    fgc_DP_correct = False  # this is already handled in scale_by_cal's rotate
+    fgc_RM_correct = False
+
+    from time_stream import flux_diff_gain_cal as fdg
+    m_total = fdg.flux_dg(fgc_mueler_file)
+    fdg.calibrate_pol(moon_dataobj, m_total, fgc_RM_file,
+                      fgc_R_to_sky, fgc_DP_correct, fgc_RM_correct)
 
     return moon_dataobj
 
@@ -147,6 +160,42 @@ def process_moon(filename, outfile):
     process_moonscan(moon_data, outfile)
 
 
+def rotate_single(pol_vec, rotation):
+    r"""Explicitly write out the transformation"""
+    coherency = np.zeros((2,2), dtype=complex)
+
+    #pol_vecout = np.zeros(4, dtype=complex)
+    pol_vecout = np.zeros(4)
+
+    stokes_i = 0.5 * (pol_vec[0] + pol_vec[3])
+    stokes_q = 0.5 * (pol_vec[0] - pol_vec[3])
+    stokes_u = pol_vec[1]
+    stokes_v = pol_vec[2]
+
+    coherency[0, 0] = stokes_i + stokes_q
+    coherency[1, 0] = stokes_u + stokes_v * 1.j
+    coherency[0, 1] = stokes_u - stokes_v * 1.j
+    coherency[1, 1] = stokes_i - stokes_q
+
+    coherency = np.dot(rotation, np.dot(coherency, rotation.T.conj()))
+
+    pol_vecout[0] = coherency[0, 0]
+    pol_vecout[1] = 0.5 * (coherency[1, 0] + coherency[0, 1])
+    pol_vecout[2] = 0.5 * (coherency[1, 0] - coherency[0, 1]) * -1.j
+    pol_vecout[3] = coherency[1, 1]
+
+    return pol_vecout
+
+
+def convert_to_matrix(rotation):
+    r"""convert a jones matrix to a 4x4 rotation on the observed pols"""
+    print "this!!!!!!"
+    print rotate_single(np.array([1., 0., 0., 0.]), rotation)
+    print rotate_single(np.array([0., 1., 0., 0.]), rotation)
+    print rotate_single(np.array([0., 0., 1., 0.]), rotation)
+    print rotate_single(np.array([0., 0., 0., 1.]), rotation)
+
+
 def find_obsvec(coherency, alternate=True):
     obsvec = np.zeros((coherency.shape[0], 4))
 
@@ -169,6 +218,7 @@ def find_coherency(filename, alternate=False):
     data = np.genfromtxt(fp, names=["freq", "XX", "XY", "YX", "YY", \
                                               "XXu", "XYu", "YXu", "YYu", \
                                               "XXd", "XYd", "YXd", "YYd"])
+    print data.dtype.names
     fp.close()
 
     coherency = np.zeros((data["freq"].shape[0], 2, 2), dtype=complex)
@@ -225,6 +275,8 @@ def verify_moon(filename1, filename2, outfile, normalize=True):
         print jones_inv[idx, :, :]
         print np.dot(jones_inv[idx, :, :], np.dot(coherency1[idx, :, :],
                      jones_inv[idx, :, :].T.conj()))
+        print convert_to_matrix(jones_inv[idx, :, :])
+        print "-"*80
         coherency2out[idx, :, :] = np.dot(jones_inv[idx, :, :],
                                           np.dot(coherency2[idx, :, :],
                                           jones_inv[idx, :, :].T.conj()))
@@ -259,4 +311,12 @@ def batch_moon(generate_fluxes=False):
 
     verify_moon(fluxfile1, fluxfile2, "recovered.dat")
 
+
+def generate_rotation(filename):
+    summaryfile = h5py.File(filename, "w")
+    rotation_array = np.zeros((4, 4, 256))
+    summaryfile['moon_scan1'] = rotation_array
+    summaryfile.close()
+
 batch_moon()
+#generate_rotation("moon_rotation.hd5")

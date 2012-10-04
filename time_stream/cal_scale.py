@@ -39,12 +39,12 @@ def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False,
                  scale_f_ave_mod=False, rotate=False) :
     """Puts all data in units of the cal temperature.
     
-    Data is put into units of the cal temperature, thus removing dependance on
-    the gain.  This can be done by deviding by the time average of the cal
-    (scale_t_ave=True, Default) thus removing dependance on the frequency
+    Data is put into units of the cal temperature, thus removing dependence on
+    the gain.  This can be done by dividing by the time average of the cal
+    (scale_t_ave=True, Default) thus removing dependence on the frequency-
     dependant gain.  Alternatively, you can scale by the frequency average to
-    remove the time dependant gain (scale_f_ave=True). Data is then in units of 
-    the frequency averaged cal temperture. You can also do both (reccomended).
+    remove the time-dependent gain (scale_f_ave=True). Data is then in units of
+    the frequency averaged cal temperture. You can also do both (recommended).
     After some scaling the data ends up in units of the cal temperture as a
     funciton of frequency.
 
