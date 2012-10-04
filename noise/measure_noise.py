@@ -19,7 +19,7 @@ import utils.misc
 from map.constants import T_infinity, T_small
 
 # XXX
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 
 params_init = {

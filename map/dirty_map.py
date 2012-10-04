@@ -218,6 +218,8 @@ class DirtyMapMaker(object):
                                 + utils.polint2str(pol)
                                 + "_" + str(int(round((band_centre/1e6))))
                                 + '.npy')
+                self.map_filename = map_filename
+                self.cov_filename = cov_filename
                 # Initialization of the outputs.
                 map = sp.zeros(map_shape, dtype=float)
                 map = al.make_vect(map, axis_names=('freq', 'ra', 'dec'))
@@ -307,6 +309,7 @@ class DirtyMapMaker(object):
                        % (start_file_ind, start_file_ind + n_files_group,
                           n_files))
             # Initialize lists for the data and the noise.
+            time_stream_list = []
             data_set_list = []
             # Loop an iterator that reads and preprocesses the data.
             # This loop can't be threaded without a lot of restructuring,
@@ -315,7 +318,7 @@ class DirtyMapMaker(object):
             for this_Data, middle in self.iterate_data(this_file_middles):
                 try:
                     this_DataSet = DataSet(params, this_Data, map, 
-                                       self.n_chan, self.pols, 
+                                       self.n_chan, self.delta_freq, self.pols,
                                        self.pol_ind, self.band_centres,
                                        self.band_ind, middle)
                 except DataSetError:
@@ -324,20 +327,80 @@ class DirtyMapMaker(object):
                 # one.
                 if this_DataSet.pol_val != pol_val:
                     raise RuntimeError("Data polarizations not consistant.")
+                # Making the Noise and adding the mask is done in the
+                # constructor for DataSet.
+                #
+                # The thermal part.
+                thermal_noise = this_DataSet.get_noise_parameter("thermal")
+                try:
+                    this_DataSet.Noise.add_thermal(thermal_noise)
+                except NoiseError:
+                    continue
                 # Get the noise parameter database for this data.
                 if params['noise_parameter_file']:
 #                    noise_entry = (self.noise_params[middle]
                     noise_entry = (this_DataSet.noise_params[middle]
-                        [int(round(band_centre/1e6))][pol])
+                        [int(round(band_centre/1e6))][pol_val])
+                    # Should save this into the Data_Set so it doesn't have
+                    # to be kept again there.
                 else:
                     noise_entry = None
-                # From input parameters decide what the noise model should be.
-                if params['frequency_correlations'] == 'None':
-                    model = 'thermal_only'
-                # TODO Other options.
-                this_DataSet.setup_noise_from_model(model,
-                        params['deweight_time_mean'],
-                        params['deweight_time_slope'], noise_entry)
+
+                # Frequency correlations.
+                if params['frequency_correlations'] == 'mean':
+                    mean_overf = this_DataSet.get_noise_parameter("mean_over_f")
+                    this_DataSet.Noise.add_correlated_over_f(*mean_overf)
+                elif params['frequency_correlations'] == 'measured':
+                    # Correlated channel mode noise.
+                    # The first frequency modes are completly deweighted. This
+                    # was seen to be nessisary from looking at the noise
+                    # spectra.
+                    n_modes_discard = params['number_frequency_modes_discard']
+                    try:
+                        for ii in range(n_modes_discard):
+                            mode_noise_params = this_DataSet.get_noise_parameter(
+                                    "over_f_mode_" + repr(ii))
+                            # Instead of completly discarding, multiply 
+                            # amplitude by 2.
+                            #N.deweight_freq_mode(mode_noise_params[4])
+                            mode_noise_params = ((mode_noise_params[0] * 2,)
+                                                 + mode_noise_params[1:])
+                            this_DataSet.Noise.add_over_f_freq_mode(*mode_noise_params)
+                        # The remaining frequency modes are noise weighed
+                        # normally.
+                        n_modes = params['number_frequency_modes']
+                        for ii in range(n_modes_discard, n_modes):
+                            mode_noise_params = this_DataSet.get_noise_parameter(
+                                "over_f_mode_" + repr(ii))
+                            this_DataSet.Noise.add_over_f_freq_mode(*mode_noise_params)
+                        # All channel low frequency noise.
+                        all_chan_noise_params = this_DataSet.get_noise_parameter(
+                                'all_channel')
+                        # In some cases the corner frequncy will be so high that
+                        # this scan will contain no information.
+                        this_DataSet.Noise.add_all_chan_low(*all_chan_noise_params)
+                    except NoiseError:
+                        if self.feedback > 1:
+                            print ("Noise parameters risk numerical"
+                                   " instability. Data skipped.")
+                        continue
+                elif params['frequency_correlations'] == 'None':
+                    pass
+                else:
+                    raise ValueError("Invalid frequency correlations.")
+
+
+#                # From input parameters decide what the noise model should be.
+#                if params['frequency_correlations'] == 'None':
+#                    model = 'thermal_only'
+#                else:
+#                    # This must be set to something so code doesn't say
+#                    # it doesn't exist.
+#                    model = None
+#                # TODO Other options.
+#                this_DataSet.setup_noise_from_model(model,
+#                        params['deweight_time_mean'],
+#                        params['deweight_time_slope'], noise_entry)
                 # Set the time stream foregrounds for this data.
                 if (params['ts_foreground_mode_file']
                     and params['n_ts_foreground_modes']) :
@@ -350,13 +413,15 @@ class DirtyMapMaker(object):
                     this_DataSet.setup_ts_foregrounds(
                         params['n_ts_foreground_modes'], 
                         ts_foregrounds_entry)
+                # No need for time_stream_list since data in DataSet. 
+                #time_stream_list.append(this_DataSet.time_stream)
                 data_set_list.append(this_DataSet)
             # Finalize the noises. Each process has a subset of the total
             # noises, so no threading, just a loop.
             if self.feedback > 1:
                 print "Finalizing %d noise blocks: " % len(data_set_list)
             for a_DataSet in data_set_list:
-                a_DataSet.finalize(frequency_correlations=
+                a_DataSet.Noise.finalize(frequency_correlations=
                                        not self.uncorrelated_channels,
                                    preserve_matrices=False)
                 if self.feedback > 1:
@@ -381,6 +446,7 @@ class DirtyMapMaker(object):
                 self.next_guy = self.nproc - 1
             else:
                 self.next_guy = self.rank - 1
+
             # Each process will handle an equal subset of indices of
             # the cov_inv to fill.
             # This does not have to be rediscovered for every DataSet list
@@ -390,14 +456,14 @@ class DirtyMapMaker(object):
                 # Using self.rank after gets the info for
                 # the approproate process.
                 # 'junk' for now.
-                index_list,junk = split_elems(chan_index_list,nprocs)
+                index_list,junk = split_elems(chan_index_list,self.nproc)
                 index_list = index_list[self.rank]
             else:
                 ra_index_list = range(self.n_ra)
                 # cross product = A x B = (a,b) for all a in A, for all b in B
                 chan_ra_index_list = cross([chan_index_list,ra_index_list])
                 index_list,start_list = split_elems(chan_ra_index_list,
-                                                                nprocs)
+                                                             self.nproc)
                 index_list = index_list[self.rank]
                 # This is the point in n_chan x n_ra that the first index
                 # is at. This is needed for knowing which part of the
@@ -406,7 +472,20 @@ class DirtyMapMaker(object):
             # Since the DataSets are split evenly over the processes,
             # have to put in the pointing/noise at each index for
             # each DataSet list that the processes hold.
-            for run in range(self.size):
+            for run in range(self.nproc):
+                # Each DataSet has to be applied to the dirty map, too.
+                # Since the dirty map is much smaller than the noise,
+                # We will just let processor 0 do all the work
+                # for the dirty map.
+                # Must be done here to not pass the DataSets around twice.
+                if self.rank == 0:
+                    for ii in xrange(len(data_set_list)):
+                        #time_stream = time_stream_list[ii]
+                        time_stream = data_set_list[ii].time_stream
+                        N = data_set_list[ii].Noise
+                        P = data_set_list[ii].Pointing
+                        w_time_stream = N.weight_time_stream(time_stream)
+                        map += P.apply_to_time_axis(w_time_stream)
                 if self.uncorrelated_channels:
                     # No actual threading going on.
                     for thread_f_ind in index_list:
@@ -415,7 +494,7 @@ class DirtyMapMaker(object):
                         for thread_D in data_set_list:
                             thread_D.Pointing.noise_channel_to_map(
                                   thread_D.Noise, f_ind, thread_cov_inv_block)
-                        if start_file_ind = 0:
+                        if start_file_ind == 0:
                             # The first time through the matrix. We 'zero'
                             # everything by just assigning a value instead of
                             # setting to zero then += value.
@@ -449,8 +528,8 @@ class DirtyMapMaker(object):
                         for thread_D in data_set_list:
                             thread_D.Pointing.noise_to_map_domain(
                                              thread_D.Noise, thread_f_ind,
-                                             thread_ra_ind, thread_ind_cov_row)
-                        if start_file_ind = 0:
+                                             thread_ra_ind, thread_cov_inv_row)
+                        if start_file_ind == 0:
                             #cov_inv[thread_f_ind,thread_ra_ind,...] = \
                             #                          thread_cov_inv_row
                             thread_cov_inv_chunk[ii,...] = \
@@ -476,11 +555,15 @@ class DirtyMapMaker(object):
                 # Note: No need to pass anything the last time since
                 #       that data was the process' original data and
                 #       has already been processed.
-                if (run != (self.size - 1)):
+                if (run != (self.nproc - 1)):
                     # Send out the DataSet list I have to next guy.
                     comm.send(data_set_list,dest=self.next_guy)
                     # Receive the DataSet list being sent to me by prev guy.
                     data_set_list = comm.recv(source=self.prev_guy)
+                    ## Same for time_stream_list.
+                    #comm.send(time_stream_list,dest=self.next_guy)
+                    #time_stream_list = comm.recv(source=self.prev_guy)
+
                     # Processes will be relatively in sync here since they
                     # will block on read until the "previous" process
                     # sends over its data.
@@ -492,9 +575,12 @@ class DirtyMapMaker(object):
                 total_shape = (self.n_chan*self.n_ra, self.n_dec,
                                self.n_chan, self.n_ra, self.n_dec)
                 start_ind = (f_ra_start_ind,0,0,0,0)
-                dtype = thread_cov_inv_chunk.dtype
+                # NOTE: using 'float' is not supprted in the saving because
+                # it has to know if it is 32 or 64 bits.
+                #dtype = thread_cov_inv_chunk.dtype
+                dtype = np.float64 # default for now
                 # Save array.
-                mpi_writearray(self.cov_filename, thread_cov_inv_chunk,
+                mpi_writearray('mpi_'+self.cov_filename, thread_cov_inv_chunk,
                                comm, total_shape, start_ind, dtype,
                                order='C', displacement=0)
     
@@ -775,6 +861,7 @@ class DirtyMapMaker(object):
         # setting a prior that all pixels are 0 += T_large. This does
         # bias the map maker slightly, but really shouldn't matter.
         if self.uncorrelated_channels:
+            pass
             #cov_view = cov_inv.view()
             #cov_view.shape = (self.n_chan, (self.n_ra * self.n_dec)**2)
             #cov_view[:,::self.n_ra * self.n_dec + 1] += 1.0 / T_large**2
@@ -792,10 +879,11 @@ class DataSet(object):
     """Contains all the information about a data set, including noise, pointing
     and data."""
 
-    def __init__(self, params, Blocks, map, n_chan, pols, pol_ind,
+    def __init__(self, params, Blocks, map, n_chan, delta_freq, pols, pol_ind,
                        band_centres, band_ind, file_middle):
         self.params = params
         self.freq = map.get_axis('freq')
+        self.delta_freq = delta_freq
         self.n_chan = n_chan
         self.pols = pols
         self.pol_ind = pol_ind
@@ -804,13 +892,14 @@ class DataSet(object):
         self.file_middle = file_middle
         data = self.preprocess_data(Blocks, map)
         self.time_stream, ra, dec, az, el, time, mask_inds = data
-        n_time = time_stream.shape[1]
+        n_time = self.time_stream.shape[1]
         if n_time < 5:
             raise DataSetError("Not enough data on map.")
         self.Pointing = Pointing(("ra", "dec"), (ra, dec), map,
                      params['interpolation'])
         # Now build up our noise model for this piece of data.
-        self.Noise = Noise(time_stream, time)
+        self.Noise = Noise(self.time_stream, time)
+        self.Noise.add_mask(mask_inds)
 
     def preprocess_data(self, Blocks, map):
         """The method converts data to a mapmaker friendly format."""
@@ -827,9 +916,9 @@ class DataSet(object):
                 raise ValueError("Frequency axis of Data Block does not"
                                  " match.")
             if first_block:
-                self.pol_val = Data.field('CRVAL4')[pol_ind]
+                self.pol_val = Data.field['CRVAL4'][pol_ind]
                 first_block = False
-            elif self.pol_val != Data.field('CRVAL4')[pol_ind]:
+            elif self.pol_val != Data.field['CRVAL4'][pol_ind]:
                 raise ValueError("Polarization of Data Block inconsistant.")
         # Allocate memory for the outputs.
         time_stream = sp.empty((self.n_chan, nt), dtype=float)
@@ -908,7 +997,7 @@ class DataSet(object):
         return time_stream, ra, dec, az, el, time, mask_inds
     
     def setup_noise_from_model(self, model, deweight_time_mean,
-                             deweight_time_slope):
+                             deweight_time_slope,noise_entry):
         pass
 
     def setup_ts_foregrounds(self, n_modes, foregrounds_entry):
@@ -917,8 +1006,9 @@ class DataSet(object):
     # XXX These cut and pasted from DirtyMap.  Must be rewritten.
     def get_noise_parameter(self, parameter_name):
         """Reads a desired noise parameter for the current data."""
-        
-        if not self.params['noise_parameter_file']:
+
+        params = self.params        
+        if not params['noise_parameter_file']:
             # If there is no data base file we can use the measured variance as
             # thermal.
             if parameter_name == "thermal":
@@ -940,7 +1030,7 @@ class DataSet(object):
             # of 2 deals with negitive frequencies).
             BW = self.BW
             # Choose the noise model and get the corresponding parameters.
-            noise_model = self.params["frequency_correlations"]
+            noise_model = params["frequency_correlations"]
             if noise_model == "None":
                 if parameter_name == "thermal":
                     if noise_entry.has_key("channel_var"):
@@ -957,7 +1047,7 @@ class DataSet(object):
                     return over_f_params
             elif noise_model == "measured":
                 noise_entry = noise_entry["freq_modes_over_f_"
-                                + repr(self.params['number_frequency_modes'])]
+                                + repr(params['number_frequency_modes'])]
                 if parameter_name == "thermal":
                     thermal = noise_entry["thermal"] * BW * 2
                     # Min is factor of 2 smaller than theoredical (since some
@@ -968,14 +1058,14 @@ class DataSet(object):
                 elif parameter_name[:12] == "over_f_mode_":
                     p = noise_entry[parameter_name]
                     # Factors of the band width applied in Noise object.
-                    orthog = self.params['deweight_time_slope']
+                    orthog = params['deweight_time_slope']
                     return (p["amplitude"], p['index'], p['f_0'], p['thermal'],
                             p['mode'], orthog)
                 elif parameter_name == "all_channel":
                     # When specifying as a cross over, thermal is the
                     # amplitude.
                     thermal = sp.copy(noise_entry["thermal"])
-                    thermal_min = pointsabs(T_sys**2 / self.delta_freq / 2.)
+                    thermal_min = abs(T_sys**2 / self.delta_freq / 2.)
                     thermal[thermal < thermal_min] = thermal_min
                     p = (thermal,)
                     p += (noise_entry["all_channel_index"],)
@@ -2168,7 +2258,11 @@ def scaled_inv(mat):
 
 def split_elems(points, num_splits):
     '''Split a list of arbitrary type elements, points, into num_splits sets.
-    Also, returns a list of the index that each set starts at.'''
+    Also, returns a list of the index that each set starts at.
+    Only tested with 'points' being:
+    list of str
+    list of int
+    list of (tuple of int)'''
 
     size = len(points)
     start_list = []
@@ -2188,10 +2282,13 @@ def split_elems(points, num_splits):
         if i < modmod:
             end += 1
         for j in range(start,end):
-            try:
-                big_list[i].append(tuple(points[j]))
-            except TypeError:
+            if type(points[j]) == str:
                 big_list[i].append(points[j])
+            else:
+                try:
+                    big_list[i].append(tuple(points[j]))
+                except TypeError:
+                    big_list[i].append(points[j])
         start_list.append(start)
         start = end
         end += divdiv
@@ -2281,8 +2378,10 @@ def mpi_writearray(fname, local_array, comm, total_shape, start_ind, dtype,
         raise Exception("Local array size is not consistent with array description.")
 
     # Open the file, and read out the segments. MODE_RDWR - read/write.
-    f = MPI.File.Open(comm, fname, MPI.MODE_WRONLY | MPI.MODE_CREATE)
-
+    #f = MPI.File.Open(comm, fname, MPI.MODE_WRONLY | MPI.MODE_CREATE)
+    f = MPI.File.Open(comm, fname, MPI.MODE_CREATE)
+    f.Close()
+    f = MPI.File.Open(comm, fname, MPI.MODE_WRONLY)
     # Set view and write out.
     #Set_view(self, Offset disp=0, Datatype etype=None, 
     #         Datatype filetype=None, datarep=None, Info info=INFO_NULL)
