@@ -1,0 +1,20 @@
+#!/bin/bash
+
+for entry in `cat data_pwr_variants.txt | sed -e "s/ /#/g"`;
+do
+    IFS='#' read -ra ADDR <<< "$entry"
+    echo ${ADDR[0]} ${ADDR[1]} ${ADDR[2]}
+    PLT=`echo ${ADDR[0]} : ${ADDR[2]} | sed -e "s/_/ /g"`
+
+    sed -e "s/VARIANT/${ADDR[0]}/g" -e "s/ALTTAG/${ADDR[2]}/g" -e "s/SIMKEY/${ADDR[1]}/g" -e "s/TITLE/$PLT/g" data_pwr_variants.gpl | gnuplot
+done
+
+echo "now starting the cross-power"
+
+for entry in `cat data_pwr_variants_wigglez.txt | sed -e "s/ /#/g"`;
+do
+    IFS='#' read -ra ADDR <<< "$entry"
+    echo ${ADDR[0]} ${ADDR[1]} ${ADDR[2]}
+    PLT=`echo ${ADDR[0]} : ${ADDR[2]} | sed -e "s/_/ /g"`
+    sed -e "s/VARIANT/${ADDR[0]}/g" -e "s/ALTTAG/${ADDR[2]}/g" -e "s/SIMKEY/${ADDR[1]}/g" -e "s/TITLE/$PLT/g" data_pwr_variants_wigglez.gpl | gnuplot
+done

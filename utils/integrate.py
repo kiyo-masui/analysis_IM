@@ -1,6 +1,3 @@
-import _chebyshev
-import _patterson
-import _romberg
 
 def chebyshev(f, a, b, epsrel = 1e-6, epsabs = 1e-16, args =(), vectorized = True, fulloutput = False):
     """Integrate using a Chebyshev scheme.
@@ -31,6 +28,7 @@ def chebyshev(f, a, b, epsrel = 1e-6, epsabs = 1e-16, args =(), vectorized = Tru
         Number of integrand evaluations (only returned if
         `fulloutput`).
     """
+    import _chebyshev
 
     if vectorized:
         r = _chebyshev.chebyshev_vec(f, a, b, epsrel=epsrel, epsabs=epsabs, args=args)
@@ -71,6 +69,7 @@ def patterson(f, a, b, epsrel = 1e-6, epsabs = 1e-16, args =(), fulloutput = Fal
         Number of integrand evaluations (only returned if
         `fulloutput`).
     """
+    import _patterson
 
     r = _patterson.Integrate_Patterson(f, a, b, eps=epsrel, abs=epsabs, args=args)
     
@@ -103,6 +102,7 @@ def romberg(f, a, b, epsrel = 1e-6, epsabs = 1e-16, args =()):
     i : scalar
         Result of integration.
     """
+    import _romberg
 
     if args:
         f = lambda x: f(x, *args)
