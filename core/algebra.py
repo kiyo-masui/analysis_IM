@@ -2090,3 +2090,150 @@ def compressed_array_summary(array, name, axes=[1, 2], extras=False):
         print min_nu.flatten()
         print max_nu.flatten()
     print ""
+
+
+def cartesian(arrays, out=None):
+    """
+    SO: using-numpy-to-build-an-array-of-all-combinations-of-two-arrays
+    Generate a cartesian product of input arrays. ~5x faster than itertools
+
+    Parameters
+    ----------
+    arrays : list of array-like
+        1-D arrays to form the cartesian product of.
+    out : ndarray
+        Array to place the cartesian product in.
+
+    Returns
+    -------
+    out : ndarray
+        2-D array of shape (M, len(arrays)) containing cartesian products
+        formed of input arrays.
+
+    Examples
+    --------
+    >>> cartesian(([1, 2, 3], [4, 5], [6, 7]))
+    array([[1, 4, 6],
+           [1, 4, 7],
+           [1, 5, 6],
+           [1, 5, 7],
+           [2, 4, 6],
+           [2, 4, 7],
+           [2, 5, 6],
+           [2, 5, 7],
+           [3, 4, 6],
+           [3, 4, 7],
+           [3, 5, 6],
+           [3, 5, 7]])
+
+    """
+
+    arrays = [np.asarray(x) for x in arrays]
+    dtype = arrays[0].dtype
+
+    n = np.prod([x.size for x in arrays])
+    if out is None:
+        out = np.zeros([n, len(arrays)], dtype=dtype)
+
+    m = n / arrays[0].size
+    out[:, 0] = np.repeat(arrays[0], m)
+    if arrays[1:]:
+        cartesian(arrays[1: ], out=out[0: m, 1: ])
+        for j in xrange(1, arrays[0].size):
+            out[j * m: (j + 1) * m, 1: ] = out[0: m, 1: ]
+
+    return out
+
+
+def roll_zeropad(a, shift, axis=None):
+    """
+    SO: python-numpy-roll-with-padding
+    Roll array elements along a given axis.
+
+    Elements off the end of the array are treated as zeros.
+
+    Parameters
+    ----------
+    a : array_like
+        Input array.
+    shift : int
+        The number of places by which elements are shifted.
+    axis : int, optional
+        The axis along which elements are shifted.  By default, the array
+        is flattened before shifting, after which the original
+        shape is restored.
+
+    Returns
+    -------
+    res : ndarray
+        Output array, with the same shape as `a`.
+
+    See Also
+    --------
+    roll     : Elements that roll off one end come back on the other.
+    rollaxis : Roll the specified axis backwards, until it lies in a
+               given position.
+
+    Examples
+    --------
+    >>> x = np.arange(10)
+    >>> roll_zeropad(x, 2)
+    array([0, 0, 0, 1, 2, 3, 4, 5, 6, 7])
+    >>> roll_zeropad(x, -2)
+    array([2, 3, 4, 5, 6, 7, 8, 9, 0, 0])
+
+    >>> x2 = np.reshape(x, (2,5))
+    >>> x2
+    array([[0, 1, 2, 3, 4],
+           [5, 6, 7, 8, 9]])
+    >>> roll_zeropad(x2, 1)
+    array([[0, 0, 1, 2, 3],
+           [4, 5, 6, 7, 8]])
+    >>> roll_zeropad(x2, -2)
+    array([[2, 3, 4, 5, 6],
+           [7, 8, 9, 0, 0]])
+    >>> roll_zeropad(x2, 1, axis=0)
+    array([[0, 0, 0, 0, 0],
+           [0, 1, 2, 3, 4]])
+    >>> roll_zeropad(x2, -1, axis=0)
+    array([[5, 6, 7, 8, 9],
+           [0, 0, 0, 0, 0]])
+    >>> roll_zeropad(x2, 1, axis=1)
+    array([[0, 0, 1, 2, 3],
+           [0, 5, 6, 7, 8]])
+    >>> roll_zeropad(x2, -2, axis=1)
+    array([[2, 3, 4, 0, 0],
+           [7, 8, 9, 0, 0]])
+
+    >>> roll_zeropad(x2, 50)
+    array([[0, 0, 0, 0, 0],
+           [0, 0, 0, 0, 0]])
+    >>> roll_zeropad(x2, -50)
+    array([[0, 0, 0, 0, 0],
+           [0, 0, 0, 0, 0]])
+    >>> roll_zeropad(x2, 0)
+    array([[0, 1, 2, 3, 4],
+           [5, 6, 7, 8, 9]])
+
+    """
+    a = np.asanyarray(a)
+    if shift == 0: return a
+    if axis is None:
+        n = a.size
+        reshape = True
+    else:
+        n = a.shape[axis]
+        reshape = False
+    if np.abs(shift) > n:
+        res = np.zeros_like(a)
+    elif shift < 0:
+        shift += n
+        zeros = np.zeros_like(a.take(np.arange(n-shift), axis))
+        res = np.concatenate((a.take(np.arange(n-shift,n), axis), zeros), axis)
+    else:
+        zeros = np.zeros_like(a.take(np.arange(n-shift,n), axis))
+        res = np.concatenate((zeros, a.take(np.arange(n-shift), axis)), axis)
+    if reshape:
+        return res.reshape(a.shape)
+    else:
+        return res

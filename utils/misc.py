@@ -4,11 +4,13 @@ import datetime
 import time
 import sys
 
+import copy
 import scipy as sp
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy import linalg, special
 import ephem
+from scipy.stats import chisqprob
 
 def elaz2radec_lst(el, az, lst, lat = 38.43312) :
     """DO NOT USE THIS ROUTINE FOR ANTHING THAT NEEDS TO BE RIGHT.  IT DOES NOT
@@ -107,6 +109,66 @@ def LSTatGBT(UT) :
     GBT = gbt_ephem_GBT(UT)
     LST = GBT.sidereal_time() #IN format xx:xx:xx.xx ?
     return LST*180.0/sp.pi
+
+
+def radec_to_sexagesimal(ra, dec):
+    """
+    Accepts float values for ra and dec
+    returns ra, dec in the form (hh,mm,ss), abs(deg,mm,ss), sign
+    where the absolute value of the declination is returned and the
+    sign is the sign of the declination ('+' or '-')
+    """
+    if ra < 0:
+        ra += 360.
+
+    ra_hr = int(ra / 15.)
+    minsec = np.mod(ra, 15.) / 15. * 60
+    ra_min = int(minsec)
+    ra_sec = np.mod(minsec, 1.) * 60
+
+    if dec >= 0.:
+        sign = '+'
+    else:
+        sign = '-'
+
+    dec_deg = int(abs(dec))
+    minsec = np.mod(abs(dec), 1.) * 60
+    dec_min = int(minsec)
+    dec_sec = np.mod(minsec, 1.) * 60
+    return (ra_hr, ra_min, ra_sec), (dec_deg, dec_min, dec_sec), sign
+
+
+def sexagesimal_to_radec(ra, dec):
+    """
+    Assumes ra, dec arguments are of the form "hh:mm:ss", "deg:mm:ss"
+    Returns float values for ra and dec
+    """
+    ra_hr, ra_min, ra_sec= ra.split(':')
+
+    sign = ra_hr[0]
+    if sign == '-':
+        sign_ra = -1.
+        ra_hr = ra_hr[1:]
+    else:
+        sign_ra = 1.
+
+    ra = sign_ra * 15. * ( float(ra_hr) + float(ra_min)/60. + \
+                           float(ra_sec)/3600. )
+
+    dec_deg, dec_min, dec_sec= dec.split(':')
+
+    sign = dec_deg[0]
+    if sign == '-':
+        sign_dec = -1.
+        dec_deg  = dec_deg[1:]
+    else:
+        sign_dec = 1.
+
+    dec =  sign_dec * (float(dec_deg) + float(dec_min)/60. + \
+                       float(dec_sec)/3600.)
+
+    return ra, dec
+
 
 def time2float(UT) :
     """Calculates float seconds from a time string.
@@ -258,7 +320,7 @@ def polint2str(pol_int) :
         raise ValueError("Polarization integer must be in range(-8, 5) and "
                          "nonzero")
 
-def ampfit(data, covariance, theory):
+def ampfit(data, covariance, theory, rank_thresh=1e-12, diag_only=False):
     """Fits the amplitude of the theory curve to the data.
 
     Finds `amp` such that `amp`*`theory` is the best fit to `data`.
@@ -272,28 +334,44 @@ def ampfit(data, covariance, theory):
     """
 
     data = sp.asarray(data)
-    covariance = sp.asarray(covariance)
+    covariance = sp.asarray(copy.deepcopy(covariance))
     theory = sp.asarray(theory)
-    # Sanity check inputs.
+
     if len(data.shape) != 1:
         raise ValueError("`data` must be a 1D vector.")
+
     n = len(data)
+
     if data.shape != theory.shape:
         raise ValueError("`theory` must be the same shape as `data`.")
+
     if covariance.shape != (n,n):
         msg = "`covariance` must be a square matrix compatible with data."
         raise ValueError(msg)
-    # Linear fit for the amplitude.  Formulas July 24, 2011 of Kiyo's notebook.
+
+    if diag_only:
+        covariance = sp.diag(sp.diag(covariance))
+        print data
+        print sp.diag(sp.sqrt(covariance))
+
     covariance_inverse = linalg.inv(covariance)
     weighted_data = sp.dot(covariance_inverse, data)
     amp = sp.dot(theory, weighted_data)
     normalization = sp.dot(covariance_inverse, theory)
     normalization = sp.dot(theory, normalization)
     amp /= normalization
-    # Calculate the Error.
     error = sp.sqrt(1/normalization)
 
-    return amp, error
+    u, s, v = np.linalg.svd(covariance)
+    dof = np.sum(s > rank_thresh)
+    resid = data - amp * theory
+    chi2 = sp.dot(covariance_inverse, resid)
+    chi2 = sp.dot(resid, chi2)
+    pte = sp.stats.chisqprob(chi2, dof - 1)
+
+    return {"amp":amp, "error":error, \
+            "chi2":chi2, "dof":dof - 1, \
+            "pte":pte}
 
 def rebin_1D(array, reduce=4, axis=-1):
     shape = array.shape
