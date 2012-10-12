@@ -37,6 +37,25 @@ def elaz2radec_lst(el, az, lst, lat = 38.43312) :
 
     return ra, sp.degrees(dec)
 
+def get_ephem_GBT(UT=None):
+    GBT = ephem.Observer()
+    GBT.long = '-79:50:23.4'
+    GBT.lat = '38:25:59.23'
+    # According to the document below, corrections for refraction should
+    # already be present.
+    # http://www.gb.nrao.edu/GBT/MC/doc/dataproc/gbtAntFits/gbtAntFits.pdf
+    GBT.pressure = 0 # Turn off refraction.
+    GBT.epoch = ephem.J2000
+    if UT:
+        GBT.date = UT2ephem_date(UT)
+    return GBT
+
+def UT2ephem_date(UT):
+    UT_wholesec, partial_sec = UT.split('.', 1)
+    time_obj = time.strptime(UT_wholesec, "%Y-%m-%dT%H:%M:%S")
+    UT_reformated = time.strftime("%Y/%m/%d %H:%M:%S", time_obj)
+    return UT_reformated + "." + partial_sec
+
 def elaz2radecGBT(el, az, UT) :
     """Calculates the Ra and Dec from the elevation, azimuth and UT for an
     observer at GBT.
@@ -47,22 +66,34 @@ def elaz2radecGBT(el, az, UT) :
     Largely copied from Kevin's code.
     """
 
-    GBT = ephem.Observer()
-    GBT.long = '-79:50:23.4'
-    GBT.lat = '38:25:59.23'
-    GBT.pressure = 0 # no refraction correction.
-    GBT.temp = 0
-
-    UT_wholesec, partial_sec = UT.split('.', 1)
-    time_obj = time.strptime(UT_wholesec, "%Y-%m-%dT%H:%M:%S")
-    UT_reformated = time.strftime("%Y/%m/%d %H:%M:%S", time_obj)
-    GBT.date = UT_reformated + "." + partial_sec
+    GBT = get_ephem_GBT(UT)
 
     el_r = el*sp.pi/180.0
     az_r = az*sp.pi/180.0
     ra, dec = GBT.radec_of(az_r,el_r)
 
     return ra*180.0/sp.pi, dec*180.0/sp.pi
+
+def radec2azelGBT(ra, dec, UT):
+    """Calculates the Ra and Dec from the elevation, azimuth and UT for an
+    observer at GBT.
+
+    All input should be formated to correspond to the data in a GBT fits file.
+    El, and Az in degrees and UT a string like in the GBT DATE-OBS field.
+
+    Largely copied from Kevin's code.
+    """
+
+    GBT = get_ephem_GBT(UT)
+
+    source = ephem.FixedBody()
+    source._ra = ra * sp.pi / 180
+    source._dec = dec * sp.pi / 180
+    source._epoch = ephem.J2000
+    
+    source.compute(GBT)
+    return source.az * 180 / sp.pi, source.alt * 180 / sp.pi
+
 
 def LSTatGBT(UT) :
     """Calculates the LST from the UT of an observer at GBT.
@@ -73,19 +104,8 @@ def LSTatGBT(UT) :
     Largely copied from Kevin's code.
     """
 
-    GBT = ephem.Observer()
-    GBT.long = '-79:50:23.4'
-    GBT.lat = '38:25:59.23'
-    GBT.pressure = 0 # no refraction correction.
-    GBT.temp = 0
-
-    UT_wholesec, partial_sec = UT.split('.', 1)
-    time_obj = time.strptime(UT_wholesec, "%Y-%m-%dT%H:%M:%S")
-    UT_reformated = time.strftime("%Y/%m/%d %H:%M:%S", time_obj)
-    GBT.date = UT_reformated + "." + partial_sec
-
+    GBT = gbt_ephem_GBT(UT)
     LST = GBT.sidereal_time() #IN format xx:xx:xx.xx ?
-
     return LST*180.0/sp.pi
 
 def time2float(UT) :

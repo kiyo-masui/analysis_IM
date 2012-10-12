@@ -37,14 +37,24 @@ class TestElAz2RaDec(unittest.TestCase) :
         az = 50.5
         ra, dec = utils.elaz2radecGBT(el, az, UT)
         self.assertAlmostEqual(dec, 38.43312, 1) #GBT Latitude
+        c_az, c_el = utils.radec2azelGBT(ra, dec, UT)
+        self.assertAlmostEqual(c_el, el, 1)
+        
         el = 38.43312
         az = 0.
         ra, dec = utils.elaz2radecGBT(el, az, UT)
         self.assertAlmostEqual(dec, 90, 1)
+        c_az, c_el = utils.radec2azelGBT(ra, dec, UT)
+        self.assertAlmostEqual((c_az + 180) % 360, (az + 180) % 360, 1)
+        self.assertAlmostEqual(c_el, el, 1)
+        
         el = 90 - 38.43312
         az = 180.
         ra, dec = utils.elaz2radecGBT(el, az, UT)
         self.assertAlmostEqual(dec, 0, 1)
+        c_az, c_el = utils.radec2azelGBT(ra, dec, UT)
+        self.assertAlmostEqual(c_az, az, 1)
+        self.assertAlmostEqual(c_el, el, 1)
 
 class TestMakeMapGrid(unittest.TestCase) :
     
