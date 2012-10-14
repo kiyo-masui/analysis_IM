@@ -18,6 +18,7 @@ import struct
 from kiyopy import parse_ini
 from utils import units
 from utils import batch_handler
+from utils import data_paths
 
 
 params_init = {
@@ -56,8 +57,10 @@ class SimulateGbt(object):
         # here we use 300 h km/s from WiggleZ for streaming dispersion
         self.streaming_dispersion = 300.*0.72
 
-        self.template_map = algebra.make_vect(
-                                algebra.load(self.template_file))
+        #self.template_map = algebra.make_vect(
+        #                        algebra.load(self.template_file))
+        self.datapath_db = data_paths.DataPath()
+        self.template_map = self.datapath_db.fetch_multi(self.template_file)
 
         # determine the beam model
         self.beam_data = np.array([0.316148488246, 0.306805630985,

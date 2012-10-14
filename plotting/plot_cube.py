@@ -258,9 +258,9 @@ def plot_gbt_maps(keyname, transverse=False,
 
         if make_noise_diag:
             #title = "Sec. %s, %s (noise diag)" % (section, keyname)
-            make_cube_movie("db:%s:%s;noise_diag" % (keyname, section),
+            make_cube_movie("db:%s:%s;noise_weight" % (keyname, section),
                                "Covariance", cube_frame_dir,
-                               sigmarange=sigmarange,
+                               sigmarange=-1,
                                outputdir=outputdir, multiplier=1.,
                                logscale=False,
                                transverse=transverse,

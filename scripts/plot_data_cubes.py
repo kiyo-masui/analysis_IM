@@ -12,18 +12,18 @@ def unique_list(listin):
     return sorted(uniq)
 
 def plot_gbt_mapset(outputdir="/cita/d/www/home/eswitzer/movies/",
-                    make_map=True, make_dirty_map=False,
-                    make_noise_inv=False, make_noise_diag=False):
+                    make_map=False, make_dirty_map=False,
+                    make_noise_inv=False, make_noise_diag=True):
 
-    pc.plot_gbt_maps('GBT_15hr_map_mapcal', outputdir=outputdir,
-                     make_map=make_map, make_dirty_map=make_dirty_map,
-                     make_noise_inv=make_noise_inv,
-                     make_noise_diag=make_noise_diag)
-
-    #pc.plot_gbt_maps('GBT_15hr_map_oldcal', outputdir=outputdir,
+    #pc.plot_gbt_maps('GBT_15hr_map_oldcalmoon', outputdir=outputdir,
     #                 make_map=make_map, make_dirty_map=make_dirty_map,
     #                 make_noise_inv=make_noise_inv,
     #                 make_noise_diag=make_noise_diag)
+
+    pc.plot_gbt_maps('GBT_15hr_map_oldcal', outputdir=outputdir,
+                     make_map=make_map, make_dirty_map=make_dirty_map,
+                     make_noise_inv=make_noise_inv,
+                     make_noise_diag=make_noise_diag)
 
     #pc.plot_gbt_maps('GBT_15hr_optimalmap_fluxpolcal', outputdir=outputdir,
     #                 make_map=make_map, make_dirty_map=make_dirty_map,
@@ -287,7 +287,7 @@ if __name__ == "__main__":
 
     #plot_mode_amplitudes('GBT_15hr_map_fdgcal_cleaned')
     #plot_mode_amplitudes('GBT_15hr_map_fdgcal_cleaned_noconv')
-    #plot_gbt_mapset()
+    plot_gbt_mapset()
     #plot_cleaned_gbt15hr_mapset()
     #plot_gbt_simset('sim_15hr')
     #plot_gbt_simset('simvel_15hr')
@@ -298,8 +298,8 @@ if __name__ == "__main__":
     #plot_gbt_comb_modeset('GBT_1hr_map_oldcalkiyo_cleaned_combined', convolve=True,
     #                      outputdir="/mnt/raid-project/gmrt/eswitzer/GBT/movies/")
 
-    plot_gbt_comb_modeset('GBT_15hr_optimalmap_cleaned_combined', convolve=True,
-                          outputdir="/mnt/raid-project/gmrt/eswitzer/GBT/movies/")
+    #plot_gbt_comb_modeset('GBT_15hr_optimalmap_cleaned_combined', convolve=True,
+    #                      outputdir="/mnt/raid-project/gmrt/eswitzer/GBT/movies/")
 
     #plot_gbt_comb_modeset('GBT_15hr_optimalmap_selfcal_762_cleaned_combined', convolve=True)
     #plot_gbt_comb_modeset('GBT_15hr_optimalmap_selfcal_762_cleaned_combined', convolve=False)
