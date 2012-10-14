@@ -222,7 +222,8 @@ class SimulateGbt(object):
 
         self.sim_map_meansub = copy.deepcopy(self.sim_map_withbeam)
         print "sim meansub using: " + self.params['weightfile']
-        noise_inv = algebra.make_vect(algebra.load(self.params['weightfile']))
+        noise_inv = self.datapath_db.fetch_multi(self.params['weightfile'])
+        #noise_inv = algebra.make_vect(algebra.load(self.params['weightfile']))
         means = np.sum(np.sum(noise_inv * self.sim_map_meansub, -1), -1)
         means /= np.sum(np.sum(noise_inv, -1), -1)
         means.shape += (1, 1)

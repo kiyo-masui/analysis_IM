@@ -78,7 +78,8 @@ def unpack_cases(case_list, case_key, divider=";"):
     return case_counter
 
 
-def convert_dbkeydict_to_filedict(dbkeydict, datapath_db=None, silent=True):
+def convert_dbkeydict_to_filedict(dbkeydict, datapath_db=None, silent=True,
+                                  tack_on=None):
     r"""simple caller to convert a dictionary of database keys to a dictionary
     of filenames"""
     if datapath_db is None:
@@ -86,7 +87,8 @@ def convert_dbkeydict_to_filedict(dbkeydict, datapath_db=None, silent=True):
 
     filedict = {}
     for name in dbkeydict:
-        filedict[name] = datapath_db.fetch(dbkeydict[name], silent=silent)
+        filedict[name] = datapath_db.fetch(dbkeydict[name], silent=silent,
+                                           tack_on=tack_on)
 
     return filedict
 
