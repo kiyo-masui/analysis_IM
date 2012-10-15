@@ -120,7 +120,7 @@ class GbtDataAutopower(object):
                 dbkeydict['noiseinv1_key'] = "%s:%s;noise_inv;%s" % mapset0
                 dbkeydict['noiseinv2_key'] = "%s:%s;noise_inv;%s" % mapset1
                 files = dp.convert_dbkeydict_to_filedict(dbkeydict,
-                                                datapath_db=self.datapath_db
+                                                datapath_db=self.datapath_db,
                                                 tack_on=tack_on)
 
                 execute_key = "%s:%s" % (item[0], treatment)
