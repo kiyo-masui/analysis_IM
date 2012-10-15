@@ -74,6 +74,7 @@ gbtdataautopower_init = {
         "degrade_resolution": False,
         "factorizable_noise": False,
         "meansub": False,
+        "ncpu": 24,
         "refinement": 2,
         "pad": 5,
         "order": 2,
@@ -131,7 +132,8 @@ class GbtDataAutopower(object):
                                self.params,
                                execute_key=execute_key)
 
-        caller.multiprocess_stack(self.params["outfile"], debug=False)
+        caller.multiprocess_stack(self.params["outfile"],
+                                  debug=False, ncpu=self.params['ncpu'])
 
 
 gbtdatanoisepower_init = {
@@ -145,6 +147,7 @@ gbtdatanoisepower_init = {
         "degrade_resolution": False,
         "factorizable_noise": False,
         "meansub": False,
+        "ncpu": 24,
         "refinement": 2,
         "pad": 5,
         "order": 2,
@@ -207,7 +210,8 @@ class GbtDataNoisePower(object):
                                self.params,
                                execute_key=execute_key)
 
-        caller.multiprocess_stack(self.params["outfile"], debug=False)
+        caller.multiprocess_stack(self.params["outfile"],
+                                  debug=False, ncpu=self.params['ncpu'])
 
 
 crosspower_init = {
@@ -224,6 +228,7 @@ crosspower_init = {
         "degrade_resolution": False,
         "factorizable_noise": False,
         "meansub": False,
+        "ncpu": 24,
         "refinement": 2,
         "pad": 5,
         "order": 2,
@@ -285,7 +290,7 @@ class WiggleZxGBT(object):
                            execute_key=execute_key)
 
         caller_data.multiprocess_stack(self.params["outfile_data"],
-                                       debug=False, ncpu=24)
+                                       debug=False, ncpu=self.params['ncpu'])
 
         for treatment in map_cases['treatment']:
             for item in mock_files[0]:
@@ -311,7 +316,7 @@ class WiggleZxGBT(object):
                                execute_key=execute_key)
 
         caller_mock.multiprocess_stack(self.params["outfile_mock"],
-                                       debug=False, ncpu=24)
+                                       debug=False, ncpu=self.params['ncpu'])
 
 
 crosspowersim_init = {
@@ -327,6 +332,7 @@ crosspowersim_init = {
         "degrade_resolution": False,
         "factorizable_noise": False,
         "meansub": False,
+        "ncpu": 24,
         "refinement": 2,
         "pad": 5,
         "order": 2,
@@ -388,7 +394,7 @@ class WiggleZxGBT_modesim(object):
                                 execute_key=execute_key)
 
         caller_data.multiprocess_stack(self.params["outfile_data"],
-                                       debug=False, ncpu=1)
+                                       debug=False, ncpu=self.params['ncpu'])
 
 
 # this does not actually do any batch processing, but just wraps a single
@@ -406,6 +412,7 @@ batchsimcrosspower_init = {
         "degrade_resolution": False,
         "factorizable_noise": False,
         "meansub": False,
+        "ncpu": 24,
         "refinement": 2,
         "pad": 5,
         "order": 1,
@@ -449,7 +456,8 @@ class BatchSimCrosspower(object):
                        self.params,
                        execute_key=execute_key)
 
-        caller.multiprocess_stack(self.params["outfile"], debug=False)
+        caller.multiprocess_stack(self.params["outfile"],
+                                  debug=False, ncpu=self.params['ncpu'])
 
 
 batchsimautopower_init = {
@@ -463,6 +471,7 @@ batchsimautopower_init = {
         "degrade_resolution": False,
         "factorizable_noise": False,
         "meansub": False,
+        "ncpu": 24,
         "refinement": 2,
         "pad": 5,
         "order": 2,
@@ -521,7 +530,9 @@ class BatchSimAutopower(object):
                            self.params,
                            execute_key=execute_key)
 
-        caller.multiprocess_stack(self.params["outfile"], debug=False)
+        caller.multiprocess_stack(self.params["outfile"],
+                                  debug=False, ncpu=self.params['ncpu'])
+
 
 batchphysicalsim_init = {
         "sim_key": "sim_stuff",
@@ -530,6 +541,7 @@ batchphysicalsim_init = {
         "return_3d": False,
         "truncate": False,
         "window": None,
+        "ncpu": 24,
         "bins": [0.00765314, 2.49977141, 35]
                }
 batchphysicalsim_prefix = 'bps_'
@@ -559,7 +571,8 @@ class BatchPhysicalSim(object):
                            self.params,
                            execute_key=execute_key)
 
-        caller.multiprocess_stack(self.params["outfile"], debug=False)
+        caller.multiprocess_stack(self.params["outfile"],
+                                  debug=False, ncpu=self.params['ncpu'])
 
 # this does not actually do any batch processing, but just wraps a single
 # quadratic estimator output in the same packaging/pipeline interaction
@@ -571,6 +584,7 @@ singlephysicalsim_init = {
         "return_3d": False,
         "truncate": False,
         "window": None,
+        "ncpu": 24,
         "bins": [0.00765314, 2.49977141, 35]
                }
 singlephysicalsim_prefix = 'sps_'
@@ -596,7 +610,8 @@ class SinglePhysicalSim(object):
                        self.params['sim_file_right'],
                        self.params, execute_key=execute_key)
 
-        caller.multiprocess_stack(self.params["outfile"], debug=False)
+        caller.multiprocess_stack(self.params["outfile"],
+                                  debug=False, ncpu=self.params['ncpu'])
 
 
 cleanup_init = {

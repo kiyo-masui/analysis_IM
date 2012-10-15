@@ -9,7 +9,7 @@ import shelve
 import h5py
 import glob
 
-autopowerparams_init = {
+fastautopowerparams_init = {
         "p_map": "test_map",
         "p_noise": "test_map",
         "p_map_plussim": "test_map",
@@ -18,16 +18,16 @@ autopowerparams_init = {
         "apply_2d_transfer": None,
         "outdir": "./"
                }
-autopowerprefix = 'autopower_'
+fastautopowerprefix = 'fastautopower_'
 
 
-class CompileAutopower(object):
+class CompileFastAutopower(object):
     def __init__(self, parameter_file=None, params_dict=None, feedback=0):
         self.params = params_dict
 
         if parameter_file:
-            self.params = parse_ini.parse(parameter_file, autopowerparams_init,
-                                          prefix=autopowerprefix)
+            self.params = parse_ini.parse(parameter_file, fastautopowerparams_init,
+                                          prefix=fastautopowerprefix)
 
     def execute(self, processes):
         pwr_map = ps.PowerSpectrum(self.params["p_map"])
@@ -58,7 +58,7 @@ class CompileAutopower(object):
         #    avg_plussim[treatment] = np.mean(avg_treatment, axis=ndim_plussim)
         #    print avg_plussim[treatment].shape, shape_plussim
 
-        # TODOi!!!!!: is this a proper function of treatment?
+        # TODO!!!!!: is this a proper function of treatment?
         if self.params["apply_2d_transfer"] is not None:
             # copy the same beam transfer function for all cases
 
@@ -128,6 +128,72 @@ class CompileAutopower(object):
             file_tools.print_multicolumn(k_vec, reference_pwr, trans,
                                          mean_map, std_map, outfile=outfile)
             print "writing to " + outfile
+
+
+autopowerparams_init = {
+        "p_map": "test_map",
+        "p_noise": "test_map",
+        "use_noiseweights_2dto1d": True,
+        "apply_2d_transfer": None,
+        "outdir": "./"
+               }
+autopowerprefix = 'autopower_'
+
+
+class CompileAutopower(object):
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file, autopowerparams_init,
+                                          prefix=autopowerprefix)
+
+    def execute(self, processes):
+        pwr_map = ps.PowerSpectrum(self.params["p_map"])
+        pwr_noise = ps.PowerSpectrum(self.params["p_noise"])
+
+        # TODO!!!!!: is this a proper function of treatment?
+        if self.params["apply_2d_transfer"] is not None:
+            # copy the same beam transfer function for all cases
+            trans_shelve = shelve.open(self.params["apply_2d_transfer"])
+            transfer_2d = trans_shelve["transfer_2d"]
+            trans_shelve.close()
+
+            transfer_dict = {}
+            for treatment in pwr_map.treatment_cases:
+                transfer_dict[treatment] = transfer_2d
+
+            pwr_map.apply_2d_trans_by_treatment(transfer_dict)
+
+        # combine AxA, BxB, CxC, DxD into a noise bias estimate
+        noise2d_agg = pwr_noise.agg_stat_2d_pwrspec()
+        # also combine the AxB, etc. into a signal piece that is subtracted
+        signal2d_agg = pwr_map.agg_stat_2d_pwrspec()
+
+        weights_2d = {}
+        # weight by the variance as determined in the mock runs
+        for treatment in pwr_map.treatment_cases:
+            weight = noise2d_agg[treatment]["mean"] - \
+                     signal2d_agg[treatment]["mean"]
+
+            print weight
+            weights_2d[treatment] = weight * weight
+
+        if self.params["use_noiseweights_2dto1d"]:
+            pwr_map.convert_2d_to_1d(weights_2d=weights_2d)
+        else:
+            pwr_map.convert_2d_to_1d()
+
+        pwr_map_summary = pwr_map.agg_stat_1d_pwrspec(from_2d=True)
+        k_vec = pwr_map.k_1d_from_2d["center"]
+        for treatment in pwr_map.treatment_cases:
+            mean_map = pwr_map_summary[treatment]["mean"]
+            std_map = pwr_map_summary[treatment]["std"]
+
+            outfile = "%s/pk_%s.dat" % (self.params["outdir"], treatment)
+            file_tools.print_multicolumn(k_vec, mean_map, std_map, outfile=outfile)
+            print "writing to " + outfile
+
 
 crosspowerparams_init = {
         "p_data": "test_map",
