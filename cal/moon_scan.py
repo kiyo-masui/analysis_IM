@@ -5,13 +5,14 @@ import scipy as sp
 import ephem
 from core import fitsGBT
 from time_stream import rotate_pol, cal_scale, flag_data, rebin_freq
-from time_stream import combine_cal
+from time_stream import combine_cal, moon_rotation
 import pickle
 import utils.misc as utils
 import matplotlib.pyplot as plt
+import h5py
 """This is some quick code analyze moon scan data"""
 
-def load_moonscan(filename):
+def load_moonscan(filename, rotate_moon=True):
     cal_coords = ephem.Equatorial("05:42:36.155", "+49:51:07.28",
                                   epoch=ephem.B1950)
 
@@ -25,10 +26,25 @@ def load_moonscan(filename):
     moon_dataobj = Reader.read(0,0)
 
     rotate_pol.rotate(moon_dataobj, (-5, -7, -8, -6))
-    cal_scale.scale_by_cal(moon_dataobj, True, False, False, False, True)
+    cal_scale.scale_by_cal(moon_dataobj, scale_t_ave=True, scale_f_ave=False,
+                           sub_med=False, scale_f_ave_mod=False, rotate=True)
     flag_data.flag_data(moon_dataobj, 5, 0.1, 40)
     rebin_freq.rebin(moon_dataobj, 16, True, True)
     #rebin_time.rebin(moon_dataobj, 4)
+
+    if rotate_moon:
+        moon_rotation.rotate_pol_moon(moon_dataobj)
+
+    fgc_mueler_file = '/mnt/raid-project/gmrt/tcv/diff_gain_params/GBT12A_418/22_diff_gain_calc.txt'
+    fgc_RM_file = ' '
+    fgc_R_to_sky = True
+    fgc_DP_correct = False  # this is already handled in scale_by_cal's rotate
+    fgc_RM_correct = False
+
+    from time_stream import flux_diff_gain_cal as fdg
+    m_total = fdg.flux_dg(fgc_mueler_file)
+    fdg.calibrate_pol(moon_dataobj, m_total, fgc_RM_file,
+                      fgc_R_to_sky, fgc_DP_correct, fgc_RM_correct)
 
     return moon_dataobj
 
@@ -147,102 +163,139 @@ def process_moon(filename, outfile):
     process_moonscan(moon_data, outfile)
 
 
-def find_obsvec(coherency, alternate=True):
-    obsvec = np.zeros((coherency.shape[0], 4))
+def find_coherency(pol_vec, alternate=False):
+    coherency = np.zeros((2,2), dtype=complex)
 
-    obsvec[:, 0] = coherency[:, 0, 0]
-    obsvec[:, 1] = 0.5 * (coherency[:, 1, 0] + coherency[:, 0, 1])
-    obsvec[:, 2] = 0.5 * (coherency[:, 1, 0] - coherency[:, 0, 1]) * -1.j
-    obsvec[:, 3] = coherency[:, 1, 1]
+    stokes_i = 0.5 * (pol_vec[0] + pol_vec[3])
+    stokes_q = 0.5 * (pol_vec[0] - pol_vec[3])
+    stokes_u = pol_vec[1]
+    stokes_v = pol_vec[2]
 
     if alternate:
-        coh_xy = 0.5 * (obsvec[:, 1] + obsvec[:, 2])
-        coh_yx = 0.5 * (obsvec[:, 1] - obsvec[:, 2])
-        obsvec[:, 1] = coh_xy
-        obsvec[:, 2] = coh_yx
+        stokes_u = pol_vec[1] + pol_vec[2]
+        stokes_v = pol_vec[1] - pol_vec[2]
 
-    return obsvec
-
-
-def find_coherency(filename, alternate=False):
-    fp = open(filename, "r")
-    data = np.genfromtxt(fp, names=["freq", "XX", "XY", "YX", "YY", \
-                                              "XXu", "XYu", "YXu", "YYu", \
-                                              "XXd", "XYd", "YXd", "YYd"])
-    fp.close()
-
-    coherency = np.zeros((data["freq"].shape[0], 2, 2), dtype=complex)
-
-    stokes_i = 0.5 * (data["XX"] + data["YY"])
-    stokes_q = 0.5 * (data["XX"] - data["YY"])
-    if alternate:
-        stokes_u = data["XY"] + data["YX"]
-        stokes_v = data["XY"] - data["YX"]
-    else:
-        stokes_u = data["XY"]
-        stokes_v = data["YX"]
-
-    coherency[:, 0, 0] = stokes_i + stokes_q
-    coherency[:, 1, 0] = stokes_u + stokes_v * 1.j
-    coherency[:, 0, 1] = stokes_u - stokes_v * 1.j
-    coherency[:, 1, 1] = stokes_i - stokes_q
-
-    obsvec = find_obsvec(coherency, alternate=alternate)
-    print obsvec[:, 0] - data["XX"]
-    print obsvec[:, 1] - data["XY"]
-    print obsvec[:, 2] - data["YX"]
-    print obsvec[:, 3] - data["YY"]
+    coherency[0, 0] = stokes_i + stokes_q
+    coherency[1, 0] = stokes_u + stokes_v * 1.j
+    coherency[0, 1] = stokes_u - stokes_v * 1.j
+    coherency[1, 1] = stokes_i - stokes_q
 
     return coherency
 
 
-def verify_moon(filename1, filename2, outfile, normalize=True):
-    coherency1 = find_coherency(filename1)
-    coherency2 = find_coherency(filename2)
-    coherency1out = np.zeros_like(coherency1)
-    coherency2out = np.zeros_like(coherency2)
+def find_polvec(coherency, alternate=False):
+    #pol_vecout = np.zeros(4, dtype=complex)
+    pol_vecout = np.zeros(4)
 
-    jones = np.zeros_like(coherency1)
-    jones_inv = np.zeros_like(coherency1)
+    pol_vecout[0] = coherency[0, 0]
+    pol_vecout[1] = 0.5 * (coherency[1, 0] + coherency[0, 1])
+    pol_vecout[2] = 0.5 * (coherency[1, 0] - coherency[0, 1]) * -1.j
+    pol_vecout[3] = coherency[1, 1]
+    # alternate form
+    if alternate:
+        coh_xy = 0.5 * (pol_vecout[1] + pol_vecout[2])
+        coh_yx = 0.5 * (pol_vecout[1] - pol_vecout[2])
+        pol_vecout[1] = coh_xy
+        pol_vecout[2] = coh_yx
 
-    num_freq = coherency1.shape[0]
-    for idx in range(num_freq):
-        print coherency1[idx, :, :]
-        try:
-            #jones[idx, :, :] = np.linalg.cholesky(coherency1[idx, :, :])
-            jones[idx, :, :] = sp.linalg.sqrtm(coherency1[idx, :, :])
-        except (np.linalg.LinAlgError, ValueError):
-            coherency2out[idx, :, :] = np.zeros((2,2))
-            print "not positive definite"
-            continue
+    return pol_vecout
 
-        print jones[idx, :, :]
-        print np.linalg.det(jones[idx, :, :])
 
-        jones[idx, :, :] /= np.sqrt(np.linalg.det(jones[idx, :, :]))
+def rotate_single(pol_vec, rotation):
+    r"""transform an observed polarization vector using a Jones matrix"""
+    coherency = find_coherency(pol_vec)
+    coherency = np.dot(rotation, np.dot(coherency, rotation.T.conj()))
 
-        jones_inv[idx, :, :] = np.linalg.inv(jones[idx, :, :])
-        print jones_inv[idx, :, :]
-        print np.dot(jones_inv[idx, :, :], np.dot(coherency1[idx, :, :],
-                     jones_inv[idx, :, :].T.conj()))
-        coherency2out[idx, :, :] = np.dot(jones_inv[idx, :, :],
-                                          np.dot(coherency2[idx, :, :],
-                                          jones_inv[idx, :, :].T.conj()))
-        coherency1out[idx, :, :] = np.dot(jones_inv[idx, :, :],
-                                          np.dot(coherency1[idx, :, :],
-                                          jones_inv[idx, :, :].T.conj()))
-        print coherency2out[idx, :, :]
-        print "-"*80
+    return find_polvec(coherency)
 
-    obsvec_ref = find_obsvec(coherency1)
-    obsvec_in = find_obsvec(coherency2)
-    obsvec_out = find_obsvec(coherency2out)
+
+def rotate_mueller(pol_vec, rotation):
+    r"""transform an observed polarization vector using an analogous mueller
+    matrix"""
+
+    return np.dot(pol_vec, rotation)
+
+
+def find_rotation(pol_vec):
+    r"""Factorize polarization response of observations of an unpolarized
+    source"""
+    coherency = find_coherency(pol_vec)
+    jones = np.zeros_like(coherency)
+    jones_inv = np.zeros_like(coherency)
+
+    try:
+        #jones = np.linalg.cholesky(coherency)
+        jones = sp.linalg.sqrtm(coherency)
+    except (np.linalg.LinAlgError, ValueError):
+        jones = np.zeros((2,2))
+        print "not positive definite"
+
+    jones /= np.sqrt(np.linalg.det(jones))
+
+    jones_inv = np.linalg.inv(jones)
+    print coherency, jones, np.linalg.det(jones), jones_inv
+
+    return jones_inv
+
+
+def convert_to_matrix(rotation):
+    r"""convert a jones matrix to a 4x4 rotation on the observed pols"""
+    mueller = np.zeros((4,4))
+    mueller[0, :] = rotate_single(np.array([1., 0., 0., 0.]), rotation)
+    mueller[1, :] = rotate_single(np.array([0., 1., 0., 0.]), rotation)
+    mueller[2, :] = rotate_single(np.array([0., 0., 1., 0.]), rotation)
+    mueller[3, :] = rotate_single(np.array([0., 0., 0., 1.]), rotation)
+
+    print mueller
+    return mueller
+
+
+def open_moon_obs(filename, alternate=False):
+    fp = open(filename, "r")
+    data = np.genfromtxt(fp, names=["freq", "XX", "XY", "YX", "YY", \
+                                              "XXu", "XYu", "YXu", "YYu", \
+                                              "XXd", "XYd", "YXd", "YYd"])
+    print data.dtype.names
+    fp.close()
+
+    print data['freq']
+    return data
+
+
+def verify_moon(filename1, filename2, outfile, rot_file, normalize=True):
+    observation1 = open_moon_obs(filename1)
+    observation2 = open_moon_obs(filename2)
+    summaryfile = h5py.File(rot_file, "w")
+    rotation_array = np.zeros((4, 4, 256))
+
+    num_freq = observation1['freq'].shape[0]
     fout = open(outfile, "w")
     for idx in range(num_freq):
-        obs = np.append(obsvec_ref[idx, :], [obsvec_in[idx, :],
-                         obsvec_out[idx, :]])
+        obsvec_ref = np.array([observation1['XX'][idx],
+                               observation1['XY'][idx],
+                               observation1['YX'][idx],
+                               observation1['YY'][idx]])
+
+        obsvec_in = np.array([observation2['XX'][idx],
+                               observation2['XY'][idx],
+                               observation2['YX'][idx],
+                               observation2['YY'][idx]])
+
+        print "-"*80
+        jones_inv = find_rotation(obsvec_ref)
+        mueller = convert_to_matrix(jones_inv)
+        rotation_array[:, :, idx] = mueller
+        obsvec_out1 = rotate_single(obsvec_in, jones_inv)
+        obsvec_out2 = rotate_mueller(obsvec_in, mueller)
+        print "this", obsvec_out2 - obsvec_out1
+        print "-"*80
+
+        print obsvec_ref, obsvec_in
+        obs = np.append(obsvec_ref, [obsvec_in, obsvec_out2])
         fout.write(("%10.15g " * 12) % tuple(obs) + "\n")
 
+    summaryfile['moon_scan1'] = rotation_array
+    summaryfile.close()
     fout.close()
 
 
@@ -250,13 +303,16 @@ def batch_moon(generate_fluxes=False):
     datapath = "/mnt/raid-project/gmrt/kiyo/data/guppi_data/GBT12A_418/"
     filename1 = datapath + "22_MOON_track_54.fits"
     filename2 = datapath + "22_MOON_track_10.fits"
-    fluxfile1 = "moon_track_54.txt"
-    fluxfile2 = "moon_track_10.txt"
+    fluxfile1 = "moon_track_54_rot.txt"
+    fluxfile2 = "moon_track_10_rot.txt"
 
     if generate_fluxes:
         process_moon(filename1, fluxfile1)
         process_moon(filename2, fluxfile2)
 
-    verify_moon(fluxfile1, fluxfile2, "recovered.dat")
+    file_rot = "/mnt/raid-project/gmrt/eswitzer/GBT/calibration/"
+    file_rot += "moon_rotation_hyb.hd5"
+    verify_moon(fluxfile1, fluxfile2, "recovered_new.dat", file_rot)
+
 
 batch_moon()

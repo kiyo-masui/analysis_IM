@@ -65,6 +65,7 @@ def phys_pwrspec_caller(cube1_file, cube2_file, params):
 
 gbtdataautopower_init = {
         "map_key": "test_map",
+        "tack_on": None,
         "outfile": "test_file.shelve",
         "unitless": True,
         "return_3d": False,
@@ -101,6 +102,7 @@ class GbtDataAutopower(object):
         caller = aggregate_outputs.AggregateOutputs(funcname)
 
         map_key = self.params['map_key']
+        tack_on = self.params['tack_on']
         map_cases = self.datapath_db.fileset_cases(map_key,
                                                    "pair;type;treatment")
 
@@ -118,7 +120,8 @@ class GbtDataAutopower(object):
                 dbkeydict['noiseinv1_key'] = "%s:%s;noise_inv;%s" % mapset0
                 dbkeydict['noiseinv2_key'] = "%s:%s;noise_inv;%s" % mapset1
                 files = dp.convert_dbkeydict_to_filedict(dbkeydict,
-                                                datapath_db=self.datapath_db)
+                                                datapath_db=self.datapath_db
+                                                tack_on=tack_on)
 
                 execute_key = "%s:%s" % (item[0], treatment)
                 caller.execute(files['map1_key'],
@@ -133,6 +136,7 @@ class GbtDataAutopower(object):
 
 gbtdatanoisepower_init = {
         "map_key": "test_map",
+        "tack_on": None,
         "outfile": "test_file.shelve",
         "unitless": True,
         "return_3d": False,
@@ -169,6 +173,7 @@ class GbtDataNoisePower(object):
         caller = aggregate_outputs.AggregateOutputs(funcname)
 
         map_key = self.params['map_key']
+        tack_on = self.params['tack_on']
         map_cases = self.datapath_db.fileset_cases(map_key,
                                                    "pair;type;treatment")
 
@@ -191,7 +196,8 @@ class GbtDataNoisePower(object):
                 dbkeydict['noiseinv1_key'] = "%s:%s;noise_inv;%s" % mapset0
                 dbkeydict['noiseinv2_key'] = "%s:%s;noise_inv;%s" % mapset1
                 files = dp.convert_dbkeydict_to_filedict(dbkeydict,
-                                                datapath_db=self.datapath_db)
+                                                datapath_db=self.datapath_db,
+                                                tack_on=tack_on)
 
                 execute_key = "%s:%s" % (item, treatment)
                 caller.execute(files['map1_key'],
