@@ -37,7 +37,7 @@ params_init = {
                }
 prefix = 'sg_'
 
-class SimulateGbt(object):
+class SimulateGbtSignal(object):
     r"""Class to handle signal-only sim ini files"""
 
     @batch_handler.log_timing

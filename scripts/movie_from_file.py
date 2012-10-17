@@ -68,9 +68,11 @@ from plotting import plot_cube as pc
 #multiplier = 1000.
 #sigmarange = 3.
 
-full_list = ["/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_delta/15hr_v2/reg15data.npy",
-             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr_v2/reg15separable.npy",
-             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr_v2/reg15selection.npy"]
+full_list = ["delta_temp_noise.npy", "thermal.npy"]
+
+#full_list = ["/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_delta/15hr_v2/reg15data.npy",
+#             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr_v2/reg15separable.npy",
+#             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr_v2/reg15selection.npy"]
 #full_list = ["/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_delta/1hr_v2/reg01data.npy",
 #             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/1hr_v2/reg01separable.npy",
 #             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/1hr_v2/reg01selection.npy"]
@@ -103,6 +105,6 @@ for filename in full_list:
     tag = tag.split("/")[-1]
     pc.make_cube_movie(filename, cbtitle, pc.cube_frame_dir,
                         sigmarange=sigmarange, outputdir=outputdir,
-                        multiplier=multiplier,
+                        multiplier=multiplier, logscale=False,
                         transverse=False, filetag_suffix="", tag=tag)
 
