@@ -78,6 +78,7 @@ gbtdataautopower_init = {
         "refinement": 2,
         "pad": 5,
         "order": 2,
+        "treatments": None,
         "freq_list": tuple(range(256)),
         "bins": [0.00765314, 2.49977141, 35]
                }
@@ -111,7 +112,13 @@ class GbtDataAutopower(object):
                                               map_cases['pair'],
                                               cross_sym="_with_")
 
-        for treatment in map_cases['treatment']:
+        # unless specified otherwise find power spectra for all treatments
+        if self.params['treatments'] is None:
+            treatment_list = map_cases['treatment']
+        else:
+            treatment_list = self.params['treatments']
+
+        for treatment in treatment_list:
             for item in unique_pairs:
                 dbkeydict = {}
                 mapset0 = (map_key, item[0], treatment)
@@ -151,6 +158,7 @@ gbtdatanoisepower_init = {
         "refinement": 2,
         "pad": 5,
         "order": 2,
+        "treatments": None,
         "freq_list": tuple(range(256)),
         "bins": [0.00765314, 2.49977141, 35]
                }
@@ -189,7 +197,13 @@ class GbtDataNoisePower(object):
                        "D_with_D": "D_with_A"
                       }
 
-        for treatment in map_cases['treatment']:
+        # unless specified otherwise find power spectra for all treatments
+        if self.params['treatments'] is None:
+            treatment_list = map_cases['treatment']
+        else:
+            treatment_list = self.params['treatments']
+
+        for treatment in treatment_list:
             for item in noise_pairs:
                 dbkeydict = {}
                 mapset0 = (map_key, noise_pairs[item], treatment)
