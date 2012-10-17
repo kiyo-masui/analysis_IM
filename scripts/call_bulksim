@@ -9,7 +9,8 @@ do
   echo $num
   if [ "$num" -lt "24" ]; then
     echo "< 24 running; spawning one more"
-    nohup python pipeline/manager.py input/ers/crosspower/GBT_15hr_v2_map_oldcal_cross_bulksim.ini >& bulksim$stamp.log &
+	nohup python pipeline/manager.py input/ers/autopower/GBT_15hr_map_oldcal_bulkerrors.ini >& bulkerror$stamp.log &
+    #nohup python pipeline/manager.py input/ers/crosspower/GBT_15hr_v2_map_oldcal_cross_bulksim.ini >& bulksim$stamp.log &
     #nohup python pipeline/manager.py input/ers/crosspower/GBT_1hr_v2_map_oldcal_cross_bulksim.ini >& bulksim$stamp.log &
   else
     echo ">= 24 running"
