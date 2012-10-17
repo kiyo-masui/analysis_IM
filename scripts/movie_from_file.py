@@ -68,7 +68,9 @@ from plotting import plot_cube as pc
 #multiplier = 1000.
 #sigmarange = 3.
 
-full_list = ["delta_temp_noise.npy", "thermal.npy"]
+full_list = ['/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/3903866168_simulation/gaussian_signal_simulation.npy',
+             '/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/3903866168_simulation/sec_A_15hr_41-90_clean_map_I.npy',
+             '/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/3903866168_simulation/sec_A_15hr_41-90_clean_map_I_thermal.npy']
 
 #full_list = ["/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_delta/15hr_v2/reg15data.npy",
 #             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr_v2/reg15separable.npy",

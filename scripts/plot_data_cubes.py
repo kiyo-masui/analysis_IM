@@ -12,18 +12,18 @@ def unique_list(listin):
     return sorted(uniq)
 
 def plot_gbt_mapset(outputdir="/cita/d/www/home/eswitzer/movies/",
-                    make_map=False, make_dirty_map=False,
+                    make_map=True, make_dirty_map=False,
                     make_noise_inv=False, make_noise_diag=True):
 
-    #pc.plot_gbt_maps('GBT_15hr_map_oldcalmoon', outputdir=outputdir,
-    #                 make_map=make_map, make_dirty_map=make_dirty_map,
-    #                 make_noise_inv=make_noise_inv,
-    #                 make_noise_diag=make_noise_diag)
-
-    pc.plot_gbt_maps('GBT_15hr_map_oldcal', outputdir=outputdir,
+    pc.plot_gbt_maps('GBT_15hr_map_oldcalmoon', outputdir=outputdir,
                      make_map=make_map, make_dirty_map=make_dirty_map,
                      make_noise_inv=make_noise_inv,
                      make_noise_diag=make_noise_diag)
+
+    #pc.plot_gbt_maps('GBT_15hr_map_oldcal', outputdir=outputdir,
+    #                 make_map=make_map, make_dirty_map=make_dirty_map,
+    #                 make_noise_inv=make_noise_inv,
+    #                 make_noise_diag=make_noise_diag)
 
     #pc.plot_gbt_maps('GBT_15hr_optimalmap_fluxpolcal', outputdir=outputdir,
     #                 make_map=make_map, make_dirty_map=make_dirty_map,

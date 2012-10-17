@@ -184,6 +184,7 @@ class SimulateGbtSignal(object):
     @batch_handler.log_timing
     def make_delta_sim(self):
         r"""this produces self.sim_map_delta"""
+        print "making sim in units of overdensity"
         freq_axis = self.sim_map.get_axis('freq') / 1.e6
         z_axis = units.nu21 / freq_axis - 1.0
 
@@ -196,12 +197,14 @@ class SimulateGbtSignal(object):
     @batch_handler.log_timing
     def convolve_by_beam(self):
         r"""this produces self.sim_map_withbeam"""
+        print "convolving simulation by beam"
         beamobj = beam.GaussianBeam(self.beam_data, self.freq_data)
         self.sim_map_withbeam = beamobj.apply(self.sim_map)
 
     @batch_handler.log_timing
     def degrade_to_common_res(self):
         r"""this produces self.sim_map_degrade"""
+        print "degrading to common resolution"
         # this depends on having simulations with the means subtracted
         if self.sim_map_meansub is None:
             self.subtract_mean()
@@ -216,6 +219,7 @@ class SimulateGbtSignal(object):
     @batch_handler.log_timing
     def subtract_mean(self):
         r"""this produces self.sim_map_meansub"""
+        print "subtracting mean from simulation"
         # this depends on having simulations convolved by the beam
         if self.sim_map_withbeam is None:
             self.convolve_by_beam()
