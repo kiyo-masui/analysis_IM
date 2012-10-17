@@ -14,6 +14,7 @@ import os
 params_init = {
                'template_key': "database to map",
                'output_key': "database to out map",
+               'tack_on': None,
                'total_integration': 100.,
                'scenario': 'str',
                'refinement': 2.,
@@ -39,6 +40,7 @@ class SimulateGbt(object):
         self.scenario = self.params['scenario']
         self.refinement = self.params['refinement']
         self.multiplier = self.params['multiplier']
+        self.tack_on = self.params['tack_on']
 
         # set the random seed
         if (self.params['seed'] < 0):
@@ -57,14 +59,13 @@ class SimulateGbt(object):
         self.input_weight_maps = self.return_maplist(self.template_key,
                                                      "noise_weight")
 
-        subdir = "%d_simulation" % self.seed
         self.output_weight_maps = self.return_maplist(self.output_key,
                                                       "noise_weight",
-                                                      tack_on=subdir)
+                                                      tack_on=self.tack_on)
 
         self.output_maps = self.return_maplist(self.output_key,
                                                "clean_map",
-                                               tack_on=subdir)
+                                               tack_on=self.tack_on)
 
         self.output_delta_thermal = []
         self.output_thermal = []

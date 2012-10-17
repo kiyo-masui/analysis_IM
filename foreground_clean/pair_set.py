@@ -47,7 +47,8 @@ params_init = {
                'subtract_inputmap_from_sim': False,
                'subtract_sim_from_inputmap': False,
                'freq_list': (),
-               'tack_on': None,
+               'tack_on_input': None,
+               'tack_on_output': None,
                'convolve': True,
                'factorizable_noise': True,
                'sub_weighted_mean': True,
@@ -106,9 +107,13 @@ class PairSet():
                                           prefix=prefix)
 
         self.freq_list = sp.array(self.params['freq_list'], dtype=int)
+        self.tack_on_input = self.params['tack_on_input']
         self.output_root = self.datapath_db.fetch(self.params['output_root'],
-                                                  tack_on=self.params['tack_on'])
+                                            tack_on=self.params['tack_on_output'])
+
         #self.output_root = self.params['output_root']
+        print "foreground cleaning writing to output root", self.output_root
+
         if not os.path.isdir(self.output_root):
             os.mkdir(self.output_root)
 
@@ -156,6 +161,7 @@ class PairSet():
                                              par['noise_inv2'],
                                              noise_inv_suffix=";noise_weight",
                                              verbose=False,
+                                             tack_on=self.tack_on_input,
                                              db_to_use=self.datapath_db)
 
         for pairitem in self.pairlist:
