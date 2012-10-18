@@ -38,44 +38,13 @@ class CompileCrosspower(object):
         pwr_data = ps.PowerSpectrum(self.params["p_data"])
         pwr_mock = ps.PowerSpectrum(self.params["p_mock"])
 
-        modetransfer_2d = None
-        beamtransfer_2d = None
-        if (self.params["apply_2d_beamtransfer"] is not None) or \
-           (self.params["apply_2d_modetransfer"] is not None):
+        transfer_dict = pe.load_transferfunc(
+                            self.params["apply_2d_beamtransfer"],
+                            self.params["apply_2d_modetransfer"])
 
-            if self.params["apply_2d_modetransfer"] is not None:
-                print "Applying 2d transfer from " + \
-                      self.params["apply_2d_modetransfer"]
-                #trans_shelve = shelve.open(
-                #                    self.params["apply_2d_modetransfer"], "r")
-                #modetransfer_2d = trans_shelve["transfer_2d"]
-                #trans_shelve.close()
-                modetransfer_2d = h5py.File(
-                                    self.params["apply_2d_modetransfer"], "r")
-
-            if self.params["apply_2d_beamtransfer"] is not None:
-                print "Applying 2d transfer from " + \
-                      self.params["apply_2d_beamtransfer"]
-                #trans_shelve = shelve.open(
-                #                    self.params["apply_2d_beamtransfer"], "r")
-                #beamtransfer_2d = trans_shelve["transfer_2d"]
-                #trans_shelve.close()
-                beamtransfer_2d = h5py.File(
-                                    self.params["apply_2d_beamtransfer"], "r")
-
-            transfer_dict = {}
-            for treatment in pwr_data.treatment_cases:
-                if modetransfer_2d is not None:
-                    transfer_dict[treatment] = modetransfer_2d[treatment].value
-                    if beamtransfer_2d is not None:
-                        transfer_dict[treatment] *= \
-                                    beamtransfer_2d["0modes"].value
-                else:
-                    transfer_dict[treatment] = beamtransfer_2d["0modes"].value
-
-            if (modetransfer_2d is not None) or (beamtransfer_2d is not None):
-                pwr_mock.apply_2d_trans_by_treatment(transfer_dict)
-                pwr_data.apply_2d_trans_by_treatment(transfer_dict)
+        if transfer_dict is not None:
+            pwr_mock.apply_2d_trans_by_treatment(transfer_dict)
+            pwr_data.apply_2d_trans_by_treatment(transfer_dict)
 
         # gather the rms of each 2D k-bin over the realizations of mock
         # catalogs; this is used for the 2D->1D weighting

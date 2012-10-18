@@ -15,6 +15,7 @@ import copy
 import gc
 from utils import fftutil
 from utils import binning
+import h5py
 
 
 def cross_power_est(arr1, arr2, weight1, weight2,
@@ -325,6 +326,37 @@ def calculate_xspec_file(cube1_file, cube2_file, bins,
     return calculate_xspec(cube1, cube2, weight1, weight2, bins=bins,
                            window=window, unitless=unitless,
                            truncate=truncate, return_3d=return_3d)
+
+
+def load_transferfunc(beamtransfer_file, modetransfer_file):
+    r"""Given two hd5 files containing a beam and mode loss transfer function,
+    load them and make a composite transfer function"""
+    # TODO: check that both files have the same treatment cases
+    modetransfer_2d = None
+    beamtransfer_2d = None
+    transfer_dict = None
+
+    if (beamtransfer_file is not None) or (modetransfer_file is not None):
+        if modetransfer_file is not None:
+            print "Applying 2d transfer from " + modetransfer_file
+            modetransfer_2d = h5py.File(modetransfer_file, "r")
+
+        if beamtransfer_file is not None:
+            print "Applying 2d transfer from " + beamtransfer_file
+            beamtransfer_2d = h5py.File(beamtransfer_file, "r")
+
+        transfer_dict = {}
+        # may not explicitly need .keys if hd5 object is smart enough?
+        for treatment in modetransfer_2d.keys():
+            if modetransfer_2d is not None:
+                transfer_dict[treatment] = modetransfer_2d[treatment].value
+                if beamtransfer_2d is not None:
+                    transfer_dict[treatment] *= \
+                                    beamtransfer_2d["0modes"].value
+            else:
+                transfer_dict[treatment] = beamtransfer_2d["0modes"].value
+
+    return transfer_dict
 
 
 def test_with_random(unitless=True):

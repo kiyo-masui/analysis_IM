@@ -12,6 +12,8 @@ import glob
 
 autonoiseweightparams_init = {
         "p_noise": "test_map",
+        "apply_2d_beamtransfer": None,
+        "apply_2d_modetransfer": None,
         "outfile": "noise_weight.hd5"
                }
 autonoiseweightprefix = 'autonoiseweight_'
@@ -31,6 +33,11 @@ class CompileAutoNoiseweight(object):
         pwr_noise = ps.PowerSpectrum(self.params["p_noise"])
         noise2d_agg = pwr_noise.agg_stat_2d_pwrspec()
 
+        transfer_dict = pe.load_transferfunc(
+                            self.params["apply_2d_beamtransfer"],
+                            self.params["apply_2d_modetransfer"])
+
+
         weightfile = h5py.File(self.params["outfile"], "w")
         for treatment in pwr_noise.treatment_cases:
             #weight = noise2d_agg[treatment]["mean"] - \
@@ -40,7 +47,11 @@ class CompileAutoNoiseweight(object):
             comb = pwr_map.comb_cases[0]
             pwrcase = "%s:%s" % (comb, treatment)
             weight = np.abs(pwr_noise.counts_2d[pwrcase]) / 4.
-            weightfile[treatment] = weight / noise2d_agg[treatment]["mean"]**2.
+            weight /= noise2d_agg[treatment]["mean"] ** 2.
+            if transfer_dict is not None:
+                weight *= transfer_dict[treatment] ** 2.
+
+            weightfile[treatment] = weight
 
         weightfile.close()
 
@@ -125,6 +136,9 @@ class CompileFastAutopower(object):
             logkx = np.log10(pwr_map.kx_2d['center'])
             logky = np.log10(pwr_map.ky_2d['center'])
 
+            comb = pwr_map.comb_cases[0]
+            pwrcase = "%s:%s" % (comb, treatment)
+
             plot_slice.simpleplot_2D(outplot_power_file,
                                      np.abs(pwr_map.pwrspec_2d[pwrcase]),
                                      logkx, logky,
@@ -138,7 +152,6 @@ class CompileFastAutopower(object):
                                          ["logkx", "logky"], 1., "2d trans",
                                          "2d trans", logscale=False)
 
-            pwrcase = "%s:%s" % (comb, treatment)
             plot_slice.simpleplot_2D(outplot_count_file,
                                      np.abs(pwr_map.counts_2d[pwrcase]),
                                      logkx, logky,
