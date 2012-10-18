@@ -9,12 +9,47 @@ import shelve
 import h5py
 import glob
 
+
+autonoiseweightparams_init = {
+        "p_noise": "test_map",
+        "outfile": "noise_weight.hd5"
+               }
+autonoiseweightprefix = 'autonoiseweight_'
+
+
+class CompileAutoNoiseweight(object):
+    r"""combine AxA, BxB, CxC, DxD into a noise bias estimate"""
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file,
+                                          autonoiseweightparams_init,
+                                          prefix=autonoiseweightprefix)
+
+    def execute(self, processes):
+        pwr_noise = ps.PowerSpectrum(self.params["p_noise"])
+        noise2d_agg = pwr_noise.agg_stat_2d_pwrspec()
+
+        weightfile = h5py.File(self.params["outfile"], "w")
+        for treatment in pwr_noise.treatment_cases:
+            #weight = noise2d_agg[treatment]["mean"] - \
+            #         signal2d_agg[treatment]["mean"]
+            # note that we sum in constant |k| annuli so k^3 in k^3 P(k) is a
+            # constant factor
+            comb = pwr_map.comb_cases[0]
+            pwrcase = "%s:%s" % (comb, treatment)
+            weight = np.abs(pwr_noise.counts_2d[pwrcase]) / 4.
+            weightfile[treatment] = weight / noise2d_agg[treatment]["mean"]**2.
+
+        weightfile.close()
+
+
 fastautopowerparams_init = {
         "p_map": "test_map",
-        "p_noise": "test_map",
         "p_map_plussim": "test_map",
         "p_cleaned_sim": "test_map",
-        "use_noiseweights_2dto1d": True,
+        "noiseweights_2dto1d": None,
         "apply_2d_transfer": None,
         "outdir": "./"
                }
@@ -31,7 +66,6 @@ class CompileFastAutopower(object):
 
     def execute(self, processes):
         pwr_map = ps.PowerSpectrum(self.params["p_map"])
-        pwr_noise = ps.PowerSpectrum(self.params["p_noise"])
         pwr_map_plussim = ps.PowerSpectrum(self.params["p_map_plussim"])
         pwr_cleaned_sim = ps.PowerSpectrum(self.params["p_cleaned_sim"])
 
@@ -74,30 +108,14 @@ class CompileFastAutopower(object):
             pwr_map_plussim.apply_2d_trans_by_treatment(transfer_dict)
             pwr_cleaned_sim.apply_2d_trans_by_treatment(transfer_dict)
 
-        # combine AxA, BxB, CxC, DxD into a noise bias estimate
-        noise2d_agg = pwr_noise.agg_stat_2d_pwrspec()
         # also combine the AxB, etc. into a signal piece that is subtracted
         signal2d_agg = pwr_map.agg_stat_2d_pwrspec()
 
-        weights_2d = {}
-        # weight by the variance as determined in the autopower
         for treatment in pwr_map.treatment_cases:
-            #weight = noise2d_agg[treatment]["mean"] - \
-            #         signal2d_agg[treatment]["mean"]
-            # note that we sum in constant |k| annuli so k^3 in k^3 P(k) is a
-            # constant factor
-            comb = pwr_map.comb_cases[0]
-            pwrcase = "%s:%s" % (comb, treatment)
-            weight = np.abs(pwr_map.counts_2d[pwrcase]) / 4.
-            weights_2d[treatment] = weight / noise2d_agg[treatment]["mean"]**2.
-
             outplot_power_file = "%s/power_2d_%s.png" % \
                                   (self.params['outdir'], treatment)
 
             outplot_transfer_file = "%s/transfer_2d_%s.png" % \
-                                  (self.params['outdir'], treatment)
-
-            outplot_weight_file = "%s/noiseweight_2d_%s.png" % \
                                   (self.params['outdir'], treatment)
 
             outplot_count_file = "%s/countweight_2d_%s.png" % \
@@ -120,12 +138,6 @@ class CompileFastAutopower(object):
                                          ["logkx", "logky"], 1., "2d trans",
                                          "2d trans", logscale=False)
 
-            plot_slice.simpleplot_2D(outplot_weight_file,
-                                     np.abs(weights_2d[treatment]),
-                                     logkx, logky,
-                                     ["logkx", "logky"], 1., "Log-weight",
-                                     "log-weight", logscale=True)
-
             pwrcase = "%s:%s" % (comb, treatment)
             plot_slice.simpleplot_2D(outplot_count_file,
                                      np.abs(pwr_map.counts_2d[pwrcase]),
@@ -133,7 +145,24 @@ class CompileFastAutopower(object):
                                      ["logkx", "logky"], 1., "Log-counts",
                                      "log-counts", logscale=True)
 
-        if self.params["use_noiseweights_2dto1d"]:
+        if self.params["noiseweights_2dto1d"] is not None:
+            weightfile = h5py.File(self.params["noiseweights_2dto1d"], "r")
+            weights_2d = {}
+            for treatment in pwr_map.treatment_cases:
+                weights_2d[treatment] = weightfile[treatment].value
+
+                outplot_weight_file = "%s/noiseweight_2d_%s.png" % \
+                                      (self.params['outdir'], treatment)
+
+
+                plot_slice.simpleplot_2D(outplot_weight_file,
+                                     np.abs(weights_2d[treatment]),
+                                     logkx, logky,
+                                     ["logkx", "logky"], 1., "Log-weight",
+                                     "log-weight", logscale=True)
+
+            weightfile.close()
+
             pwr_map.convert_2d_to_1d(weights_2d=weights_2d)
             pwr_map_plussim.convert_2d_to_1d(weights_2d=weights_2d)
             pwr_cleaned_sim.convert_2d_to_1d(weights_2d=weights_2d)
@@ -178,7 +207,7 @@ class CompileFastAutopower(object):
 autopowerparams_init = {
         "p_map": "test_map",
         "p_noise": "test_map",
-        "use_noiseweights_2dto1d": True,
+        "noiseweights_2dto1d": None,
         "apply_2d_transfer": None,
         "outdir": "./"
                }
@@ -195,7 +224,6 @@ class CompileAutopower(object):
 
     def execute(self, processes):
         pwr_map = ps.PowerSpectrum(self.params["p_map"])
-        pwr_noise = ps.PowerSpectrum(self.params["p_noise"])
 
         # TODO!!!!!: is this a proper function of treatment?
         if self.params["apply_2d_transfer"] is not None:
@@ -210,20 +238,27 @@ class CompileAutopower(object):
 
             pwr_map.apply_2d_trans_by_treatment(transfer_dict)
 
-        # combine AxA, BxB, CxC, DxD into a noise bias estimate
-        noise2d_agg = pwr_noise.agg_stat_2d_pwrspec()
         # also combine the AxB, etc. into a signal piece that is subtracted
         signal2d_agg = pwr_map.agg_stat_2d_pwrspec()
 
-        weights_2d = {}
-        # weight by the variance as determined in the mock runs
-        for treatment in pwr_map.treatment_cases:
-            comb = pwr_map.comb_cases[0]
-            pwrcase = "%s:%s" % (comb, treatment)
-            weight = np.abs(pwr_map.counts_2d[pwrcase]) / 4.
-            weights_2d[treatment] = weight / noise2d_agg[treatment]["mean"]**2.
+        if self.params["noiseweights_2dto1d"] is not None:
+            weightfile = h5py.File(self.params["noiseweights_2dto1d"], "r")
+            weights_2d = {}
+            for treatment in pwr_map.treatment_cases:
+                weights_2d[treatment] = weightfile[treatment].value
 
-        if self.params["use_noiseweights_2dto1d"]:
+                outplot_weight_file = "%s/noiseweight_2d_%s.png" % \
+                                      (self.params['outdir'], treatment)
+
+
+                plot_slice.simpleplot_2D(outplot_weight_file,
+                                     np.abs(weights_2d[treatment]),
+                                     logkx, logky,
+                                     ["logkx", "logky"], 1., "Log-weight",
+                                     "log-weight", logscale=True)
+
+            weightfile.close()
+
             pwr_map.convert_2d_to_1d(weights_2d=weights_2d)
         else:
             pwr_map.convert_2d_to_1d()
