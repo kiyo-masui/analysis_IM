@@ -115,6 +115,9 @@ class SimulateGbt(object):
 
     @batch_handler.log_timing
     def execute_thermalsim(self):
+        # note that we want each section to have a different seed
+        # starting from the base random seed and incrementing
+        seed_inc = self.seed
         for (weight_file, delta_file, thermal_file) in \
                 zip(self.input_weight_maps,
                     self.output_delta_thermal,
@@ -126,13 +129,14 @@ class SimulateGbt(object):
                'weight_file': weight_file,
                'total_integration': self.total_integration,
                'max_stdev': np.inf,
-               'seed': self.seed
+               'seed': seed_inc
                }
 
             print "parameters for thermal noise sim: ", params_init
             simthermal = simulate_thermal.SimulateSingleThermal(
                                                 params_dict=params_init)
             simthermal.execute(0)
+            seed_inc += 1
 
     @batch_handler.log_timing
     def execute_signalsim(self):

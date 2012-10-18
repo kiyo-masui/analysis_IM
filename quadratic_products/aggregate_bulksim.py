@@ -154,7 +154,7 @@ class AggregateStatistics(object):
     TODO: have this write plots out to uniform directories
     """
     def __init__(self, parameter_file=None, params_dict=None, feedback=0,
-                 make_plot=False):
+                 make_plot=True):
         self.params = params_dict
         np.seterr(under='raise')
         self.make_plot = make_plot
@@ -198,7 +198,7 @@ class AggregateStatistics(object):
 
         self.summary.close()
 
-    def calc_stat_1d(self, trial_array, calc_corr=False):
+    def calc_stat_1d(self, trial_array, calc_corr=True):
         """take an 1D array of power spectra and find some basic statistics
         on it"""
         stat_1d = {}
@@ -330,13 +330,13 @@ class AggregateStatistics(object):
                                      logscale=False)
 
             # can use C or F to do column or row-major
-            outplot_file = "%s/sim_corr_2d_%s.png" % \
-                      (self.params['outputdir'], treatment)
-            plot_slice.simpleplot_2D(outplot_file, stat_2d['corr'],
-                                     stat_2d['flat_axis'],
-                                     stat_2d['flat_axis'],
-                                     ["k", "k"], 1.,
-                                     "2D power corr", "corr")
+            #outplot_file = "%s/sim_corr_2d_%s.png" % \
+            #          (self.params['outputdir'], treatment)
+            #plot_slice.simpleplot_2D(outplot_file, stat_2d['corr'],
+            #                         stat_2d['flat_axis'],
+            #                         stat_2d['flat_axis'],
+            #                         ["k", "k"], 1.,
+            #                         "2D power corr", "corr")
 
         return (stat_2d, counts_2d)
 
