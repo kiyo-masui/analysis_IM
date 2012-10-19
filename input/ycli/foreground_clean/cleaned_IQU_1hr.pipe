@@ -1,0 +1,282 @@
+# pipeline for  foreground clean
+
+pipe_modules = []
+pipe_processes = 1
+
+
+from foreground_clean import pair_set_legendre
+from foreground_clean import pair_set
+
+#from quadratic_products import pwrspec_combinations
+#from quadratic_products import pwrspec_compile
+
+from map import simulate_gbt
+import struct
+import os
+import copy
+
+
+do_diag_noise = False
+do_inv_diag_noise = True
+
+do_IxIsvd = True
+do_IQUclean_withIxIsvd = True
+do_IQUclean_themselves = True
+do_simulation = False
+do_simulation_IQU = False
+
+#-----------------------------------------------------------------------------
+# main parameters that define the run
+#-----------------------------------------------------------------------------
+
+# This is the database key for the input map
+basemap = os.getenv('MAPFILE')
+basemap_my = os.getenv('MAPGBT_MY')
+noiseweight = os.getenv('NOISEWEIGHT')
+simroot = os.getenv('SIMROOT') # simulation file root
+simfile = os.getenv('SIMFILE') # simulation file number
+
+if simfile != 'None':
+    do_diag_noise = False
+    do_inv_diag_noise = False
+    do_IxIsvd = False
+    do_IQUclean_withIxIsvd = False
+    do_IQUclean_themselves = False
+
+    do_simulation = False
+    do_simulation_IQU = True
+else:
+    do_simulation = False
+    do_simulation_IQU = False
+
+goodmodes = int(os.getenv('GOODMODES'))
+
+nfreq = 256 
+cutlist = [6, 7, 8, 15, 16, 18, 19, 20, 21, 22, 37, 80, 103, 104, 105, 106, \
+           107, 108, 130, 131, 132, 133, 134, 171, 175, 177, 179, 182, 183, \
+           187, 189, 192, 193, 194, 195, 196, 197, 198, 201, 204, 208, 209, \
+           212, 213, 218, 219, 229, 233, 237, 244, 254, 255]
+freq_list = tuple([ind for ind in range(nfreq) if ind not in cutlist])
+mode_list = range(0, 5, 1)
+common_res_convolution = False
+sub_weighted_mean = True
+sim_multiplier = 1.
+
+output_folder = '1hr_IQU_legendre_modes_%dgwj/'%goodmodes
+output_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
+output_root += output_folder
+
+basemap_my += output_folder
+
+#-----------------------------------------------------------------------------
+# diagnal noise
+#-----------------------------------------------------------------------------
+if do_diag_noise:
+    noisedict = {}
+    noisedict['I_with_I'] = basemap+'fir_1hr_41-18_avg_fdgp_noise_inv_I_800.npy'
+    noisedict['I_with_Q'] = basemap+'fir_1hr_41-18_avg_fdgp_noise_inv_Q_800.npy'
+    noisedict['I_with_U'] = basemap+'fir_1hr_41-18_avg_fdgp_noise_inv_U_800.npy'
+    noisedict['I_with_V'] = basemap+'fir_1hr_41-18_avg_fdgp_noise_inv_V_800.npy'
+    noisedict = pair_set.diag_noise(noisedict, basemap_my)
+if do_inv_diag_noise:
+    noisedict = {}
+    noisedict['I_with_I'] = basemap+'fir_1hr_41-18_avg_fdgp_noise_diag_I_800.npy'
+    noisedict['I_with_Q'] = basemap+'fir_1hr_41-18_avg_fdgp_noise_diag_Q_800.npy'
+    noisedict['I_with_U'] = basemap+'fir_1hr_41-18_avg_fdgp_noise_diag_U_800.npy'
+    noisedict['I_with_V'] = basemap+'fir_1hr_41-18_avg_fdgp_noise_diag_V_800.npy'
+    noisedict = pair_set.inv_diag_noise(noisedict, basemap_my)
+
+#-----------------------------------------------------------------------------
+# configure the pairdict for raw maps
+#-----------------------------------------------------------------------------
+pairdict = {}
+pairdict['I_with_I'] = {}
+pairdict['I_with_I']['map1'] = basemap + 'fir_1hr_41-18_avg_fdgp_clean_map_I_800.npy'
+pairdict['I_with_I']['map2'] = basemap + 'fir_1hr_41-18_avg_fdgp_clean_map_I_800.npy'
+pairdict['I_with_I']['noise_inv1'] = basemap_my
+pairdict['I_with_I']['noise_inv1']+=  'fir_1hr_41-18_avg_fdgp_noise_weight_I_800.npy'
+pairdict['I_with_I']['noise_inv2'] = basemap_my
+pairdict['I_with_I']['noise_inv2']+=  'fir_1hr_41-18_avg_fdgp_noise_weight_I_800.npy'
+pairdict['I_with_I']['tag1'] = 'I'
+pairdict['I_with_I']['tag2'] = 'I'
+pairdict['I_with_Q'] = {}
+pairdict['I_with_Q']['map1'] = basemap + 'fir_1hr_41-18_avg_fdgp_clean_map_I_800.npy'
+pairdict['I_with_Q']['map2'] = basemap + 'fir_1hr_41-18_avg_fdgp_clean_map_Q_800.npy'
+pairdict['I_with_Q']['noise_inv1'] = basemap_my
+pairdict['I_with_Q']['noise_inv1']+=  'fir_1hr_41-18_avg_fdgp_noise_weight_I_800.npy'
+pairdict['I_with_Q']['noise_inv2'] = basemap_my
+pairdict['I_with_Q']['noise_inv2']+=  'fir_1hr_41-18_avg_fdgp_noise_weight_Q_800.npy'
+pairdict['I_with_Q']['tag1'] = 'I'
+pairdict['I_with_Q']['tag2'] = 'Q'
+pairdict['I_with_U'] = {}
+pairdict['I_with_U']['map1'] = basemap + 'fir_1hr_41-18_avg_fdgp_clean_map_I_800.npy'
+pairdict['I_with_U']['map2'] = basemap + 'fir_1hr_41-18_avg_fdgp_clean_map_U_800.npy'
+pairdict['I_with_U']['noise_inv1'] = basemap_my
+pairdict['I_with_U']['noise_inv1']+=  'fir_1hr_41-18_avg_fdgp_noise_weight_I_800.npy'
+pairdict['I_with_U']['noise_inv2'] = basemap_my
+pairdict['I_with_U']['noise_inv2']+=  'fir_1hr_41-18_avg_fdgp_noise_weight_U_800.npy'
+pairdict['I_with_U']['tag1'] = 'I'
+pairdict['I_with_U']['tag2'] = 'U'
+
+#-----------------------------------------------------------------------------
+# use the base map parameters above to make a few map cleaning cases
+#-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+# use I x I find the first 5 svd modes
+#-----------------------------------------------------------------------------
+if do_IxIsvd:
+    pipe_modules.append((pair_set_legendre.PairSet_LegendreSVD, ('fs0_', 'fs_')))
+
+    fs0_pairlist = ['I_with_I',] 
+    fs0_pairdict = pairdict
+    #fs0_calc_diagnal = True
+    fs0_output_root = output_root + '/IxI5svd/'
+    fs0_freq_list1 = freq_list
+    fs0_modes = range(0, 5, 1)
+    fs0_factorizable_noise = True
+    #fs0_factorizable_noise = False
+    fs0_convolve = common_res_convolution
+    fs0_sub_weighted_mean = sub_weighted_mean
+    fs0_good_modes = goodmodes
+    fs0_freq_n_all1 = nfreq
+
+#-----------------------------------------------------------------------------
+# use the svd of IxI, clean I, Q and U
+#-----------------------------------------------------------------------------
+if do_IQUclean_withIxIsvd:
+    pipe_modules.append((pair_set_legendre.PairSet_LegendreSVD, ('fs1_', 'fs_')))
+
+    fs1_SVD_root = output_root + '/IxI5svd/'
+    if goodmodes == 1:
+        fs1_SVD_file = 'SVD_pair_legendre_I_with_I.pkl'
+    else:
+        fs1_SVD_file = 'SVD_pair_I_with_I.pkl'
+    fs1_pairlist = ['I_with_Q', 'I_with_U']
+    fs1_pairdict = pairdict
+    fs1_output_root = output_root + '/IQUmap_clean_withIxIsvd/'
+    fs1_freq_list1 = freq_list
+    fs1_modes = range(0, 5, 1)
+    fs1_factorizable_noise = True
+    fs1_convolve = common_res_convolution
+    fs1_sub_weighted_mean = sub_weighted_mean
+    fs1_good_modes = goodmodes
+    fs1_freq_n_all1 = nfreq
+
+#-----------------------------------------------------------------------------
+# clean I, Q and U using cleand I, Q and U maps
+#-----------------------------------------------------------------------------
+if do_IQUclean_themselves:
+    pipe_modules.append((pair_set_legendre.PairSet_LegendreSVD, ('fs2_', 'fs_')))
+    fs2_pairdict = copy.deepcopy(pairdict)
+    fs2_pairdict['I_with_Q']['map1'] = output_root + '/IQUmap_clean_withIxIsvd/'
+    fs2_pairdict['I_with_Q']['map1']+= 'sec_I_cleaned_clean_map_I_with_Q_3modes.npy'
+    fs2_pairdict['I_with_Q']['map2'] = output_root + '/IQUmap_clean_withIxIsvd/'
+    fs2_pairdict['I_with_Q']['map2']+= 'sec_Q_cleaned_clean_map_I_with_I_3modes.npy'
+    fs2_pairdict['I_with_U']['map1'] = output_root + '/IQUmap_clean_withIxIsvd/'
+    fs2_pairdict['I_with_U']['map1']+= 'sec_I_cleaned_clean_map_I_with_U_3modes.npy'
+    fs2_pairdict['I_with_U']['map2'] = output_root + '/IQUmap_clean_withIxIsvd/'
+    fs2_pairdict['I_with_U']['map2']+= 'sec_U_cleaned_clean_map_I_with_I_3modes.npy'
+    fs2_pairdict['I_with_I']['map1'] = output_root + '/IxI5svd/'
+    fs2_pairdict['I_with_I']['map1']+= 'sec_I_cleaned_clean_map_I_with_I_3modes.npy'
+    fs2_pairdict['I_with_I']['map2'] = output_root + '/IxI5svd/'
+    fs2_pairdict['I_with_I']['map2']+= 'sec_I_cleaned_clean_map_I_with_I_3modes.npy'
+
+    fs2_pairlist = ['I_with_Q', 'I_with_U', 'I_with_I']
+    #fs2_calc_diagnal = True
+    fs2_output_root = output_root + '/IQUmap_clean_themselves/'
+    fs2_freq_list1 = freq_list
+    fs2_modes = range(0, 55, 5)
+    fs2_factorizable_noise = True
+    fs2_convolve = common_res_convolution
+    fs2_sub_weighted_mean = sub_weighted_mean
+    if goodmodes == 1:
+        fs2_good_modes = 0
+    else:
+        fs2_good_modes = goodmodes
+    fs2_freq_n_all1 = nfreq
+
+#-----------------------------------------------------------------------------
+# generate simulation maps for GBT and WiggleZ
+#-----------------------------------------------------------------------------
+if do_simulation:
+    # generate the simulation maps
+    pipe_modules.append((simulate_gbt.SimulateGbt, ('sg1_', 'sg_')))
+    instance_seed = struct.unpack('I', os.urandom(4))[0]
+    print 'generating simulation with seed: %d' % instance_seed
+
+    sg1_output_root = simroot
+    sg1_template_file = basemap + 'fir_1hr_41-18_avg_fdgp_clean_map_I_800.npy' 
+    sg1_seed = instance_seed
+    sg1_refinement = 2
+    sg1_weightfile =basemap_my +  'fir_1hr_41-18_avg_fdgp_noise_weight_I_800.npy'
+    sg1_outfile_meansub = "sim_beammeansub_%03d.npy" % int(simfile)
+    sg1_outfile_raw = 'sim_raw_%03d.npy' % int(simfile)
+    sg1_outfile_delta = 'sim_delta_%03d.npy' % int(simfile)
+    sg1_outfile_physical = 'sim_phys_%03d.npy' % int(simfile)
+
+if do_simulation_IQU:
+    # clean_{map+sim} (map+sim) 
+    # using IxI clean first 3 modes
+
+    sg1_output_root = simroot
+    sg1_outfile_meansub = "sim_beammeansub_%03d.npy" % int(simfile)
+
+    pipe_modules.append((pair_set_legendre.PairSet_LegendreSVD, ('fs3_', 'fs_')))
+
+    fs3_SVD_root = output_root + '/IxI5svd/'
+    if goodmodes == 1:
+        fs3_SVD_file = 'SVD_pair_legendre_I_with_I.pkl'
+    else:
+        fs3_SVD_file = 'SVD_pair_I_with_I.pkl'
+    fs3_pairlist = ['I_with_Q', 'I_with_U', 'I_with_I']
+    fs3_pairdict = pairdict
+    #fs3_calc_diagnal = True
+    fs3_output_root = output_root + '/simmap_withIxIsvd_%s/' % simfile
+    fs3_freq_list1 = freq_list
+    fs3_modes = range(0, 5, 1)
+    fs3_simfile1 = sg1_output_root + sg1_outfile_meansub
+    fs3_sim_multiplier = sim_multiplier
+    fs3_subtract_inputmap_from_sim = False
+    fs3_subtract_sim_from_inputmap = False
+    fs3_factorizable_noise = True
+    fs3_convolve = common_res_convolution
+    fs3_sub_weighted_mean = sub_weighted_mean
+    fs3_good_modes = goodmodes
+    fs3_freq_n_all1 = nfreq
+
+    # using IxQ IxU
+    pipe_modules.append((pair_set_legendre.PairSet_LegendreSVD, ('fs4_', 'fs_')))
+    fs4_pairlist = ['I_with_Q', 'I_with_U', 'I_with_I']
+    fs4_pairdict = copy.deepcopy(pairdict)
+    fs4_pairdict['I_with_Q']['map1'] = fs3_output_root
+    fs4_pairdict['I_with_Q']['map1']+= 'sec_I_cleaned_clean_map_I_with_Q_3modes.npy'
+    fs4_pairdict['I_with_Q']['map2'] = fs3_output_root
+    fs4_pairdict['I_with_Q']['map2']+= 'sec_Q_cleaned_clean_map_I_with_I_3modes.npy'
+    fs4_pairdict['I_with_U']['map1'] = fs3_output_root
+    fs4_pairdict['I_with_U']['map1']+= 'sec_I_cleaned_clean_map_I_with_U_3modes.npy'
+    fs4_pairdict['I_with_U']['map2'] = fs3_output_root
+    fs4_pairdict['I_with_U']['map2']+= 'sec_U_cleaned_clean_map_I_with_I_3modes.npy'
+    fs4_pairdict['I_with_I']['map1'] = fs3_output_root
+    fs4_pairdict['I_with_I']['map1']+= 'sec_I_cleaned_clean_map_I_with_I_3modes.npy'
+    fs4_pairdict['I_with_I']['map2'] = fs3_output_root
+    fs4_pairdict['I_with_I']['map2']+= 'sec_I_cleaned_clean_map_I_with_I_3modes.npy'
+
+    #fs4_calc_diagnal = True
+    fs4_output_root = output_root + '/simmapmode_simmap_beam_%s/' % simfile
+    fs4_freq_list1 = freq_list
+    fs4_modes = range(0, 55, 5)
+    fs4_factorizable_noise = True
+    fs4_convolve = False
+    fs4_sub_weighted_mean = sub_weighted_mean
+    #fs4_simfile = sg1_output_root + sg1_outfile_raw
+    #fs4_simfile = sg1_output_root + sg1_outfile_meansub
+    #fs4_sim_multiplier = sim_multiplier
+    #fs4_subtract_inputmap_from_sim = False
+    #fs4_subtract_sim_from_inputmap = False
+    if goodmodes == 1:
+        fs4_good_modes = 0
+    else:
+        fs4_good_modes = goodmodes
+    fs4_freq_n_all1 = nfreq
+    #fs4_save_section = False
+    
