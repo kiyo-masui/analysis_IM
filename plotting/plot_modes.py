@@ -199,9 +199,12 @@ def plot_svd_series_comparison(path_key1, path_key2):
 #plot_svd_series_comparison("GBT_cleaned_noconv_15hr_maps_Eric", "GBT_cleaned_noconv_15hr_sims_Eric")
 #plot_svd_series_comparison("GBT_cleaned_15hr_maps_Eric", "GBT_cleaned_15hr_sims_Eric")
 
-average_mode_amplitudes("GBT_15hr_optimalmap_selfcal_762_cleaned_path_Eric")
-dot_mode_functions("GBT_15hr_optimalmap_selfcal_762_cleaned_path_Eric",
-                   "GBT_15hr_optimalmap_selfcal_762_cleaned_path_Eric")
+#average_mode_amplitudes("GBT_15hr_optimalmap_selfcal_762_cleaned_path_Eric")
+#dot_mode_functions("GBT_15hr_optimalmap_selfcal_762_cleaned_path_Eric",
+#                   "GBT_15hr_optimalmap_selfcal_762_cleaned_path_Eric")
+average_mode_amplitudes("GBT_15hr_map_oldcalmoon_cleaned_path_Eric")
+dot_mode_functions("GBT_15hr_map_oldcalmoon_cleaned_path_Eric",
+                   "GBT_15hr_map_oldcalmoon_cleaned_path_Eric")
 #average_mode_amplitudes("GBT_15hr_map_oldcal_cleaned_path_Eric")
 #dot_mode_functions("GBT_15hr_map_oldcal_cleaned_path_Eric",
 #                   "GBT_15hr_map_oldcal_cleaned_path_Eric")

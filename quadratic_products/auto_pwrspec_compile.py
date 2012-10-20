@@ -44,7 +44,7 @@ class CompileAutoNoiseweight(object):
             #         signal2d_agg[treatment]["mean"]
             # note that we sum in constant |k| annuli so k^3 in k^3 P(k) is a
             # constant factor
-            comb = pwr_map.comb_cases[0]
+            comb = pwr_noise.comb_cases[0]
             pwrcase = "%s:%s" % (comb, treatment)
             weight = np.abs(pwr_noise.counts_2d[pwrcase]) / 4.
             weight /= noise2d_agg[treatment]["mean"] ** 2.
@@ -255,6 +255,9 @@ class CompileAutopower(object):
         signal2d_agg = pwr_map.agg_stat_2d_pwrspec()
 
         if self.params["noiseweights_2dto1d"] is not None:
+            print "applying 2D noise weights: " + \
+                self.params["noiseweights_2dto1d"]
+
             weightfile = h5py.File(self.params["noiseweights_2dto1d"], "r")
             weights_2d = {}
             for treatment in pwr_map.treatment_cases:

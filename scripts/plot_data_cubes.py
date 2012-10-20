@@ -276,6 +276,7 @@ def plot_wigglez(fieldname, outputdir="/cita/d/www/home/eswitzer/movies/",
 def plot_mode_amplitudes(mapkey, outputdir="/cita/d/www/home/eswitzer/movies/"):
     datapath_db = data_paths.DataPath()
     map_cases = datapath_db.fileset_cases(mapkey, "pair;product;treatment")
+    print map_cases
     for pair in map_cases['pair']:
         source_key = "db:%s:%s;modes;100modes" % (mapkey, pair)
         pc.make_cube_movie(source_key, "Mode amp", pc.cube_frame_dir,
@@ -284,10 +285,23 @@ def plot_mode_amplitudes(mapkey, outputdir="/cita/d/www/home/eswitzer/movies/"):
 
 
 if __name__ == "__main__":
+    #plot_gbt_comb_modeset('GBT_15hr_map_oldcal_cleaned_combined', convolve=False,
+    #                      outputdir="/mnt/raid-project/gmrt/eswitzer/GBT/movies/")
 
+    #plot_gbt_comb_modeset('GBT_15hr_map_oldcal_cleaned_combined', convolve=True,
+    #                      outputdir="/mnt/raid-project/gmrt/eswitzer/GBT/movies/")
+
+    #plot_gbt_comb_modeset('GBT_15hr_map_oldcalmoon_cleaned_combined', convolve=False,
+    #                      outputdir="/mnt/raid-project/gmrt/eswitzer/GBT/movies/")
+
+    plot_gbt_comb_modeset('GBT_15hr_map_oldcalmoon_cleaned_combined', convolve=True,
+                          outputdir="/mnt/raid-project/gmrt/eswitzer/GBT/movies/")
+
+    #plot_mode_amplitudes('GBT_15hr_map_oldcal_cleaned')
+    #plot_mode_amplitudes('GBT_15hr_map_oldcalmoon_cleaned')
     #plot_mode_amplitudes('GBT_15hr_map_fdgcal_cleaned')
     #plot_mode_amplitudes('GBT_15hr_map_fdgcal_cleaned_noconv')
-    plot_gbt_mapset()
+    #plot_gbt_mapset()
     #plot_cleaned_gbt15hr_mapset()
     #plot_gbt_simset('sim_15hr')
     #plot_gbt_simset('simvel_15hr')
