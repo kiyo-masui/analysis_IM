@@ -50,6 +50,7 @@ class PowerSpectrum(object):
 
         self.counts_1d = {}
         self.counts_1d_from_2d = {}
+        self.gauss_errors_1d_from_2d = {}
         self.counts_2d = {}
 
         for pwrspec_case in pwrspec_compilation:
@@ -161,6 +162,7 @@ class PowerSpectrum(object):
             for comb in self.comb_cases:
                 pwrcase = "%s:%s" % (comb, treatment)
                 (self.counts_1d_from_2d[pwrcase], \
+                self.gauss_errors_1d_from_2d[pwrcase], \
                 self.pwrspec_1d_from_2d[pwrcase]) = \
                                         pe.convert_2d_to_1d_pwrspec(
                                             self.pwrspec_2d[pwrcase],
@@ -176,11 +178,14 @@ class PowerSpectrum(object):
         self.k_1d_from_2d["right"] = bin_right
         self.num_k_1d_from_2d = bin_center.shape[0]
 
-    def combination_array_1d(self, from_2d=False, counts=False, debug=False):
+    def combination_array_1d(self, from_2d=True, debug=False):
         r"""pack the various pair combinations for each treatment -> array
         """
 
-        summary_treatment = {}
+        summary_pwr = {}
+        summary_counts = {}
+        summary_gerror = {}
+
         if from_2d:
             num_k = self.num_k_1d_from_2d
         else:
@@ -188,34 +193,41 @@ class PowerSpectrum(object):
 
         for treatment in self.treatment_cases:
             pwr_treatment = np.zeros((num_k, self.num_comb))
+            counts_treatment = np.zeros((num_k, self.num_comb))
+            gerror_treatment = np.zeros((num_k, self.num_comb))
+
             for comb, comb_index in zip(self.comb_cases, range(self.num_comb)):
                 pwrcase = "%s:%s" % (comb, treatment)
-                if counts:
-                    if from_2d:
-                        if debug:
-                            print "combining 2D->1D counts"
-                        pwr_treatment[:, comb_index] = \
-                                self.counts_1d_from_2d[pwrcase]
-                    else:
-                        if debug:
-                            print "combining 1D counts"
-                        pwr_treatment[:, comb_index] = \
-                                self.counts_1d[pwrcase]
+                if from_2d:
+                    if debug:
+                        print "combining 2D->1D counts"
+
+                    counts_treatment[:, comb_index] = \
+                            self.counts_1d_from_2d[pwrcase]
+
+                    gerror_treatment[:, comb_index] = \
+                            self.gauss_errors_1d_from_2d[pwrcase]
+
+                    pwr_treatment[:, comb_index] = \
+                            self.pwrspec_1d_from_2d[pwrcase]
                 else:
-                    if from_2d:
-                        if debug:
-                            print "combining 2D->1D P(k)"
-                        pwr_treatment[:, comb_index] = \
-                                self.pwrspec_1d_from_2d[pwrcase]
-                    else:
-                        if debug:
-                            print "combining 1D P(k)"
-                        pwr_treatment[:, comb_index] = \
-                                self.pwrspec_1d[pwrcase]
+                    if debug:
+                        print "WARNING: combining 1D counts"
 
-            summary_treatment[treatment] = pwr_treatment
+                    counts_treatment[:, comb_index] = \
+                            self.counts_1d[pwrcase]
 
-        return summary_treatment
+                    gerror_treatment[:, comb_index] =
+                            np.zero_like(counts_treatment[:, comb_index])
+
+                    pwr_treatment[:, comb_index] = \
+                            self.pwrspec_1d[pwrcase]
+
+            summary_counts[treatment] = counts_treatment
+            summary_gerror[treatment] = gerror_treatment
+            summary_pwr[treatment] = pwr_treatment
+
+        return summary_counts, summary_gerror, summary_pwr
 
     def combination_array_2d(self, counts=False, debug=None):
         r"""pack the various pair combinations for each treatment into an array
@@ -254,24 +266,28 @@ class PowerSpectrum(object):
 
     def agg_stat_1d_pwrspec(self, from_2d=False, use_masked=False):
         r"""TODO: use masked array here"""
-        comb_arr = self.combination_array_1d(from_2d=from_2d, counts=False)
-        counts_arr = self.combination_array_1d(from_2d=from_2d, counts=True)
+        (counts_arr, gerror_arr, comb_arr) = \
+            self.combination_array_1d(from_2d=from_2d)
 
         stat_summary = {}
         for treatment in self.treatment_cases:
             entry = {}
             if use_masked:
+                gerror_ma = ma.masked_invalid(gerror_arr[treatment])
                 counts_ma = ma.masked_invalid(counts_arr[treatment])
                 comb_ma = ma.masked_invalid(comb_arr[treatment])
+
                 if self.num_comb > 1:
                     entry['counts'] = np.ma.mean(counts_ma, axis=1)
                     entry['mean'] = np.ma.mean(comb_ma, axis=1)
+                    entry['gauss_std'] = np.ma.mean(gerror_ma, axis=1)
                     entry['std'] = np.ma.std(comb_ma, axis=1, ddof=1)
                     entry['corr'] = np.ma.corrcoef(comb_ma)
                     entry['cov'] = np.ma.cov(comb_ma)
                 else:
                     entry['counts'] = counts_ma[:, 0]
                     entry['mean'] = comb_ma[:, 0]
+                    entry['gauss_std'] = gerror_ma[:, 0]
                     entry['std'] = 0.
                     entry['corr'] = 0.
                     entry['cov'] = 0.
@@ -280,12 +296,14 @@ class PowerSpectrum(object):
                 if self.num_comb > 1:
                     entry['counts'] = np.mean(counts_arr[treatment], axis=1)
                     entry['mean'] = np.mean(comb_treat, axis=1)
+                    entry['gauss_std'] = np.mean(gerror_arr[treatment], axis=1)
                     entry['std'] = np.std(comb_treat, axis=1, ddof=1)
                     entry['corr'] = np.corrcoef(comb_treat)
                     entry['cov'] = np.cov(comb_treat)
                 else:
                     entry['counts'] = counts_arr[treatment][:, 0]
                     entry['mean'] = comb_treat[:, 0]
+                    entry['gauss_std'] = gerror_arr[treatment][:, 0]
                     entry['std'] = 0.
                     entry['corr'] = 0.
                     entry['cov'] = 0.
@@ -339,12 +357,14 @@ class PowerSpectrum(object):
         stat_summary = self.agg_stat_1d_pwrspec(from_2d=from_2d)
         mean_1d = stat_summary[treatment]["mean"]
         std_1d = stat_summary[treatment]["std"]
+        gauss_std_1d = stat_summary[treatment]["gauss_std"]
         corrmat_1d = stat_summary[treatment]["corr"]
 
         outfile = open(filename, "w")
         for specdata in zip(self.bin_left, self.bin_center,
-                            self.bin_right, mean_1d, std_1d):
-            outfile.write(("%10.15g " * 5 + "\n") % specdata)
+                            self.bin_right, mean_1d,
+                            std_1d, gauss_std_1d):
+            outfile.write(("%10.15g " * 6 + "\n") % specdata)
         outfile.close()
 
         bin_left_lt = np.log10(self.bin_left)

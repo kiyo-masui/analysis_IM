@@ -66,7 +66,8 @@ fastautopowerparams_init = {
                }
 fastautopowerprefix = 'fastautopower_'
 
-
+# TODO: replace this with a module that calculates a fast transfer function
+# that is used in the "official" autopower calculation
 class CompileFastAutopower(object):
     def __init__(self, parameter_file=None, params_dict=None, feedback=0):
         self.params = params_dict
@@ -199,6 +200,7 @@ class CompileFastAutopower(object):
             mean_map_plussim = pwr_map_plussim_summary[treatment]["mean"]
             mean_map = pwr_map_summary[treatment]["mean"]
             std_map = pwr_map_summary[treatment]["std"]
+            gauss_std_map = pwr_map_summary[treatment]["gauss_std"]
             trans = (mean_map_plussim - mean_map) / reference_pwr
 
             #mean_map_plussim = np.mean(avg_plussim[treatment], axis=1)
@@ -213,13 +215,13 @@ class CompileFastAutopower(object):
 
             outfile = "%s/pk_%s.dat" % (self.params["outdir"], treatment)
             file_tools.print_multicolumn(k_vec, reference_pwr, trans,
-                                         mean_map, std_map, outfile=outfile)
+                                         mean_map, std_map, gauss_std_map,
+                                         outfile=outfile)
             print "writing to " + outfile
 
 
 autopowerparams_init = {
         "p_map": "test_map",
-        "p_noise": "test_map",
         "noiseweights_2dto1d": None,
         "apply_2d_transfer": None,
         "outdir": "./"
@@ -238,7 +240,6 @@ class CompileAutopower(object):
     def execute(self, processes):
         pwr_map = ps.PowerSpectrum(self.params["p_map"])
 
-        # TODO!!!!!: is this a proper function of treatment?
         if self.params["apply_2d_transfer"] is not None:
             # copy the same beam transfer function for all cases
             trans_shelve = shelve.open(self.params["apply_2d_transfer"])
@@ -253,6 +254,43 @@ class CompileAutopower(object):
 
         # also combine the AxB, etc. into a signal piece that is subtracted
         signal2d_agg = pwr_map.agg_stat_2d_pwrspec()
+
+        for treatment in pwr_map.treatment_cases:
+            outplot_power_file = "%s/power_2d_%s.png" % \
+                                  (self.params['outdir'], treatment)
+
+            outplot_transfer_file = "%s/transfer_2d_%s.png" % \
+                                  (self.params['outdir'], treatment)
+
+            outplot_count_file = "%s/countweight_2d_%s.png" % \
+                                 (self.params['outdir'], treatment)
+
+            # comb is used for autopower AxB etc.; here just use a placeholder
+            logkx = np.log10(pwr_map.kx_2d['center'])
+            logky = np.log10(pwr_map.ky_2d['center'])
+
+            comb = pwr_map.comb_cases[0]
+            pwrcase = "%s:%s" % (comb, treatment)
+
+            plot_slice.simpleplot_2D(outplot_power_file,
+                                     np.abs(pwr_map.pwrspec_2d[pwrcase]),
+                                     logkx, logky,
+                                     ["logkx", "logky"], 1., "2d power",
+                                     "log(abs(2d power))", logscale=True)
+
+            if self.params["apply_2d_transfer"] is not None:
+                plot_slice.simpleplot_2D(outplot_transfer_file,
+                                         transfer_dict[treatment],
+                                         logkx, logky,
+                                         ["logkx", "logky"], 1., "2d trans",
+                                         "2d trans", logscale=False)
+
+            plot_slice.simpleplot_2D(outplot_count_file,
+                                     np.abs(pwr_map.counts_2d[pwrcase]),
+                                     logkx, logky,
+                                     ["logkx", "logky"], 1., "Log-counts",
+                                     "log-counts", logscale=True)
+
 
         if self.params["noiseweights_2dto1d"] is not None:
             print "applying 2D noise weights: " + \
@@ -284,9 +322,10 @@ class CompileAutopower(object):
         for treatment in pwr_map.treatment_cases:
             mean_map = pwr_map_summary[treatment]["mean"]
             std_map = pwr_map_summary[treatment]["std"]
+            gauss_std_map = pwr_map_summary[treatment]["gauss_std"]
 
             outfile = "%s/pk_%s.dat" % (self.params["outdir"], treatment)
-            file_tools.print_multicolumn(k_vec, mean_map, std_map, outfile=outfile)
+            file_tools.print_multicolumn(k_vec, mean_map, std_map,
+                                         gauss_std_map, outfile=outfile)
+
             print "writing to " + outfile
-
-

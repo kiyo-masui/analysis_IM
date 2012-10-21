@@ -218,9 +218,14 @@ def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
     old_settings = np.seterr(invalid="ignore")
     binavg = binsum_histo / weights_histo
     binavg[np.isnan(binavg)] = nullval
+    # note that if the weights are 1/sigma^2, then the variance of the weighted
+    # sum is just 1/sum of weights; so return Gaussian errors based on that
+    gaussian_errors = np.sqrt(1./weights_histo)
+    gaussian_errors[np.isnan(binavg)] = nullval
+
     np.seterr(**old_settings)
 
-    return counts_histo, binavg
+    return counts_histo, gaussian_errors, binavg
 
 
 def calculate_xspec(cube1, cube2, weight1, weight2,
