@@ -15,7 +15,7 @@ from math import *
 from sys import *
 import matplotlib.pyplot as plt
 import mkpower
-#from mpi4py import MPI
+from mpi4py import MPI
 
 
 pi = 3.1415926
@@ -79,21 +79,63 @@ class PowerSpectrumMaker(mkpower.PowerSpectrumMaker):
             params_init, prefix=prefix, feedback=feedback)
 
         self.feedback=feedback
-    
-    def execute(self, nprocesses=1):
+
+    def mpiexecute(self, nprocesses=1):
         
-        #comm = MPI.COMM_WORLD
-        #rank = comm.Get_rank()
-        #size = comm.Get_size()
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
 
         params = self.params
-        resultf = params['resultf']
 
-        # Make parent directory and write parameter file.
-        in_root = params['input_root']
-        out_root = params['output_root']
+        n_map = len(params['imap_list'])
 
-        FKPweight = params['FKPweight']
+        comm.barrier()
+
+        if rank<n_map:
+            self.params['imap_list'] = self.params['imap_list'][rank::size]
+            self.params['nmap_list'] = self.params['nmap_list'][rank::size]
+            if len(self.params['mmap_list'])!=0:
+                self.params['mmap_list'] = self.params['mmap_list'][rank::size]
+            PK, kn, PK2, kn2 = self.execute(rank=rank)
+            if rank != 0:
+                print "RANK %d: Send Data"%rank
+                comm.ssend(PK,  dest=0, tag=11)
+                comm.ssend(PK2, dest=0, tag=12)
+                comm.ssend(kn,  dest=0, tag=13)
+                comm.ssend(kn2, dest=0, tag=14)
+                print "RANK %d: Send Data Succeed"%rank
+            else:
+                if size > n_map:
+                    n_rank = n_map
+                else:
+                    n_rank = size
+                for i in range(1,n_rank):
+                    print "RANK %d: Receive Data from rank %d"%(rank, i)
+                    PK = np.append(PK,  comm.recv(source=i, tag=11), axis=0)
+                    PK2= np.append(PK2, comm.recv(source=i, tag=12), axis=0)
+                    kn = np.append(kn,  comm.recv(source=i, tag=13), axis=0)
+                    kn2= np.append(kn2, comm.recv(source=i, tag=14), axis=0)
+                    print "RANK %d: Receive Data from rank %d Succeed"%(rank, i)
+                for i in range(n_rank, size):
+                    sig = comm.recv(source=i, tag=11)
+                    if sig==1:
+                        print 'RANK %d: rank %d is free'%(rank, i)
+                    else:
+                        print 'RANK %d: rank %d has problem'%(rank, i)
+
+                self.save(PK, kn, PK2, kn2)
+        else:
+            if rank != 0:
+                comm.ssend(1, dest=0, tag=11)
+
+        comm.barrier()
+
+
+    
+    def execute(self, nprocesses=1, rank=-1):
+
+        params = self.params
         n_processes = params['processes']
 
         if params['cldir']!='':
@@ -108,6 +150,9 @@ class PowerSpectrumMaker(mkpower.PowerSpectrumMaker):
         #### Process ####
         n_new = n_processes - 1
         n_map = len(params['imap_list'])
+        if rank!=-1:
+            print "RANK %d: "%rank,
+        print "%d power need to be calculated"%n_map
 
         kbn = params['kbinNum']
         kmin = params['kmin']
@@ -143,6 +188,19 @@ class PowerSpectrumMaker(mkpower.PowerSpectrumMaker):
                         args=(ii, ii%n_new))
                     process_list[ii%n_new].start()
 
+        if rank==-1:
+            self.save(PK, kn, PK2, kn2)
+        else:
+            print "RANK %d: Power Calculation Finished"%rank
+            return PK, kn, PK2, kn2
+
+    def save(self, PK, kn, PK2, kn2):
+        params = self.params
+        resultf = params['resultf']
+        FKPweight = params['FKPweight']
+        kbn = params['kbinNum']
+        kmin = params['kmin']
+        kmax = params['kmax']
         if FKPweight:
             if params['jkerror']:
                 sp.save(params['output_root']+resultf+'_p_each_jk_fkp', PK)
@@ -178,12 +236,12 @@ class PowerSpectrumMaker(mkpower.PowerSpectrumMaker):
 
         if params['jkerror']:
             print '\tJackKnife Error:'
-            PKvar = PKvar*sqrt((n_map-1))
-            PK2var = PK2var*sqrt((n_map-1))
+            PKvar = PKvar*sqrt((PK.shape[0]-1))
+            PK2var = PK2var*sqrt((PK.shape[0]-1))
         elif params['sme']:
             print '\tUsing the Standard Deviation of Sample Mean as error'
-            PKvar = PKvar/sqrt(n_map)
-            PK2var = PK2var/sqrt(n_map)
+            PKvar = PKvar/sqrt(PK.shape[0])
+            PK2var = PK2var/sqrt(PK.shape[0])
 
         print 
         print '===power before cal==='

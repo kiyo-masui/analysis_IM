@@ -34,7 +34,9 @@ def plot2dtransfer_3(fileroot, filename, savename):
     #print b2_beam
     #print b2_lose
 
-    f = plt.figure(figsize=(17,7))
+    cmax = 1.2
+
+    f = plt.figure(figsize=(27,11))
     #f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharey=True, figsize=(23, 7))
     #plt.subplots_adjust(wspace=0)
     ax = ImageGrid(f, 111,
@@ -50,7 +52,7 @@ def plot2dtransfer_3(fileroot, filename, savename):
                    cbar_pad = 0.05,
                    )
     im0 = ax[0].pcolormesh(k, k, b2)
-    im0.set_clim(0, 1.5)
+    im0.set_clim(0, cmax)
     ax[0].set_xlim(k.min(), k.max())
     ax[0].set_ylim(k.min(), k.max())
     ax[0].loglog()
@@ -59,14 +61,14 @@ def plot2dtransfer_3(fileroot, filename, savename):
     ax[0].set_title(filename)
 
     im1 = ax[1].pcolormesh(k, k, b2_beam)
-    im1.set_clim(0, 1.5)
+    im1.set_clim(0, cmax)
     ax[1].set_xlim(k.min(), k.max())
     ax[1].loglog()
     ax[1].set_xlabel('log(k_v) [log(h/Mpc)]')
     ax[1].set_title(filename + ' beam')
 
     im2 = ax[2].pcolormesh(k, k, b2_lose)
-    im2.set_clim(0, 1.5)
+    im2.set_clim(0, cmax)
     ax[2].set_xlim(k.min(), k.max())
     ax[2].loglog()
     ax[2].set_xlabel('log(k_v) [log(h/Mpc)]')
@@ -194,10 +196,105 @@ if __name__=='__main__':
     #plot2dtransfer(fileroot, filename, savename, middle='_lose')
     #plot2dtransfer(fileroot, filename, savename)
 
+    #fileroot = workroot + 'bias/'
+    #filename = 'cros_II_extend_legendre_modes_0gwj_20'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
+
+    #fileroot = workroot + 'bias/'
+    #filename = 'cros_1hr_II_legendre_modes_0gwj_20'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
+
+    #fileroot = workroot + 'bias/'
+    #filename = 'cros_1hr_IQ_legendre_modes_0gwj_20'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
+
+    #fileroot = workroot + 'bias/'
+    #filename = 'cros_1hr_IU_legendre_modes_0gwj_20'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
+
+    #fileroot = workroot + 'bias/'
+    #filename = 'cros_1hr_II_legendre_modes_0gwj_conv_20'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
+
+    #fileroot = workroot + 'bias/'
+    #filename = 'cros_1hr_IQ_legendre_modes_0gwj_conv_20'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
+
+    #fileroot = workroot + 'bias/'
+    #filename = 'cros_1hr_IU_legendre_modes_0gwj_conv_20'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
+
+    #fileroot = workroot + 'bias/'
+    #filename = 'cros_15hr_IE_legendre_modes_0gwj_20'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
+     
+    #fileroot = workroot + 'bias/'
+    #filename = 'cros_15hr_EI_legendre_modes_0gwj_20'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
+
+    #fileroot = workroot + 'bias/'
+    #filename = 'cros_15hr_IE_legendre_modes_0gwj_conv_20'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
+
+    #fileroot = workroot + 'bias/'
+    #filename = 'cros_15hr_EI_legendre_modes_0gwj_conv_20'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
+
+    #fileroot = workroot + 'bias/'
+    #filename = 'auto_1hr_IE_legendre_modes_0gwj_conv_10'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
+
+    #fileroot = workroot + 'bias/'
+    #filename = 'auto_1hr_IE_legendre_modes_0gwj_conv_5'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
+
+    #fileroot = workroot + 'bias/'
+    #filename = 'auto_1hr_IE_legendre_modes_0gwj_conv_15'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
+
+    #fileroot = workroot + 'bias/'
+    #filename = 'auto_1hr_IE_legendre_modes_0gwj_conv_20'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
+
     fileroot = workroot + 'bias/'
-    filename = 'cros_II_extend_legendre_modes_0gwj_20'
+    filename = 'auto_1hr_ABCD_legendre_modes_0gwj_conv_10'
     savename = filename + '_transfer'
     plot2dtransfer_3(fileroot, filename, savename)
+
+    fileroot = workroot + 'bias/'
+    filename = 'auto_1hr_ABCD_legendre_modes_0gwj_conv_20'
+    savename = filename + '_transfer'
+    plot2dtransfer_3(fileroot, filename, savename)
+
+    fileroot = workroot + 'bias/'
+    filename = 'auto_1hr_ABCD_legendre_modes_0gwj_conv_25'
+    savename = filename + '_transfer'
+    plot2dtransfer_3(fileroot, filename, savename)
+
+    fileroot = workroot + 'bias/'
+    filename = 'auto_1hr_ABCD_legendre_modes_0gwj_25'
+    savename = filename + '_transfer'
+    plot2dtransfer_3(fileroot, filename, savename)
+
+    #fileroot = workroot + 'bias/'
+    #filename = 'auto_1hr_IE_legendre_modes_0gwj_conv_15'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
 
     #fileroot = workroot + 'bias/'
     #filename = 'cros_IQ_first_legendre_modes_0gwj_3'

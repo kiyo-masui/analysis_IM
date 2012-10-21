@@ -15,26 +15,33 @@ from parkes import fitsGBT
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/86_wigglez1hr_centre_ralongmap_19-28.fits',)
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/55_wigglez15hrst_ralongmap_272-279.fits',)
 #rawdatapath = ('/home/ycli/workspace/map_result/parkes/parkes_2008_09_12_west_P641.fits',)
-#rawdatapath = ('/mnt/data-pen3/ycli/map_result/parkes/parkes_2008_09_12_west_P641.fits',)
-#rawdatapath = ('/mnt/data-pen3/ycli/map_result/flagged/parkes_2008_09_12_west_P641.fits',)
-#rawdatapath = ('/mnt/data-pen3/ycli/map_result/rebinned/parkes_2008_09_12_west_P641.fits',)
-#rawdatapath = ('/mnt/data-pen3/ycli/map_result/pol_selected/parkes_2008_09_12_west_P641.fits',)
-#rawdatapath = ('/mnt/data-pen3/ycli/map_result/parkes/parkes_2008_09_13_west_P641.fits',)
-#rawdatapath = ('/mnt/data-pen3/ycli/map_result/flagged/parkes_2008_09_13_west_P641.fits',)
-#rawdatapath = ('/mnt/data-pen3/ycli/map_result/parkes/parkes_2008_09_14_west_P641.fits',)
-#rawdatapath = ('/mnt/data-pen3/ycli/map_result/flagged/parkes_2008_09_14_west_P641.fits',)
-#rawdatapath = ('/mnt/data-pen3/ycli/map_result/parkes/parkes_2008_09_11_west_P641.fits',)
-#rawdatapath = ('/mnt/data-pen3/ycli/map_result/parkes/parkes_2008_09_11_east_P641.fits',)
-#rawdatapath = ('/mnt/data-pen3/ycli/map_result/parkes/parkes_2008_09_12_east_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/parkes/parkes_2008_09_12_west_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/flagged/parkes_2008_09_12_west_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_12_west_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/pol_selected/parkes_2008_09_12_west_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/parkes/parkes_2008_09_13_west_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/flagged/parkes_2008_09_13_west_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/parkes/parkes_2008_09_14_west_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/flagged/parkes_2008_09_14_west_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/parkes/parkes_2008_09_11_west_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/parkes/parkes_2008_09_11_east_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/parkes/parkes_2008_09_12_east_P641.fits',)
 
-#rawdatapath = ('/mnt/data-pen3/ycli/map_result/rebinned/parkes_2008_09_11_west_P641.fits',)
-#rawdatapath = ('/mnt/data-pen3/ycli/map_result/rebinned/parkes_2008_09_11_east_P641.fits',)
-#rawdatapath = ('/mnt/data-pen3/ycli/map_result/rebinned/parkes_2008_09_12_west_P641.fits',)
-#rawdatapath = ('/mnt/data-pen3/ycli/map_result/rebinned/parkes_2008_09_12_east_P641.fits',)
-#rawdatapath = ('/mnt/data-pen3/ycli/map_result/rebinned/parkes_2008_09_13_west_P641.fits',)
-#rawdatapath = ('/mnt/data-pen3/ycli/map_result/rebinned/parkes_2008_09_13_east_P641.fits',)
-#rawdatapath = ('/mnt/data-pen3/ycli/map_result/rebinned/parkes_2008_09_14_west_P641.fits',)
-rawdatapath = ('/mnt/data-pen3/ycli/map_result/rebinned/parkes_2008_09_14_east_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_11_west_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_11_east_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_12_west_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_13_west_P641.fits',)
+rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_13_east_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_12_east_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_13_west_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_13_east_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_14_west_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_14_east_P641.fits',)
+
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/parkes/parkes_2008_09_13_west_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_13_west_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/flagged/parkes_2008_09_13_west_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/parkes/parkes_2008_09_13_west_P641.fits',)
 
 class CheckFitsFile(object):
 
@@ -52,6 +59,10 @@ class CheckFitsFile(object):
         self.hdulist.close()
 
         self.reader = fitsGBT.Reader(datapath)
+
+        print self.tbdata.field('TSYS').shape
+        print self.tbdata.field('TSYS')[0:10]
+        print self.tbdata.field('DATA').shape
 
     def printhead(self):
         print self.hdulist[1].header
@@ -77,9 +88,62 @@ class CheckFitsFile(object):
         #print self.tbdata.field(fieldlabel[6])[:200]
         #print self.tbdata.field(fieldlabel[6])[200:1000]
 
+    def plotfreq_time(self):
+        tsys_x = self.tbdata.field('TSYS')[0::2][0::13]
+        tsys_y = self.tbdata.field('TSYS')[1::2][0::13]
+        spectrum_xx = self.tbdata.field('DATA')[0::2,:][0::13,:][:90,:]
+        spectrum_yy = self.tbdata.field('DATA')[1::2,:][0::13,:][:90,:]
+        spectrum_xx = np.ma.masked_where(np.isnan(spectrum_xx), spectrum_xx)
+        spectrum_yy = np.ma.masked_where(np.isnan(spectrum_yy), spectrum_yy)
+        #spectrum_xx /= spectrum_xx
+        #spectrum_yy /= spectrum_yy
+        #spectrum_xx *= tsys_x[:,None]
+        #spectrum_yy *= tsys_y[:,None]
+        #spectrum_xx_m = np.ma.mean(spectrum_xx, axis=0)
+        #spectrum_yy_m = np.ma.mean(spectrum_yy, axis=0)
+        #spectrum_xx -= spectrum_xx_m
+        #spectrum_yy -= spectrum_yy_m
+        #spectrum_xx = np.repeat(spectrum_xx, 200, axis=1)
+        #spectrum_yy = np.repeat(spectrum_yy, 200, axis=1)
+        x = range(spectrum_xx.shape[1])
+        y = range(spectrum_xx.shape[0])
+        print spectrum_xx.shape
+        print spectrum_yy.shape
+        f, ax = plt.subplots(2, 1, figsize=(8,50))
+        #ax[0].imshow(spectrum_xx)
+        #ax[0].pcolormesh(spectrum_xx[:1000])
+        ax[0].pcolormesh(spectrum_xx)
+        ax[0].set_xlim(x[0], x[-1])
+        ax[0].set_ylim(y[0], y[-1])
+        #ax[0].set_xlabel('log(k_v) [log(h/Mpc)]')
+        #ax[0].set_ylabel('log(k_p) [log(h/Mpc)]')
+        #ax[0].set_title(filename)
+
+        #ax[1].imshow(spectrum_yy)
+        #ax[1].pcolormesh(spectrum_yy[:1000])
+        ax[1].pcolormesh(spectrum_yy)
+        ax[1].set_xlim(x[0], x[-1])
+        ax[1].set_ylim(y[0], y[-1])
+        #im1 = ax[1].pcolormesh(spectrum_yy[:20])
+        #im1.set_clim(0, 1.5)
+        #ax[1].set_xlim(x[0], x[-1])
+        #ax[1].set_xlabel('log(k_v) [log(h/Mpc)]')
+        #ax[1].set_title(filename + ' beam')
+
+        plt.savefig('./png/parkes_test_freq_time.png', format='png')
+
     def plotfreq(self):
         spectrum_xx = self.tbdata.field('DATA')[0::2,:][0::13,:]
         spectrum_yy = self.tbdata.field('DATA')[1::2,:][0::13,:]
+
+        badfreq = []
+        badfreq = [9, 10, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 22, 23,]
+        if len(badfreq) != 0:
+            mask = np.zeros(spectrum_xx.shape)
+            mask[:,badfreq] = 1.
+            spectrum_xx = np.ma.masked_array(spectrum_xx, mask = mask)
+            spectrum_yy = np.ma.masked_array(spectrum_yy, mask = mask)
+
         x = range(spectrum_xx.shape[1])
         print spectrum_xx.shape
         print spectrum_yy.shape
@@ -88,7 +152,7 @@ class CheckFitsFile(object):
         for i in range(spectrum_xx.shape[0]):
             plt.plot(x, spectrum_xx[i], c='0.6')
 
-        plt.ylim(ymax=350,ymin=0)
+        #plt.ylim(ymax=350,ymin=0)
         plt.savefig('./png/parkes_test_flag.png', format='png')
 
     def plotradec(self):
@@ -99,6 +163,7 @@ class CheckFitsFile(object):
         for thisscan in scan_inds:
             block = self.reader.read(thisscan)
             block.calc_pointing('W')
+            print block.ra.shape
             for i in range(block.ra.shape[0]):
                 for j in range(block.ra.shape[1]):
                     cir = plt.Circle((block.ra[i,j], 
@@ -212,6 +277,7 @@ class CheckFitsFile(object):
         block = self.reader.read(scan_inds[scan])
         block.calc_pointing()
         for i in range(13):
+            print block.field['DATE-OBS'][cycle]
             cir0 = plt.Circle((block.field['CRVAL2'][cycle,i],
                               block.field['CRVAL3'][cycle,i]),
                               radius=beamfwhp/2., 
@@ -255,12 +321,13 @@ if __name__=="__main__":
     #checkfits.printhead()
     #checkfits.printlabel()
 
-    #checkfits.plotfreq()
+    #checkfits.plotfreq_time()
+    checkfits.plotfreq()
     #checkfits.plotradec()
     #checkfits.plotelaz()
     #checkfits.plotradec_one()
     #checkfits.plotelaz_one()
 
-    checkfits.plotonepoint()
+    #checkfits.plotonepoint()
 
 

@@ -103,6 +103,7 @@ def rotate(Data, new_pols=(1,), average_cals=False) :
     print new_data.shape
     Data.set_data(new_data)
     Data.field['CRVAL4'] = sp.array(new_pols)
+    Data.field['TSYS'] = Data.field['TSYS'][:,:,[0],:]+Data.field['TSYS'][:,:,[1],:]
 
     ## Now deal with the cal if desired.
     #if average_cals :

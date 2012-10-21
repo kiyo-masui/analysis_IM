@@ -50,12 +50,16 @@ params_init = {
                'noise_inv1': 'GBT_15hr_map',
                'noise_inv2': 'GBT_15hr_map',
                'calc_diagnal' : False,
-               'simfile': None,
+               'simnum' : None,
+               'simfile1': None,
+               'simfile2': None,
                'sim_multiplier': 1.,
                'subtract_inputmap_from_sim': False,
                'subtract_sim_from_inputmap': False,
-               'freq_list': (),
-               'freq_n_all': 256,
+               'freq_list1': (),
+               'freq_list2': (),
+               'freq_n_all1': 256,
+               'freq_n_all2': -1,
                 # in deg: (unused)
                'tack_on': None,
                'convolve': True,
@@ -88,28 +92,11 @@ class PairSet_LegendreSVD(pair_set.PairSet):
             self.params = parse_ini.parse(parameter_file, params_init,
                                           prefix=prefix)
 
-        self.freq_list = sp.array(self.params['freq_list'], dtype=int)
-        #self.output_root = self.datapath_db.fetch(self.params['output_root'],
-        #                                          tack_on=self.params['tack_on'])
-        self.output_root = self.params['output_root']
-        if not os.path.isdir(self.output_root):
-            os.makedirs(self.output_root)
-            #os.mkdir(self.output_root)
-
-        if self.params['SVD_root']:
-            if os.path.exists(self.params['SVD_root']):
-                self.SVD_root = self.params['SVD_root']
-            else:
-                self.SVD_root = self.datapath_db.fetch(self.params['SVD_root'],
-                                                   intend_write=True)
-            print "WARNING: using %s to clean (intended?)" % self.SVD_root
+        self.freq_list1 = sp.array(self.params['freq_list1'], dtype=int)
+        if len(self.params['freq_list2']) == 0:
+            self.freq_list2 = self.freq_list1
         else:
-            self.SVD_root = self.output_root
-
-        # Write parameter file.
-        parse_ini.write_params(self.params, self.output_root + 'params.ini',
-                               prefix=prefix)
-
+            self.freq_list2 = sp.array(self.params['freq_list2'], dtype=int)
 
     @batch_handler.log_timing
     def subtract_foregrounds(self, n_modes_start, n_modes_stop):
@@ -130,12 +117,17 @@ class PairSet_LegendreSVD(pair_set.PairSet):
             if self.params['good_modes'] > 0:
                 good_modes = self.params['good_modes']
                 print "replace SVD mode from %d to the end" % good_modes
-                freq_n_all = self.params['freq_n_all']
+                freq_n_all1 = self.params['freq_n_all1']
+                if freq_n_all2 == -1:
+                    freq_n_all2 = freq_n_all1
+                else:
+                    freq_n_all2 = self.params['freq_n_all2']
                 mode_n = len(svd_info[1])
-                svd_info_all = np.zeros(shape=(2, mode_n, freq_n_all))
+                svd_info_all = [np.zeros(shape=(mode_n, freq_n_all1)), 
+                                np.zeros(shape=(mode_n, freq_n_all2))]
                 for i in range(mode_n):
-                    np.put(svd_info_all[0][i], self.freq_list, svd_info[1][i])
-                    np.put(svd_info_all[1][i], self.freq_list, svd_info[2][i])
+                    np.put(svd_info_all[0][i], self.freq_list1, svd_info[1][i])
+                    np.put(svd_info_all[1][i], self.freq_list2, svd_info[2][i])
                 print 'replace mode from %d to the end' %good_modes
 
                 if good_modes == 1:
@@ -159,8 +151,8 @@ class PairSet_LegendreSVD(pair_set.PairSet):
                 #    rpmode.replace_modes(svd_info_all[1], good_modes, m=n_modes_stop))
 
                 svd_info = (svd_info[0],
-                    np.take(svd_info[1], self.freq_list, axis=1),
-                    np.take(svd_info[2], self.freq_list, axis=1))
+                    np.take(svd_info[1], self.freq_list1, axis=1),
+                    np.take(svd_info[2], self.freq_list2, axis=1))
 
                 ft.save_pickle(svd_info, 
                                filename_svd.replace('pair', 'pair_legendre'))

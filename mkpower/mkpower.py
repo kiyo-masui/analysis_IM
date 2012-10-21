@@ -15,6 +15,7 @@ from sys import *
 import MakePower
 import matplotlib.pyplot as plt
 import fftw3 as FFTW
+from mpi4py import MPI
 
 import functions
 
@@ -73,6 +74,21 @@ class PowerSpectrumMaker(object):
         self.feedback=feedback
 
         self.plot = bool(self.params['plot'])
+
+    def mpiexecute(self, nprocesses=1):
+        
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        comm.barrier()
+        if rank == 0:
+            self.execute()
+            for i in range(1, size):
+                comm.recv(source=i, tag=11)
+        else:
+            comm.ssend(1, dest=0, tag=11)
+        comm.barrier()
     
     def execute(self, nprocesses=1):
 

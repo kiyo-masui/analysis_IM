@@ -58,6 +58,7 @@ from sys import *
 import matplotlib.pyplot as plt
 import MakePower
 from utils import fftutil
+from mpi4py import MPI
 
 # public functions are defined in this module
 import functions
@@ -113,6 +114,47 @@ class Prepare(object):
         self.feedback=feedback
 
         self.plot = bool(self.params['plot'])
+
+    def mpiexecute(self, nprocesses=1):
+        
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        params = self.params
+
+        n_map = len(params['imap_list'])
+
+        comm.barrier()
+
+        if rank<n_map:
+            self.params['imap_list'] = self.params['imap_list'][rank::size]
+            self.params['imap_root'] = self.params['imap_root'][rank::size]
+            self.params['nmap_list'] = self.params['nmap_list'][rank::size]
+            self.params['nmap_root'] = self.params['nmap_root'][rank::size]
+            if len(self.params['mmap_list'])!=0:
+                self.params['mmap_list'] = self.params['mmap_list'][rank::size]
+                self.params['mmap_root'] = self.params['mmap_root'][rank::size]
+            if len(self.params['tabs_list'])!=0:
+                self.params['tabs_list'] = self.params['tabs_list'][rank::size]
+            finish = self.execute()
+            if rank != 0:
+                comm.ssend(finish, dest=0, tag=11)
+            else:
+                for i in range(1,size):
+                    sig = comm.recv(source=i, tag=11)
+                    if sig==0:
+                        print 'RANK %d: rank %d Job finished'%(rank, i)
+                    elif sig==1:
+                        print 'RANK %d: rank %d is free'%(rank, i)
+                    else:
+                        print 'RANK %d: rank %d has problem'%(rank, i)
+
+        else:
+            if rank != 0:
+                comm.ssend(1, dest=0, tag=11)
+
+        comm.barrier()
     
     def execute(self, nprocesses=1):
         params = self.params
@@ -156,6 +198,7 @@ class Prepare(object):
         #### Process ####
         n_new = n_processes -1
         n_map = len(imap_list)
+        print "%d maps need to be prepare"%n_map
 
         if n_new <=0:
             for ii in range(len(params['imap_list'])):

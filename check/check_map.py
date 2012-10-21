@@ -3,6 +3,7 @@ import sys
 import numpy as np
 from core import algebra
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import ImageGrid
 from mkpower import functions
 import math
 
@@ -93,14 +94,69 @@ import math
 #mapname = "fir_parkes_2008_09_13_west_clean_map_I_1315"
 #mapidex = 150
 
-maproot = "/mnt/data-pen3/ycli/map_result/maps/parkes/"
+#maproot = "/mnt/data-pen3/ycli/map_result/maps/parkes_12-13-14/"
+maproot = "/mnt/raid-project/gmrt/ycli/map_result/maps/parkes/"
 #maproot = "/mnt/data-pen3/ycli/map_result/maps/parkes_linear_highres_combine/"
 #mapname = "fir_parkes_2008_09_12-13_west_dirty_map_I_1315"
 #mapname = "fir_parkes_2008_09_12-13_west_clean_map_I_1315"
 #mapname = "fir_parkes_2008_09_12-13-14_west_dirty_map_I_1315"
 #mapname = "fir_parkes_2008_09_11-12-13-14_clean_map_I_1315"
 #mapname = "fir_parkes_2008_09_12w-13-14_beam0testclean_map_I_1315"
-mapname = "fir_parkes_2008_09_12w-13-14_beam0testdirty_map_I_1315"
+#mapname = "fir_parkes_2008_09_12w-13-14_beam0testdirty_map_I_1315"
+
+#mapname = "fir_parkes_2008_09_12w_13_14dirty_map_I_1315"
+#mapname = "fir_parkes_2008_09_12w_13_14_beam_0_dirty_map_I_1315"
+#mapname = "fir_parkes_2008_09_12w_13_14_beam_1_dirty_map_I_1315"
+#mapname = "fir_parkes_2008_09_12w_13_14_beam_2_dirty_map_I_1315"
+
+#mapname = "fir_parkes_2008_09_12w_13_14_beam_0_clean_map_I_1315"
+#mapname = "fir_parkes_2008_09_12w_13_14_beam_1_clean_map_I_1315"
+#mapname = "fir_parkes_2008_09_12w_13_14_beam_2_clean_map_I_1315"
+#mapname = "fir_parkes_2008_09_12w_13_14_beam_3_clean_map_I_1315"
+#mapname = "fir_parkes_2008_09_12w_13_14_clean_map_I_1315"
+#mapname = "fir_parkes_2008_09_12w_beam0testclean_map_I_1315"
+#mapname = "fir_parkes_2008_09_12w_beam1testdirty_map_I_1315"
+
+#mapname = "fir_RA+10_parkes_2008_09_12w_13_14_dirty_map_I_1315"
+#mapname = "fir_RA+10_parkes_2008_09_12w_13_14_beam_0_dirty_map_I_1315"
+#mapname = "fir_RA+10_parkes_2008_09_12w_13_14_beam_1_dirty_map_I_1315"
+#mapname = "fir_RA+10_parkes_2008_09_12w_13_14_beam_2_dirty_map_I_1315"
+#mapname = "fir_RA+10_parkes_2008_09_12w_13_14_clean_map_I_1315"
+
+#mapname = "fir_RA+10_parkes_2008_09_12w_13_14_clean_map_I_1315"
+#mapname = "fir_RA+10_parkes_2008_09_12w_13_14_beam_0_clean_map_I_1315"
+#mapname = "fir_RA+10_parkes_2008_09_12w_13_14_beam_1_clean_map_I_1315"
+#mapname = "fir_RA+10_parkes_2008_09_12w_13_14_beam_2_clean_map_I_1315"
+
+mapname = "fir_RA+05_parkes_2008_09_12w_13_14_clean_map_I_1315"
+
+#maproot = "/mnt/data-pen3/tcv/oldmaps/1hr_41-16_fdg/"
+#mapname = "secA_1hr_41-18_clean_map_I_800"
+#maproot = "/mnt/raid-project/gmrt/tcv/maps/"
+#mapname = "fir_1hr_41-18_avg_fdgp_clean_map_I_800"
+#mapname = "fir_1hr_41-18_avg_fdgp_clean_map_Q_800"
+#mapname = "fir_1hr_41-18_avg_fdgp_clean_map_U_800"
+#mapname = "fir_1hr_41-18_avg_fdgp_clean_map_V_800"
+#maproot = "/mnt/data-pen3/ycli/map_gbt/15hr_IQUV_extend_legendre_modes_0gwj_conv/"
+#mapname = "15hr_41-80_avg_fdgp_noise_weight_I"
+#mapname = "15hr_41-80_avg_fdgp_noise_weight_Q"
+#mapname = "15hr_41-80_avg_fdgp_noise_weight_V"
+#maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_AQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/"
+#mapname = "sec_A_cleaned_noise_inv_I_with_B_0modes"
+#mapname = "sec_B_cleaned_noise_inv_I_with_A_0modes"
+#mapname = "sec_A_cleaned_clean_map_I_with_B_0modes"
+#mapname = "sec_B_cleaned_clean_map_I_with_A_0modes"
+#mapname = "fir_1hr_41-18_avg_fdgp_noise_diag_I_800"
+#maproot = "/mnt/data-pen3/ycli/map_gbt/1hr_AQUV_extend_legendre_modes_0gwj_conv/"
+#mapname = "secA_1hr_41-18_noise_weight_I_800"
+#mapname = "secA_1hr_41-18_noise_weight_Q_800"
+#mapname = "secB_1hr_41-18_noise_weight_U_800"
+#mapname = "secB_1hr_41-18_noise_weight_V_800"
+#maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_AQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/"
+#mapname = "sec_A_cleaned_clean_map_I_with_B_20modes"
+#maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/AQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/"
+#mapname = "sec_A_cleaned_clean_map_I_with_B_20modes"
+
 mapidex = 32
 
 def getedge(map):
@@ -182,37 +238,68 @@ if len(sys.argv) == 1:
     ra[-1] = ra[-2] + map.info['ra_delta']
     dec[-1] = dec[-2] + map.info['dec_delta']
 
+
+
+    badfreq = []
+    badfreq = [0, 9, 10, 15, 16, 17, 18, 19, 20, 21, 22, 23,]
+    if len(badfreq) != 0:
+        mask = np.zeros(map.shape)
+        mask[badfreq,:,:] = 1.
+        map = np.ma.masked_array(map, mask=mask)
+
     #vmax = map[mapidex].flatten().max()
     #vmin = map[mapidex].flatten().min()
-    vmax = map.flatten().max()
-    vmin = map.flatten().min()
-    vmax = 10.
-    vmin = -10.
-    if vmax<np.fabs(vmin):
-        vmax = np.fabs(vmin)
-    else:
-        vmin = -np.fabs(vmax)
+    #vmax = map.flatten().max()
+    #vmin = map.flatten().min()
+    #vmax = 0.05
+    #vmin = -0.05
 
-    #map = np.ma.masked_equal(map, 0)
+    vmax = 0.04
+    vmin = -0.04
+
+    #vmax = 10
+    #vmin = -10
+    #if vmax<np.fabs(vmin):
+    #    vmax = np.fabs(vmin)
+    #else:
+    #    vmin = -np.fabs(vmax)
+
+    map = np.ma.masked_equal(map, 0)
     #vmax = 1.
     #vmin = -1.
 
     #plt.figure(figsize=(34, 8))
-    plt.figure(figsize=(9,8))
-    #cax = ax.imshow(map[mapidex].swapaxes(0,1), 
-    #                interpolation='nearest', 
-    #                origin='lower',)
-    #                #extent = extent)
-    #plt.imshow(map[mapidex].swapaxes(0,1))
-    #fig.colorbar(cax)
+    #plt.figure(figsize=(9,8))
+    #f = plt.figure(figsize=(16,9))
+    f = plt.figure(figsize=(10,16))
+    ax = ImageGrid(f, 111,
+                   nrows_ncols = (1, 1),
+                   direction = "row",
+                   axes_pad = 0.05,
+                   add_all = True,
+                   label_mode = "L",
+                   share_all = True,
+                   cbar_location = "right",
+                   cbar_mode = "single",
+                   cbar_size = 0.2,
+                   cbar_pad = 0.05,
+                   )
+    im = ax[0].pcolormesh(ra, dec, np.ma.mean(map, 0).swapaxes(0,1))
+    #im = ax[0].pcolormesh(ra, dec, map[mapidex].swapaxes(0,1))
+    im.set_clim(vmin, vmax)
+    ax[0].set_xlim(ra.min(), ra.max())
+    ax[0].set_ylim(dec.min(), dec.max())
+    ax[0].set_xlabel('RA [deg]')
+    ax[0].set_ylabel('DEC[deg]')
+    ax[0].set_title(mapname)
+
+    ax[0].cax.colorbar(im)
+
+    plt.tick_params(length=6, width=1.)
+    plt.tick_params(which='minor', length=3, width=1.)
 
     #plt.pcolor(ra, dec, map[mapidex].swapaxes(0,1), vmax=vmax, vmin=vmin)
-    plt.pcolor(ra, dec, np.mean(map, 0).swapaxes(0,1), vmax=vmax, vmin=vmin)
-    plt.colorbar()
-    plt.xlim(ra.min(), ra.max())
-    plt.ylim(dec.min(), dec.max())
-    plt.xlabel('RA [deg]')
-    plt.ylabel('DEC[deg]')
+    #plt.pcolor(ra, dec, np.mean(map, 0).swapaxes(0,1), vmax=vmax, vmin=vmin)
 
 elif len(sys.argv) == 2 and sys.argv[1]=='freq':
     mapname += '_freq'
@@ -229,8 +316,17 @@ elif len(sys.argv) == 2 and sys.argv[1]=='freq':
     ra[-1] = ra[-2] + map.info['ra_delta']
     dec[-1] = dec[-2] + map.info['dec_delta']
 
-    vmax = map.flatten().max()
-    vmin = map.flatten().min()
+    badfreq = []
+    badfreq = [0, 9, 10, 15, 16, 17, 18, 19, 20, 21, 22, 23,]
+    if len(badfreq) != 0:
+        mask = np.zeros(map.shape)
+        mask[badfreq,:,:] = 1.
+        map = np.ma.masked_array(map, mask=mask)
+
+    #vmax = map.flatten().max()
+    #vmin = map.flatten().min()
+    vmax = 0.5
+    vmin = -0.5
 
     #map = np.ma.masked_equal(map, 0)
 
@@ -239,6 +335,17 @@ elif len(sys.argv) == 2 and sys.argv[1]=='freq':
 
     f, (ax1, ax2, ax3) = plt.subplots(3, 1, sharex=True, figsize=(10,10))
     f.subplots_adjust(hspace=0)
+
+    #pc1 = ax1.pcolor(freq, ra,  map.swapaxes(0,1).mean(axis=2))
+    #ax1.set_ylim(ra.min(), ra.max())
+    #ax1.set_ylabel('RA [deg]')
+    #pc2 = ax2.pcolor(freq, dec, map.swapaxes(0,2).mean(axis=1))
+    #ax2.set_ylim(dec.min(), dec.max())
+    #ax2.set_ylabel('DEC[deg]')
+    for i in range(ra.shape[0]-1):
+        for j in range(dec.shape[0]-1):
+            ax3.plot(freq[:-1]+0.5*map.info['freq_delta']/1.e9, map[:,i,j])
+    
     pc1 = ax1.pcolor(freq, ra,  map.swapaxes(0,1)[:,:,30], vmin=vmin, vmax=vmax)
     ax1.set_ylim(ra.min(), ra.max())
     ax1.set_ylabel('RA [deg]')
@@ -246,12 +353,9 @@ elif len(sys.argv) == 2 and sys.argv[1]=='freq':
     ax2.set_ylim(dec.min(), dec.max())
     ax2.set_ylabel('DEC[deg]')
     #for i in range(ra.shape[0]-1):
-    #    for j in range(dec.shape[0]-1):
-    #        ax3.plot(freq[:-1]+0.5*map.info['freq_delta']/1.e9, map[:,i,j])
-    for i in range(ra.shape[0]-1):
-        ax3.plot(freq[:-1]+0.5*map.info['freq_delta']/1.e9, map[:,i,30])
-    for i in range(dec.shape[0]-1):
-        ax3.plot(freq[:-1]+0.5*map.info['freq_delta']/1.e9, map[:,30,i])
+    #    ax3.plot(freq[:-1]+0.5*map.info['freq_delta']/1.e9, map[:,i,30])
+    #for i in range(dec.shape[0]-1):
+    #    ax3.plot(freq[:-1]+0.5*map.info['freq_delta']/1.e9, map[:,30,i])
         
     ax3.set_ylabel('Flux [Jy]')
     ax3.set_xlabel('Freqency [GHz]')

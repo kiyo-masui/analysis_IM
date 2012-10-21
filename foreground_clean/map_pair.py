@@ -65,7 +65,7 @@ class MapPair(object):
 
     """
 
-    def __init__(self, map1, map2, noise_inv1, noise_inv2, freq,
+    def __init__(self, map1, map2, noise_inv1, noise_inv2, freq1, freq2=None,
                  input_filenames=False):
         r"""
         arguments: map1, map2, noise_inv1, noise_inv2, freq
@@ -88,7 +88,11 @@ class MapPair(object):
         #     self.noise_inv1 = self.datapath_db.fetch_multi(noise_inv1)
         #     self.noise_inv2 = self.datapath_db.fetch_multi(noise_inv2)
 
-        self.freq = freq
+        self.freq1 = freq1
+        if freq2 is None:
+            self.freq2 = freq1
+        else:
+            self.freq2 = freq2
 
         # set the physical-dimension maps to None
         self.phys_map1 = None
@@ -153,12 +157,14 @@ class MapPair(object):
         r"""set weights to zero in funny regions"""
         print "sanitizing the input arrays and weights"
         (self.map1, self.noise_inv1) = self.sanitize_single(self.map1,
-                                                       self.noise_inv1)
+                                                       self.noise_inv1,
+                                                       self.freq1)
 
         (self.map2, self.noise_inv2) = self.sanitize_single(self.map2,
-                                                       self.noise_inv2)
+                                                       self.noise_inv2,
+                                                       self.freq2)
 
-    def sanitize_single(self, map, weightmap):
+    def sanitize_single(self, map, weightmap, freq):
         weightmap[np.isnan(weightmap)] = 0.
         weightmap[np.isinf(weightmap)] = 0.
         weightmap[np.isnan(map)] = 0.
@@ -176,7 +182,7 @@ class MapPair(object):
 
         weight_dimensions = weightmap.shape[0]
         for freq_index in range(weight_dimensions):
-            if not freq_index in self.freq:
+            if not freq_index in freq:
                 weightmap[freq_index, ...] = 0
 
         #map[weightmap < 1.e-20] = 0.
@@ -232,26 +238,46 @@ class MapPair(object):
         freq_data *= 1.0e6
         beam_diff = sp.sqrt(max(1.1 * beam_data) ** 2 - (beam_data) ** 2)
         common_resolution = beam.GaussianBeam(beam_diff, freq_data)
+
+        def degrade_resolution_for_noise(noise, common_resolution):
+            noise[noise < 1.e-30] = 1.e-30
+            noise = 1. / noise
+            noise = common_resolution.apply(noise, cval=1.e30)
+            noise = 1. / noise
+            noise[noise < 1.e-20] = 0.
+
+            return noise
+
         # Convolve to a common resolution.
-        self.map2 = common_resolution.apply(self.map2)
+        # map1 & noise1
         self.map1 = common_resolution.apply(self.map1)
-
-        # This block of code needs to be split off into a function and applied
-        # twice (so we are sure to do the same thing to each).
-        noise1[noise1 < 1.e-30] = 1.e-30
-        noise1 = 1. / noise1
-        noise1 = common_resolution.apply(noise1, cval=1.e30)
-        noise1 = 1. / noise1
-        noise1[noise1 < 1.e-20] = 0.
-
-        noise2[noise2 < 1.e-30] = 1.e-30
-        noise2 = 1 / noise2
-        noise2 = common_resolution.apply(noise2, cval=1.e30)
-        noise2 = 1. / noise2
-        noise2[noise2 < 1.e-20] = 0.
-
+        noise1 = degrade_resolution_for_noise(noise1, common_resolution)
         self.noise_inv1 = algebra.as_alg_like(noise1, self.noise_inv1)
-        self.noise_inv2 = algebra.as_alg_like(noise2, self.noise_inv2)
+        # map2 & noise2
+        if self.map2.shape[0] == self.map1.shape[0]:
+            ''' for common case, map1 and map2 have the same freq bin number '''
+            self.map2 = common_resolution.apply(self.map2)
+            noise2 = degrade_resolution_for_noise(noise2, common_resolution)
+            self.noise_inv2 = algebra.as_alg_like(noise2, self.noise_inv2)
+        elif self.map2.shape[0] == 4*self.map1.shape[0]:
+            ''' for IxE(IQUV) case'''
+            import pair_set
+            map_dict = {}
+            map_dict['map'] = self.map2
+            map_dict['weight'] = noise2
+            map_dict = pair_set.divide_iquv_map(map_dict=map_dict)
+            for key in ['imap', 'qmap', 'umap', 'vmap']:
+                map_dict[key] = common_resolution.apply(map_dict[key])
+            for key in ['imap_weight', 'qmap_weight', 'umap_weight', 'vmap_weight']:
+                noise2 = map_dict[key]
+                noise2 = degrade_resolution_for_noise(noise2, common_resolution)
+                map_dict[key] = algebra.as_alg_like(noise2, map_dict[key])
+            map_dict = pair_set.extend_iquv_map(map_dict=map_dict)
+            self.map2       = map_dict['map']
+            self.noise_inv2 = map_dict['weight']
+        else:
+            print 'Error: map pair do not have reasonable shape'
+            exit()
 
     def make_noise_factorizable(self, weight_prior=2):
         r"""Convert noise weights such that the factor into a function a
@@ -264,6 +290,7 @@ class MapPair(object):
 
         def make_factorizable(noise):
             r"""factorize the noise"""
+            noise[np.isnan(noise)] = 1.e-30
             noise[noise < weight_prior] = 1.e-30
             noise = 1. / noise
             noise = ma.array(noise)
@@ -284,10 +311,30 @@ class MapPair(object):
 
             return noise
 
+        # noise_inv1
         noise_inv1 = make_factorizable(self.noise_inv1)
-        noise_inv2 = make_factorizable(self.noise_inv2)
         self.noise_inv1 = algebra.as_alg_like(noise_inv1, self.noise_inv1)
-        self.noise_inv2 = algebra.as_alg_like(noise_inv2, self.noise_inv2)
+        # noise_inv2
+        if self.map2.shape[0] == self.map1.shape[0]:
+            ''' for common case, map1 and map2 have the same freq bin number '''
+            noise_inv2 = make_factorizable(self.noise_inv2)
+            self.noise_inv2 = algebra.as_alg_like(noise_inv2, self.noise_inv2)
+        elif self.map2.shape[0] == 4*self.map1.shape[0]:
+            ''' for IxE(IQUV) case'''
+            import pair_set
+            map_dict = {}
+            map_dict['map'] = self.map2
+            map_dict['weight'] = self.noise_inv2
+            map_dict = pair_set.divide_iquv_map(map_dict=map_dict)
+            for key in ['imap_weight', 'qmap_weight', 'umap_weight', 'vmap_weight']:
+                noise2 = make_factorizable(map_dict[key])
+                map_dict[key] = algebra.as_alg_like(noise2, map_dict[key])
+            map_dict = pair_set.extend_iquv_map(map_dict=map_dict)
+            self.map2       = map_dict['map']
+            self.noise_inv2 = map_dict['weight']
+        else:
+            print 'Error: map pair do not have reasonable shape'
+            exit()
 
     def subtract_weighted_mean(self):
         r"""Subtracts the weighted mean from each frequency slice."""
@@ -329,26 +376,26 @@ class MapPair(object):
         outmap_left.copy_axis_info(self.map1)
 
         if defer:
-            fitted = np.zeros_like(self.map1[self.freq, :, :])
+            fitted = np.zeros_like(self.map1[self.freq1, :, :])
 
         for mode_index, mode_vector in enumerate(modes1):
-            mode_vector = mode_vector.reshape(self.freq.shape)
+            mode_vector = mode_vector.reshape(self.freq1.shape)
 
             if weighted:
-                amp = sp.tensordot(mode_vector, self.map1[self.freq, :, :] *
-                                self.noise_inv1[self.freq, :, :], axes=(0,0))
+                amp = sp.tensordot(mode_vector, self.map1[self.freq1, :, :] *
+                                self.noise_inv1[self.freq1, :, :], axes=(0,0))
                 amp /= sp.tensordot(mode_vector, mode_vector[:, None, None] *
-                                self.noise_inv1[self.freq, :, :], axes=(0,0))
+                                self.noise_inv1[self.freq1, :, :], axes=(0,0))
             else:
                 amp = sp.tensordot(mode_vector,
-                                   self.map1[self.freq, :, :], axes=(0,0))
+                                   self.map1[self.freq1, :, :], axes=(0,0))
                 #amp /= sp.dot(mode_vector, mode_vector)
 
             if defer:
                 fitted += mode_vector[:, None, None] * amp[None, :, :]
             else:
                 fitted = mode_vector[:, None, None] * amp[None, :, :]
-                self.map1[self.freq, :, :] -= fitted
+                self.map1[self.freq1, :, :] -= fitted
 
             outmap_left[mode_index, :, :] = amp
 
@@ -364,26 +411,26 @@ class MapPair(object):
         outmap_right.copy_axis_info(self.map2)
 
         if defer:
-            fitted = np.zeros_like(self.map2[self.freq, :, :])
+            fitted = np.zeros_like(self.map2[self.freq2, :, :])
 
         for mode_index, mode_vector in enumerate(modes2):
-            mode_vector = mode_vector.reshape(self.freq.shape)
+            mode_vector = mode_vector.reshape(self.freq2.shape)
 
             if weighted:
-                amp = sp.tensordot(mode_vector, self.map2[self.freq, :, :] *
-                                self.noise_inv2[self.freq, :, :], axes=(0,0))
+                amp = sp.tensordot(mode_vector, self.map2[self.freq2, :, :] *
+                                self.noise_inv2[self.freq2, :, :], axes=(0,0))
                 amp /= sp.tensordot(mode_vector, mode_vector[:, None, None] *
-                                self.noise_inv2[self.freq, :, :], axes=(0,0))
+                                self.noise_inv2[self.freq2, :, :], axes=(0,0))
             else:
                 amp = sp.tensordot(mode_vector,
-                                   self.map2[self.freq, :, :], axes=(0,0))
+                                   self.map2[self.freq2, :, :], axes=(0,0))
                 #amp /= sp.dot(mode_vector, mode_vector)
 
             if defer:
                 fitted += mode_vector[:, None, None] * amp[None, :, :]
             else:
                 fitted = mode_vector[:, None, None] * amp[None, :, :]
-                self.map2[self.freq, :, :] -= fitted
+                self.map2[self.freq2, :, :] -= fitted
 
             outmap_right[mode_index, :, :] = amp
 
@@ -410,42 +457,43 @@ class MapPair(object):
 
         map1 = self.map1
         map2 = self.map2
-        freq = self.freq
+        freq1 = self.freq1
+        freq2 = self.freq2
 
         # First map.
         outmap_left = sp.empty((len(modes1), ) + map1.shape[1:])
         outmap_left = algebra.make_vect(outmap_left,
-                                     axis_names=('freq', 'ra', 'dec'))
+                                     axis_names=('freq1', 'ra', 'dec'))
         outmap_left.copy_axis_info(map1)
         for ira in range(map1.shape[1]):
             for jdec in range(map1.shape[2]):
-                # if sp.any(map1.data.mask[ira, jdec, freq]):
+                # if sp.any(map1.data.mask[ira, jdec, freq1]):
                 #    continue
                 # else:
                 for mode_index, mode_vector in enumerate(modes1):
-                    # v.shape = freq.shape
-                    mode_vector = mode_vector.reshape(freq.shape)
-                    # amp = sp.sum(mode_vector*map1.data[ira, jdec, freq])
-                    amp = sp.dot(mode_vector, map1[freq, ira, jdec])
-                    map1[freq, ira, jdec] -= amp * mode_vector
+                    # v.shape = freq1.shape
+                    mode_vector = mode_vector.reshape(freq1.shape)
+                    # amp = sp.sum(mode_vector*map1.data[ira, jdec, freq1])
+                    amp = sp.dot(mode_vector, map1[freq1, ira, jdec])
+                    map1[freq1, ira, jdec] -= amp * mode_vector
                     outmap_left[mode_index, ira, jdec] = amp
         self.left_modes = outmap_left
 
         # Second map.
         outmap_right = sp.empty((len(modes2), ) + map2.shape[1:])
         outmap_right = algebra.make_vect(outmap_right,
-                                     axis_names=('freq', 'ra', 'dec'))
+                                     axis_names=('freq2', 'ra', 'dec'))
         outmap_right.copy_axis_info(map2)
         for ira in range(map2.shape[1]):
             for jdec in range(map2.shape[2]):
-                # if sp.any(map2.data.mask[ira, jdec, freq]):
+                # if sp.any(map2.data.mask[ira, jdec, freq2]):
                 #    continue
                 # else:
                 for mode_index, mode_vector in enumerate(modes2):
-                    # mode_vector.shape = freq.shape
-                    mode_vector = mode_vector.reshape(freq.shape)
-                    amp = sp.dot(mode_vector, map2[freq, ira, jdec])
-                    map2[freq, ira, jdec] -= amp * mode_vector
+                    # mode_vector.shape = freq2.shape
+                    mode_vector = mode_vector.reshape(freq2.shape)
+                    amp = sp.dot(mode_vector, map2[freq2, ira, jdec])
+                    map2[freq2, ira, jdec] -= amp * mode_vector
                     outmap_right[mode_index, ira, jdec] = amp
         self.right_modes = outmap_right
 
@@ -470,7 +518,7 @@ class MapPair(object):
         return corr_estimation.freq_covariance(self.map1, self.map2,
                                                self.noise_inv1,
                                                self.noise_inv2,
-                                               self.freq, self.freq)
+                                               self.freq1, self.freq2)
 
     def correlate(self, lags=(), speedup=False, verbose=False):
         r"""Calculate the cross correlation function of the maps.
@@ -498,7 +546,7 @@ class MapPair(object):
         # TODO: possibly revert to old correlation function calc?
         return corr_estimation.corr_est(self.map1, self.map2,
                                         self.noise_inv1, self.noise_inv2,
-                                        self.freq, self.freq,
+                                        self.freq1, self.freq2,
                                         lags=lags, speedup=speedup,
                                         verbose=verbose)
 

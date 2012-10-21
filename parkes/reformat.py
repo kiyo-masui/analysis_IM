@@ -45,13 +45,13 @@ class ReformatParkes(object):
 
         self.datablock = data_block.DataBlock()
         
-        data_array, scanlist, band_cf, band_wd,\
-        chan_cf,    chan_wd,  object,  exposure,\
-        date_obs,   elevation,azimuth, beam, pol, cal\
+        data_array, scanlist, band_cf, band_wd, chan_cf, chan_wd, object,\
+        exposure, date_obs, elevation, azimuth, beam, pol, cal, tsys\
             = self.readoutinfo(self.parkes_data)
 
         if self.feedback>2:
             print 'Dim:'
+            print 'tsys      ', tsys.shape
             print 'data:     ', data_array.shape
             print 'scan:     ', scanlist.shape
             print 'band_cf:  ', band_cf.shape
@@ -68,7 +68,7 @@ class ReformatParkes(object):
             print 'cal:      ', cal.shape
 
         self.datablock.set_data(data_array)
-        self.datablock.set_field('SCAN',    tuple(scanlist), ('time',), '1I')
+        self.datablock.set_field('SCAN',    tuple(scanlist), ('time'), '1I')
         self.datablock.set_field('CRVAL1',  tuple(band_cf),  (), '1D')
         self.datablock.set_field('BANDWID', tuple(band_wd),  (), '1D')
         self.datablock.set_field('CRPIX1',  tuple(chan_cf),  (), '1E')
@@ -81,6 +81,8 @@ class ReformatParkes(object):
         self.datablock.set_field('BEAM',    tuple(beam),     ('beam',), '1I')
         self.datablock.set_field('CRVAL4',  tuple(pol),      ('pol', ), '1E')
         self.datablock.set_field('CAL',     tuple(cal),      ('cal', ), '1A')
+        self.datablock.set_field('TSYS',    tuple(tsys),     ('time', 'beam', 'pol',
+                                                              'cal'), '1D')
 
         self.datablock.verify()
 
@@ -90,10 +92,9 @@ class ReformatParkes(object):
         fitsfile = fitsGBT.Writer(self.datablock)
         fitsfile.write( par['outputroot'] + par['outputname'] + '.fits' )
 
-
-
     def readoutinfo(self, parkes_data):
         data = []
+        tsys = []
         band_cf = []
         band_wd = []
         chan_cf = []
@@ -108,6 +109,7 @@ class ReformatParkes(object):
         cal = ['F',]
         for i in range(len(parkes_data)):
             data.append(parkes_data[i].field('DATA'))
+            tsys.append(parkes_data[i].field('TSYS'))
             band_cf.append(parkes_data[i].field('CRVAL1'))
             band_wd.append(parkes_data[i].field('BANDWID'))
             chan_cf.append(parkes_data[i].field('CRPIX1'))
@@ -118,7 +120,9 @@ class ReformatParkes(object):
             time.append(parkes_data[i].field('TIME'))
             elevation.append(parkes_data[i].field('ELEVATIO'))
             azimuth.append(parkes_data[i].field('AZIMUTH'))
+
         data = np.array(data)
+        tsys = np.array(tsys)
         band_cf = np.array(band_cf)
         band_wd = np.array(band_wd)
         chan_cf = np.array(chan_cf)
@@ -156,11 +160,18 @@ class ReformatParkes(object):
                             shape[5])
         #data_new = np.zeros([shape[0]*shape[1],4,shape[3],shape[5]])
         #data_new[:,::3,:,:] = data
+        tsys = tsys.reshape(shape[0]*shape[1]/13, 
+                            13, 
+                            shape[4]*shape[2], 
+                            shape[3])
+
+        data = data/tsys[:,:,:,:,None]
 
         scannum = shape[0]
         scanlist = np.ones([shape[1]/13*shape[2]*shape[3], shape[0]])
         scanlist = scanlist * np.array(range(scannum))
         scanlist = scanlist.T.flatten()
+        #scanlist = np.array([0,])
 
         band_cf = np.array([band_cf[:,::13].flatten()[0]]) 
         band_wd = np.array([band_wd[:,::13].flatten()[0]]) 
@@ -177,7 +188,7 @@ class ReformatParkes(object):
         cal = np.array(cal)
         beam= np.array(range(13))
         return data, scanlist, band_cf, band_wd, chan_cf, chan_wd, object, exposure,\
-               date_obs, elevation, azimuth, beam, pol, cal
+               date_obs, elevation, azimuth, beam, pol, cal, tsys
 
     def elaz_multibeam(self, elevation, azimuth):
         angle = 15. # Scan angle
@@ -198,7 +209,7 @@ class ReformatParkes(object):
 
         delta_azimuth = beamoffsetxy[:,0]/np.cos(elevation[:]*pi/180.)
         azimuth = azimuth.repeat(13).reshape(-1,13)
-        azimuth[:] += delta_azimuth[:]/60
+        azimuth[:] -= delta_azimuth[:]/60
 
         return elevation, azimuth
 

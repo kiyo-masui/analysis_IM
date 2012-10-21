@@ -76,7 +76,7 @@ def elaz2radecParkes(el, az, ut) :
 
     Parkes = ephem.Observer()
     Parkes.long = '148:15:44.3591'
-    Parkes.lat = '-38:25:59.23'
+    Parkes.lat = '-32:59:59.8657'
     Parkes.pressure = 0 # no refraction correction.
     Parkes.temp = 0
 
@@ -126,7 +126,7 @@ def LSTatParkes(UT) :
 
     Parkes = ephem.Observer()
     Parkes.long = '148:15:44.3591'
-    Parkes.lat = '-38:25:59.23'
+    Parkes.lat = '-32:59:59.8657'
     Parkes.pressure = 0 # no refraction correction.
     Parkes.temp = 0
 

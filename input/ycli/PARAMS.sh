@@ -33,9 +33,11 @@ export HOUR="15"
 
 export GOODMODES="5"
 export SIMROOT="/cita/d/data-pen3/ycli/map_simulation/"
-export SIMFILE="sim_beam_000.npy"
+export SIMFILE="None"
 export MAPFILE="sim_15hr_oldmap_str_beam_plus_fg"
 export MAPGBT_MY="/cita/d/data-pen3/ycli/map_gbt/"
 export NOISEWEIGHT="sim_15hr_oldmap_str_beam_plus_fg"
-export CLEAN_REAL=True
-export CLEAN_SIM=False
+
+# -----------------------------------------------------------
+# For Parkes
+export BEAMS="None"

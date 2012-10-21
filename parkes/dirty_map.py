@@ -43,6 +43,7 @@ params_init = {# IO:
                'output_root' : "./testoutput_",
                # Shelve file that holds measurements of the noise.
                # What data to include from each file.
+               'beams' : (),
                'scans' : (),
                'IFs' : (0,),
                'polarizations' : ('I',),
@@ -106,13 +107,19 @@ class DirtyMapMaker(object):
                                  force_tuple=True)
             if params['time_block'] == 'scan':
                 for Data in Blocks:
-                    yield self.preprocess_data((Data,), 0)
-                    #for beam in Data.field['BEAM']:
-                    #    yield self.preprocess_data((Data,), beam)
+                    if params['beams'] == ():
+                        beams = Data.field['BEAM']
+                    else:
+                        beams = params['beams']
+                    for beam in beams:
+                        yield self.preprocess_data((Data,), beam)
             elif params['time_block'] == 'file':
-                yield self.preprocess_data((Data,), 0)
-                #for beam in Blocks[0].field['BEAM']:
-                #    yield self.preprocess_data(Blocks, beam)
+                if params['beams'] == ():
+                    beams = Data.field['BEAM']
+                else:
+                    beams = params['beams']
+                for beam in beams:
+                    yield self.preprocess_data((Data,), beam)
             else:
                 msg = "time_block parameter must be 'scan' or 'file'."
                 raise ValueError(msg)

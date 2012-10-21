@@ -86,6 +86,10 @@ class FlagData(base_single.BaseSingle) :
         new_flags = ma.count_masked(Data.data) - already_flagged
         percent = float(new_flags) / Data.data.size * 100
         self.block_feedback = '%d (%f%%), ' % (new_flags, percent)
+
+        # time tsys, make data in unit of Jy
+        Data.data -= Data.data.mean(axis=0)
+        Data.data *= Data.field['TSYS'][:,:,:,:,None]
         return Data
 
 def apply_cuts(Data, sigma_thres=6, badness_thres=0.1, time_cut=40):

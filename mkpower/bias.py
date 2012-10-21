@@ -27,6 +27,7 @@ import matplotlib.pyplot as plt
 import fftw3 as FFTW
 from scipy.interpolate import interp1d
 from scipy.optimize import leastsq
+from mpi4py import MPI
 
 import functions
 
@@ -69,6 +70,23 @@ class BiasCalibrate(object):
         self.feedback=feedback
 
         self.plot = bool(self.params['plot'])
+
+    def mpiexecute(self, nprocesses=1):
+        
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        comm.barrier()
+
+        if rank == 0:
+            self.execute()
+            for i in range(1, size):
+                comm.recv(source=i, tag=11)
+        else:
+            comm.ssend(1, dest=0, tag=11)
+
+        comm.barrier()
     
     def execute(self, nprocesses=1):
 
@@ -95,13 +113,22 @@ class BiasCalibrate(object):
         #k1 = k1.take(non0)[0]
         # clean_{map}(map)
         if resultf0 != '':
-            k0 = sp.load(in_root + resultf0 + '_k.npy')
-            if FKPweight:
-                pk0 = sp.load(in_root + resultf0 + '_p_fkp.npy')
-                pk02= sp.load(in_root + resultf0 + '_p2_fkp.npy')
+            if params['cross']:
+                k0 = sp.load(in_root + resultf0 + '_k.npy')
+                if FKPweight:
+                    pk0 = sp.load(in_root + resultf0 + '_p_fkp.npy')
+                    pk02= sp.load(in_root + resultf0 + '_p2_fkp.npy')
+                else:
+                    pk0 = sp.load(in_root + resultf0 + '_p.npy')
+                    pk02= sp.load(in_root + resultf0 + '_p2.npy')
             else:
-                pk0 = sp.load(in_root + resultf0 + '_p.npy')
-                pk02= sp.load(in_root + resultf0 + '_p2.npy')
+                k0 = sp.load(in_root + resultf0 + '_k_combined.npy')
+                if FKPweight:
+                    pk0 = sp.load(in_root + resultf0 + '_p_fkp_combined.npy')
+                    pk02= sp.load(in_root + resultf0 + '_p2_fkp_combined.npy')
+                else:
+                    pk0 = sp.load(in_root + resultf0 + '_p_combined.npy')
+                    pk02= sp.load(in_root + resultf0 + '_p2_combined.npy')
         else:
             k0  = k1
             pk0 = np.zeros(pk1.shape)
@@ -167,9 +194,9 @@ class BiasCalibrate(object):
         ki = np.logspace(log10(k.min()+0.001), log10(k.max()-0.001), num=300)
         bias = B(ki)
 
-        if params['cross']:
-            dpk = np.sqrt(dpk)
-            dpk2 = np.sqrt(dpk2)
+        #if params['cross']:
+        #    dpk = np.sqrt(dpk)
+        #    dpk2 = np.sqrt(dpk2)
 
         sp.save(out_root + 'k_bias', k)
         sp.save(out_root + 'b_bias', dpk)
