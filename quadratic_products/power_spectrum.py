@@ -217,8 +217,8 @@ class PowerSpectrum(object):
                     counts_treatment[:, comb_index] = \
                             self.counts_1d[pwrcase]
 
-                    gerror_treatment[:, comb_index] =
-                            np.zero_like(counts_treatment[:, comb_index])
+                    gerror_treatment[:, comb_index] = \
+                            np.zeros_like(counts_treatment[:, comb_index])
 
                     pwr_treatment[:, comb_index] = \
                             self.pwrspec_1d[pwrcase]
