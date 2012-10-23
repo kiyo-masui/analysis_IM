@@ -84,6 +84,8 @@ class AggregateSummary(object):
             trial_array_1d = np.zeros((num_sim, num_k_1d))
             trial_array_1d_from_2d = np.zeros((num_sim, num_k_1d_from_2d))
             trial_array_2d = np.zeros((num_sim, num_kx, num_ky))
+            error_array_1d = np.zeros((num_sim, num_k_1d))
+            error_array_1d_from_2d = np.zeros((num_sim, num_k_1d_from_2d))
             counts_array_1d = np.zeros((num_sim, num_k_1d))
             counts_array_1d_from_2d = np.zeros((num_sim, num_k_1d_from_2d))
             counts_array_2d = np.zeros((num_sim, num_kx, num_ky))
@@ -100,13 +102,22 @@ class AggregateSummary(object):
                 agg1d_from_2d = sim_toread.agg_stat_1d_pwrspec(from_2d=True)
                 agg2d = sim_toread.agg_stat_2d_pwrspec()
 
+                # accumulate the means
                 trial_array_1d[index, :] = agg1d[treatment]['mean']
 
                 trial_array_1d_from_2d[index, :] = \
                                             agg1d_from_2d[treatment]['mean']
 
+                # accumulate the std across 6 pairs
+                error_array_1d[index, :] = agg1d[treatment]['std']
+
+                error_array_1d_from_2d[index, :] = \
+                                            agg1d_from_2d[treatment]['std']
+
+                # accumulate the 2D powers
                 trial_array_2d[index, :, :] = agg2d[treatment]['mean']
 
+                # accumulate the counts arrays
                 counts_array_1d[index, :] = agg1d[treatment]['counts']
 
                 counts_array_1d_from_2d[index, :] = \
@@ -120,11 +131,17 @@ class AggregateSummary(object):
 
                 del sim_toread
 
+            # package all the simulations of a given treatment
             treatment_dict["pk_1d"] = copy.deepcopy(trial_array_1d)
             treatment_dict["pk_1d_from_2d"] = \
                             copy.deepcopy(trial_array_1d_from_2d)
 
+            treatment_dict["pkstd_1d"] = copy.deepcopy(error_array_1d)
+            treatment_dict["pkstd_1d_from_2d"] = \
+                            copy.deepcopy(error_array_1d_from_2d)
+
             treatment_dict["pk_2d"] = copy.deepcopy(trial_array_2d)
+
             treatment_dict["counts_1d"] = copy.deepcopy(counts_array_1d)
             treatment_dict["counts_1d_from_2d"] = \
                             copy.deepcopy(counts_array_1d_from_2d)
@@ -132,6 +149,7 @@ class AggregateSummary(object):
             treatment_dict["counts_2d"] = copy.deepcopy(counts_array_2d)
             result_dict[treatment] = treatment_dict
 
+        # package all simulations of all treatments into a file
         outshelve = shelve.open(outfile, "n", protocol=-1)
         outshelve["k_1d"] = k_1d
         outshelve["k_1d_from_2d"] = k_1d_from_2d
@@ -139,6 +157,7 @@ class AggregateSummary(object):
         outshelve["ky_2d"] = ky_2d
         outshelve["results"] = result_dict
         outshelve.close()
+
 
 aggregatestatistics_init = {
         "shelvefile": "file",
@@ -174,16 +193,18 @@ class AggregateStatistics(object):
         stat_results = {}
         for treatment in self.treatments:
             stat_summary = {}
-            (stat_1d, counts_1d) = self.aggregate_1d_statistics(treatment,
-                                                                from2d=False)
+            (stat_1d, error_stat_1d, counts_1d) = \
+                    self.aggregate_1d_statistics(treatment, from2d=False)
 
             stat_summary["pk_1d_stat"] = stat_1d
+            stat_summary["pk_1d_errstat"] = error_stat_1d
             stat_summary["pk_1d_counts"] = counts_1d
 
-            (stat_1d, counts_1d) = self.aggregate_1d_statistics(treatment,
-                                                                from2d=True)
+            (stat_1d, error_stat_1d, counts_1d) = \
+                    self.aggregate_1d_statistics(treatment, from2d=True)
 
             stat_summary["pk_1d_from_2d_stat"] = stat_1d
+            stat_summary["pk_1d_from_2d_errstat"] = error_stat_1d
             stat_summary["pk_1d_from_2d_counts"] = counts_1d
 
             (stat_2d, counts_2d) = self.aggregate_2d_statistics(treatment)
@@ -233,6 +254,7 @@ class AggregateStatistics(object):
         if from2d:
             k_1d = self.summary["k_1d_from_2d"]
             trial_array_1d = results["pk_1d_from_2d"]
+            error_array_1d = results["pkstd_1d_from_2d"]
             counts_array_1d = results["counts_1d_from_2d"]
 
             outfile = "%s/power_1d_from_2d_%s.dat" % \
@@ -240,12 +262,14 @@ class AggregateStatistics(object):
         else:
             k_1d = self.summary["k_1d"]
             trial_array_1d = results["pk_1d"]
+            error_array_1d = results["pkstd_1d"]
             counts_array_1d = results["counts_1d"]
 
             outfile = "%s/power_1d_%s.dat" % \
                       (self.params['outputdir'], treatment)
 
         stat_1d = self.calc_stat_1d(trial_array_1d)
+        error_stat_1d = self.calc_stat_1d(error_array_1d)
         counts_1d = self.calc_stat_1d(counts_array_1d)
 
         file_tools.print_multicolumn(k_1d["left"],
@@ -254,6 +278,7 @@ class AggregateStatistics(object):
                                      counts_1d["mean"],
                                      stat_1d["mean"],
                                      stat_1d["std"],
+                                     error_stat_1d["mean"],
                                      outfile=outfile)
 
         logk_1d = np.log10(k_1d['center'])
@@ -272,7 +297,7 @@ class AggregateStatistics(object):
                                      ["logk", "logk"], 1.,
                                      "1D covariance", "cov")
 
-        return (stat_1d, counts_1d)
+        return (stat_1d, error_stat_1d, counts_1d)
 
     def calc_stat_2d(self, trial_array, calc_corr=False):
         stat_2d = {}

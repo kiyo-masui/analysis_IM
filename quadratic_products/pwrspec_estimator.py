@@ -351,8 +351,7 @@ def load_transferfunc(beamtransfer_file, modetransfer_file):
             beamtransfer_2d = h5py.File(beamtransfer_file, "r")
 
         transfer_dict = {}
-        # may not explicitly need .keys if hd5 object is smart enough?
-        for treatment in modetransfer_2d.keys():
+        for treatment in modetransfer_2d:
             if modetransfer_2d is not None:
                 transfer_dict[treatment] = modetransfer_2d[treatment].value
                 if beamtransfer_2d is not None:

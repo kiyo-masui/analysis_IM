@@ -92,6 +92,10 @@ class PowerSpectrum(object):
         r"""here transfer_dict has keys for each treament and the value is the
         2d transfer function. Note that this changes the values saved in the
         class."""
+        if transfer_dict is None:
+            print "power_spectrum: ignoring 2D transfer function"
+            return
+
         print "power_spectrum: applying 2D transfer function"
         for treatment in self.treatment_cases:
             transfer = transfer_dict[treatment]

@@ -56,7 +56,8 @@ class CompileAutoNoiseweight(object):
 autopowerparams_init = {
         "p_map": "test_map",
         "noiseweights_2dto1d": None,
-        "apply_2d_transfer": None,
+        "apply_2d_beamtransfer": None,
+        "apply_2d_modetransfer": None,
         "summaryfile": "./autopower.hd5",
         "outdir": "./"
                }
@@ -74,17 +75,11 @@ class CompileAutopower(object):
     def execute(self, processes):
         pwr_map = ps.PowerSpectrum(self.params["p_map"])
 
-        if self.params["apply_2d_transfer"] is not None:
-            # copy the same beam transfer function for all cases
-            trans_shelve = shelve.open(self.params["apply_2d_transfer"])
-            transfer_2d = trans_shelve["transfer_2d"]
-            trans_shelve.close()
+        transfer_dict = pe.load_transferfunc(
+                            self.params["apply_2d_beamtransfer"],
+                            self.params["apply_2d_modetransfer"])
 
-            transfer_dict = {}
-            for treatment in pwr_map.treatment_cases:
-                transfer_dict[treatment] = transfer_2d
-
-            pwr_map.apply_2d_trans_by_treatment(transfer_dict)
+        pwr_map.apply_2d_trans_by_treatment(transfer_dict)
 
         # also combine the AxB, etc. into a signal piece that is subtracted
         signal2d_agg = pwr_map.agg_stat_2d_pwrspec()
@@ -106,7 +101,7 @@ class CompileAutopower(object):
                                      ["logkx", "logky"], 1., "2d power",
                                      "log(abs(2d power))", logscale=True)
 
-            if self.params["apply_2d_transfer"] is not None:
+            if transfer_dict is not None:
                 outplot_transfer_file = "%s/transfer_2d_%s.png" % \
                                       (self.params['outdir'], treatment)
 
