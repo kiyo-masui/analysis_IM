@@ -8,8 +8,8 @@ from core import algebra
 from map import beam
 from map import physical_gridding as pg
 import kiyopy.utils
-from quadratic_products import corr_estimation
 from quadratic_products import pwrspec_estimator as pe
+from foreground_clean import find_modes
 from utils import batch_handler as bh
 # TODO: move single map operations to a separate class
 
@@ -336,37 +336,7 @@ class MapPair(object):
         return xspec
 
     def freq_covariance(self):
-        r"""find the weighted nu-nu' cross-variance of two maps"""
-        input_map1 = self.map1[self.freq, :, :]
-        input_map2 = self.map2[self.freq, :, :]
-        input_weight1 = self.noise_inv1[self.freq, :, :]
-        input_weight2 = self.noise_inv2[self.freq, :, :]
-
-        map1shp = input_map1.shape
-        map2shp = input_map2.shape
-
-        map1_flat = np.reshape(input_map1, (map1shp[0], map1shp[1] * map1shp[2]))
-
-        weight1_flat = np.reshape(input_weight1,
-                              (map1shp[0], map1shp[1] * map1shp[2]))
-
-        map2_flat = np.reshape(input_map2, (map2shp[0], map2shp[1] * map2shp[2]))
-
-        weight2_flat = np.reshape(input_weight2,
-                              (map2shp[0], map2shp[1] * map2shp[2]))
-
-        wprod1 = map1_flat * weight1_flat
-        wprod2 = map2_flat * weight2_flat
-
-        # TODO: or should this be wprod2, wprod1^T?
-        quad_wprod = np.dot(wprod1, np.transpose(wprod2))
-        quad_weight = np.dot(weight1_flat, np.transpose(weight2_flat))
-
-        mask = (quad_weight < 1e-20)
-        quad_weight[mask] = 1.
-        quad_wprod /= quad_weight
-        quad_wprod[mask] = 0
-        quad_weight[mask] = 0
-
-        # downstream code selects the [..., 0] entry for "zero lag"
-        return quad_wprod[..., np.newaxis], quad_weight[..., np.newaxis]
+        return find_modes.freq_covariance(self.map1, self.map2,
+                                          self.noise_inv1,
+                                          self.noise_inv2,
+                                          self.freq, self.freq)

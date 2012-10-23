@@ -70,7 +70,7 @@ class PairSet():
             self.svd_filename = self.params['svd_filename']
             print "WARNING: using %s to clean (intended?)" % self.svd_filename
         else:
-            self.svd_filename += self.output_root + "/" + "SVD.hd5"
+            self.svd_filename = self.output_root + "/" + "SVD.hd5"
 
         # Write parameter file.
         parse_ini.write_params(self.params, self.output_root + 'params.ini',

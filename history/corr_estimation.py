@@ -172,43 +172,6 @@ def get_corr_and_std_3d(corr_list):
     return corr_avg, corr_std
 
 
-def get_freq_svd_modes(corr, n_modes):
-    r"""Same as get freq eigenmodes, but treats left and right maps
-    separatly with an SVD.
-
-    Parameters
-    ----------
-    corr: 3D array
-        The correlation. Only the 1st lag is used.
-    n_modes: int
-        The number of modes wanted.
-
-    Returns
-    -------
-    s: 1D array
-        The amplitude of the modes. length = `n_modes`
-    left_vectors, right_vectors: 2D array
-        The first `n_modes` from the svd.
-
-    """
-    u_matrix, singular_values, v_matrix = linalg.svd(corr[:, :, 0])
-    v_matrix = v_matrix.T
-    sorted_singular_values = list(singular_values)
-    sorted_singular_values.sort()
-    left_vectors = []
-    right_vectors = []
-    for mode_index in range(n_modes):
-        ind, = sp.where(abs(singular_values) ==
-                        sorted_singular_values[-mode_index - 1])
-        #if len(ind) > 1:
-        #    raise NotImplementedError('2 eigenvalues bitwise equal.')
-
-        left_vectors.append(u_matrix[:, ind[0]])
-        right_vectors.append(v_matrix[:, ind[0]])
-
-    return singular_values, left_vectors, right_vectors
-
-
 def subtract_modes_corr(corr, n_modes):
     r"""Get the modes at subtract them directly from the correlation.
 
