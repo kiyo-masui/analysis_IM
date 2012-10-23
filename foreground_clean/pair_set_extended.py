@@ -186,7 +186,8 @@ class PairSet():
 
         cov_out = svd_data_out.create_group("cov")
         counts_out = svd_data_out.create_group("cov_counts")
-        svd_vals_out = svd_data_out.create_group("svd_vals")
+        svd_vals1_out = svd_data_out.create_group("svd_vals1")
+        svd_vals2_out = svd_data_out.create_group("svd_vals2")
         svd_modes1_out = svd_data_out.create_group("svd_modes1")
         svd_modes2_out = svd_data_out.create_group("svd_modes2")
 
@@ -198,10 +199,13 @@ class PairSet():
             counts_out[pairitem] = counts
 
             # (vals, modes1, modes2)
-            svd_info = find_modes.get_freq_svd_modes(freq_cov, nfreq)
-            svd_vals_out[pairitem] = svd_info[0]
+            svd_info = find_modes.get_freq_svd_modes(freq_cov[0: nfreq, :], nfreq)
+            svd_vals1_out[pairitem] = svd_info[0]
             svd_modes1_out[pairitem] = svd_info[1]
-            svd_modes2_out[pairitem] = svd_info[2]
+
+            svd_info = find_modes.get_freq_svd_modes(freq_cov[:, 0: nfreq].T, nfreq)
+            svd_vals2_out[pairitem] = svd_info[0]
+            svd_modes2_out[pairitem] = svd_info[1]
 
         svd_data_out.close()
 
