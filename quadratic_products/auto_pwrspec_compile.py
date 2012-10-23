@@ -138,7 +138,6 @@ class CompileAutopower(object):
                 outplot_weight_file = "%s/noiseweight_2d_%s.png" % \
                                       (self.params['outdir'], treatment)
 
-
                 plot_slice.simpleplot_2D(outplot_weight_file,
                                      np.abs(weights_2d[treatment]),
                                      logkx, logky,
