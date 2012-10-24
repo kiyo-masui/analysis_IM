@@ -333,32 +333,53 @@ def calculate_xspec_file(cube1_file, cube2_file, bins,
                            truncate=truncate, return_3d=return_3d)
 
 
-def load_transferfunc(beamtransfer_file, modetransfer_file):
+def load_transferfunc(beamtransfer_file, modetransfer_file, treatment_list,
+                      beam_treatment="0modes"):
     r"""Given two hd5 files containing a beam and mode loss transfer function,
     load them and make a composite transfer function"""
     # TODO: check that both files have the same treatment cases
-    modetransfer_2d = None
-    beamtransfer_2d = None
-    transfer_dict = None
 
-    if (beamtransfer_file is not None) or (modetransfer_file is not None):
-        if modetransfer_file is not None:
-            print "Applying 2d transfer from " + modetransfer_file
-            modetransfer_2d = h5py.File(modetransfer_file, "r")
+    if modetransfer_file is not None:
+        print "Applying 2d transfer from " + modetransfer_file
+        modetransfer_2d = h5py.File(modetransfer_file, "r")
 
-        if beamtransfer_file is not None:
-            print "Applying 2d transfer from " + beamtransfer_file
-            beamtransfer_2d = h5py.File(beamtransfer_file, "r")
+    if beamtransfer_file is not None:
+        print "Applying 2d transfer from " + beamtransfer_file
+        beamtransfer_2d = h5py.File(beamtransfer_file, "r")
 
+    # given both
+    if (beamtransfer_file is not None) and (modetransfer_file is not None):
+        print "using the product of beam and mode transfer functions"
         transfer_dict = {}
+        assert modetransfer_2d.keys() == treatment_list, \
+                "mode transfer treatments do not match data"
+
         for treatment in modetransfer_2d:
-            if modetransfer_2d is not None:
-                transfer_dict[treatment] = modetransfer_2d[treatment].value
-                if beamtransfer_2d is not None:
-                    transfer_dict[treatment] *= \
-                                    beamtransfer_2d["0modes"].value
-            else:
-                transfer_dict[treatment] = beamtransfer_2d["0modes"].value
+            transfer_dict[treatment] = modetransfer_2d[treatment].value
+            transfer_dict[treatment] *= \
+                                    beamtransfer_2d[beam_treatment].value
+
+    # given mode only
+    if (beamtransfer_file is None) and (modetransfer_file is not None):
+        print "using just the mode transfer function"
+        transfer_dict = {}
+        assert modetransfer_2d.keys() == treatment_list, \
+                "mode transfer treatments do not match data"
+
+        for treatment in modetransfer_2d:
+            transfer_dict[treatment] = modetransfer_2d[treatment].value
+
+    # given beam only
+    if (beamtransfer_file is not None) and (modetransfer_file is None):
+        print "using just the beam transfer function"
+        transfer_dict = {}
+        for treatment in treatment_list:
+            transfer_dict[treatment] = beamtransfer_2d[beam_treatment].value
+
+    # no transfer function
+    if (beamtransfer_file is None) and (modetransfer_file is None):
+        print "not using transfer function"
+        transfer_dict = None
 
     return transfer_dict
 

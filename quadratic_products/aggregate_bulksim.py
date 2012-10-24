@@ -18,6 +18,7 @@ aggregatesummary_init = {
         "directory": "dir",
         "basefile": "file",
         "noiseweights_2dto1d": None,
+        "fix_weight_treatment": None,
         "apply_2d_beamtransfer": None,
         "apply_2d_modetransfer": None,
         "outfile": "file"
@@ -75,7 +76,8 @@ class AggregateSummary(object):
         # load the transfer functions and 2d->1d noise weights
         transfer_dict = pe.load_transferfunc(
                             self.params["apply_2d_beamtransfer"],
-                            self.params["apply_2d_modetransfer"])
+                            self.params["apply_2d_modetransfer"],
+                            sim_toread.treatment_cases)
 
         weights_2d = None
         if self.params["noiseweights_2dto1d"] is not None:
@@ -85,10 +87,15 @@ class AggregateSummary(object):
             weightfile = h5py.File(self.params["noiseweights_2dto1d"], "r")
             weights_2d = {}
             for treatment in sim_toread.treatment_cases:
-                weights_2d[treatment] = weightfile[treatment].value
+                if self.params["fix_weight_treatment"] is not None:
+                    fixed_treatment = self.params["fix_weight_treatment"]
+                    print "fixing weight for %s to value at %s" % \
+                            (treatment, fixed_treatment)
+                    weights_2d[treatment] = weightfile[fixed_treatment].value
+                else:
+                    weights_2d[treatment] = weightfile[treatment].value
 
             weightfile.close()
-
 
         result_dict = {}
         for treatment in sim_toread.treatment_cases:

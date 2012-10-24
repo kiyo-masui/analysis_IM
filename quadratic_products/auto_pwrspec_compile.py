@@ -33,7 +33,8 @@ class CompileAutoNoiseweight(object):
 
         transfer_dict = pe.load_transferfunc(
                             self.params["apply_2d_beamtransfer"],
-                            self.params["apply_2d_modetransfer"])
+                            self.params["apply_2d_modetransfer"],
+                            pwr_noise.treatment_cases)
 
         weightfile = h5py.File(self.params["outfile"], "w")
         for treatment in pwr_noise.treatment_cases:
@@ -77,7 +78,8 @@ class CompileAutopower(object):
 
         transfer_dict = pe.load_transferfunc(
                             self.params["apply_2d_beamtransfer"],
-                            self.params["apply_2d_modetransfer"])
+                            self.params["apply_2d_modetransfer"],
+                            pwr_map.treatment_cases)
 
         pwr_map.apply_2d_trans_by_treatment(transfer_dict)
 
@@ -101,12 +103,18 @@ class CompileAutopower(object):
                                      ["logkx", "logky"], 1., "2d power",
                                      "log(abs(2d power))", logscale=True)
 
-            if transfer_dict is not None:
-                outplot_transfer_file = "%s/transfer_2d_%s.png" % \
+            outplot_transfer_file = "%s/transfer_2d_%s.png" % \
                                       (self.params['outdir'], treatment)
 
+            if transfer_dict is not None:
                 plot_slice.simpleplot_2D(outplot_transfer_file,
                                          transfer_dict[treatment],
+                                         logkx, logky,
+                                         ["logkx", "logky"], 1., "2d trans",
+                                         "2d trans", logscale=False)
+            else:
+                plot_slice.simpleplot_2D(outplot_transfer_file,
+                                         np.ones_like(pwr_map.counts_2d[pwrcase]),
                                          logkx, logky,
                                          ["logkx", "logky"], 1., "2d trans",
                                          "2d trans", logscale=False)

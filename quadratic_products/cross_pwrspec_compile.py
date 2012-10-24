@@ -40,7 +40,8 @@ class CompileCrosspower(object):
 
         transfer_dict = pe.load_transferfunc(
                             self.params["apply_2d_beamtransfer"],
-                            self.params["apply_2d_modetransfer"])
+                            self.params["apply_2d_modetransfer"],
+                            pwr_mock.treatment_cases)
 
         if transfer_dict is not None:
             pwr_mock.apply_2d_trans_by_treatment(transfer_dict)

@@ -157,6 +157,9 @@ class PowerSpectrum(object):
         if bins is None:
             bins = bins_1d
 
+        if weights_2d is not None:
+            print "using 2d weights for 2d->1d"
+
         for treatment in self.treatment_cases:
             if weights_2d is not None:
                 weights_2d_treat = weights_2d[treatment]
