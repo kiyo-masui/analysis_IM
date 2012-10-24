@@ -1,5 +1,6 @@
 import numpy as np
 import numpy.ma as ma
+from quadratic_products import pwrspec_estimator as pe
 from quadratic_products import power_spectrum as ps
 import glob
 import copy
@@ -16,7 +17,9 @@ from utils import file_tools
 aggregatesummary_init = {
         "directory": "dir",
         "basefile": "file",
-        "apply_2d_transfer": None,
+        "noiseweights_2dto1d": None,
+        "apply_2d_beamtransfer": None,
+        "apply_2d_modetransfer": None,
         "outfile": "file"
     }
 
@@ -69,14 +72,23 @@ class AggregateSummary(object):
 
         print "AggregateSummary: treatment cases: ", sim_toread.treatment_cases
 
-        if self.params["apply_2d_transfer"] is not None:
-            trans_shelve = shelve.open(self.params["apply_2d_transfer"])
-            transfer_2d = trans_shelve["transfer_2d"]
-            trans_shelve.close()
+        # load the transfer functions and 2d->1d noise weights
+        transfer_dict = pe.load_transferfunc(
+                            self.params["apply_2d_beamtransfer"],
+                            self.params["apply_2d_modetransfer"])
 
-            transfer_dict = {}
+        weights_2d = None
+        if self.params["noiseweights_2dto1d"] is not None:
+            print "applying 2D noise weights: " + \
+                self.params["noiseweights_2dto1d"]
+
+            weightfile = h5py.File(self.params["noiseweights_2dto1d"], "r")
+            weights_2d = {}
             for treatment in sim_toread.treatment_cases:
-                transfer_dict[treatment] = transfer_2d
+                weights_2d[treatment] = weightfile[treatment].value
+
+            weightfile.close()
+
 
         result_dict = {}
         for treatment in sim_toread.treatment_cases:
@@ -93,10 +105,9 @@ class AggregateSummary(object):
                 print treatment, simfile, index
                 sim_toread = ps.PowerSpectrum(simfile)
 
-                if self.params["apply_2d_transfer"] is not None:
-                    sim_toread.apply_2d_trans_by_treatment(transfer_dict)
+                sim_toread.apply_2d_trans_by_treatment(transfer_dict)
 
-                sim_toread.convert_2d_to_1d()
+                sim_toread.convert_2d_to_1d(weights_2d=weights_2d)
 
                 agg1d = sim_toread.agg_stat_1d_pwrspec()
                 agg1d_from_2d = sim_toread.agg_stat_1d_pwrspec(from_2d=True)

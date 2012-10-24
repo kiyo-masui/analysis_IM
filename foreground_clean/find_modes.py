@@ -35,15 +35,15 @@ def freq_covariance(map1, map2, weight1, weight2, freq1, freq2):
     quad_wprod[mask] = 0
     quad_weight[mask] = 0
 
-    # downstream code selects the [..., 0] entry for "zero lag"
-    return quad_wprod[..., np.newaxis], quad_weight[..., np.newaxis]
+    #return quad_wprod[..., np.newaxis], quad_weight[..., np.newaxis]
+    return quad_wprod, quad_weight
 
 
 def get_freq_svd_modes(corr, n_modes):
     r"""Same as get freq eigenmodes, but treats left and right maps
     separatly with an SVD.
     """
-    u_matrix, singular_values, v_matrix = linalg.svd(corr[:, :, 0])
+    u_matrix, singular_values, v_matrix = linalg.svd(corr)
     v_matrix = v_matrix.T
     sorted_singular_values = list(singular_values)
     sorted_singular_values.sort()

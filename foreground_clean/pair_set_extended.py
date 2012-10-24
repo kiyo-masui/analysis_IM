@@ -35,10 +35,10 @@ params_init = {
                'svd_filename': None,
                'modes': [10, 15]
                }
-prefix = 'fs_'
+prefix = 'fse_'
 
 
-class PairSet():
+class PairSetExtended():
     r"""Class to manage a set of map pairs
     """
 
@@ -198,14 +198,16 @@ class PairSet():
             cov_out[pairitem] = freq_cov
             counts_out[pairitem] = counts
 
-            # (vals, modes1, modes2)
+            # note that the choice of 1x4 and 4x1 might be reversed, but this
+            # should only matter if the extended map (polarizations) are split
+            # into sections that have correlated noise
             svd_info = find_modes.get_freq_svd_modes(freq_cov[0: nfreq, :], nfreq)
             svd_vals1_out[pairitem] = svd_info[0]
             svd_modes1_out[pairitem] = svd_info[1]
 
-            svd_info = find_modes.get_freq_svd_modes(freq_cov[:, 0: nfreq].T, nfreq)
+            svd_info = find_modes.get_freq_svd_modes(freq_cov[:, 0: nfreq], nfreq)
             svd_vals2_out[pairitem] = svd_info[0]
-            svd_modes2_out[pairitem] = svd_info[1]
+            svd_modes2_out[pairitem] = svd_info[2]
 
         svd_data_out.close()
 
