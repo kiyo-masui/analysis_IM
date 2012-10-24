@@ -97,32 +97,42 @@ class SimulateGbtSignal(object):
         self.realize_simulation()
 
         if self.params['outfile_raw']:
-            algebra.save(self.output_root + self.params['outfile_raw'],
-                         self.sim_map)
+            filename = self.output_root + self.params['outfile_raw']
+            print "saving raw sim to ", filename
+            algebra.save(filename, self.sim_map)
 
         if self.params['outfile_physical']:
-            algebra.save(self.output_root + self.params['outfile_physical'],
-                         self.sim_map_phys)
+            filename = self.output_root + self.params['outfile_physical']
+            print "saving physical-space sim to ", filename
+            algebra.save(filename, self.sim_map_phys)
 
         if self.params['outfile_delta']:
             self.make_delta_sim()
-            algebra.save(self.output_root + self.params['outfile_delta'],
-                         self.sim_map_delta)
+
+            filename = self.output_root + self.params['outfile_delta']
+            print "saving overdensity sim to ", filename
+            algebra.save(filename, self.sim_map_delta)
 
         if self.params['outfile_beam']:
             self.convolve_by_beam()
-            algebra.save(self.output_root + self.params['outfile_beam'],
-                         self.sim_map_withbeam)
+
+            filename = self.output_root + self.params['outfile_beam']
+            print "saving beam-convolved sim to ", filename
+            algebra.save(filename, self.sim_map_withbeam)
 
         if self.params['outfile_meansub']:
             self.subtract_mean()
-            algebra.save(self.output_root + self.params['outfile_meansub'],
-                         self.sim_map_meansub)
+
+            filename = self.output_root + self.params['outfile_meansub']
+            print "saving beam-convolved, meansub sim to ", filename
+            algebra.save(filename, self.sim_map_meansub)
 
         if self.params['outfile_degrade']:
             self.degrade_to_common_res()
-            algebra.save(self.output_root + self.params['outfile_degrade'],
-                         self.sim_map_degrade)
+
+            filename = self.output_root + self.params['outfile_degrade']
+            print "saving beam-convolved, meansub, degrade sim to ", filename
+            algebra.save(filename, self.sim_map_degrade)
 
     @batch_handler.log_timing
     def realize_simulation(self):
