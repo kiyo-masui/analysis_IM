@@ -22,6 +22,11 @@ params_init = {
                'map2': 'GBT_15hr_map',
                'noise_inv1': 'GBT_15hr_map',
                'noise_inv2': 'GBT_15hr_map',
+               'map1_ext': None,
+               'map2_ext': None,
+               'noise_inv1_ext': None,
+               'noise_inv2_ext': None,
+               'index_ext': None,
                'simfile': None,
                'sim_multiplier': 1.,
                'subtract_inputmap_from_sim': False,
@@ -46,8 +51,11 @@ class PairSetExtended():
     def __init__(self, parameter_file=None, params_dict=None, feedback=0):
         # recordkeeping
         self.pairs = {}
+        self.pairs_ext = {}
         self.pairs_parallel_track = {}
         self.pairlist = []
+        self.pairlist_ext = []
+        self.indexlist_ext = []
         self.datapath_db = dp.DataPath()
 
         self.params = params_dict
@@ -80,6 +88,18 @@ class PairSetExtended():
     def execute(self, processes):
         r"""main call to execute the various steps in foreground removal"""
         self.load_pairs()
+
+        if self.params['index_ext'] is not None:
+            self.indexlist_ext = self.params['index_ext']
+            for (index, map1name, map2name, noise1name, noise2name) in \
+                zip(self.params['index_ext'], \
+                    self.params['map1_ext'], self.params['map2_ext'], \
+                    self.params['noise_inv1_ext'], \
+                    self.params['noise_inv2_ext']):
+                print "loading dataset extension: ", index
+                self.load_ext_pairs(index, map1name, map2name,
+                                    noise1name, noise2name)
+
         self.preprocess_pairs()
 
         if self.params['svd_filename'] is not None:
@@ -92,10 +112,10 @@ class PairSetExtended():
         mode_list_start[1:] = mode_list_start[:-1]
 
         #self.uncleaned_pairs = copy.deepcopy(self.pairs)
-        for (n_modes_start, n_modes_stop) in zip(mode_list_start,
+        for (n_start, n_stop) in zip(mode_list_start,
                                              mode_list_stop):
-            self.subtract_foregrounds(n_modes_start, n_modes_stop)
-            self.save_data(n_modes_stop)
+            self.subtract_foregrounds(n_start, n_stop)
+            self.save_data(n_stop)
 
             # NOTE: if you use this you also need to copy the parallel pairs!
             #self.pairs = copy.deepcopy(self.uncleaned_pairs)
@@ -164,6 +184,44 @@ class PairSetExtended():
 
 
     @batch_handler.log_timing
+    def load_ext_pairs(self, index, map1name, map2name,
+                       noise1name, noise2name):
+        r"""Load the external datasets (which improve cleaning)
+        """
+        par = self.params
+        (self.pairlist_ext, pairdict) = dp.cross_maps(map1name, map2name,
+                                             noise1name, noise2name,
+                                             noise_inv_suffix=";noise_weight",
+                                             verbose=False,
+                                             db_to_use=self.datapath_db)
+        # probably not wanted for external maps:
+        #                                    tack_on=self.tack_on_input,
+
+        self.pairs_ext[index] = {}
+        for pairitem in self.pairlist_ext:
+            pdict = pairdict[pairitem]
+            print "-" * 80
+            print "loading ext %s pair %s" % (index, pairitem)
+            dp.print_dictionary(pdict, sys.stdout,
+                                key_list=['map1', 'noise_inv1',
+                                          'map2', 'noise_inv2'])
+
+            map1 = algebra.make_vect(algebra.load(pdict['map1']))
+            map2 = algebra.make_vect(algebra.load(pdict['map2']))
+
+            noise_inv1 = algebra.make_vect(algebra.load(pdict['noise_inv1']))
+            noise_inv2 = algebra.make_vect(algebra.load(pdict['noise_inv2']))
+
+            pair = map_pair.MapPair(map1, map2,
+                                    noise_inv1, noise_inv2,
+                                    self.freq_list)
+
+            pair.set_names(pdict['tag1'], pdict['tag2'])
+
+            pair.params = self.params
+            self.pairs_ext[index][pairitem] = pair
+
+    @batch_handler.log_timing
     def preprocess_pairs(self):
         r"""perform several preparation tasks on the data
         1. convolve down to a common beam
@@ -190,13 +248,47 @@ class PairSetExtended():
         svd_vals2_out = svd_data_out.create_group("svd_vals2")
         svd_modes1_out = svd_data_out.create_group("svd_modes1")
         svd_modes2_out = svd_data_out.create_group("svd_modes2")
-
+        svd_extmodes1_out = svd_data_out.create_group("svd_extmodes1")
+        svd_extmodes2_out = svd_data_out.create_group("svd_extmodes2")
         nfreq = len(self.freq_list)
 
         for pairitem in self.pairlist:
-            (freq_cov, counts) = self.pairs[pairitem].freq_covariance()
+            print self.indexlist_ext
+
+            # start with the base maps and list of good freq indices
+            map1 = copy.deepcopy(np.array(self.pairs[pairitem].map1))
+            map2 = copy.deepcopy(np.array(self.pairs[pairitem].map2))
+            weight1 = copy.deepcopy(np.array(self.pairs[pairitem].noise_inv1))
+            weight2 = copy.deepcopy(np.array(self.pairs[pairitem].noise_inv2))
+            freqs = copy.deepcopy(self.pairs[pairitem].freq)
+
+            # now append the extended datasets
+            for index in self.indexlist_ext:
+                nfreqind = map1.shape[0]
+
+                map1 = np.concatenate([map1,
+                                np.array(self.pairs_ext[index][pairitem].map1)])
+
+                map2 = np.concatenate([map2,
+                                np.array(self.pairs_ext[index][pairitem].map2)])
+
+                weight1 = np.concatenate([weight1,
+                                np.array(self.pairs_ext[index][pairitem].noise_inv1)])
+
+                weight2 = np.concatenate([weight2,
+                                np.array(self.pairs_ext[index][pairitem].noise_inv2)])
+
+                freq_arr = np.array(self.pairs_ext[index][pairitem].freq)
+                freqs = np.concatenate([freqs, freq_arr + nfreqind])
+
+            (freq_cov, counts) = find_modes.freq_covariance(map1, map2,
+                                                            weight1, weight2,
+                                                            freqs, freqs)
+
             cov_out[pairitem] = freq_cov
             counts_out[pairitem] = counts
+
+            # now find the SVD of this covariance
 
             # note that the choice of 1x4 and 4x1 might be reversed, but this
             # should only matter if the extended map (polarizations) are split
@@ -204,28 +296,31 @@ class PairSetExtended():
             svd_info = find_modes.get_freq_svd_modes(freq_cov[0: nfreq, :], nfreq)
             svd_vals1_out[pairitem] = svd_info[0]
             svd_modes1_out[pairitem] = svd_info[1]
+            svd_extmodes1_out[pairitem] = svd_info[2]
 
             svd_info = find_modes.get_freq_svd_modes(freq_cov[:, 0: nfreq], nfreq)
             svd_vals2_out[pairitem] = svd_info[0]
+            svd_extmodes2_out[pairitem] = svd_info[1]
             svd_modes2_out[pairitem] = svd_info[2]
 
         svd_data_out.close()
 
     @batch_handler.log_timing
-    def subtract_foregrounds(self, n_modes_start, n_modes_stop):
+    def subtract_foregrounds(self, n_start, n_stop):
         r"""take the SVD modes from above and clean each LOS with them"""
         svd_data = h5py.File(self.svd_filename, "r")
         svd_modes1 = svd_data["svd_modes1"]
         svd_modes2 = svd_data["svd_modes2"]
+        nfreq = len(self.freq_list)
 
         for pairitem in self.pairlist:
             print "subtracting %d to %d modes from %s using %s" % \
-                    (n_modes_start, n_modes_stop, pairitem, self.svd_filename)
+                    (n_start, n_stop, pairitem, self.svd_filename)
 
             svd_modes1_pair = svd_modes1[pairitem].value
             svd_modes2_pair = svd_modes2[pairitem].value
-            svd_modes1_use = svd_modes1_pair[n_modes_start: n_modes_stop]
-            svd_modes2_use = svd_modes2_pair[n_modes_start: n_modes_stop]
+            svd_modes1_use = svd_modes1_pair[n_start: n_stop][0: nfreq]
+            svd_modes2_use = svd_modes2_pair[n_start: n_stop][0: nfreq]
 
             self.pairs[pairitem].subtract_frequency_modes(svd_modes1_use,
                                                           svd_modes2_use)
@@ -341,13 +436,29 @@ class PairSetExtended():
             for pairitem in self.pairlist:
                 pair_parallel_track = self.pairs_parallel_track[pairitem]
                 try:
-                    method_to_call_parallel_track = getattr(pair_parallel_track, call)
+                    method_to_call_parallel_track = \
+                            getattr(pair_parallel_track, call)
+
                 except AttributeError:
                     print "ERROR: %s missing call %s" % (pairitem, call)
                     sys.exit()
 
                 print "calling %s() on pair %s" % (call, pairitem)
                 method_to_call_parallel_track()
+
+        for ext_index in self.pairs_ext:
+            for pairitem in self.pairlist:
+                pair = self.pairs_ext[ext_index][pairitem]
+                try:
+                    method_to_call = getattr(pair, call)
+                except AttributeError:
+                    print "ERROR: %s missing call %s" % (pairitem, call)
+                    sys.exit()
+
+                print "calling %s() on ext %s pair %s" % \
+                      (call, ext_index, pairitem)
+
+                method_to_call()
 
 
 if __name__ == '__main__':
