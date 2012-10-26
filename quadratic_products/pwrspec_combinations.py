@@ -598,7 +598,7 @@ singlephysicalsim_init = {
         "return_3d": False,
         "truncate": False,
         "window": None,
-        "ncpu": 24,
+        "ncpu": 1,
         "bins": [0.00765314, 2.49977141, 35]
                }
 singlephysicalsim_prefix = 'sps_'
