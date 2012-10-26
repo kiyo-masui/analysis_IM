@@ -8,7 +8,6 @@ import math
 from os.path import dirname, join, exists
 
 from utils import integrate, units, fftutil
-from utils import cubicspline as cs
 
 from utils import cosmology as cosmo
 from gaussianfield import RandomField
@@ -361,6 +360,7 @@ class RedshiftCorrelation(object):
 
 
     def _load_cache(self, fname):
+        from utils import cubicspline as cs
 
         if not exists(fname):
             raise Exception("Cache file does not exist.")
@@ -410,6 +410,7 @@ class RedshiftCorrelation(object):
         rnum : integer
             The number of points to generate (using a log spacing).
         """
+        from utils import cubicspline as cs
         ra  = np.logspace(np.log10(rmin), np.log10(rmax), rnum)
 
         vv0 = _integrate(ra, 0, self.ps_vv)
