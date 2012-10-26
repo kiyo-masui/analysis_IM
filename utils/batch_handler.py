@@ -103,7 +103,8 @@ def repackage_kiyo(kiyo_map_split):
     return combined_kiyo
 
 
-memoize_directory = "/mnt/raid-project/gmrt/eswitzer/persistent_memoize/"
+#memoize_directory = "/mnt/raid-project/gmrt/eswitzer/persistent_memoize/"
+memoize_directory = "/scratch/r/rbond/eswitzer/persistent_memoize/"
 def memoize_persistent(func):
     r"""threadsafe shelve using flock was too annoying; here, just wait
     note that shelve protocol=-1 does not handle Kiyo-style array metadata.

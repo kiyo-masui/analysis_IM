@@ -10,6 +10,7 @@ import ast
 import re
 import os
 import copy
+import shelve
 from utils import file_tools as ft
 from core import algebra
 
@@ -78,8 +79,7 @@ def unpack_cases(case_list, case_key, divider=";"):
     return case_counter
 
 
-def convert_dbkeydict_to_filedict(dbkeydict, datapath_db=None, silent=True,
-                                  tack_on=None):
+def convert_dbkeydict_to_filedict(dbkeydict, datapath_db=None, silent=True):
     r"""simple caller to convert a dictionary of database keys to a dictionary
     of filenames"""
     if datapath_db is None:
@@ -87,8 +87,7 @@ def convert_dbkeydict_to_filedict(dbkeydict, datapath_db=None, silent=True,
 
     filedict = {}
     for name in dbkeydict:
-        filedict[name] = datapath_db.fetch(dbkeydict[name], silent=silent,
-                                           tack_on=tack_on)
+        filedict[name] = datapath_db.fetch(dbkeydict[name], silent=silent)
 
     return filedict
 
@@ -170,7 +169,7 @@ def unique_cross_pairs(list1, list2):
 def cross_maps(map1key, map2key, noise_inv1key, noise_inv2key,
                map_suffix=";clean_map", noise_inv_suffix=";noise_inv",
                verbose=True, ignore=['firstpass'], cross_sym="_with_",
-               pair_former="unique_cross_pairs", tack_on=None,
+               pair_former="unique_cross_pairs",
                tag1prefix="", tag2prefix="", db_to_use=None):
     r"""Use the database to report all unique crossed map maps given map and
     noise_inv keys.
@@ -181,23 +180,19 @@ def cross_maps(map1key, map2key, noise_inv1key, noise_inv2key,
     retpairs = {}
     retpairslist = []
 
-    (map1keys, map1set) = db_to_use.fetch(map1key, intend_read=False,
-                                          tack_on=tack_on,
-                                          silent=True)
+    (map1keys, map1set) = db_to_use.fetch(map1key, intend_read=True,
+                                    silent=True)
 
-    (map2keys, map2set) = db_to_use.fetch(map2key, intend_read=False,
-                                          tack_on=tack_on,
-                                          silent=True)
+    (map2keys, map2set) = db_to_use.fetch(map2key, intend_read=True,
+                                    silent=True)
 
     (noise_inv1keys, noise_inv1set) = db_to_use.fetch(noise_inv1key,
-                                                      intend_read=False,
-                                                      tack_on=tack_on,
-                                                      silent=True)
+                                        intend_read=True,
+                                        silent=True)
 
     (noise_inv2keys, noise_inv2set) = db_to_use.fetch(noise_inv2key,
-                                                      intend_read=False,
-                                                      tack_on=tack_on,
-                                                      silent=True)
+                                        intend_read=True,
+                                        silent=True)
 
     map1tags = extract_split_tag(map1keys, ignore=ignore)
     map2tags = extract_split_tag(map1keys, ignore=ignore)
@@ -294,35 +289,40 @@ class DataPath(object):
     """
 
     # URL to the default path database
-    _db_root = "http://www.cita.utoronto.ca/~eswitzer/GBT_param/"
+    #_db_root = "http://www.cita.utoronto.ca/~eswitzer/GBT_param/"
+    # local file:
+    _db_root = "./utils/"
     #_db_file = "path_database.py"
     _db_file = "path_database.shelve"
     _db_url_default = _db_root + _db_file
-    _hash_file = "hashlist.txt"
-    _hash_url_default = _db_root + _hash_file
+    #_hash_file = "hashlist.txt"
+    #_hash_url_default = _db_root + _hash_file
 
-    def __init__(self, db_url=_db_url_default, hash_url=_hash_url_default,
-                 skip_gitlog=False, load_via_exec=False):
+    def __init__(self, db_url=_db_url_default,
+                 skip_gitlog=True, load_via_exec=False):
         r"""Load a file path specification and get basic run info
         """
 
         self._pathdict = {}       # the main path database
-        self._hashdict = {}       # file hash database
+        #self._hashdict = {}       # file hash database
         self._groups = {}         # dictionary of database key lists by group
         self._group_order = []    # order in which to print the groups
         self.version = "Empty"    # the database version
         self.db_url = db_url      # URL: database specification
-        self.hash_url = hash_url  # URL: file hash specification
+        #self.hash_url = hash_url  # URL: file hash specification
         self.gitlog = "Empty"     # git SHA and commit info
 
         # load the file database and git version info
-        if load_via_exec:
-            self.execload_pathdict(db_url)
+        if "http" in self.db_url:
+            if load_via_exec:
+                self.execload_pathdict()
+            else:
+                self.load_pathdict()
         else:
-            self.load_pathdict(db_url)
+            self.load_pathdict_file()
 
         self.replace_local_variables()
-        self.load_hashdict(hash_url)
+        #self.load_hashdict(hash_url)
         self.check_groups()
         self.clprint("File database date/version " + self.version)
 
@@ -333,18 +333,35 @@ class DataPath(object):
         self.clprint("Run info: %s by %s" % self.runinfo)
         if not skip_gitlog:
             self.get_gitlog()
-        self._db_size = (len(self._hashdict),
-                        sys.getsizeof(self._pathdict) +
-                        sys.getsizeof(self._hashdict))
+        #self._db_size = (len(self._hashdict),
+        #                sys.getsizeof(self._pathdict) +
+        #                sys.getsizeof(self._hashdict))
 
-        self.clprint("%d files registered; database size in memory = %s" %
-                     self._db_size)
+        #self.clprint("%d files registered; database size in memory = %s" %
+        #             self._db_size)
 
     def clprint(self, string_in):
         r"""print with class message; could extend to logger"""
         print "DataPath: " + string_in
 
-    def load_pathdict(self, db_url):
+    def load_pathdict_file(self):
+        r"""Load the parameter dictionary as a shelve file
+
+        note that the class instance update()'s its dictionary, so subsequent
+        calls of this function on different files will overwrite or augment
+        dictionaries that have already been loaded.
+        """
+        self.clprint("opening file " + self.db_url)
+
+        bounding_box = shelve.open(self.db_url, "r")
+        # extract only the useful database information
+        self.version = bounding_box['version_tag']
+        self._pathdict.update(bounding_box['pdb'])
+        self._groups.update(bounding_box['groups'])
+        self._group_order = bounding_box['group_order']
+        bounding_box.close()
+
+    def load_pathdict(self):
         r"""Load the parameter dictionary as a shelve through http
 
         note that the class instance update()'s its dictionary, so subsequent
@@ -353,12 +370,12 @@ class DataPath(object):
         """
         self.clprint("opening URL " + self.db_url)
 
-        resp = urllib2.urlopen(db_url)
+        resp = urllib2.urlopen(self.db_url)
         # urllib2 will die if this fails, but to be safe,
         if (resp.code != 200):
             print "ERROR: path database URL invalid (%s)" % resp.code
 
-        bounding_box = ft.load_shelve_over_http(db_url)
+        bounding_box = ft.load_shelve_over_http(self.db_url)
 
         # extract only the useful database information
         self.version = bounding_box['version_tag']
@@ -366,7 +383,7 @@ class DataPath(object):
         self._groups.update(bounding_box['groups'])
         self._group_order = bounding_box['group_order']
 
-    def execload_pathdict(self, db_url, print_dbspec=False):
+    def execload_pathdict(self, print_dbspec=False):
         r"""Load the parameter dictionary
 
         note that the class instance update()'s its dictionary, so subsequent
@@ -375,7 +392,7 @@ class DataPath(object):
         """
         self.clprint("opening URL " + self.db_url)
 
-        resp = urllib2.urlopen(db_url)
+        resp = urllib2.urlopen(self.db_url)
         # urllib2 will die if this fails, but to be safe,
         if (resp.code != 200):
             print "ERROR: path database URL invalid (%s)" % resp.code
@@ -501,23 +518,23 @@ class DataPath(object):
                 retstring += "* __File list__:\n"
                 for listitem in listindex:
                     filename = dbentry['filelist'][listitem]
-                    if filename in self._hashdict:
-                        retstring += "    * `%s`: `%s` `%s`\n" % \
-                                    (listitem, filename, self._hashdict[filename])
-                    else:
-                        retstring += "    * `%s`: `%s`\n" % \
-                                    (listitem, filename)
+                    #if filename in self._hashdict:
+                    #    retstring += "    * `%s`: `%s` `%s`\n" % \
+                    #                (listitem, filename, self._hashdict[filename])
+                    #else:
+                    retstring += "    * `%s`: `%s`\n" % \
+                                (listitem, filename)
 
         if 'path' in dbentry:
             retstring += "* __Path__: `%s`\n" % dbentry['path']
 
         if 'file' in dbentry:
             filename = dbentry['file']
-            if filename in self._hashdict:
-                retstring += "* __File__: `%s` `%s`\n" % \
-                             (filename, self._hashdict[filename])
-            else:
-                retstring += "* __File__: `%s`\n" % dbentry['file']
+            #if filename in self._hashdict:
+            #    retstring += "* __File__: `%s` `%s`\n" % \
+            #                 (filename, self._hashdict[filename])
+            #else:
+            retstring += "* __File__: `%s`\n" % dbentry['file']
 
         if not silent:
             print retstring
@@ -600,7 +617,7 @@ class DataPath(object):
             print "%s has no parent directory field" % db_key
 
     def fetch_multi(self, data_obj, db_token="db:", silent=False,
-                    intend_read=False):
+                    intend_read=True):
         r"""Handle various sorts of file pointers/data
         if `data_obj`
             is an array, return a deep copy of it
@@ -717,11 +734,11 @@ class DataPath(object):
         fileobj.write("Data path DB\n============\n\n")
         fileobj.write("* specified by local path: `%s` and URL `%s`\n" %
                       (localdb, self.db_url))
-        fileobj.write("* file hash table specified by `%s`\n" % self.hash_url)
+        #fileobj.write("* file hash table specified by `%s`\n" % self.hash_url)
         fileobj.write("* website, checksums compiled: %s by %s\n" % \
                        self.runinfo)
-        fileobj.write("* %d files registered; database size in memory = %s\n" %
-                     self._db_size)
+        #fileobj.write("* %d files registered; database size in memory = %s\n" %
+        #             self._db_size)
         self.print_path_db_by_group(suppress_lists=suppress_lists,
                                     fileobj=fileobj)
 
@@ -740,11 +757,11 @@ class DataPath(object):
         fileobj.write("Data path DB\n============\n\n")
         fileobj.write("* specified by local path: `%s` and URL `%s`\n" %
                       (localdb, self.db_url))
-        fileobj.write("* file hash table specified by `%s`\n" % self.hash_url)
+        #fileobj.write("* file hash table specified by `%s`\n" % self.hash_url)
         fileobj.write("* website, checksums compiled: %s by %s\n" % \
                        self.runinfo)
-        fileobj.write("* %d files registered; database size in memory = %s\n" %
-                     self._db_size)
+        #fileobj.write("* %d files registered; database size in memory = %s\n" %
+        #             self._db_size)
 
         fileobj.write("****\n")
         for groupname in self._group_order:

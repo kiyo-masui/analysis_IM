@@ -204,7 +204,8 @@ def simpleplot_2D(outfilename, region_in, xaxis, yaxis, xylabels,
 
     gplfile.flush()
 
-    gnuplot = '/cita/h/home-2/eswitzer/local/bin/gnuplot'
+    #gnuplot = '/cita/h/home-2/eswitzer/local/bin/gnuplot'
+    gnuplot = '/home/r/rbond/eswitzer/local/bin/gnuplot'
     subprocess.check_call((gnuplot, gplfile.name))
     gplfile.close()
     input_data_file.close()
