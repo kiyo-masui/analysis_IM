@@ -20,27 +20,31 @@ class CalScale(base_single.BaseSingle) :
                    'scale_time_average' : True,
                    'scale_freq_average' : False,
                    'subtract_time_median' : False,
-                   'scale_freq_average_mod' : False
+                   'scale_freq_average_mod' : False,
+                   'rotate_to_cal_phase' : False
                    }
 
     def action(self, Data):
         scale_by_cal(Data, self.params['scale_time_average'],
                      self.params['scale_freq_average'], 
                      self.params['subtract_time_median'],
-                     self.params['scale_freq_average_mod'])
+                     self.params['scale_freq_average_mod'],
+                     self.params['rotate_to_cal_phase']
+                     )
         Data.add_history('Converted to units of noise cal temperture.')
         return Data
 
 
-def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False, scale_f_ave_mod=False) :
+def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False,
+                 scale_f_ave_mod=False, rotate=False) :
     """Puts all data in units of the cal temperature.
     
-    Data is put into units of the cal temperature, thus removing dependance on
-    the gain.  This can be done by deviding by the time average of the cal
-    (scale_t_ave=True, Default) thus removing dependance on the frequency
+    Data is put into units of the cal temperature, thus removing dependence on
+    the gain.  This can be done by dividing by the time average of the cal
+    (scale_t_ave=True, Default) thus removing dependence on the frequency-
     dependant gain.  Alternatively, you can scale by the frequency average to
-    remove the time dependant gain (scale_f_ave=True). Data is then in units of 
-    the frequency averaged cal temperture. You can also do both (reccomended).
+    remove the time-dependent gain (scale_f_ave=True). Data is then in units of
+    the frequency averaged cal temperture. You can also do both (recommended).
     After some scaling the data ends up in units of the cal temperture as a
     funciton of frequency.
 
@@ -163,12 +167,29 @@ def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False, scale
             #Same divide out twice problem.
             cal_xx = operation(cal_tmed_xx)
             cal_yy = operation(cal_tmed_yy)
-            Data.data[:,xx_ind,:,:] *= cal_xx
+            Data.data[:,xx_ind,:,:] *= cal_xxcal_imag_mean
             Data.data[:,yy_ind,:,:] *= cal_yy
             Data.data[:,xy_inds,:,:] *= ma.sqrt(cal_yy*cal_xx)
            
         if scale_f_ave and scale_f_ave_mod :
-            raise ce.DataError("time averaging twice")    
+            raise ce.DataError("time averaging twice") 
+
+        if rotate:
+            # Define the differential cal phase to be zero and rotate all data
+            # such that this is true.
+            cal_real_mean = ma.mean(Data.data[:,1,0,:] - Data.data[:,1,1,:], 0)
+            cal_imag_mean = ma.mean(Data.data[:,2,0,:] - Data.data[:,2,1,:], 0)
+            # Get the cal phase angle as a function of frequency.
+            cal_phase = -ma.arctan2(cal_imag_mean, cal_real_mean)
+
+            # Rotate such that the cal phase is zero. Imperative to have a
+            # temporary variable.
+            New_data_real = (ma.cos(cal_phase) * Data.data[:,1,:,:]
+                             - ma.sin(cal_phase) * Data.data[:,2,:,:])
+            New_data_imag = (ma.sin(cal_phase) * Data.data[:,1,:,:]
+                             + ma.cos(cal_phase) * Data.data[:,2,:,:])
+            Data.data[:,1,:,:] = New_data_real
+            Data.data[:,2,:,:] = New_data_imag
 
     elif tuple(Data.field['CRVAL4']) == (1, 2, 3, 4) :
         # For the shot term, just devide everything by on-off in I.

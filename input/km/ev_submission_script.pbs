@@ -1,0 +1,8 @@
+#!/bin/bash
+#MOAB/Torque submission script for SciNet GPC
+#PBS -l nodes=36:ib:ppn=8,walltime=48:00:00
+#PBS -N noise_inv_eig
+cd $PBS_O_WORKDIR
+export OMP_NUM_THREADS=8
+time mpirun --bynode -np 36 python map/eig_noise_inv.py input/km/eig_noise.ini
+

@@ -66,8 +66,8 @@ def rebin(Data, width, mean=False, by_nbins=False) :
             new_data = ma.empty(Data.dims[:3] + (nbins,))
             # Loop over new bins and rebin.
             for ii in xrange(nbins) :
-                new_data[:,:,:,ii] = method(Data.data[:,:,:,ii*width:(ii+1)*width],
-                                        3)
+                new_data[:,:,:,ii] = method(
+                        Data.data[:,:,:,ii*width:(ii+1)*width],3)
         Data.set_data(new_data)
     else :
         # Convert to Hertz.
@@ -102,7 +102,6 @@ def rebin(Data, width, mean=False, by_nbins=False) :
                          < abs(freq-new_freq[nbins-2]))
         subdata = old_data[:,:,:,inds]
         Data.data[:,:,:,nbins-1] = method(subdata, 3)
-        
         Data.freq = new_freq
     Data.field['CRPIX1'] = sp.array(new_centre + 1, dtype=int)
     Data.field['CDELT1'] = sp.array(new_cdelt, dtype=float)
