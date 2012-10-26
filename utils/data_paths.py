@@ -79,7 +79,8 @@ def unpack_cases(case_list, case_key, divider=";"):
     return case_counter
 
 
-def convert_dbkeydict_to_filedict(dbkeydict, datapath_db=None, silent=True):
+def convert_dbkeydict_to_filedict(dbkeydict, datapath_db=None, silent=True,
+                                  tack_on=None):
     r"""simple caller to convert a dictionary of database keys to a dictionary
     of filenames"""
     if datapath_db is None:
@@ -87,7 +88,8 @@ def convert_dbkeydict_to_filedict(dbkeydict, datapath_db=None, silent=True):
 
     filedict = {}
     for name in dbkeydict:
-        filedict[name] = datapath_db.fetch(dbkeydict[name], silent=silent)
+        filedict[name] = datapath_db.fetch(dbkeydict[name], silent=silent,
+                                           tack_on=tack_on)
 
     return filedict
 
@@ -169,7 +171,7 @@ def unique_cross_pairs(list1, list2):
 def cross_maps(map1key, map2key, noise_inv1key, noise_inv2key,
                map_suffix=";clean_map", noise_inv_suffix=";noise_inv",
                verbose=True, ignore=['firstpass'], cross_sym="_with_",
-               pair_former="unique_cross_pairs",
+               pair_former="unique_cross_pairs", tack_on=None,
                tag1prefix="", tag2prefix="", db_to_use=None):
     r"""Use the database to report all unique crossed map maps given map and
     noise_inv keys.
@@ -180,19 +182,23 @@ def cross_maps(map1key, map2key, noise_inv1key, noise_inv2key,
     retpairs = {}
     retpairslist = []
 
-    (map1keys, map1set) = db_to_use.fetch(map1key, intend_read=True,
-                                    silent=True)
+    (map1keys, map1set) = db_to_use.fetch(map1key, intend_read=False,
+                                          tack_on=tack_on,
+                                          silent=True)
 
-    (map2keys, map2set) = db_to_use.fetch(map2key, intend_read=True,
-                                    silent=True)
+    (map2keys, map2set) = db_to_use.fetch(map2key, intend_read=False,
+                                          tack_on=tack_on,
+                                          silent=True)
 
     (noise_inv1keys, noise_inv1set) = db_to_use.fetch(noise_inv1key,
-                                        intend_read=True,
-                                        silent=True)
+                                                      intend_read=False,
+                                                      tack_on=tack_on,
+                                                      silent=True)
 
     (noise_inv2keys, noise_inv2set) = db_to_use.fetch(noise_inv2key,
-                                        intend_read=True,
-                                        silent=True)
+                                                      intend_read=False,
+                                                      tack_on=tack_on,
+                                                      silent=True)
 
     map1tags = extract_split_tag(map1keys, ignore=ignore)
     map2tags = extract_split_tag(map1keys, ignore=ignore)
@@ -617,7 +623,7 @@ class DataPath(object):
             print "%s has no parent directory field" % db_key
 
     def fetch_multi(self, data_obj, db_token="db:", silent=False,
-                    intend_read=True):
+                    intend_read=False):
         r"""Handle various sorts of file pointers/data
         if `data_obj`
             is an array, return a deep copy of it

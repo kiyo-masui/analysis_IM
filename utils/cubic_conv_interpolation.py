@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 	
 
 def cross(set_list):
@@ -362,7 +361,7 @@ def interpolate_one_step(arr, pnt, x0, step_sizes):
 
 	
 if __name__ == '__main__':
-	
+	import matplotlib.pyplot as plt
 	# Make sure the kernel is right.
 	x = np.arange(-3,3,0.001);
 	ux = [];

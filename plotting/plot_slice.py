@@ -3,7 +3,7 @@ import numpy as np
 import tempfile
 import subprocess
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
 import copy
