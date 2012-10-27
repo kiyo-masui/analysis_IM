@@ -1,7 +1,4 @@
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import h5py
 from utils import data_paths as dp
 import os

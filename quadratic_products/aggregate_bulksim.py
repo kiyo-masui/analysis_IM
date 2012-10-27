@@ -168,17 +168,20 @@ class AggregateSummary(object):
             result_dict[treatment] = treatment_dict
 
         # package all simulations of all treatments into a file
-        outshelve = shelve.open(outfile, "n", protocol=-1)
-        outshelve["k_1d"] = k_1d
-        outshelve["k_1d_from_2d"] = k_1d_from_2d
-        outshelve["kx_2d"] = kx_2d
-        outshelve["ky_2d"] = ky_2d
-        outshelve["results"] = result_dict
-        outshelve.close()
+        #out_dicttree = shelve.open(outfile, "n", protocol=-1)
+        out_dicttree = {}
+        out_dicttree["k_1d"] = k_1d
+        out_dicttree["k_1d_from_2d"] = k_1d_from_2d
+        out_dicttree["kx_2d"] = kx_2d
+        out_dicttree["ky_2d"] = ky_2d
+        out_dicttree["results"] = result_dict
+        file_tools.convert_numpytree_hdf5(out_dicttree, outfile)
+        #out_dicttree.close()
 
 
 aggregatestatistics_init = {
-        "shelvefile": "file",
+        "aggfile_in": "file.hd5",
+        "statfile_out": "data.hd5",
         "outputdir": "dir",
     }
 
@@ -201,7 +204,8 @@ class AggregateStatistics(object):
                                           aggregatestatistics_init,
                                           prefix=aggregatestatistics_prefix)
 
-        self.summary = shelve.open(self.params["shelvefile"])
+        print "opening: ", self.params["aggfile_in"]
+        self.summary = h5py.File(self.params["aggfile_in"], "r")
         # get the list of treatments
         self.treatments = self.summary["results"].keys()
         print "AggregateStatistics: treatment cases: ", self.treatments
@@ -232,10 +236,13 @@ class AggregateStatistics(object):
 
             stat_results[treatment] = copy.deepcopy(stat_summary)
 
-        self.summary["stats"] = stat_results
-        print self.summary["stats"]["0modes"].keys()
+        # in shelve file model
+        #self.summary["stats"] = stat_results
+        #print self.summary["stats"]["0modes"].keys()
 
         self.summary.close()
+        file_tools.convert_numpytree_hdf5(stat_results,
+                                          self.params["statfile_out"])
 
     def calc_stat_1d(self, trial_array, calc_corr=True):
         """take an 1D array of power spectra and find some basic statistics
@@ -271,17 +278,17 @@ class AggregateStatistics(object):
 
         if from2d:
             k_1d = self.summary["k_1d_from_2d"]
-            trial_array_1d = results["pk_1d_from_2d"]
-            error_array_1d = results["pkstd_1d_from_2d"]
-            counts_array_1d = results["counts_1d_from_2d"]
+            trial_array_1d = results["pk_1d_from_2d"].value
+            error_array_1d = results["pkstd_1d_from_2d"].value
+            counts_array_1d = results["counts_1d_from_2d"].value
 
             outfile = "%s/power_1d_from_2d_%s.dat" % \
                       (self.params['outputdir'], treatment)
         else:
             k_1d = self.summary["k_1d"]
-            trial_array_1d = results["pk_1d"]
-            error_array_1d = results["pkstd_1d"]
-            counts_array_1d = results["counts_1d"]
+            trial_array_1d = results["pk_1d"].value
+            error_array_1d = results["pkstd_1d"].value
+            counts_array_1d = results["counts_1d"].value
 
             outfile = "%s/power_1d_%s.dat" % \
                       (self.params['outputdir'], treatment)
@@ -290,9 +297,9 @@ class AggregateStatistics(object):
         error_stat_1d = self.calc_stat_1d(error_array_1d)
         counts_1d = self.calc_stat_1d(counts_array_1d)
 
-        file_tools.print_multicolumn(k_1d["left"],
-                                     k_1d["center"],
-                                     k_1d["right"],
+        file_tools.print_multicolumn(k_1d["left"].value,
+                                     k_1d["center"].value,
+                                     k_1d["right"].value,
                                      counts_1d["mean"],
                                      stat_1d["mean"],
                                      stat_1d["std"],

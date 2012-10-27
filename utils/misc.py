@@ -39,6 +39,7 @@ def elaz2radec_lst(el, az, lst, lat = 38.43312) :
 
     return ra, sp.degrees(dec)
 
+
 def elaz2radecGBT(el, az, UT) :
     """Calculates the Ra and Dec from the elevation, azimuth and UT for an
     observer at GBT.
@@ -65,6 +66,7 @@ def elaz2radecGBT(el, az, UT) :
     ra, dec = GBT.radec_of(az_r,el_r)
 
     return ra*180.0/sp.pi, dec*180.0/sp.pi
+
 
 def LSTatGBT(UT) :
     """Calculates the LST from the UT of an observer at GBT.
@@ -186,6 +188,7 @@ def time2float(UT) :
     else :
         return time_array
 
+
 def float2time(t) :
     """Does the reverse operation of `time2float`."""
 
@@ -211,6 +214,7 @@ def float2time(t) :
     else :
         return time_str_array
 
+
 def mk_map_grid(centre, shape, spacing) :
     """Make a grid of coordinates in Ra and Dec.
 
@@ -230,6 +234,7 @@ def mk_map_grid(centre, shape, spacing) :
 
     return grid_ra, grid_dec
 
+
 def get_beam(freq) :
     """Get the GBT beam width at a frequency (or an array of frequencies).
 
@@ -247,6 +252,7 @@ def get_beam(freq) :
     b = f(freq)
     b[b<0] = 0.316148488246
     return b
+
 
 def polint2str(pol_int) :
     """Convert an interger representing a polarization to a representing the
@@ -299,6 +305,7 @@ def polint2str(pol_int) :
     else :
         raise ValueError("Polarization integer must be in range(-8, 5) and "
                          "nonzero")
+
 
 def ampfit(data, covariance, theory, rank_thresh=1e-12, diag_only=False):
     """Fits the amplitude of the theory curve to the data.
@@ -368,6 +375,7 @@ def rebin_1D(array, reduce=4, axis=-1):
     out /= reduce
     array.shape = shape
     return out
+
 
 def ortho_poly(x, n, window=1., axis=-1):
     """Generate orthonormal basis polynomials.
@@ -456,3 +464,13 @@ def ortho_poly(x, n, window=1., axis=-1):
         if not new_sp:
             basic_poly *= x
     return polys
+
+
+if __name__ == "__main__":
+    import doctest
+
+    # run some tests
+    OPTIONFLAGS = (doctest.ELLIPSIS |
+                   doctest.NORMALIZE_WHITESPACE)
+    doctest.testmod(optionflags=OPTIONFLAGS)
+
