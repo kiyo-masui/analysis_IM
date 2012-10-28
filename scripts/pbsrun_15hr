@@ -1,0 +1,25 @@
+#!/bin/bash
+# MOAB/Torque submission script for multiple, dynamically-run
+# serial jobs on SciNet GPC
+#
+#PBS -l nodes=20:ppn=8,walltime=48:00:00
+#PBS -N serialdynamicMulti
+
+# DIRECTORY TO RUN - $PBS_O_WORKDIR is directory job was submitted from
+cd $PBS_O_WORKDIR
+#cd /home/r/rbond/eswitzer/code/analysis_IM
+
+# GNU PARALLEL NEEDS A COMMA SEPARATED LIST: CONSTRUCT FROM $PBS_NODEFILE:
+NODES=$(uniq $PBS_NODEFILE|tr \\n ,|sed s/.$//)
+# Note: this one-liner extracts the unique nodes on separate lines,
+#       then replaces the end-of-lines by commas,
+#       and finally removes the last character (a superfluous comma).
+
+# START PARALLEL JOBS
+seq 0 20 | parallel -j1 -S$NODES -W$PWD ./scripts/bulksim_15hr {}
+#Note:
+#  seq 800    : generates numbers 1 through 800 as input to parallel
+#  -j8        : makes 8 commands run simultaneously on each node
+#  -S$NODES   : specifes the nodes to use
+#  -W$PWD     : start remote commands in current local directory
+#  ./myrun {} : is the command to run, with {} replaced by the input

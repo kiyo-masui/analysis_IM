@@ -1,0 +1,4 @@
+#!/bin/bash
+#python pipeline/manager.py input/ers/crosspower/GBT_15hr_map_oldcal_cross_bulksim.ini >& /scratch/r/rbond/eswitzer/GBT/bulksim/logs/bulksim_15hr_$1.log
+#python pipeline/manager.py input/ers/autopower/GBT_15hr_map_oldcal_auto_bulksim.ini >& /scratch/r/rbond/eswitzer/GBT/bulksim/logs/bulkautosim_15hr_$1.log
+python pipeline/manager.py input/ers/autopower/GBT_15hr_map_oldcal_auto_bulksim.ini >& /scratch/r/rbond/eswitzer/GBT/bulksim/logs/bulkautosim_15hr_` date +%s.%N`.log

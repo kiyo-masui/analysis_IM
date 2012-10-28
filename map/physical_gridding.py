@@ -8,7 +8,7 @@ from utils import cosmology as cosmo
 from utils import batch_handler
 
 
-@batch_handler.memoize_persistent
+#@batch_handler.memoize_persistent
 def physical_grid(input_array, refinement=2, pad=5, order=2):
     r"""Project from freq, ra, dec into physical coordinates
 
