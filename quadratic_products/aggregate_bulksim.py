@@ -9,6 +9,7 @@ import shelve
 import h5py
 from kiyopy import parse_ini
 from utils import file_tools
+import shutil
 # TODO: better interaction between mask and counts
 # TODO: make object like AggregateSummary that recompiles the physical sims
 # TODO: call AggregateStatistics on the physical sims, make plots
@@ -234,6 +235,13 @@ class AggregateStatistics(object):
             stat_summary["pk_2d_stat"] = stat_2d
             stat_summary["pk_2d_counts"] = counts_2d
 
+            stat_summary["k_1d"] = self.summary["k_1d"]["center"].value
+            stat_summary["k_1d_from_2d"] = \
+                    self.summary["k_1d_from_2d"]["center"].value
+
+            stat_summary["kx_2d"] = self.summary["kx_2d"]["center"].value
+            stat_summary["ky_2d"] = self.summary["ky_2d"]["center"].value
+
             stat_results[treatment] = copy.deepcopy(stat_summary)
 
         # in shelve file model
@@ -391,13 +399,58 @@ class AggregateStatistics(object):
         return (stat_2d, counts_2d)
 
 
+subtractmap_init = {
+        "plussim_file": "file",
+        "mappower_file": "file",
+        "output_file": "file"
+    }
+subtractmap_prefix = 'sub_'
+
+
+class SubtractMap(object):
+    """Input: clean(map+sim)xclean(map+sim), clean(map)xclean(map)
+    subtract these for the purpose of finding the transfer funcion
+    """
+
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+        np.seterr(invalid='raise')
+
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file,
+                                          subtractmap_init,
+                                          prefix=subtractmap_prefix)
+
+        print self.params["plussim_file"], "-", self.params["mappower_file"]
+        print "writing to ", self.params["output_file"]
+
+    def execute(self, processes):
+        shutil.copyfile(self.params["plussim_file"], self.params["output_file"])
+        outfile = h5py.File(self.params["output_file"], "r+")
+        pwr_map = ps.PowerSpectrum(self.params["mappower_file"])
+
+        signal2d_agg = pwr_map.agg_stat_2d_pwrspec()
+        print signal2d_agg.keys()
+
+        for treatment in outfile:
+            plussim_power = \
+                copy.deepcopy(outfile[treatment]['pk_2d_stat']['mean'].value)
+
+            map_power = signal2d_agg[treatment]["mean"]
+            del outfile[treatment]['pk_2d_stat']['mean']
+
+            outfile[treatment]['pk_2d_stat']['mean'] = plussim_power - \
+                                                       map_power
+
+        outfile.close()
+
+
 calculatetransfer_init = {
         "powerfile_in": "file",
         "powerfile_out": "file",
         "transferfile": "file",
         "outplotdir": "dir",
     }
-
 calculatetransfer_prefix = 'atr_'
 
 
@@ -418,8 +471,8 @@ class CalculateTransfer(object):
 
         self.stats_in = h5py.File(self.params["powerfile_in"], "r")
         self.stats_out = h5py.File(self.params["powerfile_out"], "r")
-        self.treatments_in = self.stats_in["results"].keys()
-        self.treatments_out = self.stats_out["results"].keys()
+        self.treatments_in = self.stats_in.keys()
+        self.treatments_out = self.stats_out.keys()
 
         # If this is measuring the mode cleaning transfer function, it will be
         # with respect to the 0modes removed case. Note that map+sim (with zero
@@ -436,17 +489,13 @@ class CalculateTransfer(object):
     def execute(self, processes):
         """produce a list of files to combine and run"""
         transferfile = h5py.File(self.params["transferfile"], "w")
+        inkey = self.treatments_in[0]
         for treatment in self.treatments_out:
-            print treatment
-            print self.stats_out["results"][treatment].keys()
 
-            stat_in = self.stats_in["stats"]
-            stat_out = self.stats_out["stats"]
-
-            stats_2d_in = stat_in["0modes"]["pk_2d_stat"]["mean"].value
-            stats_2d_out = stat_out[treatment]["pk_2d_stat"]["mean"].value
-            counts_2d_in = stat_in["0modes"]["pk_2d_counts"]["mean"].value
-            counts_2d_out = stat_out[treatment]["pk_2d_counts"]["mean"].value
+            stats_2d_in = self.stats_in[inkey]["pk_2d_stat"]["mean"].value
+            stats_2d_out = self.stats_out[treatment]["pk_2d_stat"]["mean"].value
+            counts_2d_in = self.stats_in[inkey]["pk_2d_counts"]["mean"].value
+            counts_2d_out = self.stats_out[treatment]["pk_2d_counts"]["mean"].value
 
             counts_prod = counts_2d_in * counts_2d_out
             transfer_2d = stats_2d_out / stats_2d_in
@@ -460,8 +509,9 @@ class CalculateTransfer(object):
             outplot_file = "%s/transfer_2d_%s.png" % \
                            (self.params['outplotdir'], treatment)
 
-            logkx = np.log10(self.stats_in["kx_2d"]['center'].value)
-            logky = np.log10(self.stats_in["ky_2d"]['center'].value)
+            print "plotting trans to ", outplot_file
+            logkx = np.log10(self.stats_in[inkey]["kx_2d"].value)
+            logky = np.log10(self.stats_in[inkey]["ky_2d"].value)
             plot_slice.simpleplot_2D(outplot_file, transfer_2d_plot,
                                      logkx, logky,
                                      ["logkx", "logky"], 1.,
