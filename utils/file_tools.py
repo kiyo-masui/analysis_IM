@@ -23,7 +23,8 @@ def traverse_data_dict(data_dict, h5pyobj, path=()):
             pass
         else:
             sub_h5pyobj = h5pyobj.create_group(data_key)
-            traverse_data_dict(data_dict[data_key], sub_h5pyobj, current_path)
+            traverse_data_dict(data_dict[data_key],
+                                             sub_h5pyobj, current_path)
 
 
 def print_data_dict(data_dict, depth=""):
