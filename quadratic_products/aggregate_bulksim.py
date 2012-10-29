@@ -101,72 +101,57 @@ class AggregateSummary(object):
         result_dict = {}
         for treatment in sim_toread.treatment_cases:
             treatment_dict = {}
-            trial_array_1d = np.zeros((num_sim, num_k_1d))
-            trial_array_1d_from_2d = np.zeros((num_sim, num_k_1d_from_2d))
-            trial_array_2d = np.zeros((num_sim, num_kx, num_ky))
-            error_array_1d = np.zeros((num_sim, num_k_1d))
-            error_array_1d_from_2d = np.zeros((num_sim, num_k_1d_from_2d))
-            counts_array_1d = np.zeros((num_sim, num_k_1d))
-            counts_array_1d_from_2d = np.zeros((num_sim, num_k_1d_from_2d))
-            counts_array_2d = np.zeros((num_sim, num_kx, num_ky))
-            for (simfile, index) in zip(filelist, range(num_sim)):
-                print treatment, simfile, index
-                sim_toread = ps.PowerSpectrum(simfile)
+            treatment_dict["pk_1d"] = np.zeros((num_sim, num_k_1d))
+            treatment_dict["pk_1d_from_2d"] = \
+                        np.zeros((num_sim, num_k_1d_from_2d))
 
-                sim_toread.apply_2d_trans_by_treatment(transfer_dict)
+            treatment_dict["pkstd_1d"] = np.zeros((num_sim, num_k_1d))
+            treatment_dict["pkstd_1d_from_2d"] = \
+                        np.zeros((num_sim, num_k_1d_from_2d))
 
-                sim_toread.convert_2d_to_1d(weights_2d=weights_2d)
+            treatment_dict["pk_2d"] = np.zeros((num_sim, num_kx, num_ky))
 
-                agg1d = sim_toread.agg_stat_1d_pwrspec()
-                agg1d_from_2d = sim_toread.agg_stat_1d_pwrspec(from_2d=True)
-                agg2d = sim_toread.agg_stat_2d_pwrspec()
+            treatment_dict["counts_1d"] = np.zeros((num_sim, num_k_1d))
+            treatment_dict["counts_1d_from_2d"] = \
+                        np.zeros((num_sim, num_k_1d_from_2d))
 
-                # accumulate the means
-                trial_array_1d[index, :] = agg1d[treatment]['mean']
+            treatment_dict["counts_2d"] = np.zeros((num_sim, num_kx, num_ky))
+            result_dict[treatment] = treatment_dict
 
-                trial_array_1d_from_2d[index, :] = \
+        for (simfile, index) in zip(filelist, range(num_sim)):
+            print "processing ", simfile, index
+            sim_toread = ps.PowerSpectrum(simfile)
+            sim_toread.apply_2d_trans_by_treatment(transfer_dict)
+            sim_toread.convert_2d_to_1d(weights_2d=weights_2d)
+
+            agg1d = sim_toread.agg_stat_1d_pwrspec()
+            agg1d_from_2d = sim_toread.agg_stat_1d_pwrspec(from_2d=True)
+            agg2d = sim_toread.agg_stat_2d_pwrspec()
+
+            for treatment in sim_toread.treatment_cases:
+                result_dict[treatment]["pk_1d"][index, :] = \
+                                            agg1d[treatment]['mean']
+
+                result_dict[treatment]["pk_1d_from_2d"][index, :] = \
                                             agg1d_from_2d[treatment]['mean']
 
-                # accumulate the std across 6 pairs
-                error_array_1d[index, :] = agg1d[treatment]['std']
+                result_dict[treatment]["pkstd_1d"][index, :] = \
+                                            agg1d[treatment]['std']
 
-                error_array_1d_from_2d[index, :] = \
+                result_dict[treatment]["pkstd_1d_from_2d"][index, :] = \
                                             agg1d_from_2d[treatment]['std']
 
-                # accumulate the 2D powers
-                trial_array_2d[index, :, :] = agg2d[treatment]['mean']
+                result_dict[treatment]["pk_2d"][index, :, :] = \
+                                            agg2d[treatment]['mean']
 
-                # accumulate the counts arrays
-                counts_array_1d[index, :] = agg1d[treatment]['counts']
+                result_dict[treatment]["counts_1d"][index, :] = \
+                                            agg1d[treatment]['counts']
 
-                counts_array_1d_from_2d[index, :] = \
+                result_dict[treatment]["counts_1d_from_2d"][index, :] = \
                                             agg1d_from_2d[treatment]['counts']
 
-                counts_array_2d[index, :, :] = agg2d[treatment]['counts']
-
-                if debug:
-                    nanarray = np.isnan(trial_array_2d[index, :, :])
-                    print "is nan", np.sum(nanarray)
-
-                del sim_toread
-
-            # package all the simulations of a given treatment
-            treatment_dict["pk_1d"] = copy.deepcopy(trial_array_1d)
-            treatment_dict["pk_1d_from_2d"] = \
-                            copy.deepcopy(trial_array_1d_from_2d)
-
-            treatment_dict["pkstd_1d"] = copy.deepcopy(error_array_1d)
-            treatment_dict["pkstd_1d_from_2d"] = \
-                            copy.deepcopy(error_array_1d_from_2d)
-
-            treatment_dict["pk_2d"] = copy.deepcopy(trial_array_2d)
-
-            treatment_dict["counts_1d"] = copy.deepcopy(counts_array_1d)
-            treatment_dict["counts_1d_from_2d"] = \
-                            copy.deepcopy(counts_array_1d_from_2d)
-
-            treatment_dict["counts_2d"] = copy.deepcopy(counts_array_2d)
-            result_dict[treatment] = treatment_dict
+                result_dict[treatment]["counts_2d"][index, :, :] = \
+                                            agg2d[treatment]['counts']
 
         # package all simulations of all treatments into a file
         #out_dicttree = shelve.open(outfile, "n", protocol=-1)
