@@ -22,6 +22,7 @@ aggregatesummary_init = {
         "fix_weight_treatment": None,
         "apply_2d_beamtransfer": None,
         "apply_2d_modetransfer": None,
+        "subtract_pwrspec": None,
         "outfile": "file"
     }
 
@@ -56,6 +57,11 @@ class AggregateSummary(object):
     def produce_summary(self, filelist, outfile, debug=False):
         num_sim = len(filelist)
         print "number of simulations to aggregate: %d" % num_sim
+
+        data_subtract = None
+        if self.params['subtract_pwrspec'] is not None:
+            print "agg WARNING: you are subtracting a power spectrum"
+            data_subtract = ps.PowerSpectrum(self.params['subtract_pwrspec'])
 
         sim_toread = ps.PowerSpectrum(filelist[0])
         # run this here just to get the 2D->1D bin centers
@@ -121,6 +127,18 @@ class AggregateSummary(object):
         for (simfile, index) in zip(filelist, range(num_sim)):
             print "processing ", simfile, index
             sim_toread = ps.PowerSpectrum(simfile)
+
+            # optionally subtract some reference spectrum
+            if data_subtract is not None:
+                print "agg WARNING: you are subtracting a power spectrum"
+                # assuming these both have the same treatments
+                for pwrspec_case in sim_toread.pwrspec_1d:
+                    sim_toread.pwrspec_1d[pwrspec_case] -= \
+                        data_subtract.pwrspec_1d[pwrspec_case]
+
+                    sim_toread.pwrspec_2d[pwrspec_case] -= \
+                        data_subtract.pwrspec_2d[pwrspec_case]
+
             sim_toread.apply_2d_trans_by_treatment(transfer_dict)
             sim_toread.convert_2d_to_1d(weights_2d=weights_2d)
 
@@ -322,6 +340,18 @@ class AggregateStatistics(object):
         old_settings = np.seterr(invalid="warn", under="warn")
         mtrial_array = ma.masked_invalid(trial_array)
 
+        hcheck = []
+        for index in range(mtrial_array.shape[0]):
+            hcheck.append(np.ma.sum(mtrial_array[index, :, :]))
+
+        hcheck = np.array(hcheck)
+        meanval = np.mean(hcheck)
+        hcheck = (hcheck - meanval) / meanval
+        if not np.all(hcheck == 0.):
+            print hcheck
+
+        #print np.apply_over_axes(np.ma.sum, mtrial_array, axes=[1,2])
+
         stat_2d['mean'] = np.ma.filled(np.ma.mean(mtrial_array, axis=0),
                                        fill_value=np.nan)
 
@@ -382,52 +412,6 @@ class AggregateStatistics(object):
             #                         "2D power corr", "corr")
 
         return (stat_2d, counts_2d)
-
-
-subtractmap_init = {
-        "plussim_file": "file",
-        "mappower_file": "file",
-        "output_file": "file"
-    }
-subtractmap_prefix = 'sub_'
-
-
-class SubtractMap(object):
-    """Input: clean(map+sim)xclean(map+sim), clean(map)xclean(map)
-    subtract these for the purpose of finding the transfer funcion
-    """
-
-    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
-        self.params = params_dict
-        np.seterr(invalid='raise')
-
-        if parameter_file:
-            self.params = parse_ini.parse(parameter_file,
-                                          subtractmap_init,
-                                          prefix=subtractmap_prefix)
-
-        print self.params["plussim_file"], "-", self.params["mappower_file"]
-        print "writing to ", self.params["output_file"]
-
-    def execute(self, processes):
-        shutil.copyfile(self.params["plussim_file"], self.params["output_file"])
-        outfile = h5py.File(self.params["output_file"], "r+")
-        pwr_map = ps.PowerSpectrum(self.params["mappower_file"])
-
-        signal2d_agg = pwr_map.agg_stat_2d_pwrspec()
-        print signal2d_agg.keys()
-
-        for treatment in outfile:
-            plussim_power = \
-                copy.deepcopy(outfile[treatment]['pk_2d_stat']['mean'].value)
-
-            map_power = signal2d_agg[treatment]["mean"]
-            del outfile[treatment]['pk_2d_stat']['mean']
-
-            outfile[treatment]['pk_2d_stat']['mean'] = plussim_power - \
-                                                       map_power
-
-        outfile.close()
 
 
 calculatetransfer_init = {
@@ -507,74 +491,3 @@ class CalculateTransfer(object):
         self.stats_out.close()
 
 
-calculatedatalike_init = {
-        "powerfile": "file",
-        "powerdatalike_out": "file",
-    }
-calculatedatalike_prefix = 'cdl_'
-
-
-class CalculateDatalike(object):
-    """Reformat aggregated simulations to look like data (vestigial?)
-    """
-
-    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
-        self.params = params_dict
-        np.seterr(invalid='raise')
-
-        if parameter_file:
-            self.params = parse_ini.parse(parameter_file,
-                                          calculatedatalike_init,
-                                          prefix=calculatedatalike_prefix)
-
-        print self.params["powerfile_in"], "->", self.params["powerdatalike_out"]
-
-        self.stats_in = h5py.File(self.params["powerfile"], "r")
-        self.treatments_in = self.stats_in["results"].keys()
-
-        # maybe make this hd5?
-        self.stats_dataout = shelve.open(self.params["powerdatalike_out"], "w")
-        #file_tools.convert_numpytree_hdf5(out_dicttree, outfile)
-
-    def execute(self, processes):
-        """produce a list of files to combine and run"""
-        for treatment in self.treatments_in:
-            print treatment
-            print self.stats_in["results"][treatment].keys()
-
-            stat_in = self.stats_in["stats"]
-
-            stats_1d_in = stat_in["0modes"]["pk_1d_stat"]["mean"]
-            stats_2d_in = stat_in["0modes"]["pk_2d_stat"]["mean"]
-            counts_1d_in = stat_in["0modes"]["pk_1d_counts"]["mean"]
-            counts_2d_in = stat_in["0modes"]["pk_2d_counts"]["mean"]
-
-            k_1d = self.stats_in["k_1d"]
-            k_1d_from_2d = self.stats_in["k_1d_from_2d"]
-            kx_2d = self.stats_in["kx_2d"]
-            ky_2d = self.stats_in["ky_2d"]
-
-            # make a package that looks like the data
-            pwrspec2d_product = {}
-            pwrspec2d_product["bin_x_left"] = kx_2d["left"]
-            pwrspec2d_product["bin_x_center"] = kx_2d["center"]
-            pwrspec2d_product["bin_x_right"] = kx_2d["right"]
-            pwrspec2d_product["bin_y_left"] = ky_2d["left"]
-            pwrspec2d_product["bin_y_center"] = ky_2d["center"]
-            pwrspec2d_product["bin_y_right"] = ky_2d["right"]
-            pwrspec2d_product["counts_histo"] = counts_2d_in
-            pwrspec2d_product["binavg"] = stats_2d_in
-
-            pwrspec1d_product = {}
-            pwrspec1d_product["bin_left"] = k_1d["left"]
-            pwrspec1d_product["bin_center"] = k_1d["center"]
-            pwrspec1d_product["bin_right"] = k_1d["right"]
-            pwrspec1d_product["counts_histo"] = counts_1d_in
-            pwrspec1d_product["binavg"] = stats_1d_in
-
-            datakey = "data:%s" % treatment
-            self.stats_dataout[datakey] = (0, (pwrspec2d_product,
-                                               pwrspec1d_product))
-
-        self.stats_in.close()
-        self.stats_dataout.close()

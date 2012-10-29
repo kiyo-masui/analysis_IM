@@ -32,18 +32,21 @@ class AnalyzeAutopower(object):
         print self.params
         self.data_auto = h5py.File(self.params["data_auto_summary"], "r")
         self.data_xspec = h5py.File(self.params["data_xspec_summary"], "r")
-        self.sim_auto = shelve.open(self.params["sim_auto_summary"], "r")
-        self.sim_xspec = shelve.open(self.params["sim_xspec_summary"], "r")
+        self.sim_auto = h5py.File(self.params["sim_auto_summary"], "r")
+        self.sim_xspec = h5py.File(self.params["sim_xspec_summary"], "r")
 
     def execute(self, processes):
-        sim_auto_stats = self.sim_auto['stats']['0modes']['pk_1d_from_2d_stat']
-        sim_xspec_stats = self.sim_xspec['stats']['0modes']['pk_1d_from_2d_stat']
+        #sim_auto_stats = self.sim_auto['stats']['0modes']['pk_1d_from_2d_stat']
+        #sim_xspec_stats = self.sim_xspec['stats']['0modes']['pk_1d_from_2d_stat']
+        sim_auto_stats = self.sim_auto['0modes']['pk_1d_from_2d_stat']
+        sim_xspec_stats = self.sim_xspec['0modes']['pk_1d_from_2d_stat']
 
-        sim_xspec_mean = sim_xspec_stats['mean']
-        sim_xspec_cov = sim_xspec_stats['cov']
-        sim_auto_mean = sim_auto_stats['mean']
+        sim_xspec_mean = sim_xspec_stats['mean'].value
+        sim_xspec_cov = sim_xspec_stats['cov'].value
+        sim_auto_mean = sim_auto_stats['mean'].value
 
-        k_vec_sim = self.sim_auto['k_1d_from_2d']['center']
+        #k_vec_sim = self.sim_auto['k_1d_from_2d']['center']
+        k_vec_sim = self.sim_auto['0modes']['k_1d_from_2d'].value
         k_vec = self.data_xspec['0modes']['k_vec'].value
 
         assert np.array_equal(k_vec_sim, k_vec), "simulation and data unaligned kvecs"
