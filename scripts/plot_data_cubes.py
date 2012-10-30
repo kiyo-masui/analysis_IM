@@ -15,7 +15,22 @@ def plot_gbt_mapset(outputdir="/cita/d/www/home/eswitzer/movies/",
                     make_map=True, make_dirty_map=False,
                     make_noise_inv=False, make_noise_diag=True):
 
-    pc.plot_gbt_maps('GBT_15hr_map_oldcalpol', outputdir=outputdir,
+    pc.plot_gbt_maps('GBT_15hr_map_oldcalpolstack', outputdir=outputdir,
+                     make_map=make_map, make_dirty_map=make_dirty_map,
+                     make_noise_inv=make_noise_inv,
+                     make_noise_diag=make_noise_diag)
+
+    pc.plot_gbt_maps('GBT_15hr_map_oldcalpolstack_Q', outputdir=outputdir,
+                     make_map=make_map, make_dirty_map=make_dirty_map,
+                     make_noise_inv=make_noise_inv,
+                     make_noise_diag=make_noise_diag)
+
+    pc.plot_gbt_maps('GBT_15hr_map_oldcalpolstack_U', outputdir=outputdir,
+                     make_map=make_map, make_dirty_map=make_dirty_map,
+                     make_noise_inv=make_noise_inv,
+                     make_noise_diag=make_noise_diag)
+
+    pc.plot_gbt_maps('GBT_15hr_map_oldcalpolstack_V', outputdir=outputdir,
                      make_map=make_map, make_dirty_map=make_dirty_map,
                      make_noise_inv=make_noise_inv,
                      make_noise_diag=make_noise_diag)
@@ -300,7 +315,10 @@ if __name__ == "__main__":
     #plot_gbt_comb_modeset('GBT_15hr_map_oldcalpol_cleaned_combined', convolve=True,
     #                      outputdir="/mnt/raid-project/gmrt/eswitzer/GBT/movies/")
 
-    plot_gbt_comb_modeset('GBT_15hr_map_oldcalpol_cleaned_combined', convolve=True,
+    #plot_gbt_comb_modeset('GBT_15hr_map_oldcalpol_cleaned_combined', convolve=True,
+    #                       outputdir="/mnt/raid-project/gmrt/eswitzer/GBT/movies/")
+
+    plot_gbt_comb_modeset('GBT_15hr_map_oldcalpolstack_cleaned_combined', convolve=True,
                            outputdir="/mnt/raid-project/gmrt/eswitzer/GBT/movies/")
 
     #plot_mode_amplitudes('GBT_15hr_map_oldcal_cleaned')

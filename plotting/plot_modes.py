@@ -35,7 +35,7 @@ def process_mode_files(clean_path, outpath, n_modes=20, average=False):
             fileobj = open(filename, "w")
             #data = compilation[fieldname][0]
             data = np.abs(np.sort(-compilation[fieldname][0]))
-            #data /= data[0]
+            data /= data[0]
             for index in range(data.shape[0]):
                 fileobj.write("%10.15g\n" % data[index])
 
@@ -62,3 +62,6 @@ process_mode_files("GBT_15hr_map_oldcal_cleaned_path_Eric",
 
 process_mode_files("GBT_15hr_map_oldcalpol_cleaned_path_Eric",
                    "./pwrspec_plots/GBT_15hr_map_oldcalpol/")
+
+process_mode_files("GBT_15hr_map_oldcalpolstack_cleaned_path_Eric",
+                   "./pwrspec_plots/GBT_15hr_map_oldcalpolstack/")
