@@ -18,7 +18,7 @@ class RotateMoon(base_single.BaseSingle) :
     params_init = {'rotationfile' : rotationfile}
 
     def action(self, Data):
-        rotate_pol_moon(Data, self.params['scale_time_average'])
+        rotate_pol_moon(Data, self.params['rotationfile'])
 
         Data.add_history('Converted to units where the moon is pure I')
         return Data
