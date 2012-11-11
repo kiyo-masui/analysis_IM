@@ -242,6 +242,14 @@ class MapPair(object):
         self.map1[self.noise_inv1 < 1.e-20] = 0.
         self.map2[self.noise_inv2 < 1.e-20] = 0.
 
+    def apply_map_weights(self):
+        self.map1 = self.map1 * self.noise_inv1
+        self.map2 = self.map2 * self.noise_inv2
+
+    def unapply_map_weights(self):
+        self.map1 = self.map1 / self.noise_inv1
+        self.map2 = self.map2 / self.noise_inv2
+
     def subtract_frequency_modes(self, modes1, modes2=None,
                                  weighted=False, defer=False):
         r"""Subtract frequency modes from the map.

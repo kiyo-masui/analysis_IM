@@ -242,7 +242,7 @@ def plot_gbt_maps(keyname, transverse=False,
             #                   sigmarange=3.,
             make_cube_movie("db:%s:%s;clean_map" % (keyname, section),
                                "Temperature (mK)", cube_frame_dir,
-                               sigmarange=[-1500., 1500.],
+                               sigmarange=[-1000., 1000.],
                                outputdir=outputdir, multiplier=1000.,
                                transverse=transverse,
                                title=title)

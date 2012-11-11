@@ -2,12 +2,16 @@ import numpy as np
 from numpy import linalg
 
 
-def freq_covariance(map1, map2, weight1, weight2, freq1, freq2):
+def freq_covariance(map1, map2, weight1, weight2, freq1, freq2, no_weight=False):
     r"""Calculate the weighted nu nu' covariance"""
     input_map1 = map1[freq1, :, :]
     input_map2 = map2[freq2, :, :]
-    input_weight1 = weight1[freq1, :, :]
-    input_weight2 = weight2[freq2, :, :]
+    if no_weight:
+        input_weight1 = np.ones_like(input_map1)
+        input_weight2 = np.ones_like(input_map2)
+    else:
+        input_weight1 = weight1[freq1, :, :]
+        input_weight2 = weight2[freq2, :, :]
 
     map1shp = input_map1.shape
     map2shp = input_map2.shape

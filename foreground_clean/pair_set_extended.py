@@ -35,6 +35,7 @@ params_init = {
                'tack_on_input': None,
                'tack_on_output': None,
                'convolve': True,
+               'weighted_SVD': False,
                'factorizable_noise': True,
                'sub_weighted_mean': True,
                'svd_filename': None,
@@ -102,6 +103,9 @@ class PairSetExtended():
 
         self.preprocess_pairs()
 
+        if self.params['weighted_SVD']:
+            self.call_pairs("apply_map_weights")
+
         if self.params['svd_filename'] is not None:
             print "WARNING: skipping correlation/SVD and using existing"
         else:
@@ -115,7 +119,15 @@ class PairSetExtended():
         for (n_start, n_stop) in zip(mode_list_start,
                                              mode_list_stop):
             self.subtract_foregrounds(n_start, n_stop)
+
+            # TODO: if weighted SVD is an improvement, move this to save step
+            if self.params['weighted_SVD']:
+                self.call_pairs("unapply_map_weights")
+
             self.save_data(n_stop)
+
+            if self.params['weighted_SVD']:
+                self.call_pairs("apply_map_weights")
 
             # NOTE: if you use this you also need to copy the parallel pairs!
             #self.pairs = copy.deepcopy(self.uncleaned_pairs)
@@ -281,9 +293,12 @@ class PairSetExtended():
                 freq_arr = np.array(self.pairs_ext[index][pairitem].freq)
                 freqs = np.concatenate([freqs, freq_arr + nfreqind])
 
+            # note that if weighted_SVD, these weights have been applied
+            # earlier
             (freq_cov, counts) = find_modes.freq_covariance(map1, map2,
-                                                            weight1, weight2,
-                                                            freqs, freqs)
+                                        weight1, weight2,
+                                        freqs, freqs,
+                                        no_weight=self.params['weighted_SVD'])
 
             cov_out[pairitem] = freq_cov
             counts_out[pairitem] = counts

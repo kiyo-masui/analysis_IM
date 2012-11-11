@@ -57,11 +57,11 @@ def process_mode_files(clean_path, outpath, n_modes=20, average=False):
     svd_data.close()
 
 
-process_mode_files("GBT_15hr_map_oldcal_cleaned_path_Eric",
-                   "./pwrspec_plots/GBT_15hr_map_oldcal/")
+#process_mode_files("GBT_15hr_map_oldcal_cleaned_path_Eric",
+#                   "./pwrspec_plots/GBT_15hr_map_oldcal/")
 
-process_mode_files("GBT_15hr_map_oldcalpol_cleaned_path_Eric",
-                   "./pwrspec_plots/GBT_15hr_map_oldcalpol/")
+#process_mode_files("GBT_15hr_map_oldcalpol_cleaned_path_Eric",
+#                   "./pwrspec_plots/GBT_15hr_map_oldcalpol/")
 
 process_mode_files("GBT_15hr_map_oldcalpolstack_cleaned_path_Eric",
                    "./pwrspec_plots/GBT_15hr_map_oldcalpolstack/")

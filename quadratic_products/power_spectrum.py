@@ -305,8 +305,20 @@ class PowerSpectrum(object):
                     entry['mean'] = np.mean(comb_treat, axis=1)
                     entry['gauss_std'] = np.mean(gerror_arr[treatment], axis=1)
                     entry['std'] = np.std(comb_treat, axis=1, ddof=1)
-                    entry['corr'] = np.corrcoef(comb_treat)
-                    entry['cov'] = np.cov(comb_treat)
+                    try:
+                        entry['corr'] = np.corrcoef(comb_treat)
+                    except FloatingPointError:
+                        print "error in calculating corr function"
+                        nside = entry['mean'].shape[0]
+                        entry['corr'] = np.zeros((nside, nside))
+
+                    try:
+                        entry['cov'] = np.cov(comb_treat)
+                    except FloatingPointError:
+                        print "error in calculating cov function"
+                        nside = entry['mean'].shape[0]
+                        entry['cov'] = np.zeros((nside, nside))
+
                 else:
                     entry['counts'] = counts_arr[treatment][:, 0]
                     entry['mean'] = comb_treat[:, 0]

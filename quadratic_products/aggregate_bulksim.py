@@ -418,6 +418,7 @@ calculatetransfer_init = {
         "powerfile_in": "file",
         "powerfile_out": "file",
         "transferfile": "file",
+        "input_multiplier": 1.,
         "outplotdir": "dir",
     }
 calculatetransfer_prefix = 'atr_'
@@ -442,6 +443,7 @@ class CalculateTransfer(object):
         self.stats_out = h5py.File(self.params["powerfile_out"], "r")
         self.treatments_in = self.stats_in.keys()
         self.treatments_out = self.stats_out.keys()
+        self.multiplier = self.params["input_multiplier"]
 
         # If this is measuring the mode cleaning transfer function, it will be
         # with respect to the 0modes removed case. Note that map+sim (with zero
@@ -467,7 +469,7 @@ class CalculateTransfer(object):
             counts_2d_out = self.stats_out[treatment]["pk_2d_counts"]["mean"].value
 
             counts_prod = counts_2d_in * counts_2d_out
-            transfer_2d = stats_2d_out / stats_2d_in
+            transfer_2d = stats_2d_out / (stats_2d_in * self.multiplier)
             transfer_2d[counts_prod == 0] = 0.
             transferfile[treatment] = transfer_2d
 
