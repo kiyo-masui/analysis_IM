@@ -3,8 +3,9 @@
 import unittest
 
 import scipy as sp
+import numpy as np
 from numpy import random
-import scipy.linalg as linalg
+from scipy import linalg, special
 
 import misc as utils
 
@@ -95,7 +96,8 @@ class TestAmpFit(unittest.TestCase):
         data = sp.arange(10, dtype=float)
         theory = data/2.0
         C = sp.identity(10)
-        a, s = utils.ampfit(data, C, theory)
+        out = utils.ampfit(data, C, theory)
+        a, s = out['amp'], out['error']
         self.assertAlmostEqual(a, 2)
 
     def test_uncorrelated_noscatter_error(self):
@@ -103,7 +105,8 @@ class TestAmpFit(unittest.TestCase):
         amp = 5.0
         theory = data/amp
         C = sp.diag((sp.arange(10, dtype=float) + 1.0)**2)
-        a, s = utils.ampfit(data, C, theory)
+        out = utils.ampfit(data, C, theory)
+        a, s = out['amp'], out['error']
         self.assertAlmostEqual(a, amp)
         self.assertAlmostEqual(s/a, 1.0/sp.sqrt(10))
 
@@ -114,7 +117,8 @@ class TestAmpFit(unittest.TestCase):
         theory = data/amp
         C = sp.diag((sp.arange(n, dtype=float) + 1.0)**2)
         data += random.normal(size=n)*data
-        a, s = utils.ampfit(data, C, theory)
+        out = utils.ampfit(data, C, theory)
+        a, s = out['amp'], out['error']
         self.assertTrue(sp.allclose(a, amp, rtol=5.0/sp.sqrt(n), atol=0))
         # Expect the next line to fail 1/100 trials.
         self.assertFalse(sp.allclose(a, amp, rtol=0.01/sp.sqrt(n), atol=0))
@@ -140,7 +144,8 @@ class TestAmpFit(unittest.TestCase):
         rand_vals = random.normal(size=n)*sp.sqrt(h)
         # Rotate back.
         data += sp.dot(R.T, rand_vals)
-        a, s = utils.ampfit(data, C, theory)
+        out = utils.ampfit(data, C, theory)
+        a, s = out['amp'], out['error']
         self.assertTrue(sp.allclose(a, amp, atol=5.0*s, rtol=0))
         # Expect the next line to fail 1/100 trials.
         self.assertFalse(sp.allclose(a, amp, atol=0.01*s, rtol=0))
@@ -235,6 +240,66 @@ class Test_OrthoPoly(unittest.TestCase):
                     self.assertTrue(sp.alltrue(abs(prod - 1.) < 1e-8))
                 else:
                     self.assertTrue(sp.alltrue(abs(prod) < 1e-8))
+
+class TestOrthoPoly2D(unittest.TestCase):
+    """Unit tests for the 2D orthonormal polynomial generator."""
+
+    def test_raise_errors_shape(self):
+        # Not 2D.
+        self.assertRaises(ValueError, utils.ortho_poly_2D, np.zeros(5), 
+                          np.zeros(5), 4, np.zeros(5))
+        # Not broadcastable.
+        self.assertRaises(ValueError, utils.ortho_poly_2D, np.zeros((5, 5)), 
+                          np.zeros(3), 4, np.zeros(5))
+        self.assertRaises(ValueError, utils.ortho_poly_2D, np.zeros((5, 5)), 
+                          np.zeros((5, 1)), 4, np.zeros((5, 6)))
+        self.assertRaises(ValueError, utils.ortho_poly_2D, np.zeros((5, 5)), 
+                          np.zeros((1, 5)), 4, np.zeros((5, 5, 1)))
+        # Make sure the output is the right shape.
+        x = np.arange(5)
+        x.shape = (5, 1)
+        y = np.arange(7)
+        y.shape = (1, 7)
+        out = utils.ortho_poly_2D(x, y, 3, 1.)
+        self.assertEquals(out.shape, (3, 3, 5, 7))
+
+    def test_gets_legendre(self):
+        # Define problem size.
+        m = 100
+        n = 8
+        x = np.arange(m)
+        x.shape = (m, 1)
+        y = np.arange(m)
+        y.shape = (1, m)
+        # Normalized domain.
+        z = (np.arange(m, dtype=float) + 0.5) * 2. / m - 1.
+        # Generate exact Legendre.
+        legendre = np.empty((n, n, m, m), dtype=float)
+        for ii in range(n):
+            for jj in range(n):
+                ljj = special.legendre(jj)
+                lii = special.legendre(ii)
+                this_leg = lii(z)
+                this_leg.shape = (m, 1)
+                print this_leg.shape
+                this_leg = this_leg * ljj(z)
+                print this_leg.shape
+                # Normalize.
+                this_leg /= np.sum(this_leg**2)
+                legendre[ii,jj,...] = this_leg
+        # Generate the same with Grame-Schmidt.
+        out = utils.ortho_poly_2D(x, y, n, 1.)
+        # Check that they are the same to within the a few times the number of
+        # points. Absolute toerance ~1/m**2 because 1/m is the magnitude of 
+        # the elements and I want an precision of 1/m.
+        plt.imshow(out[2, 3])
+        plt.figure()
+        plt.imshow(legendre[2, 3])
+        plt.figure()
+        plt.imshow(out[2, 3] - legendre[2, 3])
+        plt.show()
+        self.assertTrue(np.allclose(out, legendre, atol=5./m**2))
+
 
 
 if __name__ == '__main__' :

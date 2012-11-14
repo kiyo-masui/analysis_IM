@@ -329,7 +329,7 @@ def ampfit(data, covariance, theory, rank_thresh=1e-12, diag_only=False):
     -------
     amp : float
         Fitted amplitude.
-    errir : float
+    error : float
         Error on fitted amplitude.
     """
 
@@ -424,9 +424,11 @@ def ortho_poly(x, n, window=1., axis=-1):
             raise NotImplementedError("High order polynomials unstable.")
     else:
         new_sp = True
+    # Get the broadcasted shape of `x` and `window`.
     # The following is the only way I know how to get the broadcast shape of
     # x and window.
-    shape = (x + window).shape
+    # Turns out I could use np.broadcast here.  Fix this later.
+    shape = np.broadcast(x, window).shape
     m = shape[axis]
     # Construct a slice tuple for up broadcasting arrays.
     upbroad = [slice(sys.maxsize)] * len(shape)
@@ -436,10 +438,11 @@ def ortho_poly(x, n, window=1., axis=-1):
     polys = np.empty((n,) + shape, dtype=float)
     # For stability, rescale the domain.
     x_range = np.amax(x, axis) - np.amin(x, axis)
-    x = (x - np.mean(x, axis)[upbroad]) / x_range[upbroad] * 2
+    x_mid = (np.amax(x, axis) + np.amin(x, axis)) / 2.
+    x = (x - x_mid[upbroad]) / x_range[upbroad] * 2
     # Reshape x to be the final shape.
     x = np.zeros(shape, dtype=float) + x
-    # Now loop thorugh the polynomials and constrct them.
+    # Now loop through the polynomials and constrct them.
     # This array will be the starting polynomial, before orthogonalization
     # (only used for earlier versions of scipy).
     if not new_sp:
@@ -476,3 +479,87 @@ def ortho_poly(x, n, window=1., axis=-1):
         if not new_sp:
             basic_poly *= x
     return polys
+
+def ortho_poly_2D(x, y, n, window=1):
+    """Generate a 2D ortho normal polynomial basis.
+
+    Generate the first `n**2` orthonormal basis polynomials over 
+    the given domain and for the given window using the Grame-Schmidt 
+    process.
+    
+    Parameters
+    ----------
+    x : 2D array
+        Functional domain, x coordinate.
+    y : 2D array
+        Functional domain, y coordinate. Shape must be the same as `x` or
+        broadcastable to the same shape.
+    n : integer
+        number of polynomials to generate. `n` - 1 is the maximum order of the
+        polynomials.
+    window : 2D array
+        Window (weight) function for which the polynomials are orthogonal.
+        Shape must be the same as `x` or broadcastable to the same shape.
+
+    Returns
+    -------
+    polys : array of shape (n, n) + x.shape
+        The n**2 polynomial basis functions. Normalization is such that
+        np.sum(polys[i, j,:] * window * polys[k, l,:]) = delta_{ik} delta_{jl} 
+    """
+    
+    # Check input shapes
+    b = np.broadcast(x, y, window)
+    if b.nd != 2:
+        raise ValueError("Inputs not broadcastable to a 2D array.")
+    out = np.empty((n, n) + b.shape, dtype=float)
+    # Check scipy versions. If there is a stable polynomial package, use it.
+    s_ver = sp.__version__.split('.')
+    major = int(s_ver[0])
+    minor = int(s_ver[1])
+    if major <= 0 and minor < 8:
+        new_sp = False
+        if n > 20:
+            raise NotImplementedError("High order polynomials unstable.")
+    else:
+        new_sp = True
+    # For stability, rescale the domain.
+    x_range = np.amax(x) - np.amin(x)
+    x_mid = (np.amax(x) + np.amin(x)) / 2.
+    x = (x - x_mid) / x_range * 2
+    y_range = np.amax(y) - np.amin(y)
+    y_mid = (np.amax(y) + np.amin(y)) / 2.
+    y = (y - y_mid) / y_range * 2
+    # Initialize basic polynomials for x and y domains if using old scipy.
+    if not new_sp:
+        basic_x = np.ones_like(x)
+    # Loop over the polynomial indices and generate them.
+    for ii in range(n):
+        if not new_sp:
+            basic_y = np.ones_like(y)
+        # If using the new scipy, start with stabally evaluated legendre
+        # polynomial.
+        if new_sp:
+            basic_x = special.eval_legendre(ii, x)
+        for jj in range(n):
+            if new_sp:
+                basic_y = special.eval_legendre(jj, y)
+            # This polynomial begins as the product of the basic polynomials.
+            new_poly = basic_x * basic_y
+            # Orthonanolize against all lower order polynomials.
+            for kk in range(ii):
+                for mm in range(jj):
+                    new_poly -= out[kk,mm] * np.sum(out[kk,mm] * window *
+                                                    new_poly)
+            # Normalize.
+            new_poly /= np.sum(new_poly**2)
+            # Copy to output array.
+            out[ii,jj,...] = new_poly
+            # If using old scipy, update the basic polynomial to the next
+            # order.
+            if not new_sp:
+                basic_y *= y
+        if not new_sp:
+            basic_x *= x
+    return out
+

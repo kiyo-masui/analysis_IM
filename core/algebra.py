@@ -509,6 +509,42 @@ def save(file, iarray, metafile=None, version=(1,0)) :
     finally :
         info_fid.close()
 
+def save_h5(h5obj, path, iarray):
+    """Store the info array in an hdf5 file.
+
+    Parameters
+    ----------
+    h5obj : h5py File or Group object
+        Where the info array will be written.
+    path : string
+        Path within `h5obj` to write the array.
+    iarray : info_array
+        info_array to write.
+    """
+
+    data = h5obj.create_dataset(path, iarray.shape, iarray.dtype)
+    data[:] = iarray[:]
+    for key, value in iarray.info.iteritems():
+        data.attrs[key] = repr(value)
+
+def load_h5(h5obj, path):
+    """Load an info array from an hdf5 file.
+
+    Parameters
+    ----------
+    h5obj : h5py File or Group object
+        Where the info array will be written.
+    path : string
+        Path within `h5obj` to write the array.
+
+    Returns
+    -------
+    iarray : info_array
+        Array loaded from file.
+    """
+    
+    pass
+
 
 # ---- Functions for manipulating above arrays as matrices and vectors. -------
 
