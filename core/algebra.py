@@ -515,13 +515,16 @@ def save_h5(h5obj, path, iarray):
     Parameters
     ----------
     h5obj : h5py File or Group object
-        Where the info array will be written.
+        File to which the info array will be written.
     path : string
         Path within `h5obj` to write the array.
     iarray : info_array
         info_array to write.
     """
-
+    
+    # TODO: Allow `h5obj` to be a string with a path to a new file to be
+    # created (and closed at the end). Acctually, this would require us to
+    # import h5py, which we don't want to do (could do it locally).
     data = h5obj.create_dataset(path, iarray.shape, iarray.dtype)
     data[:] = iarray[:]
     for key, value in iarray.info.iteritems():
@@ -533,9 +536,9 @@ def load_h5(h5obj, path):
     Parameters
     ----------
     h5obj : h5py File or Group object
-        Where the info array will be written.
+        File from which the info array will be read from.
     path : string
-        Path within `h5obj` to write the array.
+        Path within `h5obj` to read the array.
 
     Returns
     -------
@@ -543,7 +546,16 @@ def load_h5(h5obj, path):
         Array loaded from file.
     """
     
-    pass
+    # TODO:  Allow `h5obj` to be a string with a path to a file to be opened
+    # and then closed.
+    data = h5obj[path]
+    iarray = np.empty(data.shape, data.dtype)
+    iarray[:] = data[:]
+    info = {}
+    for key, value in data.attrs.iteritems():
+        info[key] = safe_eval(value)
+    iarray = info_array(iarray, info)
+    return iarray
 
 
 # ---- Functions for manipulating above arrays as matrices and vectors. -------

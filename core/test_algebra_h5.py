@@ -33,6 +33,15 @@ class TestH5(unittest.TestCase):
         self.assertTrue('here' in F.keys())
         self.assertTrue(np.all(F['here/there/Mat'][...] == self.Mat))
 
+    def test_load(self):
+        F = h5py.File('temp_out.hdf5', 'w')
+        algebra.save_h5(F, 'Mat', self.Mat)
+        del F
+        F = h5py.File('temp_out.hdf5', 'r')
+        new_Mat = algebra.load_h5(F, 'Mat')
+        self.assertTrue(np.all(new_Mat == self.Mat))
+        self.assertTrue(new_Mat.info == self.Mat.info)
+
     def tearDown(self):
         if 'temp_out.hdf5' in os.listdir('./'):
             os.remove('temp_out.hdf5')
