@@ -56,20 +56,22 @@ map_shape = (161, 83)
 map_spacing = .0627
 
 base_dir_main = os.getenv('GBT_OUT')
+#base_dir = "/mnt/data-pen3/tcv/gbt_out_new/"
 #base_dir = "/mnt/raid-project/gmrt/tcv/gbt_out_new/"
 spare_dir = os.getenv('GBT_SPARE')
 data_dir = os.getenv('GBT_DATA')
 base_dir = spare_dir + 'gbt_out_new/'
 #base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
-map_base = base_dir + 'maps/'
+#map_base = base_dir + 'maps/'
+map_base = base_dir_main + 'maps/'
 
 # IO directory and file prefixes.
 prefix = ''
 map_prefix = '' + field + '_' + '41-18_avg_fdgp' + '_'
 
 # Maximum number of processes to use.
-pipe_processes = 12
+pipe_processes = 8
 
 
 ####  List of modules to execute.  ####
@@ -109,23 +111,23 @@ pipe_modules = []
 #from map import dirty_map
 #pipe_modules.append(dirty_map.DirtyMapMaker)
 
-#from map import clean_map
-#pipe_modules.append(clean_map.CleanMapMaker)
+from map import clean_map
+pipe_modules.append(clean_map.CleanMapMaker)
 
 
 #### Second Map making iteration ####
 
-#from cal import correlate_map
-#pipe_modules.append((correlate_map.Measure, ('mc2_', 'mc_')))
+from cal import correlate_map
+pipe_modules.append((correlate_map.Measure, ('mc2_', 'mc_')))
 
-#from time_stream import subtract_map_data
-#pipe_modules.append((subtract_map_data.Subtract, ('sm2_', 'sm_')))
+from time_stream import subtract_map_data
+pipe_modules.append((subtract_map_data.Subtract, ('sm2_', 'sm_')))
 
-#from time_stream import reflag
-#pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
+from time_stream import reflag
+pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
 
-#from noise import measure_noise
-#pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
+from noise import measure_noise
+pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
 #from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
@@ -288,7 +290,8 @@ dm_output_root = map_base + 'fir_' + map_prefix
 dm_scans = ()
 dm_IFs = ()
 
-dm_polarizations = ('I','Q','U','V')
+#dm_polarizations = ('I','Q','U','V')
+dm_polarizations = ('V',)
 dm_field_centre = map_centre
 dm_pixel_spacing = map0_spacing
 dm_map_shape = map0_shape
@@ -304,6 +307,7 @@ dm_interpolation = 'cubic'
 # clean_map
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
+#cm_polarizations = ('V',)
 cm_polarizations = ('I','Q','U','V')
 cm_bands = (800,)
 cm_save_noise_diag = True
@@ -311,7 +315,7 @@ cm_save_noise_diag = True
 #### Second round of map making #####
 
 # measure gain relative to map.
-mc2_input_root = base_dir_main + 'rotated_to_I_Q_fdgp/' + prefix
+mc2_input_root = base_dir_main + 'rotated_to_I_Q_avg_fdgp/' + prefix
 #mc2_input_root = rp_output_root
 #mc2_file_middles = middles_temp
 mc2_file_middles = file_middles
@@ -334,7 +338,8 @@ mc2_smooth_modes_subtract = 2
 mc2_filter_type = 'edge'
 
 # subtract_map_data
-sm2_input_root = mc2_output_root
+sm2_input_root = base_dir_main + 'rotated_to_I_Q_avg_fdgp/'+prefix
+#sm2_input_root = mc2_output_root
 sm2_file_middles = file_middles
 sm2_input_end = '.fits'
 sm2_output_root = base_dir + 'map_subtracted_sec/'
@@ -352,7 +357,8 @@ sm2_solve_for_gain = False
 sm2_gain_output_end = '_gain.pickle'
 
 # second_flag
-sf2_input_root = mc2_output_root
+sf2_input_root = sm2_input_root
+#sf2_input_root = mc2_output_root
 sf2_file_middles = file_middles
 sf2_input_end = '.fits'
 sf2_output_root = base_dir + 'reflagged_sec/'
@@ -373,7 +379,8 @@ mn2_file_middles = file_middles
 mn2_input_end = '.fits'
 mn2_output_root = base_dir + 'noise_measurments_sec/'
 mn2_output_filename = "noise_parameters.shelve"
-mn2_save_spectra_plots = True
+#mn2_save_spectra_plots = True
+mn2_save_spectra_plots = False
 mn2_time_block = 'scan'
 mn2_scans = ()
 mn2_IFs = ()
@@ -393,7 +400,7 @@ dmA_output_root = map_base + 'secA_' + map_prefix
 dmA_scans = ()
 dmA_IFs = ()
 
-dmA_polarizations = ('I',)
+dmA_polarizations = ('I','Q','U','V')
 dmA_field_centre = map_centre
 dmA_pixel_spacing = map_spacing
 dmA_map_shape = map_shape
@@ -427,7 +434,7 @@ dmD_output_root = map_base + 'secD_' + map_prefix
 cmA_input_root = dmA_output_root
 cmA_output_root = cmA_input_root
 
-cmA_polarizations = ('I',)
+cmA_polarizations = ('I','Q','U','V')
 cmA_bands = (800,)
 cmA_save_noise_diag = True
 cmA_save_cholesky = False
