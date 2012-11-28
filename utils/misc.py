@@ -393,7 +393,7 @@ def ortho_poly(x, n, window=1., axis=-1):
     """Generate orthonormal basis polynomials.
 
     Generate the first `n` orthonormal basis polynomials over the given domain
-    and for the given window using the Grame-Schmidt process.
+    and for the given window using the Gram-Schmidt process.
     
     Parameters
     ----------
@@ -413,7 +413,7 @@ def ortho_poly(x, n, window=1., axis=-1):
     """
     
     if np.any(window < 0):
-        raise ValueError("Window function must never be negitive.")
+        raise ValueError("Window function must never be negative.")
     # Check scipy versions. If there is a stable polynomial package, use it.
     s_ver = sp.__version__.split('.')
     major = int(s_ver[0])
@@ -442,13 +442,13 @@ def ortho_poly(x, n, window=1., axis=-1):
     x = (x - x_mid[upbroad]) / x_range[upbroad] * 2
     # Reshape x to be the final shape.
     x = np.zeros(shape, dtype=float) + x
-    # Now loop through the polynomials and constrct them.
+    # Now loop through the polynomials and construct them.
     # This array will be the starting polynomial, before orthogonalization
     # (only used for earlier versions of scipy).
     if not new_sp:
         basic_poly = np.ones(shape, dtype=float) / np.sqrt(m)
     for ii in range(n):
-        # Start with a the basic polynomial.
+        # Start with the basic polynomial.
         # If we have an up-to-date scipy, start with nearly orthogonal
         # functions.  Otherwise, just start with the next polynomial.
         if not new_sp:
@@ -459,7 +459,7 @@ def ortho_poly(x, n, window=1., axis=-1):
         for jj in range(ii):
             new_poly -= (np.sum(new_poly * window * polys[jj,:], axis)[upbroad]
                          * polys[jj,:])
-        # Normalize, accounting for possiblity that all data is masked. 
+        # Normalize, accounting for possibility that all data is masked. 
         norm = np.array(np.sqrt(np.sum(new_poly**2 * window, axis)))
         if norm.shape == ():
             if norm == 0:
@@ -481,10 +481,10 @@ def ortho_poly(x, n, window=1., axis=-1):
     return polys
 
 def ortho_poly_2D(x, y, n, window=1):
-    """Generate a 2D ortho normal polynomial basis.
+    """Generate a 2D orthonormal polynomial basis up to order `n - 1`.
 
-    Generate the first `n**2` orthonormal basis polynomials over 
-    the given domain and for the given window using the Grame-Schmidt 
+    Generate the first `n(n + 1)/2` orthonormal basis polynomials over 
+    the given domain and for the given window using the Gram-Schmidt 
     process.
     
     Parameters
@@ -495,7 +495,7 @@ def ortho_poly_2D(x, y, n, window=1):
         Functional domain, y coordinate. Shape must be the same as `x` or
         broadcastable to the same shape.
     n : integer
-        number of polynomials to generate. `n` - 1 is the maximum order of the
+        number of polynomials to generate. `n - 1` is the maximum order of the
         polynomials.
     window : 2D array
         Window (weight) function for which the polynomials are orthogonal.
@@ -504,15 +504,21 @@ def ortho_poly_2D(x, y, n, window=1):
     Returns
     -------
     polys : array of shape (n, n) + x.shape
-        The n**2 polynomial basis functions. Normalization is such that
-        np.sum(polys[i, j,:] * window * polys[k, l,:]) = delta_{ik} delta_{jl} 
+        The `n(n + 1)/2` polynomial basis functions. Normalization is
+        such that np.sum(polys[i, j,:] * window * polys[k, l,:]) = delta_{ik}
+        delta_{jl}. Note that half the array is not used and is left empty. 
     """
     
     # Check input shapes
     b = np.broadcast(x, y, window)
     if b.nd != 2:
         raise ValueError("Inputs not broadcastable to a 2D array.")
-    out = np.empty((n, n) + b.shape, dtype=float)
+
+    # This doesn't actually work and it might not be possible to make it work.
+    msg = "This function is not working and the theory behind it is dubious."
+    raise NotImplementedError(msg)
+
+    out = np.zeros((n, n) + b.shape, dtype=float)
     # Check scipy versions. If there is a stable polynomial package, use it.
     s_ver = sp.__version__.split('.')
     major = int(s_ver[0])
@@ -537,22 +543,22 @@ def ortho_poly_2D(x, y, n, window=1):
     for ii in range(n):
         if not new_sp:
             basic_y = np.ones_like(y)
-        # If using the new scipy, start with stabally evaluated legendre
+        # If using the new scipy, start with stably evaluated Legendre.
         # polynomial.
         if new_sp:
             basic_x = special.eval_legendre(ii, x)
-        for jj in range(n):
+        for jj in range(n - ii):
             if new_sp:
                 basic_y = special.eval_legendre(jj, y)
             # This polynomial begins as the product of the basic polynomials.
             new_poly = basic_x * basic_y
-            # Orthonanolize against all lower order polynomials.
-            for kk in range(ii):
-                for mm in range(jj):
-                    new_poly -= out[kk,mm] * np.sum(out[kk,mm] * window *
-                                                    new_poly)
+            # Orthogonalize against all lower order polynomials.
+            #for kk in range(ii):
+            #    for mm in range(jj):
+            #        new_poly -= out[kk,mm] * np.sum(out[kk,mm] * window *
+            #                                        new_poly)
             # Normalize.
-            new_poly /= np.sum(new_poly**2)
+            new_poly /= np.sqrt(np.sum(new_poly**2))
             # Copy to output array.
             out[ii,jj,...] = new_poly
             # If using old scipy, update the basic polynomial to the next
@@ -562,4 +568,6 @@ def ortho_poly_2D(x, y, n, window=1):
         if not new_sp:
             basic_x *= x
     return out
+
+
 
