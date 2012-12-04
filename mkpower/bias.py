@@ -153,16 +153,20 @@ class BiasCalibrate(object):
                 return 0
 
             dpk = pk1-pk0
-            dpk[dpk<=0] = np.inf
-            pk_beam[pk_beam<=0] = np.inf
+            #dpk[dpk<=0] = np.inf
+            #pk_beam[pk_beam<=0] = np.inf
+            dpk[dpk==0] = np.inf
+            pk_beam[pk_beam==0] = np.inf
             dpk_beam = pk/pk_beam
             pk_beam[pk_beam==np.inf] = 0.
             dpk_lose = pk_beam/dpk
             dpk = dpk_beam*dpk_lose
 
             dpk2= (pk12-pk02)
-            dpk2[dpk2<=0] = np.inf
-            pk2_beam[pk2_beam<=0] = np.inf
+            #dpk2[dpk2<=0] = np.inf
+            #pk2_beam[pk2_beam<=0] = np.inf
+            dpk2[dpk2==0] = np.inf
+            pk2_beam[pk2_beam==0] = np.inf
             dpk2_beam = pk2/pk2_beam
             pk2_beam[pk2_beam==np.inf] = 0.
             dpk2_lose = pk2_beam/dpk2
@@ -189,11 +193,6 @@ class BiasCalibrate(object):
             dpk2[dpk2<=0] = np.inf
             dpk2= pk2/dpk2
 
-        B = interp1d(k, dpk, kind='cubic')
-
-        ki = np.logspace(log10(k.min()+0.001), log10(k.max()-0.001), num=300)
-        bias = B(ki)
-
         #if params['cross']:
         #    dpk = np.sqrt(dpk)
         #    dpk2 = np.sqrt(dpk2)
@@ -201,41 +200,6 @@ class BiasCalibrate(object):
         sp.save(out_root + 'k_bias', k)
         sp.save(out_root + 'b_bias', dpk)
         sp.save(out_root + 'b2_bias', dpk2)
-
-
-        if self.plot==True:
-            plt.figure(figsize=(8,4))
-            plt.subplot('111')
-            plt.scatter(k, dpk, s=30, c='w', marker='s')
-            plt.plot(ki, bias)
-            #plt.scatter(k, dpk)
-            plt.loglog()
-            #plt.semilogx()
-            plt.ylim(ymin=dpk.min())
-            plt.xlim(xmin=k.min(), xmax=k.max())
-            plt.title('Power Spectrum Bias')
-            plt.xlabel('$k$')
-            plt.ylabel('$dP(k) (mk^{2}(h^{-1}Mpc)^3)$')
-
-            plt.savefig(out_root+'b_bias.eps', format='eps')
-            #plt.show()
-
-#   def getbias(self, pke, begin, end, pk0):
-#       print pke[begin:end]
-#       pkA = pke[begin:end].mean(axis=0)
-#       pke[begin:end] = (pke[begin:end][:]-pkA)**2
-#       pkvarA = np.sum(pke[begin:end], axis=0)
-#       pkvarA = pkvarA/(end-begin)
-#       pkvarA = np.sqrt(pkvarA)
-#       print pk0
-#       print pkA
-#       print pkvarA
-#       pkerrA = np.ndarray(shape=(2, len(pkA)))
-#       pkerrA[0] = pkvarA
-#       pkerrA[1] = pkvarA
-#       dpkA = pk0/pkA
-#       print dpkA
-#       return pkA, pkerrA, dpkA
 
 if __name__ == '__main__':
     import sys

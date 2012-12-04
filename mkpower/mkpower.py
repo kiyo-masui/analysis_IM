@@ -242,17 +242,8 @@ class PowerSpectrumMaker(object):
 
     def GetRadioFFTbox(self):
         params = self.params
-        #resultf = params['hr'][0]
-        #if len(params['last']) != 0:
-        #   resultf = resultf + params['last'][0]
-        #resultf = resultf + '-' + params['hr'][1]
-        #if len(params['last']) != 0:
-        #   resultf = resultf + params['last'][1]
-
         # Make parent directory and write parameter file.
         kiyopy.utils.mkparents(params['output_root'])
-        #parse_ini.write_params(params, 
-        #   params['output_root']+'params.ini',prefix='pk_' )
         in_root = params['input_root']
         out_root = params['output_root']
 
@@ -289,15 +280,8 @@ class PowerSpectrumMaker(object):
         
         box = box*nbox
         box2 = box2*nbox2
-        #box = nbox*nbox
-        #box2 = nbox2*nbox2
 
-        #normal = (nbox**2).flatten().sum()
-        #normal2 = (nbox2**2).flatten().sum()
-        #normal = sqrt(normal)*sqrt(normal2)
         normal = (nbox*nbox2).flatten().sum()
-        #normal = sqrt((nbox**2*nbox2**2).flatten().sum())
-        #print normal
 
         V = params['boxunit']**3
 
@@ -309,8 +293,6 @@ class PowerSpectrumMaker(object):
         inputa.real = box
         FFTW.execute(fft)
 
-        #print outputa[10][10]
-
         inputb = np.zeros(params['boxshape'], dtype=complex)
         outputb = np.zeros(params['boxshape'], dtype=complex)
         fft = FFTW.Plan(inputb,outputb,direction='forward', flags=['measure'])
@@ -318,11 +300,8 @@ class PowerSpectrumMaker(object):
         inputb.real = box2
         FFTW.execute(fft)
         
-        #print outputb[10][10]
-
         fftbox = (outputa.__mul__(outputb.conjugate())).real
 
-        #fftbox = (outputa*(outputa.conjugate())).real
         fftbox = fftbox*V/normal #/2./pi/pi/pi
 
         return fftbox

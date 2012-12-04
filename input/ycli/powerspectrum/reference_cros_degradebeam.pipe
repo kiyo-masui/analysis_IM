@@ -21,6 +21,8 @@ print
 hour = int(os.getenv('HOUR'))
 mode = int(os.getenv('MODE'))
 
+map_multiplier = float(os.getenv('MAP_MULTIPLIER'))
+
 map_sim = os.getenv('MAP_SIM')
 map_cln = os.getenv('MAP_CLN')
 map_wgz = os.getenv('MAP_WGZ')
@@ -135,7 +137,7 @@ pipe_modules.append(pycamb.CAMB)
 """  Prepare """
 #from mkpower import prepare
 #pipe_modules.append(prepare.Prepare)
-pre_processes = 5
+pre_processes = 1 
 pre_plot = False
 #pre_plot = True
 pre_output_root = output_root
@@ -150,12 +152,12 @@ pre_boxunit = 2.
 pre_cutlist = cutlist
 pre_window = 'blackman'
 
+pre_map_multiplier = map_multiplier
+
 """  Calculate the combined Pk  """
 #from mkpower import mkpower_combine
 #pipe_modules.append(mkpower_combine.CrossPowerSpectrumMaker)
-pkc_processes = 5
-if hour==1:
-	pkc_processes = 2
+pkc_processes = 1 
 pkc_plot = False 
 pkc_saveweight = True
 pkc_input_root = output_root

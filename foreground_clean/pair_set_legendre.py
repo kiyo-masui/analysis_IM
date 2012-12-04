@@ -56,6 +56,8 @@ params_init = {
                'sim_multiplier': 1.,
                'subtract_inputmap_from_sim': False,
                'subtract_sim_from_inputmap': False,
+               'subtract_realmap_from_sim': False,
+               'realmap_dir' : '',
                'freq_list1': (),
                'freq_list2': (),
                'freq_n_all1': 256,
@@ -63,6 +65,7 @@ params_init = {
                 # in deg: (unused)
                'tack_on': None,
                'convolve': True,
+               'degrade_factor': 1.1,
                'factorizable_noise': True,
                'sub_weighted_mean': True,
                'regenerate_noise_inv': True,

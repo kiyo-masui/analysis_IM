@@ -165,9 +165,10 @@ class PowerSpectrumMaker(mkpower.PowerSpectrumMaker):
         kn2= np.zeros(shape=(n_map, kbn, kbn))
 
         if n_new <= 0:
-            raise ValueError('Process Should >= 2')
+            #raise ValueError('Process Should >= 2')
             for ii in range(n_map):
-                self.process_map(ii, PK[ii])
+                PK[ii], kn[ii], PK2[ii], kn2[ii] =\
+                    self.process_map(ii, singleprocess=True)
         elif n_new > 32:
             raise ValueError('Process limit is 32')
         else:
@@ -185,7 +186,7 @@ class PowerSpectrumMaker(mkpower.PowerSpectrumMaker):
                 if ii < n_map:
                     process_list[ii%n_new] = mp.Process(
                         target=self.process_map, 
-                        args=(ii, ii%n_new))
+                        args=(ii, ))
                     process_list[ii%n_new].start()
 
         if rank==-1:
@@ -193,6 +194,36 @@ class PowerSpectrumMaker(mkpower.PowerSpectrumMaker):
         else:
             print "RANK %d: Power Calculation Finished"%rank
             return PK, kn, PK2, kn2
+
+    def process_map(self, mapnum, singleprocess=False):
+        params = self.params
+        #params['hr'] = (params['hrlist'][mapnum][0],params['hrlist'][mapnum][1])
+        #params['last'] =(params['ltlist'][mapnum][0],params['ltlist'][mapnum][1])
+        params['imap_pair']=(params['imap_list'][mapnum][0],
+                             params['imap_list'][mapnum][1])
+
+        params['nmap_pair']=(params['nmap_list'][mapnum][0],
+                             params['nmap_list'][mapnum][1])
+        if (len(params['mmap_list'])!=0):
+            params['mmap_pair']=(params['mmap_list'][mapnum][0],
+                                 params['mmap_list'][mapnum][1])
+            
+        PK, kn, k, PK2, kn2, k2 = self.GetPower()
+
+        print "PK:"
+        print PK
+        print "PK2:"
+        print PK2
+        print
+
+        if singleprocess:
+            return PK, kn, PK2, kn2
+        else:
+            self.q.put_nowait(PK)
+            self.qn.put_nowait(kn)
+            self.q2.put_nowait(PK2)
+            self.qn2.put_nowait(kn2)
+
 
     def save(self, PK, kn, PK2, kn2):
         params = self.params
@@ -322,100 +353,7 @@ class PowerSpectrumMaker(mkpower.PowerSpectrumMaker):
                 sp.save(params['output_root']+resultf+'_n_combined', knmean)
                 sp.save(params['output_root']+resultf+'_n2_combined', kn2mean)
     
-#   def findbias(self, hr, last, cllist, B):
-#
-#       def findidx(aa):
-#           idx=('A', 'B', 'C', 'D')
-#           for s in idx:
-#               if aa.find(s)!=-1:
-#                   return s
-#           return 'NO'
-#
-#       bias = np.ones(B.shape[1])
-#
-#       for i in range(len(hr)):
-#           idx = findidx(hr[i]) + findidx(last[i])
-#           print idx
-#           if idx=='NONO':
-#               print 'no bias found'
-#               continue
-#           clidx = cllist.index(idx)
-#           bias = bias*np.sqrt(B[clidx])
-#           #print bias
-#       return bias
 
-
-    def process_map(self, mapnum, rank):
-        params = self.params
-        #params['hr'] = (params['hrlist'][mapnum][0],params['hrlist'][mapnum][1])
-        #params['last'] =(params['ltlist'][mapnum][0],params['ltlist'][mapnum][1])
-        params['imap_pair']=(params['imap_list'][mapnum][0],
-                                    params['imap_list'][mapnum][1])
-
-        params['nmap_pair']=(params['nmap_list'][mapnum][0],
-                                    params['nmap_list'][mapnum][1])
-        if (len(params['mmap_list'])!=0):
-            params['mmap_pair']=(params['mmap_list'][mapnum][0],
-                                        params['mmap_list'][mapnum][1])
-            
-        PK, kn, k, PK2, kn2, k2 = self.GetPower()
-
-        print "PK:"
-        print PK
-        print "PK2:"
-        print PK2
-        print
-
-        self.q.put_nowait(PK)
-        self.qn.put_nowait(kn)
-        self.q2.put_nowait(PK2)
-        self.qn2.put_nowait(kn2)
-
-#       jkbin = int(params['jknumber']/size)
-#       jk = np.array(range(jkbin))
-#       jk = (rank*jkbin)+jk
-#
-#
-#       kbn = params['kbinNum']
-#       PK = np.zeros(shape=(jk.shape[0],kbn))
-#       num = 0
-#       for i in jk:
-#           params['mid'] = ('jk'+str(i)+mid[0], 'jk'+str(i)+mid[1])
-#           #params['mid'] = ('jk'+str(i)+mid[0], mid[1])
-#           #print params['mid'][0]
-#           kiyopy.utils.mkparents(params['output_root'])
-#           inifile = params['output_root']+ 'rank' + str(rank) +'params.ini'
-#           parse_ini.write_params(params, inifile ,prefix='pk_')
-#           PK[num] = mkpower.PowerSpectrumMaker(
-#               inifile, feedback=self.feedback).execute()
-#           num = num + 1
-#       
-#       if rank !=0 :
-#           comm.send(PK, dest=0, tag=11)
-#       if rank ==0:
-#           print 'Calculate the error!'
-#           for i in range(1,size):
-#               print 'Receive ' + str(i)
-#               PK = np.append(PK,comm.recv(source=i, tag=11),axis=0)
-#
-#           if FKPweight:
-#               sp.save(params['output_root']+\
-#                   'PKjk_fkp_' + resultf, PK)
-#           else:
-#               sp.save(params['output_root']+'PKjk_' + resultf, PK)
-#           #PKmean = sp.load(params['input_root'] + 'PK.npy')
-#           PKmean = PK.mean(axis=0)
-#           PK[:] = (PK[:]-PKmean)**2
-#           PKvar = np.sum(PK, axis=0)
-#           PKvar = PKvar*(params['jknumber']-1)/params['jknumber']
-#           PKvar = np.sqrt(PKvar)
-#           print PKvar
-#           if FKPweight:
-#               sp.save(params['output_root']+\
-#                   'PKvar_fkp_' + resultf, PKvar)
-#           else:
-#               sp.save(params['output_root']+\
-#                   'PKvar_' + resultf, PKvar)
 
 if __name__ == '__main__':
     import sys

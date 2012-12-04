@@ -26,6 +26,7 @@ params_init = {
                'noise_inv1': "noise_inv1.npy",
                'noise_inv2': "noise_inv2.npy",
                'freq_list': (),
+               'degrade_factor': 1.1,
                # Angular lags at which to calculate the correlation.  Upper
                # edge bins in degrees.
                'lags': tuple(sp.arange(0.002, 0.2, 0.12))
@@ -225,7 +226,8 @@ class MapPair(object):
         Also convolves the noise, making sure to deweight pixels near the edge
         as well.  Converts noise to factorizable form by averaging.
         """
-        print "degrading the resolution to a common beam"
+        degrade_factor = self.params['degrade_factor']
+        print "degrading the resolution to a %2.1f common beam"%degrade_factor
         noise1 = self.noise_inv1
         noise2 = self.noise_inv2
 
@@ -236,7 +238,7 @@ class MapPair(object):
         freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
                              dtype=float)
         freq_data *= 1.0e6
-        beam_diff = sp.sqrt(max(1.1 * beam_data) ** 2 - (beam_data) ** 2)
+        beam_diff = sp.sqrt(max(degrade_factor*beam_data)**2-(beam_data)**2)
         common_resolution = beam.GaussianBeam(beam_diff, freq_data)
 
         def degrade_resolution_for_noise(noise, common_resolution):
@@ -273,6 +275,22 @@ class MapPair(object):
                 noise2 = degrade_resolution_for_noise(noise2, common_resolution)
                 map_dict[key] = algebra.as_alg_like(noise2, map_dict[key])
             map_dict = pair_set.extend_iquv_map(map_dict=map_dict)
+            self.map2       = map_dict['map']
+            self.noise_inv2 = map_dict['weight']
+        elif self.map2.shape[0] == 3*self.map1.shape[0]:
+            ''' for IxE(IQU) case'''
+            import pair_set
+            map_dict = {}
+            map_dict['map'] = self.map2
+            map_dict['weight'] = noise2
+            map_dict = pair_set.divide_iqu_map(map_dict=map_dict)
+            for key in ['imap', 'qmap', 'umap']:
+                map_dict[key] = common_resolution.apply(map_dict[key])
+            for key in ['imap_weight', 'qmap_weight', 'umap_weight']:
+                noise2 = map_dict[key]
+                noise2 = degrade_resolution_for_noise(noise2, common_resolution)
+                map_dict[key] = algebra.as_alg_like(noise2, map_dict[key])
+            map_dict = pair_set.extend_iqu_map(map_dict=map_dict)
             self.map2       = map_dict['map']
             self.noise_inv2 = map_dict['weight']
         else:
@@ -330,6 +348,19 @@ class MapPair(object):
                 noise2 = make_factorizable(map_dict[key])
                 map_dict[key] = algebra.as_alg_like(noise2, map_dict[key])
             map_dict = pair_set.extend_iquv_map(map_dict=map_dict)
+            self.map2       = map_dict['map']
+            self.noise_inv2 = map_dict['weight']
+        elif self.map2.shape[0] == 3*self.map1.shape[0]:
+            ''' for IxE(IQU) case'''
+            import pair_set
+            map_dict = {}
+            map_dict['map'] = self.map2
+            map_dict['weight'] = self.noise_inv2
+            map_dict = pair_set.divide_iqu_map(map_dict=map_dict)
+            for key in ['imap_weight', 'qmap_weight', 'umap_weight']:
+                noise2 = make_factorizable(map_dict[key])
+                map_dict[key] = algebra.as_alg_like(noise2, map_dict[key])
+            map_dict = pair_set.extend_iqu_map(map_dict=map_dict)
             self.map2       = map_dict['map']
             self.noise_inv2 = map_dict['weight']
         else:

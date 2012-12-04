@@ -70,13 +70,6 @@ params_init = {
     'processes' : 1,
     'plot' : True,
 
-    #'input_root' : '../newmaps/',
-    #'input_root_w' : '',
-    #'hr' : ('15hr_40-41-43_','15hr_42_',),
-    #'mid' : ('dirty_map_','noise_inv_diag_'),
-    #'last' : (),
-    #'polarizations' : ('I',),
-
     'imap_root' : [],
     'nmap_root' : [],
     'mmap_root' : [],
@@ -86,11 +79,17 @@ params_init = {
     'mmap_list' : [],
     'tabs_list' : [],
 
+    'half' : None,
+    #'half' : 'lower', 
+    #'half' : 'upper', 
+
     'submean' : False,
 
     'output_root' : './',
 
     'window' : '',
+
+    'map_multiplier' : 1.,
 
     'boxshape' : (60,12,6),
     'boxunit' : 15., # in unit Mpc h-1
@@ -115,60 +114,13 @@ class Prepare(object):
 
         self.plot = bool(self.params['plot'])
 
-    def mpiexecute(self, nprocesses=1):
-        
-        comm = MPI.COMM_WORLD
-        rank = comm.Get_rank()
-        size = comm.Get_size()
-
         params = self.params
-
-        n_map = len(params['imap_list'])
-
-        comm.barrier()
-
-        if rank<n_map:
-            self.params['imap_list'] = self.params['imap_list'][rank::size]
-            self.params['imap_root'] = self.params['imap_root'][rank::size]
-            self.params['nmap_list'] = self.params['nmap_list'][rank::size]
-            self.params['nmap_root'] = self.params['nmap_root'][rank::size]
-            if len(self.params['mmap_list'])!=0:
-                self.params['mmap_list'] = self.params['mmap_list'][rank::size]
-                self.params['mmap_root'] = self.params['mmap_root'][rank::size]
-            if len(self.params['tabs_list'])!=0:
-                self.params['tabs_list'] = self.params['tabs_list'][rank::size]
-            finish = self.execute()
-            if rank != 0:
-                comm.ssend(finish, dest=0, tag=11)
-            else:
-                for i in range(1,size):
-                    sig = comm.recv(source=i, tag=11)
-                    if sig==0:
-                        print 'RANK %d: rank %d Job finished'%(rank, i)
-                    elif sig==1:
-                        print 'RANK %d: rank %d is free'%(rank, i)
-                    else:
-                        print 'RANK %d: rank %d has problem'%(rank, i)
-
-        else:
-            if rank != 0:
-                comm.ssend(1, dest=0, tag=11)
-
-        comm.barrier()
-    
-    def execute(self, nprocesses=1):
-        params = self.params
-
-        # Make parent directory and write parameter file.
-        kiyopy.utils.mkparents(params['output_root'])
-
-        imap_list = params['imap_list']
-        nmap_list = params['nmap_list']
-        mmap_list = params['mmap_list']
 
         if not params['Xrange']:
-            map_tmp = algebra.load(params['imap_root'][0] + imap_list[0])
+            map_tmp = algebra.load(params['imap_root'][0] + params['imap_list'][0])
             map_tmp = algebra.make_vect(map_tmp)
+            if params['half'] != None:
+                map_tmp = functions.getmap_halfz(map_tmp, params['half'])
             rangex, rangey, rangez = functions.getedge(map_tmp)
             self.params['boxunit'] = max((rangex[1]-rangex[0])/params['boxshape'][0],
                                          (rangey[1]-rangey[0])/params['boxshape'][1],
@@ -188,13 +140,61 @@ class Prepare(object):
             print 'Z : [%f, %f]'%self.params['Zrange']
             print 'Box Unit: %f'%self.params['boxunit']
 
+
+    def mpiexecute(self, nprocesses=1):
+        
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        params = self.params
+
+        n_map = len(params['imap_list'])
+
+        if rank==0:
+            out_root = params['output_root']
+            # Make parent directory and write parameter file.
+            kiyopy.utils.mkparents(out_root)
+
+            # make directions for fftbox saving
+            if not os.path.exists(out_root+'fftbox/'):
+                os.mkdir(out_root+'fftbox/')
+
+        comm.barrier()
+
+        if rank<n_map:
+            self.params['imap_list'] = self.params['imap_list'][rank::size]
+            self.params['imap_root'] = self.params['imap_root'][rank::size]
+            self.params['nmap_list'] = self.params['nmap_list'][rank::size]
+            self.params['nmap_root'] = self.params['nmap_root'][rank::size]
+            if len(self.params['mmap_list'])!=0:
+                self.params['mmap_list'] = self.params['mmap_list'][rank::size]
+                self.params['mmap_root'] = self.params['mmap_root'][rank::size]
+            if len(self.params['tabs_list'])!=0:
+                self.params['tabs_list'] = self.params['tabs_list'][rank::size]
+            finish = self.execute()
+            print "RANK %d : Job finished"
+
+        comm.barrier()
+    
+    def execute(self, nprocesses=1):
+        params = self.params
+
+
+        imap_list = params['imap_list']
+        nmap_list = params['nmap_list']
+        mmap_list = params['mmap_list']
+
         n_processes = params['processes']
         out_root = params['output_root']
 
+        # Make parent directory and write parameter file.
+        kiyopy.utils.mkparents(out_root)
+
         # make directions for fftbox saving
-        if os.path.exists(out_root+'fftbox/')==False:
+        if not os.path.exists(out_root+'fftbox/'):
             os.mkdir(out_root+'fftbox/')
-        
+
         #### Process ####
         n_new = n_processes -1
         n_map = len(imap_list)
@@ -256,7 +256,11 @@ class Prepare(object):
             imap, nmap, mmap = functions.getmap(
                 imap_froot + imap_fname, 
                 nmap_froot + nmap_fname,
-                mmap_froot + mock_fname)
+                mmap_froot + mock_fname, 
+                params['half'])
+
+            print "Map multiply %f" %params['map_multiplier']
+            imap = imap*params['map_multiplier']
 
             if window != '':
                 window_function = fftutil.window_nd(nmap.shape, name=window)
@@ -288,7 +292,11 @@ class Prepare(object):
             #box, nbox = self.fill(imap, nmap)
             imap, nmap = functions.getmap(
                 imap_froot + imap_fname,
-                nmap_froot + nmap_fname)
+                nmap_froot + nmap_fname,
+                half = params['half'])
+
+            print "Map multiply %f" %params['map_multiplier']
+            imap = imap*params['map_multiplier']
 
             # multiply the window 
             if window != '':

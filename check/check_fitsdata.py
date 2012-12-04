@@ -31,7 +31,7 @@ from parkes import fitsGBT
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_11_east_P641.fits',)
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_12_west_P641.fits',)
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_13_west_P641.fits',)
-rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_13_east_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_13_east_P641.fits',)
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_12_east_P641.fits',)
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_13_west_P641.fits',)
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_13_east_P641.fits',)
@@ -42,6 +42,20 @@ rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_1
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2008_09_13_west_P641.fits',)
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/flagged/parkes_2008_09_13_west_P641.fits',)
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/parkes/parkes_2008_09_13_west_P641.fits',)
+
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/parkes/parkes_2012_10_27_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/parkes_2012_10_27_P641.fits',)
+
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/parkes/cal_parkes_2012_10_27_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/parkes/cal_parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/parkes/ncal_parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/rebinned/cal_new_parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/flagged/cal_new_parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/flagged/beamcal_parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/parkes/beamcal_parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/parkes/nobpcal_parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/flagged/nobpcal_parkes_2012_10_24_P641.fits',)
+rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/flagged/nobpcal_beamcal_parkes_2012_10_24_P641.fits',)
 
 class CheckFitsFile(object):
 
@@ -88,19 +102,61 @@ class CheckFitsFile(object):
         #print self.tbdata.field(fieldlabel[6])[:200]
         #print self.tbdata.field(fieldlabel[6])[200:1000]
 
+    def plottsys(self):
+        tsys_x = self.tbdata.field('TSYS')[0::2]#[:10*90*13]
+        tsys_y = self.tbdata.field('TSYS')[1::2]#[:10*90*13]
+
+        x = range(tsys_x.shape[0]/13)
+
+        plt.figure(figsize=(10, 6))
+        for i in range(3):
+            plt.plot(x, tsys_x[i::13], label='x tsys beam %d'%i)
+            plt.plot(x, tsys_y[i::13], label='y tsys beam %d'%i)
+
+        plt.legend(ncol=4, frameon=False)
+        plt.xlabel('time ')
+        plt.ylabel('Tsys')
+        plt.ylim(ymin=13, ymax=17)
+        plt.tick_params(length=6, width=1.)
+        plt.tick_params(which='minor', length=3, width=1.)
+        plt.savefig('./png/parkes_tsys_time.png', format='png')
+
+    def plotT(self):
+        spectrum_xx = self.tbdata.field('DATA')[0::2,:]#[:10*90*13,:]
+        spectrum_yy = self.tbdata.field('DATA')[1::2,:]#[:10*90*13,:]
+
+        spectrum_xx = np.ma.masked_where(np.isnan(spectrum_xx), spectrum_xx)
+        spectrum_yy = np.ma.masked_where(np.isnan(spectrum_yy), spectrum_yy)
+
+        x = range(spectrum_xx.shape[0]/13)
+        #print spectrum_yy[0::13, 500]
+
+        plt.figure(figsize=(10, 6))
+        for i in range(3):
+            plt.plot(x, spectrum_xx[i::13,500], label='x T beam %d'%i)
+            plt.plot(x, spectrum_yy[i::13,500], label='y T beam %d'%i)
+
+        plt.legend(ncol=4, frameon=False)
+        plt.xlabel('time ')
+        plt.ylabel('T')
+        plt.ylim(ymin=-1, ymax=1)
+        plt.tick_params(length=6, width=1.)
+        plt.tick_params(which='minor', length=3, width=1.)
+        plt.savefig('./png/parkes_T_time.png', format='png')
+
     def plotfreq_time(self):
         tsys_x = self.tbdata.field('TSYS')[0::2][0::13]
         tsys_y = self.tbdata.field('TSYS')[1::2][0::13]
-        spectrum_xx = self.tbdata.field('DATA')[0::2,:][0::13,:][:90,:]
-        spectrum_yy = self.tbdata.field('DATA')[1::2,:][0::13,:][:90,:]
+        spectrum_xx = self.tbdata.field('DATA')[0::2,:][0::13,:]#[:900,:]
+        spectrum_yy = self.tbdata.field('DATA')[1::2,:][0::13,:]#[:900,:]
         spectrum_xx = np.ma.masked_where(np.isnan(spectrum_xx), spectrum_xx)
         spectrum_yy = np.ma.masked_where(np.isnan(spectrum_yy), spectrum_yy)
         #spectrum_xx /= spectrum_xx
         #spectrum_yy /= spectrum_yy
         #spectrum_xx *= tsys_x[:,None]
         #spectrum_yy *= tsys_y[:,None]
-        #spectrum_xx_m = np.ma.mean(spectrum_xx, axis=0)
-        #spectrum_yy_m = np.ma.mean(spectrum_yy, axis=0)
+        spectrum_xx_m = np.ma.mean(spectrum_xx, axis=0)
+        spectrum_yy_m = np.ma.mean(spectrum_yy, axis=0)
         #spectrum_xx -= spectrum_xx_m
         #spectrum_yy -= spectrum_yy_m
         #spectrum_xx = np.repeat(spectrum_xx, 200, axis=1)
@@ -109,27 +165,42 @@ class CheckFitsFile(object):
         y = range(spectrum_xx.shape[0])
         print spectrum_xx.shape
         print spectrum_yy.shape
-        f, ax = plt.subplots(2, 1, figsize=(8,50))
-        #ax[0].imshow(spectrum_xx)
-        #ax[0].pcolormesh(spectrum_xx[:1000])
-        ax[0].pcolormesh(spectrum_xx)
+        cmin = -0.5
+        cmax = 0.5
+        f = plt.figure(figsize=(30, 50))
+        ax = ImageGrid(f, 111,
+                       nrows_ncols = (1, 2),
+                       direction = "row",
+                       axes_pad = 0.05,
+                       add_all = True,
+                       label_mode = "L",
+                       share_all = True,
+                       cbar_location = "right",
+                       cbar_mode = "single",
+                       cbar_size = "5%",
+                       cbar_pad = 0.05,
+                       )
+        im0 = ax[0].pcolormesh(spectrum_xx)
+        im0.set_clim(cmin, cmax)
         ax[0].set_xlim(x[0], x[-1])
         ax[0].set_ylim(y[0], y[-1])
-        #ax[0].set_xlabel('log(k_v) [log(h/Mpc)]')
-        #ax[0].set_ylabel('log(k_p) [log(h/Mpc)]')
-        #ax[0].set_title(filename)
+        ax[0].set_xlabel('freq id')
+        ax[0].set_ylabel('time cycle')
+        ax[0].set_title('X')
 
-        #ax[1].imshow(spectrum_yy)
-        #ax[1].pcolormesh(spectrum_yy[:1000])
-        ax[1].pcolormesh(spectrum_yy)
+        ax[0].cax.colorbar(im0)
+
+        im1 = ax[1].pcolormesh(spectrum_yy)
+        im1.set_clim(cmin, cmax)
         ax[1].set_xlim(x[0], x[-1])
         ax[1].set_ylim(y[0], y[-1])
-        #im1 = ax[1].pcolormesh(spectrum_yy[:20])
-        #im1.set_clim(0, 1.5)
-        #ax[1].set_xlim(x[0], x[-1])
-        #ax[1].set_xlabel('log(k_v) [log(h/Mpc)]')
-        #ax[1].set_title(filename + ' beam')
+        ax[1].set_xlabel('freq id')
+        ax[1].set_title('Y')
 
+        ax[1].cax.colorbar(im1)
+
+        plt.tick_params(length=6, width=1.)
+        plt.tick_params(which='minor', length=3, width=1.)
         plt.savefig('./png/parkes_test_freq_time.png', format='png')
 
     def plotfreq(self):
@@ -321,8 +392,10 @@ if __name__=="__main__":
     #checkfits.printhead()
     #checkfits.printlabel()
 
-    #checkfits.plotfreq_time()
-    checkfits.plotfreq()
+    checkfits.plotfreq_time()
+    checkfits.plottsys()
+    checkfits.plotT()
+    #checkfits.plotfreq()
     #checkfits.plotradec()
     #checkfits.plotelaz()
     #checkfits.plotradec_one()

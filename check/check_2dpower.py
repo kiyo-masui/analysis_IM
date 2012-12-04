@@ -7,9 +7,9 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 import math
 
 def plot2dnoise(fileroot, filename, savename, weights=None, cros=False):
-    weight = getweight(filename, weights)
-    b2 = getbias(filename)
-    weight_b2 = getweight(filename, weights, b2)
+    weight = getweight(fileroot, filename, weights)
+    b2 = getbias(filename, from_cross=True)
+    weight_b2 = getweight(fileroot, filename, weights, b2)
     k2 = np.load(fileroot + filename + '_k2_combined.npy')
 
     cmax = 19
@@ -76,7 +76,7 @@ def plot2dpower(fileroot, filename, savename, cros=False, bias=False):
 
     bias_label = ''
     if bias:
-        b2 = getbias(filename)
+        b2 = getbias(filename, from_cross=True)
         p2 *= b2
         dp2*= b2
         bias_label = '_compensated'
@@ -147,8 +147,8 @@ def plot1dpower(fileroot, filename, ax1, ax2=None, savename=None, weights=None, 
     dp2 = np.load(fileroot + filename + '_p2_var_combined.npy')
     k2 = np.load(fileroot + filename + '_k2_combined.npy')
  
-    b = getbias(filename)
-    weight = getweight(filename, weights, b)
+    b = getbias(filename, from_cross=True)
+    weight = getweight(fileroot, filename, weights, b)
 
     if b!=None:
         p2 *= b
@@ -190,16 +190,24 @@ def plot1dpower(fileroot, filename, ax1, ax2=None, savename=None, weights=None, 
         
         plt.savefig('./png/'+savename+'_1d.png', format='png')
 
-def getbias(filename):
+def getbias(filename, from_cross=False):
+    if from_cross:
+        filename = filename.replace('auto', 'cros')
+        filename = filename + '_subreal'
     if os.path.exists('/mnt/raid-project/gmrt/ycli/ps_result/bias/' + filename):
+        print 'using bias from: /mnt/raid-project/gmrt/ycli/ps_result/bias/'\
+              +filename+'/b2_bias.npy'
         b = np.load('/mnt/raid-project/gmrt/ycli/ps_result/bias/'
                     + filename + '/b2_bias.npy')
+        #b[b<0] = 0
+        if from_cross:
+            b = b**2
         return b
     else:
         print 'no bias'
         return None
 
-def getweight(filename, weights, b=None):
+def getweight(fileroot, filename, weights, b=None):
     #b = getbias(filename)
     if weights=='count':
         kn = np.load(fileroot + filename + '_n2_combined.npy')
@@ -276,7 +284,7 @@ def plotth(fileroot, maptype, ax, OmegaHI=0.7e-3, linecolor='0.65', linestyle='-
         c=linecolor, linewidth=3, linestyle=linestyle)
 
 def twod2oned(p2, k2, dp2, weight=None):
-    p2[p2<=0] = np.nan
+    #p2[p2==0] = np.nan
     goodlist = np.isnan(p2).__invert__()
     if not weight==None:
         normal = weight[goodlist].sum()
@@ -308,8 +316,8 @@ def twod2oned(p2, k2, dp2, weight=None):
 
 if __name__=='__main__':
 
-    power_2d = False
-    power_1d = True
+    power_2d = True
+    power_1d = False
 
     conv = True
 
@@ -324,7 +332,7 @@ if __name__=='__main__':
     #maplist = ['auto_1hr_ABCD',]
     #maplist = ['cros_IU',]# 'cros_GBT_15hr_map_oldcal']
     maptype = 'auto' #'cros'
-    modelist = [5, 20, 40]
+    modelist = [40,]
     svdnlist = [0, ]
 
     weightlist = ['noise',] #[None, 'count', 'noise']
@@ -336,7 +344,10 @@ if __name__=='__main__':
     #savename = 'cros_15hr_II_extend_0gwj_20'
     #savename = 'cros_15hr_IU_II_0gwj_20'
     #savename = 'cros_1hr_II_IQ_IU_0gwj_20'
-    savename = 'auto_1hr_IxIQUV_0gwj_conv_noconv_5-40'
+    #savename = 'auto_1hr_IxIQUV_0gwj_conv_upper_20'
+    #savename = 'auto_1hr_IxIQUV_0gwj_conv_lower_20'
+    savename = 'auto_1hr_IxIQUV_0gwj_2conv_40'
+    #savename = 'auto_1hr_IxIQUV_0gwj_conv_80'
     #savename = 'auto_1hr_ABCD_0gwj_conv_noconv_10_20'
 
     if power_2d:
@@ -361,9 +372,9 @@ if __name__=='__main__':
             for mode in modelist:
                 for svdn in svdnlist:
                     fileroot = workroot
-                    fileroot+= 'power_%s_legendre_modes_%dgwj_conv_%d/'\
+                    fileroot+= 'power_%s_legendre_modes_%dgwj_2conv_%d/'\
                                 %(map, svdn, mode)
-                    filename = '%s_legendre_modes_%dgwj_conv_%d'%(map, svdn, mode)
+                    filename = '%s_legendre_modes_%dgwj_2conv_%d'%(map, svdn, mode)
                     #fileroot += 'power_%s_cleaned_%d/'%(map, mode)
                     #filename = '%s_cleaned_%d'%(map, mode)
                     if not os.path.exists(fileroot):
@@ -397,23 +408,6 @@ if __name__=='__main__':
                                  %(map,svdn,mode)
                     filename = '%s_legendre_modes_%dgwj_%d'%(map, svdn, mode)
                     
-                    #fileroot += 'power_%s_first_legendre_modes_%dgwj_%d/'\
-                    #            %(map, svdn, mode)
-                    #filename = '%s_first_legendre_modes_%dgwj_%d'%(map, svdn, mode)
-
-                    #fileroot += 'power_%s_legendre_modes_%dgwj_%d/'%(map,svdn,mode)
-                    #filename = '%s_legendre_modes_%dgwj_%d'%(map, svdn, mode)
-
-                    #fileroot += 'power_%s_extend_legendre_modes_%dgwj_%d/'\
-                    #             %(map,svdn,mode)
-                    #filename = '%s_extend_legendre_modes_%dgwj_%d'%(map, svdn, mode)
-
-                    #fileroot += 'power_%s_legendre_modes_%dgwj_conv_%d/'\
-                    #             %(map,svdn,mode)
-                    #filename = '%s_legendre_modes_%dgwj_conv_%d'%(map, svdn, mode)
-
-                    #fileroot += 'power_%s_cleaned_%d/'%(map, mode)
-                    #filename = '%s_cleaned_%d'%(map, mode)
                     if not os.path.exists(fileroot): 
                         print 'No such file %s' %(fileroot)
                         continue
@@ -431,9 +425,9 @@ if __name__=='__main__':
                 for mode in modelist:
                     for svdn in svdnlist:
                         fileroot = workroot
-                        fileroot += 'power_%s_legendre_modes_%dgwj_conv_%d/'\
+                        fileroot += 'power_%s_legendre_modes_%dgwj_2conv_%d/'\
                                      %(map,svdn,mode)
-                        filename  = '%s_legendre_modes_%dgwj_conv_%d'\
+                        filename  = '%s_legendre_modes_%dgwj_2conv_%d'\
                                      %(map, svdn, mode)
                         if not os.path.exists(fileroot): 
                             print 'No such file %s' %(fileroot)
@@ -446,6 +440,37 @@ if __name__=='__main__':
                                 plot1dpower(fileroot, filename, ax1, ax2, 
                                             weights=weights, cros=False)
                     
+                        #fileroot = workroot
+                        #fileroot += 'power_%s_legendre_modes_%dgwj_2conv_upper_%d/'\
+                        #             %(map,svdn,mode)
+                        #filename  = '%s_legendre_modes_%dgwj_2conv_upper_%d'\
+                        #             %(map, svdn, mode)
+                        #if not os.path.exists(fileroot): 
+                        #    print 'No such file %s' %(fileroot)
+                        #    continue
+                        #for weights in weightlist:
+                        #    if maptype == 'cros':
+                        #        plot1dpower(fileroot, filename, ax1, ax2, 
+                        #                    weights=weights, cros=True)
+                        #    else:
+                        #        plot1dpower(fileroot, filename, ax1, ax2, 
+                        #                    weights=weights, cros=False)
+                    
+                        #fileroot = workroot
+                        #fileroot += 'power_%s_legendre_modes_%dgwj_2conv_lower_%d/'\
+                        #             %(map,svdn,mode)
+                        #filename  = '%s_legendre_modes_%dgwj_2conv_lower_%d'\
+                        #             %(map, svdn, mode)
+                        #if not os.path.exists(fileroot): 
+                        #    print 'No such file %s' %(fileroot)
+                        #    continue
+                        #for weights in weightlist:
+                        #    if maptype == 'cros':
+                        #        plot1dpower(fileroot, filename, ax1, ax2, 
+                        #                    weights=weights, cros=True)
+                        #    else:
+                        #        plot1dpower(fileroot, filename, ax1, ax2, 
+                        #                    weights=weights, cros=False)
 
         if maptype == 'auto':
             # -- compare weight --
@@ -457,26 +482,27 @@ if __name__=='__main__':
             #filename = 'simmaps'
             #plot1dpower(fileroot, filename, weights='count')
 
-            fileroot = workroot + 'reference_auto_1hr_IE_legendre_modes_0gwj_conv_20/'
+            fileroot = workroot + 'reference_auto_1hr_IE_legendre_modes_0gwj_2conv_20/'
             filename = 'simmaps'
             plot1dpower(fileroot, filename, ax1, ax2, weights='noise')
+            #plot2dpower(fileroot, filename, 'simmap_2conv_20')
 
             plotth(fileroot, maptype, ax1)
-            plotth(fileroot, maptype, ax1, OmegaHI=1.5e-3, linestyle='--')
+            #plotth(fileroot, maptype, ax1, OmegaHI=1.5e-3, linestyle='--')
 
-            plt.ylim(ymin=3.e-10, ymax=3.e-5)
+            plt.ylim(ymin=3.e-11, ymax=3.e-5)
             plt.xlim(xmin=0.025, xmax=1.5)
             plt.xlabel('k [h/Mpc]')
             plt.ylabel('$\Delta^2$ [$K^2$]')
 
             ax1.set_xlim(xmin=0.025, xmax=1.5)
-            ax1.set_ylim(ymin=3.e-10, ymax=3.e-5)
+            ax1.set_ylim(ymin=3.e-11, ymax=3.e-5)
             ax1.set_ylabel('$\Delta^2$ [$K^2$]')
             ax1.loglog()
             ax1.legend(loc=0, scatterpoints=1, frameon=False)
 
             ax2.set_xlim(xmin=0.025, xmax=1.5)
-            ax2.set_ylim(ymin=3.e-10, ymax=3.e-5)
+            ax2.set_ylim(ymin=3.e-11, ymax=3.e-5)
             ax2.set_ylabel('Error')
             ax2.legend(loc=0, scatterpoints=1, frameon=False)
             ax2.loglog()

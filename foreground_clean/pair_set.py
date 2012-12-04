@@ -53,10 +53,13 @@ params_init = {
                'sim_multiplier': 1.,
                'subtract_inputmap_from_sim': False,
                'subtract_sim_from_inputmap': False,
+               'subtract_realmap_from_sim': False,
+               'realmap_dir' : '',
                'freq_list1': (),
                'freq_list2': (),
                'tack_on': None,
                'convolve': True,
+               'degrade_factor': 1.1,
                'factorizable_noise': True,
                'sub_weighted_mean': True,
                'regenerate_noise_inv': True,
@@ -177,6 +180,64 @@ def mklink_for_mappair(source_dict, target):
 
     return source_dict
 
+def extend_iqu_map(source_dict=None, target_dict=None, map_dict=None):
+    if source_dict != None:
+        imap = algebra.make_vect(algebra.load(source_dict['imap']))
+        qmap = algebra.make_vect(algebra.load(source_dict['qmap']))
+        umap = algebra.make_vect(algebra.load(source_dict['umap']))
+
+        if source_dict.has_key('imap_weight'):
+            imap_weight = algebra.make_vect(algebra.load(source_dict['imap_weight']))
+            qmap_weight = algebra.make_vect(algebra.load(source_dict['qmap_weight']))
+            umap_weight = algebra.make_vect(algebra.load(source_dict['umap_weight']))
+        elif source_dict.has_key('imap_inv'):
+            imap_weight, info = find_weight_re_diagnal(source_dict['imap_inv'])
+            qmap_weight, info = find_weight_re_diagnal(source_dict['qmap_inv'])
+            umap_weight, info = find_weight_re_diagnal(source_dict['umap_inv'])
+        else:
+            print 'Warning: no weight'
+            imap_weight = algebra.ones_like(imap)
+            qmap_weight = algebra.ones_like(imap)
+            umap_weight = algebra.ones_like(imap)
+    elif map_dict != None:
+        imap = map_dict['imap']
+        qmap = map_dict['qmap']
+        umap = map_dict['umap']
+
+        if 'imap_weight' in map_dict.keys():
+            imap_weight = map_dict['imap_weight']
+            qmap_weight = map_dict['qmap_weight']
+            umap_weight = map_dict['umap_weight']
+        else:
+            print 'Warning: no weight'
+            imap_weight = algebra.ones_like(imap)
+            qmap_weight = algebra.ones_like(imap)
+            umap_weight = algebra.ones_like(imap)
+    else:
+        print "Error: Can not find I Q U maps"
+        exit()
+
+    iqu = algebra.info_array(imap.tolist() + qmap.tolist() + umap.tolist())
+    iqu = algebra.make_vect(iqu)
+    iqu.info = imap.info
+    iqu.copy_axis_info(imap)
+
+    iqu_weight = algebra.info_array(imap_weight.tolist() + 
+                                    qmap_weight.tolist() + 
+                                    umap_weight.tolist())
+    iqu_weight = algebra.make_vect(iqu_weight)
+    iqu_weight.info = imap_weight.info
+    iqu_weight.copy_axis_info(imap_weight)
+
+    if target_dict != None:
+        algebra.save(target_dict['map'], iqu)
+        algebra.save(target_dict['weight'], iqu_weight)
+    else:
+        map_dict = {}
+        map_dict['map']    = iqu
+        map_dict['weight'] = iqu_weight
+        return map_dict
+
 def extend_iquv_map(source_dict=None, target_dict=None, map_dict=None):
     if source_dict != None:
         imap = algebra.make_vect(algebra.load(source_dict['imap']))
@@ -240,6 +301,60 @@ def extend_iquv_map(source_dict=None, target_dict=None, map_dict=None):
         map_dict = {}
         map_dict['map']    = iquv
         map_dict['weight'] = iquv_weight
+        return map_dict
+
+def divide_iqu_map(source_dict=None, target_dict=None, map_dict=None):
+    if source_dict != None:
+        iqu        = algebra.make_vect(algebra.load(source_dict['map']))
+        iqu_weight = algebra.make_vect(algebra.load(source_dict['weight']))
+    elif map_dict != None:
+        iqu        = algebra.make_vect(map_dict['map'])
+        iqu_weight = algebra.make_vect(map_dict['weight'])
+    else:
+        print "Error: Can not find iqu map"
+
+    nfreq = iqu.shape[0]/3
+
+    imap = algebra.make_vect(iqu[ 0*nfreq : 1*nfreq, ...])
+    qmap = algebra.make_vect(iqu[ 1*nfreq : 2*nfreq, ...])
+    umap = algebra.make_vect(iqu[ 2*nfreq : 3*nfreq, ...])
+
+    imap.info = iqu.info
+    qmap.info = iqu.info
+    umap.info = iqu.info
+
+    imap.copy_axis_info(iqu)
+    qmap.copy_axis_info(iqu)
+    umap.copy_axis_info(iqu)
+
+    imap_weight = algebra.make_vect(iqu_weight[ 0*nfreq : 1*nfreq, ...])
+    qmap_weight = algebra.make_vect(iqu_weight[ 1*nfreq : 2*nfreq, ...])
+    umap_weight = algebra.make_vect(iqu_weight[ 2*nfreq : 3*nfreq, ...])
+
+    imap_weight.info = iqu_weight.info
+    qmap_weight.info = iqu_weight.info
+    umap_weight.info = iqu_weight.info
+
+    imap_weight.copy_axis_info(iqu_weight)
+    qmap_weight.copy_axis_info(iqu_weight)
+    umap_weight.copy_axis_info(iqu_weight)
+
+    if target_dict != None:
+        algebra.save(target_dict['imap'], imap)
+        algebra.save(target_dict['qmap'], qmap)
+        algebra.save(target_dict['umap'], umap)
+
+        algebra.save(target_dict['imap_weight'], imap_weight)
+        algebra.save(target_dict['qmap_weight'], qmap_weight)
+        algebra.save(target_dict['umap_weight'], umap_weight)
+    else:
+        map_dict = {}
+        map_dict['imap'] = imap
+        map_dict['qmap'] = qmap
+        map_dict['umap'] = umap
+        map_dict['imap_weight'] = imap_weight
+        map_dict['qmap_weight'] = qmap_weight
+        map_dict['umap_weight'] = umap_weight
         return map_dict
 
 def divide_iquv_map(source_dict=None, target_dict=None, map_dict=None):
@@ -454,9 +569,9 @@ class PairSet():
 
             # map2 & noise_inv2
             #if pairitem == 'I_with_E':
-            if len(self.freq_list1) != len(self.freq_list2):
+            if len(self.freq_list2) == 4*len(self.freq_list1):
                 '''For IQUV case'''
-                print 'Construct E map'
+                print 'Construct E map using I Q U V'
                 iquvdict = {}
                 iquvdict['imap'] = pdict['map2'].replace('_E', '_I')
                 iquvdict['qmap'] = pdict['map2'].replace('_E', '_Q')
@@ -477,6 +592,27 @@ class PairSet():
                 map_dict['umap'] = sim2
                 map_dict['vmap'] = sim2
                 map_dict = extend_iquv_map(map_dict=map_dict)
+                sim2 = map_dict['map']
+            elif len(self.freq_list2) == 3*len(self.freq_list1):
+                '''For IQU case'''
+                print 'Construct E map using I Q U'
+                iquvdict = {}
+                iquvdict['imap'] = pdict['map2'].replace('_E', '_I')
+                iquvdict['qmap'] = pdict['map2'].replace('_E', '_Q')
+                iquvdict['umap'] = pdict['map2'].replace('_E', '_U')
+                iquvdict['imap_weight'] = pdict['noise_inv2'].replace('_E', '_I')
+                iquvdict['qmap_weight'] = pdict['noise_inv2'].replace('_E', '_Q')
+                iquvdict['umap_weight'] = pdict['noise_inv2'].replace('_E', '_U')
+                map_dict = extend_iqu_map(source_dict=iquvdict)
+                map2 = map_dict['map']
+                noise_inv2 = map_dict['weight']
+
+                sim2 = sim1
+                map_dict = {}
+                map_dict['imap'] = sim2
+                map_dict['qmap'] = sim2
+                map_dict['umap'] = sim2
+                map_dict = extend_iqu_map(map_dict=map_dict)
                 sim2 = map_dict['map']
             else:
                 '''For common case'''
@@ -609,22 +745,34 @@ class PairSet():
             clnoise = "cleaned_noise_inv"
             map1_file = "%s/sec_%s_cleaned_clean_map_I_with_%s_%s.npy" % \
                             (self.output_root, tag1, tag2, n_modes)
-            map2_file = "%s/sec_%s_cleaned_clean_map_I_with_%s_%s.npy" % \
-                            (self.output_root, tag2, tag1, n_modes)
             noise_inv1_file = "%s/sec_%s_%s_I_with_%s_%s.npy" % \
                             (self.output_root, tag1, clnoise, tag2, n_modes)
-            noise_inv2_file = "%s/sec_%s_%s_I_with_%s_%s.npy" % \
-                            (self.output_root, tag2, clnoise, tag1, n_modes)
             modes1_file = "%s/sec_%s_modes_clean_map_I_with_%s_%s.npy" % \
                             (self.output_root, tag1, tag2, n_modes)
-            modes2_file = "%s/sec_%s_modes_clean_map_I_with_%s_%s.npy" % \
-                            (self.output_root, tag2, tag1, n_modes)
+
+            if pair.map1.shape == pair.map2.shape:
+                map2_file = "%s/sec_%s_cleaned_clean_map_I_with_%s_%s.npy" % \
+                                (self.output_root, tag2, tag1, n_modes)
+                noise_inv2_file = "%s/sec_%s_%s_I_with_%s_%s.npy" % \
+                                (self.output_root, tag2, clnoise, tag1, n_modes)
+                modes2_file = "%s/sec_%s_modes_clean_map_I_with_%s_%s.npy" % \
+                                (self.output_root, tag2, tag1, n_modes)
 
             if self.params['subtract_inputmap_from_sim'] or \
                self.params['subtract_sim_from_inputmap']:
                 map1 = pair.map1 - self.pairs_parallel_track[pairitem].map1
-
                 map2 = pair.map2 - self.pairs_parallel_track[pairitem].map2
+            elif self.params['subtract_realmap_from_sim']:
+                if not os.path.exists(self.params['realmap_dir']):
+                    print "Error: Real map directory does not exists"
+                    exit()
+                else:
+                    realmap_file = "%s/sec_%s_cleaned_clean_map_I_with_%s_%s.npy"%\
+                                   (self.params['realmap_dir'], tag1, tag2, n_modes)
+                    realmap = algebra.make_vect(algebra.load(realmap_file))
+                    print "Subtract realmap from result"
+                    map1 = pair.map1 - realmap
+                    map2 = copy.deepcopy(pair.map2)
             else:
                 map1 = copy.deepcopy(pair.map1)
                 map2 = copy.deepcopy(pair.map2)
@@ -636,30 +784,32 @@ class PairSet():
 
             if self.params['save_section']:
                 algebra.save(map1_file, map1)
-                algebra.save(map2_file, map2)
                 algebra.save(noise_inv1_file, pair.noise_inv1)
-                algebra.save(noise_inv2_file, pair.noise_inv2)
                 algebra.save(modes1_file, pair.left_modes)
-                algebra.save(modes2_file, pair.right_modes)
 
-            if map2.shape[0] == 4*map1.shape[0]:
-                source_dict = {}
-                source_dict['map'] = map2_file
-                source_dict['weight'] = noise_inv2_file
-                target_dict = {}
-                target_dict['imap'] = map2_file.replace('_'+tag2, '_'+tag2+'_I')
-                target_dict['qmap'] = map2_file.replace('_'+tag2, '_'+tag2+'_Q')
-                target_dict['umap'] = map2_file.replace('_'+tag2, '_'+tag2+'_U')
-                target_dict['vmap'] = map2_file.replace('_'+tag2, '_'+tag2+'_V')
-                target_dict['imap_weight'] =\
-                                noise_inv2_file.replace('_'+tag2, '_'+tag2+'_I')
-                target_dict['qmap_weight'] =\
-                                noise_inv2_file.replace('_'+tag2, '_'+tag2+'_Q')
-                target_dict['umap_weight'] =\
-                                noise_inv2_file.replace('_'+tag2, '_'+tag2+'_U')
-                target_dict['vmap_weight'] =\
-                                noise_inv2_file.replace('_'+tag2, '_'+tag2+'_V')
-                divide_iquv_map(source_dict=source_dict, target_dict=target_dict)
+                if pair.map1.shape == pair.map2.shape:
+                    algebra.save(map2_file, map2)
+                    algebra.save(noise_inv2_file, pair.noise_inv2)
+                    algebra.save(modes2_file, pair.right_modes)
+
+            #if map2.shape[0] == 4*map1.shape[0]:
+            #    source_dict = {}
+            #    source_dict['map'] = map2_file
+            #    source_dict['weight'] = noise_inv2_file
+            #    target_dict = {}
+            #    target_dict['imap'] = map2_file.replace('_'+tag2, '_'+tag2+'_I')
+            #    target_dict['qmap'] = map2_file.replace('_'+tag2, '_'+tag2+'_Q')
+            #    target_dict['umap'] = map2_file.replace('_'+tag2, '_'+tag2+'_U')
+            #    target_dict['vmap'] = map2_file.replace('_'+tag2, '_'+tag2+'_V')
+            #    target_dict['imap_weight'] =\
+            #                    noise_inv2_file.replace('_'+tag2, '_'+tag2+'_I')
+            #    target_dict['qmap_weight'] =\
+            #                    noise_inv2_file.replace('_'+tag2, '_'+tag2+'_Q')
+            #    target_dict['umap_weight'] =\
+            #                    noise_inv2_file.replace('_'+tag2, '_'+tag2+'_U')
+            #    target_dict['vmap_weight'] =\
+            #                    noise_inv2_file.replace('_'+tag2, '_'+tag2+'_V')
+            #    divide_iquv_map(source_dict=source_dict, target_dict=target_dict)
 
         if map1.shape != map2.shape:
             print "Shape of map1 and map2 are different, can not get combined map."

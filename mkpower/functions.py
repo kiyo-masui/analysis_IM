@@ -242,7 +242,27 @@ def getresultf(params):
     return resultf
 
 #----------------------------------------------------------------------#
-def getmap(imap_fname, nmap_fname, mmap_fname=None):
+def getmap_halfz(map, half):
+    freq   = map.get_axis('freq')
+    z      =  1.42e9/freq - 1.
+    z_half = (z.max()+z.min())/2
+    half_indx = 0
+    for i in range(len(z)):
+        if z[i]>z_half:
+            half_indx = i - 1
+            break
+    if half_indx == -1:
+        print 'Error: z wrong order'
+        exit()
+    if half == 'lower':
+        map = map[:half_indx]
+        map.set_axis_info('freq',freq[map.shape[0]//2],map.info['freq_delta'])
+    elif half=='upper':
+        map = map[half_indx:]
+        map.set_axis_info('freq',freq[map.shape[0]//2+half_indx],map.info['freq_delta'])
+    return map
+
+def getmap(imap_fname, nmap_fname, mmap_fname=None, half=None):
     """
     get the matrix of intensity map and noise map
     """
@@ -250,6 +270,9 @@ def getmap(imap_fname, nmap_fname, mmap_fname=None):
 
     imap = algebra.load(imap_fname)
     imap = algebra.make_vect(imap)
+
+    if half!=None:
+        imap = getmap_halfz(imap, half)
     #print "--The neam value for imap is:",imap.flatten().mean(),"--"
     #imap = imap - imap.flatten().mean()
     if imap.axes != ('freq', 'ra', 'dec') :
@@ -258,6 +281,9 @@ def getmap(imap_fname, nmap_fname, mmap_fname=None):
     try:
         nmap = algebra.load(nmap_fname)
         nmap = algebra.make_vect(nmap)
+
+        if half!=None:
+            nmap = getmap_halfz(nmap, half)
 
         bad = nmap<1.e-5*nmap.flatten().max()
         nmap[bad] = 0.
@@ -276,6 +302,8 @@ def getmap(imap_fname, nmap_fname, mmap_fname=None):
         try:
             mmap = algebra.load(mmap_fname)
             mmap = algebra.make_vect(mmap)
+            if half!=None:
+                mmap = getmap_halfz(mmap, half)
         except IOError:
             print 'NO Mock File :: Make it!'
             mmap = algebra.info_array(

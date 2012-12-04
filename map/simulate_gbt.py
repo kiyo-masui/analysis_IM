@@ -18,6 +18,7 @@ import struct
 from kiyopy import parse_ini
 from utils import units
 from utils import batch_handler
+from mpi4py import MPI
 
 
 params_init = {
@@ -29,10 +30,12 @@ params_init = {
                'outfile_beam': None,
                'outfile_meansub': None,
                'outfile_degrade': None,
+               'degrade_factor' : 1.1,
                'scenario': 'str',
                'seed': -1,
                'refinement': 2,
-               'weightfile': None
+               'weightfile': None,
+               'simnum' : None,
                }
 prefix = 'sg_'
 
@@ -87,6 +90,61 @@ class SimulateGbt(object):
         self.sim_map_withbeam = None
         self.sim_map_meansub = None
         self.sim_map_degrade = None
+
+    def mpiexecute(self, processes):
+        r"""The MPI method """
+        
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        params = self.params
+
+        if params['simnum'] != None:
+            n_sim = params['simnum']
+        else: 
+            print 'MPI need total simulation number. '
+            n_sim = 1
+            exit()
+
+        outfile_raw_temp = params['outfile_raw']
+        outfile_physical_temp = params['outfile_physical']
+        outfile_delta_temp = params['outfile_delta']
+        outfile_beam_temp = params['outfile_beam']
+        outfile_meansub_temp = params['outfile_meansub']
+        outfile_degrade_temp = params['outfile_degrade']
+
+        comm.barrier()
+
+        if rank<n_sim:
+            sim_list = range(rank, n_sim, size)
+            print "RANK %d : "%rank, sim_list
+            print 
+            for sim in sim_list:
+                if outfile_raw_temp:
+                    self.params['outfile_raw'] = outfile_raw_temp%sim
+
+                if outfile_physical_temp:
+                    self.params['outfile_physical'] = outfile_physical_temp%sim
+
+                if outfile_delta_temp:
+                    self.params['outfile_delta'] = outfile_delta_temp%sim
+
+                if outfile_beam_temp:
+                    self.params['outfile_beam'] = outfile_beam_temp%sim
+
+                if outfile_meansub_temp:
+                    self.params['outfile_meansub'] = outfile_meansub_temp%sim
+
+                if outfile_degrade_temp:
+                    self.params['outfile_degrade'] = outfile_degrade_temp%sim
+                print "RANK %d : creat sim_%03d maps"%(rank, sim)
+                print 
+                self.execute(processes)
+                print "RANK %d : creat sim_%03d maps finished"%(rank, sim)
+
+        comm.barrier()
+
 
     @batch_handler.log_timing
     def execute(self, processes):
@@ -203,7 +261,9 @@ class SimulateGbt(object):
         if self.sim_map_meansub is None:
             self.subtract_mean()
 
-        beam_diff = np.sqrt(max(1.1 * self.beam_data) ** 2 - (self.beam_data) ** 2)
+        degrade_factor = self.params['degrade_factor']
+        print "degrading the resolution to a %2.1f common beam"%degrade_factor
+        beam_diff = np.sqrt(max(degrade_factor*self.beam_data)**2-(self.beam_data)**2)
         common_resolution = beam.GaussianBeam(beam_diff, self.freq_data)
         # Convolve to a common resolution.
         self.sim_map_degrade = common_resolution.apply(self.sim_map_meansub)

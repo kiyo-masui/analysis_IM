@@ -6,6 +6,98 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
 import math
 
+def plot2dsim_2(fileroot, filename, savename):
+    k  = np.load(fileroot + filename + '/k_bias.npy')
+
+    #b2_lose = np.load(fileroot + filename + '/b2_lose_bias.npy')
+    b2_lose = np.load(fileroot + filename + '/simmaps1_p2_combined.npy')
+    b2_lose = np.ma.array(b2_lose)
+    b2_lose[np.isnan(b2_lose)] = np.ma.masked
+    b2_lose[b2_lose==np.inf] = np.ma.masked
+    b2_lose[b2_lose==0] = np.ma.masked
+
+    #b2_beam = np.load(fileroot + filename + '/b2_beam_bias.npy')
+    b2_beam = np.load(fileroot + filename + '/simmaps0_p2_combined.npy')
+    b2_beam = np.ma.array(b2_beam)
+    b2_beam[np.isnan(b2_beam)] = np.ma.masked
+    b2_beam[b2_beam==np.inf] = np.ma.masked
+    b2_beam[b2_beam==0] = np.ma.masked
+
+    fileroot = fileroot.replace('bias/', '')
+    #filename = 'reference_' + filename
+    #sim = np.load(fileroot + filename + '/simmaps_p2_combined.npy')
+    fileroot = fileroot + 'power_cros_sigsim_1hr_IE_legendre_modes_0gwj_2conv_10/'
+    filename = 'cros_sigsim_1hr_IE_legendre_modes_0gwj_2conv_10_p2_combined.npy'
+    sim = np.load(fileroot + filename)
+    sim = np.ma.array(sim)
+    sim[np.isnan(sim)] = np.ma.masked
+    sim[sim==np.inf] = np.ma.masked
+    sim[sim==0] = np.ma.masked
+
+    b2_diff = b2_lose - b2_beam
+
+    b2_lose = np.ma.log10(b2_lose)
+    b2_beam = np.ma.log10(b2_beam)
+    b2_diff = np.ma.log10(b2_diff)
+    sim = np.ma.log10(sim)
+
+    #print b2
+    #print b2_beam
+    #print b2_lose
+
+    cmax = 1.
+
+    f = plt.figure(figsize=(24,11))
+    #f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharey=True, figsize=(23, 7))
+    #plt.subplots_adjust(wspace=0)
+    ax = ImageGrid(f, 111,
+                   nrows_ncols = (1, 4),
+                   direction = "row",
+                   axes_pad = 0.05,
+                   add_all = True,
+                   label_mode = "L",
+                   share_all = True,
+                   cbar_location = "right",
+                   cbar_mode = "single",
+                   cbar_size = "5%",
+                   cbar_pad = 0.05,
+                   )
+    im0 = ax[0].pcolormesh(k, k, b2_beam)
+    im0.set_clim(-12, -6)
+    ax[0].set_xlim(k.min(), k.max())
+    ax[0].set_ylim(k.min(), k.max())
+    ax[0].loglog()
+    ax[0].set_xlabel('log(k_v) [log(h/Mpc)]')
+    ax[0].set_ylabel('log(k_p) [log(h/Mpc)]')
+    ax[0].set_title(filename.replace('legendre_modes_0gwj_', '') + '\n map')
+
+    im1 = ax[1].pcolormesh(k, k, b2_lose )
+    im1.set_clim(-12, -6)
+    ax[1].set_xlim(k.min(), k.max())
+    ax[1].loglog()
+    ax[1].set_xlabel('log(k_v) [log(h/Mpc)]')
+    ax[1].set_title(filename.replace('legendre_modes_0gwj_', '') + '\n sim+map')
+
+    im2 = ax[2].pcolormesh(k, k, b2_diff )
+    im2.set_clim(-12, -6)
+    ax[2].set_xlim(k.min(), k.max())
+    ax[2].loglog()
+    ax[2].set_xlabel('log(k_v) [log(h/Mpc)]')
+    ax[2].set_title(filename.replace('legendre_modes_0gwj_', '') + '\n diff')
+
+    im3 = ax[3].pcolormesh(k, k, sim )
+    im3.set_clim(-12, -6)
+    ax[3].set_xlim(k.min(), k.max())
+    ax[3].loglog()
+    ax[3].set_xlabel('log(k_v) [log(h/Mpc)]')
+    ax[3].set_title(filename.replace('legendre_modes_0gwj_', '') + '\n sim')
+
+    ax[1].cax.colorbar(im1)
+
+    plt.tick_params(length=6, width=1.)
+    plt.tick_params(which='minor', length=3, width=1.)
+    plt.savefig('./png/'+savename + '3.png', format='png')
+
 def plot2dtransfer_3(fileroot, filename, savename):
     k  = np.load(fileroot + filename + '/k_bias.npy')
 
@@ -13,21 +105,21 @@ def plot2dtransfer_3(fileroot, filename, savename):
     b2[b2==0.] = np.inf
     b2 = 1./b2
     b2[np.isnan(b2)] = 0.
-    #b2 = np.ma.masked_equal(b2, np.inf)
+    b2 = np.ma.masked_equal(b2, np.inf)
     b2 = np.ma.masked_equal(b2, 0)
 
     b2_beam = np.load(fileroot + filename + '/b2_beam_bias.npy')
     b2_beam[b2_beam==0.] = np.inf
     b2_beam = 1./b2_beam
     b2_beam[np.isnan(b2_beam)] = 0.
-    #b2_beam = np.ma.masked_equal(b2_beam, np.inf)
+    b2_beam = np.ma.masked_equal(b2_beam, np.inf)
     b2_beam = np.ma.masked_equal(b2_beam, 0.)
 
     b2_lose = np.load(fileroot + filename + '/b2_lose_bias.npy')
     b2_lose[b2_lose==0.] = np.inf
     b2_lose = 1./b2_lose
     b2_lose[np.isnan(b2_lose)] = 0.
-    #b2_lose = np.ma.masked_equal(b2_lose, np.inf)
+    b2_lose = np.ma.masked_equal(b2_lose, np.inf)
     b2_lose = np.ma.masked_equal(b2_lose, 0.)
 
     #print b2
@@ -52,7 +144,7 @@ def plot2dtransfer_3(fileroot, filename, savename):
                    cbar_pad = 0.05,
                    )
     im0 = ax[0].pcolormesh(k, k, b2)
-    im0.set_clim(0, cmax)
+    im0.set_clim(-cmax, cmax)
     ax[0].set_xlim(k.min(), k.max())
     ax[0].set_ylim(k.min(), k.max())
     ax[0].loglog()
@@ -61,14 +153,14 @@ def plot2dtransfer_3(fileroot, filename, savename):
     ax[0].set_title(filename)
 
     im1 = ax[1].pcolormesh(k, k, b2_beam)
-    im1.set_clim(0, cmax)
+    im1.set_clim(-cmax, cmax)
     ax[1].set_xlim(k.min(), k.max())
     ax[1].loglog()
     ax[1].set_xlabel('log(k_v) [log(h/Mpc)]')
     ax[1].set_title(filename + ' beam')
 
     im2 = ax[2].pcolormesh(k, k, b2_lose)
-    im2.set_clim(0, cmax)
+    im2.set_clim(-cmax, cmax)
     ax[2].set_xlim(k.min(), k.max())
     ax[2].loglog()
     ax[2].set_xlabel('log(k_v) [log(h/Mpc)]')
@@ -271,25 +363,52 @@ if __name__=='__main__':
     #savename = filename + '_transfer'
     #plot2dtransfer_3(fileroot, filename, savename)
 
-    fileroot = workroot + 'bias/'
-    filename = 'auto_1hr_ABCD_legendre_modes_0gwj_conv_10'
-    savename = filename + '_transfer'
-    plot2dtransfer_3(fileroot, filename, savename)
+    #fileroot = workroot + 'bias/'
+    #filename = 'auto_1hr_ABCD_legendre_modes_0gwj_conv_10'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
 
     fileroot = workroot + 'bias/'
-    filename = 'auto_1hr_ABCD_legendre_modes_0gwj_conv_20'
+    #filename = 'auto_1hr_IE_legendre_modes_0gwj_2conv_01sim_10'
+    #filename = 'cros_1hr_IE_legendre_modes_0gwj_2conv_01sim_10_subreal'
+    #filename = 'cros_1hr_IE_legendre_modes_0gwj_2conv_1sim_10_subreal'
+    #filename = 'cros_1hr_IE_legendre_modes_0gwj_2conv_10_subreal'
+    #filename = 'cros_1hr_IE_legendre_modes_0gwj_2conv_20_subreal'
+    filename = 'cros_1hr_IE_legendre_modes_0gwj_2conv_40_subreal'
+    #filename = 'auto_1hr_IE_legendre_modes_0gwj_2conv_10'
     savename = filename + '_transfer'
     plot2dtransfer_3(fileroot, filename, savename)
+    #savename = filename + '_sim'
+    #plot2dsim_2(fileroot, filename, savename)
 
-    fileroot = workroot + 'bias/'
-    filename = 'auto_1hr_ABCD_legendre_modes_0gwj_conv_25'
-    savename = filename + '_transfer'
-    plot2dtransfer_3(fileroot, filename, savename)
+    #fileroot = workroot + 'bias/'
+    #filename = 'cros_1hr_IE_legendre_modes_0gwj_2conv_10'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
+    #savename = filename + '_sim'
+    #plot2dsim_2(fileroot, filename, savename)
 
-    fileroot = workroot + 'bias/'
-    filename = 'auto_1hr_ABCD_legendre_modes_0gwj_25'
-    savename = filename + '_transfer'
-    plot2dtransfer_3(fileroot, filename, savename)
+    #fileroot = workroot + 'bias/'
+    #filename = 'auto_1hr_IE_legendre_modes_0gwj_conv_upper_20'
+    #savename = filename + '_transfer'
+    #plot2dsim_2(fileroot, filename, savename)
+    #plot2dtransfer_3(fileroot, filename, savename)
+
+    #fileroot = workroot + 'bias/'
+    #filename = 'auto_1hr_IE_legendre_modes_0gwj_c2onv_lower_20'
+    #savename = filename + '_transfer'
+    #plot2dsim_2(fileroot, filename, savename)
+    #plot2dtransfer_3(fileroot, filename, savename)
+
+    #fileroot = workroot + 'bias/'
+    #filename = 'auto_1hr_ABCD_legendre_modes_0gwj_conv_25'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
+
+    #fileroot = workroot + 'bias/'
+    #filename = 'auto_1hr_ABCD_legendre_modes_0gwj_25'
+    #savename = filename + '_transfer'
+    #plot2dtransfer_3(fileroot, filename, savename)
 
     #fileroot = workroot + 'bias/'
     #filename = 'auto_1hr_IE_legendre_modes_0gwj_conv_15'

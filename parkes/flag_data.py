@@ -40,7 +40,11 @@ class FlagData(base_single.BaseSingle) :
                    # (as a fraction) will be considered bad.
                    'badness_thres' : 0.1,
                    # How many times to hide around a bad time.
-                   'time_cut' : 40
+                   'time_cut' : 40,
+                   # Flag along time First
+                   'time_flag_first' : False,
+                   # Flag according to t_sys
+                   'tsys_thres' : []
                    }
     feedback_title = 'New flags each data Block: '
     
@@ -77,7 +81,9 @@ class FlagData(base_single.BaseSingle) :
         # Flag the data.
         apply_cuts(Data, sigma_thres=params['sigma_thres'], 
                     badness_thres=params['badness_thres'],
-                    time_cut=params['time_cut'])
+                    time_cut=params['time_cut'],
+                    time_flag_first=params['time_flag_first'], 
+                    tsys_thres=params['tsys_thres'])
         Data.add_history('Flagged Bad Data.', ('Sigma threshold: '
                     + str(self.params['sigma_thres']), 'Badness threshold: '
                     + str(self.params['badness_thres']), 'Time mask size: '
@@ -88,21 +94,27 @@ class FlagData(base_single.BaseSingle) :
         self.block_feedback = '%d (%f%%), ' % (new_flags, percent)
 
         # time tsys, make data in unit of Jy
+        print "Flag data shape: ", Data.data.shape
+        print "Flag finshed, subtracted mean, times Tsys"
+        print
         Data.data -= Data.data.mean(axis=0)
         Data.data *= Data.field['TSYS'][:,:,:,:,None]
         return Data
 
-def apply_cuts(Data, sigma_thres=6, badness_thres=0.1, time_cut=40):
+def apply_cuts(Data, sigma_thres=6, badness_thres=0.1, time_cut=40,
+               time_flag_first=False, tsys_thres=[]):
     '''Flags bad data from RFI and far outliers.
 
     See `flag_data()` for parameter explanations and more info.
     '''
-    badness = flag_data(Data, sigma_thres, badness_thres, time_cut)
+    badness = flag_data(Data, sigma_thres, badness_thres, 
+                        time_cut, time_flag_first, tsys_thres)
     # Can print or return badness here if you would like
     # to see if the Data had a problem in time or not.
     return
 
-def flag_data(Data, sigma_thres, badness_thres, time_cut):
+def flag_data(Data, sigma_thres, badness_thres, time_cut, 
+              time_flag_first, tsys_thres):
     '''Flag bad data from RFI and far outliers.
 
     Parameters
@@ -145,6 +157,11 @@ def flag_data(Data, sigma_thres, badness_thres, time_cut):
     '''
     # Flag data on a [deep]copy of Data. If too much destroyed,
     # check if localized in time. If that sucks too, then just hide freq.
+
+    if time_flag_first:
+        destroy_time_with_mean_arrays(Data, flag_size=4)
+    if len(tsys_thres)==2:
+        destroy_time_tsys(Data, tsys_thres)
 
     Data1 = copy.deepcopy(Data)
     itr = 0            # For recursion
@@ -201,6 +218,49 @@ def flag_data(Data, sigma_thres, badness_thres, time_cut):
     # Finally copy the mask to origional data block.
     Data.data.mask = mask
     return badness
+
+def destroy_time_tsys(Data, tsys_thres, flag_size=10):
+    '''Mask times with high T_sys (only for parkes).
+    
+    If there is a problem in time, the mean over all frequencies
+    will stand out greatly [>10 sigma has been seen]. Flag these bad
+    times and +- `flag_size` times around it. Will only be called if `Data`
+    has 'badness'.
+
+    Parameters
+    ----------
+    Data : DataBlock
+        Contains information in a usable format direct from GBT. Bad
+        times will be flagged in all polarizations and cal states.
+    tsys_thres: threshold value
+        Should given by a list [x_thres, y_thres]
+    time_cut : int
+        How many frequency bins (as an absolute number) to flag in time.
+    '''
+    # Loop over beams
+    for ii in range(Data.dims[1]):
+        # Get the Tsys 
+        x_tsys = Data.field['TSYS'][:, ii, 0, 0]
+        y_tsys = Data.field['TSYS'][:, ii, 1, 0]
+        # Get max accepted values.
+        xmax_accepted = tsys_thres[0]
+        ymax_accepted = tsys_thres[1]
+        # Get min accepted values.
+        xmin_accepted = tsys_thres[0] - 1.5
+        ymin_accepted = tsys_thres[1] - 1.5
+        # Find bad times.
+        bad_times = []
+        for time in range(0,len(x_tsys)):
+            if ((x_tsys[time] > xmax_accepted) or (y_tsys[time] > ymax_accepted) or
+                (x_tsys[time] < xmin_accepted) or (y_tsys[time] < ymin_accepted)):
+                bad_times.append(time)
+        # Mask bad times and those +- flag_size around.
+        for time in bad_times:
+            if time-flag_size < 0:
+                Data.data[0:(time+flag_size),ii,:,:,:].mask = True
+            else:
+                Data.data[(time-flag_size):(time+flag_size),ii,:,:,:].mask = True
+    return
 
 def destroy_with_variance(Data, sigma_thres=6, bad_freq_list=[]):
     '''Mask frequencies with high variance.
@@ -353,10 +413,13 @@ def destroy_time_with_mean_arrays(Data, flag_size=40):
         sig = sp.array([ma.std(a), ma.std(b)])
         # Get max accepted values.
         max_accepted = means + 3*sig
+        # Get min accepted values.
+        min_accepted = means - 3*sig
         # Find bad times.
         bad_times = []
         for time in range(0,len(a)):
-            if ((a[time] > max_accepted[0]) or (b[time] > max_accepted[1])):
+            if ((a[time] > max_accepted[0]) or (b[time] > max_accepted[1]) or
+                (a[time] < min_accepted[0]) or (b[time] < min_accepted[1])):
                 bad_times.append(time)
         # Mask bad times and those +- flag_size around.
         for time in bad_times:

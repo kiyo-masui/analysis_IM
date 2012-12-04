@@ -2,6 +2,8 @@
 import cPickle
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import ImageGrid
+from core import algebra
 
 
 class SVD(object):
@@ -13,13 +15,17 @@ class SVD(object):
                 self.open(path)
                 self.svdlist.append([self.svd_value, self.svd_lvect, self.svd_rvect])
             elif isinstance(path, list):
-                for onepath in path:
+                path = np.array(path)
+                self.biaslist = path[:,0]
+                self.lprelist = path[:,2]
+                for onepath in path[:,1]:
                     self.open(onepath)
                     self.svdlist.append(
                         [self.svd_value, self.svd_lvect, self.svd_rvect])
                     self.labellist.append(onepath.split('.')[0].split('/')[-1])
 
     def open(self, path):
+        self.path = path.replace(path.split('/')[-1], '')
         self.svdmodpkl = cPickle.load(open(path))
         self.svd_value = self.svdmodpkl[0]
         #print self.svd_value
@@ -37,16 +43,13 @@ class SVD(object):
         print corr_eigvector[:,0:3]
         print corr_eigvalue
 
-    def plotvalue(self, savename, mod_start=0, mod_stop=50, bias=0, 
-                  svd_start=0, svd_stop=-1, save=True, new=True, labelpre=''):
-        if new:
-            plt.figure(figsize=(7,7))
-        x = range(mod_start+bias, mod_stop+bias)
-        #x = range(self.svd_lvect.shape[1])
-        for (i, svd) in enumerate(self.svdlist[svd_start:svd_stop]):
-            print svd[0][mod_start:mod_stop]
-            plt.plot(x, svd[0][mod_start:mod_stop], '-', marker='.',
-                    label=labelpre + 'eigenvalue %s'%self.labellist[i+svd_start],)
+    def plotvalue(self, savename, mod_start=0, mod_stop=50):
+        plt.figure(figsize=(7,7))
+        for i in range(len(self.svdlist)):
+            bias = int(self.biaslist[i])
+            x = range( mod_start+bias, mod_stop+bias )
+            plt.plot(x, self.svdlist[i][0][mod_start:mod_stop], '-', marker='.',
+                    label=self.lprelist[i]+'eigenvalue %s'%self.labellist[i],)
         plt.semilogy()
         plt.ylim(ymax=80, ymin=1.e-6)
         plt.xlim(xmin=-2)
@@ -55,8 +58,7 @@ class SVD(object):
         #plt.legend(frameon=False, ncol=2)
         plt.legend(frameon=False)
 
-        if save:
-            plt.savefig('./png/'+savename+'_eigenvalue.png', format='png')
+        plt.savefig('./png/'+savename+'_eigenvalue.png', format='png')
 
     def plot_real(self, savename, mod_start=0, mod_stop=6):
         svd_lvect_real = self.svd_lvect.real
@@ -71,6 +73,92 @@ class SVD(object):
 
         self.plot(savename + '_imag', mod_start, mod_stop,
                   svd_lvect_imag, svd_rvect_imag)
+
+    def plot_svdmap(self, savename, mod_number, mod_space=5, right=False):
+        if mod_number <1:
+            print "Error: mod_number must >= 1"
+            exit()
+        mod_n = int((mod_number-1)%mod_space)
+        mod_f = int(mod_number-1-mod_n+mod_space)
+        mod_map = self.path
+        if right:
+            mod_map+= 'sec_%s_modes_clean_map_I_with_%s_%dmodes.npy'\
+                     %(self.tab_r, self.tab_l, mod_f)
+            mod = self.svd_rvect[mod_number-1]
+        else:
+            mod_map+= 'sec_%s_modes_clean_map_I_with_%s_%dmodes.npy'\
+                     %(self.tab_l, self.tab_r, mod_f)
+            mod = self.svd_lvect[mod_number-1]
+        print "Mode Amp from: [%s]" % mod_map
+        print 
+
+        mod_amp = algebra.make_vect(algebra.load(mod_map))
+        ra = mod_amp.get_axis('ra')
+        dec= mod_amp.get_axis('dec')
+        mod_amp = mod_amp[mod_n]
+
+        map = mod[:,None,None] * mod_amp[None,:,:]
+
+        map = np.ma.array(map)
+        map[map==0] = np.ma.masked
+        mod_amp = np.ma.array(mod_amp)
+        mod_amp[mod_amp==0] = np.ma.masked
+
+        halfindx = map.shape[0]//2
+        vmax = 0.0002
+        vmin = -0.0002
+
+        dra = ra[1]-ra[0]
+        ddec = dec[1]-dec[0]
+        ra = np.resize(ra-0.5*dra,  ra.shape[0]+1)
+        dec= np.resize(dec-0.5*ddec,dec.shape[0]+1)
+        ra[-1] = ra[-2]+dra
+        dec[-1]= dec[-2]+ddec
+        f = plt.figure(figsize=(15, 21))
+        ax = ImageGrid(f, 111,
+                       nrows_ncols = (3, 1),
+                       direction = "column",
+                       axes_pad = 0.4,
+                       add_all = True,
+                       label_mode = "L",
+                       share_all = True,
+                       cbar_location = "right",
+                       cbar_mode = "each",
+                       cbar_size = "5%",
+                       cbar_pad = 0.05,
+                       )
+        #im0 = ax[0].pcolormesh(ra, dec, np.ma.mean(map[:halfindx], 0))
+        im0 = ax[0].pcolormesh(ra, dec, np.ma.mean(map[:halfindx], 0).swapaxes(0,1))
+        im0.set_clim(vmin, vmax)
+        ax[0].set_xlim(ra.min(), ra.max())
+        ax[0].set_ylim(dec.min(), dec.max())
+        ax[0].set_xlabel('RA [deg]')
+        ax[0].set_ylabel('DEC[deg]')
+        ax[0].set_title('average over [0:%d]'%halfindx)
+        ax[0].cax.colorbar(im0)
+
+        im1 = ax[1].pcolormesh(ra, dec, np.ma.mean(map[halfindx:], 0).swapaxes(0,1))
+        im1.set_clim(vmin, vmax)
+        ax[1].set_xlim(ra.min(), ra.max())
+        ax[1].set_ylim(dec.min(), dec.max())
+        ax[1].set_xlabel('RA [deg]')
+        ax[1].set_ylabel('DEC[deg]')
+        ax[1].set_title('average over [%d:%d]'%(halfindx, map.shape[0]))
+        ax[1].cax.colorbar(im1)
+
+        im2 = ax[2].pcolormesh(ra, dec, mod_amp.swapaxes(0,1))
+        #im2.set_clim(vmin, vmax)
+        ax[2].set_xlim(ra.min(), ra.max())
+        ax[2].set_ylim(dec.min(), dec.max())
+        ax[2].set_xlabel('RA [deg]')
+        ax[2].set_ylabel('DEC[deg]')
+        ax[2].set_title('Amp of mode %d (start with 0)'%(mod_number-1))
+        ax[2].cax.colorbar(im2)
+
+        plt.tick_params(length=6, width=1.)
+        plt.tick_params(which='minor', length=3, width=1.)
+
+        plt.savefig('./png/'+savename+'_%dmodmap.png'%(mod_number), format='png')
 
     def plot(self, savename, mod_start=0, mod_stop=6,\
              svd_lvect_raw=None, svd_rvect_raw=None, combined=1):
@@ -139,254 +227,103 @@ class SVD(object):
 
 
 if __name__=="__main__":
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/IQU_legendre_modes_0gwj/IxI5svd/'
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/IQU_legendre_modes_0gwj/IQUmap_clean_themselves/'
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/IQU_legendre_modes_0gwj/IQUmap_complex_clean_themselves/'
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/IQU_legendre_modes_1gwj/IxI5svd/'
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/Parkes_sept12-14_west_legendre_modes_0gwj/mapmode_map/'
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/GBT_15hr_map_oldcal_legendre_modes_20gwj/mapmode_map/'
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/IQU_legendre_modes_0gwj_conv/IQUmap_clean_themselves/'
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/IQU_legendre_modes_0gwj/IxI5svd/'
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/IQUV_legendre_modes_0gwj/Emap_clean_themselves/'
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/15hr_RM_IQUV_extend_legendre_modes_0gwj/Emap_clean_themselves/'
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/15hr_RM_IQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/'
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_AQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/'
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_BQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/'
-    path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_CQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/'
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_DQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/'
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_IQU_legendre_modes_0gwj/IxI5svd/'
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_IQU_legendre_modes_0gwj_conv/IxI5svd/'
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_IQU_legendre_modes_0gwj/IQUmap_clean_themselves/'
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_IQU_legendre_modes_0gwj_conv/IQUmap_clean_themselves/'
 
-    svd = SVD()
+    #from mkpower import functions
 
-    #svdfile = 'SVD_pair_I_with_I.pkl'
-    #svd.open(path+svdfile)
-    #svd.plot(svdfile.split('.')[0], 0, 4)
+    #map = algebra.make_vect(algebra.load('/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_AQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/sec_A_cleaned_clean_map_I_with_B_20modes.npy'))
 
-    #svdfile = 'SVD_pair_I_with_Q.pkl'
-    #svd.open(path+svdfile)
-    #svd.plot(svdfile.split('.')[0], 0, 4)
+    #cutlist = [ 171, 175, 177, 179, 182, 183, 187, 189, 192, 193, 194, 195, 196, 197, 198, 201, 204, 208, 209, 212, 213, 218, 219, 229, 233, 237, 244, 254, 255]
+    #for i in range(len(cutlist)):
+    #    cutlist[i] -= 143
+    #print cutlist
 
-    #svdfile = 'SVD_pair_I_with_U.pkl'
-    #svd.open(path+svdfile)
-    #svd.plot(svdfile.split('.')[0], 0, 4)
+    #print map.shape
+    #print map.get_axis('freq')[0]
+    #print map.get_axis('freq')[-1]
+    ##map = functions.getmap_halfz(map, 'upper')
+    #map = functions.getmap_halfz(map, 'lower')
+    #print map.shape
+    #print map.get_axis('freq')[0]
+    #print map.get_axis('freq')[-1]
+    #exit()
 
 
-    #svdfile = 'SVD_pair_I_with_P.pkl'
-    #svd.open(path+svdfile)
-    #svd.plot_real(svdfile.split('.')[0], 0, 3)
-    #svd.plot_imag(svdfile.split('.')[0], 0, 3)
 
-    #svdfile = 'SVD_pair_I_with_I.pkl'
-    #svd.open(path+svdfile)
-    #svd.plot(svdfile.split('.')[0], 0, 4)
+    do_plot_svd = True
+    do_calc_eig = False
+    do_plot_val = False
+    do_plot_map = False
 
-    #svdfile = 'SVD_pair_A_with_B.pkl'
-    #corfile = 'foreground_corr_pair_A_with_B.pkl'
-    #svd.cal_eig(path+corfile)
-    #svd.open(path+svdfile)
-    #svd.plot(svdfile.split('.')[0], 0, 4)
-    #svd.plot(svdfile.split('.')[0], 4, 8)
+    fg_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
+    combined = 1
 
-    #svdfile = 'SVD_pair_E_with_E.pkl'
-    #svd.open(path+svdfile)
-    #svd.plot(svdfile.split('.')[0], 0, 4, combined=4)
-    #svd.plot(svdfile.split('.')[0], 4, 8)
-    #svd.plotvalue(svdfile.split('.')[0])
+    '''>>>  parameters for plot svd eigenvector  <<<'''
 
-    #svdfile = 'SVD_pair_I_with_E.pkl'
-    #svd.open(path+svdfile)
-    #svd.plot(svdfile.split('.')[0], 0, 4, combined=4)
-    #svd.plot(svdfile.split('.')[0], 4, 8, combined=4)
-    #svd.plot(svdfile.split('.')[0], 4, 8)
-    #svd.plotvalue(svdfile.split('.')[0])
-
-    #svdfile = 'SVD_pair_A_with_B.pkl'
-    #svd.open(path+svdfile)
-    #svd.plot(svdfile.split('.')[0], 0, 4, combined=4)
-    #svd.plot(svdfile.split('.')[0], 4, 8, combined=4)
-     
+    r'''I_AxI_{BCD}QUV'''
+    fg_file = '1hr_AQUV_extend_legendre_modes_0gwj_2conv/Emap_clean_themselves/'
+    svdfile = 'SVD_pair_A_with_B.pkl'
     #svdfile = 'SVD_pair_A_with_C.pkl'
-    #svd.open(path+svdfile)
-    #svd.plot(svdfile.split('.')[0], 0, 4, combined=4)
-    #svd.plot(svdfile.split('.')[0], 4, 8, combined=4)
-     
     #svdfile = 'SVD_pair_A_with_D.pkl'
-    #svd.open(path+svdfile)
-    #svd.plot(svdfile.split('.')[0], 0, 4, combined=4)
-    #svd.plot(svdfile.split('.')[0], 4, 8, combined=4)
+    combined= 4
 
+    r'''I_BxI_{ACD}QUV'''
+    #fg_file = '1hr_BQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/'
     #svdfile = 'SVD_pair_B_with_A.pkl'
-    #svd.open(path+svdfile)
-    #svd.plot(svdfile.split('.')[0], 0, 4, combined=4)
-    #svd.plot(svdfile.split('.')[0], 4, 8, combined=4)
-     
     #svdfile = 'SVD_pair_B_with_C.pkl'
-    #svd.open(path+svdfile)
-    #svd.plot(svdfile.split('.')[0], 0, 4, combined=4)
-    #svd.plot(svdfile.split('.')[0], 4, 8, combined=4)
-     
     #svdfile = 'SVD_pair_B_with_D.pkl'
-    #svd.open(path+svdfile)
-    #svd.plot(svdfile.split('.')[0], 0, 4, combined=4)
-    #svd.plot(svdfile.split('.')[0], 4, 8, combined=4)
+    #combined= 4
 
-    svdfile = 'SVD_pair_C_with_A.pkl'
-    svd.open(path+svdfile)
-    svd.plot(svdfile.split('.')[0], 0, 4, combined=4)
-    svd.plot(svdfile.split('.')[0], 4, 8, combined=4)
-    
-    svdfile = 'SVD_pair_C_with_B.pkl'
-    svd.open(path+svdfile)
-    svd.plot(svdfile.split('.')[0], 0, 4, combined=4)
-    svd.plot(svdfile.split('.')[0], 4, 8, combined=4)
-    
-    svdfile = 'SVD_pair_C_with_D.pkl'
-    svd.open(path+svdfile)
-    svd.plot(svdfile.split('.')[0], 0, 4, combined=4)
-    svd.plot(svdfile.split('.')[0], 4, 8, combined=4)
+    r'''I_CxI_{ABD}QUV'''
+    #fg_file = '1hr_CQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/'
+    #svdfile = 'SVD_pair_C_with_A.pkl'
+    #svdfile = 'SVD_pair_C_with_B.pkl'
+    #svdfile = 'SVD_pair_C_with_D.pkl'
+    #combined= 4
 
+    r'''I_DxI_{ABC}QUV'''
+    #fg_file = '1hr_DQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/'
     #svdfile = 'SVD_pair_D_with_A.pkl'
-    #svd.open(path+svdfile)
-    #svd.plot(svdfile.split('.')[0], 0, 4, combined=4)
-    #svd.plot(svdfile.split('.')[0], 4, 8, combined=4)
-     
     #svdfile = 'SVD_pair_D_with_B.pkl'
-    #svd.open(path+svdfile)
-    #svd.plot(svdfile.split('.')[0], 0, 4, combined=4)
-    #svd.plot(svdfile.split('.')[0], 4, 8, combined=4)
-     
     #svdfile = 'SVD_pair_D_with_C.pkl'
-    #svd.open(path+svdfile)
-    #svd.plot(svdfile.split('.')[0], 0, 4, combined=4)
-    #svd.plot(svdfile.split('.')[0], 4, 8, combined=4)
+    #combined= 4
 
-    #svdfile = 'SVD_pair_I_with_I.pkl'
-    #svd.open(path+svdfile)
-    #svd.plot(svdfile.split('.')[0], 0, 4, combined=1)
-    #svd.plot(svdfile.split('.')[0], 4, 8, combined=1)
-    #svd.plot(svdfile.split('.')[0], 4, 8)
-    #svd.plotvalue(svdfile.split('.')[0])
+    '''>>>  parameters for plot svd eigenvalue  <<<'''
+    #svd_list =[
+    #    [3, fg_root+'IQUmap_clean_themselves/SVD_pair_I_with_Q.pkl', ''],
+    #    [3, fg_root+'IQUmap_clean_themselves/SVD_pair_I_with_U.pkl', ''],
+    #    [3, fg_root+'IQUmap_complex_clean_themselves/SVD_pair_I_with_P.pkl', ''],
+    #    [0, fg_root+'IxI5svd/SVD_pair_I_with_I.pkl', ''],]
+    #svd_savename = 'SVD_pair_IQ_IU_complex_eigenvalue'
 
-    #svdfile = 'SVD_pair_I_with_U.pkl'
-    #svd.open(path+svdfile)
-    #svd.plot(svdfile.split('.')[0], 0, 4)
-    #svd.plot(svdfile.split('.')[0], 4, 8)
-    #svd.plotvalue(svdfile.split('.')[0])
+    svd_list = [
+        #[0, fg_root+'1hr_IQUV_extend_legendre_modes_0gwj_2conv/Emap_clean_themselves/SVD_pair_I_with_E.pkl', '1hr conv '],
+        [0, fg_root+'1hr_AQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '1hr conv '],
+        [0, fg_root+'1hr_AQUV_extend_legendre_modes_0gwj_2conv/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '1hr 2conv '],
+        [0, fg_root+'1hr_AQUV_extend_legendre_modes_0gwj_2conv/Emap_clean_themselves/SVD_pair_A_with_C.pkl', '1hr 2conv '],
+        [0, fg_root+'1hr_AQUV_extend_legendre_modes_0gwj_2conv/Emap_clean_themselves/SVD_pair_A_with_D.pkl', '1hr 2conv '],]
+    svd_savename = 'SVD_pair_1hr_AxIQUV_eigenvalue'
 
 
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/IQU_legendre_modes_0gwj/'
-    #svd = SVD([ path+'IQUmap_clean_themselves/SVD_pair_I_with_Q.pkl', 
-    #            path+'IQUmap_clean_themselves/SVD_pair_I_with_U.pkl',
-    #            path+'IQUmap_complex_clean_themselves/SVD_pair_I_with_P.pkl',
-    #            path+'IxI5svd/SVD_pair_I_with_I.pkl',])
-    #            #path+'IxI5svd_no_factorizable_noise/SVD_pair_I_with_I.pkl'])
-    #svd.plotvalue('SVD_pair_IQ_IU_complex_eigenvalue', bias=3, svd_stop=3, save=False)
-    #svd.plotvalue('SVD_pair_IQ_IU_complex_eigenvalue', svd_start=3, svd_stop=4, new=False)
+    if do_plot_svd:
+        path = fg_root + fg_file
+        svd = SVD()
+        svd.open(path+svdfile)
+        svd.plot(svdfile.split('.')[0], 0, 4, combined=combined)
+        svd.plot(svdfile.split('.')[0], 4, 8, combined=combined)
+    if do_calc_eig:
+        path = fg_root + fg_file
+        svd = SVD()
+        corfile = 'foreground_corr_pair_A_with_B.pkl'
+        svd.cal_eig(path+corfile)
+        svd.open(path+svdfile)
+        svd.plot(svdfile.split('.')[0], 0, 4, combined=combined)
+        svd.plot(svdfile.split('.')[0], 4, 8, combined=combined)
+    if do_plot_val:
+        svd = SVD(svd_list)
+        svd.plotvalue(svd_savename)
+    if do_plot_map:
+        path = fg_root + fg_file
+        svd = SVD()
+        svd.open(path+svdfile)
+        svd.plot_svdmap(svdfile.split('.')[0], 20)
 
-    #svd = SVD([path+'SVD_pair_I_with_I.pkl',])
-    #svd.plotvalue('parkes_SVD_pair_I_with_I', svd_stop=1)
-
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
-    #svd = SVD([ 
-    #    path+'IQUV_extend_legendre_modes_0gwj/Emap_clean_themselves/SVD_pair_I_with_E.pkl', 
-    #    path+'GBT_15hr_41-90_fdgp_RM_legendre_modes_0gwj/mapmode_map/SVD_pair_I_with_I.pkl',
-    #    path+'1hr_IQU_legendre_modes_0gwj/IxI5svd/SVD_pair_I_with_I.pkl',
-    #    path+'1hr_IQU_legendre_modes_0gwj/IQUmap_clean_themselves/SVD_pair_I_with_Q.pkl',
-    #    path+'1hr_IQU_legendre_modes_0gwj/IQUmap_clean_themselves/SVD_pair_I_with_U.pkl',
-    #            ])
-    #svd.plotvalue('SVD_pair_IE_extend_eigenvalue', svd_stop =3, save=False)
-    #svd.plotvalue('SVD_pair_IE_extend_eigenvalue', svd_start=3, svd_stop=5, bias=3, new=False)
-
-    #path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
-    #svd = SVD([ 
-    #    path+'1hr_IQU_legendre_modes_0gwj/IxI5svd/SVD_pair_I_with_I.pkl',
-    #    path+'1hr_IQU_legendre_modes_0gwj/IQUmap_clean_themselves/SVD_pair_I_with_Q.pkl',
-    #    path+'1hr_IQU_legendre_modes_0gwj/IQUmap_clean_themselves/SVD_pair_I_with_U.pkl',
-    #    path+'1hr_IQU_legendre_modes_0gwj_conv/IxI5svd/SVD_pair_I_with_I.pkl',
-    #    path+'1hr_IQU_legendre_modes_0gwj_conv/IQUmap_clean_themselves/SVD_pair_I_with_Q.pkl',
-    #    path+'1hr_IQU_legendre_modes_0gwj_conv/IQUmap_clean_themselves/SVD_pair_I_with_U.pkl',
-    #    path+'IQUV_extend_legendre_modes_0gwj/Emap_clean_themselves/SVD_pair_I_with_E.pkl',
-    #    path+'IQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_I_with_E.pkl',
-    #            ])
-    #svd.plotvalue('SVD_pair_1hr_II_IQ_IU_eigenvalue', svd_stop =1, save=False, labelpre='1hr ')
-    #svd.plotvalue('SVD_pair_Ihr_II_IQ_IU_eigenvalue', svd_start=1, svd_stop=3, bias=3, new=False, save=False, labelpre='1hr ')
-    #svd.plotvalue('SVD_pair_1hr_II_IQ_IU_eigenvalue', svd_start=3, svd_stop=4, new=False, save=False, labelpre='1hr conv ')
-    #svd.plotvalue('SVD_pair_1hr_II_IQ_IU_eigenvalue', svd_start=4, svd_stop=6, bias=3, new=False, save=False, labelpre='1hr conv ')
-    #svd.plotvalue('SVD_pair_15hr_IxIQUV_eigenvalue', svd_start=6, svd_stop=7,  new=False, save=False, labelpre='15hr ')
-    #svd.plotvalue('SVD_pair_15hr_IxIQUV_eigenvalue', svd_start=7, svd_stop=8,  new=False, labelpre='15hr conv ')
-
-    path = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
-    #svd = SVD([ 
-    #    path+'15hr_RM_IQUV_extend_legendre_modes_0gwj/Emap_clean_themselves/SVD_pair_I_with_E.pkl',
-    #    path+'15hr_RM_IQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_I_with_E.pkl',
-    #    path+'AQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_A_with_B.pkl',
-    #    path+'AQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_A_with_C.pkl',
-    #    path+'AQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_A_with_D.pkl',
-    #            ])
-    #svd.plotvalue('SVD_pair_15hr_IxIQUV_eigenvalue', svd_start=0, svd_stop=1,  save=False, labelpre='15hr ')
-    #svd.plotvalue('SVD_pair_15hr_AxIQUV_eigenvalue', svd_start=1, svd_stop=5,  new=False, labelpre='15hr conv ')
-
-    #svd = SVD([ 
-    #    path+'15hr_RM_IQUV_extend_legendre_modes_0gwj/Emap_clean_themselves/SVD_pair_I_with_E.pkl',
-    #    path+'15hr_RM_IQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_I_with_E.pkl',
-    #    path+'BQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_B_with_A.pkl',
-    #    path+'BQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_B_with_C.pkl',
-    #    path+'BQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_B_with_D.pkl',
-    #            ])
-    #svd.plotvalue('SVD_pair_15hr_IxIQUV_eigenvalue', svd_start=0, svd_stop=1,  save=False, labelpre='15hr ')
-    #svd.plotvalue('SVD_pair_15hr_BxIQUV_eigenvalue', svd_start=1, svd_stop=5,  new=False, labelpre='15hr conv ')
-
-    #svd = SVD([ 
-    #    path+'15hr_RM_IQUV_extend_legendre_modes_0gwj/Emap_clean_themselves/SVD_pair_I_with_E.pkl',
-    #    path+'15hr_RM_IQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_I_with_E.pkl',
-    #    path+'CQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_C_with_A.pkl',
-    #    path+'CQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_C_with_B.pkl',
-    #    path+'CQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_C_with_D.pkl',
-    #            ])
-    #svd.plotvalue('SVD_pair_15hr_IxIQUV_eigenvalue', svd_start=0, svd_stop=1,  save=False, labelpre='15hr ')
-    #svd.plotvalue('SVD_pair_15hr_CxIQUV_eigenvalue', svd_start=1, svd_stop=5,  new=False, labelpre='15hr conv ')
-
-    #svd = SVD([ 
-    #    path+'15hr_RM_IQUV_extend_legendre_modes_0gwj/Emap_clean_themselves/SVD_pair_I_with_E.pkl',
-    #    path+'15hr_RM_IQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_I_with_E.pkl',
-    #    path+'DQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_D_with_A.pkl',
-    #    path+'DQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_D_with_B.pkl',
-    #    path+'DQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_D_with_C.pkl',
-    #            ])
-    #svd.plotvalue('SVD_pair_15hr_IxIQUV_eigenvalue', svd_start=0, svd_stop=1,  save=False, labelpre='15hr ')
-    #svd.plotvalue('SVD_pair_15hr_DxIQUV_eigenvalue', svd_start=1, svd_stop=5,  new=False, labelpre='15hr conv ')
-
-    svd = SVD([ 
-        path+'1hr_IQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_I_with_E.pkl',
-        path+'1hr_AQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_A_with_B.pkl',
-        path+'1hr_AQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_A_with_C.pkl',
-        path+'1hr_AQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_A_with_D.pkl',
-                ])
-    svd.plotvalue('SVD_pair_1hr_AxIQUV_eigenvalue', svd_start=0, svd_stop=4, labelpre='1hr conv ')
-
-    svd = SVD([ 
-        path+'1hr_IQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_I_with_E.pkl',
-        path+'1hr_BQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_B_with_A.pkl',
-        path+'1hr_BQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_B_with_C.pkl',
-        path+'1hr_BQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_B_with_D.pkl',
-                ])
-    svd.plotvalue('SVD_pair_1hr_BxIQUV_eigenvalue', svd_start=0, svd_stop=4, labelpre='1hr conv ')
-
-    svd = SVD([ 
-        path+'1hr_IQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_I_with_E.pkl',
-        path+'1hr_CQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_C_with_A.pkl',
-        path+'1hr_CQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_C_with_B.pkl',
-        path+'1hr_CQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_C_with_D.pkl',
-                ])
-    svd.plotvalue('SVD_pair_1hr_CxIQUV_eigenvalue', svd_start=0, svd_stop=4, labelpre='1hr conv ')
-
-    svd = SVD([ 
-        path+'1hr_IQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_I_with_E.pkl',
-        path+'1hr_DQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_D_with_A.pkl',
-        path+'1hr_DQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_D_with_B.pkl',
-        path+'1hr_DQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_D_with_C.pkl',
-                ])
-    svd.plotvalue('SVD_pair_1hr_DxIQUV_eigenvalue', svd_start=0, svd_stop=4, labelpre='1hr conv ')

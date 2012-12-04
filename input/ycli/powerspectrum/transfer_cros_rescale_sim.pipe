@@ -23,6 +23,8 @@ map_ssm = os.getenv('MAP_SSM')
 map_cln = os.getenv('MAP_CLN')
 map_wgz = os.getenv('MAP_WGZ')
 
+map_multiplier = float(os.getenv('MAP_MULTIPLIER'))
+
 hour = int(os.getenv('HOUR'))
 mode = int(os.getenv('MODE'))
 
@@ -41,6 +43,12 @@ nmap_list = []
 nmap_root = []
 tabs_list = []
 
+imap_list_multiply = []
+imap_root_multiply = []
+nmap_list_multiply = []
+nmap_root_multiply = []
+tabs_list_multiply = []
+
 pkc_imap_list = []
 pkc_nmap_list = []
 
@@ -52,16 +60,17 @@ for i in range(sim_num):
     if os.path.exists(map_ssm):
         imaps_a = data_paths.get_mapdict(\
             #map_ssm + 'simmapmode_simmap_%03d/'%i)
-            map_ssm + 'simmapmode_simmap_beam_%03d/'%i)
+            #map_ssm + 'simmapmode_simmap_beam_%03d/'%i)
+            map_ssm + 'simmapmode_simmap_beam_%03d_subreal/'%i)
     else:
         imaps_a = datadb.fetch(map_ssm + '_combined', silent=True)
 
     if os.path.exists(map_cln):
-        output_root += 'bias/cros_%s_%d/'%(map_cln.split('/')[-2], mode)
+        output_root += 'bias/cros_%s_%d_subreal/'%(map_cln.split('/')[-2], mode)
         nmaps_a = data_paths.get_mapdict(map_cln + 'mapmode_map/')
     else:
         nmaps_a = datadb.fetch(map_cln + '_combined', silent=True)
-        output_root += 'bias/cros_%s_%d/'%(map_cln + '_combined', mode)
+        output_root += 'bias/cros_%s_%d_subreal/'%(map_cln + '_combined', mode)
     
     if os.path.exists(map_sim):
         imaps_b = data_paths.get_mapdict(map_sim, selection='delta')
@@ -81,14 +90,14 @@ for i in range(sim_num):
     tabs_list.append('1_%03d_'%i)
 
     mappath_b = imaps_b[1]['%d'%i]
-    imap_list.append(mappath_b.split('/')[-1])
-    imap_root.append(mappath_b.replace(mappath_b.split('/')[-1], ''))
+    imap_list_multiply.append(mappath_b.split('/')[-1])
+    imap_root_multiply.append(mappath_b.replace(mappath_b.split('/')[-1], ''))
 
     wetpath_b = nmaps_b
-    nmap_list.append(wetpath_b.split('/')[-1])
-    nmap_root.append(wetpath_b.replace(wetpath_b.split('/')[-1], ''))
+    nmap_list_multiply.append(wetpath_b.split('/')[-1])
+    nmap_root_multiply.append(wetpath_b.replace(wetpath_b.split('/')[-1], ''))
 
-    tabs_list.append('1_%03d_'%i)
+    tabs_list_multiply.append('1_%03d_'%i)
 
     print
     print mappath_a
@@ -142,6 +151,9 @@ print
 from mkpower import prepare
 pipe_modules.append(prepare.Prepare)
 
+from mkpower import prepare
+pipe_modules.append((prepare.Prepare, ('pre2_', 'pre_')))
+
 from mkpower import mkpower_combine
 pipe_modules.append(mkpower_combine.PowerSpectrumMaker)
 
@@ -168,6 +180,24 @@ pre_discrete = 2
 pre_boxunit = 2.
 pre_cutlist = cutlist
 pre_window = 'blackman'
+
+pre2_processes = 1 
+pre2_plot = False
+#pre2_plot = True
+pre2_output_root = output_root
+pre2_imap_root = imap_root_multiply
+pre2_nmap_root = nmap_root_multiply
+pre2_imap_list = imap_list_multiply
+pre2_nmap_list = nmap_list_multiply
+pre2_tabs_list = tabs_list_multiply
+
+pre2_boxshape = (512, 128, 64)
+pre2_discrete = 2
+pre2_boxunit = 2.
+pre2_cutlist = cutlist
+pre2_window = 'blackman'
+
+pre2_map_multiplier = map_multiplier
 
 """  Calculate the combined Pk  """
 #from mkpower import mkpower_combine
