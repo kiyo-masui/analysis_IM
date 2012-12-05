@@ -380,7 +380,14 @@ class WiggleZxGBT_modesim(object):
         caller_data = aggregate_outputs.AggregateOutputs(funcname)
 
         wigglez_sim_file = self.params['wigglez_sim_file']
-        sel_key = self.params['wigglez_sel_key']
+
+        if self.params['wigglez_sel_key']:
+            sel_key = self.params['wigglez_sel_key']
+            wigglez_selfile = self.datapath_db.fetch(sel_key)
+        else:
+            print "Warning: in WiggleZxGBT_modesim no selection function"
+            wigglez_selfile = False
+
         map_key = self.params['map_key']
         tack_on = self.params['tack_on']
 
@@ -395,8 +402,6 @@ class WiggleZxGBT_modesim(object):
             sim_noisekey = "%s:weight;%s" % (map_key, treatment)
             sim_noisefile = self.datapath_db.fetch(sim_noisekey,
                                                    tack_on=tack_on)
-
-            wigglez_selfile = self.datapath_db.fetch(sel_key)
 
             execute_key = "sim:%s" % treatment
 
@@ -454,19 +459,26 @@ class BatchSimCrosspower(object):
         funcname = "quadratic_products.pwrspec_combinations.pwrspec_caller"
         caller = aggregate_outputs.AggregateOutputs(funcname)
 
+        # TODO: simplify this
         dbkeydict = {}
         dbkeydict['noiseinv1_key'] = "%s:weight;0modes" % \
                                      self.params['map_key']
 
-        dbkeydict['noiseinv2_key'] = self.params['wigglez_sel_key']
         files = dp.convert_dbkeydict_to_filedict(dbkeydict,
                                                  datapath_db=self.datapath_db)
+
+        if self.params['wigglez_sel_key']:
+            sel_key = self.params['wigglez_sel_key']
+            wigglez_selfile = self.datapath_db.fetch(sel_key)
+        else:
+            print "Warning: in WiggleZxGBT_modesim no selection function"
+            wigglez_selfile = False
 
         execute_key = "sim:0modes"
         caller.execute(self.params['sim_file'],
                        self.params['wigglez_sim_file'],
                        files['noiseinv1_key'],
-                       files['noiseinv2_key'],
+                       wigglez_selfile,
                        self.params,
                        execute_key=execute_key)
 

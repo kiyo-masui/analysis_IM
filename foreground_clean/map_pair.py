@@ -26,7 +26,18 @@ class MapPair(object):
         if input_filenames:
             self.map1 = algebra.make_vect(algebra.load(map1))
             self.map2 = algebra.make_vect(algebra.load(map2))
-            self.noise_inv1 = algebra.make_vect(algebra.load(noise_inv1))
+            if noise_inv1:
+                self.noise_inv1 = algebra.make_vect(algebra.load(noise_inv1))
+            else:
+                print "WARNING: map1 has unity weight; no file given"
+                self.noise_inv1 = algebra.ones_like(self.map1)
+
+            if noise_inv2:
+                self.noise_inv2 = algebra.make_vect(algebra.load(noise_inv2))
+            else:
+                print "WARNING: map2 has unity weight; no file given"
+                self.noise_inv2 = algebra.ones_like(self.map2)
+
             self.noise_inv2 = algebra.make_vect(algebra.load(noise_inv2))
         else:
             self.map1 = map1

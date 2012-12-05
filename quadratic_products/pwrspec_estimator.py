@@ -347,12 +347,20 @@ def load_transferfunc(beamtransfer_file, modetransfer_file, treatment_list,
         print "Applying 2d transfer from " + beamtransfer_file
         beamtransfer_2d = h5py.File(beamtransfer_file, "r")
 
+    # make a list of treatments or cross-check if given one
+    if modetransfer_file is not None:
+        if treatment_list is None:
+            treatment_list = modetransfer_2d.keys()
+        else:
+            assert modetransfer_2d.keys() == treatment_list, \
+                    "mode transfer treatments do not match data"
+    else:
+        treatment_list = [beam_treatment]
+
     # given both
     if (beamtransfer_file is not None) and (modetransfer_file is not None):
         print "using the product of beam and mode transfer functions"
         transfer_dict = {}
-        assert modetransfer_2d.keys() == treatment_list, \
-                "mode transfer treatments do not match data"
 
         for treatment in modetransfer_2d:
             transfer_dict[treatment] = modetransfer_2d[treatment].value
@@ -363,8 +371,6 @@ def load_transferfunc(beamtransfer_file, modetransfer_file, treatment_list,
     if (beamtransfer_file is None) and (modetransfer_file is not None):
         print "using just the mode transfer function"
         transfer_dict = {}
-        assert modetransfer_2d.keys() == treatment_list, \
-                "mode transfer treatments do not match data"
 
         for treatment in modetransfer_2d:
             transfer_dict[treatment] = modetransfer_2d[treatment].value

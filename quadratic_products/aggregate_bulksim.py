@@ -61,6 +61,7 @@ class AggregateSummary(object):
         data_subtract = None
         if self.params['subtract_pwrspec'] is not None:
             print "agg WARNING: you are subtracting a power spectrum"
+            print "from file ", self.params['subtract_pwrspec']
             data_subtract = ps.PowerSpectrum(self.params['subtract_pwrspec'])
 
         sim_toread = ps.PowerSpectrum(filelist[0])
