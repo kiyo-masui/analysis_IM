@@ -38,7 +38,6 @@ class MapPair(object):
                 print "WARNING: map2 has unity weight; no file given"
                 self.noise_inv2 = algebra.ones_like(self.map2)
 
-            self.noise_inv2 = algebra.make_vect(algebra.load(noise_inv2))
         else:
             self.map1 = map1
             self.map2 = map2
