@@ -420,6 +420,8 @@ calculatetransfer_init = {
         "powerfile_out": "file",
         "transferfile": "file",
         "input_multiplier": 1.,
+        "regulate_transfer": True,
+        "square_transfer": False,
         "outplotdir": "dir",
     }
 calculatetransfer_prefix = 'atr_'
@@ -472,6 +474,14 @@ class CalculateTransfer(object):
             counts_prod = counts_2d_in * counts_2d_out
             transfer_2d = stats_2d_out / (stats_2d_in * self.multiplier)
             transfer_2d[counts_prod == 0] = 0.
+
+            if self.params["regulate_transfer"]:
+                transfer_2d[transfer_2d < 0.] = 0.
+                transfer_2d[transfer_2d > 1.] = 1.
+
+            if self.params["square_transfer"]:
+                transfer_2d *= transfer_2d
+
             transferfile[treatment] = transfer_2d
 
             transfer_2d_plot = copy.deepcopy(transfer_2d)

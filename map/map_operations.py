@@ -63,3 +63,4 @@ class SubtractMaps(object):
                 algebra.save(outfile, inmap - submap)
             else:
                 shutil.copy2(infile, outfile)
+                shutil.copy2(infile + ".meta", outfile + ".meta")
