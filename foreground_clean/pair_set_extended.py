@@ -35,6 +35,7 @@ params_init = {
                'tack_on_input': None,
                'tack_on_output': None,
                'convolve': True,
+               'conv_factor': 1.1,
                'weighted_SVD': False,
                'factorizable_noise': True,
                'sub_weighted_mean': True,
@@ -66,6 +67,7 @@ class PairSetExtended():
 
         self.freq_list = sp.array(self.params['freq_list'], dtype=int)
         self.tack_on_input = self.params['tack_on_input']
+        self.conv_factor = self.params['conv_factor']
         self.output_root = self.datapath_db.fetch(self.params['output_root'],
                                             tack_on=self.params['tack_on_output'])
 
@@ -171,7 +173,8 @@ class PairSetExtended():
 
             pair = map_pair.MapPair(map1 + sim, map2 + sim,
                                     noise_inv1, noise_inv2,
-                                    self.freq_list)
+                                    self.freq_list,
+                                    conv_factor=self.conv_factor)
 
             pair.set_names(pdict['tag1'], pdict['tag2'])
 
@@ -183,12 +186,14 @@ class PairSetExtended():
                 if par['subtract_inputmap_from_sim']:
                     pair_parallel_track = map_pair.MapPair(map1, map2,
                                                   noise_inv1, noise_inv2,
-                                                  self.freq_list)
+                                                  self.freq_list,
+                                                  conv_factor=self.conv_factor)
 
                 if par['subtract_sim_from_inputmap']:
                     pair_parallel_track = map_pair.MapPair(sim, sim,
                                                   noise_inv1, noise_inv2,
-                                                  self.freq_list)
+                                                  self.freq_list,
+                                                  conv_factor=self.conv_factor)
 
                 pair_parallel_track.set_names(pdict['tag1'], pdict['tag2'])
                 pair_parallel_track.params = self.params
@@ -226,7 +231,8 @@ class PairSetExtended():
 
             pair = map_pair.MapPair(map1, map2,
                                     noise_inv1, noise_inv2,
-                                    self.freq_list)
+                                    self.freq_list,
+                                    conv_factor=self.conv_factor)
 
             pair.set_names(pdict['tag1'], pdict['tag2'])
 

@@ -19,20 +19,24 @@ class MapPair(object):
     """
 
     def __init__(self, map1, map2, noise_inv1, noise_inv2, freq,
-                 input_filenames=False):
+                 input_filenames=False, conv_factor=1.1):
         r"""
         arguments: map1, map2, noise_inv1, noise_inv2, freq
+        conv_factor is the factor by which to multiply the largest beam
+        in the convolution to a common resolution
         """
         if input_filenames:
             self.map1 = algebra.make_vect(algebra.load(map1))
             self.map2 = algebra.make_vect(algebra.load(map2))
             if noise_inv1:
+                print "loading noise1 file: " + noise_inv1
                 self.noise_inv1 = algebra.make_vect(algebra.load(noise_inv1))
             else:
                 print "WARNING: map1 has unity weight; no file given"
                 self.noise_inv1 = algebra.ones_like(self.map1)
 
             if noise_inv2:
+                print "loading noise2 file: " + noise_inv2
                 self.noise_inv2 = algebra.make_vect(algebra.load(noise_inv2))
             else:
                 print "WARNING: map2 has unity weight; no file given"
@@ -45,6 +49,7 @@ class MapPair(object):
             self.noise_inv2 = noise_inv2
 
         self.freq = freq
+        self.conv_factor = conv_factor
 
         # maps in physical coordinates (derived)
         self.phys_map1 = None
@@ -166,7 +171,7 @@ class MapPair(object):
         Also convolves the noise, making sure to deweight pixels near the edge
         as well.  Converts noise to factorizable form by averaging.
         """
-        print "degrading the resolution to a common beam"
+        print "degrading the resolution to a common beam: ", self.conv_factor
         noise1 = self.noise_inv1
         noise2 = self.noise_inv2
 
@@ -177,7 +182,7 @@ class MapPair(object):
         freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
                              dtype=float)
         freq_data *= 1.0e6
-        beam_diff = sp.sqrt(max(1.1 * beam_data) ** 2 - (beam_data) ** 2)
+        beam_diff = sp.sqrt(max(self.conv_factor * beam_data) ** 2 - (beam_data) ** 2)
         common_resolution = beam.GaussianBeam(beam_diff, freq_data)
         # Convolve to a common resolution.
         self.map2 = common_resolution.apply(self.map2)
