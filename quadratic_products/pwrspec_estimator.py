@@ -355,7 +355,8 @@ def load_transferfunc(beamtransfer_file, modetransfer_file, treatment_list,
             assert modetransfer_2d.keys() == treatment_list, \
                     "mode transfer treatments do not match data"
     else:
-        treatment_list = [beam_treatment]
+        if treatment_list is None:
+            treatment_list = [beam_treatment]
 
     # given both
     if (beamtransfer_file is not None) and (modetransfer_file is not None):

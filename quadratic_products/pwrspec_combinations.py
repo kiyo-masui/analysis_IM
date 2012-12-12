@@ -460,12 +460,16 @@ class BatchSimCrosspower(object):
         caller = aggregate_outputs.AggregateOutputs(funcname)
 
         # TODO: simplify this
-        dbkeydict = {}
-        dbkeydict['noiseinv1_key'] = "%s:weight;0modes" % \
-                                     self.params['map_key']
+        try:
+            dbkeydict = {}
+            dbkeydict['noiseinv1_key'] = "%s:weight;0modes" % \
+                                         self.params['map_key']
 
-        files = dp.convert_dbkeydict_to_filedict(dbkeydict,
-                                                 datapath_db=self.datapath_db)
+            files = dp.convert_dbkeydict_to_filedict(dbkeydict,
+                                                     datapath_db=self.datapath_db)
+        except KeyError:
+            print "WARNING: NO 21cm weight in WiggleZxGBT_modesim"
+            files = {'noiseinv1_key': False}
 
         if self.params['wigglez_sel_key']:
             sel_key = self.params['wigglez_sel_key']

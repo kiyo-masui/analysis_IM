@@ -7,13 +7,14 @@ do
   stamp=`date +%s`
   #num=`ps aux | grep python | wc -l`
   echo $num
-  if [ "$num" -lt "6" ]; then
-    echo "< 6 running; spawning one more"
-	nohup python pipeline/manager.py input/ers/autopower/bulkerrors.ini >& bulkerror$stamp.log &
+  if [ "$num" -lt "4" ]; then
+    echo "< 4 running; spawning one more"
+    nohup python pipeline/manager.py input/ers/autopower/puresignal_sim.ini >& bulkpuresim$stamp.log &
+    #nohup python pipeline/manager.py input/ers/autopower/bulkerrors.ini >& bulkerror$stamp.log &
     #nohup python pipeline/manager.py input/ers/crosspower/GBT_15hr_v2_map_oldcal_cross_bulksim.ini >& bulksim$stamp.log &
     #nohup python pipeline/manager.py input/ers/crosspower/GBT_1hr_v2_map_oldcal_cross_bulksim.ini >& bulksim$stamp.log &
   else
-    echo ">= 6 running"
+    echo ">= 4 running"
   fi
-  sleep 2
+  sleep 60
 done
