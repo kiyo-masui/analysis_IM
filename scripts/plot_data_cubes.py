@@ -12,8 +12,8 @@ def unique_list(listin):
     return sorted(uniq)
 
 def plot_gbt_mapset(outputdir="/cita/d/www/home/eswitzer/movies/",
-                    make_map=False, make_dirty_map=False,
-                    make_noise_inv=False, make_noise_diag=True):
+                    make_map=True, make_dirty_map=False,
+                    make_noise_inv=True, make_noise_diag=True):
 
     pc.plot_gbt_maps('GBT_1hr_map_oldcalpolstack_V', outputdir=outputdir,
                      make_map=make_map, make_dirty_map=make_dirty_map,
@@ -315,7 +315,10 @@ if __name__ == "__main__":
     #plot_gbt_comb_modeset('GBT_15hr_map_oldcalpol_cleaned_combined', convolve=True,
     #                      outputdir="/mnt/raid-project/gmrt/eswitzer/GBT/movies/")
 
-    plot_gbt_comb_modeset('GBT_15hr_map_oldcalpolstack_cleaned_combined', convolve=True,
+    #plot_gbt_comb_modeset('GBT_15hr_map_oldcalpolstack_cleaned_combined', convolve=True,
+    #                       outputdir="/mnt/raid-project/gmrt/eswitzer/GBT/movies/")
+
+    plot_gbt_comb_modeset('GBT_1hr_map_oldcalpolstack_cleaned_combined', convolve=True,
                            outputdir="/mnt/raid-project/gmrt/eswitzer/GBT/movies/")
 
     #plot_mode_amplitudes('GBT_15hr_map_oldcal_cleaned')

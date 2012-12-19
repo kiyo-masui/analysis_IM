@@ -6,6 +6,7 @@ import copy
 import time
 import scipy as sp
 import numpy as np
+import numpy.ma as ma
 from utils import data_paths as dp
 from foreground_clean import find_modes
 from kiyopy import parse_ini
@@ -35,6 +36,7 @@ params_init = {
                'tack_on_input': None,
                'tack_on_output': None,
                'convolve': True,
+               'clip_weight_percent': None,
                'conv_factor': 1.1,
                'weighted_SVD': False,
                'factorizable_noise': True,
@@ -82,6 +84,9 @@ class PairSetExtended():
             print "WARNING: using %s to clean (intended?)" % self.svd_filename
         else:
             self.svd_filename = self.output_root + "/" + "SVD.hd5"
+
+        # save the signal and weight matrices
+        self.modeinput_filename = self.output_root + "/" + "mode_ingredients.hd5"
 
         # Write parameter file.
         parse_ini.write_params(self.params, self.output_root + 'params.ini',
@@ -256,10 +261,35 @@ class PairSetExtended():
             self.call_pairs("subtract_weighted_mean")
 
     @batch_handler.log_timing
+    def define_weightmask(self, input_weight, percentile=50.):
+        # flatten to Ra/Dec
+        weight_2d = np.mean(input_weight, axis=0)
+        print "define_weightmask: shape ", weight_2d.shape
+        w_at_percentile = np.percentile(weight_2d, percentile)
+
+        # return a boolean mask (here True = masked)
+        return (weight_2d <= w_at_percentile)
+
+    @batch_handler.log_timing
+    def saturate_weight(self, input_weight, weightmask):
+        r"""replace all weights above a given mask with the average in the
+        mask. Note that this clobbers the input array"""
+
+        for freq_index in range(input_weight.shape[0]):
+            mweight = np.ma.array(input_weight[freq_index, ...], mask=weightmask)
+            meanslice = mweight.mean()
+            print freq_index, meanslice
+            input_weight[freq_index, np.logical_not(weightmask)] = meanslice
+
+        return input_weight
+
+    @batch_handler.log_timing
     def calculate_correlation(self):
         r"""find the covariance in frequency space, take SVD"""
+        mode_inputdata_out = h5py.File(self.modeinput_filename, "w")
         svd_data_out = h5py.File(self.svd_filename, "w")
 
+        # define the subdirectories to hold the SVD outputs
         cov_out = svd_data_out.create_group("cov")
         counts_out = svd_data_out.create_group("cov_counts")
         svd_vals1_out = svd_data_out.create_group("svd_vals1")
@@ -268,6 +298,13 @@ class PairSetExtended():
         svd_modes2_out = svd_data_out.create_group("svd_modes2")
         svd_extmodes1_out = svd_data_out.create_group("svd_extmodes1")
         svd_extmodes2_out = svd_data_out.create_group("svd_extmodes2")
+
+        # define the subdirectories to hold the input map/weights
+        mode_inputdata_map1 = mode_inputdata_out.create_group("map1")
+        mode_inputdata_map2 = mode_inputdata_out.create_group("map2")
+        mode_inputdata_weight1 = mode_inputdata_out.create_group("weight1")
+        mode_inputdata_weight2 = mode_inputdata_out.create_group("weight2")
+
         nfreq = len(self.freq_list)
 
         for pairitem in self.pairlist:
@@ -279,6 +316,15 @@ class PairSetExtended():
             weight1 = copy.deepcopy(np.array(self.pairs[pairitem].noise_inv1))
             weight2 = copy.deepcopy(np.array(self.pairs[pairitem].noise_inv2))
             freqs = copy.deepcopy(self.pairs[pairitem].freq)
+
+            # TODO: does this need to be restricted to the freq_list?
+            if self.params['clip_weight_percent'] is not None:
+                print "WARNING: you are clipping the weight maps"
+                mask1 = self.define_weightmask(weight1,
+                                    percentile=self.params['clip_weight_percent'])
+
+                mask2 = self.define_weightmask(weight2,
+                                    percentile=self.params['clip_weight_percent'])
 
             # now append the extended datasets
             for index in self.indexlist_ext:
@@ -298,6 +344,15 @@ class PairSetExtended():
 
                 freq_arr = np.array(self.pairs_ext[index][pairitem].freq)
                 freqs = np.concatenate([freqs, freq_arr + nfreqind])
+
+            if self.params['clip_weight_percent'] is not None:
+                weight1 = self.saturate_weight(weight1, mask1)
+                weight2 = self.saturate_weight(weight2, mask2)
+
+            mode_inputdata_map1[pairitem] = map1
+            mode_inputdata_map2[pairitem] = map2
+            mode_inputdata_weight1[pairitem] = weight1
+            mode_inputdata_weight2[pairitem] = weight2
 
             # note that if weighted_SVD, these weights have been applied
             # earlier
@@ -324,6 +379,7 @@ class PairSetExtended():
             svd_extmodes2_out[pairitem] = svd_info[1]
             svd_modes2_out[pairitem] = svd_info[2]
 
+        mode_inputdata_out.close()
         svd_data_out.close()
 
     @batch_handler.log_timing

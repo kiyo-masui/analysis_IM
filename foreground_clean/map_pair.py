@@ -165,11 +165,13 @@ class MapPair(object):
 
         return
 
-    def degrade_resolution(self):
+    def degrade_resolution(self, mode="constant"):
         r"""Convolves the maps down to the lowest resolution.
 
         Also convolves the noise, making sure to deweight pixels near the edge
         as well.  Converts noise to factorizable form by averaging.
+
+        mode is the ndimage.convolve flag for behavior at the edge
         """
         print "degrading the resolution to a common beam: ", self.conv_factor
         noise1 = self.noise_inv1
@@ -192,15 +194,15 @@ class MapPair(object):
         # twice (so we are sure to do the same thing to each).
         noise1[noise1 < 1.e-30] = 1.e-30
         noise1 = 1. / noise1
-        noise1 = common_resolution.apply(noise1, cval=1.e30)
-        noise1 = common_resolution.apply(noise1, cval=1.e30)
+        noise1 = common_resolution.apply(noise1, mode=mode, cval=1.e30)
+        noise1 = common_resolution.apply(noise1, mode=mode, cval=1.e30)
         noise1 = 1. / noise1
         noise1[noise1 < 1.e-20] = 0.
 
         noise2[noise2 < 1.e-30] = 1.e-30
         noise2 = 1 / noise2
-        noise2 = common_resolution.apply(noise2, cval=1.e30)
-        noise2 = common_resolution.apply(noise2, cval=1.e30)
+        noise2 = common_resolution.apply(noise2, mode=mode, cval=1.e30)
+        noise2 = common_resolution.apply(noise2, mode=mode, cval=1.e30)
         noise2 = 1. / noise2
         noise2[noise2 < 1.e-20] = 0.
 
