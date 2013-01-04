@@ -278,7 +278,6 @@ class PairSetExtended():
         for freq_index in range(input_weight.shape[0]):
             mweight = np.ma.array(input_weight[freq_index, ...], mask=weightmask)
             meanslice = mweight.mean()
-            print freq_index, meanslice
             input_weight[freq_index, np.logical_not(weightmask)] = meanslice
 
         return input_weight

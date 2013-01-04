@@ -191,6 +191,9 @@ def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
     else:
         weights_2d_flat = counts_2d_flat.astype(float)
 
+    print weights_2d_flat.shape, pwr_2d_flat.shape
+
+    old_settings = np.seterr(invalid="ignore")
     weight_pwr_prod = weights_2d_flat * pwr_2d_flat
     weight_pwr_prod[np.isnan(weight_pwr_prod)] = 0.
     weight_pwr_prod[np.isinf(weight_pwr_prod)] = 0.
@@ -215,7 +218,7 @@ def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
     #binavg[weights_histo > 0.] = binsum_histo[weights_histo > 0.] / \
     #                             weights_histo[weights_histo > 0.]
     #binavg[weights_histo <= 0.] = nullval
-    old_settings = np.seterr(invalid="ignore")
+    #old_settings = np.seterr(invalid="ignore")
     binavg = binsum_histo / weights_histo
     binavg[np.isnan(binavg)] = nullval
     # note that if the weights are 1/sigma^2, then the variance of the weighted

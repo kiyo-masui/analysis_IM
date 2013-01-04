@@ -60,6 +60,8 @@ autopowerparams_init = {
         "apply_2d_beamtransfer": None,
         "apply_2d_modetransfer": None,
         "summaryfile": "./autopower.hd5",
+        "kpar_range": None,
+        "kperp_range": None,
         "outdir": "./"
                }
 autopowerprefix = 'autopower_'
@@ -86,11 +88,29 @@ class CompileAutopower(object):
         # also combine the AxB, etc. into a signal piece that is subtracted
         signal2d_agg = pwr_map.agg_stat_2d_pwrspec()
 
+        kx = pwr_map.kx_2d["center"]
+        ky = pwr_map.ky_2d["center"]
+        logkx = np.log10(kx)
+        logky = np.log10(ky)
+
+        if self.params["kpar_range"] is not None:
+            print "restricting k_par to ", self.params["kpar_range"]
+            restrict_par = np.where(np.logical_or(
+                               ky < self.params["kpar_range"][0],
+                               ky > self.params["kpar_range"][1]))
+        else:
+            restrict_par = None
+
+        if self.params["kperp_range"] is not None:
+            print "restricting k_perp to ", self.params["kperp_range"]
+            restrict_perp = np.where(np.logical_or(
+                               kx < self.params["kperp_range"][0],
+                               kx > self.params["kperp_range"][1]))
+        else:
+            restrict_perp = None
+
         for treatment in pwr_map.treatment_cases:
             # comb is used for autopower AxB etc.; here just use a placeholder
-            logkx = np.log10(pwr_map.kx_2d['center'])
-            logky = np.log10(pwr_map.ky_2d['center'])
-
             comb = pwr_map.comb_cases[0]
             pwrcase = "%s:%s" % (comb, treatment)
 
@@ -137,6 +157,11 @@ class CompileAutopower(object):
             weights_2d = {}
             for treatment in pwr_map.treatment_cases:
                 weights_2d[treatment] = weightfile[treatment].value
+                if restrict_perp is not None:
+                    weights_2d[treatment][restrict_perp, :] = 0.
+
+                if restrict_par is not None:
+                    weights_2d[treatment][:, restrict_par] = 0.
 
                 outplot_weight_file = "%s/noiseweight_2d_%s.png" % \
                                       (self.params['outdir'], treatment)

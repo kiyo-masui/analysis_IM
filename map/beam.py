@@ -386,4 +386,4 @@ class GaussianBeam(Beam):
             The width of the required box at each frequency.  In degrees if
             `width` was given in degrees on initialization of this class.
         """
-        return taper * self._sigma(frequency)
+        return 2. * taper * self._sigma(frequency)

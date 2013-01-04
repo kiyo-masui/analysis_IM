@@ -27,12 +27,15 @@ params_init = {
                'outfile_physical': None,
                'outfile_raw': None,
                'outfile_delta': None,
+               'outfile_optsim': None,
                'outfile_beam': None,
                'outfile_meansub': None,
                'outfile_degrade': None,
                'scenario': 'str',
                'seed': -1,
                'refinement': 2,
+               'selection_file': None,
+               'optcatalog_file': None,
                'weightfile': None
                }
 prefix = 'sg_'
@@ -87,6 +90,7 @@ class SimulateGbtSignal(object):
         self.sim_map_phys = None
         self.sim_map = None
         self.sim_map_delta = None
+        self.sim_map_optsim = None
         self.sim_map_withbeam = None
         self.sim_map_meansub = None
         self.sim_map_degrade = None
@@ -112,6 +116,13 @@ class SimulateGbtSignal(object):
             filename = self.output_root + self.params['outfile_delta']
             print "saving overdensity sim to ", filename
             algebra.save(filename, self.sim_map_delta)
+
+        if self.params['outfile_optsim']:
+            self.make_opt_sim()
+
+            filename = self.output_root + self.params['outfile_optsim']
+            print "saving optical galaxy sim to ", filename
+            algebra.save(filename, self.sim_map_optsim)
 
         if self.params['outfile_beam']:
             self.convolve_by_beam()
@@ -203,6 +214,38 @@ class SimulateGbtSignal(object):
 
         self.sim_map_delta = copy.deepcopy(self.sim_map)
         self.sim_map_delta /= T_b[:, np.newaxis, np.newaxis]
+
+    @batch_handler.log_timing
+    def make_opt_sim(self):
+        r"""this produces self.sim_map_optsim"""
+
+        print "making sim of optically-selected galaxies"
+        selection_function = \
+                self.datapath_db.fetch_multi(self.params['selection_file'])
+
+        poisson_vect = np.vectorize(np.random.poisson)
+
+        print self.sim_map_delta
+
+        mean_num_gal = (self.sim_map_delta + 1.) * selection_function
+        print mean_num_gal
+
+        self.sim_map_optsim = poisson_vect(mean_num_gal)
+        self.sim_map_optsim = \
+            algebra.make_vect(self.sim_map_optsim.astype(float), axis_names=('freq', 'ra', 'dec'))
+
+        if self.params['optcatalog_file']:
+            optical_catalog = \
+                self.datapath_db.fetch_multi(self.params['optcatalog_file'])
+
+            # convert from delta to N
+            optical_catalog = (optical_catalog + 1.) * selection_function
+
+            print np.sum(optical_catalog), np.sum(self.sim_map_optsim)
+
+        self.sim_map_optsim = self.sim_map_optsim / selection_function - 1.
+
+        self.sim_map_optsim.copy_axis_info(self.sim_map_delta)
 
     @batch_handler.log_timing
     def convolve_by_beam(self):

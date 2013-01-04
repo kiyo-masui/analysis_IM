@@ -23,6 +23,8 @@ aggregatesummary_init = {
         "apply_2d_beamtransfer": None,
         "apply_2d_modetransfer": None,
         "subtract_pwrspec": None,
+        "kpar_range": None,
+        "kperp_range": None,
         "outfile": "file"
     }
 
@@ -81,6 +83,23 @@ class AggregateSummary(object):
 
         print "AggregateSummary: treatment cases: ", sim_toread.treatment_cases
 
+        # mask any parts of k space (useful for making signal simulations)
+        if self.params["kpar_range"] is not None:
+            print "restricting k_par to ", self.params["kpar_range"]
+            restrict_par = np.where(np.logical_or(
+                               ky_2d < self.params["kpar_range"][0],
+                               ky_2d > self.params["kpar_range"][1]))
+        else:
+            restrict_par = None
+
+        if self.params["kperp_range"] is not None:
+            print "restricting k_perp to ", self.params["kperp_range"]
+            restrict_perp = np.where(np.logical_or(
+                               kx_2d < self.params["kperp_range"][0],
+                               kx_2d > self.params["kperp_range"][1]))
+        else:
+            restrict_perp = None
+
         # load the transfer functions and 2d->1d noise weights
         transfer_dict = pe.load_transferfunc(
                             self.params["apply_2d_beamtransfer"],
@@ -102,6 +121,13 @@ class AggregateSummary(object):
                     weights_2d[treatment] = weightfile[fixed_treatment].value
                 else:
                     weights_2d[treatment] = weightfile[treatment].value
+
+                if restrict_perp is not None:
+                    weights_2d[treatment][restrict_perp, :] = 0.
+
+                if restrict_par is not None:
+                    weights_2d[treatment][:, restrict_par] = 0.
+
 
             weightfile.close()
 
