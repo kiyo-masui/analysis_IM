@@ -58,8 +58,8 @@ def UT2ephem_date(UT):
     UT_reformated = time.strftime("%Y/%m/%d %H:%M:%S", time_obj)
     return UT_reformated + "." + partial_sec
 
-def elaz2radecGBT(el, az, UT) :
-    """Calculates the Ra and Dec from the elevation, azimuth and UT for an
+def azel2radecGBT(az, el, UT):
+    """Calculates the Ra and Dec from the azimuth, elavation and UT for an
     observer at GBT.
 
     All input should be formated to correspond to the data in a GBT fits file.
@@ -75,6 +75,9 @@ def elaz2radecGBT(el, az, UT) :
     ra, dec = GBT.radec_of(az_r,el_r)
 
     return ra*180.0/sp.pi, dec*180.0/sp.pi
+
+def elaz2radecGBT(el, az, UT):
+    return azel2radecGBT(az, el, UT)
 
 def radec2azelGBT(ra, dec, UT):
     """Calculates the Ra and Dec from the elevation, azimuth and UT for an
@@ -96,7 +99,6 @@ def radec2azelGBT(ra, dec, UT):
     source.compute(GBT)
     return source.az * 180 / sp.pi, source.alt * 180 / sp.pi
 
-
 def LSTatGBT(UT) :
     """Calculates the LST from the UT of an observer at GBT.
 
@@ -106,10 +108,29 @@ def LSTatGBT(UT) :
     Largely copied from Kevin's code.
     """
 
-    GBT = gbt_ephem_GBT(UT)
+    GBT = get_ephem_GBT(UT)
     LST = GBT.sidereal_time() #IN format xx:xx:xx.xx ?
     return LST*180.0/sp.pi
 
+def azel2pGBT(az, el, UT):
+    """Converts the azimuth and elevation to a parallactic angle for GBT.
+    
+    This function is includes precession, but probably isn't
+    accurate to the nutation level.
+    """
+    
+    # Step size for finite difference, degrees.
+    delta = 0.1
+    # Get ra and dec at the centre, right and left of the point.
+    ra_c, dec_c = azel2radecGBT(az, el, UT)
+    ra_r, dec_r = azel2radecGBT(az - delta, el, UT)
+    ra_l, dec_l = azel2radecGBT(az + delta, el, UT)
+    # Get the deltas for the 2 coordinates, in real degrees on sky.
+    delta_ra = (ra_l - ra_r) * np.cos(dec_c * np.pi / 180)
+    delta_dec = dec_l - dec_r
+    # Calculate the Paralactic angle.
+    p_rad = np.arctan2(delta_dec, -delta_ra)
+    return p_rad * 180 / np.pi
 
 def radec_to_sexagesimal(ra, dec):
     """
@@ -136,7 +157,6 @@ def radec_to_sexagesimal(ra, dec):
     dec_min = int(minsec)
     dec_sec = np.mod(minsec, 1.) * 60
     return (ra_hr, ra_min, ra_sec), (dec_deg, dec_min, dec_sec), sign
-
 
 def sexagesimal_to_radec(ra, dec):
     """
@@ -168,7 +188,6 @@ def sexagesimal_to_radec(ra, dec):
                        float(dec_sec)/3600.)
 
     return ra, dec
-
 
 def time2float(UT) :
     """Calculates float seconds from a time string.

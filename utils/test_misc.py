@@ -57,6 +57,39 @@ class TestElAz2RaDec(unittest.TestCase) :
         self.assertAlmostEqual(c_az, az, 1)
         self.assertAlmostEqual(c_el, el, 1)
 
+class TestAzEl2P_GBT(unittest.TestCase):
+
+    def nieve_conversion(self, az, el):
+        """Basic conversion. Ignores precesions and only works for 
+        -90 < p < 90."""
+        
+        az_r = az * np.pi / 180
+        el_r = el * np.pi / 180
+        lat_r = (38. + 25./60 + 59.23/360) * np.pi / 180
+
+        sin_dec = np.sin(lat_r) * np.sin(el_r)
+        sin_dec += np.cos(lat_r) * np.cos(el_r) * np.cos(az_r)
+        dec_r = np.arcsin(sin_dec)
+
+        sin_p = -np.sin(az_r) * np.cos(lat_r) / np.cos(dec_r)
+        return np.arcsin(sin_p) * 180. / np.pi
+
+    def test_known_cases(self):
+        UT = '2000-01-01T12:00:00.00'
+        self.assertAlmostEqual(utils.azel2pGBT(0, 60, UT) % 360, 180, 1)
+        self.assertAlmostEqual(utils.azel2pGBT(90, 89.99, UT) % 360, 270, 1)
+        self.assertAlmostEqual(utils.azel2pGBT(270, 89.99, UT) % 360, 90, 1)
+
+    def test_simple_conversion(self):
+        UT = '2000-01-01T12:00:00.00'
+        self.assertAlmostEqual(utils.azel2pGBT(120, 88, UT) % 360, 
+                               self.nieve_conversion(120, 88) % 360, 0)
+        self.assertAlmostEqual(utils.azel2pGBT(15, 5, UT) % 360, 
+                               self.nieve_conversion(15, 5) % 360, 0)
+        self.assertAlmostEqual(utils.azel2pGBT(210, 30, UT) % 360, 
+                               self.nieve_conversion(210, 30) % 360, 0)
+
+
 class TestMakeMapGrid(unittest.TestCase) :
     
     def test_basic(self) :

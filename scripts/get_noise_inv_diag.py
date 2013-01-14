@@ -22,6 +22,7 @@ def extract(in_dir, out_dir) :
         if 'noise_inv_diag' in file_path:
             continue
         file_name = file_path[len(in_dir):]
+        print file_name
         parts = file_name.split('noise_inv')
         if len(parts) != 2:
             raise RuntimeError("'noise_inv' appears in file name more than"
