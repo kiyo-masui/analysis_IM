@@ -60,7 +60,7 @@ base_dir_main = os.getenv('GBT_OUT')
 #base_dir = "/mnt/raid-project/gmrt/tcv/gbt_out_new/"
 spare_dir = os.getenv('GBT_SPARE')
 data_dir = os.getenv('GBT_DATA')
-base_dir = spare_dir + 'gbt_out_new/'
+base_dir = base_dir_main + 'gbt_out_new/'
 #base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
 #map_base = base_dir + 'maps/'
@@ -111,23 +111,23 @@ pipe_modules = []
 #from map import dirty_map
 #pipe_modules.append(dirty_map.DirtyMapMaker)
 
-from map import clean_map
-pipe_modules.append(clean_map.CleanMapMaker)
+#from map import clean_map
+#pipe_modules.append(clean_map.CleanMapMaker)
 
 
 #### Second Map making iteration ####
 
-from cal import correlate_map
-pipe_modules.append((correlate_map.Measure, ('mc2_', 'mc_')))
+#from cal import correlate_map
+#pipe_modules.append((correlate_map.Measure, ('mc2_', 'mc_')))
 
-from time_stream import subtract_map_data
-pipe_modules.append((subtract_map_data.Subtract, ('sm2_', 'sm_')))
+#from time_stream import subtract_map_data
+#pipe_modules.append((subtract_map_data.Subtract, ('sm2_', 'sm_')))
 
-from time_stream import reflag
-pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
+#from time_stream import reflag
+#pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
 
-from noise import measure_noise
-pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
+#from noise import measure_noise
+#pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
 #from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
@@ -135,11 +135,11 @@ pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
-#from map import clean_map
+from map import clean_map
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
 
 
 #### Parameters for the various modules. ####
@@ -223,7 +223,7 @@ sb_offset = 68
 
 # calibrate
 # Using older calibration.  These parameters not used.
-#fgc_input_root = sb_output_root
+##fgc_input_root = sb_output_root
 #fgc_file_middles = file_middles
 #fgc_input_end = '.fits'
 #fgc_output_root = base_dir + 'flux_dg_cal/'
@@ -290,8 +290,8 @@ dm_output_root = map_base + 'fir_' + map_prefix
 dm_scans = ()
 dm_IFs = ()
 
-#dm_polarizations = ('I','Q','U','V')
-dm_polarizations = ('V',)
+dm_polarizations = ('I','Q','U','V')
+#dm_polarizations = ('V',)
 dm_field_centre = map_centre
 dm_pixel_spacing = map0_spacing
 dm_map_shape = map0_shape
@@ -401,6 +401,7 @@ dmA_scans = ()
 dmA_IFs = ()
 
 dmA_polarizations = ('I','Q','U','V')
+#dmA_polarizations = ('V',)
 dmA_field_centre = map_centre
 dmA_pixel_spacing = map_spacing
 dmA_map_shape = map_shape
@@ -434,6 +435,7 @@ dmD_output_root = map_base + 'secD_' + map_prefix
 cmA_input_root = dmA_output_root
 cmA_output_root = cmA_input_root
 
+#cmA_polarizations = ('V',)
 cmA_polarizations = ('I','Q','U','V')
 cmA_bands = (800,)
 cmA_save_noise_diag = True
