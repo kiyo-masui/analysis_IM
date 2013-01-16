@@ -65,19 +65,19 @@ class MuellerGen(object) :
         theta = self.theta
 #        print theta
         RM = self.RM
-        wavelength = 300.0/freq_val[f]
-        Phi = RM*wavelength*wavelength
+	wavelength = 300.0/freq_val[f]
+	Phi = RM*wavelength*wavelength
 #        print Phi
 #        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*2 
 #        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*(2.28315426-0.000484307905*freq_val[f]) # Added linear fit for Jansky to Kelvin conversion.
-        Isrc = 19.74748409*pow((750.0/freq_val[f]),0.49899785)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C286
-#        Isrc = 25.15445092*pow((750.0/freq_val[f]),0.75578842)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for  3C48
+#        Isrc = 19.74748409*pow((750.0/freq_val[f]),0.49899785)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C286
+        Isrc = 25.15445092*pow((750.0/freq_val[f]),0.75578842)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for  3C48
 #        Isrc = 4.56303633*pow((750.0/freq_val[f]),0.59237327)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C67
 #        Isrc = 31.32846821*pow((750.0/freq_val[f]),0.52113534)*(2.28315426-0.000484307905*freq_val[f]) #My fit solution for 3C147
-#        Isrc = 34.11187767*pow((750.0/freq_val[f]),0.62009421)*(2.28315426-0.000484307905*freq_val[f]) #My fit solution for 3C295
+# 	Isrc = 34.11187767*pow((750.0/freq_val[f]),0.62009421)*(2.28315426-0.000484307905*freq_val[f]) #My fit solution for 3C295
         PAsrc = 33.0*sp.pi/180.0 # for 3C286, doesn't matter for unpolarized. 
-        Psrc = 0.07 #for 3C286 
-#        Psrc = 0 #for #3C48,3C67, 3C147, 3C295
+#        Psrc = 0.07 #for 3C286 
+        Psrc = 0 #for #3C48,3C67, 3C147, 3C295
         Qsrc = Isrc*Psrc*sp.cos(2*PAsrc) 
         Usrc = Isrc*Psrc*sp.sin(2*PAsrc) 
         Vsrc = 0
@@ -103,7 +103,7 @@ class MuellerGen(object) :
         guppi_result = params['Guppi_test']
         output_root = params['output_root']
         output_end = params['output_end']
-        RM_dir = params['RM_dir']
+#        RM_dir = params['RM_dir']
         file_name = params['file_middles'][0].split('/')[1]
 #        print file_name
         sess = file_name.split('_')[0]
@@ -184,72 +184,78 @@ class MuellerGen(object) :
                 freq_val = freq_val/1000000       
                 Data.calc_PA()
                 PA[m] = ma.mean(Data.PA)  
+		print PA[m]
 #Include RM stuff in the code:
                 Full_date = Data.field['DATE-OBS'][Data.dims[0]/2]
                 print Full_date
-                Date = Full_date.split('T')[0]
-                Year = Date.split('-')[0]
-                Month = Date.split('-')[1]
-                Day = Date.split('-')[2]
-                Full_time = Full_date.split('T')[1]
-                Hour = Full_time.split(':')[0]
+		AZ_mean = Data.field['CRVAL2'][Data.dims[0]/2]
+		EL_mean = Data.field['CRVAL3'][Data.dims[0]/2]
+		PA[m] = utils.azel2pGBT(AZ_mean,EL_mean,Full_date)
+		PA[m] = PA[m]*sp.pi/180.0
+		print PA[m]
+#                Date = Full_date.split('T')[0]
+#                Year = Date.split('-')[0]
+#                Month = Date.split('-')[1]
+#                Day = Date.split('-')[2]
+#                Full_time = Full_date.split('T')[1]
+#                Hour = Full_time.split(':')[0]
 #                print Hour
-                Min = Full_time.split(':')[1]
-                Sec = Full_time.split(':')[2]
-                if int(Min)<=15:
-                    Comp_Time = float(Hour) +0.0
-                elif int(Min)<=45:
-                    Comp_Time = float(Hour) + 0.5
-                else :
-                    Comp_Time = float(Hour) + 1
+#                Min = Full_time.split(':')[1]
+#                Sec = Full_time.split(':')[2]
+#                if int(Min)<=15:
+#                    Comp_Time = float(Hour) +0.0
+#                elif int(Min)<=45:
+#                    Comp_Time = float(Hour) + 0.5
+#                else :
+#                    Comp_Time = float(Hour) + 1
 #                print str(Comp_Time)
 #                print '---'
-                RM_file_name = RM_dir + Year+Month+Day+'_RM.txt'
-                RM_data = np.loadtxt(RM_file_name)     
-                RA_RM = sp.zeros(len(RM_data[:,0]))
-                DEC_RM = sp.zeros(len(RM_data[:,0]))
-                for i in range(0, len(RM_data[:,0])):
-                    RM_Hr = int(RM_data[i,0])
+#                RM_file_name = RM_dir + Year+Month+Day+'_RM.txt'
+#                RM_data = np.loadtxt(RM_file_name)     
+#                RA_RM = sp.zeros(len(RM_data[:,0]))
+#                DEC_RM = sp.zeros(len(RM_data[:,0]))
+#                for i in range(0, len(RM_data[:,0])):
+#                    RM_Hr = int(RM_data[i,0])
 #                    print RM_Hr
-                    if RM_data[i,0]%1 == 0 :
-                        RM_Min = '00'
-                        minutes = 0.0
-                    else:
-                        RM_MIN = '30'
-                        minutes = 0.5
-                    Test = float(RM_Hr) + minutes
+#                    if RM_data[i,0]%1 == 0 :
+#                        RM_Min = '00'
+#                        minutes = 0.0
+#                    else:
+#                        RM_MIN = '30'
+#                        minutes = 0.5
+#                    Test = float(RM_Hr) + minutes
 #                    print Test
-                    if str(Comp_Time) == str(Test): 
-                        UT_RM = Date+'T'+str(RM_Hr)+':'+RM_Min+':00.00'
-                        EL_RM = RM_data[i,2]
-                        AZ_RM = RM_data[i,1]
+#                    if str(Comp_Time) == str(Test): 
+#                        UT_RM = Date+'T'+str(RM_Hr)+':'+RM_Min+':00.00'
+#                        EL_RM = RM_data[i,2]
+#                        AZ_RM = RM_data[i,1]
 #                        print EL_RM, AZ_RM
-                        RA_RM[i], DEC_RM[i] = utils.elaz2radecGBT(EL_RM,AZ_RM,UT_RM)               
+#                        RA_RM[i], DEC_RM[i] = utils.elaz2radecGBT(EL_RM,AZ_RM,UT_RM)               
 #                        print RA_RM[i], DEC_RM[i]
-                RA = ma.mean(Data.field['CRVAL2'])
+#                RA = ma.mean(Data.field['CRVAL2'])
 #                print RA
 #                print ma.mean(RA)
-                DEC = ma.mean(Data.field['CRVAL3'])
+#                DEC = ma.mean(Data.field['CRVAL3'])
 #                print RA, DEC
 #                print ma.mean(DEC)
                 print '_____________'
 #                print RA_RM, DEC_RM
-                valid = []
-                for i in range(0,len(RA_RM)):
-                    if RA_RM[i] != 0:
-                        if abs(RA-RA_RM[i])<=10.0 :
+#                valid = []
+#                for i in range(0,len(RA_RM)):
+#                    if RA_RM[i] != 0:
+#                        if abs(RA-RA_RM[i])<=10.0 :
 #                            print RA_RM[i], DEC_RM[i]
-                            if abs(DEC-DEC_RM[i])<10.0:
+#                            if abs(DEC-DEC_RM[i])<10.0:
 #                                print RA_RM[i], DEC_RM[i]
 #                                RM[m]=RM_data[i,3]
-                                valid.append(i)
-                print valid
-                RA_M=10.0
-                DEC_M=10.0
-                for j in range(0,len(valid)):
-                    if abs(RA-RA_RM[valid[j]])<RA_M:
-                        if abs(DEC-DEC_RM[valid[j]])<DEC_M:
-                            RM[m] = RM_data[valid[j],3]
+#                                valid.append(i)
+#                print valid
+#                RA_M=10.0
+#                DEC_M=10.0
+#                for j in range(0,len(valid)):
+#                    if abs(RA-RA_RM[valid[j]])<RA_M:
+#                        if abs(DEC-DEC_RM[valid[j]])<DEC_M:
+#                            RM[m] = RM_data[valid[j],3]
                 m+=1 
 # Now have a table of RMs for each scan. 
                 
@@ -257,7 +263,7 @@ class MuellerGen(object) :
 #            print time_len
 #            print freq_len
 #            print m
-            print RM
+#            print RM
 #Building the measured data into arrays (guppi version)         
             if guppi_result == True : 
                 if n_scans == 2 : 
@@ -278,14 +284,15 @@ class MuellerGen(object) :
                     S_med_caloff = sp.zeros((freq_len,4))
 
 #arrays built without taking median
-                    for Data in OnBlocks: 
-                        S_src = Data.data
+#                    for Data in OnBlocks: 
+#                        S_src = Data.data
 #                    print len(S_src)
 
-                    for Data in OffBlocks:
-                        S_offsrc = Data.data
+#                    for Data in OffBlocks:
+#                        S_offsrc = Data.data
 #                    print len(S_offsrc)
  
+
 #arrays built taking median
                     for Data in OnBlocks:
                         S_med_caloff_src[:,0] = ma.median(Data.data[:,XX_ind,off_ind,:],axis=0)
@@ -348,7 +355,7 @@ class MuellerGen(object) :
 #        sess_num = int(session_nums[0])
 #        print sess_num
 #        np.savetxt(output_root+str(sess_num)+'_flux_mueller_matrix_calc'+output_end, p_val_out, delimiter = ' ')
-        out_path = output_root+sess+'_diff_gain_calc_RM'+output_end
+        out_path = output_root+sess+'_diff_gain_calc_new'+output_end
         np.savetxt(out_path,p_val_out,delimiter = ' ')
 #        np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')
 

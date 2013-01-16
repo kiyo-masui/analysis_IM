@@ -8,12 +8,14 @@ import scipy as sp
 
 # Here you choose which files to process.
 #field = '1hr'
-field = '15hr'
+field = '11hr'
+#field = '15hr'
 #dm_field_centre = (218.25, 2.0) 
 #Here I'm grabbing the guppi data
 #file_middles = ('GBT12A_418/02_wigglez11hr_centre_ralongmap_101',)
 #file_middles = tuple(dir_data.get_data_files(range(01,03), field='11hr', project='GBT12A_418', type = 'ralongmap'))
-file_middles = tuple(dir_data.get_data_files(range(41,57), field='15hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(58,90), field='15hr', project='GBT10B_036', type='ralongmap')) # some kind of corruption in session 57. - overall uncertainty 52-58 
+file_middles = tuple(dir_data.get_data_files(range(01,23),field='11hr',project='GBT12A_418',type='ralongmap')
+#file_middles = tuple(dir_data.get_data_files(range(41,57), field='15hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(58,90), field='15hr', project='GBT10B_036', type='ralongmap')) # some kind of corruption in session 57. - overall uncertainty 52-58 
 #file_middles = tuple(dir_data.get_data_files(range(41,90), field='22hr', project='GBT10B_036', type='ralongmap')) 
 #file_middles = tuple(dir_data.get_data_files(range(15,17), field='1hr', project='GBT11B_055', type='ralongmap'))
 #file_middles = tuple(dir_data.get_data_files(range(41,90), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(0,14), field='1hr', project='GBT11B_055',type='ralongmap')+dir_data.get_data_files(range(15,17), field='1hr', project='GBT11B_055', type='ralongmap'))
@@ -38,7 +40,7 @@ data_dir = os.getenv('GBT_DATA')
 #raw_data_dir = os.getenv('GBT10B_DATA')
 kiyo_dir = os.getenv('GBT10B_KM')
 prefix = ''
-map_prefix = '' + field +'_41-90_fdgp_RM_'
+map_prefix = '' + field +'_01-22_'
 IFs = ()
 
 
