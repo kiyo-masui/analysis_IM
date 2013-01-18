@@ -72,7 +72,7 @@ class Calibrate(base_single.BaseSingle) :
         project = file_middle.split('/')[0]
 #        print sess_num
 
-        fg_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_diff_gain_calc.txt'
+        fg_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_diff_gain_calc_new.txt'
         if self.params['RM_correct']==True:
             fg_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_diff_gain_calc_RM.txt'
 
