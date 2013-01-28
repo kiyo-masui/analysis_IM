@@ -51,7 +51,14 @@ def cross_power_est(arr1, arr2, weight1, weight2,
         #print k_name, n_axis, delta_axis
 
     if window:
-        window_function = fftutil.window_nd(arr1.shape, name=window)
+        # along all axes
+        #window_function = fftutil.window_nd(arr1.shape, name=window)
+
+        # apodize along frequency only
+        window_func = getattr(np, window)
+        window_function = window_func(arr1.shape[0])
+        window_function = window_function[:, None, None]
+
         weight1 *= window_function
         weight2 *= window_function
         del window_function
