@@ -143,18 +143,21 @@ class SourceAbsorb(object):
         
 #        print freq_val[min],freq_val[max]
         pylab.scatter(freq_val[max:min],On_med[max:min],c='b',edgecolor='b',s=3,label='On Src')
+        pylab.vlines(839.4,0.,80.,color='r')
+#        pylab.ylim(26,32)
         pylab.ylim(50,60)
-        pylab.ylabel('Temperature (K)')
+#        pylab.ylabel('Temperature (K)')
         pylab.xlabel('Frequency (MHz)')
-        pylab.savefig('absorb_stack_3C286')
+        pylab.savefig('absorb_stack_3C286_avgcal')
         pylab.clf()
 
         pylab.scatter(freq_val[max:min],Off_med_lrg[max:min],c='g',edgecolor='g',s=3,label='Off Above')
         pylab.scatter(freq_val[max:min],Off_med_sml[max:min],c='r',edgecolor='r',s=3,label='Off Below')
+#        pylab.ylim(8,12)
         pylab.ylim(15,25)
-        pylab.ylabel('Temperature (K)')
+#        pylab.ylabel('Temperature (K)')
         pylab.xlabel('Frequency (MHz)')
-        pylab.savefig('absorb_stack_off_src')
+        pylab.savefig('absorb_stack_off_src_avgcal')
         pylab.clf()
 
        

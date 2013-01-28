@@ -8,13 +8,13 @@ import scipy as sp
 
 prefix = ''
 filedir = sys.argv[1]
-suffix = '_diff_gain_calc.txt'
+suffix = '_diff_gain_calc_new.txt'
 directory = 'GBT10B_036'
 directory2 = 'GBT11B_055'
-min_sess = 86
+min_sess = 41
 min_sess2 = 01
-max_sess = 90
-max_sess2 = 19
+max_sess = 79
+max_sess2 = 01
 len = max_sess-min_sess
 len2 = max_sess2-min_sess2
 sessions = []
@@ -65,7 +65,7 @@ pylab.xlim(freqs[-1],freqs[0])
 pylab.xlabel('frequency (MHz)')
 pylab.ylabel('Correction Factor')
 pylab.legend()
-pylab.savefig('1hr_avg_fdg_correction.png')
+pylab.savefig('15hr_avg_fdg_correction.png')
 pylab.clf()
 
 output = sp.zeros((scale[0],3))
@@ -74,4 +74,4 @@ for f in range(0,scale[0]):
     output[f,1] = XG_avg[f]
     output[f,2] = YG_avg[f]
 
-savetxt('1hr_fdg_calc_avg.txt',output,delimiter=' ')
+savetxt('15hr_fdg_calc_avg_new.txt',output,delimiter=' ')
