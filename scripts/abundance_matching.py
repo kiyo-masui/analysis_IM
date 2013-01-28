@@ -1,53 +1,74 @@
 from scipy.integrate import quad
 from scipy.optimize import brentq
-from scipy.interpolate import interpld
-from math import exp
+from scipy.interpolate import interp1d
+import math
+import pylab as pl
+import numpy as np
+
 
 # differential distribution for the hydrogen
-# approximating it by the Schechter function
+# we approximate it by the Schechter function
 def schechter_function(observable,normalization,alpha,observable_star):
-    return normalization*(observable/observable_star)**(alpha)*
-           exp(-observable/observable_star)*(1/observable_star)
+    ratio = (10.**observable)/observable_star
+    return (normalization/observable_star)*math.log(10)*(10.**observable)*(ratio)**(alpha)*math.exp(-ratio)
 
 # differential distribution for the halos
-# work required: determine which function which we use
-def halos_function():
-    return
+# we used Tinker halo mass function(halo_mf) for this part
+directory = "/cita/h/home-2/mufma/code/Tinker/test.dndM"
+file = open(directory,"r")
+halo_mf_data = np.genfromtxt(file)
 
 # cumulative mass function for the neutral hydrogen
-def cumulative_1(mass,differential_distribution,schechter_par1,
+def cumul_HI_mf(differential_distribution,mass,schechter_par1,
                  schechter_par2,schechter_par3):
-    return quad(differential_distribution,mass,Inf,
+    return quad(differential_distribution,mass,16.,
                 args=(schechter_par1,schechter_par2,schechter_par3))[0]
 
 # cumulative mass function for the halos
-def cumulative_2(mass,differential_distribution):
-    return quad(differential_distribution,mass,Inf)[0]
+# we do interpolation of Tinker mass function and then integrate it.
+def cumul_halo_mf(halo_array,mass):
+    x = np.zeros(len(halo_array))
+    y = np.zeros(len(halo_array))
+    for i in range(len(halo_array)):
+        x[i] = halo_array[i][0]
+        y[i] = halo_array[i][1]
+    f = interp1d(x,y)
+    def g(x):
+        return f(10**x)*math.log(10)*(10**x)
+    return quad(g,mass,(16.))[0]
 
-# auxillary part to utilize the brentq
-def equality(variable_mass,mass_1,param_1,param_2,param_3):
-    return cumulative_1(mass_1,schechter_function,param_1,param_2,param_3) -
-cumulative_2(variable_mass,halos_function)
+# debugging part
+# integration methods dont reach the convergence
+print cumul_HI_mf(schechter_function,8.,0.006,-1.37,10**9.8)
+print cumul_halo_mf(halo_mf_data,(10.8))
+print cumul_halo_mf(halo_mf_data,(10.9))
+
+# auxillary part for root finding
+# we will look for such x that equality(x)=0
+def equality(variable_mass_halo,mass_HI,param_1,param_2,param_3):
+    return cumul_HI_mf(schechter_function,mass_HI,param_1,param_2,param_3) - cumul_halo_mf(halo_mf_data,variable_mass_halo)
+
 
 # these part equate cumulative mass funcitons
-# required work: determine what to put instead of 1000 for a good working of
-# brentq
+# required work: how to find root of the equation equality(x)=0
+# newton method is failing to converge after 50 iterations
 def abundance_match(axis_1,schechter_param1,schechter_param2,
                     schechter_param3):
     axis_2 = np.zeros_like(axis_1)
     i = 0
     for mass_1 in axis_1:
-        axis_2[i] = brentq(equality,0,1000,args=(mass_1,schechter_param1,schechter_param2,schechter_param3))
+        axis_2[i] = brentq(equality,10.,16.,args=(mass_1,0.006,-1.37,10**9.8),xtol=10**(-4))
         i = i + 1
     return axis_2
         # find mass_2 such that cumulative_2(mass_2) = cumulative_1(mass_1)
 # these part to determine the dependency of hydrogen mass on halos mass
-def interpolation(array1,array2):
-    function = interpld(array1,array2)
+#def interpolation(array1,array2):
+#    function = interp1d(array1,array2)
     #return interpolated function
 
-# Prototype:
-# Mass_1_array = [1,2,3,4,5,6,7,8,9,10]
-# print abundance_match(Mass_1_array,param1,param2,param3)   -  it returns a
-# new array with matched masses for the hydrogen
-# then we can interpolate these two arrays to some function
+z = np.zeros(50)
+for i in range(len(z)):
+    z[i] = 7. + i*0.06
+x = abundance_match(z,0.006,-1.37,10**9.8)
+pl.plot(x,z)
+pl.show()
