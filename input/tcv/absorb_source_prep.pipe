@@ -258,7 +258,7 @@ fgc_scans = ()
 fgc_IFs = ()
 
 fgc_mueler_file = base_dir + 'diff_gain_params/15hr_fdg_calc_avg_new.txt'
-#fgc_mueller_file = base_dir_main + 'diff_gain_params/15hr_fdg_calc_avg/'
+#fgc_mueler_file = base_dir_main + 'diff_gain_params/15hr_fdg_calc_avg/'
 #fgc_mueler_file = ''
 fgc_RM_file = base_dir +'RM_tables/'
 fgc_R_to_sky = True

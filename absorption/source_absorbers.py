@@ -148,7 +148,7 @@ class SourceAbsorb(object):
         pylab.ylim(50,60)
 #        pylab.ylabel('Temperature (K)')
         pylab.xlabel('Frequency (MHz)')
-        pylab.savefig('absorb_stack_3C286_avgcal')
+        pylab.savefig('absorb_stack_3C286_avgcal_new')
         pylab.clf()
 
         pylab.scatter(freq_val[max:min],Off_med_lrg[max:min],c='g',edgecolor='g',s=3,label='Off Above')
@@ -157,7 +157,7 @@ class SourceAbsorb(object):
         pylab.ylim(15,25)
 #        pylab.ylabel('Temperature (K)')
         pylab.xlabel('Frequency (MHz)')
-        pylab.savefig('absorb_stack_off_src_avgcal')
+        pylab.savefig('absorb_stack_off_src_avgcal_new')
         pylab.clf()
 
        
