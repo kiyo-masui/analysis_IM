@@ -4,7 +4,7 @@ import numpy as np
 from core import algebra
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
-from mkpower import functions
+#from mkpower import functions
 import math
 
 # my first map
@@ -95,7 +95,7 @@ import math
 #mapidex = 150
 
 #maproot = "/mnt/data-pen3/ycli/map_result/maps/parkes_12-13-14/"
-maproot = "/mnt/raid-project/gmrt/ycli/map_result/maps/parkes/"
+#maproot = "/mnt/raid-project/gmrt/ycli/map_result/maps/parkes/"
 #maproot = "/mnt/data-pen3/ycli/map_result/maps/parkes_linear_highres_combine/"
 #mapname = "fir_parkes_2008_09_12-13_west_dirty_map_I_1315"
 #mapname = "fir_parkes_2008_09_12-13_west_clean_map_I_1315"
@@ -128,7 +128,7 @@ maproot = "/mnt/raid-project/gmrt/ycli/map_result/maps/parkes/"
 #mapname = "fir_RA+10_parkes_2008_09_12w_13_14_beam_1_clean_map_I_1315"
 #mapname = "fir_RA+10_parkes_2008_09_12w_13_14_beam_2_clean_map_I_1315"
 
-mapname = "fir_RA+05_parkes_2008_09_12w_13_14_clean_map_I_1315"
+#mapname = "fir_RA+05_parkes_2008_09_12w_13_14_clean_map_I_1315"
 
 #maproot = "/mnt/data-pen3/tcv/oldmaps/1hr_41-16_fdg/"
 #mapname = "secA_1hr_41-18_clean_map_I_800"
@@ -156,6 +156,25 @@ mapname = "fir_RA+05_parkes_2008_09_12w_13_14_clean_map_I_1315"
 #mapname = "sec_A_cleaned_clean_map_I_with_B_20modes"
 #maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/AQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/"
 #mapname = "sec_A_cleaned_clean_map_I_with_B_20modes"
+#maproot = "/mnt/scratch-3week/ycli/1hr_AQUV_extend_legendre_modes_0gwj_2conv_1sim/"
+#mapname = "secA_1hr_41-18_noise_weight_I_800"
+
+#maproot = "/scratch/ycli/map_result/maps/parkes/"
+maproot = "/mnt/scratch-gl/ycli/map_result/maps/parkes/"
+#mapname = "fir_RA+10_parkes_2010_10_25dirty_map_I_1316" 
+#mapname = "fir_RA+10_parkes_2010_10_26dirty_map_I_1316" 
+#mapname = "fir_RA+10_parkes_2010_10_25clean_map_I_1316" 
+mapname = "fir_RA+10_parkes_2010_10_27clean_map_I_1316" 
+#mapname = "fir_RA+10_parkes_2010_10_27dirty_map_I_1316" 
+#mapname = "fir_RA+10_parkes_2010_10_27beam_0_dirty_map_I_1316" 
+#mapname = "fir_RA+10_parkes_2010_10_27beam_1_dirty_map_I_1316" 
+#mapname = "fir_RA+10_parkes_2010_10_27beam_3_dirty_map_I_1316" 
+#mapname = "fir_RA+10_parkes_2010_10_27beam_4_dirty_map_I_1316" 
+#mapname = "fir_RA+10_parkes_2010_10_27beam_5_dirty_map_I_1316" 
+#mapname = "fir_RA+10_parkes_2010_10_27beam_6_dirty_map_I_1316" 
+
+#maproot = "/mnt/scratch-3week/ycli/1hr_AQU_extend_legendre_modes_0gwj_2conv/"
+#mapname = "secA_1hr_41-18_noise_weight_I_800" 
 
 mapidex = 32
 
@@ -238,10 +257,9 @@ if len(sys.argv) == 1:
     ra[-1] = ra[-2] + map.info['ra_delta']
     dec[-1] = dec[-2] + map.info['dec_delta']
 
-
-
     badfreq = []
-    badfreq = [0, 9, 10, 15, 16, 17, 18, 19, 20, 21, 22, 23,]
+    #badfreq = [0, 9, 10, 15, 16, 17, 18, 19, 20, 21, 22, 23,]
+    badfreq = range(10)
     if len(badfreq) != 0:
         mask = np.zeros(map.shape)
         mask[badfreq,:,:] = 1.
@@ -257,21 +275,25 @@ if len(sys.argv) == 1:
     vmax = 0.04
     vmin = -0.04
 
-    #vmax = 10
-    #vmin = -10
+    #vmax = 50
+    #vmin = -50
+
     #if vmax<np.fabs(vmin):
     #    vmax = np.fabs(vmin)
     #else:
     #    vmin = -np.fabs(vmax)
 
-    map = np.ma.masked_equal(map, 0)
+    #map = np.ma.masked_equal(map, 0)
+    map = np.ma.array(map)
+    map[map==0] = np.ma.masked
     #vmax = 1.
     #vmin = -1.
 
     #plt.figure(figsize=(34, 8))
     #plt.figure(figsize=(9,8))
     #f = plt.figure(figsize=(16,9))
-    f = plt.figure(figsize=(10,16))
+    #f = plt.figure(figsize=(10,16))
+    f = plt.figure(figsize=(16,10))
     ax = ImageGrid(f, 111,
                    nrows_ncols = (1, 1),
                    direction = "row",
@@ -317,7 +339,8 @@ elif len(sys.argv) == 2 and sys.argv[1]=='freq':
     dec[-1] = dec[-2] + map.info['dec_delta']
 
     badfreq = []
-    badfreq = [0, 9, 10, 15, 16, 17, 18, 19, 20, 21, 22, 23,]
+    #badfreq = [0, 9, 10, 15, 16, 17, 18, 19, 20, 21, 22, 23,]
+    badfreq = range(10)
     if len(badfreq) != 0:
         mask = np.zeros(map.shape)
         mask[badfreq,:,:] = 1.

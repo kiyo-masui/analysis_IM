@@ -108,8 +108,23 @@ if __name__=='__main__':
     #maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/IQU_legendre_modes_0gwj/IQUmap_clean_themselves/"
     #maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/IQU_legendre_modes_0gwj/IQUmap_clean_withIxIsvd/"
     #maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/IQU_legendre_modes_1gwj/IQUmap_clean_withIxIsvd/"
-    maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_IQU_legendre_modes_0gwj/IQUmap_clean_withIxIsvd/"
+    #maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_IQU_legendre_modes_0gwj/IQUmap_clean_withIxIsvd/"
+    maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_AQU_extend_legendre_modes_0gwj_14conv/Emap_clean_themselves/"
     mapdict = {}
+
+    mapdict['imap'] = maproot + "sec_A_cleaned_clean_map_I_with_B_0modes.npy"
+    mapdict['qmap'] = maproot + "sec_B_Q_cleaned_clean_map_I_with_A_0modes.npy"
+    mapdict['umap'] = maproot + "sec_B_U_cleaned_clean_map_I_with_A_0modes.npy"
+    mapdict['name'] = '1hr_noise_iqu_cleaned_clean_0'
+    a = plotIQU(mapdict)
+    a.plotiqu(150)
+
+    mapdict['imap'] = maproot + "sec_A_cleaned_clean_map_I_with_B_20modes.npy"
+    mapdict['qmap'] = maproot + "sec_B_Q_cleaned_clean_map_I_with_A_20modes.npy"
+    mapdict['umap'] = maproot + "sec_B_U_cleaned_clean_map_I_with_A_20modes.npy"
+    mapdict['name'] = '1hr_noise_iqu_cleaned_clean_20'
+    a = plotIQU(mapdict)
+    a.plotiqu(150)
 
     #mapdict['imap'] = maproot + "fir_1hr_41-18_avg_fdgp_clean_map_I_800.npy"
     #mapdict['qmap'] = maproot + "fir_1hr_41-18_avg_fdgp_clean_map_Q_800.npy"
@@ -118,42 +133,42 @@ if __name__=='__main__':
     #a = plotIQU(mapdict)
     #a.plotiqu(150)
 
-    mapdict['imap'] = maproot + "sec_I_cleaned_clean_map_I_with_Q_0modes.npy"
-    mapdict['qmap'] = maproot + "sec_Q_cleaned_clean_map_I_with_I_0modes.npy"
-    mapdict['umap'] = maproot + "sec_U_cleaned_clean_map_I_with_I_0modes.npy"
-    mapdict['name'] = '1hr_iqu_cleaned_clean_0'
-    a = plotIQU(mapdict)
-    a.plotiqu(150)
+    #mapdict['imap'] = maproot + "sec_I_cleaned_clean_map_I_with_Q_0modes.npy"
+    #mapdict['qmap'] = maproot + "sec_Q_cleaned_clean_map_I_with_I_0modes.npy"
+    #mapdict['umap'] = maproot + "sec_U_cleaned_clean_map_I_with_I_0modes.npy"
+    #mapdict['name'] = '1hr_iqu_cleaned_clean_0'
+    #a = plotIQU(mapdict)
+    #a.plotiqu(150)
 
-    mapdict['imap'] = maproot + "sec_I_cleaned_clean_map_I_with_Q_1modes.npy"
-    mapdict['qmap'] = maproot + "sec_Q_cleaned_clean_map_I_with_I_1modes.npy"
-    mapdict['umap'] = maproot + "sec_U_cleaned_clean_map_I_with_I_1modes.npy"
-    mapdict['name'] = '1hr_iqu_cleaned_clean_1'
-    a = plotIQU(mapdict)
-    a.plotiqu(150)
+    #mapdict['imap'] = maproot + "sec_I_cleaned_clean_map_I_with_Q_1modes.npy"
+    #mapdict['qmap'] = maproot + "sec_Q_cleaned_clean_map_I_with_I_1modes.npy"
+    #mapdict['umap'] = maproot + "sec_U_cleaned_clean_map_I_with_I_1modes.npy"
+    #mapdict['name'] = '1hr_iqu_cleaned_clean_1'
+    #a = plotIQU(mapdict)
+    #a.plotiqu(150)
 
-    mapdict['imap'] = maproot + "sec_I_cleaned_clean_map_I_with_Q_2modes.npy"
-    mapdict['qmap'] = maproot + "sec_Q_cleaned_clean_map_I_with_I_2modes.npy"
-    mapdict['umap'] = maproot + "sec_U_cleaned_clean_map_I_with_I_2modes.npy"
-    mapdict['name'] = '1hr_iqu_cleaned_clean_2'
-    a = plotIQU(mapdict)
-    a.plotiqu(150)
+    #mapdict['imap'] = maproot + "sec_I_cleaned_clean_map_I_with_Q_2modes.npy"
+    #mapdict['qmap'] = maproot + "sec_Q_cleaned_clean_map_I_with_I_2modes.npy"
+    #mapdict['umap'] = maproot + "sec_U_cleaned_clean_map_I_with_I_2modes.npy"
+    #mapdict['name'] = '1hr_iqu_cleaned_clean_2'
+    #a = plotIQU(mapdict)
+    #a.plotiqu(150)
 
-    maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_IQU_legendre_modes_0gwj/IQUmap_clean_themselves/"
+    #maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_IQU_legendre_modes_0gwj/IQUmap_clean_themselves/"
 
-    mapdict['imap'] = maproot + "sec_I_cleaned_clean_map_I_with_I_5modes.npy"
-    mapdict['qmap'] = maproot + "sec_Q_cleaned_clean_map_I_with_I_5modes.npy"
-    mapdict['umap'] = maproot + "sec_U_cleaned_clean_map_I_with_I_5modes.npy"
-    mapdict['name'] = '1hr_iqu_cleaned_clean_5'
-    a = plotIQU(mapdict)
-    a.plotiqu(150)
+    #mapdict['imap'] = maproot + "sec_I_cleaned_clean_map_I_with_I_5modes.npy"
+    #mapdict['qmap'] = maproot + "sec_Q_cleaned_clean_map_I_with_I_5modes.npy"
+    #mapdict['umap'] = maproot + "sec_U_cleaned_clean_map_I_with_I_5modes.npy"
+    #mapdict['name'] = '1hr_iqu_cleaned_clean_5'
+    #a = plotIQU(mapdict)
+    #a.plotiqu(150)
 
-    mapdict['imap'] = maproot + "sec_I_cleaned_clean_map_I_with_I_10modes.npy"
-    mapdict['qmap'] = maproot + "sec_Q_cleaned_clean_map_I_with_I_10modes.npy"
-    mapdict['umap'] = maproot + "sec_U_cleaned_clean_map_I_with_I_10modes.npy"
-    mapdict['name'] = '1hr_iqu_cleaned_clean_10'
-    a = plotIQU(mapdict)
-    a.plotiqu(150)
+    #mapdict['imap'] = maproot + "sec_I_cleaned_clean_map_I_with_I_10modes.npy"
+    #mapdict['qmap'] = maproot + "sec_Q_cleaned_clean_map_I_with_I_10modes.npy"
+    #mapdict['umap'] = maproot + "sec_U_cleaned_clean_map_I_with_I_10modes.npy"
+    #mapdict['name'] = '1hr_iqu_cleaned_clean_10'
+    #a = plotIQU(mapdict)
+    #a.plotiqu(150)
 
     #mapdict['imap'] = maproot + "sec_I_cleaned_clean_map_I_with_Q_0modes.npy"
     #mapdict['qmap'] = maproot + "sec_Q_cleaned_clean_map_I_with_I_0modes.npy"

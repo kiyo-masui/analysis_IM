@@ -36,7 +36,7 @@ export GOODMODES="5"
 export SIMROOT="/cita/d/data-pen3/ycli/map_simulation/"
 export SIMFILE="None"
 export MAPFILE="sim_15hr_oldmap_str_beam_plus_fg"
-export SUBREAL="False"
+export SUBREAL=""
 export MAPGBT_MY="/mnt/scratch-3week/ycli/"
 export NOISEWEIGHT="sim_15hr_oldmap_str_beam_plus_fg"
 

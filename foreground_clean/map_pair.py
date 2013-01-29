@@ -245,6 +245,7 @@ class MapPair(object):
             noise[noise < 1.e-30] = 1.e-30
             noise = 1. / noise
             noise = common_resolution.apply(noise, cval=1.e30)
+            noise = common_resolution.apply(noise, cval=1.e30)
             noise = 1. / noise
             noise[noise < 1.e-20] = 0.
 

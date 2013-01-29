@@ -105,6 +105,7 @@ def plot2dtransfer_3(fileroot, filename, savename):
     b2[b2==0.] = np.inf
     b2 = 1./b2
     b2[np.isnan(b2)] = 0.
+    b2[b2<0] = 0.
     b2 = np.ma.masked_equal(b2, np.inf)
     b2 = np.ma.masked_equal(b2, 0)
 
@@ -112,6 +113,7 @@ def plot2dtransfer_3(fileroot, filename, savename):
     b2_beam[b2_beam==0.] = np.inf
     b2_beam = 1./b2_beam
     b2_beam[np.isnan(b2_beam)] = 0.
+    b2_beam[b2_beam<0] = 0.
     b2_beam = np.ma.masked_equal(b2_beam, np.inf)
     b2_beam = np.ma.masked_equal(b2_beam, 0.)
 
@@ -119,6 +121,7 @@ def plot2dtransfer_3(fileroot, filename, savename):
     b2_lose[b2_lose==0.] = np.inf
     b2_lose = 1./b2_lose
     b2_lose[np.isnan(b2_lose)] = 0.
+    b2_lose[b2_lose<0] = 0.
     b2_lose = np.ma.masked_equal(b2_lose, np.inf)
     b2_lose = np.ma.masked_equal(b2_lose, 0.)
 
@@ -126,7 +129,7 @@ def plot2dtransfer_3(fileroot, filename, savename):
     #print b2_beam
     #print b2_lose
 
-    cmax = 1.2
+    cmax = 0.6
 
     f = plt.figure(figsize=(27,11))
     #f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharey=True, figsize=(23, 7))

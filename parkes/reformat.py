@@ -2,8 +2,11 @@
 
 import pyfits
 import numpy as np
+import numpy.ma as ma
+import gc
 import scipy as sp
 from math import *
+from utils import batch_handler
 
 # Modified module
 import data_block
@@ -165,13 +168,16 @@ class ReformatParkes(object):
                             shape[4]*shape[2], 
                             shape[3])
 
-        data = data/tsys[:,:,:,:,None]
+        #data = data/tsys[:,:,:,:,None]
 
         scannum = shape[0]
         scanlist = np.ones([shape[1]/13*shape[2]*shape[3], shape[0]])
         scanlist = scanlist * np.array(range(scannum))
         scanlist = scanlist.T.flatten()
         #scanlist = np.array([0,])
+
+        # bandpass remove
+        data = self.bandpass_rm(data, tsys, scannum)
 
         band_cf = np.array([band_cf[:,::13].flatten()[0]]) 
         band_wd = np.array([band_wd[:,::13].flatten()[0]]) 
@@ -278,6 +284,155 @@ class ReformatParkes(object):
                     print
 
             first_parkesfile = False
+
+    @batch_handler.log_timing
+    def bandpass_rm(self, spec, tsys, scan_n, time_n=40):
+
+        def median(array, n, axis=-1):
+            if n & 1:
+                return ma.sort(array, axis=axis)[:,:,(n-1)/2,...]
+            else:
+                return ma.mean(ma.sort(array,axis=axis)[:,:,n/2-1:n/2+1,...],axis=axis)
+
+
+        spec[np.isnan(spec)] = ma.masked
+        tsys[np.isnan(tsys)] = ma.masked
+
+        shape = spec.shape
+        spec = spec.reshape((scan_n, 2, shape[0]/scan_n/2, 13, 2, shape[-1]))
+        tsys = tsys.reshape((scan_n, 2, shape[0]/scan_n/2, 13, 2))
+
+        spec_m = median(spec, shape[0]/scan_n/2, axis=2)
+        tsys_m = median(tsys, shape[0]/scan_n/2, axis=2)
+
+        spec = tsys_m[:,:,None,:,:,None] * (spec/spec_m[:,:,None,...]) 
+        spec-= tsys[:,:,:,:,:,None]
+
+        spec = spec.reshape(shape)
+
+        return spec
+
+
+    @batch_handler.log_timing
+    def bandpass_rm_slow(self, spec, tsys, scan_n, time_n=40):
+
+        spec[np.isnan(spec)] = ma.masked
+        tsys[np.isnan(tsys)] = ma.masked
+
+        shape = spec.shape
+        spec = spec.reshape((scan_n, shape[0]/scan_n, 13, 2, shape[-1]))
+        tsys = tsys.reshape((scan_n, shape[0]/scan_n, 13, 2))
+
+        spec_m = np.zeros(spec.shape)
+        tsys_m = np.zeros(tsys.shape)
+
+        # get a filter
+        #st = 3
+        #et = time_n +st 
+        #filter = np.zeros((shape[0]/scan_n, shape[0]/scan_n))
+        #for i in range(shape[0]/scan_n):
+        #    filter[i, st+i:et+i] = 1.
+        #filter += filter.T
+        
+        def median(array, n, axis=-1):
+            if n & 1:
+                return ma.sort(array, axis=axis)[:,(n-1)/2,...]
+            else:
+                return ma.mean(ma.sort(array,axis=axis)[:,n/2-1:n/2+1,...],axis=axis)
+
+        for i in range(shape[0]/scan_n):
+            #spec_i = ma.array(spec * filter[i][None, :, None, None, None])
+
+            # select a time range for bandpass estimation 
+            if i > time_n+1:
+                n = 2 * time_n + 2
+                spec_i = ma.array(spec[:, i-time_n-1:i+time_n+1,...])
+                tsys_i = ma.array(tsys[:, i-time_n-1:i+time_n+1,...])
+            else:
+                n = time_n + i + 1
+                spec_i = ma.array(spec[:, 0:i+time_n+1,...])
+                tsys_i = ma.array(tsys[:, 0:i+time_n+1,...])
+            # mask out the current time
+            if i > 1: 
+                n -= 2
+                spec_i[:,i-1:i+1,...] = ma.masked
+                tsys_i[:,i-1:i+1,...] = ma.masked
+            else:
+                n -= 1
+                spec_i[:,0:i+1,...] = 0.
+                tsys_i[:,0:i+1,...] = 0.
+            #spec_i[spec_i==0] = ma.masked
+            #tsys_i[tsys_i==0] = ma.masked
+
+            spec_m[:,i,:,:,:] = median(spec_i, n, axis=1)
+            tsys_m[:,i,:,:]   = median(tsys_i, n, axis=1)
+
+            #spec_m[:,i,:,:,:] = ma.median(spec_i, axis=1)
+            #tsys_m[:,i,:,:] = ma.median(tsys_i, axis=1)
+
+        spec = tsys_m[:,:,:,:,None] * (spec/spec_m) - tsys[:,:,:,:,None]
+
+        spec = spec.reshape(shape)
+
+        #del filter
+        del spec_m
+        del tsys_m
+        gc.collect()
+        return spec
+
+    @batch_handler.log_timing
+    def bandpass_rm_veryslow(self, spec, tsys, scan_n, time_n=40):
+
+        spec[np.isnan(spec)] = ma.masked
+        tsys[np.isnan(tsys)] = ma.masked
+
+        shape = spec.shape
+        spec = spec.reshape((scan_n, shape[0]/scan_n, 13, 2, shape[-1]))
+        tsys = tsys.reshape((scan_n, shape[0]/scan_n, 13, 2))
+
+        spec_m = np.zeros(spec.shape)
+        tsys_m = np.zeros(tsys.shape)
+
+        # get a filter
+        #st = 3
+        #et = time_n +st 
+        #filter = np.zeros((shape[0]/scan_n, shape[0]/scan_n))
+        #for i in range(shape[0]/scan_n):
+        #    filter[i, st+i:et+i] = 1.
+        #filter += filter.T
+
+        for i in range(shape[0]/scan_n):
+            #spec_i = ma.array(spec * filter[i][None, :, None, None, None])
+
+            # select a time range for bandpass estimation 
+            if i > time_n+3:
+                spec_i = ma.array(spec[:, i-time_n-1:i+time_n+1,...])
+                tsys_i = ma.array(tsys[:, i-time_n-1:i+time_n+1,...])
+            else:
+                spec_i = ma.array(spec[:, 0:i+time_n+1,...])
+                tsys_i = ma.array(tsys[:, 0:i+time_n+1,...])
+            # mask out the current time
+            if i > 1: 
+                spec_i[:,i-1:i+1,...] = 0.
+                tsys_i[:,i-1:i+1,...] = 0.
+            else:
+                spec_i[:,0:i+1,...] = 0.
+                tsys_i[:,0:i+1,...] = 0.
+            spec_i[spec_i==0] = ma.masked
+            tsys_i[tsys_i==0] = ma.masked
+
+            spec_m[:,i,:,:,:] = ma.median(spec_i, axis=1)
+            tsys_m[:,i,:,:] = ma.median(tsys_i, axis=1)
+
+        spec = tsys_m[:,:,:,:,None] * (spec/spec_m) - tsys[:,:,:,:,None]
+
+        spec = spec.reshape(shape)
+
+        del filter
+        del spec_m
+        del tsys_m
+        gc.collect()
+        return spec
 
     def check_data(self):
         self.datablock.calc_pointing()

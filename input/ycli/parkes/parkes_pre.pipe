@@ -5,31 +5,67 @@ import os
 #from core import dir_data
 import scipy as sp
 
-base_dir = os.getenv("YICHAO_WORK_MAP")
+#base_dir = os.getenv("YICHAO_WORK_MAP")
+base_dir = "/mnt/scratch-gl/ycli/map_result/"
+#base_dir = "/mnt/scratch/ycli/map_result/"
 #data_dir = os.getenv('PARKES_DATA')
 data_dir = os.getenv('PARKES_DATA_NEW')
 
 ''' >> Data Direction << '''
 ''' 2012-10-24 '''
-parkes_session = 'SDFDATA_NCAL/20121024_beamcal/'
-parkesfiles = [] 
-for file in os.listdir(data_dir + parkes_session):
-    if file.split('.')[-1] == 'sdfits':
-        parkesfiles.append(file)
-outputname = 'parkes_2012_10_24_P641'
-file_middles = tuple(['parkes_2012_10_24_P641',])
-prefix = 'nobpcal_beamcal_'
-
-''' 2012-10-27 '''
-#parkes_session = 'SDFDATA_CAL/20121027/'
+#parkes_session = 'CALDATA_SDF_beamcal/1024/'
 #parkesfiles = [] 
 #for file in os.listdir(data_dir + parkes_session):
 #    if file.split('.')[-1] == 'sdfits':
 #        parkesfiles.append(file)
-#outputname = 'parkes_2012_10_27_P641'
-#file_middles = tuple(['parkes_2012_10_27_P641',])
-#prefix = 'cal_'
+#outputname = 'parkes_2012_10_24_P641'
+#file_middles = tuple(['parkes_2012_10_24_P641',])
+#prefix = 'nobpcal_beamcal_'
 
+''' 2012-10-25 '''
+#parkes_session = 'CALDATA_SDF_beamcal/1025/'
+#parkesfiles = [] 
+#for file in os.listdir(data_dir + parkes_session):
+#    if file.split('.')[-1] == 'sdfits':
+#        parkesfiles.append(file)
+#outputname = 'parkes_2012_10_25_P641'
+#file_middles = tuple(['parkes_2012_10_25_P641',])
+#prefix = 'nobpcal_beamcal_'
+
+''' 2012-10-26 '''
+#parkes_session = 'CALDATA_SDF_beamcal/1026/'
+#parkesfiles = [] 
+#for file in os.listdir(data_dir + parkes_session):
+#    if file.split('.')[-1] == 'sdfits':
+#        parkesfiles.append(file)
+#outputname = 'parkes_2012_10_26_P641'
+#file_middles = tuple(['parkes_2012_10_26_P641',])
+#prefix = 'nobpcal_beamcal_'
+
+''' 2012-10-27 '''
+#parkes_session = 'CALDATA_SDF_beamcal/1027/'
+#parkes_session = 'CALDATA_SDF_beamcal/1027_nocal/'
+parkes_session = 'CALDATA_SDF_beamcal/1027_average/'
+#parkes_session = 'SDFDATA_NCAL/20121027/'
+parkesfiles = [] 
+for file in os.listdir(data_dir + parkes_session):
+    if file.split('.')[-1] == 'sdfits':
+        parkesfiles.append(file)
+outputname = 'parkes_2012_10_27_P641'
+file_middles = tuple(['parkes_2012_10_27_P641',])
+#prefix = 'nobpcal_beamcal_'
+#prefix = 'beamcal_'
+prefix = 'average_beamcal_bandpassrm'
+
+''' 2012-10-28 '''
+#parkes_session = 'CALDATA_SDF_beamcal/1028/'
+#parkesfiles = [] 
+#for file in os.listdir(data_dir + parkes_session):
+#    if file.split('.')[-1] == 'sdfits':
+#        parkesfiles.append(file)
+#outputname = 'parkes_2012_10_28_P641'
+#file_middles = tuple(['parkes_2012_10_28_P641',])
+#prefix = 'nobpcal_beamcal_'
 
 # Maximum number of processes to use.
 pipe_processes = 12
@@ -43,9 +79,12 @@ pipe_modules = []
 
 #### Calibration ####
 
+#from parkes import bandpass_remove
+#pipe_modules.append(bandpass_remove.BandpassRemove)
+
 from parkes import flag_data
 pipe_modules.append(flag_data.FlagData)
-
+#
 #from parkes import rebin
 #pipe_modules.append(rebin.Rebin)
 
@@ -73,19 +112,31 @@ rfparkes_parkesfile = parkesfiles
 rfparkes_outputname = outputname 
 rfparkes_outputroot = base_dir + 'parkes/' + prefix
 
+# bandpass remove
+bp_input_root = rfparkes_outputroot
+bp_file_middles = file_middles
+bp_input_end = '.fits'
+bp_output_root = base_dir + 'bandpassrm/' + prefix
+bp_output_end = '.fits'
+bp_time_cut = 10
+bp_scans = ()
+bp_IFs = ()
+
 # flag_data, RFI flagger.
 fd_input_root = rfparkes_outputroot
+#fd_input_root = bp_output_root
 fd_file_middles = file_middles
 fd_input_end = '.fits'
 fd_output_root = base_dir + 'flagged/' + prefix
 fd_output_end = '.fits'
-fd_time_cut = 10
 fd_scans = ()
 fd_IFs = ()
 
-fd_time_flag_first = True
-fd_tsys_thres = [15.2, 15.7]
+#fd_time_flag_first = True
+#fd_tsys_thres = [15.2, 15.7]
+#fd_tsys_thres = [15.0, 15.5]
 #fd_sigma_thres = 10.
+fd_sigma_thres = 3.5
 
 # No Hanning.  Guppi's filters take care of it.
 fd_perform_hanning = False
@@ -93,7 +144,6 @@ fd_perform_hanning = False
 fd_rotate = False
 #fd_cal_scale = True
 fd_cal_scale = False
-fd_sigma_thres = 3.5
 fd_badness_thres = 0.1
 fd_time_cut = 10
 

@@ -750,13 +750,13 @@ class PairSet():
             modes1_file = "%s/sec_%s_modes_clean_map_I_with_%s_%s.npy" % \
                             (self.output_root, tag1, tag2, n_modes)
 
-            if pair.map1.shape == pair.map2.shape:
-                map2_file = "%s/sec_%s_cleaned_clean_map_I_with_%s_%s.npy" % \
-                                (self.output_root, tag2, tag1, n_modes)
-                noise_inv2_file = "%s/sec_%s_%s_I_with_%s_%s.npy" % \
-                                (self.output_root, tag2, clnoise, tag1, n_modes)
-                modes2_file = "%s/sec_%s_modes_clean_map_I_with_%s_%s.npy" % \
-                                (self.output_root, tag2, tag1, n_modes)
+            #if pair.map1.shape == pair.map2.shape:
+            map2_file = "%s/sec_%s_cleaned_clean_map_I_with_%s_%s.npy" % \
+                            (self.output_root, tag2, tag1, n_modes)
+            noise_inv2_file = "%s/sec_%s_%s_I_with_%s_%s.npy" % \
+                            (self.output_root, tag2, clnoise, tag1, n_modes)
+            modes2_file = "%s/sec_%s_modes_clean_map_I_with_%s_%s.npy" % \
+                            (self.output_root, tag2, tag1, n_modes)
 
             if self.params['subtract_inputmap_from_sim'] or \
                self.params['subtract_sim_from_inputmap']:
@@ -792,24 +792,24 @@ class PairSet():
                     algebra.save(noise_inv2_file, pair.noise_inv2)
                     algebra.save(modes2_file, pair.right_modes)
 
-            #if map2.shape[0] == 4*map1.shape[0]:
-            #    source_dict = {}
-            #    source_dict['map'] = map2_file
-            #    source_dict['weight'] = noise_inv2_file
+            #if map2.shape[0] == 3*map1.shape[0]:
+            #    #source_dict = {}
+            #    #source_dict['map'] = map2_file
+            #    #source_dict['weight'] = noise_inv2_file
+            #    map_dict = {}
+            #    map_dict['map'] = map2
+            #    map_dict['weight'] = pair.noise_inv2
             #    target_dict = {}
             #    target_dict['imap'] = map2_file.replace('_'+tag2, '_'+tag2+'_I')
             #    target_dict['qmap'] = map2_file.replace('_'+tag2, '_'+tag2+'_Q')
             #    target_dict['umap'] = map2_file.replace('_'+tag2, '_'+tag2+'_U')
-            #    target_dict['vmap'] = map2_file.replace('_'+tag2, '_'+tag2+'_V')
             #    target_dict['imap_weight'] =\
             #                    noise_inv2_file.replace('_'+tag2, '_'+tag2+'_I')
             #    target_dict['qmap_weight'] =\
             #                    noise_inv2_file.replace('_'+tag2, '_'+tag2+'_Q')
             #    target_dict['umap_weight'] =\
             #                    noise_inv2_file.replace('_'+tag2, '_'+tag2+'_U')
-            #    target_dict['vmap_weight'] =\
-            #                    noise_inv2_file.replace('_'+tag2, '_'+tag2+'_V')
-            #    divide_iquv_map(source_dict=source_dict, target_dict=target_dict)
+            #    divide_iqu_map(map_dict=map_dict, target_dict=target_dict)
 
         if map1.shape != map2.shape:
             print "Shape of map1 and map2 are different, can not get combined map."

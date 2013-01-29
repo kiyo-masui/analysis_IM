@@ -79,6 +79,7 @@ class FlagData(base_single.BaseSingle) :
             cal_scale.scale_by_cal(Data, True, False, False)
             Data.add_history('Converted to units of noise cal temperture.')
         # Flag the data.
+        Data.data /= Data.field['TSYS'][:,:,:,:,None]
         apply_cuts(Data, sigma_thres=params['sigma_thres'], 
                     badness_thres=params['badness_thres'],
                     time_cut=params['time_cut'],
@@ -95,9 +96,9 @@ class FlagData(base_single.BaseSingle) :
 
         # time tsys, make data in unit of Jy
         print "Flag data shape: ", Data.data.shape
-        print "Flag finshed, subtracted mean, times Tsys"
-        print
-        Data.data -= Data.data.mean(axis=0)
+        #print "Flag finshed, subtracted mean, times Tsys"
+        #print
+        #Data.data -= Data.data.mean(axis=0)
         Data.data *= Data.field['TSYS'][:,:,:,:,None]
         return Data
 
@@ -246,8 +247,8 @@ def destroy_time_tsys(Data, tsys_thres, flag_size=10):
         xmax_accepted = tsys_thres[0]
         ymax_accepted = tsys_thres[1]
         # Get min accepted values.
-        xmin_accepted = tsys_thres[0] - 1.5
-        ymin_accepted = tsys_thres[1] - 1.5
+        xmin_accepted = tsys_thres[0] - 1.
+        ymin_accepted = tsys_thres[1] - 1.
         # Find bad times.
         bad_times = []
         for time in range(0,len(x_tsys)):
@@ -258,8 +259,14 @@ def destroy_time_tsys(Data, tsys_thres, flag_size=10):
         for time in bad_times:
             if time-flag_size < 0:
                 Data.data[0:(time+flag_size),ii,:,:,:].mask = True
+                #Data.field['TSYS'][0:(time+flag_size),ii,0,0] = ma.masked
+                #Data.field['TSYS'][0:(time+flag_size),ii,1,0] = ma.masked
             else:
-                Data.data[(time-flag_size):(time+flag_size),ii,:,:,:].mask = True
+                time_0 = time-flag_size
+                time_1 = time+flag_size
+                Data.data[time_0:time_1,ii,:,:,:].mask = True
+                #Data.field['TSYS'][time_0:time_1,ii,0,0] = ma.masked
+                #Data.field['TSYS'][time_0:time_1,ii,1,0] = ma.masked 
     return
 
 def destroy_with_variance(Data, sigma_thres=6, bad_freq_list=[]):
@@ -316,7 +323,9 @@ def destroy_with_variance(Data, sigma_thres=6, bad_freq_list=[]):
                 # mask
                 amount_masked += 1
                 bad_freq_list.append(freq)
-                Data.data[:,:,:,:,freq].mask = True
+                #Data.data[:,:,:,:,freq].mask = True
+                # only flag current beam
+                Data.data[:,ii,:,:,freq].mask = True
         if amount_masked > amount_masked_max:
             amount_masked_max = amount_masked 
     return amount_masked_max
@@ -424,9 +433,9 @@ def destroy_time_with_mean_arrays(Data, flag_size=40):
         # Mask bad times and those +- flag_size around.
         for time in bad_times:
             if time-flag_size < 0:
-                Data.data[0:(time+flag_size),ii,:,:,:].mask = True
+                Data.data[0:(time+flag_size),:,:,:,:].mask = True
             else:
-                Data.data[(time-flag_size):(time+flag_size),ii,:,:,:].mask = True
+                Data.data[(time-flag_size):(time+flag_size),:,:,:,:].mask = True
     return
 
 def destroy_time_with_mean_arrays_4pol2cal(Data, flag_size=40):

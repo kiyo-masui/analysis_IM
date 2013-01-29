@@ -125,13 +125,11 @@ pre_nmap_root = nmap_root
 pre_imap_list = imap_list
 pre_nmap_list = nmap_list
 
-pre_boxshape = (512, 128, 64)
+pre_boxshape = (512, 256, 128)
 pre_discrete = 2
 pre_boxunit = 2.
 pre_cutlist = cutlist
 pre_window = 'blackman'
-
-pre_map_multiplier = 0.01
 
 """  Calculate the combined Pk  """
 #from mkpower import mkpower_combine
@@ -163,8 +161,8 @@ pkc_sme = False
 #pipe_modules.append(pycamb.CAMB)
 pcb_output_root = output_root + 'cambio/'
 pcb_do_nonlinear = 1
-pcb_transfer_redshift = 0.7
+pcb_transfer_redshift = 0.8
 pcb_transfer_high_precision = 'T'
-pcb_transfer_kmax = 1.5
+pcb_transfer_kmax = 2.5
 #pcb_transfer_k_per_logint = 400
 

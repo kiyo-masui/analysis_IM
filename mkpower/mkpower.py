@@ -75,6 +75,13 @@ class PowerSpectrumMaker(object):
 
         self.plot = bool(self.params['plot'])
 
+        params = self.params
+        f = open(params['input_root'] + 'fftbox/box.info', 'r')
+        fftbox_info = f.readlines()
+        boxunit = fftbox_info[0].split(':')[1]
+        self.params['boxunit'] = float(boxunit)
+        print "Using Box Unit: %s"%boxunit
+
     def mpiexecute(self, nprocesses=1):
         
         comm = MPI.COMM_WORLD

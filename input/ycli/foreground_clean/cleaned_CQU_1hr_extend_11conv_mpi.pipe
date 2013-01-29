@@ -41,11 +41,11 @@ cutlist = [6, 7, 8, 15, 16, 18, 19, 20, 21, 22, 37, 80, 103, 104, 105, 106, \
            187, 189, 192, 193, 194, 195, 196, 197, 198, 201, 204, 208, 209, \
            212, 213, 218, 219, 229, 233, 237, 244, 254, 255]
 freq_list = tuple([ind for ind in range(nfreq) if ind not in cutlist])
-mode_list = range(0, 40, 5) + [36, 37, 38, 39, 40]
+mode_list = range(0, 40, 5)
 common_res_convolution = True
-degrade_factor = 2.
+degrade_factor = 1.1
 sub_weighted_mean = True
-sim_multiplier = 1.
+sim_multiplier = 1.0
 simnum = 100
 
 if simfile != 'None':
@@ -58,8 +58,9 @@ else:
     do_simulation = False
     do_simulation_IQU = False
 
-output_folder = '1hr_AQU_extend_legendre_modes_%dgwj_2conv/'%goodmodes 
-output_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
+output_folder = '1hr_CQU_extend_legendre_modes_%dgwj_11conv/'%goodmodes 
+#output_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
+output_root = '/mnt/scratch-gl/ycli/cln_result/'
 output_root += output_folder
 
 #-----------------------------------------------------------------------------
@@ -104,41 +105,41 @@ if do_inv_diag_noise:
 # clean extended IQUV map
 #-----------------------------------------------------------------------------
 
-pairlist = ['A_with_B', 'A_with_C', 'A_with_D']
+pairlist = ['C_with_A', 'C_with_B', 'C_with_D']
 pairdict = {}
-pairdict['A_with_B'] = {}
-pairdict['A_with_B']['map1'] = basemap
-pairdict['A_with_B']['map1']+= 'secA_1hr_41-18_clean_map_I_800.npy'
-pairdict['A_with_B']['map2'] = basemap
-pairdict['A_with_B']['map2']+= 'secB_1hr_41-18_clean_map_E_800.npy'
-pairdict['A_with_B']['noise_inv1'] = basemap_my + output_folder +\
-                               'secA_1hr_41-18_noise_weight_I_800.npy'
-pairdict['A_with_B']['noise_inv2'] = basemap_my + output_folder +\
+pairdict['C_with_A'] = {}
+pairdict['C_with_A']['map1'] = basemap
+pairdict['C_with_A']['map1']+= 'secC_1hr_41-18_clean_map_I_800.npy'
+pairdict['C_with_A']['map2'] = basemap
+pairdict['C_with_A']['map2']+= 'secA_1hr_41-18_clean_map_E_800.npy'
+pairdict['C_with_A']['noise_inv1'] = basemap_my + output_folder +\
+                               'secC_1hr_41-18_noise_weight_I_800.npy'
+pairdict['C_with_A']['noise_inv2'] = basemap_my + output_folder +\
+                               'secA_1hr_41-18_noise_weight_E_800.npy'
+pairdict['C_with_A']['tag1'] = 'C'
+pairdict['C_with_A']['tag2'] = 'A'
+pairdict['C_with_B'] = {}
+pairdict['C_with_B']['map1'] = basemap
+pairdict['C_with_B']['map1']+= 'secC_1hr_41-18_clean_map_I_800.npy'
+pairdict['C_with_B']['map2'] = basemap
+pairdict['C_with_B']['map2']+= 'secB_1hr_41-18_clean_map_E_800.npy'
+pairdict['C_with_B']['noise_inv1'] = basemap_my + output_folder +\
+                               'secC_1hr_41-18_noise_weight_I_800.npy'
+pairdict['C_with_B']['noise_inv2'] = basemap_my + output_folder +\
                                'secB_1hr_41-18_noise_weight_E_800.npy'
-pairdict['A_with_B']['tag1'] = 'A'
-pairdict['A_with_B']['tag2'] = 'B'
-pairdict['A_with_C'] = {}
-pairdict['A_with_C']['map1'] = basemap
-pairdict['A_with_C']['map1']+= 'secA_1hr_41-18_clean_map_I_800.npy'
-pairdict['A_with_C']['map2'] = basemap
-pairdict['A_with_C']['map2']+= 'secC_1hr_41-18_clean_map_E_800.npy'
-pairdict['A_with_C']['noise_inv1'] = basemap_my + output_folder +\
-                               'secA_1hr_41-18_noise_weight_I_800.npy'
-pairdict['A_with_C']['noise_inv2'] = basemap_my + output_folder +\
-                               'secC_1hr_41-18_noise_weight_E_800.npy'
-pairdict['A_with_C']['tag1'] = 'A'
-pairdict['A_with_C']['tag2'] = 'C'
-pairdict['A_with_D'] = {}
-pairdict['A_with_D']['map1'] = basemap
-pairdict['A_with_D']['map1']+= 'secA_1hr_41-18_clean_map_I_800.npy'
-pairdict['A_with_D']['map2'] = basemap
-pairdict['A_with_D']['map2']+= 'secD_1hr_41-18_clean_map_E_800.npy'
-pairdict['A_with_D']['noise_inv1'] = basemap_my + output_folder +\
-                               'secA_1hr_41-18_noise_weight_I_800.npy'
-pairdict['A_with_D']['noise_inv2'] = basemap_my + output_folder +\
+pairdict['C_with_B']['tag1'] = 'C'
+pairdict['C_with_B']['tag2'] = 'B'
+pairdict['C_with_D'] = {}
+pairdict['C_with_D']['map1'] = basemap
+pairdict['C_with_D']['map1']+= 'secC_1hr_41-18_clean_map_I_800.npy'
+pairdict['C_with_D']['map2'] = basemap
+pairdict['C_with_D']['map2']+= 'secD_1hr_41-18_clean_map_E_800.npy'
+pairdict['C_with_D']['noise_inv1'] = basemap_my + output_folder +\
+                               'secC_1hr_41-18_noise_weight_I_800.npy'
+pairdict['C_with_D']['noise_inv2'] = basemap_my + output_folder +\
                                'secD_1hr_41-18_noise_weight_E_800.npy'
-pairdict['A_with_D']['tag1'] = 'A'
-pairdict['A_with_D']['tag2'] = 'D'
+pairdict['C_with_D']['tag1'] = 'C'
+pairdict['C_with_D']['tag2'] = 'D'
 
 if do_IQUclean_themselves:
     pipe_modules.append((pair_set_legendre.PairSet_LegendreSVD, ('fs2_', 'fs_')))
@@ -176,18 +177,17 @@ if do_simulation:
     print "generating simulation with seed: %d" % instance_seed
 
     sg1_output_root = simroot
-    sg1_template_file = basemap + 'secA_1hr_41-18_clean_map_I_800.npy'
+    sg1_template_file = basemap + '15hr_41-90_fdgp_RM_clean_map_I.npy'
     sg1_seed = instance_seed
     sg1_refinement = 2
     sg1_weightfile = basemap_my + output_folder +\
-                    'secA_1hr_41-18_noise_weight_I_800.npy'
-    sg1_outfile_meansub = "sim_beammeansub_%03d.npy"
-    sg1_outfile_raw = "sim_raw_%03d.npy"
-    sg1_outfile_delta = "sim_delta_%03d.npy"
-    sg1_outfile_physical = "sim_phys_%03d.npy"
-    sg1_outfile_degrade = "sim_degradebeam_%03d.npy"
+                    '15hr_41-90_fdgp_RM_noise_weight_I.npy'
+    sg1_outfile_meansub = "sim_beammeansub_%03d.npy" % int(simfile)
+    sg1_outfile_raw = "sim_raw_%03d.npy" % int(simfile)
+    sg1_outfile_delta = "sim_delta_%03d.npy" % int(simfile)
+    sg1_outfile_physical = "sim_phys_%03d.npy" % int(simfile)
+    sg1_outfile_degrade = 'sim_degradebeam_%03d.npy' % int(simfile)
     sg1_degrade_factor = degrade_factor
-    sg1_simnum = simnum
 
     # clean_{map+sim} (map+sim) 
     # using IxI clean first 3 modes

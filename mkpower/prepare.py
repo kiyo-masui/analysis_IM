@@ -159,6 +159,12 @@ class Prepare(object):
             # make directions for fftbox saving
             if not os.path.exists(out_root+'fftbox/'):
                 os.mkdir(out_root+'fftbox/')
+            f = open(out_root+'fftbox/box.info', 'w')
+            print >> f, 'Box Unit: %f'%self.params['boxunit']
+            print >> f, 'X : [%f, %f]'%self.params['Xrange']
+            print >> f, 'Y : [%f, %f]'%self.params['Yrange']
+            print >> f, 'Z : [%f, %f]'%self.params['Zrange']
+            f.close()
 
         comm.barrier()
 

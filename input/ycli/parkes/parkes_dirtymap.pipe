@@ -8,33 +8,27 @@ pipe_processes = 12
 do_dirty_map = True
 do_clean_map = False
 
-map_input = os.getenv("YICHAO_WORK_MAP") + 'pol_selected/'
-map_base = os.getenv("YICHAO_WORK_MAP") + 'maps/parkes/'
-map_shape = (64, 128)
+#map_input = os.getenv("YICHAO_WORK_MAP") + 'pol_selected/'
+#map_base = os.getenv("YICHAO_WORK_MAP") + 'maps/parkes/'
+map_input = '/mnt/scratch-gl/ycli/map_result/pol_selected/'
+#map_base = '/mnt/scratch-gl/ycli/map_result/maps/parkes/'
+map_base = '/scratch/ycli/map_result/maps/parkes/'
+map_shape = (128, 96)
 map_spacing = .08
-#map_centre = (10.0, -30.0)
-map_centre = (5.0, -30.0)
+map_centre = (45.0, -30.0)
 ra_centre = 'W' # if ra_cente = 'W', it will connect 360 and 0; or ra_centre = 'E'
-map_prefix = 'RA+05_' + 'parkes_2008_09_12w_13_14_'
+map_prefix = 'RA+10_' + 'parkes_2010_10_26'
 
 if os.getenv('BEAMS') != 'None':
     beams = int(os.getenv('BEAMS'))
     if beams >=0 and beams<13:
         dm_beams = (beams,)
     map_prefix += 'beam_%d_' % beams
+else:
+    dm_beams = (0, 1, 2, 5, 6, 7, 8, 9, 10, 11, 12) # beam 4 and 5 have problem
 
 file_middles = tuple([
-                      #'parkes_2008_09_11_west_P641',
-                      #'parkes_2008_09_11_east_P641',
-
-                      'parkes_2008_09_12_west_P641',
-
-                      #'parkes_2008_09_12_east_P641',
-
-                      'parkes_2008_09_13_west_P641',
-                      'parkes_2008_09_13_east_P641',
-                      'parkes_2008_09_14_west_P641',
-                      'parkes_2008_09_14_east_P641',
+                      "nobpcal_beamcal_parkes_2012_10_26_P641",
                       ])
 #map_prefix = '' + 'parkes_2008_09_12w-13-14_beam0test'
 
@@ -76,6 +70,6 @@ dm_interpolation = 'nearest'
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
 cm_polarizations = ('I',)
-cm_bands = (1315,)
+cm_bands = (1316,)
 cm_save_noise_diag = True
 

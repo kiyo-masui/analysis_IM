@@ -67,10 +67,12 @@ for i in range(sim_num):
 
     if os.path.exists(map_cln):
         output_root += 'bias/cros_%s_%d_subreal/'%(map_cln.split('/')[-2], mode)
+        #output_root += 'bias/cros_%s_%d/'%(map_cln.split('/')[-2], mode)
         nmaps_a = data_paths.get_mapdict(map_cln + 'mapmode_map/')
     else:
         nmaps_a = datadb.fetch(map_cln + '_combined', silent=True)
-        output_root += 'bias/cros_%s_%d_subreal/'%(map_cln + '_combined', mode)
+        #output_root += 'bias/cros_%s_%d_subreal/'%(map_cln + '_combined', mode)
+        output_root += 'bias/cros_%s_%d/'%(map_cln.split('/')[-2], mode)
     
     if os.path.exists(map_sim):
         imaps_b = data_paths.get_mapdict(map_sim, selection='delta')
