@@ -1,0 +1,72 @@
+# Pipeline file for guppi data.
+
+import os
+import scipy as sp
+pipe_modules = []
+pipe_processes = 12
+
+do_dirty_map = False
+do_clean_map = True
+
+#map_input = os.getenv("YICHAO_WORK_MAP") + 'pol_selected/'
+#map_base = os.getenv("YICHAO_WORK_MAP") + 'maps/parkes/'
+map_input = '/scratch/ycli/map_result/maps/parkes/'
+map_base = '/scratch/ycli/map_result/maps/parkes/'
+map_shape = (128, 96)
+map_spacing = .08
+map_centre = (45.0, -30.0) #(30, -30)
+ra_centre = 'W' # if ra_cente = 'W', it will connect 360 and 0; or ra_centre = 'E'
+map_prefix = 'RA+10_' + 'parkes_2010_10_26'
+
+if os.getenv('BEAMS') != 'None':
+    beams = int(os.getenv('BEAMS'))
+    if beams >=0 and beams<13:
+        dm_beams = (beams,)
+    map_prefix += 'beam_%d_' % beams
+
+file_middles = tuple([
+                      "nobpcal_beamcal_parkes_2012_10_26_P641",
+                      ])
+#map_prefix = '' + 'parkes_2008_09_12w-13-14_beam0test'
+
+if do_dirty_map:
+    from parkes import dirty_map
+    pipe_modules.append(dirty_map.DirtyMapMaker)
+
+if do_clean_map:
+    from map import clean_map
+    pipe_modules.append(clean_map.CleanMapMaker)
+
+#### Parameters for the various modules. ####
+
+# dirty_map
+dm_input_root = map_input
+dm_file_middles = file_middles
+#dm_file_middles = middles_firs
+dm_input_end = '.fits'
+dm_output_root = map_base + 'fir_' + map_prefix
+dm_scans = ()
+dm_IFs = ()
+
+dm_polarizations = ('I',)
+dm_field_centre = map_centre
+dm_ra_centre = ra_centre
+dm_pixel_spacing = map_spacing
+dm_map_shape = map_shape
+dm_time_block = 'scan'
+dm_n_files_group = 0
+dm_frequency_correlations = 'None'
+dm_number_frequency_modes = 0
+dm_noise_parameter_file = ''
+dm_deweight_time_mean = True
+dm_deweight_time_slope = True
+#dm_interpolation = 'cubic'
+dm_interpolation = 'nearest'
+
+# clean_map
+cm_input_root = dm_output_root
+cm_output_root = cm_input_root
+cm_polarizations = ('I',)
+cm_bands = (1316,)
+cm_save_noise_diag = True
+

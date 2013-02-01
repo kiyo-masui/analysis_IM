@@ -694,6 +694,11 @@ def separate_cal(data, n_bins_cal, cal_mask=None) :
 
     return out_data
 
+
+# -------- Data Checker ---------
+
+# Makes a bunch of plots that give an indication of how the data looks.
+
 params_init_checker = {
                       "input_root" : "",
                       "file_middles" : ("",),
@@ -832,14 +837,21 @@ class DataChecker(object) :
         plt.title("System temperature in cal units")
         # XX cal PS.
         plt.subplot(3, 2, 5)
-        plt.loglog(ps_freqs, cal_noise_spec[:,0,:])
+# This printing is for checking if cal_noise_spec is all zero.
+#        print cal_noise_spec[1:,0,:]
+        if ((cal_noise_spec[1:,0,:].max() == 0.) and  
+            (cal_noise_spec[1:,0,:].min() == 0.)):
+            cal_noise_spec[1:,0,:] = 1
+            cal_noise_spec[1:,1,:] = 1
+#            print cal_noise_spec
+        plt.loglog(ps_freqs[1:], cal_noise_spec[1:,0,:])
         plt.xlim((1.0/60, 1/(2*dt)))
         plt.ylim((1e-1, 1e3))
         plt.xlabel("frequency (Hz)")
         plt.title("XX cal power spectrum")
         # YY cal PS.
         plt.subplot(3, 2, 6)
-        plt.loglog(ps_freqs, cal_noise_spec[:,1,:])
+        plt.loglog(ps_freqs[1:], cal_noise_spec[1:,1,:])
         plt.xlim((1.0/60, 1/(2*dt)))
         plt.ylim((1e-1, 1e3))
         plt.xlabel("frequency (Hz)")
@@ -850,6 +862,8 @@ class DataChecker(object) :
         plt.savefig(params['output_root'] + middle
                 + params['output_end'])
 
+
+# -------- Data Manager --------
 
 # This manager scripts together all the operations that need to be performed to
 # the data at GBT.

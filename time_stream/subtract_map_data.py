@@ -11,11 +11,12 @@ import kiyopy.utils as ku
 import base_single
 import map.tools
 from core import algebra
+from utils import misc
 
 class Subtract(base_single.BaseSingle) :
     """Pipeline module subtracts a map from time stream data.
 
-    This module reads in a map and times stream data.  It then subtracts the
+    This module reads in a map and time stream data.  It then subtracts the
     signal part off of each time bin using the pointing information and the
     map.  This should leave only noise and map residuals (signal that isn't in
     the map).
@@ -23,13 +24,15 @@ class Subtract(base_single.BaseSingle) :
     
     prefix = 'sm_'
     params_init = {
-                   'map_file' : 'testfile_map.fits',
+                   'map_input_root' : './',
+                   'map_type' : 'clean_map_',
+                   'map_bands' : (),
+                   'map_polarizations' : (),
                    'solve_for_gain' : False,
                    # Empty string to not write an output.
                    'gain_output_end' : '',
                    'interpolation' : 'nearest'
                    # XXX: What about if I start subtracing off a linear piece.
-                   # TODO: Option to rescaleoutput data to map gain.
                    }
 
     # Add extra stuff to the constructor.
@@ -38,26 +41,59 @@ class Subtract(base_single.BaseSingle) :
         # Call the base_single init.
         base_single.BaseSingle.__init__(self, parameter_file_or_dict,
                                         feedback)
-        # Read in the calibration file.
-        map_file_name = self.params['map_file']
-        self.Map = algebra.load(map_file_name)
-        self.Map = algebra.make_vect(self.Map)
+        # Read in the map files.
+        map_fnames_start = (self.params['map_input_root']
+                            + self.params['map_type'])
+        self.maps = []
+        for band in self.params['map_bands']:
+            this_band_maps = []
+            for pol in self.params['map_polarizations']:
+                map_file_name = (map_fnames_start + pol + '_' + str(band)
+                                 + '.npy')
+                map = algebra.load(map_file_name)
+                map = algebra.make_vect(map)
+                this_band_maps.append(map)
+            self.maps.append(this_band_maps)
 
-    def action(self, Data) :
+    def action(self, Data):
+        # Figure out what map band this corresponds to.
+        Data.calc_freq()
+        freq = Data.freq
+        # We are going to look for an exact match in for the map frequencies.
+        # This could be made more general since the sub_map function can handle
+        # partial overlap, but this will be fine for now.
+        for band_maps in self.maps:
+            maps_freq = band_maps[0].get_axis('freq')
+            if sp.allclose(maps_freq, freq):
+                maps = band_maps
+                break
+        else:
+            raise NotImplementedError('No maps with frequency axis exactly'
+                                      ' matching data.')
+        # Now make sure we have the polarizations in the right order.
+        data_pols = Data.field['CRVAL4'].copy()
+        for ii in range(len(data_pols)):
+            if (misc.polint2str(data_pols[ii])
+                != self.params['map_polarizations'][ii]):
+                raise NotImplementedError('Map polarizations not in same order'
+                                          ' as data polarizations.')
         if (not self.params['solve_for_gain'] or
             self.params['gain_output_end'] is '') :
-            sub_map(Data, self.Map, self.params['solve_for_gain'])
+            sub_map(Data, maps, self.params['solve_for_gain'],
+                    interpolation=self.params['interpolation'])
         else :
             block_gain = {}
             Data.calc_freq()
             block_gain['freq'] = sp.copy(Data.freq)
             block_gain['time'] = Data.field['DATE-OBS'][0]
             block_gain['scan'] = Data.field['SCAN']
-            block_gain['gain'] = sub_map(Data, self.Map, True)
+            block_gain['gain'] = sub_map(Data, maps, True, 
+                                interpolation=self.params['interpolation'])
             self.gain_list.append(block_gain)
 
         Data.add_history('Subtracted map from data.', 
-            ('Map file: ' + ku.abbreviate_file_path(self.params['map_file']),))
+                         ('Map root: ' + ku.abbreviate_file_path(
+                         self.params['map_input_root']),))
         return Data
 
     # Overwrite the base single process file method so we can also pickle the
@@ -113,6 +149,7 @@ def sub_map(Data, Maps, correlate=False, pols=(), make_plots=False,
         shape = Map.shape
         spacing = (Map.info['freq_delta'], Map.info['ra_delta'], 
                    Map.info['dec_delta'])
+        # Nearest code is depricated.  We could just use the general code.
         if interpolation == 'nearest' :
             # These indices are the length of the time axis. Integer indicies.
             ra_ind = map.tools.calc_inds(Data.ra, centre[1], shape[1],

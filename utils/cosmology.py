@@ -1,19 +1,14 @@
 """ Routines for storing a cosmology, and calculating various distance measures. """
-
-# Global imports
 import math
 import numpy as np
-
-# Import integration routines
-import integrate
-
-# Package imports
 from units import *
+import scipy.integrate as si
+from utils import cubicspline as cs
 
 
 class Cosmology:
     r""" Class to store a cosmology, and compute measures.
-    
+
     Defines a cosmology and allows calculation of a few simple
     quantities (notably distance measures and lookback time).
 
@@ -48,15 +43,19 @@ class Cosmology:
 
     units = 'cosmo'
 
-    omega_b = 0.0458
-    omega_c = 0.229
-    omega_l = 0.7252
+    #omega_b = 0.0458
+    omega_b = 0.04482
+    #omega_c = 0.229
+    omega_c = 0.22518
+    #omega_l = 0.7252
+    omega_l = 0.73
 
     omega_g = 0.0
     omega_n = 0.0
 
     # H_0 given in km/s / Mpc
-    H0 = 70.2
+    #H0 = 70.2
+    H0 = 72.
 
     @property
     def omega_m(self):
@@ -70,7 +69,6 @@ class Cosmology:
     def omega_k(self):
         return 1.0 - (self.omega_l + self.omega_b + self.omega_c + self.omega_g + self.omega_n)
 
-    
 
     @staticmethod
     def init_physical(ombh2 = 0.02255, omch2 = 0.1126, H0 = 70.2, omkh2 = 0.0, t0 = 2.726, nnu = 3.046):
@@ -137,17 +135,16 @@ class Cosmology:
         H : scalar
             The Hubble parameter.
         """
-        
 
-	if(z == None):
-	    H = self.H0
+        if (z == None):
+            H = self.H0
         else:
             H  = self.H0 * (self.omega_r * (1 + z)**4 +  self.omega_m * (1 + z)**3 + self.omega_k * (1 + z)**2
                             + self.omega_l)**0.5
-        
+
         # Convert to SI
         return H * 1000.0 / mega_parsec
-	    
+
     def comoving_distance(self, z):
         r"""The comoving distance to redshift z.
 
@@ -157,7 +154,7 @@ class Cosmology:
         ----------
         z : array_like
             The redshift(s) to calculate at.
-        
+
         Returns
         -------
         dist : array_like
@@ -173,7 +170,7 @@ class Cosmology:
 
     def proper_distance(self, z):
         r"""The proper distance to an event at redshift z.
-        
+
         The proper distance can be ill defined. In this case we mean
         the comoving transverse separation between two events at the
         same redshift divided by their angular separation. This
@@ -183,7 +180,7 @@ class Cosmology:
         ----------
         z : array_like
             The redshift(s) to calculate at.
-        
+
         Returns
         -------
         dist : array_like
@@ -244,20 +241,20 @@ class Cosmology:
 
 
     def lookback_time(self, z):
-	r""" The lookback time out to redshift z.
+        r""" The lookback time out to redshift z.
 
         Parameters
         ----------
         z : array_like
             The redshift(s) to calculate at.
-        
+
         Returns
         -------
         time : array_like
             The lookback time to each redshift.
         """
 
-	# Calculate the integrand.
+        # Calculate the integrand.
         def f(z1):
             return 1.0 / (self.H(z1) * (1 + z1))
 
@@ -285,21 +282,48 @@ class Cosmology:
             return 1.0
 
         raise Exception("Units not known")
-        
+
+
+def inverse_approx(f, x1, x2):
+    r"""Generate the inverse function on the interval x1 to x2.
+
+    Periodically sample a function and use interpolation to construct
+    its inverse. Function must be monotonic on the given interval.
+
+    Parameters
+    ----------
+    f : callable
+        The function to invert, must accept a single argument.
+    x1, x2 : scalar
+        The lower and upper bounds of the interval on which to
+        construct the inverse.
+
+    Returns
+    -------
+    inv : cubicspline.Interpolater
+        A callable function holding the inverse.
+    """
+
+    xa = np.linspace(x1, x2, 1000)
+    fa = f(xa)
+
+    return cs.Interpolater(fa, xa)
+
 
 @np.vectorize
 def _intfz(f, a, b):
     # A wrapper function to allow vectorizing integrals, cuts such
     # that integrals to very high-z converge (by integrating in log z
     # instead).
+    #import integrate
 
     def _int(f, a, b):
-        return integrate.patterson(f, a, b, epsrel = 1e-5, epsabs = 1e-10)
+        return si.quad(f, a, b, limit=1000)[0]
+        #return integrate.patterson(f, a, b, epsrel = 1e-5, epsabs = 1e-10)
         #return integrate.chebyshev(f, a, b, epsrel = 1e-5, epsabs = 1e-10)
         #return integrate.romberg(f, a, b, epsrel = 1e-5, epsabs = 1e-10)
-        #return quad(f, a, b, epsrel = 1e-5, epsabs = 1e-10)[0]
-    
-    
+        #return integrate.quad(f, a, b, epsrel = 1e-5, epsabs = 1e-10)[0]
+
     cut = 1e2
     if a < cut and b > cut:
         return _int(f, a, cut) + _int(lambda lz: np.exp(lz) * f(np.exp(lz)), np.log(cut), np.log(b))

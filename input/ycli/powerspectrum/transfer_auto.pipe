@@ -1,0 +1,283 @@
+#########################################################################
+#                                                                       #
+#      This pipeline is used to get the 2side transfer function         #
+#      for auto power using simulation maps                             #
+#                                                                       #
+#########################################################################
+
+import os
+pipe_modules = []
+pipe_processes = 1
+WORKROOT = os.getenv('YICHAO_WORK_PS')
+
+import data_paths
+"""  simulation maps  """
+
+print
+print "="*50
+print "auto transfer function"
+print
+
+map_sim = os.getenv('MAP_SIM')
+map_ssm = os.getenv('MAP_SSM')
+map_cln = os.getenv('MAP_CLN')
+
+hour = int(os.getenv('HOUR'))
+mode = int(os.getenv('MODE'))
+
+sim_num = 100
+#sim_num = 5
+
+
+# for clean_{sim+map}(sim+map) 
+resultf = 'simmaps1'   
+
+datadb = data_paths.DataPath()
+
+imap_list = []
+imap_root = []
+nmap_list = []
+nmap_root = []
+tabs_list = []
+
+pkc_imap_list = []
+pkc_nmap_list = []
+
+output_root = ""
+SEC = ['A', 'B', 'C', 'D']
+
+for i in range(sim_num):
+    output_root = WORKROOT
+    print map_ssm
+    if os.path.exists(map_ssm):
+        imaps = data_paths.get_mapdict(\
+            map_ssm + 'simmapmode_simmap_beam_%03d/'%i)
+    else:
+        imaps = datadb.fetch(map_ssm + '_combined', silent=True)
+    if os.path.exists(map_cln):
+        output_root += 'bias/auto_%s_%d/'%(map_cln.split('/')[-2], mode)
+        nmaps = data_paths.get_mapdict(map_cln + 'mapmode_map/')
+    else:
+        nmaps = datadb.fetch(map_cln + '_combined', silent=True)
+        output_root += 'bias/auto_%s_%d/'%(map_cln + '_combined', mode)
+
+    for s1 in SEC:
+        for s2 in SEC:
+            if s1==s2: continue
+            
+            mappath = imaps[1]['%s_with_%s;map;%dmodes'%(s1, s2, mode)]
+            imap_list.append(mappath.split('/')[-1])
+            imap_root.append(mappath.replace(mappath.split('/')[-1],''))
+    
+            wetpath = nmaps[1]['%s_with_%s;noise_inv;%dmodes'%(s1, s2, mode)]
+            nmap_list.append(wetpath.split('/')[-1])
+            nmap_root.append(wetpath.replace(wetpath.split('/')[-1],''))
+
+            tabs_list.append('1_%03d_'%i)
+    
+            print
+            print mappath
+            print wetpath
+    
+    for ii in range(len(SEC)):
+        for jj in range(ii+1, len(SEC)):
+            mappath1 = imaps[1]['%s_with_%s;map;%dmodes'%(SEC[ii], SEC[jj], mode)]
+            mappath2 = imaps[1]['%s_with_%s;map;%dmodes'%(SEC[jj], SEC[ii], mode)]
+            pkc_imap_list.append( ['1_%03d_'%i + mappath1.split('/')[-1],
+                                   '1_%03d_'%i + mappath2.split('/')[-1]])
+            wetpath1 =nmaps[1]['%s_with_%s;noise_inv;%dmodes'%(SEC[ii],SEC[jj],mode)]
+            wetpath2 =nmaps[1]['%s_with_%s;noise_inv;%dmodes'%(SEC[jj],SEC[ii],mode)]
+            pkc_nmap_list.append( ['1_%03d_'%i + wetpath1.split('/')[-1],
+                                   '1_%03d_'%i + wetpath2.split('/')[-1]])
+    
+print pkc_imap_list
+print pkc_nmap_list
+
+# for clean_{map}(map)
+resultf0 = 'simmaps0' 
+
+if os.path.exists(map_ssm):
+    imaps0= data_paths.get_mapdict(map_ssm + 'mapmode_map/')
+else:
+    imaps0= datadb.fetch(map_ssm + '_combined', silent=True)
+
+for s1 in SEC:
+    for s2 in SEC:
+        if s1==s2: continue
+        
+        mappath = imaps0[1]['%s_with_%s;map;%dmodes'%(s1, s2, mode)]
+        imap_list.append(mappath.split('/')[-1])
+        imap_root.append(mappath.replace(mappath.split('/')[-1],''))
+
+        wetpath = imaps0[1]['%s_with_%s;noise_inv;%dmodes'%(s1, s2, mode)]
+        nmap_list.append(wetpath.split('/')[-1])
+        nmap_root.append(wetpath.replace(wetpath.split('/')[-1],''))
+
+        tabs_list.append('0_')
+
+        print
+        print mappath
+        print wetpath
+
+pkc0_imap_list = []
+pkc0_nmap_list = []
+for i in range(len(SEC)):
+    for j in range(i+1, len(SEC)):
+        mappath1 = imaps0[1]['%s_with_%s;map;%dmodes'%(SEC[i], SEC[j], mode)]
+        mappath2 = imaps0[1]['%s_with_%s;map;%dmodes'%(SEC[j], SEC[i], mode)]
+        pkc0_imap_list.append( ['0_' + mappath1.split('/')[-1],
+                                '0_' + mappath2.split('/')[-1]])
+        wetpath1 = imaps0[1]['%s_with_%s;noise_inv;%dmodes'%(SEC[i], SEC[j], mode)]
+        wetpath2 = imaps0[1]['%s_with_%s;noise_inv;%dmodes'%(SEC[j], SEC[i], mode)]
+        pkc0_nmap_list.append( ['0_' + wetpath1.split('/')[-1],
+                                '0_' + wetpath2.split('/')[-1]])
+
+print 
+print pkc0_imap_list
+print pkc0_nmap_list
+
+if os.path.exists(map_cln):
+    bc_simmap_root = WORKROOT + 'reference_auto_%s_%d/'%(map_cln.split('/')[-2],mode)
+else:
+    bc_simmap_root = WORKROOT + 'reference_auto_%s_%d/'%(map_cln, mode)
+    
+
+cutlist = []
+if hour==15:
+    cutlist = [6, 7, 8, 15, 16, 18, 19, 20, 21, 22, 37, 80, 103, 104, 105, 106, \
+           107, 108, 130, 131, 132, 133, 134, 171, 175, 177, 179, 182, 183, \
+           187, 189, 192, 193, 194, 195, 196, 197, 198, 201, 204, 208, 209, \
+           212, 213, 218, 219, 229, 233, 237, 244, 254, 255]
+elif hour==22:
+    cutlist = [1,  2,  80, 206,201,200,196,192,189,186,182,217,212,211,223,229,
+                  252,253,254,255,156,159,191,193,199,204,210,214,219,240,250,209,
+                  215,213,187,198,157,197]
+elif hour==1:
+    #cutlist = [28, 32, 34, 36, 39, 40, 44, 46, 49, 50, 51, 52, 53, 54, 55,\
+    #           58, 61, 65, 66, 69, 70, 75, 76, 86, 90, 94, 101, 111, 112]
+    #cutlist = [6, 7, 8, 15, 16, 18, 19, 20, 21, 22, 37, 80, 103, 104, 105, 106, \
+    #       107, 108, 130, 131, 132, 133, 134,]
+    cutlist = [6, 7, 8, 15, 16, 18, 19, 20, 21, 22, 37, 80, 103, 104, 105, 106, \
+           107, 108, 130, 131, 132, 133, 134, 171, 175, 177, 179, 182, 183, \
+           187, 189, 192, 193, 194, 195, 196, 197, 198, 201, 204, 208, 209, \
+           212, 213, 218, 219, 229, 233, 237, 244, 254, 255]
+else:
+    print 'no cutlist'
+
+FKPweight = False 
+kmin = 0.003
+kmax = 2.5
+kbinNum = 45
+
+print
+print "-"*50
+print
+print
+
+#""" Pipe line """
+from mkpower import prepare
+pipe_modules.append(prepare.Prepare)
+
+from mkpower import mkpower_combine
+#  clean_{sim+map}(sim+map)
+pipe_modules.append(mkpower_combine.PowerSpectrumMaker)
+
+#  clean_{map}(map)
+pipe_modules.append((mkpower_combine.PowerSpectrumMaker, ('pkc0_', 'pkc_')))
+
+#from mkpower import pycamb
+#pipe_modules.append(pycamb.CAMB)
+
+from mkpower import bias
+pipe_modules.append(bias.BiasCalibrate)
+""" End """
+
+
+"""  Prepare """
+#from mkpower import prepare
+#pipe_modules.append(prepare.Prepare)
+pre_processes = 1 
+pre_plot = False
+#pre_plot = True
+pre_output_root = output_root
+pre_imap_root = imap_root
+pre_nmap_root = nmap_root
+pre_imap_list = imap_list
+pre_nmap_list = nmap_list
+pre_tabs_list = tabs_list
+
+pre_boxshape = (512, 128, 64)
+pre_discrete = 2
+pre_boxunit = 2.
+pre_cutlist = cutlist
+pre_window = 'blackman'
+
+"""  Calculate the combined Pk  """
+#from mkpower import mkpower_combine
+#pipe_modules.append(mkpower_combine.CrossPowerSpectrumMaker)
+pkc_processes = 1 
+if hour==1:
+    pkc_processes = 1
+pkc_plot = False 
+pkc_saveweight = True
+pkc_input_root = output_root
+pkc_output_root = output_root
+pkc_resultf = resultf
+pkc_boxshape = pre_boxshape
+pkc_discrete = pre_discrete
+pkc_boxunit = pre_boxunit
+pkc_kbinNum = kbinNum 
+pkc_kmin = kmin
+pkc_kmax = kmax
+#pkc_FKPweight = True
+pkc_FKPweight = FKPweight
+pkc_OmegaHI = 1.e-3
+pkc_Omegam = 0.24
+pkc_OmegaL = 0.76
+pkc_sme = False
+
+pkc0_processes = 1 
+if hour==1:
+    pkc0_processes = 1 
+pkc0_plot = False 
+pkc0_saveweight = True
+pkc0_input_root = output_root
+pkc0_output_root = output_root
+pkc0_resultf = resultf0
+pkc0_boxshape = pre_boxshape
+pkc0_discrete = pre_discrete
+pkc0_boxunit = pre_boxunit
+pkc0_kbinNum = kbinNum 
+pkc0_kmin = kmin
+pkc0_kmax = kmax
+#pkc0_FKPweight = True
+pkc0_FKPweight = FKPweight
+pkc0_OmegaHI = 1.e-3
+pkc0_Omegam = 0.24
+pkc0_OmegaL = 0.76
+pkc0_sme = False
+
+
+"""  Calling CAMB """
+#from mkpower import pycamb
+#pipe_modules.append(pycamb.CAMB)
+pcb_output_root = output_root + 'cambio/'
+pcb_do_nonlinear = 1
+pcb_transfer_redshift = 0.7
+pcb_transfer_high_precision = 'T'
+pcb_transfer_kmax = 1.5
+#pcb_transfer_k_per_logint = 400
+
+""" Calibrate the Bias of the Power Spectrum  """
+#form mkpower import bias
+#pipe_modules.append(bias.BiasCalibrate)
+bc_processes = 1
+bc_plot = False
+bc_input_root = output_root
+bc_output_root = bc_input_root
+bc_resultf = resultf
+bc_resultf0 = resultf0
+bc_PKunit = 'mK'
+bc_cross = False
+
+

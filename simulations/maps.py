@@ -1,11 +1,11 @@
 import numpy as np
-
+import scipy as sp
 from utils import units
 
 
 class Map2d(object):
     r"""A 2-d sky map.
-    
+
     Attributes
     ----------
     x_width, y_width : float
@@ -13,7 +13,7 @@ class Map2d(object):
     x_num, y_num : int
         Number of pixels along each angular axis.
 
-        
+
     """
     x_width = 5.0
     y_width = 5.0
@@ -21,12 +21,12 @@ class Map2d(object):
     x_num = 128
     y_num = 128
 
-    
+
     @classmethod
     def like_map(cls, mapobj, *args, **kwargs):
         r"""Create a Map2d (or subclassed) object the same shape as a given object.
         """
-        
+
         c = cls(*args, **kwargs)
         c.x_width = mapobj.x_width
         c.y_width = mapobj.y_width
@@ -63,11 +63,11 @@ class Map3d(object):
         Number of pixels along each angular axis.
     nu_num : int
         Number of frequency bins.
-        
+
     """
     x_width = 5.0
     y_width = 5.0
-    
+
     x_num = 128
     y_num = 128
 
@@ -91,6 +91,32 @@ class Map3d(object):
 
         return c
 
+    @classmethod
+    def like_kiyo_map(cls, mapobj, *args, **kwargs):
+        r"""Crease a Map3d (or subclassed) object based on one of kiyo's map
+        objects
+        """
+        c = cls(*args, **kwargs)
+
+        freq_axis = mapobj.get_axis('freq')
+        ra_axis = mapobj.get_axis('ra')
+        dec_axis = mapobj.get_axis('dec')
+
+        ra_fact = sp.cos(sp.pi * mapobj.info['dec_centre'] / 180.0)
+        c.x_width = (max(ra_axis) - min(ra_axis)) * ra_fact
+        c.y_width = max(dec_axis) - min(dec_axis)
+        (c.x_num, c.y_num) = (len(ra_axis), len(dec_axis))
+
+        c.nu_lower = min(freq_axis)/1.e6
+        c.nu_upper = max(freq_axis)/1.e6
+        c.nu_num = len(freq_axis)
+
+        print "Map3D: %dx%d field (%fx%f deg) from nu=%f to nu=%f (%d bins)" % \
+                 (c.x_num, c.y_num, c.x_width, c.y_width,
+                  c.nu_lower, c.nu_upper, c.nu_num)
+
+        return c
+
     def _width_array(self):
         return np.array([self.nu_upper - self.nu_lower, self.x_width*units.degree, self.widthy*units.degree], dtype=np.float64)
 
@@ -109,5 +135,3 @@ class Map3d(object):
     @property
     def nu_pixels(self):
         return (self.nu_lower + (np.arange(self.nu_num) + 0.5) * ((self.nu_upper - self.nu_lower) / self.nu_num))
-
-

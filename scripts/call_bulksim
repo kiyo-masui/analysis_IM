@@ -1,0 +1,18 @@
+#!/bin/bash
+while [ 1 ]
+do
+  #num=`ps aux | grep eswitzer | grep python | grep "R+" | wc -l`
+  username=`whoami`
+  num=`ls -1 /tmp | grep $username.busy | wc -l`
+  stamp=`date +%s`
+  #num=`ps aux | grep python | wc -l`
+  echo $num
+  if [ "$num" -lt "15" ]; then
+    echo "< 15 running; spawning one more"
+    #nohup python pipeline/manager.py input/ers/crosspower/GBT_15hr_map_oldcal_cross_bulksim.ini >& bulksim$stamp.log &
+    nohup python pipeline/manager.py input/ers/crosspower/GBT_1hr_v2_map_oldcal_cross_bulksim.ini >& bulksim$stamp.log &
+  else
+    echo ">= 15 running"
+  fi
+  sleep 2
+done

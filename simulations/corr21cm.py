@@ -1,12 +1,9 @@
-
 import numpy as np
-
 from corr import RedshiftCorrelation
 from simulations.maps import Map3d
-
 from utils import cubicspline as cs
+from scipy import interpolate
 from utils import units
-
 
 
 class Corr21cm(RedshiftCorrelation, Map3d):
@@ -19,21 +16,35 @@ class Corr21cm(RedshiftCorrelation, Map3d):
 
     add_mean = False
 
-    def __init__(self, ps = None, redshift = 0.0, **kwargs):
-        from os.path import join, dirname
+    def __init__(self, ps=None, sigma_v=0.0, redshift=0.0, **kwargs):
         if ps == None:
+            from os.path import join, dirname
+            #psfile = join(dirname(__file__),"data/ps_z1.5.dat")
+            #psfile = join(dirname(__file__),"data/wigglez_halofit_z1.5.dat")
+            psfile = join(dirname(__file__),"data/wigglez_halofit_z0.8.dat")
+            print "loading matter power file: " + psfile
+            redshift = 0.8
 
-            psfile = join(dirname(__file__),"data/ps_z1.5.dat")
-            redshift = 1.5
+            #pk_interp = cs.LogInterpolater.fromfile(psfile)
+            pwrspec_data = np.genfromtxt(psfile)
 
-            kstar = 5.0
-            c1 = cs.LogInterpolater.fromfile(psfile)
-            ps = lambda k: np.exp(-0.5 * k**2 / kstar**2) * c1(k)
+            (log_k, log_pk) = (np.log(pwrspec_data[:,0]), \
+                               np.log(pwrspec_data[:,1]))
 
-        RedshiftCorrelation.__init__(self, ps_vv = ps, redshift = redshift)
-        self._load_cache(join(dirname(__file__),"data/corr_z1.5.dat"))
+            logpk_interp = interpolate.interp1d(log_k, log_pk,
+                                                bounds_error=False,
+                                                fill_value=np.min(log_pk))
+
+            pk_interp = lambda k: np.exp(logpk_interp(np.log(k)))
+
+            kstar = 7.0
+            ps = lambda k: np.exp(-0.5 * k**2 / kstar**2) * pk_interp(k)
+
+        self._sigma_v = sigma_v
+
+        RedshiftCorrelation.__init__(self, ps_vv=ps, redshift=redshift)
+        #self._load_cache(join(dirname(__file__),"data/corr_z1.5.dat"))
         #self.load_fft_cache(join(dirname(__file__),"data/fftcache.npz"))
-
 
     def T_b(self, z):
         r"""Mean 21cm brightness temperature at a given redshift.
@@ -48,9 +59,13 @@ class Corr21cm(RedshiftCorrelation, Map3d):
         Returns
         -------
         T_b : array_like
+
+        Notes: the prefactor used to be 0.3 mK, but Tzu-Ching pointed out that this
+        was from and error in 2008PhRvL.100i1303C, Eric recalculated this to be
+        0.39 mK (agrees with 0.4 mK quoted over phone from Tzu-Ching)
         """
 
-        return (0.3 * ((self.cosmology.omega_m + self.cosmology.omega_l * (1+z)**-3) / 0.29)**-0.5
+        return (0.39 * ((self.cosmology.omega_m + self.cosmology.omega_l * (1+z)**-3) / 0.29)**-0.5
                 * ((1.0 + z) / 2.5)**0.5 * (self.omega_HI(z) / 1e-3))
 
     def mean(self, z):
@@ -106,7 +121,7 @@ class Corr21cm(RedshiftCorrelation, Map3d):
 
         x = ((1.0 / self.cosmology.omega_m) - 1.0) / (1.0 + z)**3
 
-        num = 1.0 + 1.175*x + 0.3064*x**2 + 0.005335*x**3
+        num = 1.0 + 1.175*x + 0.3064*x**2 + 0.005355*x**3
         den = 1.0 + 1.857*x + 1.021 *x**2 + 0.1530  *x**3
 
         d = (1.0 + x)**0.5 / (1.0 + z) * num / den
@@ -137,10 +152,10 @@ class Corr21cm(RedshiftCorrelation, Map3d):
 
         x = ((1.0 / self.cosmology.omega_m) - 1.0) / (1.0 + z)**3
 
-        dnum = 3.0*x*(1.175 + 0.6127*x + 0.01606*x**2)
+        dnum = 3.0*x*(1.175 + 0.6127*x + 0.01607*x**2)
         dden = 3.0*x*(1.857 + 2.042 *x + 0.4590 *x**2)
 
-        num = 1.0 + 1.175*x + 0.3064*x**2 + 0.005335*x**3
+        num = 1.0 + 1.175*x + 0.3064*x**2 + 0.005355*x**3
         den = 1.0 + 1.857*x + 1.021 *x**2 + 0.1530  *x**3
 
         f = 1.0 + 1.5 * x / (1.0 + x) + dnum / num - dden / den
@@ -163,4 +178,60 @@ class Corr21cm(RedshiftCorrelation, Map3d):
         cube = self.realisation(z1, z2, self.x_width, self.y_width, self.nu_num, self.x_num, self.y_num, zspace = False)[::-1,:,:].copy()
 
         return cube
-        
+
+    def get_kiyo_field(self, refinement=1):
+        r"""Fetch a realisation of the 21cm signal (NOTE: in K)
+        """
+        z1 = units.nu21 / self.nu_upper - 1.0
+        z2 = units.nu21 / self.nu_lower - 1.0
+
+        cube = self.realisation(z1, z2, self.x_width, self.y_width,
+                                self.nu_num, self.x_num, self.y_num,
+                                refinement=refinement, zspace = False) * 0.001
+
+        return cube
+
+    def get_pwrspec(self, k_vec):
+        r"""Fetch the power spectrum of the signal
+        The effective redshift is found by averaging over 256 redshifts...
+        """
+        z1 = units.nu21 / self.nu_upper - 1.0
+        z2 = units.nu21 / self.nu_lower - 1.0
+
+        return self.powerspectrum_1D(k_vec, z1, z2, 256) * 1.e-6
+
+    def get_kiyo_field_physical(self, refinement=1, density_only=False,
+                                no_mean=False, no_evolution=False):
+        r"""Fetch a realisation of the 21cm signal (NOTE: in K)
+        """
+        z1 = units.nu21 / self.nu_upper - 1.0
+        z2 = units.nu21 / self.nu_lower - 1.0
+
+        (cube, rsf, d) = self.realisation(z1, z2, self.x_width, self.y_width,
+                                self.nu_num, self.x_num, self.y_num,
+                                refinement=refinement, zspace = False,
+                                report_physical=True, density_only=density_only,
+                                no_mean=no_mean, no_evolution=no_evolution)
+
+        return (cube * 0.001, rsf * 0.001, d)
+
+
+# TODO: this was moved from elsewhere and needs to be tested again
+def theory_power_spectrum(redshift_filekey, bin_centers,
+                          unitless=True, fileout="theory.dat"):
+    r"""simple caller to output a power spectrum"""
+    zfilename = datapath_db.fetch(redshift_filekey, intend_read=True,
+                                      pick='1')
+
+    zspace_cube = algebra.make_vect(algebra.load(zfilename))
+    simobj = corr21cm.Corr21cm.like_kiyo_map(zspace_cube)
+    pwrspec_input = simobj.get_pwrspec(bin_center)
+    if unitless:
+        pwrspec_input *= bin_center ** 3. / 2. / math.pi / math.pi
+
+    outfile = open(fileout, "w")
+    for specdata in zip(bin_left, bin_center, bin_right, pwrspec_input):
+        outfile.write(("%10.15g " * 4 + "\n") % specdata)
+
+    outfile.close()
+

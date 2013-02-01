@@ -1,5 +1,7 @@
 """
-Procedure to calculate the Mueller parameters for each frequency from on-off scans of a calibrator such as 3C286."""
+Procedure to calculate the Mueller parameters for each frequency from on-off scans of a calibrator such as 3C286. 
+This version uses the parameterized Mueller Matrix, including flux, and has 7 independent parameters. This requires at least 2 sets of onoff scans with significantly different parallactic angles to solve. 
+"""
 import os
 
 from scipy.optimize import *
@@ -59,7 +61,7 @@ class MuellerGen(object) :
         theta = self.theta
         t = self.function
         for i in range(0,len(t),4):
-            t[i] = flux*(1*Isrc+Qsrc*((0.5*dG*sp.cos(2.*al)-2.*ep*sp.cos(ph-ch)*sp.sin(2.*al))*sp.cos(2.*theta[i])-(0.5*dG*sp.sin(2.*al)*sp.cos(ch)+2*ep*(sp.cos(al)*sp.cos(al)*sp.cos(ph)-sp.sin(al)*sp.sin(al)*sp.cos(ph-2.*ch)))*sp.sin(2.*theta[i]))+Usrc*((0.5*dG*sp.cos(2.*al)-2.*ep*sp.sin(2.*al)*sp.cos(ph-ch))*sp.sin(2.*theta[i])+((0.5*dG*sp.sin(2.*al)*sp.cos(ch)+2*ep*(sp.cos(al)*sp.cos(al)*sp.cos(ph)-sp.sin(al)*sp.sin(al)*sp.cos(ph-2.*ch)))*sp.sin(2.*theta[i]))))
+            t[i] = flux*(1*Isrc+Qsrc*((0.5*dG*sp.cos(2.*al)-2.*ep*sp.cos(ph-ch)*sp.sin(2.*al))*sp.cos(2.*theta[i])-(0.5*dG*sp.sin(2.*al)*sp.cos(ch)+2*ep*(sp.cos(al)*sp.cos(al)*sp.cos(ph)-sp.sin(al)*sp.sin(al)*sp.cos(ph-2.*ch)))*sp.sin(2.*theta[i]))+Usrc*((0.5*dG*sp.cos(2.*al)-2.*ep*sp.sin(2.*al)*sp.cos(ph-ch))*sp.sin(2.*theta[i])+((0.5*dG*sp.sin(2.*al)*sp.cos(ch)+2*ep*(sp.cos(al)*sp.cos(al)*sp.cos(ph)-sp.sin(al)*sp.sin(al)*sp.cos(ph-2.*ch)))*sp.cos(2.*theta[i]))))
             t[i+1] =flux*( 0.5*dG*Isrc + Qsrc*(sp.cos(2.*al)*sp.cos(2.*theta[i])-sp.sin(2*al)*sp.cos(ch)*sp.sin(2*theta[i]))+Usrc*(sp.cos(2*al)*sp.cos(2*theta[i])+sp.sin(2*al)*sp.cos(ch)*sp.sin(2*theta[i])))
             t[i+2] = flux*(2*ep*sp.cos(ps+ph)*Isrc+Qsrc*(-sp.sin(2*al)*sp.cos(ps+ch)*sp.cos(2.*theta[i])-(sp.cos(al)*sp.cos(al)*sp.cos(ps)-sp.sin(al)*sp.sin(al)*sp.cos(ps+2*ch))*sp.sin(2*theta[i]))+Usrc*(-sp.sin(2*al)*sp.cos(ps+ch)*sp.cos(2*theta[i])+(sp.cos(al)*sp.cos(al)*sp.cos(ps)-sp.sin(al)*sp.sin(al)*sp.cos(ps+2*ch))*sp.sin(2*theta[i])))
             t[i+3] = flux*(2*ep*sp.sin(ps+ph)*Isrc+Qsrc*(-sp.sin(2*al)*sp.sin(ps+ch)*sp.cos(2*theta[i])-(sp.sin(ps)*sp.cos(al)*sp.cos(al)-sp.sin(al)*sp.sin(al)*sp.sin(ps+2*ch))*sp.sin(2*theta[i]))+Usrc*(-sp.sin(2*al)*sp.sin(ps+ch)*sp.cos(2*theta[i])+(sp.sin(ps)*sp.cos(al)*sp.cos(al)-sp.sin(al)*sp.sin(al)*sp.sin(ps+2*ch))*sp.sin(2*theta[i])))
