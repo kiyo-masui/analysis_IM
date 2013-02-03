@@ -66,7 +66,7 @@ data_dir = os.getenv('GBT_DATA')
 #base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
 #map_base = base_dir + 'maps/'
-map_base = base_dir + 'maps/15hr_41-80_avg_fdgp_new'
+map_base = base_dir + 'maps/15hr_41-80_avg_fdgp_new/'
 
 # IO directory and file prefixes.
 prefix = ''
@@ -102,8 +102,8 @@ pipe_modules = []
 #pipe_modules.append(calibrate.Calibrate)
 
 #new calibration module
-from time_stream import flux_diff_gain_cal
-pipe_modules.append(flux_diff_gain_cal.Calibrate)
+#from time_stream import flux_diff_gain_cal
+#pipe_modules.append(flux_diff_gain_cal.Calibrate)
 
 #from time_stream import rotate_pol
 #pipe_modules.append(rotate_pol.RotatePol)
@@ -122,14 +122,14 @@ pipe_modules.append(flux_diff_gain_cal.Calibrate)
 #from cal import correlate_map
 #pipe_modules.append((correlate_map.Measure, ('mc2_', 'mc_')))
 
-#from time_stream import subtract_map_data
-#pipe_modules.append((subtract_map_data.Subtract, ('sm2_', 'sm_')))
+from time_stream import subtract_map_data
+pipe_modules.append((subtract_map_data.Subtract, ('sm2_', 'sm_')))
 
-#from time_stream import reflag
-#pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
+from time_stream import reflag
+pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
 
-#from noise import measure_noise
-#pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
+from noise import measure_noise
+pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
 #from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
@@ -342,7 +342,8 @@ mc2_filter_type = 'edge'
 
 # subtract_map_data
 #sm2_input_root = base_dir_main + 'rotated_to_I_Q_avg_fdgp/'+prefix
-sm2_input_root = mc2_output_root
+#sm2_input_root = mc2_output_root
+sm2_input_root = rp_output_root
 sm2_file_middles = file_middles
 sm2_input_end = '.fits'
 sm2_output_root = base_dir + 'map_subtracted_sec/'
