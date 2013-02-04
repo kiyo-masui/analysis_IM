@@ -198,7 +198,7 @@ def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
     else:
         weights_2d_flat = counts_2d_flat.astype(float)
 
-    print weights_2d_flat.shape, pwr_2d_flat.shape
+    #print weights_2d_flat.shape, pwr_2d_flat.shape
 
     old_settings = np.seterr(invalid="ignore")
     weight_pwr_prod = weights_2d_flat * pwr_2d_flat

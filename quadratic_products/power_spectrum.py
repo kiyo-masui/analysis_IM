@@ -352,7 +352,11 @@ class PowerSpectrum(object):
                 entry['counts'] = np.mean(counts_arr[treatment], axis=2)
                 entry['mean'] = np.mean(comb_arr[treatment], axis=2)
                 if self.num_comb > 1:
-                    entry['std'] = np.std(comb_arr[treatment], axis=2, ddof=1)
+                    try:
+                        entry['std'] = np.std(comb_arr[treatment], axis=2, ddof=1)
+                    except FloatingPointError:
+                        print "ERROR: stdev of spectral pairs failed"
+                        entry['std'] = 0.
                 else:
                     entry['std'] = 0.
             stat_summary[treatment] = entry

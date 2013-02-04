@@ -18,7 +18,9 @@ autonoiseweightprefix = 'autonoiseweight_'
 
 
 class CompileAutoNoiseweight(object):
-    r"""combine AxA, BxB, CxC, DxD into a noise bias estimate"""
+    r"""combine AxA, BxB, CxC, DxD into an estimate of the power-spectral noise
+    -> inverse variance weight
+    """
     def __init__(self, parameter_file=None, params_dict=None, feedback=0):
         self.params = params_dict
 
@@ -48,6 +50,16 @@ class CompileAutoNoiseweight(object):
 
             if transfer_dict is not None:
                 weight *= transfer_dict[treatment] ** 2.
+
+            # this is a little excessive, but to be safe:
+            nanmask = np.isnan(weight)
+            infmask = np.isnan(weight)
+            zeromask = (pwr_noise.counts_2d[pwrcase] == 0)
+
+            mask = np.where(np.logical_or(
+                            np.logical_or(nanmask, infmask), zeromask))
+
+            weight[mask] = 0.
 
             weightfile[treatment] = weight
 
@@ -203,9 +215,6 @@ class CompileAutopower(object):
             summary_by_treatment[treatment]["k_vec_right"] = \
                         pwr_map.k_1d_from_2d["right"]
 
-            mean_map = pwr_map_summary[treatment]["mean"]
-            std_map = pwr_map_summary[treatment]["std"]
-            gauss_std_map = pwr_map_summary[treatment]["gauss_std"]
 
             outfile = "%s/pk_%s.dat" % (self.params["outdir"], treatment)
             file_tools.print_multicolumn(pwr_map.k_1d_from_2d["center"],

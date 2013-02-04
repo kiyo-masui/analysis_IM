@@ -14,6 +14,8 @@ import shutil
 # TODO: make object like AggregateSummary that recompiles the physical sims
 # TODO: call AggregateStatistics on the physical sims, make plots
 # TODO: make transfer from physical -> observed -> observed with beam/meansub
+# TODO: for noise simulations, replicate 0modes across the full set of
+# treatments in the transfer function/noise weight files
 
 aggregatesummary_init = {
         "directory": "dir",
@@ -66,6 +68,8 @@ class AggregateSummary(object):
             print "from file ", self.params['subtract_pwrspec']
             data_subtract = ps.PowerSpectrum(self.params['subtract_pwrspec'])
 
+        # accumulate information about this set of files by loading just the
+        # first one:
         sim_toread = ps.PowerSpectrum(filelist[0])
         # run this here just to get the 2D->1D bin centers
         sim_toread.convert_2d_to_1d()
@@ -76,6 +80,7 @@ class AggregateSummary(object):
         num_k_1d_from_2d = sim_toread.num_k_1d_from_2d
 
         (kx_2d, ky_2d) = (sim_toread.kx_2d, sim_toread.ky_2d)
+        (kx, ky) = (kx_2d['center'], ky_2d['center'])
         (num_kx, num_ky) = (sim_toread.num_kx, sim_toread.num_ky)
 
         print "k_1d bins: %d, %d, kx bins: %d, ky bins: %d" % \
@@ -87,24 +92,43 @@ class AggregateSummary(object):
         if self.params["kpar_range"] is not None:
             print "restricting k_par to ", self.params["kpar_range"]
             restrict_par = np.where(np.logical_or(
-                               ky_2d < self.params["kpar_range"][0],
-                               ky_2d > self.params["kpar_range"][1]))
+                               ky < self.params["kpar_range"][0],
+                               ky > self.params["kpar_range"][1]))
         else:
             restrict_par = None
 
         if self.params["kperp_range"] is not None:
             print "restricting k_perp to ", self.params["kperp_range"]
             restrict_perp = np.where(np.logical_or(
-                               kx_2d < self.params["kperp_range"][0],
-                               kx_2d > self.params["kperp_range"][1]))
+                               kx < self.params["kperp_range"][0],
+                               kx > self.params["kperp_range"][1]))
         else:
             restrict_perp = None
 
         # load the transfer functions and 2d->1d noise weights
-        transfer_dict = pe.load_transferfunc(
-                            self.params["apply_2d_beamtransfer"],
-                            self.params["apply_2d_modetransfer"],
-                            sim_toread.treatment_cases)
+        # if applying a mode correction at fixed treatment (for Gaussian noise
+        # model)
+        fixed_treatment = self.params["fix_weight_treatment"]
+        if fixed_treatment:
+            checklist = None
+        else:
+            checklist = sim_toread.treatment_cases
+
+        full_transfer_dict = pe.load_transferfunc(
+                                    self.params["apply_2d_beamtransfer"],
+                                    self.params["apply_2d_modetransfer"],
+                                    checklist)
+
+        transfer_dict = None
+        if full_transfer_dict is not None:
+            transfer_dict = {}
+            for treatment in sim_toread.treatment_cases:
+                if fixed_treatment is not None:
+                    print "fixing transfer for %s to value at %s" % \
+                            (treatment, fixed_treatment)
+                    transfer_dict[treatment] = full_transfer_dict[fixed_treatment]
+                else:
+                    transfer_dict[treatment] = full_transfer_dict[treatment]
 
         weights_2d = None
         if self.params["noiseweights_2dto1d"] is not None:
@@ -114,8 +138,7 @@ class AggregateSummary(object):
             weightfile = h5py.File(self.params["noiseweights_2dto1d"], "r")
             weights_2d = {}
             for treatment in sim_toread.treatment_cases:
-                if self.params["fix_weight_treatment"] is not None:
-                    fixed_treatment = self.params["fix_weight_treatment"]
+                if fixed_treatment is not None:
                     print "fixing weight for %s to value at %s" % \
                             (treatment, fixed_treatment)
                     weights_2d[treatment] = weightfile[fixed_treatment].value
@@ -128,6 +151,12 @@ class AggregateSummary(object):
                 if restrict_par is not None:
                     weights_2d[treatment][:, restrict_par] = 0.
 
+                #outplot_weight_file = "cool_noiseweight_2d_%s.png" % treatment
+                #plot_slice.simpleplot_2D(outplot_weight_file,
+                #                     np.abs(weights_2d[treatment]),
+                #                     np.log10(kx), np.log10(ky),
+                #                     ["logkx", "logky"], 1., "Log-weight",
+                #                     "log-weight", logscale=True)
 
             weightfile.close()
 
