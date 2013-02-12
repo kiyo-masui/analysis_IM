@@ -53,7 +53,50 @@ class TestSimple(unittest.TestCase):
         prods /= (self.sigma**2 * np.pi)[:,None,None]
         self.assertTrue(np.allclose(prods, np.eye(4)[None,:,:]))
 
+class TestHermiteBasis(unittest.TestCase):
+
+    def setUp(self):
+        n_f = 6
+        self.n_f = n_f
+        self.freq = 10. + np.arange(n_f)
+        self.width = 0.9 + (np.arange(n_f) / 5. / n_f)
+        self.sigma = self.width / (2 * np.sqrt(2 * np.log(2)))
+        self.center = np.arange(n_f)[:,None] * 0.2 / n_f * np.array([1, 2])
+        self.Basis = pol_beam.HermiteBasis(self.freq, self.center, self.width)
+
+    def test_center(self):
+        # Test that the center of the basis is unity for the zero mode.
+        center_skewer = self.Basis.eval_basis((0, 0), self.center[:,0,None], 
+                                              self.center[:,1,None])
+        self.assertTrue(np.allclose(center_skewer, 1.))
+        # Test that it is zero for all odd modes.
+        skewer = self.Basis.eval_basis((1, 0), self.center[:,0,None], 0)
+        self.assertTrue(np.allclose(skewer, 0.))
+        skewer = self.Basis.eval_basis((4, 7), 1, self.center[:,1,None])
+        self.assertTrue(np.allclose(skewer, 0.))
+
+    def test_orthonormal(self):
+        # Modes we will test for orthonormality.
+        mode_list = [(0, 0), (1, 0), (0, 2), (1, 2), (2, 5), (6, 8)]
+        n_modes = len(mode_list)
+        n_side = 35
+        size = 6.
+        mode_maps = np.empty((self.n_f, n_modes, n_side, n_side))
+        for ii in range(n_modes):
+            mode_maps[:,ii,:,:] = self.Basis.get_basis_grid(mode_list[ii],
+                                                            n_side, size)
+        # Take inner produce of all mode pairs.
+        prods = np.sum(np.sum(mode_maps[:,:,None,:,:]
+                              * mode_maps[:,None,:,:,:], -1), -1)
+        # Normalize the integral.
+        prods *= (size / n_side)**2
+        # Gaussian normalizations
+        prods /= (self.sigma**2 * np.pi)[:,None,None]
+        # Check orthonormality.
+        self.assertTrue(np.allclose(prods, np.eye(n_modes)))
+
 
 
 if __name__ == '__main__' :
     unittest.main()
+

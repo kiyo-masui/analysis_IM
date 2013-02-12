@@ -3,7 +3,7 @@
 import numpy as np
 from numpy import ma
 import matplotlib.pyplot as plt
-from scipy import optimize
+from scipy import optimize, linalg
 
 from utils import misc
 import source
@@ -12,6 +12,9 @@ import source
 
 class FormattedData(object):
     """All data that goes into a fit.
+
+    This class holds GBT SDfits data in a format that makes it easy for
+    fitting.
     
     Parameters
     ----------
@@ -41,7 +44,7 @@ class FormattedData(object):
         weights_arr = np.empty((self.n_pol, self.n_time), dtype=np.float64)
         for data, start, end in self.iterate_scans():
             this_chan_data = data['data'][chan_ind,:,:]
-            this_chan_weights = data['data'][chan_ind,:,:]
+            this_chan_weights = data['weight'][chan_ind,:,:]
             data_arr[:,start:end] = this_chan_data
             weights_arr[:,start:end] = this_chan_weights
         return data_arr, weights_arr
@@ -53,7 +56,7 @@ class FormattedData(object):
                                dtype=np.float64)
         for data, start, end in self.iterate_scans():
             this_chan_data = data['data']
-            this_chan_weights = data['data']
+            this_chan_weights = data['weight']
             data_arr[:,:,start:end] = this_chan_data
             weights_arr[:,:,start:end] = this_chan_weights
         return data_arr, weights_arr
@@ -71,8 +74,8 @@ class FormattedData(object):
     def generate_scan_basis_polys(self, order):
         """Generate basis time polynomials for each scan up to order.
         
-        Generate basis polynomials as a function of time for each scan and each
-        polarization up to the passed maximum order.
+        Generate basis polynomials as a function of time for each scan 
+        up to the passed maximum order.
 
         Parameters
         ----------
@@ -81,16 +84,17 @@ class FormattedData(object):
 
         Returns
         -------
-        polys : ndarray of shape (`order`, n_scan, n_pol, n_time)
+        polys : ndarray of shape (n_scan, `order`, n_time)
         """
 
-        polys = np.zeros(order, self.n_scan, self.n_pol, self.n_time,
+        polys = np.zeros((self.n_scan, order, self.n_time),
                          dtype=np.float64)
         scan_ind = 0
-        for data, start, end in self.interate_scans():
+        for data, start, end in self.iterate_scans():
             time = data['time']
             this_poly = misc.ortho_poly(time, order)
-            polys[:,scan_ind,:,start:end] = this_poly[:,None,:]
+            polys[scan_ind,:,start:end] = this_poly
+            scan_ind +=1
         return polys
 
     def iterate_scans(self):
@@ -177,9 +181,13 @@ class FormattedData(object):
             data_list.append(this_data)
         return data_list
 
-
 def fit_simple_gaussian(BeamData, Source):
-    """Perform nonlinear fit of a gaussian to the Beam."""
+    """Perform nonlinear fit of a gaussian to the Beam.
+    
+    Fits a simple, non-linear gaussian model to the data, using only the XX and
+    YY polarizations.  Model includes Gaussian width, amplitude, centroid
+    offset, and baseline system temperature.
+    """
     
     # Get source relative coordinates for the data.
     UT = BeamData.get_all_field('UT')
@@ -195,18 +203,23 @@ def fit_simple_gaussian(BeamData, Source):
         width = pars[2]
         XX_amp = pars[3]
         YY_amp = pars[4]
+        XX_Tsys = pars[5]
+        YY_Tsys = pars[6]
         sigma = width / (2 * np.sqrt(2 * np.log(2)))
         gauss = np.exp(-((az - az_off)**2 + (el - el_off)**2) / (2 * sigma**2))
-        return np.array([XX_amp, YY_amp])[:,None] * gauss
+        model = np.array([XX_amp, YY_amp])[:,None] * gauss
+        model += np.array([XX_Tsys, YY_Tsys])[:,None]
+        return model
     
     # Allocate memory for outputs.
-    all_pars = np.empty((BeamData.n_chan, 5), dtype=np.float64)
+    all_pars = np.empty((BeamData.n_chan, 7), dtype=np.float64)
     # Initialization parameters.
-    init_pars = [0, 0, 0.25, 10, 10]
+    init_pars = [0, 0, 0.25, 10, 10, 10, 10]
     # Loop over channels and fit each one independantly.
     for ii in xrange(BeamData.n_chan):
         # Get the data for this channel.
         data, weights = BeamData.get_data_weight_chan(ii)
+        # Use only XX and YY polarizations.
         data = data[[0,3],:]
         weights = weights[[0,3],:]
         # Construct the residual funciton.
@@ -219,8 +232,83 @@ def fit_simple_gaussian(BeamData, Source):
     source = all_pars[:,0:2].copy()
     width = all_pars[:,2].copy()
     amps = all_pars[:,3:5].copy()
-    return source, width, amps
+    Tsys = all_pars[:,5:7].copy()
+    return source, width, amps, Tsys
 
-        
+
+def linear_fit(BeamData, Basis, Source, beam_modes=2, time_modes=2):
+    """Perform a linear fit to a set of basis function."""
     
+    n_time = BeamData.n_time
+    n_chan = BeamData.n_chan
+    n_pol = BeamData.n_pol
+    n_scan = BeamData.n_scan
+    # Get source relative coordinates for the data.
+    UT = BeamData.get_all_field('UT')
+    az_s, el_s = Source.azelGBT(UT)
+    az_factor = np.cos(np.mean(el_s) * np.pi / 180)
+    az = (BeamData.get_all_field('az') - az_s) * az_factor
+    el = BeamData.get_all_field('el') - el_s
+    
+    # Get time domain basis function for each scan. This is frequency
+    # independant.
+    time_basis = BeamData.generate_scan_basis_polys(time_modes)
+    n_scan_parameters = n_scan * time_modes
+
+    # Memory for holding basis functions.  The basis functions are frequency
+    # channel dependant do to the dependance of the beam width and beam center.
+    n_beam_basis = (beam_modes * (beam_modes + 1)) / 2
+    beam_basis = np.empty((n_beam_basis, n_time), dtype=np.float64)
+    # Number of parameters per polarization and per channel (i.e. per fit).
+    n_parameters = n_beam_basis + n_scan_parameters
+    # Memory for the coefficient matrix.
+    coefficients = np.empty((n_time, n_parameters), dtype=np.float64)
+    # Fill in the scan basis functions which are the same for each channel.
+    scan_coeffs = np.reshape(time_basis, (n_scan_parameters, n_time)).T
+    coefficients[:,n_beam_basis:] = scan_coeffs
+    # Memory for output parameters.
+    params = np.empty((n_chan, n_pol, n_parameters), dtype=np.float64)
+    # Memory for storing the fit model data.
+    model_data = np.empty((n_chan, n_pol, n_time), dtype=np.float64)
+
+    # Loop over channels and fit each independantly.
+    for ii in xrange(BeamData.n_chan - 69):
+        # Get the data for this channel.
+        data, weights = BeamData.get_data_weight_chan(ii)
+        # Evaluate the basis functions for this channel at the telescope
+        # pointing.
+        index = 0
+        for jj in range(beam_modes):
+            for kk in range(beam_modes - jj):
+                ba_fun = Basis.eval_basis_chan((jj, kk), az, el, ii)
+                beam_basis[index,:] = ba_fun
+                index += 1
+        # Construct the coefficient matrix, which is the same for each
+        # polarization.
+        coefficients[:,:n_beam_basis] = beam_basis.T
+        # Perform fit for each polarization.
+        for jj in range(n_pol):
+            # Weight coefficients and data.
+            this_data = data[jj,:] * weights[jj,:]
+            this_coefficients = coefficients * weights[jj,:,None]
+            # Perform the fit.
+            this_params, residues, rank, s = linalg.lstsq(this_coefficients,
+                                                          this_data)
+            # TODO: can probably use the rank to figure out if there is any
+            # data on that slice, do something extra with the gaps.
+            params[ii,jj,:] = this_params
+            model_data[ii,jj,:] = np.dot(coefficients, this_params)
+    # Now unpack the parameters.
+    scan_params = params[:,:,n_beam_basis:]
+    scan_params.shape = (n_chan, n_pol, n_scan, time_modes)
+    scan_params = np.rollaxis(scan_params, 2, 0)
+    beam_params = np.zeros((n_chan, n_pol, beam_modes, beam_modes),
+                           dtype=np.float64)
+    index = 0
+    for jj in range(beam_modes):
+        for kk in range(beam_modes - jj):
+            beam_params[:,:,jj,kk] = params[:,:,index]
+            index += 1
+    return beam_params, scan_params, model_data
+
 

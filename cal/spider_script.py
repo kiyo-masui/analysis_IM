@@ -15,7 +15,7 @@ from map import pol_beam
 from utils import misc
 import cal.source
 
-np.seterr(all='warn')
+#np.seterr(all='warn')
 
 data_root = os.getenv('GBT_DATA') + 'GBT12A_418/'
 end = '.fits'
