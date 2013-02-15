@@ -73,7 +73,7 @@ prefix = ''
 map_prefix = '' + field + '_' + '41-80_avg_fdgp_new' + '_'
 
 # Maximum number of processes to use.
-pipe_processes = 8
+pipe_processes = 3
 
 
 ####  List of modules to execute.  ####
@@ -122,26 +122,26 @@ pipe_modules = []
 #from cal import correlate_map
 #pipe_modules.append((correlate_map.Measure, ('mc2_', 'mc_')))
 
-from time_stream import subtract_map_data
-pipe_modules.append((subtract_map_data.Subtract, ('sm2_', 'sm_')))
+#from time_stream import subtract_map_data
+#pipe_modules.append((subtract_map_data.Subtract, ('sm2_', 'sm_')))
 
-from time_stream import reflag
-pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
+#from time_stream import reflag
+#pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
 
-from noise import measure_noise
-pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
+#from noise import measure_noise
+#pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
-#from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
-#from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
 
 
 #### Parameters for the various modules. ####

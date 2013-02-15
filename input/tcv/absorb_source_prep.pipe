@@ -15,7 +15,7 @@ field = '15hr'
 #sessions = range(41, 44)
 #sessions = [50]
 
-file_middles = tuple(dir_data.get_data_files(range(41,80),project='GBT10B_036',field='3C286',type='onoff'))
+#file_middles = tuple(dir_data.get_data_files(range(41,80),project='GBT10B_036',field='3C286',type='onoff'))
 #file_middles = tuple(dir_data.get_data_files(sessions, field='15hr', 
 #                                             project="GBT10B_036", 
 #											 type='ralongmap'))
@@ -24,8 +24,9 @@ file_middles = tuple(dir_data.get_data_files(range(41,80),project='GBT10B_036',f
 #middles_firs = tuple(dir_data.get_data_files(range(41,81), field='15hr', 
 #                                             project="GBT10B_036", 
 #											 type='ralongmap'))
-#file_middles = tuple(dir_data.get_data_files(range(41,90), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(0,14), field='1hr', project='GBT11B_055',type='ralongmap')+dir_data.get_data_files(range(15,19), field='1hr', project='GBT11B_055', type='ralongmap'))
-#file_middles = tuple(dir_data.get_data_files(range(17,19),field='1hr',project='GBT11B_055', type='ralongmap'))
+file_middles = tuple(dir_data.get_data_files(range(41,80), field='15hr', project='GBT10B_036', type='ralongmap'))
+#+dir_data.get_data_files(range(0,14), field='1hr', project='GBT11B_055',type='ralongmap')+dir_data.get_data_files(range(15,19), field='1hr', project='GBT11B_055', type='ralongmap'))
+#file_middles = tuple(dir_data.get_data_files(range(17,19),field='1hr',project='GBT11B_055', type='ralongmap'))1
 
 n_files = len(file_middles)
 middles_a = file_middles[:n_files//4]
@@ -44,12 +45,14 @@ middles_temp = tuple(dir_data.get_data_files([47], field='15hr',
 # 1hr: RA center = 13.0, DEC center = 1.85, Pixel spacing = 0.0627, map shape = (161,83)
 #      adjusted to (140,81) due to memory limits.
 
-map_centre = (13.0, 1.85)
+map_centre = (217.8688, 2.0)
 # For maps where performace isn't important.
 #map0_shape = (100, 60)
 #map0_spacing = .040
-map0_shape = (161, 83)
-map0_spacing = .0627
+#map0_shape = (161, 83)
+map0_spacing = 0.3
+map0_shape = (16,10)
+#map0_spacing = .0627
 #map0_shape = (78, 43)
 #map0_spacing = .0627
 # Performance limited maps.
@@ -110,11 +113,11 @@ pipe_modules.append(rotate_pol.RotatePol)
 
 #### First Map making interation ####
 
-#from map import dirty_map
-#pipe_modules.append(dirty_map.DirtyMapMaker)
+from map import dirty_map
+pipe_modules.append(dirty_map.DirtyMapMaker)
 
-#from map import clean_map
-#pipe_modules.append(clean_map.CleanMapMaker)
+from map import clean_map
+pipe_modules.append(clean_map.CleanMapMaker)
 
 
 #### Second Map making iteration ####
@@ -286,8 +289,8 @@ rp_average_cals = False
 
 
 # dirty_map
-#dm_input_root = rp_output_root
-dm_input_root = base_dir_main + 'rotated_to_I_Q_avg_fdgp/' + prefix
+dm_input_root = rp_output_root
+#dm_input_root = base_dir_main + 'rotated_to_I_Q_avg_fdgp/' + prefix
 dm_file_middles = file_middles
 #dm_file_middles = middles_firs
 dm_input_end = '.fits'
