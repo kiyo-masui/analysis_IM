@@ -10,7 +10,7 @@ def data_binning(h5py_file,num_bins):
     posx = file['Positions']['x'][:]
     posy = file['Positions']['y'][:]
     posz = file['Positions']['z'][:]
-    halo_mass = file['Halo_Masses']['Halo_Masses'][:]
+    halo_mass = file['HI_Masses']['HI_Masses'][:]
     # creating info for binning function
     xedges = np.linspace(0,posx.max(),num_bins)
     yedges = np.linspace(0,posy.max(),num_bins)
@@ -40,9 +40,9 @@ def data_binning(h5py_file,num_bins):
     # save data for make_cube_movie.py
     map = algebra.make_vect(z, axis_names=('ra','dec','freq'))
     map.info = info
-    save_file = open("/tmp/mufma/data/halos_20_bins_weights.npy","w")
+    save_file = open("/tmp/mufma/data/HI_prelim_40_bins_weights.npy","w")
     algebra.save(save_file,map)
     save_file.close()
 
-data_binning('scripts/Halo_Catalog.hdf5',20.)
+data_binning('/cita/h/home-2/mufma/code/analysis_IM/Tryout.hdf5',40.)
 

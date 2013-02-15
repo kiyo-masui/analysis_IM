@@ -4,7 +4,7 @@ from scipy.interpolate import interp1d
 import math
 import pylab as pl
 import numpy as np
-
+import h5py
 
 # differential distribution for the hydrogen
 # we approximate it by the Schechter function
@@ -34,17 +34,32 @@ def cumul_halo_mf(halo_array,mass):
         y[i] = halo_array[i][1]
     f = interp1d(x,y)
     def g(x):
-        return f(10**x)*math.log(10)*(10**x)
-    return quad(g,mass,(16.))[0]
+        return f(10**(x))*math.log(10)*10**(x)
+    return quad(g,mass,16.,epsabs=1.49e-08)[0]
+
+"""
+def cumul_halo_mf_debug(halo_array,mass):
+    x = np.zeros(len(halo_array))
+    y = np.zeros(len(halo_array))
+    for i in range(len(halo_array)):
+        x[i] = halo_array[i][0]
+        y[i] = halo_array[i][1]
+    f = interp1d(x,y)
+    def g(x):
+        return f(10**(x))*math.log(10)*10**(x)
+    return quad(g,mass,16.,epsabs=1.49e-08)[0]
 
 # debugging part
 # integration methods dont reach the convergence
 print cumul_HI_mf(schechter_function,8.,0.006,-1.37,10**9.8)
-print cumul_halo_mf(halo_mf_data,(10.8))
-print cumul_halo_mf(halo_mf_data,(10.9))
+print cumul_halo_mf(halo_mf_data,15.5)
+print (cumul_halo_mf(halo_mf_data,15.5) -
+cumul_halo_mf_debug(halo_mf_data,15.5))/(cumul_halo_mf(halo_mf_data,15.5))
+"""
 
 # auxillary part for root finding
 # we will look for such x that equality(x)=0
+
 def equality(variable_mass_halo,mass_HI,param_1,param_2,param_3):
     return cumul_HI_mf(schechter_function,mass_HI,param_1,param_2,param_3) - cumul_halo_mf(halo_mf_data,variable_mass_halo)
 
@@ -52,6 +67,7 @@ def equality(variable_mass_halo,mass_HI,param_1,param_2,param_3):
 # these part equate cumulative mass funcitons
 # required work: how to find root of the equation equality(x)=0
 # newton method is failing to converge after 50 iterations
+
 def abundance_match(axis_1,schechter_param1,schechter_param2,
                     schechter_param3):
     axis_2 = np.zeros_like(axis_1)
@@ -68,7 +84,24 @@ def abundance_match(axis_1,schechter_param1,schechter_param2,
 
 z = np.zeros(50)
 for i in range(len(z)):
-    z[i] = 7. + i*0.06
+    z[i] = 8. + i*0.06
 x = abundance_match(z,0.006,-1.37,10**9.8)
-pl.plot(x,z)
+func = interp1d(x,z)
+
+"""
+pl.plot(z,x)
 pl.show()
+"""
+
+def M_halo_to_M_HI(filename):
+    create_file = h5py.File(filename)
+    create_file.create_group('HI_Masses')
+    Halo_mass = create_file['Halo_Masses']['Halo_Masses'][:]
+    print Halo_mass.max()
+    print Halo_mass.min()
+    HI_mass = np.zeros(len(Halo_mass))
+    for index in range(len(Halo_mass)):
+        HI_mass[index] = 10**(func(math.log10(Halo_mass[index])))
+    create_file['HI_Masses'].create_dataset('HI_Masses',data = HI_mass)
+M_halo_to_M_HI('/cita/h/home-2/mufma/code/analysis_IM/Tryout.hdf5')
+
