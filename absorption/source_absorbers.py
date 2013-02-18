@@ -16,6 +16,8 @@ params_init = {
 	       "input_root" : "./",
 	       "file_middles" : ("GBTdata",),
                "input_end" : ".raw.acs.fits",
+               "cal" : "N",
+               "plot_label" : "",
                "output_root" : "absorbers",
                "output_end" : ".txt",
 	       "scans" : (),
@@ -40,6 +42,7 @@ class SourceAbsorb(object):
         output_end = params['output_end']
        
         self.file_num = len(params['file_middles'])
+        print self.file_num
 
         sample_file = params['file_middles'][0]
         input_sample = (params['input_root']+sample_file+params['input_end'])
@@ -73,6 +76,7 @@ class SourceAbsorb(object):
                 freq_val = Data.freq
                 freq_val = freq_val/1000000 
                 Full_date = Data.field['DATE-OBS']
+                print Full_date[0],Full_date[-1],freq_val[1]-freq_val[0]
 #                p#rint Full_date
                 Az = Data.field['CRVAL2'] 
 #                print Az 
@@ -141,23 +145,31 @@ class SourceAbsorb(object):
             if freq_val[i]>=845.0:
                 max = i
         
+        plot_label = params['plot_label']
+        calibrated = params['cal']
 #        print freq_val[min],freq_val[max]
         pylab.scatter(freq_val[max:min],On_med[max:min],c='b',edgecolor='b',s=3,label='On Src')
         pylab.vlines(839.4,0.,80.,color='r')
-#        pylab.ylim(26,32)
-        pylab.ylim(50,60)
-#        pylab.ylabel('Temperature (K)')
+        if calibrated == 'N':
+            pylab.ylim(27,32)
+            pylab.ylabel('Temperature (Noise Cal Units)')
+        elif calibrated == 'Y':
+            pylab.ylim(53,57)
+            pylab.ylabel('Temperature (K)')
         pylab.xlabel('Frequency (MHz)')
-        pylab.savefig('absorb_stack_3C286_avgcal_new_highres')
+        pylab.savefig('absorb_stack_3C286_'+plot_label)
         pylab.clf()
 
         pylab.scatter(freq_val[max:min],Off_med_lrg[max:min],c='g',edgecolor='g',s=3,label='Off Above')
         pylab.scatter(freq_val[max:min],Off_med_sml[max:min],c='r',edgecolor='r',s=3,label='Off Below')
-#        pylab.ylim(8,12)
-        pylab.ylim(15,25)
-#        pylab.ylabel('Temperature (K)')
+        if calibrated=='N':
+           pylab.ylim(8,12)
+           pylab.ylabel('Temperature (Noise Cal Units)')
+        elif calibrated=='Y':
+            pylab.ylim(15,25)
+            pylab.ylabel('Temperature (K)')
         pylab.xlabel('Frequency (MHz)')
-        pylab.savefig('absorb_stack_off_src_avgcal_new_highres')
+        pylab.savefig('absorb_stack_off_src_'+plot_label)
         pylab.clf()
 
        

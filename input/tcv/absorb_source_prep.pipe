@@ -50,8 +50,8 @@ map_centre = (217.8688, 2.0)
 #map0_shape = (100, 60)
 #map0_spacing = .040
 #map0_shape = (161, 83)
-map0_spacing = 0.3
-map0_shape = (16,10)
+map0_spacing = 0.1
+map0_shape = (48,30)
 #map0_spacing = .0627
 #map0_shape = (78, 43)
 #map0_spacing = .0627
@@ -69,7 +69,7 @@ base_dir = base_dir_main
 #base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
 #map_base = base_dir + 'maps/'
-map_base = base_dir_main + 'maps/'
+map_base = base_dir_main + 'maps/15hr_41-80_absorb/'
 
 # IO directory and file prefixes.
 prefix = ''
@@ -105,19 +105,19 @@ pipe_modules = []
 #pipe_modules.append(calibrate.Calibrate)
 
 #new calibration module
-from time_stream import flux_diff_gain_cal
-pipe_modules.append(flux_diff_gain_cal.Calibrate)
+#from time_stream import flux_diff_gain_cal
+#pipe_modules.append(flux_diff_gain_cal.Calibrate)
 
-from time_stream import rotate_pol
-pipe_modules.append(rotate_pol.RotatePol)
+#from time_stream import rotate_pol
+#pipe_modules.append(rotate_pol.RotatePol)
 
 #### First Map making interation ####
 
 from map import dirty_map
 pipe_modules.append(dirty_map.DirtyMapMaker)
 
-from map import clean_map
-pipe_modules.append(clean_map.CleanMapMaker)
+#from map import clean_map
+#pipe_modules.append(clean_map.CleanMapMaker)
 
 
 #### Second Map making iteration ####
@@ -298,8 +298,8 @@ dm_output_root = map_base + 'fir_' + map_prefix
 dm_scans = ()
 dm_IFs = ()
 
-dm_polarizations = ('I','Q','U','V')
-#dm_polarizations = ('V',)
+#dm_polarizations = ('I','Q','U','V')
+dm_polarizations = ('I',)
 dm_field_centre = map_centre
 dm_pixel_spacing = map0_spacing
 dm_map_shape = map0_shape
@@ -315,8 +315,8 @@ dm_interpolation = 'cubic'
 # clean_map
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
-#cm_polarizations = ('V',)
-cm_polarizations = ('I','Q','U','V')
+cm_polarizations = ('I',)
+#cm_polarizations = ('I','Q','U','V')
 cm_bands = (800,)
 cm_save_noise_diag = True
 
