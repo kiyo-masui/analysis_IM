@@ -176,8 +176,14 @@ class ReformatParkes(object):
         scanlist = scanlist.T.flatten()
         #scanlist = np.array([0,])
 
+        # flag by tsys
+        flag_times = 20
+        for i in range(flag_times):
+            data, tsys = self.flag_by_tsys(data, tsys)
+
         # bandpass remove
-        data = self.bandpass_rm(data, tsys, scannum)
+        #data = self.bandpass_rm(data, tsys, scannum)
+        data = self.bandpass_rm_slow(data, tsys, scannum)
 
         band_cf = np.array([band_cf[:,::13].flatten()[0]]) 
         band_wd = np.array([band_wd[:,::13].flatten()[0]]) 
@@ -195,6 +201,21 @@ class ReformatParkes(object):
         beam= np.array(range(13))
         return data, scanlist, band_cf, band_wd, chan_cf, chan_wd, object, exposure,\
                date_obs, elevation, azimuth, beam, pol, cal, tsys
+
+    def flag_by_tsys(self, data, tsys, sig=3):
+        tsys = ma.array(tsys)
+        tsys[np.isnan(tsys)] = ma.masked
+        tsys[tsys==0] = ma.masked
+        tsys_mean = ma.mean(tsys, axis=0)
+        tsys_std  = ma.std(tsys, axis=0)
+        print tsys_std.T
+        tsys[tsys>tsys_mean[None,...]+sig*tsys_std[None,...]] = ma.masked
+        tsys[tsys<tsys_mean[None,...]-sig*tsys_std[None,...]] = ma.masked
+
+        data[tsys.mask,:] = ma.masked
+        tsys = tsys.filled(np.nan)
+
+        return data, tsys
 
     def elaz_multibeam(self, elevation, azimuth):
         angle = 15. # Scan angle
@@ -252,7 +273,17 @@ class ReformatParkes(object):
                 print "Ignore: [%s]"%file
                 continue
 
-            if hdulist[1].data['DATA'].shape != (1170, 1, 1, 2, 1024):
+            #flag cycles
+            flag_index = hdulist[1].data['FLAGGED']
+            if (flag_index == 1).any():
+                flag_index = \
+                    (flag_index == 0).reshape(flag_index.shape[0],-1).all(axis=1)
+                for i in range(hdulist[1].header['TFIELDS']):
+                    fieldlabel = hdulist[1].header['TTYPE%d'%(i+1)]
+                    hdulist[1].data.field(fieldlabel) = \
+                        hdulist[1].data.field(fieldlabel).compress(flag_index,axis=0)
+
+            elif hdulist[1].data['DATA'].shape != (1170, 1, 1, 2, 1024):
                 print 'DATA Ignore: %s'%file
                 print '             do not have the regular data shape'
                 print '             ',hdulist[1].data['DATA'].shape
@@ -290,25 +321,38 @@ class ReformatParkes(object):
 
         def median(array, n, axis=-1):
             if n & 1:
-                return ma.sort(array, axis=axis)[:,:,(n-1)/2,...]
+                return ma.sort(array, axis=axis)[:,(n-1)/2,...]
             else:
-                return ma.mean(ma.sort(array,axis=axis)[:,:,n/2-1:n/2+1,...],axis=axis)
+                return ma.mean(ma.sort(array,axis=axis)[:,n/2-1:n/2+1,...],axis=axis)
 
 
         spec[np.isnan(spec)] = ma.masked
         tsys[np.isnan(tsys)] = ma.masked
 
-        shape = spec.shape
-        spec = spec.reshape((scan_n, 2, shape[0]/scan_n/2, 13, 2, shape[-1]))
-        tsys = tsys.reshape((scan_n, 2, shape[0]/scan_n/2, 13, 2))
+        for i in range(13):
+            spec_i = spec[:,i,...]
+            tsys_i = tsys[:,i,...]
 
-        spec_m = median(spec, shape[0]/scan_n/2, axis=2)
-        tsys_m = median(tsys, shape[0]/scan_n/2, axis=2)
+            shape = spec_i.shape
+            spec_i = spec_i.reshape((scan_n, 10, shape[0]/scan_n/10, 2, shape[-1]))
+            tsys_i = tsys_i.reshape((scan_n, 10, shape[0]/scan_n/10, 2))
 
-        spec = tsys_m[:,:,None,:,:,None] * (spec/spec_m[:,:,None,...]) 
-        spec-= tsys[:,:,:,:,:,None]
+            #spec_m = median(spec_i, shape[0]/scan_n, axis=1)
+            #tsys_m = median(tsys_i, shape[0]/scan_n, axis=1)
+            #spec_m = np.median(spec_i, axis=1)
+            #tsys_m = np.median(tsys_i, axis=1)
+            spec_m = np.median(spec_i, axis=2)
+            tsys_m = np.median(tsys_i, axis=2)
 
-        spec = spec.reshape(shape)
+            spec_i = tsys_m[:,:,None,:,None] * (spec_i/spec_m[:,:,None,...]) 
+            spec_i-= tsys_i[:,:,:,:,None]
+
+            spec_i = spec_i.reshape(shape)
+
+            spec[:,i,...] = spec_i
+            del spec_i
+            gc.collect()
+
 
         return spec
 
@@ -326,46 +370,28 @@ class ReformatParkes(object):
         spec_m = np.zeros(spec.shape)
         tsys_m = np.zeros(tsys.shape)
 
-        # get a filter
-        #st = 3
-        #et = time_n +st 
-        #filter = np.zeros((shape[0]/scan_n, shape[0]/scan_n))
-        #for i in range(shape[0]/scan_n):
-        #    filter[i, st+i:et+i] = 1.
-        #filter += filter.T
-        
-        def median(array, n, axis=-1):
-            if n & 1:
-                return ma.sort(array, axis=axis)[:,(n-1)/2,...]
-            else:
-                return ma.mean(ma.sort(array,axis=axis)[:,n/2-1:n/2+1,...],axis=axis)
-
         for i in range(shape[0]/scan_n):
-            #spec_i = ma.array(spec * filter[i][None, :, None, None, None])
-
             # select a time range for bandpass estimation 
             if i > time_n+1:
-                n = 2 * time_n + 2
-                spec_i = ma.array(spec[:, i-time_n-1:i+time_n+1,...])
-                tsys_i = ma.array(tsys[:, i-time_n-1:i+time_n+1,...])
+                spec_i = spec[:, i-time_n-1:i+time_n+1,...]
+                tsys_i = tsys[:, i-time_n-1:i+time_n+1,...]
             else:
-                n = time_n + i + 1
-                spec_i = ma.array(spec[:, 0:i+time_n+1,...])
-                tsys_i = ma.array(tsys[:, 0:i+time_n+1,...])
+                spec_i = spec[:, 0:i+time_n+1,...]
+                tsys_i = tsys[:, 0:i+time_n+1,...]
             # mask out the current time
             if i > 1: 
-                n -= 2
-                spec_i[:,i-1:i+1,...] = ma.masked
-                tsys_i[:,i-1:i+1,...] = ma.masked
+                spec_i = np.delete(spec_i, np.s_[i-1:i+1], 1)
+                tsys_i = np.delete(tsys_i, np.s_[i-1:i+1], 1)
             else:
-                n -= 1
-                spec_i[:,0:i+1,...] = 0.
-                tsys_i[:,0:i+1,...] = 0.
-            #spec_i[spec_i==0] = ma.masked
-            #tsys_i[tsys_i==0] = ma.masked
+                spec_i = np.delete(spec_i, np.s_[i-1:i+1], 1)
+                tsys_i = np.delete(tsys_i, np.s_[i-1:i+1], 1)
 
-            spec_m[:,i,:,:,:] = median(spec_i, n, axis=1)
-            tsys_m[:,i,:,:]   = median(tsys_i, n, axis=1)
+            spec_m[:,i,:,:,:] = np.median(spec_i, axis=1)
+            tsys_m[:,i,:,:]   = np.median(tsys_i, axis=1)
+
+            del spec_i
+            del tsys_i
+            gc.collect()
 
             #spec_m[:,i,:,:,:] = ma.median(spec_i, axis=1)
             #tsys_m[:,i,:,:] = ma.median(tsys_i, axis=1)
@@ -374,10 +400,6 @@ class ReformatParkes(object):
 
         spec = spec.reshape(shape)
 
-        #del filter
-        del spec_m
-        del tsys_m
-        gc.collect()
         return spec
 
     @batch_handler.log_timing
