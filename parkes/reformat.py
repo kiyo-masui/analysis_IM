@@ -111,18 +111,24 @@ class ReformatParkes(object):
         pol = [1,2]
         cal = ['F',]
         for i in range(len(parkes_data)):
-            data.append(parkes_data[i].field('DATA'))
-            tsys.append(parkes_data[i].field('TSYS'))
-            band_cf.append(parkes_data[i].field('CRVAL1'))
-            band_wd.append(parkes_data[i].field('BANDWID'))
-            chan_cf.append(parkes_data[i].field('CRPIX1'))
-            chan_wd.append(parkes_data[i].field('CDELT1'))
-            object.append(parkes_data[i].field('OBJECT'))
-            exposure.append(parkes_data[i].field('EXPOSURE'))
-            date.append(parkes_data[i].field('DATE-OBS'))
-            time.append(parkes_data[i].field('TIME'))
-            elevation.append(parkes_data[i].field('ELEVATIO'))
-            azimuth.append(parkes_data[i].field('AZIMUTH'))
+            #flag cycles
+            flag_index = parkes_data[i].field('FLAGGED')
+            if (flag_index == 1).any():
+                flag_index = \
+                    (flag_index == 0).reshape(flag_index.shape[0],-1).all(axis=1)
+
+            data.append(parkes_data[i].field('DATA').compress(flag_index, axis=0))
+            tsys.append(parkes_data[i].field('TSYS').compress(flag_index, axis=0))
+            band_cf.append(parkes_data[i].field('CRVAL1').compress(flag_index, axis=0))
+            band_wd.append(parkes_data[i].field('BANDWID').compress(flag_index, axis=0))
+            chan_cf.append(parkes_data[i].field('CRPIX1').compress(flag_index, axis=0))
+            chan_wd.append(parkes_data[i].field('CDELT1').compress(flag_index, axis=0))
+            object.append(parkes_data[i].field('OBJECT').compress(flag_index, axis=0))
+            exposure.append(parkes_data[i].field('EXPOSURE').compress(flag_index, axis=0))
+            date.append(parkes_data[i].field('DATE-OBS').compress(flag_index, axis=0))
+            time.append(parkes_data[i].field('TIME').compress(flag_index, axis=0))
+            elevation.append(parkes_data[i].field('ELEVATIO').compress(flag_index,axis=0))
+            azimuth.append(parkes_data[i].field('AZIMUTH').compress(flag_index, axis=0))
 
         data = np.array(data)
         tsys = np.array(tsys)
@@ -273,17 +279,8 @@ class ReformatParkes(object):
                 print "Ignore: [%s]"%file
                 continue
 
-            #flag cycles
-            flag_index = hdulist[1].data['FLAGGED']
-            if (flag_index == 1).any():
-                flag_index = \
-                    (flag_index == 0).reshape(flag_index.shape[0],-1).all(axis=1)
-                for i in range(hdulist[1].header['TFIELDS']):
-                    fieldlabel = hdulist[1].header['TTYPE%d'%(i+1)]
-                    hdulist[1].data.field(fieldlabel) = \
-                        hdulist[1].data.field(fieldlabel).compress(flag_index,axis=0)
-
-            elif hdulist[1].data['DATA'].shape != (1170, 1, 1, 2, 1024):
+            #if hdulist[1].data['DATA'].shape != (1170, 1, 1, 2, 1024):
+            if hdulist[1].data['DATA'].shape != (1222, 1, 1, 2, 1024):
                 print 'DATA Ignore: %s'%file
                 print '             do not have the regular data shape'
                 print '             ',hdulist[1].data['DATA'].shape

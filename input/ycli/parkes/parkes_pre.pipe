@@ -5,8 +5,8 @@ import os
 #from core import dir_data
 import scipy as sp
 
-base_dir = "/home/ycli/map_result/"
-data_dir = "/home/ycli/DATA/parkes/"
+base_dir = "/mnt/raid-project/gmrt/ycli/map_result/"
+data_dir = "/mnt/raid-project/gmrt/ycli/parkes/"
 
 ''' >> Data Direction << '''
 ''' 2012-10-24 '''
@@ -40,7 +40,7 @@ data_dir = "/home/ycli/DATA/parkes/"
 #prefix = 'nobpcal_beamcal_'
 
 ''' 2012-10-27 '''
-parkes_session = 'CALDATA_SDF_beamcal/1027_average/'
+parkes_session = 'RAWDATA_SDF/20121027/'
 parkesfiles = [] 
 os.system('ls %s > %sfilelist'%(data_dir+parkes_session, data_dir+parkes_session))
 listfile = open(data_dir+parkes_session+'filelist', 'r')
@@ -53,7 +53,7 @@ listfile.close()
 outputname = 'parkes_2012_10_27_P641'
 file_middles = tuple(['parkes_2012_10_27_P641',])
 #prefix = 'average_beamcal_'
-prefix = 'average_beamcal_bandpassrm_'
+prefix = ''
 
 ''' 2012-10-28 '''
 #parkes_session = 'CALDATA_SDF_beamcal/1028/'
