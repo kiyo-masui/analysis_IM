@@ -1,7 +1,11 @@
+#This script generates a set of maps in RA and DEC for each frequency in the map data. Can be used to make plots of maps.
+
 import pylab
 import pyfits
 import sys
 from numpy import *
+#from core import algebra as al
+#from utils import * 
 import core.algebra as al
 import scipy
 
@@ -33,8 +37,8 @@ for slice, freq in enumerate(freqs):
    medianv = median(array[slice][nancut])
 
 #   Alternate plotting command to set temperature limits
-#  pylab.imshow(new_array, cmap='hot', vmin=-0.6, vmax=0.6, extent=(ras.max(),ras.min(),decs.min(),decs.max()), origin='lower')
-   pylab.imshow(new_array, interpolation='gaussian', cmap='hot', extent=(ras.max(),ras.min(),decs.min(),decs.max()), origin='lower')
+   pylab.imshow(new_array, cmap='hot', vmin=-0.1, vmax=0.1, extent=(ras.max(),ras.min(),decs.min(),decs.max()), origin='lower')
+#   pylab.imshow(new_array, interpolation='gaussian', cmap='hot', extent=(ras.max(),ras.min(),decs.min(),decs.max()), origin='lower')
    pylab.colorbar() #For some reason this isn't working, fixed...
    pylab.savefig(filename2+str(freq)[:3]+'.png')
 #   pylab.savefig('v_'+filename2+str(freq)[:3]+'.png')

@@ -1,0 +1,4 @@
+# move the plots over
+rsync -avz --progress "eswitzer@login.scinet.utoronto.ca:~eswitzer/code/analysis_IM/pwrspec_plots" ./pwrspec_plots_scinet
+# move the transfer function products over
+rsync -avz --progress "eswitzer@login.scinet.utoronto.ca:/scratch/r/rbond/eswitzer/GBT/bulksim/*.shelve" /mnt/raid-project/gmrt/eswitzer/GBT/bulksim/

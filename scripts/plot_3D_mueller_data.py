@@ -1,3 +1,4 @@
+# This script is set to plot the generated mueller matrix elements for a set of sessions. Currently set so that it plots all matrix elements other than mII as the element divided by mII so that flux is separated from polarization.
 import pylab
 import sys
 from numpy import *

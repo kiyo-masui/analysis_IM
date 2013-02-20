@@ -25,6 +25,8 @@ params_init = {
                "input_end" : ".fits",
                "output_root" : "./",
                "output_filename" : "foreground_modes.shelve",
+               "n_modes_removed" : 0,
+               "output_end" : '.fits',
                "scans" : (),
                "IFs" : ()
                }
@@ -32,7 +34,7 @@ params_init = {
 prefix = 'tf_'
 
 class Measure(object) :
-    """Measures the noise of data files.
+    """Measures foregrounds in the data files and cleans them.
     """
 
     def __init__(self, parameter_file_or_dict=None, feedback=2) :
@@ -98,8 +100,51 @@ class Measure(object) :
                         #plt.show()
             out_db[key + '.vects'] = eigen_vects
             out_db[key + '.freq'] = freq_dict[key]
+        if params['n_modes_removed']:
+            for middle in file_middles:
+                key = get_key(middle)
+                modes = out_db[key + '.vects']
+                modes = modes[:,:,:,:,-params['n_modes_removed']:]
+                self.clean_file(middle, modes)
+        # Close the data base.
         out_db.close()
 
+    def clean_file(self, middle, modes):
+        params = self.params
+        file_name = (params['input_root'] + middle
+                     + params['input_end'])
+        # Output parameters.
+        Writer = core.fitsGBT.Writer(feedback=self.feedback)
+        out_filename = (params['output_root'] + middle
+                        + params['output_end'])
+        band_inds = params["IFs"]
+        Reader = core.fitsGBT.Reader(file_name, feedback=self.feedback)
+        n_bands = len(Reader.IF_set)
+        if not band_inds:
+            band_inds = range(n_bands)
+        # Number of bands we acctually process.
+        n_bands_proc = len(band_inds)
+        if not band_inds:
+            band_inds = range(n_bands)
+        # Number of bands we acctually process.
+        n_bands_proc = len(band_inds)
+        # Get the key that will group this file with other files.
+        key = get_key(middle)
+        # Read one block to figure out how many polarizations and channels
+        # there are.
+        Data = Reader.read(0,0)
+        n_pol = Data.dims[1]
+        n_cal = Data.dims[2]
+        n_chan = Data.dims[3]
+        for ii in range(n_bands_proc):
+            Blocks = Reader.read((), ii)
+            this_band_modes = modes[ii,...]
+            for Data in Blocks:
+                clean_data(Data, this_band_modes)
+                Writer.add_data(Data)
+        # Write the data back out.
+        utils.mkparents(out_filename)
+        Writer.write(out_filename)
 
     def process_file(self, middle):
         params = self.params
@@ -144,8 +189,34 @@ def get_key(middle):
     # For now just use the session number as the key.
     separate = middle.split('/')[-1]
     sess_num = separate.split('_')[0]
-    key = sess_num
+    # XXX
+    #key = sess_num
+    key = middle
     return key
+
+def clean_data(Data, modes):
+    data = Data.data.filled(0)
+    mask = ma.getmaskarray(Data.data)
+    weights = np.logical_not(mask)
+    # Remove mean and rezero mask.
+    counts = np.sum(weights, 0)
+    counts[counts==0] = 1
+    data = data - np.sum(data, 0) / counts
+    data *= weights
+    # Get the normalization at each time, pol, cal, mode (summing over
+    # frequency).  Usually 1 unless there is a masked
+    # element.
+    norms = np.sum(weights[:,:,:,:,None] * modes[None,:,:,:,:]**2, -2)
+    norms[norms==0] = 1.
+    # Get amplitude of the mode for each time, pol, cal, mode (summing over
+    # frequency).
+    amps = np.sum(data[:,:,:,:,None] * modes[None,:,:,:,:], -2)
+    amps /= norms
+    # Project back into the modes to get frequency axis.  Collapse mode axis
+    # to get something the shape of the data.
+    to_subtract = np.sum(amps[:,:,:,None,:] * modes[None,:,:,:,:], -1)
+    # Subtract it out.
+    Data.data -= to_subtract
 
 def get_covar(Data):
     

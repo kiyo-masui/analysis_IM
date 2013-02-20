@@ -1,0 +1,103 @@
+# Pipeline file for glueing maps together.
+
+import os
+
+field = '15hr'
+map_prefix = '' + field + '_' + '41-90' + '_'
+
+
+base_dir = os.getenv('GBT_OUT')
+data_dir = os.getenv('GBT_DATA')
+base_tcv = os.getenv('GBT_TCV')
+# Which set of maps we are working on.
+map_base = base_dir + 'maps/july11/'
+
+
+# Maximum number of processes to use.
+pipe_processes = 12
+
+####  List of modules to execute.  ####
+pipe_modules = []
+
+from map import glue_maps
+#pipe_modules.append((glue_maps.GlueMaps, ('gmA_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmB_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmC_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmD_', 'gm_')))
+
+#pipe_modules.append((glue_maps.GlueMaps, ('gmnA_', 'gm_')))
+pipe_modules.append((glue_maps.GlueMaps, ('gmnB_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmnC_', 'gm_')))
+#pipe_modules.append((glue_maps.GlueMaps, ('gmnD_', 'gm_')))
+
+
+# Where to find the maps.
+cmA_input_root = map_base + 'secA_' + map_prefix
+cmB_input_root = map_base + 'secB_' + map_prefix
+cmC_input_root = map_base + 'secC_' + map_prefix
+cmD_input_root = map_base + 'secD_' + map_prefix
+
+# Glue the clean maps.
+# Map A
+gmA_input_root = cmA_input_root + "clean_map_"
+gmA_output_root = gmA_input_root
+gmA_polarizations = ('I',)
+gmA_bands = (737, 800, 862)
+gmA_mat_diag = False
+
+# Other maps
+gmB_input_root = cmB_input_root + "clean_map_"
+gmB_output_root = gmB_input_root
+
+gmC_input_root = cmC_input_root + "clean_map_"
+gmC_output_root = gmC_input_root
+
+gmD_input_root = cmD_input_root + "clean_map_"
+gmD_output_root = gmD_input_root
+
+# Gluing the noise inverse diagonals.
+# Map A
+gmnA_input_root = cmA_input_root + "noise_inv_"
+gmnA_output_root = cmA_input_root + "noise_inv_diag_"
+gmnA_polarizations = ('I',)
+gmnA_bands = gmA_bands
+gmnA_mat_diag = True
+
+# Other maps
+gmnB_input_root = cmB_input_root + "noise_inv_"
+gmnB_output_root = cmB_input_root + "noise_inv_diag_"
+
+gmnC_input_root = cmC_input_root + "noise_inv_"
+gmnC_output_root = cmC_input_root + "noise_inv_diag_"
+
+gmnD_input_root = cmD_input_root + "noise_inv_"
+gmnD_output_root = cmD_input_root + "noise_inv_diag_"
+
+# Other parameters to be set the same as map A.
+
+gmB_polarizations = gmA_polarizations
+gmB_bands = gmA_bands
+gmB_mat_diag = gmA_mat_diag
+
+gmC_polarizations = gmA_polarizations
+gmC_bands = gmA_bands
+gmC_mat_diag = gmA_mat_diag
+
+gmD_polarizations = gmA_polarizations
+gmD_bands = gmA_bands
+gmC_mat_diag = gmA_mat_diag
+
+
+gmnB_polarizations = gmnA_polarizations
+gmnB_bands = gmnA_bands
+gmnB_mat_diag = gmnA_mat_diag
+
+gmnC_polarizations = gmnA_polarizations
+gmnC_bands = gmnA_bands
+gmnC_mat_diag = gmnA_mat_diag
+
+gmnD_polarizations = gmnA_polarizations
+gmnD_bands = gmnA_bands
+gmnD_mat_diag = gmnA_mat_diag
+
+
