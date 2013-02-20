@@ -36,7 +36,8 @@ base_params = {
                'output_end' : ".testout.fits",
                # What data to process within each file.
                'scans' : (),
-               'IFs' : ()
+               'IFs' : (),
+               'beams' : ()
                }
 
 class BaseSingle(object) :
@@ -144,7 +145,8 @@ class BaseSingle(object) :
             scan_inds = range(len(Reader.scan_set))
         # Loop over scans.
         for thisscan in scan_inds :
-            Blocks = Reader.read(thisscan, params['IFs'], force_tuple=True)
+            Blocks = Reader.read(thisscan, params['IFs'], params['beams'],
+                                 force_tuple=True)
             
             # Function that loops over DataBlocks within a scan.
             NewBlocks = self.scan_action(Blocks)
