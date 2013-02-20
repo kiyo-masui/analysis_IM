@@ -5,11 +5,13 @@ This program is pipeline compatible.
 """
 
 import datetime
+import multiprocessing as mp
 
 import numpy as np
 import pyfits
 
 from kiyopy import parse_ini, utils
+import kiyopy.pickle_method
 from core import data_block
 from core import fitsGBT
 
@@ -86,6 +88,7 @@ class Converter(object):
         Blocks = self.blocks_from_parkes_hdulist(hdulist)
         # Write out.
         Writer.add_data(Blocks)
+        utils.mkparents(output_fname)        
         Writer.write(output_fname)
 
     def blocks_from_parkes_hdulist(self, hdulist):
@@ -112,11 +115,15 @@ class Converter(object):
         beam_axis.shape = (n_time, n_beam)
         if not np.all(beam_axis == range(1, n_beam + 1)):
             raise NotImplementedError("Beams out of order.")
+        # Figure out which beams to process.
+        beams = self.params['beams']
+        if not beams:
+            beams = range(n_beam)
 
         # Loop thorugh the beams and get a data_block for each one.
         # Initialze list of output blocks.
         out_Blocks = []
-        for beam_index in self.params['beams']:
+        for beam_index in beams:
             this_beam_inds = np.arange(n_time) * n_beam + beam_index
             this_fdata = fdata[this_beam_inds]
             if not np.all(this_fdata['BEAM'] == beam_index + 1):
