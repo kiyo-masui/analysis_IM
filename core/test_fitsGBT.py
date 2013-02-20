@@ -31,7 +31,7 @@ ncal = len(cal_set)
 nfreq = 2048
 
 # Fields that should be copied if present but are not in the test data.
-missing_fields = ['BEAM', 'RA-OBS', 'DEC-OBS']
+missing_fields = ['BEAM', 'RA-OBS', 'DEC-OBS', 'PARANGLE']
 
 # The name FileProcessor was inherited from an earlier version of this class.
 # It is now not a processor but simple a Reader.
