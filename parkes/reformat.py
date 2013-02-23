@@ -129,6 +129,8 @@ class ReformatParkes(object):
             time.append(parkes_data[i].field('TIME').compress(flag_index, axis=0))
             elevation.append(parkes_data[i].field('ELEVATIO').compress(flag_index,axis=0))
             azimuth.append(parkes_data[i].field('AZIMUTH').compress(flag_index, axis=0))
+            print parkes_data[i].field('DATA').compress(flag_index, axis=0).shape
+
 
         data = np.array(data)
         tsys = np.array(tsys)
@@ -189,7 +191,7 @@ class ReformatParkes(object):
 
         # bandpass remove
         #data = self.bandpass_rm(data, tsys, scannum)
-        data = self.bandpass_rm_slow(data, tsys, scannum)
+        #data = self.bandpass_rm_slow(data, tsys, scannum)
 
         band_cf = np.array([band_cf[:,::13].flatten()[0]]) 
         band_wd = np.array([band_wd[:,::13].flatten()[0]]) 
@@ -214,7 +216,7 @@ class ReformatParkes(object):
         tsys[tsys==0] = ma.masked
         tsys_mean = ma.mean(tsys, axis=0)
         tsys_std  = ma.std(tsys, axis=0)
-        print tsys_std.T
+        #print tsys_std.T
         tsys[tsys>tsys_mean[None,...]+sig*tsys_std[None,...]] = ma.masked
         tsys[tsys<tsys_mean[None,...]-sig*tsys_std[None,...]] = ma.masked
 
@@ -361,7 +363,7 @@ class ReformatParkes(object):
         tsys[np.isnan(tsys)] = ma.masked
 
         shape = spec.shape
-        spec = spec.reshape((scan_n, shape[0]/scan_n, 13, 2, shape[-1]))
+        spec = spec.reshape((scan_n, shape[0]/scan_n, 13, 2, 1024))
         tsys = tsys.reshape((scan_n, shape[0]/scan_n, 13, 2))
 
         spec_m = np.zeros(spec.shape)
@@ -396,6 +398,11 @@ class ReformatParkes(object):
         spec = tsys_m[:,:,:,:,None] * (spec/spec_m) - tsys[:,:,:,:,None]
 
         spec = spec.reshape(shape)
+
+        spec = np.ma.array(spec)
+        tsys = np.ma.array(tsys)
+        spec[spec==0] = np.ma.masked
+        tsys[tsys==0] = np.ma.masked
 
         return spec
 

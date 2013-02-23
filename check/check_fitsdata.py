@@ -7,7 +7,8 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 from parkes import fitsGBT
 
 #rawdatapath = ('/home/ycli/DATA/parkes/CALDATA_SDF_beamcal/1027_average/2012-10-27_1908-P641_west1_1315_P641.sdfits',)
-rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result/parkes/parkes_2012_10_27_P641.fits',)
+#rawdatapath = ('/mnt/scratch-gl/ycli/map_result/parkes/parkes_2012_10_27_P641.fits',)
+rawdatapath = ('/mnt/scratch-gl/ycli/map_result/flagged/parkes_2012_10_27_P641.fits',)
 
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/parkes/RAWDATA_SDF/20121027/2012-10-27_1525-P641_west2_1315_P641.sdfits',)
 #rawdatapath = ('/home/ycli/map_result/parkes/average_beamcal_bandpassrm_parkes_2012_10_27_P641.fits',)
@@ -63,6 +64,11 @@ class CheckFitsFile(object):
     def plottsys(self, in_K=False):
         tsys_x = self.tbdata.field('TSYS')[0::2]#[:10*90*13]
         tsys_y = self.tbdata.field('TSYS')[1::2]#[:10*90*13]
+
+        tsys_x = np.ma.array(tsys_x)
+        tsys_y = np.ma.array(tsys_y)
+        tsys_x[tsys_x==0] = np.ma.masked
+        tsys_y[tsys_y==0] = np.ma.masked
 
         tsys_x = tsys_x.reshape(-1, 13)
         tsys_y = tsys_y.reshape(-1, 13)
@@ -221,7 +227,7 @@ class CheckFitsFile(object):
         spectrum_xx = self.tbdata.field('DATA')[0::2,:].T #* tsys_x[None,:]
         spectrum_yy = self.tbdata.field('DATA')[1::2,:].T #* tsys_y[None,:]
 
-        scan_n = 5 
+        scan_n = 10 
         if scan_n != 0:
             spectrum_xx = spectrum_xx[:,:scan_n*90*13]
             spectrum_yy = spectrum_yy[:,:scan_n*90*13]
@@ -265,7 +271,7 @@ class CheckFitsFile(object):
 
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
-        plt.savefig('./png/parkes_test_freq_time.png', format='png')
+        plt.savefig('./png/parkes_test_freq_time_%dscan.png'%scan_n, format='png')
 
     def plotfreq_time(self):
         spectrum_xx = self.tbdata.field('DATA')[0::2,:][2::13,:][:90,:].T#
@@ -558,13 +564,13 @@ class CheckFitsFile(object):
 if __name__=="__main__":
     checkfits = CheckFitsFile(rawdatapath[0])
 
-    checkfits.printhead()
-    checkfits.printlabel()
+    #checkfits.printhead()
+    #checkfits.printlabel()
 
     #checkfits.plotfreq_time()
-    #checkfits.plotfreq_time_all()
+    checkfits.plotfreq_time_all()
     #checkfits.plottsys()
-    checkfits.plottsys(in_K=True)
+    #checkfits.plottsys(in_K=True)
     #checkfits.plotT()
     #checkfits.plotfreq()
     #checkfits.plotfreq_all()
