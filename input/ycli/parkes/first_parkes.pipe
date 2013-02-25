@@ -27,12 +27,12 @@ pipe_processes = 6
 # Just comment out any modules you don't want to run.
 pipe_modules = []
 
-from scripts import parkes_to_GBTfits
-pipe_modules.append(parkes_to_GBTfits.Converter)
+#from scripts import parkes_to_GBTfits
+#pipe_modules.append(parkes_to_GBTfits.Converter)
 
 # Need to generalize to 2 polarizations.
-#from time_stream import flag_data
-#pipe_modules.append(flag_data.FlagData)
+from time_stream import flag_data
+pipe_modules.append(flag_data.FlagData)
 
 # This should work out of the box.
 #from time_stream import rebin
@@ -52,7 +52,7 @@ pipe_modules.append(parkes_to_GBTfits.Converter)
 p2g_input_root = data_root
 p2g_file_middles = file_middles
 p2g_input_end = '.sdfits'
-p2g_output_root = 'converted_to_GBT_format/'
+p2g_output_root = base_dir + 'converted_to_GBT_format/'
 p2g_output_end = '.fits'
 p2g_beams = ()
 
@@ -69,7 +69,7 @@ fd_bands = ()
 fd_perform_hanning = False
 fd_rotate = False
 fd_cal_scale = False
-fd_cal_phase = True
+fd_cal_phase = False
 fd_sigma_thres = 3.5
 fd_badness_thres = 0.1
 fd_time_cut = 10
