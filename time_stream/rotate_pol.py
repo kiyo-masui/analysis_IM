@@ -49,6 +49,15 @@ def rotate(Data, new_pols=(1,), average_cals=False) :
     """
     
     # Two supported cases for input polarizations.
+    #print Data.field['CRVAL4']
+    #print Data.data.shape
+    #print Data.field.keys()
+    #print Data.field['DATE-OBS']
+    #Data.print_history()
+    #Data.calc_freq()
+    #print Data.freq
+    #print Data.dims
+    #print dir(Data)
     if (tuple(Data.field['CRVAL4']) == (1, 2, 3, 4)) :
         I_ind = 0
         Q_ind = 1
@@ -66,6 +75,22 @@ def rotate(Data, new_pols=(1,), average_cals=False) :
             new_data[:,[3],:,:] = (Data.data[:,[I_ind],:,:] 
                                    + Data.data[:,[Q_ind],:,:])
         else :
+            msg = ("Converstion to " + str(tuple(new_pols)) + " from " 
+                   + str(tuple(Data.field['CRVAL4'])) + " is not supported.")
+            raise NotImplementedError(msg)
+    elif (tuple(Data.field['CRVAL4']) == (-5, -6)):
+	xx_ind = 0
+	yy_ind = 1
+	if tuple(new_pols) == (1,) :
+	    new_data = (Data.data[:, [xx_ind], :, :] 
+			+ Data.data[:,[yy_ind], :, :])/2
+	elif tuple(new_pols) == (1,2) :
+	    new_data = ma.empty(Data.dims)
+	    new_data[:,[0],:,:] = (Data.data[:, [xx_ind], :, :] 
+			+ Data.data[:,[yy_ind], :, :])/2
+	    new_data[:,[1],:,:] = (-Data.data[:, [xx_ind], :, :] 
+			+ Data.data[:,[yy_ind], :, :])/2
+	else :
             msg = ("Converstion to " + str(tuple(new_pols)) + " from " 
                    + str(tuple(Data.field['CRVAL4'])) + " is not supported.")
             raise NotImplementedError(msg)

@@ -12,7 +12,8 @@ def find_pattern(pattern,root_dir):
 
     return matches
 
-matches = find_pattern("*west1*.sdfits","/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA/p641/sdfits/rawdata/")
+#matches = find_pattern("**.sdfits","/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA/p641/sdfits/rawdata/")
+matches = open('sorted_datalist_2012_yc.txt', 'r').read().splitlines()
 
 def fix(list):
     wh_wrap = (list>180)
@@ -21,6 +22,7 @@ def fix(list):
 
 def ra_diff_min(list, beam):
     ra_diff_list = []
+    i=1;
     for file in list:
         hdulist = pyfits.open(file)
         hdu_data = hdulist[1]
@@ -29,10 +31,16 @@ def ra_diff_min(list, beam):
         ra_diff_file = np.max(ra_vec) - np.min(ra_vec)
         ra_diff_list.append(ra_diff_file)
     min_diff = min(ra_diff_list)
-    return min_diff
+    indices = ra_diff_list == min_diff
+    for file in indices:
+        if file == 1:
+            print i
+        i = i + 1
+    return {'mindiff':min_diff, 'indices':indices}
 
 def dec_diff_min(list, beam):
     ra_diff_list = []
+    i=1;
     for file in list:
         hdulist = pyfits.open(file)
         hdu_data = hdulist[1]
@@ -41,8 +49,13 @@ def dec_diff_min(list, beam):
         ra_diff_file = np.max(ra_vec) - np.min(ra_vec)
         ra_diff_list.append(ra_diff_file)
     min_diff = min(ra_diff_list)
-    print min_diff.argmin()
-    return min_diff
+    #print min_diff.argmin()
+    indices = ra_diff_list == min_diff
+    for file in indices:
+        if file == 1:
+            print i
+        i = i + 1
+    return {'mindiff':min_diff, 'indices':indices}
 
 def dec_diff_max(list, beam):
     ra_diff_list = []
@@ -54,8 +67,9 @@ def dec_diff_max(list, beam):
         ra_diff_file = np.max(ra_vec) - np.min(ra_vec)
         ra_diff_list.append(ra_diff_file)
     max_diff = max(ra_diff_list)
-    print max_diff.argmax()
-    return max_diff
+    #print max_diff.argmax()
+    indices = ra_diff_list == max_diff
+    return {'mindiff':max_diff, 'indices':indices}
 
 
 def ra_diff_max(list, beam):
@@ -67,11 +81,26 @@ def ra_diff_max(list, beam):
         ra_vec = fix(hdu_data.data['CRVAL3'])[beam_mask]
         ra_diff_file = np.max(ra_vec) - np.min(ra_vec)
         ra_diff_list.append(ra_diff_file)
-    min_diff = max(ra_diff_list)
-    return min_diff
+    max_diff = max(ra_diff_list)
+    indices = ra_diff_list == max_diff
+    return {'mindiff':max_diff, 'indices':indices}
 
+def ra_big(list):
+    ra_list = []
+    for file in list:
+        hdulist = pyfits.open(file)
+        hdu_data = hdulist[1]
+        ra_vec = fix(hdu_data.data['CRVAL3'])
+        ra =ra_vec[10]
+        ra_list.append(ra)
+        i=1
+    for file in ra_list:
+        if file >= 65:
+            print i
+        i = i + 1
+    return ra_list
 
-print ra_diff_min(matches, 1)
-print ra_diff_max(matches, 1)
-print dec_diff_min(matches, 1)
-print dec_diff_max(matches, 1)
+ra_big(matches)
+#print ra_diff_max(matches, 1)['mindiff']
+#print dec_diff_min(matches, 1)['mindiff']
+#print dec_diff_max(matches, 1)['mindiff']

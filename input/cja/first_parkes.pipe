@@ -1,0 +1,105 @@
+"""Preliminary Parkes analysis pipeline.
+
+Execute using the below the command from the analysis_IM directory.
+`python pipeline/manager.py this_file_name.pipe`
+"""
+
+import os
+
+# What files to process.  Instead of listing them, probably better to write a 
+# script to get theses.  Similar to dir_data for GBT.  Perhapse write a
+# dir_data_parkes.py?
+file_middles = (
+                'sept12/west/2008-09-12_1530_west1_1315_P641',
+                'sept12/west/2008-09-12_1534_west2_1315_P641',
+                )
+
+data_root = ('/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA'
+             '/p641/sdfits/rawdata/')
+
+# Where to put all the data products.
+#base_dir = '/mnt/raid-project/gmrt/kiyo/parkes/'
+base_dir = '/cita/h/home-2/anderson/temp/'
+
+# Maximum number of processes to use. On most machines can use 24+ if no
+# one else is using the machine.
+pipe_processes = 1
+
+####  List of modules to execute.  ####
+# Just comment out any modules you don't want to run.
+pipe_modules = []
+
+from scripts import parkes_to_GBTfits
+pipe_modules.append(parkes_to_GBTfits.Converter)
+
+# Need to generalize to 2 polarizations.
+#from time_stream import flag_data
+#pipe_modules.append(flag_data.FlagData)
+
+# This should work out of the box.
+from time_stream import rebin
+pipe_modules.append(rebin.Rebin)
+
+# Need calibration tables to run this and to generalize to 2 polarizations.
+#from time_stream import calibrate
+#pipe_modules.append(calibrate.Calibrate)
+
+# Need to generalize to 2 polarizations.
+from time_stream import rotate_pol
+pipe_modules.append(rotate_pol.RotatePol)
+
+
+#### Parameters for the modules to be executed. ####
+
+p2g_input_root = data_root
+p2g_file_middles = file_middles
+p2g_input_end = '.sdfits'
+p2g_output_root = base_dir + 'converted_to_GBT_format/'
+p2g_output_end = '.fits'
+p2g_beams = ()
+
+# flag_data, RFI flagger.
+fd_input_root = p2g_output_root
+fd_file_middles = file_middles
+fd_input_end = '.fits'
+fd_output_root = base_dir + 'flagged/'
+fd_output_end = '.fits'
+fd_scans = ()
+fd_IFs = ()
+fd_bands = ()
+# XXX Not sure about Hanning at Parkes.
+fd_perform_hanning = False
+fd_rotate = False
+fd_cal_scale = False
+fd_cal_phase = True
+fd_sigma_thres = 3.5
+fd_badness_thres = 0.1
+fd_time_cut = 10
+
+# Rebin the time and frequency axis.
+#rb_input_root = fd_output_root
+rb_input_root = p2g_output_root
+rb_file_middles = file_middles
+rb_input_end = '.fits'
+rb_output_root = base_dir + 'rebinned/'
+rb_output_end = '.fits'
+rb_scans = ()
+rb_IFs = ()
+rb_bands = ()
+rb_beams = ()
+rb_n_bins_combined_freq = 16
+rb_n_bins_combined_time = 1
+
+# Rotate to Stokes I.
+rp_input_root = rb_output_root
+rp_file_middles = file_middles
+rp_input_end = '.fits'
+rp_output_root = base_dir + 'rotated_to_I/'
+rp_output_end = '.fits'
+rp_scans = ()
+rp_IFs = ()
+rp_bands = ()
+rp_beams = ()
+rp_average_cals = False
+rp_new_pols = (1,)
+

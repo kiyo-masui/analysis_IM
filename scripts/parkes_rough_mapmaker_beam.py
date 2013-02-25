@@ -12,7 +12,15 @@ def find_pattern(pattern,root_dir):
 
     return matches
 
-matches = find_pattern("*east*.sdfits","/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA/p641/sdfits/rawdata/")
+def saveplot(hist, extent, j):
+    currentplot=plt.imshow(hist, vmax=18, vmin=0, extent=extent, interpolation='nearest')
+    plt.colorbar()
+    plt.savefig('/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/' + 'fullsky_ueli' + '{0:03}'.format(j), bbox_inches=0)
+    plt.close()
+
+
+#matches = find_pattern("*east*.sdfits","/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA/p641/sdfits/rawdata/")
+matches = open('final_datalist.txt', 'r').read().splitlines()
 #a=np.arange(len(matches))
 #b=str(a.tolist()).strip()
 #print b
@@ -74,8 +82,12 @@ rax=ra_max(matches)
 decn=dec_min(matches)
 decx=dec_max(matches)
 i=1
-for file in matches:
-    for beam in range(1,14):
+#for file in matches:
+    #for beam in range(1,14):
+for beam in range(1,14):
+    hitmap = np.zeros((90,630))
+    #weight_map = hitmap
+    for file in matches:
         hdulist = pyfits.open(file)
         hdu_data = hdulist[1]
         print hdu_data.data['BEAM']
@@ -83,7 +95,7 @@ for file in matches:
         print np.sum(beam_mask)
         ra_vec = fix(hdu_data.data['CRVAL3'][beam_mask])
         dec_vec = hdu_data.data['CRVAL4'][beam_mask]
-        #map_data = np.mean(hdu_data.data['data'], axis=1)
+        map_data = np.mean(hdu_data.data['data'], axis=1)
         map_data = hdu_data.data['data'][beam_mask,900]
         map_data -= np.mean(map_data)
         #print map_data.shape
@@ -92,24 +104,29 @@ for file in matches:
         (weighted, dec_edge, ra_edge) = np.histogram2d(dec_vec, ra_vec,
                                     range=[[decn,decx],[ran,rax]],
                                     bins=weight_map.shape,
-                                    normed=False,                                                                                    weights=map_data)
+                                    normed=False,                                                                                                                                   weights=map_data)
         hitmap = hitmap + skycov
         weight_map = weight_map + weighted
-        #print hitmap
-        #print skycov
-        #print i
-        #i=i+1
+    #hitrap = (hitmap < 1)
+    #hitmap[hitrap] = hitmap[hitrap]+1
+    #map=weight_map/hitmap
+    #extent=[ra_edge[0], ra_edge[-1], dec_edge[0], dec_edge[-1]]
+    #extent=[25, 35, dec_edge[0], dec_edge[-1]]
+    #saveplot(hitmap, extent , beam)
 hitrap = (hitmap < 1)
 hitmap[hitrap] = hitmap[hitrap]+1
 map=weight_map/hitmap
-#extent=[ra_edge[0], ra_edge[-1], dec_edge[-1], dec_edge[0]]
-extent=[40, 55, dec_edge[-1], dec_edge[0]]
-start_ind = int(map.shape[1] * (40 - ra_edge[0]) / (ra_edge[-1] - ra_edge[0]))
-end_ind = int(map.shape[1] * (55 - ra_edge[0]) / (ra_edge[-1] - ra_edge[0]))
+#extent=[40, 55, dec_edge[0], dec_edge[-1]]
+extent=[ra_edge[0], ra_edge[-1], dec_edge[0], dec_edge[-1]]
+saveplot(map, extent, 1)
+#saveplot(map,extent, 2)
+#saveplot(map, extent , 4)
+#start_ind = int(map.shape[1] * (40 - ra_edge[0]) / (ra_edge[-1] - ra_edge[0]))
+#end_ind = int(map.shape[1] * (55 - ra_edge[0]) / (ra_edge[-1] - ra_edge[0]))
 #plt.imshow(map,  vmax=2, vmin=-2, extent=extent, interpolation='nearest')
-plt.imshow(map[:,start_ind:end_ind],  vmax=2, vmin=-2, extent=extent, interpolation='nearest')
+#plt.imshow(map[:,start_ind:end_ind],  vmax=2, vmin=-2, extent=extent, interpolation='nearest')
 #print weight_map
 #print hitmap
 #print weight_map.shape
-plt.colorbar()
-plt.show()
+#plt.colorbar()
+#plt.show()
