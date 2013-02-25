@@ -43,14 +43,18 @@ fields_and_axes = {
                    'DURATION' : (),
                    'BEAM' : (),
                    'EXPOSURE' : ('time', 'cal'),
-                   'CTYPE2' : (), # Type of longetudinal axis ('AZ' or 'RA')
-                   'CTYPE3' : (), # Type of longetudinal axis ('EL' of 'DEC')
+                   'CTYPE2' : (),  # Type of longetudinal axis ('AZ' or 'RA')
+                   'CTYPE3' : (),  # Type of longetudinal axis ('EL' of 'DEC')
+                   'RA-OBS' : ('time',),  # Accurate RA.
+                   'DEC-OBS' : ('time',),  # Accurate DEC.
                    'DATE-OBS' : ('time', ),
                    'LST' : ('time', ),
+                   'TSYS' : ('time', 'pol'),
                    # These pointings refer to the structural telescope, not
                    # the beam (slightly different).
                    'ELEVATIO' : ('time', ),
                    'AZIMUTH' : ('time', ),
+                   'PARANGLE' : ('time', ),
                    'OBSFREQ' : ('time', ),
                    # These pointings are corrected for pointing calibration
                    # and I think refraction.
