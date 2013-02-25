@@ -6,7 +6,8 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 
 from parkes import fitsGBT
 
-rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/converted_to_GBT_format/sept12/west/2008-09-12_1530_west1_1315_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/converted_to_GBT_format/sept12/west/2008-09-12_1530_west1_1315_P641.fits',)
+rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/flagged/sept12/west/2008-09-12_1530_west1_1315_P641.fits',)
 
 class CheckFitsFile(object):
 
@@ -232,7 +233,7 @@ class CheckFitsFile(object):
         x = range(shape[1]/13)
         cf = self.tbdata.field('CRVAL1')[0]/1.e9
         cf_ind = self.tbdata.field('CRPIX1')[0]
-        df = self.tbdata.field('BANDWID')[0]/1.e9
+        df = self.tbdata.field('BANDWID')[0]/1.e9/1024.
         y = (range(shape[0]) - cf_ind) * df + cf
 
         #cmin = -0.6
