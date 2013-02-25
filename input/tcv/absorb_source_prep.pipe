@@ -50,8 +50,8 @@ map_centre = (217.8688, 2.0)
 #map0_shape = (100, 60)
 #map0_spacing = .040
 #map0_shape = (161, 83)
-map0_spacing = 0.1
-map0_shape = (48,30)
+map0_spacing = 0.3
+map0_shape = (16,10)
 #map0_spacing = .0627
 #map0_shape = (78, 43)
 #map0_spacing = .0627
@@ -113,11 +113,11 @@ pipe_modules = []
 
 #### First Map making interation ####
 
-from map import dirty_map
-pipe_modules.append(dirty_map.DirtyMapMaker)
+#from map import dirty_map
+#pipe_modules.append(dirty_map.DirtyMapMaker)
 
-#from map import clean_map
-#pipe_modules.append(clean_map.CleanMapMaker)
+from map import clean_map
+pipe_modules.append(clean_map.CleanMapMaker)
 
 
 #### Second Map making iteration ####
@@ -194,7 +194,8 @@ bs_band_stops = [(690e6, 702e6), (796e6, 800e6), (815e6, 820e6),
                  (898e6, 910e6)]
 
 # split_bands
-sb_input_root = bs_output_root
+#sb_input_root = bs_output_root
+sb_input_root = base_dir_main + 'rotated_to_I_Q_absorb_avg_cal_new_high_res/'+prefix
 sb_file_middles = file_middles
 sb_input_end = '.fits'
 sb_output_root = base_dir + 'band_split_new/' + prefix
@@ -209,9 +210,9 @@ sb_IFs = ()
 #sb_offset = 4
 # For now deal with a single lowish noise band that misses resonances, rfi,
 # etc. Band chosen such the upper end is ~5MHz from resonance.
-sb_n_bands = 1
-sb_n_bins_band = 40
-sb_offset = 68
+sb_n_bands =8 
+sb_n_bins_band = 400
+sb_offset = 100
 
 # scale by filtered cal.
 #cf_input_root = sb_output_root
@@ -289,7 +290,8 @@ rp_average_cals = False
 
 
 # dirty_map
-dm_input_root = rp_output_root
+#dm_input_root = rp_output_root
+dm_input_root = sb_output_root
 #dm_input_root = base_dir_main + 'rotated_to_I_Q_avg_fdgp/' + prefix
 dm_file_middles = file_middles
 #dm_file_middles = middles_firs
@@ -317,7 +319,8 @@ cm_input_root = dm_output_root
 cm_output_root = cm_input_root
 cm_polarizations = ('I',)
 #cm_polarizations = ('I','Q','U','V')
-cm_bands = (800,)
+#cm_bands = (800,)
+cm_bands = (749,768,788,807,827)
 cm_save_noise_diag = True
 
 #### Second round of map making #####
