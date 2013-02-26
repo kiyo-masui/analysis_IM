@@ -17,6 +17,7 @@ Check out the unit tests for examples.
 """
 
 import math
+import os
 import multiprocessing as mp
 
 from kiyopy import parse_ini, utils
@@ -136,7 +137,12 @@ class BaseSingle(object) :
         Writer = fitsGBT.Writer(feedback=self.feedback)
         
         # Read in the data, and loop over data blocks.
-        Reader = fitsGBT.Reader(input_fname, feedback=self.feedback)
+        if os.path.isfile(input_fname):
+            Reader = fitsGBT.Reader(input_fname, feedback=self.feedback)
+        else:
+            print "\t\tFile missed: %s"%file_middle
+            return
+
         if hasattr(self, 'feedback_title') and self.feedback > 1:
             print self.feedback_title,
         # Get the number of scans if asked for all of them.

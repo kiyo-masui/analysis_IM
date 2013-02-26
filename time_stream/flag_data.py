@@ -5,6 +5,7 @@
 import os
 import copy
 
+import numpy as np
 import numpy.ma as ma
 import scipy as sp
 import scipy.signal as sig
@@ -174,7 +175,7 @@ def flag_data(Data, sigma_thres, badness_thres, time_cut):
         bad_freqs = []
         amount_masked = -1
         while not (amount_masked == 0) and itr < max_itr:
-            amount_masked = destroy_with_variance(Data2, bad_freq_list=bad_freqs) 
+            amount_masked = destroy_with_variance(Data2, sigma_thres, bad_freqs) 
             itr += 1
         bad_freqs.sort()
         percent_masked2 = (float(len(bad_freqs)) / Data2.dims[-1])
@@ -186,8 +187,7 @@ def flag_data(Data, sigma_thres, badness_thres, time_cut):
         if not badness:
             itr = 0
             while not (amount_masked == 0) and itr < max_itr:
-                amount_masked = destroy_with_variance(Data2, sigma_thres,
-                                                      bad_freqs) 
+                amount_masked = destroy_with_variance(Data2, sigma_thres, bad_freqs) 
                 itr += 1
             Data1 = Data2
     # We've flagged the RFI down to the foreground limit.  Filter out the
@@ -276,17 +276,22 @@ def destroy_with_variance_2pol(Data, sigma_thres=6, bad_freq_list=[]):
 
     '''
     # Get the normalized variance array for each polarization.
-    a = ma.var(Data.data[:,0,0,:],0)/(ma.mean(Data.data[:,0,0,:],0)**2)#XX
-    b = ma.var(Data.data[:,1,0,:],0)/(ma.mean(Data.data[:,1,0,:],0)**2)#YY
+    #Data.data[Data.data>3] = ma.masked
+    #Data.data[Data.data<3] = ma.masked
+    Data.data[np.isnan(Data.data)] = ma.masked
+    a = ma.var(Data.data[:,0,0,:],0)#/(ma.mean(Data.data[:,0,0,:],0)**2)#XX
+    b = ma.var(Data.data[:,1,0,:],0)#/(ma.mean(Data.data[:,1,0,:],0)**2)#YY
     # Get the mean and standard deviation [sigma].
     means = sp.array([ma.mean(a), ma.mean(b)]) 
     sig   = sp.array([ma.std(a), ma.std(b)])
     # Get the max accepted value [sigma_thres*sigma, sigma_thres=6 works really well].
     max_sig = sigma_thres*sig
     max_accepted = means + max_sig
+    min_accepted = means - max_sig
     amount_masked = 0
     for freq in range(0, len(a)):
-        if ((a[freq] > max_accepted[0]) or (b[freq] > max_accepted[1])):
+        if ((a[freq] > max_accepted[0]) or (b[freq] > max_accepted[1]) or
+            (a[freq] < min_accepted[0]) or (b[freq] < min_accepted[1])):
             # mask
             amount_masked += 1
             bad_freq_list.append(freq)

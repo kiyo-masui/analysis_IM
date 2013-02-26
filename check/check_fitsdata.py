@@ -4,10 +4,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
 
-from parkes import fitsGBT
+from core import fitsGBT
 
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/converted_to_GBT_format/sept12/west/2008-09-12_1530_west1_1315_P641.fits',)
-rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/flagged/sept12/west/2008-09-12_1530_west1_1315_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/flagged/sept12/west/2008-09-12_1530_west1_1315_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/bandpass_removed/sept12/west/2008-09-12_1530_west1_1315_P641.fits',)
+
+rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/bandpass_removed/2012-10-27_1000-P641_east1_1315_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/flagged/2012-10-27_1000-P641_east1_1315_P641.fits',)
 
 class CheckFitsFile(object):
 
@@ -236,10 +240,10 @@ class CheckFitsFile(object):
         df = self.tbdata.field('BANDWID')[0]/1.e9/1024.
         y = (range(shape[0]) - cf_ind) * df + cf
 
-        #cmin = -0.6
-        #cmax = 0.6
-        cmin = 0.0
-        cmax = 70 
+        cmin = -0.6
+        cmax = 0.6
+        #cmin = 0.0
+        #cmax = 70 
 
         plt.figure(figsize=(30, 50))
 
@@ -330,7 +334,7 @@ class CheckFitsFile(object):
 
     def plotfreq_all(self):
         
-        time = 100
+        time = 10
         ymin = -0.6
         ymax = 0.6
 
@@ -338,7 +342,7 @@ class CheckFitsFile(object):
         spectrum_xx = self.tbdata.field('DATA')[0::2,:].T #* tsys_x[None,:]
         spectrum_yy = self.tbdata.field('DATA')[1::2,:].T #* tsys_y[None,:]
 
-        scan_n = 10
+        scan_n = 0
         if scan_n != 0:
             spectrum_xx = spectrum_xx[:,:scan_n*90*13]
             spectrum_yy = spectrum_yy[:,:scan_n*90*13]
@@ -347,6 +351,8 @@ class CheckFitsFile(object):
 
         # get the shape 
         shape = spectrum_xx.shape
+        spectrum_xx = spectrum_xx.reshape(shape[:-1]+(13, -1))
+        spectrum_yy = spectrum_yy.reshape(shape[:-1]+(13, -1))
         cf = self.tbdata.field('CRVAL1')[0]/1.e9
         cf_ind = self.tbdata.field('CRPIX1')[0]
         df = self.tbdata.field('CDELT1')[0]/1.e9
@@ -356,14 +362,14 @@ class CheckFitsFile(object):
 
         for i in range(13):
             plt.subplot(13,2,2*i+1)
-            plt.plot(x, spectrum_xx[:, i::13][:, time].T, c='r')
+            plt.plot(x, spectrum_xx[:, i, time].T, c='r')
             plt.ylabel('flux [Jy] [X pol beam %d]'%i)
             plt.xlabel('freq [GHz]' )
             plt.xlim(x.min(), x.max())
             plt.ylim(ymin, ymax)
 
             plt.subplot(13,2,2*i+2)
-            plt.plot(x, spectrum_yy[:, i::13][:, time].T, c='r')
+            plt.plot(x, spectrum_yy[:, i, time].T, c='r')
             plt.ylabel('flux [Jy] [Y pol beam %d]'%i)
             plt.xlabel('freq [GHz]' )
             plt.xlim(x.min(), x.max())
@@ -559,8 +565,8 @@ class CheckFitsFile(object):
 if __name__=="__main__":
     checkfits = CheckFitsFile(rawdatapath[0])
 
-    checkfits.printhead()
-    checkfits.printlabel()
+    #checkfits.printhead()
+    #checkfits.printlabel()
 
     #checkfits.plotfreq_time()
     checkfits.plotfreq_time_all()

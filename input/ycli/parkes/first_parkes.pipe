@@ -7,13 +7,25 @@ import os
 # What files to process.  Instead of listing them, probably better to write a 
 # script to get theses.  Similar to dir_data for GBT.  Perhapse write a
 # dir_data_parkes.py?
-file_middles = (
-                'sept12/west/2008-09-12_1530_west1_1315_P641',
-                'sept12/west/2008-09-12_1534_west2_1315_P641',
-                )
 
-data_root = ('/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA'
-             '/p641/sdfits/rawdata/')
+#file_middles = (
+#                'sept12/west/2008-09-12_1530_west1_1315_P641',
+#                'sept12/west/2008-09-12_1534_west2_1315_P641',
+#                )
+#
+#data_root = ('/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA'
+#             '/p641/sdfits/rawdata/')
+
+#data_root = ('/mnt/raid-project/gmrt/ycli/parkes/RAWDATA_SDF/20121027/')
+
+data_root = ('/mnt/raid-project/gmrt/ycli/parkes/RAWDATA_SDF/20121027/')
+file_middles = []
+listfile = os.listdir(data_root)
+listfile.sort(key=lambda x:int(x[11:15]))
+for file in listfile:
+    if file.split('.')[-1] == 'sdfits':
+        file_middles.append(file.replace('.sdfits', ''))
+        print file
 
 # Where to put all the data products.
 base_dir = '/mnt/raid-project/gmrt/ycli/map_result_parkes/'
@@ -21,14 +33,17 @@ base_dir = '/mnt/raid-project/gmrt/ycli/map_result_parkes/'
 
 # Maximum number of processes to use. On most machines can use 24+ if no
 # one else is using the machine.
-pipe_processes = 6
+pipe_processes = 3
 
 ####  List of modules to execute.  ####
 # Just comment out any modules you don't want to run.
 pipe_modules = []
 
-#from scripts import parkes_to_GBTfits
+#from parkes import parkes_to_GBTfits
 #pipe_modules.append(parkes_to_GBTfits.Converter)
+
+from time_stream import bandpass_remove
+pipe_modules.append(bandpass_remove.BandpassRemove)
 
 # Need to generalize to 2 polarizations.
 from time_stream import flag_data
@@ -56,8 +71,17 @@ p2g_output_root = base_dir + 'converted_to_GBT_format/'
 p2g_output_end = '.fits'
 p2g_beams = ()
 
+# bandpass_remove
+bp_input_root = p2g_output_root
+bp_file_middles = file_middles
+bp_input_end = '.fits'
+bp_output_root = base_dir + 'bandpass_removed/'
+bp_output_end = '.fits'
+fd_time_cut = 20
+
+
 # flag_data, RFI flagger.
-fd_input_root = p2g_output_root
+fd_input_root = bp_output_root
 fd_file_middles = file_middles
 fd_input_end = '.fits'
 fd_output_root = base_dir + 'flagged/'
@@ -70,7 +94,7 @@ fd_perform_hanning = False
 fd_rotate = False
 fd_cal_scale = False
 fd_cal_phase = False
-fd_sigma_thres = 3.5
+fd_sigma_thres = 3.
 fd_badness_thres = 0.1
 fd_time_cut = 10
 
