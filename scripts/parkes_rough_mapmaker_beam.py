@@ -12,15 +12,16 @@ def find_pattern(pattern,root_dir):
 
     return matches
 
-def saveplot(hist, extent, j):
-    currentplot=plt.imshow(hist, vmax=18, vmin=0, extent=extent, interpolation='nearest')
+def saveplot(hist, extent, j, path, name):
+    currentplot=plt.imshow(hist, vmax=2, vmin=-2, extent=extent, interpolation='nearest')
     plt.colorbar()
-    plt.savefig('/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/' + 'fullsky_ueli' + '{0:03}'.format(j), bbox_inches=0)
+    plt.savefig(path + name + '{0:03}'.format(j), bbox_inches=0)
     plt.close()
 
 
 #matches = find_pattern("*east*.sdfits","/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA/p641/sdfits/rawdata/")
 matches = open('final_datalist.txt', 'r').read().splitlines()
+matches2 = open('sorted_datalist_2012_ycf.txt', 'r').read().splitlines()
 #a=np.arange(len(matches))
 #b=str(a.tolist()).strip()
 #print b
@@ -75,50 +76,61 @@ def dec_min(list):
     min_dec = min(dec_min_list)
     return min_dec
 
-hitmap = np.zeros((90,630))
-weight_map = hitmap
-ran=ra_min(matches)
-rax=ra_max(matches)
-decn=dec_min(matches)
-decx=dec_max(matches)
-i=1
-#for file in matches:
-    #for beam in range(1,14):
-for beam in range(1,14):
-    hitmap = np.zeros((90,630))
-    #weight_map = hitmap
+def mapper(x, y, matches, index):
+    hitmap = np.zeros((y, x))
+    weight_map = hitmap
+    ran=ra_min(matches)
+    rax=ra_max(matches)
+    decn=dec_min(matches)
+    decx=dec_max(matches)
+    #i=1
     for file in matches:
-        hdulist = pyfits.open(file)
-        hdu_data = hdulist[1]
-        print hdu_data.data['BEAM']
-        beam_mask = hdu_data.data['BEAM'] == beam
-        print np.sum(beam_mask)
-        ra_vec = fix(hdu_data.data['CRVAL3'][beam_mask])
-        dec_vec = hdu_data.data['CRVAL4'][beam_mask]
-        map_data = np.mean(hdu_data.data['data'], axis=1)
-        map_data = hdu_data.data['data'][beam_mask,900]
-        map_data -= np.mean(map_data)
-        #print map_data.shape
-        (skycov, dec_edge, ra_edge) = np.histogram2d(dec_vec, ra_vec,                                                                                 range=[[decn,decx],[ran,rax]],
+        for beam in range(1,14):
+    #for beam in range(1,14):
+        #hitmap = np.zeros((90,630))
+        #weight_map = hitmap
+        #for file in matches:
+            hdulist = pyfits.open(file)
+            hdu_data = hdulist[1]
+            print hdu_data.data['BEAM']
+            beam_mask = hdu_data.data['BEAM'] == beam
+            print np.sum(beam_mask)
+            ra_vec = fix(hdu_data.data['CRVAL3'][beam_mask])
+            dec_vec = hdu_data.data['CRVAL4'][beam_mask]
+            map_data = np.mean(hdu_data.data['data'], axis=1)
+            map_data = hdu_data.data['data'][beam_mask,index]
+            map_data -= np.mean(map_data)
+            #print map_data.shape
+            (skycov, dec_edge, ra_edge) = np.histogram2d(dec_vec, ra_vec,                                                                                                                                range=[[decn,decx],[ran,rax]],
                                                      bins=hitmap.shape, weights=None)
-        (weighted, dec_edge, ra_edge) = np.histogram2d(dec_vec, ra_vec,
+            (weighted, dec_edge, ra_edge) = np.histogram2d(dec_vec, ra_vec,
                                     range=[[decn,decx],[ran,rax]],
                                     bins=weight_map.shape,
                                     normed=False,                                                                                                                                   weights=map_data)
-        hitmap = hitmap + skycov
-        weight_map = weight_map + weighted
-    #hitrap = (hitmap < 1)
-    #hitmap[hitrap] = hitmap[hitrap]+1
-    #map=weight_map/hitmap
-    #extent=[ra_edge[0], ra_edge[-1], dec_edge[0], dec_edge[-1]]
-    #extent=[25, 35, dec_edge[0], dec_edge[-1]]
-    #saveplot(hitmap, extent , beam)
-hitrap = (hitmap < 1)
-hitmap[hitrap] = hitmap[hitrap]+1
-map=weight_map/hitmap
-#extent=[40, 55, dec_edge[0], dec_edge[-1]]
-extent=[ra_edge[0], ra_edge[-1], dec_edge[0], dec_edge[-1]]
-saveplot(map, extent, 1)
+            hitmap = hitmap + skycov
+            weight_map = weight_map + weighted
+        #hitrap = (hitmap < 1)
+        #hitmap[hitrap] = hitmap[hitrap]+1
+        #map=weight_map/hitmap
+        #extent=[ra_edge[0], ra_edge[-1], dec_edge[0], dec_edge[-1]]
+        #extent=[25, 35, dec_edge[0], dec_edge[-1]]
+        #saveplot(hitmap, extent , beam)
+    hitrap = (hitmap < 1)
+    hitmap[hitrap] = hitmap[hitrap]+1
+    map=weight_map/hitmap
+    extent=[ra_edge[0], ra_edge[-1], dec_edge[0], dec_edge[-1]]
+    extent2=[40, 55, dec_edge[0], dec_edge[-1]]
+    return {'extent':extent, 'map':map, 'extent2':extent2} 
+    extent2=[40, 55, dec_edge[0], dec_edge[-1]]
+mapper(630, 90, matches, 900)
+saveplot(mapper(630, 90, matches, 900)['map'], mapper(630, 90, matches, 900)['extent2'], 1,                                                                       '/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/',                                                                        'partialsky_ueli' )
+saveplot(mapper(630, 90, matches, 900)['map'], mapper(630, 90, matches, 900)['extent'], 1,                                                                      '/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/',                                                                        'fullsky_ueli' )
+saveplot(mapper(630, 90, matches2, 900)['map'], mapper(630, 90, matches2, 900)['extent'], 1,
+                '/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/',
+                'fullsky_2012' )
+saveplot(mapper(630, 90, matches2, 900)['map'], mapper(630, 90, matches2, 900)['extent2'], 1,
+                '/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/',
+                'partialsky_2012' )
 #saveplot(map,extent, 2)
 #saveplot(map, extent , 4)
 #start_ind = int(map.shape[1] * (40 - ra_edge[0]) / (ra_edge[-1] - ra_edge[0]))
