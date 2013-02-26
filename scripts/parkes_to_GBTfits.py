@@ -170,7 +170,7 @@ class Converter(object):
             copy_constant_field(this_fdata, this_Data, 'BEAM', 'BEAM', '1I')
             copy_constant_field(this_fdata, this_Data, 'SCAN', 'SCAN', '1I')
             copy_constant_field(this_fdata, this_Data, 'CRVAL1', 'CRVAL1', '1D')
-            copy_constant_field(this_fdata, this_Data, 'CRPIX1', 'CRPIX1', '1D')
+            copy_constant_field(this_fdata, this_Data, 'CDELT1', 'CDELT1', '1D')
             copy_constant_field(this_fdata, this_Data, 'BANDWID', 'BANDWID',
                                 '1D')
             copy_constant_field(this_fdata, this_Data, 'EXPOSURE', 'EXPOSURE',
