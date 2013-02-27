@@ -97,7 +97,7 @@ def mapper(x, y, matches, index):
             print np.sum(beam_mask)
             ra_vec = fix(hdu_data.data['CRVAL3'][beam_mask])
             dec_vec = hdu_data.data['CRVAL4'][beam_mask]
-            map_data = np.mean(hdu_data.data['data'], axis=1)
+            #map_data = np.mean(hdu_data.data['data'], axis=1)
             map_data = hdu_data.data['data'][beam_mask,index]
             map_data -= np.mean(map_data)
             #print map_data.shape
