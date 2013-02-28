@@ -16,16 +16,15 @@ import os
 #data_root = ('/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA'
 #             '/p641/sdfits/rawdata/')
 
-#data_root = ('/mnt/raid-project/gmrt/ycli/parkes/RAWDATA_SDF/20121027/')
 
 data_root = ('/mnt/raid-project/gmrt/ycli/parkes/RAWDATA_SDF/20121027/')
-file_middles = []
-listfile = os.listdir(data_root)
-listfile.sort(key=lambda x:int(x[11:15]))
-for file in listfile:
-    if file.split('.')[-1] == 'sdfits':
-        file_middles.append(file.replace('.sdfits', ''))
-        print file
+file_middles = ['2012-10-27_1000-P641_east1_1315_P641',]
+#listfile = os.listdir(data_root)
+#listfile.sort(key=lambda x:int(x[11:15]))
+#for file in listfile:
+#    if file.split('.')[-1] == 'sdfits':
+#        file_middles.append(file.replace('.sdfits', ''))
+#        print file
 
 # Where to put all the data products.
 base_dir = '/mnt/raid-project/gmrt/ycli/map_result_parkes/'
@@ -42,20 +41,20 @@ pipe_modules = []
 #from parkes import parkes_to_GBTfits
 #pipe_modules.append(parkes_to_GBTfits.Converter)
 
-from time_stream import bandpass_remove
-pipe_modules.append(bandpass_remove.BandpassRemove)
+#from time_stream import bandpass_remove
+#pipe_modules.append(bandpass_remove.BandpassRemove)
 
 # Need to generalize to 2 polarizations.
-from time_stream import flag_data
-pipe_modules.append(flag_data.FlagData)
+#from time_stream import flag_data
+#pipe_modules.append(flag_data.FlagData)
 
 # This should work out of the box.
 #from time_stream import rebin
 #pipe_modules.append(rebin.Rebin)
 
 # Need calibration tables to run this and to generalize to 2 polarizations.
-#from time_stream import calibrate
-#pipe_modules.append(calibrate.Calibrate)
+from time_stream import calibrate
+pipe_modules.append(calibrate.Calibrate)
 
 # Need to generalize to 2 polarizations.
 #from time_stream import rotate_pol

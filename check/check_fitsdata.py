@@ -12,6 +12,7 @@ from core import fitsGBT
 
 rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/bandpass_removed/2012-10-27_1000-P641_east1_1315_P641.fits',)
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/flagged/2012-10-27_1000-P641_east1_1315_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/rebinned/2012-10-27_1000-P641_east1_1315_P641.fits',)
 
 class CheckFitsFile(object):
 
