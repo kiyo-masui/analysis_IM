@@ -123,12 +123,13 @@ def mapper(x, y, matches, index):
     return {'extent':extent, 'map':map, 'extent2':extent2} 
     extent2=[40, 55, dec_edge[0], dec_edge[-1]]
 mapper(630, 90, matches, 900)
-saveplot(mapper(630, 90, matches, 900)['map'], mapper(630, 90, matches, 900)['extent2'], 1,                                                                       '/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/',                                                                        'partialsky_ueli' )
-saveplot(mapper(630, 90, matches, 900)['map'], mapper(630, 90, matches, 900)['extent'], 1,                                                                      '/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/',                                                                        'fullsky_ueli' )
-saveplot(mapper(630, 90, matches2, 900)['map'], mapper(630, 90, matches2, 900)['extent'], 1,
-                '/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/',
-                'fullsky_2012' )
-saveplot(mapper(630, 90, matches2, 900)['map'], mapper(630, 90, matches2, 900)['extent2'], 1,
+#saveplot(mapper(630, 90, matches, 900)['map'], mapper(630, 90, matches, 900)['extent2'], 1,                                                                       '/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/',                                                                        'partialsky_ueli' )
+#saveplot(mapper(630, 90, matches, 900)['map'], mapper(630, 90, matches, 900)['extent'], 1,                                                                      '/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/',                                                                        'fullsky_ueli' )
+#saveplot(mapper(630, 90, matches2, 900)['map'], mapper(630, 90, matches2, 900)['extent'], 1,
+                #'/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/',
+                #'fullsky_2012' )
+mapout = mapper(630, 90, matches2, 700)
+saveplot(mapout['map'], mapout['extent2'], 2,
                 '/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/',
                 'partialsky_2012' )
 #saveplot(map,extent, 2)

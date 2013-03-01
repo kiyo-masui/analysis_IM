@@ -42,10 +42,14 @@ class DataBlock(base_data.BaseData) :
         These are stored as attributes (not fields) named ra and dec.  This
         requires the fields 'CRVAL3', 'CRVAL2' and 'DATE-OBS' to be set.
         """
-        self.ra = sp.zeros(self.dims[0])
-        self.dec = sp.zeros(self.dims[0])
-        for ii in range(self.dims[0]) :
-            self.ra[ii], self.dec[ii] = utils.elaz2radecGBT(
+        if 'DEC-OBS' in self.field.keys() :
+                self.ra = self.field['RA-OBS']
+                self.dec = self.field['DEC-OBS']
+        else:
+            self.ra = sp.zeros(self.dims[0])
+            self.dec = sp.zeros(self.dims[0])
+            for ii in range(self.dims[0]) :
+                self.ra[ii], self.dec[ii] = utils.elaz2radecGBT(
                                             self.field['CRVAL3'][ii],
                                             self.field['CRVAL2'][ii],
                                             self.field['DATE-OBS'][ii])
