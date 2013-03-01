@@ -94,11 +94,11 @@ def rotate(Data, new_pols=(1,), average_cals=False) :
                 + Data.data[:,[yy_ind], :, :])/2
             new_data[:,[1],:,:] = (-Data.data[:, [xx_ind], :, :] 
                 + Data.data[:,[yy_ind], :, :])/2
-                if 'TSYS' in Data.field.keys():
-                    T_sys1 = (Data.field['TSYS',0]+Data.field['TSYS',1])/2
-                    T_sys2 = (-Data.field['TSYS',0]+Data.field['TSYS',1])/2
-                    Data.field['TSYS'][:,0] = T_sys1
-                    Data.field['TSYS'][:,1] = T_sys2
+            if 'TSYS' in Data.field.keys():
+                T_sys1 = (Data.field['TSYS',0]+Data.field['TSYS',1])/2
+                T_sys2 = (-Data.field['TSYS',0]+Data.field['TSYS',1])/2
+                Data.field['TSYS'][:,0] = T_sys1
+                Data.field['TSYS'][:,1] = T_sys2
         else :
                 msg = ("Converstion to " + str(tuple(new_pols)) + " from " 
                        + str(tuple(Data.field['CRVAL4'])) + " is not supported.")
