@@ -13,13 +13,21 @@ import os
 #                'sept12/west/2008-09-12_1530_west1_1315_P641',
 #                'sept12/west/2008-09-12_1534_west2_1315_P641',
 #                )
-file_names = open('scripts/sorted_datalist_2012_ycf.txt', 'r').read().splitlines()[:5]
+#file_names = open('scripts/sorted_datalist_2012_ycf.txt', 'r').read().splitlines()[:5]
+
+file_names = open('scripts/datalist_2008_center.txt', 'r').read().splitlines()
+
+#file_middles = []
+#for file in file_names:
+#    file_middles.append(file[47:-7])
 
 file_middles = []
 for file in file_names:
-    file_middles.append(file[47:-7])
+    file_middles.append(file[72:-7])
 
-data_root = file_names[0][:47]
+#data_root = file_names[0][:47]
+
+data_root = file_names[0][:72]
 
 #data_root = ('/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA'
 #             '/p641/sdfits/rawdata/')
@@ -30,7 +38,7 @@ base_dir = '/mnt/raid-project/gmrt/anderson/first_parkes_pipe/'
 
 # Maximum number of processes to use. On most machines can use 24+ if no
 # one else is using the machine.
-pipe_processes = 1
+pipe_processes = 10
 
 ####  List of modules to execute.  ####
 # Just comment out any modules you don't want to run.
@@ -59,7 +67,7 @@ from map import dirty_map
 pipe_modules.append(dirty_map.DirtyMapMaker)
 
 from map import clean_map
-pipe_modules.append(clean_map.CleanMapMaker)
+#pipe_modules.append(clean_map.CleanMapMaker)
 
 #### Parameters for the modules to be executed. ####
 
