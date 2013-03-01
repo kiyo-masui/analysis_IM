@@ -37,7 +37,7 @@ pipe_processes = 1
 pipe_modules = []
 
 from scripts import parkes_to_GBTfits
-#pipe_modules.append(parkes_to_GBTfits.Converter)
+pipe_modules.append(parkes_to_GBTfits.Converter)
 
 # Need to generalize to 2 polarizations.
 from time_stream import flag_data
@@ -45,7 +45,7 @@ from time_stream import flag_data
 
 # This should work out of the box.
 from time_stream import rebin
-#pipe_modules.append(rebin.Rebin)
+pipe_modules.append(rebin.Rebin)
 
 # Need calibration tables to run this and to generalize to 2 polarizations.
 #from time_stream import calibrate
@@ -53,10 +53,10 @@ from time_stream import rebin
 
 # Need to generalize to 2 polarizations.
 from time_stream import rotate_pol
-#pipe_modules.append(rotate_pol.RotatePol)
+pipe_modules.append(rotate_pol.RotatePol)
 
 from map import dirty_map
-#pipe_modules.append(dirty_map.DirtyMapMaker)
+pipe_modules.append(dirty_map.DirtyMapMaker)
 
 from map import clean_map
 pipe_modules.append(clean_map.CleanMapMaker)
