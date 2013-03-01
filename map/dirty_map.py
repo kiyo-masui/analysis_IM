@@ -161,8 +161,12 @@ class DirtyMapMaker(object):
             Data.calc_time()
             time[tmp_time_ind:tmp_time_ind + this_nt] = Data.time
             tmp_dt.append(abs(sp.mean(sp.diff(Data.time))))
-            az[tmp_time_ind:tmp_time_ind + this_nt] = Data.field['CRVAL2']
-            el[tmp_time_ind:tmp_time_ind + this_nt] = Data.field['CRVAL3']
+            if 'CRVAL2' in Data.field.keys() and 'CRVAL3' in Data.field.keys():
+                az[tmp_time_ind:tmp_time_ind + this_nt] = Data.field['CRVAL2']
+                el[tmp_time_ind:tmp_time_ind + this_nt] = Data.field['CRVAL3']
+            else:
+                az[tmp_time_ind:tmp_time_ind + this_nt] = Data.field['AZIMUTH']
+                el[tmp_time_ind:tmp_time_ind + this_nt] = Data.field['ELEVATIO']
             tmp_time_ind += this_nt
         # Make sure the bandwidths are the same for all Data Blocks.
         dt = sp.mean(tmp_dt)

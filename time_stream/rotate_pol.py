@@ -79,6 +79,7 @@ def rotate(Data, new_pols=(1,), average_cals=False) :
                    + str(tuple(Data.field['CRVAL4'])) + " is not supported.")
             raise NotImplementedError(msg)
     elif (tuple(Data.field['CRVAL4']) == (-5, -6)):
+<<<<<<< HEAD
 	    xx_ind = 0
 	    yy_ind = 1
 	    if tuple(new_pols) == (1,) :
@@ -94,6 +95,27 @@ def rotate(Data, new_pols=(1,), average_cals=False) :
                 msg = ("Converstion to " + str(tuple(new_pols)) + " from " 
                        + str(tuple(Data.field['CRVAL4'])) + " is not supported.")
                 raise NotImplementedError(msg)
+=======
+	xx_ind = 0
+	yy_ind = 1
+	if tuple(new_pols) == (1,) :
+	    new_data = (Data.data[:, [xx_ind], :, :] 
+			+ Data.data[:,[yy_ind], :, :])/2
+	elif tuple(new_pols) == (1,2) :
+	    new_data = ma.empty(Data.dims)
+	    new_data[:,[0],:,:] = (Data.data[:, [xx_ind], :, :] 
+			+ Data.data[:,[yy_ind], :, :])/2
+	    new_data[:,[1],:,:] = (-Data.data[:, [xx_ind], :, :] 
+			+ Data.data[:,[yy_ind], :, :])/2
+        if 'TSYS' in Data.field.keys():
+            T_sys = Data.field['TSYS']
+            T_sys = (T_sys[:,[xx_ind]] + T_sys[:,[yy_ind]]) / 2
+            Data.field['TSYS'] = T_sys
+	else :
+            msg = ("Converstion to " + str(tuple(new_pols)) + " from " 
+                   + str(tuple(Data.field['CRVAL4'])) + " is not supported.")
+            raise NotImplementedError(msg)
+>>>>>>> anderson_branch
     elif (tuple(Data.field['CRVAL4']) == (-5, -7, -8, -6)):
         xx_ind = 0
         yy_ind = 3

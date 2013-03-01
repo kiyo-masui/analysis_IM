@@ -9,17 +9,24 @@ import os
 # What files to process.  Instead of listing them, probably better to write a 
 # script to get theses.  Similar to dir_data for GBT.  Perhapse write a
 # dir_data_parkes.py?
-file_middles = (
-                'sept12/west/2008-09-12_1530_west1_1315_P641',
-                'sept12/west/2008-09-12_1534_west2_1315_P641',
-                )
+#file_middles = (
+#                'sept12/west/2008-09-12_1530_west1_1315_P641',
+#                'sept12/west/2008-09-12_1534_west2_1315_P641',
+#                )
+file_names = open('scripts/sorted_datalist_2012_ycf.txt', 'r').read().splitlines()[:5]
 
-data_root = ('/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA'
-             '/p641/sdfits/rawdata/')
+file_middles = []
+for file in file_names:
+    file_middles.append(file[47:-7])
+
+data_root = file_names[0][:47]
+
+#data_root = ('/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA'
+#             '/p641/sdfits/rawdata/')
 
 # Where to put all the data products.
 #base_dir = '/mnt/raid-project/gmrt/kiyo/parkes/'
-base_dir = '/cita/h/home-2/anderson/temp/'
+base_dir = '/mnt/raid-project/gmrt/anderson/first_parkes_pipe/'
 
 # Maximum number of processes to use. On most machines can use 24+ if no
 # one else is using the machine.
@@ -30,15 +37,15 @@ pipe_processes = 1
 pipe_modules = []
 
 from scripts import parkes_to_GBTfits
-pipe_modules.append(parkes_to_GBTfits.Converter)
+#pipe_modules.append(parkes_to_GBTfits.Converter)
 
 # Need to generalize to 2 polarizations.
-#from time_stream import flag_data
+from time_stream import flag_data
 #pipe_modules.append(flag_data.FlagData)
 
 # This should work out of the box.
 from time_stream import rebin
-pipe_modules.append(rebin.Rebin)
+#pipe_modules.append(rebin.Rebin)
 
 # Need calibration tables to run this and to generalize to 2 polarizations.
 #from time_stream import calibrate
@@ -46,14 +53,22 @@ pipe_modules.append(rebin.Rebin)
 
 # Need to generalize to 2 polarizations.
 from time_stream import rotate_pol
-pipe_modules.append(rotate_pol.RotatePol)
+#pipe_modules.append(rotate_pol.RotatePol)
 
+from map import dirty_map
+#pipe_modules.append(dirty_map.DirtyMapMaker)
+
+from map import clean_map
+pipe_modules.append(clean_map.CleanMapMaker)
 
 #### Parameters for the modules to be executed. ####
+
+map_prefix = 'test_'
 
 p2g_input_root = data_root
 p2g_file_middles = file_middles
 p2g_input_end = '.sdfits'
+#p2g_input_end = ''
 p2g_output_root = base_dir + 'converted_to_GBT_format/'
 p2g_output_end = '.fits'
 p2g_beams = ()
@@ -103,3 +118,30 @@ rp_beams = ()
 rp_average_cals = False
 rp_new_pols = (1,)
 
+dm_input_root = rp_output_root
+dm_file_middles = file_middles
+dm_input_end = '.fits'
+dm_output_root = base_dir + 'maps/' + map_prefix
+dm_scans = ()
+dm_IFs = (0,)
+dm_beams = (0,)
+
+dm_field_centre = (40, -30)
+dm_map_shape = (60, 60)
+dm_pixel_spacing = .05
+dm_noise_parameters_input_root = 'None'
+dm_polarizations = ('I',)
+dm_time_block = 'scan'
+dm_n_files_group = 0
+dm_frequency_correlations = 'None'
+dm_number_frequency_modes = 0
+dm_noise_parameter_file = ''
+dm_deweight_time_mean = True
+dm_deweight_time_slope = True
+dm_interpolation = 'linear'
+
+cm_input_root = dm_output_root
+cm_output_root = cm_input_root
+cm_polarizations = ('I',)
+cm_bands = (1316,)
+cm_save_noise_diag = True
