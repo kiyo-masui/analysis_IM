@@ -7,8 +7,10 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 from parkes import fitsGBT
 
 #rawdatapath = ('/home/ycli/DATA/parkes/CALDATA_SDF_beamcal/1027_average/2012-10-27_1908-P641_west1_1315_P641.sdfits',)
+rawdatapath = ('/mnt/raid-project/gmrt/ycli/parkes/RAWDATA_RPF/20121027/2012-10-27_1908-P641_west1_1315_P641.rpfits',)
+
 #rawdatapath = ('/mnt/scratch-gl/ycli/map_result/parkes/parkes_2012_10_27_P641.fits',)
-rawdatapath = ('/mnt/scratch-gl/ycli/map_result/flagged/parkes_2012_10_27_P641.fits',)
+#rawdatapath = ('/mnt/scratch-gl/ycli/map_result/flagged/parkes_2012_10_27_P641.fits',)
 
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/parkes/RAWDATA_SDF/20121027/2012-10-27_1525-P641_west2_1315_P641.sdfits',)
 #rawdatapath = ('/home/ycli/map_result/parkes/average_beamcal_bandpassrm_parkes_2012_10_27_P641.fits',)
@@ -564,11 +566,11 @@ class CheckFitsFile(object):
 if __name__=="__main__":
     checkfits = CheckFitsFile(rawdatapath[0])
 
-    #checkfits.printhead()
-    #checkfits.printlabel()
+    checkfits.printhead()
+    checkfits.printlabel()
 
     #checkfits.plotfreq_time()
-    checkfits.plotfreq_time_all()
+    #checkfits.plotfreq_time_all()
     #checkfits.plottsys()
     #checkfits.plottsys(in_K=True)
     #checkfits.plotT()
