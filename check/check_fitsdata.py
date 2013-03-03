@@ -10,7 +10,10 @@ from core import fitsGBT
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/flagged/sept12/west/2008-09-12_1530_west1_1315_P641.fits',)
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/bandpass_removed/sept12/west/2008-09-12_1530_west1_1315_P641.fits',)
 
-rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/bandpass_removed/2012-10-27_1000-P641_east1_1315_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/converted_to_GBT_format/2012-10-27_1003-P641_east2_1315_P641.fits',)
+
+rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/converted_to_GBT_format/2012-10-27_1000-P641_east1_1315_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/bandpass_removed/2012-10-27_1000-P641_east1_1315_P641.fits',)
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/flagged/2012-10-27_1000-P641_east1_1315_P641.fits',)
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/rebinned/2012-10-27_1000-P641_east1_1315_P641.fits',)
 
@@ -59,6 +62,69 @@ class CheckFitsFile(object):
         #print self.tbdata.field(fieldlabel[6])[:200]
         #print self.tbdata.field(fieldlabel[6])[200:1000]
 
+    def plottsys_spec_mean(self, in_K=False):
+        tsys_x = self.tbdata.field('TSYS')[0::2]#[:10*90*13]
+        tsys_y = self.tbdata.field('TSYS')[1::2]#[:10*90*13]
+
+        tsys_x = np.ma.array(tsys_x)
+        tsys_y = np.ma.array(tsys_y)
+        tsys_x[tsys_x==0] = np.ma.masked
+        tsys_y[tsys_y==0] = np.ma.masked
+
+        tsys_x = tsys_x.reshape(13, -1)
+        tsys_y = tsys_y.reshape(13, -1)
+
+        spec_x = self.tbdata.field('DATA')[0::2,:]#[:10*90*13,:]
+        spec_y = self.tbdata.field('DATA')[1::2,:]#[:10*90*13,:]
+
+        spec_x = np.ma.masked_where(np.isnan(spec_x), spec_x)
+        spec_y = np.ma.masked_where(np.isnan(spec_y), spec_y)
+
+        shape = spec_x.shape
+        spec_x = np.ma.mean(spec_x.reshape((13, -1) + shape[1:]), axis=-1)
+        spec_y = np.ma.mean(spec_y.reshape((13, -1) + shape[1:]), axis=-1)
+
+
+        if in_K:
+            to_K = [1.36,1.45,1.45,1.45,1.45,1.45,1.45,1.72,1.72,1.72,1.72,1.72,1.72]
+            to_K = np.array(to_K)
+            tsys_x /= to_K[None,:]
+            tsys_y /= to_K[None,:]
+            unit = 'K'
+        else:
+            unit = 'Jy'
+
+        x = range(tsys_x.shape[1])
+
+        plt.figure(figsize=(20, 30))
+
+        for i in range(13):
+            plt.subplot(13, 2, 2*i+1)
+            plt.plot(x, tsys_x[i,:], label='tsys', linewidth=0.5, c='r')
+            plt.plot(x, spec_x[i,:], label='spec', linewidth=0.5, c='b')
+            #plt.plot(x, spec_x[i,:]/tsys_x[i,:], label='spec', linewidth=0.5, c='b')
+            plt.legend(ncol=4, frameon=False)
+            plt.xlabel('time ')
+            plt.ylabel('beam %d x pol [%s]'%(i, unit))
+            plt.ylim(ymin=20, ymax=60)
+            #plt.ylim(ymin=0, ymax=5)
+            plt.tick_params(length=6, width=1.)
+            plt.tick_params(which='minor', length=3, width=1.)
+
+            plt.subplot(13, 2, 2*i+2)
+            plt.plot(x, tsys_y[i,:], label='tsys', linewidth=0.5, c='r')
+            plt.plot(x, spec_y[i,:], label='spec', linewidth=0.5, c='b')
+            #plt.plot(x, spec_y[i,:]/tsys_y[i,:], label='spec', linewidth=0.5, c='b')
+            plt.legend(ncol=4, frameon=False)
+            plt.xlabel('time ')
+            plt.ylabel('beam %d y pol [%s]'%(i, unit))
+            plt.ylim(ymin=20, ymax=60)
+            #plt.ylim(ymin=0, ymax=5)
+            plt.tick_params(length=6, width=1.)
+            plt.tick_params(which='minor', length=3, width=1.)
+
+        plt.savefig('./png/parkes_tsys_time_%s.png'%unit, format='png')
+
     def plottsys(self, in_K=False):
         tsys_x = self.tbdata.field('TSYS')[0::2]#[:10*90*13]
         tsys_y = self.tbdata.field('TSYS')[1::2]#[:10*90*13]
@@ -71,6 +137,17 @@ class CheckFitsFile(object):
         tsys_x = tsys_x.reshape(-1, 13)
         tsys_y = tsys_y.reshape(-1, 13)
 
+        spec_x = self.tbdata.field('DATA')[0::2,:]#[:10*90*13,:]
+        spec_y = self.tbdata.field('DATA')[1::2,:]#[:10*90*13,:]
+
+        spec_x = np.ma.masked_where(np.isnan(spec_x), spec_x)
+        spec_y = np.ma.masked_where(np.isnan(spec_y), spec_y)
+
+        shape = spec_x.shape
+        spec_x = np.ma.mean(spec_x.reshape((-1, 13) + shape[1:]), axis=-1)
+        spec_y = np.ma.mean(spec_y.reshape((-1, 13) + shape[1:]), axis=-1)
+
+
         if in_K:
             to_K = [1.36,1.45,1.45,1.45,1.45,1.45,1.45,1.72,1.72,1.72,1.72,1.72,1.72]
             to_K = np.array(to_K)
@@ -82,29 +159,32 @@ class CheckFitsFile(object):
 
         x = range(tsys_x.shape[0])
 
-
         plt.figure(figsize=(10, 12))
 
         cmap = plt.get_cmap('jet')
         norm = plt.normalize(0.,13.)
 
         plt.subplot(211)
-        for i in range(13):
-            plt.plot(x, tsys_x[:,i], label='beam %d'%i, linewidth=0.5, c=cmap(norm(i)))
+        for i in range(1):
+            #plt.plot(x, tsys_x[:,i], label='beam %d'%i, linewidth=0.5, c=cmap(norm(i)))
+            plt.plot(x, tsys_x[:,i], label='beam %d tsys'%i, linewidth=0.5, c='r')
+            plt.plot(x, spec_x[:,i], label='beam %d spec'%i, linewidth=0.5, c='b')
         plt.legend(ncol=4, frameon=False)
         plt.xlabel('time ')
         plt.ylabel('x pol Tsys [%s]'%unit)
-        plt.ylim(ymin=15, ymax=40)
+        plt.ylim(ymin=20, ymax=60)
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
 
         plt.subplot(212)
-        for i in range(13):
-            plt.plot(x, tsys_y[:,i], label='beam %d'%i, linewidth=0.5, c=cmap(norm(i)))
+        for i in range(1):
+            #plt.plot(x, tsys_y[:,i], label='beam %d'%i, linewidth=0.5, c=cmap(norm(i)))
+            plt.plot(x, tsys_y[:,i], label='beam %d tsys'%i, linewidth=0.5, c='r')
+            plt.plot(x, spec_y[:,i], label='beam %d spec'%i, linewidth=0.5, c='b')
         plt.legend(ncol=4, frameon=False)
         plt.xlabel('time ')
         plt.ylabel('y pol Tsys [%s]'%unit)
-        plt.ylim(ymin=15, ymax=40)
+        plt.ylim(ymin=20, ymax=60)
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
 
@@ -229,7 +309,6 @@ class CheckFitsFile(object):
         if scan_n != 0:
             spectrum_xx = spectrum_xx[:,:scan_n*90*13]
             spectrum_yy = spectrum_yy[:,:scan_n*90*13]
-
 
         # get the shape 
         shape = spectrum_xx.shape
@@ -570,7 +649,8 @@ if __name__=="__main__":
     #checkfits.printlabel()
 
     #checkfits.plotfreq_time()
-    checkfits.plotfreq_time_all()
+    #checkfits.plotfreq_time_all()
+    checkfits.plottsys_spec_mean()
     #checkfits.plottsys()
     #checkfits.plottsys(in_K=True)
     #checkfits.plotT()
