@@ -12,9 +12,9 @@ from core import fitsGBT
 
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/converted_to_GBT_format/2012-10-27_1003-P641_east2_1315_P641.fits',)
 
-rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/converted_to_GBT_format/2012-10-27_1000-P641_east1_1315_P641.fits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/converted_to_GBT_format/2012-10-27_1000-P641_east1_1315_P641.fits',)
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/bandpass_removed/2012-10-27_1000-P641_east1_1315_P641.fits',)
-#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/flagged/2012-10-27_1000-P641_east1_1315_P641.fits',)
+rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/flagged/2012-10-27_1000-P641_east1_1315_P641.fits',)
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/rebinned/2012-10-27_1000-P641_east1_1315_P641.fits',)
 
 class CheckFitsFile(object):
@@ -320,10 +320,10 @@ class CheckFitsFile(object):
         df = self.tbdata.field('BANDWID')[0]/1.e9/1024.
         y = (range(shape[0]) - cf_ind) * df + cf
 
-        cmin = -0.6
-        cmax = 0.6
-        #cmin = 0.0
-        #cmax = 70 
+        #cmin = -0.6
+        #cmax = 0.6
+        cmin = 0.0
+        cmax = 70 
 
         plt.figure(figsize=(30, 50))
 
@@ -649,8 +649,8 @@ if __name__=="__main__":
     #checkfits.printlabel()
 
     #checkfits.plotfreq_time()
-    #checkfits.plotfreq_time_all()
-    checkfits.plottsys_spec_mean()
+    checkfits.plotfreq_time_all()
+    #checkfits.plottsys_spec_mean()
     #checkfits.plottsys()
     #checkfits.plottsys(in_K=True)
     #checkfits.plotT()

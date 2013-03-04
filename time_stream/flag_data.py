@@ -279,8 +279,8 @@ def destroy_with_variance_2pol(Data, sigma_thres=6, bad_freq_list=[]):
     #Data.data[Data.data>3] = ma.masked
     #Data.data[Data.data<3] = ma.masked
     Data.data[np.isnan(Data.data)] = ma.masked
-    a = ma.var(Data.data[:,0,0,:],0)#/(ma.mean(Data.data[:,0,0,:],0)**2)#XX
-    b = ma.var(Data.data[:,1,0,:],0)#/(ma.mean(Data.data[:,1,0,:],0)**2)#YY
+    a = ma.var(Data.data[:,0,0,:],0)/(ma.mean(Data.data[:,0,0,:],0)**2)#XX
+    b = ma.var(Data.data[:,1,0,:],0)/(ma.mean(Data.data[:,1,0,:],0)**2)#YY
     # Get the mean and standard deviation [sigma].
     means = sp.array([ma.mean(a), ma.mean(b)]) 
     sig   = sp.array([ma.std(a), ma.std(b)])

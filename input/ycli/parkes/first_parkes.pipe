@@ -45,16 +45,16 @@ pipe_modules = []
 #pipe_modules.append(bandpass_remove.BandpassRemove)
 
 # Need to generalize to 2 polarizations.
-#from time_stream import flag_data
-#pipe_modules.append(flag_data.FlagData)
+from time_stream import flag_data
+pipe_modules.append(flag_data.FlagData)
 
 # This should work out of the box.
 #from time_stream import rebin
 #pipe_modules.append(rebin.Rebin)
 
 # Need calibration tables to run this and to generalize to 2 polarizations.
-from time_stream import calibrate
-pipe_modules.append(calibrate.Calibrate)
+#from time_stream import calibrate
+#pipe_modules.append(calibrate.Calibrate)
 
 # Need to generalize to 2 polarizations.
 #from time_stream import rotate_pol
@@ -80,7 +80,8 @@ fd_time_cut = 20
 
 
 # flag_data, RFI flagger.
-fd_input_root = bp_output_root
+#fd_input_root = bp_output_root
+fd_input_root = p2g_output_root
 fd_file_middles = file_middles
 fd_input_end = '.fits'
 fd_output_root = base_dir + 'flagged/'
