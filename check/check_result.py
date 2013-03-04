@@ -10,7 +10,7 @@ color = ['k', 'g', 'r', 'b', 'y', 'c']
 workroot = os.getenv('YICHAO_WORK_PS')
 
 #FIGNAME = 'auto_power_%s'%maps
-FIGNAME = 'auto_power_chechreslt'
+FIGNAME = 'auto_power_checkresult'
 ymax = 3.e-4
 ymin = 3.e-12
 

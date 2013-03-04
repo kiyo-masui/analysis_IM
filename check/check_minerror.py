@@ -271,7 +271,7 @@ def plot2dpower_minerror(file_root, file_name, mode_list, kind='2d'):
         plt.ylim(ymin=ymin, ymax=ymax)
         plt.xlim(xmin=0.025, xmax=1.5)
         plt.xlabel('k [h/Mpc]')
-        plt.ylabel('$\Delta^2$ $P(k)/P_{sim}(k)$')
+        plt.ylabel('$\Delta^2$ [$\Delta^2(k)/\Delta^2_{sim}(k)$]')
         plt.loglog()
         plt.legend(loc=2, scatterpoints=1, frameon=False)
         
@@ -375,8 +375,8 @@ if __name__=="__main__":
     ymin = 3.e-11
     ymax = 3.e-4
 
-    conv = '14conv'
-    hour = '1hr'
+    conv = '14conv_new'
+    hour = '15hr'
 
     mode_list = [10, 15, 20, 25, 30, 35, 40]
     
