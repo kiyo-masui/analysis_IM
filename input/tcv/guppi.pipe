@@ -31,7 +31,7 @@ pipe_modules = []
 # Chime has 8 cores, but you should save a few for other people.  Use 6 max.
 # Prawn has 12 cores.
 # Sunnyvale must have more 12*2
-pipe_processes = 3
+pipe_processes = 2
 
 base_dir = os.getenv('GBT_OUT')
 

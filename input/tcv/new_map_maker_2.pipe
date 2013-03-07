@@ -6,7 +6,7 @@ from core import dir_data
 import scipy as sp
 
 # What data to process and how to split it up.
-field = '15hr'
+field = '1hr'
 
 #sessions = range(41, 90)
 # According to Tabitha, cal unstable in sessions 52 to 58.
@@ -74,7 +74,7 @@ prefix = ''
 map_prefix = '' + field + '_' + '41-18_avg_fdgp_new' + '_'
 
 # Maximum number of processes to use.
-pipe_processes = 8
+pipe_processes = 2
 
 
 ####  List of modules to execute.  ####
@@ -103,19 +103,19 @@ pipe_modules = []
 #pipe_modules.append(calibrate.Calibrate)
 
 #new calibration module
-from time_stream import flux_diff_gain_cal
-pipe_modules.append(flux_diff_gain_cal.Calibrate)
+#from time_stream import flux_diff_gain_cal
+#pipe_modules.append(flux_diff_gain_cal.Calibrate)
 
-from time_stream import rotate_pol
-pipe_modules.append(rotate_pol.RotatePol)
+#from time_stream import rotate_pol
+#pipe_modules.append(rotate_pol.RotatePol)
 
 #### First Map making interation ####
 
-from map import dirty_map
-pipe_modules.append(dirty_map.DirtyMapMaker)
+#from map import dirty_map
+#pipe_modules.append(dirty_map.DirtyMapMaker)
 
-from map import clean_map
-pipe_modules.append(clean_map.CleanMapMaker)
+#from map import clean_map
+#pipe_modules.append(clean_map.CleanMapMaker)
 
 
 #### Second Map making iteration ####
@@ -129,8 +129,8 @@ pipe_modules.append(clean_map.CleanMapMaker)
 #from time_stream import reflag
 #pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
 
-#from noise import measure_noise
-#pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
+from noise import measure_noise
+pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
 #from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))

@@ -76,7 +76,7 @@ prefix = ''
 map_prefix = '' + field + '_' + 'absorb' + '_'
 
 # Maximum number of processes to use.
-pipe_processes = 8
+pipe_processes = 12
 
 
 ####  List of modules to execute.  ####
@@ -93,8 +93,8 @@ pipe_modules = []
 #from time_stream import band_stop
 #pipe_modules.append(band_stop.BandStop)
 
-#from time_stream import split_bands
-#pipe_modules.append(split_bands.SplitBands)
+from time_stream import split_bands
+pipe_modules.append(split_bands.SplitBands)
 
 # Not used.
 ##from time_stream import cal_filter
@@ -116,8 +116,8 @@ pipe_modules = []
 #from map import dirty_map
 #pipe_modules.append(dirty_map.DirtyMapMaker)
 
-from map import clean_map
-pipe_modules.append(clean_map.CleanMapMaker)
+#from map import clean_map
+#pipe_modules.append(clean_map.CleanMapMaker)
 
 
 #### Second Map making iteration ####
@@ -210,9 +210,9 @@ sb_IFs = ()
 #sb_offset = 4
 # For now deal with a single lowish noise band that misses resonances, rfi,
 # etc. Band chosen such the upper end is ~5MHz from resonance.
-sb_n_bands =8 
+sb_n_bands =10 
 sb_n_bins_band = 400
-sb_offset = 100
+sb_offset = 45
 
 # scale by filtered cal.
 #cf_input_root = sb_output_root
