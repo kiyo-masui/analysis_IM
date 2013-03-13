@@ -1,0 +1,61 @@
+# pipeline for  foreground clean
+
+pipe_modules = []
+pipe_processes = 1
+
+
+from foreground_clean import pair_set_legendre
+from foreground_clean import pair_set
+
+#from quadratic_products import pwrspec_combinations
+#from quadratic_products import pwrspec_compile
+
+from map import simulate_gbt
+import struct
+import os
+
+#-----------------------------------------------------------------------------
+# main parameters that define the run
+#-----------------------------------------------------------------------------
+
+# This is the database key for the input map
+basemap = os.getenv('MAPFILE')
+basemap_my = os.getenv('MAPGBT_MY')
+simroot = os.getenv('SIMROOT') # simulation file root
+simfile = os.getenv('SIMFILE') # simulation file number
+
+goodmodes = int(os.getenv('GOODMODES'))
+
+degrade_factor = 1.4
+simnum = 100
+
+do_simulation = True
+do_inv_diag_noise = False
+
+#-----------------------------------------------------------------------------
+# generate simulation maps for GBT and WiggleZ
+#-----------------------------------------------------------------------------
+if do_simulation:
+    # generate the simulation maps
+    pipe_modules.append((simulate_gbt.SimulateGbt, ('sg1_', 'sg_')))
+    instance_seed = struct.unpack("I", os.urandom(4))[0]
+    print "generating simulation with seed: %d" % instance_seed
+
+    sg1_output_root = simroot
+    sg1_template_file = basemap + 'fir_1hr_41-18_avg_fdgp_new_clean_map_I_800.npy'
+    sg1_seed = instance_seed
+    sg1_refinement = 2
+    sg1_weightfile = basemap + 'fir_1hr_41-18_avg_fdgp_new_noise_diag_I_800.npy'
+    sg1_outfile_meansub = "sim_beammeansub_%03d.npy"
+    sg1_outfile_raw = "sim_raw_%03d.npy"
+    sg1_outfile_delta = "sim_delta_%03d.npy"
+    sg1_outfile_physical = "sim_phys_%03d.npy"
+    sg1_outfile_degrade = "sim_degradebeam_%03d.npy"
+    sg1_degrade_factor = degrade_factor
+    sg1_simnum = simnum
+
+    #sg1_scenario = 'ideal'
+
+    # clean_{map+sim} (map+sim) 
+    # using IxI clean first 3 modes
+
