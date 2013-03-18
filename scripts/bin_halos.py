@@ -4,24 +4,24 @@ from utils import binning
 import numpy as np
 
 
-def data_binning(h5py_file,num_bins):
+def data_binning(h5py_file, num_bins):
     file = h5py.File(h5py_file)
     # reading data from h5py
     posx = file['Positions']['x'][:]
     posy = file['Positions']['y'][:]
     posz = file['Positions']['z'][:]
-    halo_mass = file['HI_Masses']['HI_Masses'][:]
+    HI_mass = file['HI_Masses']['HI_Masses'][:]
     # creating info for binning function
-    xedges = np.linspace(0,posx.max(),num_bins)
-    yedges = np.linspace(0,posy.max(),num_bins)
-    zedges = np.linspace(0,posz.max(),num_bins)
-    sample = np.zeros((len(posx),4))
-    sample[:,0] = posx
-    sample[:,1] = posy
-    sample[:,2] = posz
-    sample[:,3] = halo_mass
+    xedges = np.linspace(0, posx.max(), num_bins)
+    yedges = np.linspace(0, posy.max(), num_bins)
+    zedges = np.linspace(0, posz.max(), num_bins)
+    sample = np.zeros((len(posx), 4))
+    sample[:, 0] = posx
+    sample[:, 1] = posy
+    sample[:, 2] = posz
+    sample[:, 3] = HI_mass
     # calling binning function
-    z = binning.histogram3d_weights(sample,xedges,yedges,zedges)
+    z = binning.histogram3d_weights(sample, xedges, yedges, zedges)
     # info for make_cube_movie.py
     x_delta = posx.max()/num_bins
     y_delta = posy.max()/num_bins
@@ -38,11 +38,10 @@ def data_binning(h5py_file,num_bins):
             'freq_delta': z_delta,
             'type': 'vect'}
     # save data for make_cube_movie.py
-    map = algebra.make_vect(z, axis_names=('ra','dec','freq'))
+    map = algebra.make_vect(z, axis_names=('ra', 'dec', 'freq'))
     map.info = info
-    save_file = open("/tmp/mufma/data/HI_prelim_40_bins_weights.npy","w")
-    algebra.save(save_file,map)
+    save_file = open("/tmp/mufma/data/HI_prelim_40_bins_weights.npy", "w")
+    algebra.save(save_file, map)
     save_file.close()
 
-data_binning('/cita/h/home-2/mufma/code/analysis_IM/Tryout.hdf5',40.)
-
+data_binning('/cita/h/home-2/mufma/code/analysis_IM/Tryout.hdf5', 40.)
