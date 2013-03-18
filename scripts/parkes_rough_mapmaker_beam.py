@@ -92,9 +92,9 @@ def mapper(x, y, matches, index):
         #for file in matches:
             hdulist = pyfits.open(file)
             hdu_data = hdulist[1]
-            print hdu_data.data['BEAM']
+            #print hdu_data.data['BEAM']
             beam_mask = hdu_data.data['BEAM'] == beam
-            print np.sum(beam_mask)
+            #print np.sum(beam_mask)
             ra_vec = fix(hdu_data.data['CRVAL3'][beam_mask])
             dec_vec = hdu_data.data['CRVAL4'][beam_mask]
             #map_data = np.mean(hdu_data.data['data'], axis=1)

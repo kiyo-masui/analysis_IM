@@ -1,3 +1,5 @@
+#import pyximport
+#pyximport.install()
 import scipy as sp
 import numpy as np
 import core.algebra as algebra
@@ -68,9 +70,11 @@ from plotting import plot_cube as pc
 #multiplier = 1000.
 #sigmarange = 3.
 
-full_list = ["/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_delta/15hr_v2/reg15data.npy",
-             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr_v2/reg15separable.npy",
-             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr_v2/reg15selection.npy"]
+full_list = ["/mnt/raid-project/gmrt/anderson/first_parkes_pipe/maps/test_clean_map_I_1315.npy"]
+
+#full_list = ["/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_delta/15hr_v2/reg15data.npy",
+ #            "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr_v2/reg15separable.npy",
+#             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr_v2/reg15selection.npy"]
 #full_list = ["/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_delta/1hr_v2/reg01data.npy",
 #             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/1hr_v2/reg01separable.npy",
 #             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/1hr_v2/reg01selection.npy"]
@@ -98,7 +102,8 @@ multiplier = 1.
 sigmarange = 4.
 
 for filename in full_list:
-    outputdir = "/cita/d/www/home/eswitzer/movies/"
+    #outputdir = "/cita/d/www/home/eswitzer/movies/"
+    outputdir = "/cita/d/www/home/anderson/"
     tag = ".".join(filename.split(".")[:-1])  # extract root name
     tag = tag.split("/")[-1]
     pc.make_cube_movie(filename, cbtitle, pc.cube_frame_dir,
