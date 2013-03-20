@@ -15,7 +15,8 @@ def find_pattern(pattern,root_dir):
 
 #matches = find_pattern("*west2*.sdfits","/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA/p641/sdfits/rawdata/")
 #matches = open('sorted_datalist_2012_ycf.txt', 'r').read().splitlines()
-matches = open('final_datalist.txt', 'r').read().splitlines()
+#matches = open('final_datalist.txt', 'r').read().splitlines()
+matches = open('datalist_2008_center.txt', 'r').read().splitlines()
 
 def fix(list):
     wh_wrap = (list>180)
@@ -68,17 +69,30 @@ def dec_min(list):
     return min_dec
 
 def saveplot(hist, extent, j):
-    currentplot=plt.imshow(hist, vmax=190, vmin=0, extent=extent, interpolation='nearest')
+    currentplot=plt.imshow(hist, vmax=10, vmin=0, extent=extent, interpolation='nearest')
     plt.colorbar()
     #plt.savefig('/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_2012_movie_yc/' + '{0:03}'.format(j), bbox_inches=0)
-    plt.savefig('/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_nodriftcal_movie/' + '{0:03}'.format(j), bbox_inches=0)
+    plt.savefig('/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_nodriftcal_movie/smallpatch/' + '{0:03}'.format(j), bbox_inches=0)
     plt.close()
 
-hitmap = np.zeros((50,200))
-ran=ra_min(matches)
-rax=ra_max(matches)
-decn=dec_min(matches)
-decx=dec_max(matches)
+#hitmap = np.zeros((50,200))
+hitmap = np.zeros((60,60))
+#ran=ra_min(matches)
+#rax=ra_max(matches)
+#decn=dec_min(matches)
+#decx=dec_max(matches)
+
+ran=38.5
+rax=41.5
+decn=-31.5
+decx=-28.5
+
+#ran=24.5
+#rax=27.5
+#decn=-31.5
+#decx=-28.5
+
+
 i=1
 #saveplot(hitmap, [-20,20,-24,-34],1)
 for file in matches:
@@ -91,8 +105,9 @@ for file in matches:
                                                  range=[[decn,decx],[ran,rax]],                                                  bins=hitmap.shape)
     hitmap += skycov
     extent=[ra_edge[0], ra_edge[-1], dec_edge[0], dec_edge[-1]]
-    saveplot(hitmap, extent, i)
+    #saveplot(hitmap, extent, i)
     i += 1
+saveplot(hitmap, extent, 100)
 
 #extent=[ra_edge[0], ra_edge[-1], dec_edge[0], dec_edge[-1]]
 #plt.imshow(hitmap, vmax=50, vmin=0, extent=extent, interpolation='nearest')

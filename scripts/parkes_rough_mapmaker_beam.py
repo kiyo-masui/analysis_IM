@@ -121,8 +121,8 @@ def mapper(x, y, matches, index):
     extent=[ra_edge[0], ra_edge[-1], dec_edge[0], dec_edge[-1]]
     extent2=[40, 55, dec_edge[0], dec_edge[-1]]
     return {'extent':extent, 'map':map, 'extent2':extent2} 
-    extent2=[40, 55, dec_edge[0], dec_edge[-1]]
-mapper(630, 90, matches, 900)
+    #extent2=[40, 55, dec_edge[0], dec_edge[-1]]
+#mapper(630, 90, matches, 900)
 #saveplot(mapper(630, 90, matches, 900)['map'], mapper(630, 90, matches, 900)['extent2'], 1,                                                                       '/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/',                                                                        'partialsky_ueli' )
 #saveplot(mapper(630, 90, matches, 900)['map'], mapper(630, 90, matches, 900)['extent'], 1,                                                                      '/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/',                                                                        'fullsky_ueli' )
 #saveplot(mapper(630, 90, matches2, 900)['map'], mapper(630, 90, matches2, 900)['extent'], 1,
