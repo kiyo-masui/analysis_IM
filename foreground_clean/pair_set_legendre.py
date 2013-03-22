@@ -65,6 +65,7 @@ params_init = {
                 # in deg: (unused)
                'tack_on': None,
                'convolve': True,
+               'clip_weight_percent': None,
                'degrade_factor': 1.1,
                'factorizable_noise': True,
                'sub_weighted_mean': True,

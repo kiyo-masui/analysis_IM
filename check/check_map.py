@@ -160,11 +160,11 @@ import math
 #mapname = "secA_1hr_41-18_noise_weight_I_800"
 
 #maproot = "/scratch/ycli/map_result/maps/parkes/"
-maproot = "/mnt/scratch-gl/ycli/map_result/maps/parkes/"
+#maproot = "/mnt/scratch-gl/ycli/map_result/maps/parkes/"
 #mapname = "fir_RA+10_parkes_2010_10_25dirty_map_I_1316" 
 #mapname = "fir_RA+10_parkes_2010_10_26dirty_map_I_1316" 
 #mapname = "fir_RA+10_parkes_2010_10_25clean_map_I_1316" 
-mapname = "fir_RA+10_parkes_2010_10_27clean_map_I_1316" 
+#mapname = "fir_RA+10_parkes_2010_10_27clean_map_I_1316" 
 #mapname = "fir_RA+10_parkes_2010_10_27dirty_map_I_1316" 
 #mapname = "fir_RA+10_parkes_2010_10_27beam_0_dirty_map_I_1316" 
 #mapname = "fir_RA+10_parkes_2010_10_27beam_1_dirty_map_I_1316" 
@@ -173,8 +173,16 @@ mapname = "fir_RA+10_parkes_2010_10_27clean_map_I_1316"
 #mapname = "fir_RA+10_parkes_2010_10_27beam_5_dirty_map_I_1316" 
 #mapname = "fir_RA+10_parkes_2010_10_27beam_6_dirty_map_I_1316" 
 
-#maproot = "/mnt/scratch-3week/ycli/1hr_AQU_extend_legendre_modes_0gwj_2conv/"
-#mapname = "secA_1hr_41-18_noise_weight_I_800" 
+maproot = "/mnt/scratch-gl/ycli/maps/1hr_41-18_avg_fdgp/"
+#mapname = "secA_1hr_41-18_avg_fdgp_clean_map_I_800"
+#mapname = "fir_1hr_41-18_avg_fdgp_new_clean_map_I_800"
+
+
+#maproot = "/mnt/raid-project/gmrt/tcv/maps/15hr_41-80_avg_fdgp_new/"
+#mapname = "secA_15hr_41-80_avg_fdgp_new_noise_inv_diag_I_800"
+
+maproot = "/mnt/scratch-gl/ycli/cln_result/15hr_ABCD_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/"
+mapname = "sec_D_cleaned_noise_inv_I_with_B_40modes"
 
 mapidex = 32
 
@@ -269,11 +277,11 @@ if len(sys.argv) == 1:
     #vmin = map[mapidex].flatten().min()
     #vmax = map.flatten().max()
     #vmin = map.flatten().min()
-    #vmax = 0.05
-    #vmin = -0.05
+    vmax = 0.5
+    vmin = -0.5
 
-    vmax = 0.04
-    vmin = -0.04
+    #vmax = 0.04
+    #vmin = -0.04
 
     #vmax = 50
     #vmin = -50
@@ -308,7 +316,7 @@ if len(sys.argv) == 1:
                    )
     im = ax[0].pcolormesh(ra, dec, np.ma.mean(map, 0).swapaxes(0,1))
     #im = ax[0].pcolormesh(ra, dec, map[mapidex].swapaxes(0,1))
-    im.set_clim(vmin, vmax)
+    #im.set_clim(vmin, vmax)
     ax[0].set_xlim(ra.min(), ra.max())
     ax[0].set_ylim(dec.min(), dec.max())
     ax[0].set_xlabel('RA [deg]')

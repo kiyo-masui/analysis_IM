@@ -5,7 +5,8 @@ cd $PIPELINE_DIR
 source $PIPELINE_DIR/PARAMS.sh
 
 #===== Foreground Clean 15hr IxABCDQUV======
-export MAPFILE="/mnt/raid-project/gmrt/tcv/maps/1hr_41-18_avg_fdgp_new/"
+#export MAPFILE="/mnt/raid-project/gmrt/tcv/maps/1hr_41-18_avg_fdgp_new/"
+export MAPFILE="/mnt/scratch-gl/ycli/maps/1hr_41-18_avg_fdgp/"
 export GOODMODES="0"
 #export SIMROOT="/mnt/raid-project/gmrt/ycli/map_sim/1hr_ideal/"
 #export SIMROOT="/mnt/scratch-gl/ycli/simulation_map/sim_ideal/"

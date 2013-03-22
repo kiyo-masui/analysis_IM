@@ -8,7 +8,7 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 
 np.set_printoptions(threshold=np.nan)
 
-def plot2dpower_minerror(file_root, file_name, mode_list, kind='2d'):
+def plot2dpower_minerror(file_root, file_name, mode_list, kind='2d', div_sim=True):
 
     power = []
     power_error = []
@@ -32,8 +32,9 @@ def plot2dpower_minerror(file_root, file_name, mode_list, kind='2d'):
         sim= np.load(file_root.replace('power', 'reference')%20 + 
                      'simmaps_p2_combined.npy')
         sim[sim==0] = np.inf
-        dp2 /= sim
-        p2  /= sim
+        if div_sim:
+            dp2 /= sim
+            p2  /= sim
 
         p2 *= b2
         dp2*= b2
@@ -62,19 +63,19 @@ def plot2dpower_minerror(file_root, file_name, mode_list, kind='2d'):
     power_weight = np.sum(power_weight, axis=0)
     power_modes = np.sum(power_modes, axis=0)
 
-    power[power_error>10] = ma.masked
-    power_weight[power_error>10] = ma.masked
-    power_modes[power_error>10] = ma.masked
-    power_error[power_error>10] = ma.masked
+    #power[power_error>10] = ma.masked
+    #power_weight[power_error>10] = ma.masked
+    #power_modes[power_error>10] = ma.masked
+    #power_error[power_error>10] = ma.masked
 
     kp = power_k[0]
     kv = power_k[1]
 
-    p1, modenum, dp, bc, be = check_2dpower.twod2oned(power, power_k, 
-                                                      power_error, power_weight)
-    #p1, modenum, dp, bc, be, power, power_error, power_weight, kp, kv = \
-    #    check_2dpower.twod2oned_reshape(power, power_k, power_error,
-    #    k_range = [0.04, 0, 0.08, 0.2], weight=power_weight)
+    #p1, modenum, dp, bc, be = check_2dpower.twod2oned(power, power_k, 
+    #                                                  power_error, power_weight)
+    p1, modenum, dp, bc, be, power, power_error, power_weight, kp, kv = \
+        check_2dpower.twod2oned_reshape(power, power_k, power_error,
+        k_range = [0.04, 1., 0.08, 0.25], weight=power_weight)
     if kind=='2draw':
         # plot 2d power
         p2 = ma.array(power)
@@ -184,27 +185,35 @@ def plot2dpower_minerror(file_root, file_name, mode_list, kind='2d'):
 
         label = file_name.replace("legendre_modes_0gwj_", "")
         label = label.replace("_%d", "")
-        cmax = 3
+        cmax = 4 
         cmin = -1
 
         im0 = ax[0].pcolormesh(kv,kp,p2)
-        im0.set_clim(cmin, cmax)
+        #im0.set_clim(cmin, cmax)
         ax[0].set_xlim(kp.min(), kp.max())
         ax[0].set_ylim(kp.min(), kp.max())
         ax[0].loglog()
         ax[0].set_xlabel('log(k_v) [log(h/Mpc)]')
         ax[0].set_ylabel('log(k_p) [log(h/Mpc)]')
-        ax[0].set_title(label + '\n2d power \n$log_{10}(P(k)/P_{sim}(k))$')
+        if div_sim:
+            ax[0].set_title(label + '\n2d power \n$log_{10}(P(k)/P_{sim}(k))$')
+        else:
+            ax[0].set_title(label + '\n2d power \n$log_{10}(P(k))$')
 
         ax[0].cax.colorbar(im0)
 
         im1 = ax[1].pcolormesh(kv,kp,p2_negative)
-        im1.set_clim(cmin, cmax)
+        #im1.set_clim(cmin, cmax)
         ax[1].set_xlim(kp.min(), kp.max())
         ax[1].set_ylim(kp.min(), kp.max())
         ax[1].loglog()
         ax[1].set_xlabel('log(k_v) [log(h/Mpc)]')
-        ax[1].set_title(label + '\n2d power negative \n$log_{10}(-P(k)/P_{sim}(k))$')
+        if div_sim:
+            ax[1].set_title(label + 
+                '\n2d power negative \n$log_{10}(-P(k)/P_{sim}(k))$')
+        else:
+            ax[1].set_title(label + 
+                '\n2d power negative \n$log_{10}(-P(k))$')
 
         ax[1].cax.colorbar(im1)
 
@@ -214,7 +223,12 @@ def plot2dpower_minerror(file_root, file_name, mode_list, kind='2d'):
         ax[2].set_ylim(kp.min(), kp.max())
         ax[2].loglog()
         ax[2].set_xlabel('log(k_v) [log(h/Mpc)]')
-        ax[2].set_title(label + '\n2d error \n$log_{10}((\delta P(k)/P_{sim}(k))^2)$')
+        if div_sim:
+            ax[2].set_title(label + 
+                '\n2d error \n$log_{10}((\delta P(k)/P_{sim}(k))^2)$')
+        else:
+            ax[2].set_title(label + 
+                '\n2d error \n$log_{10}((\delta P(k))^2)$')
 
         ax[2].cax.colorbar(im2)
 
@@ -230,10 +244,27 @@ def plot2dpower_minerror(file_root, file_name, mode_list, kind='2d'):
 
         ax[3].cax.colorbar(im3, ticks=mode_list)
 
+        #sim[sim==np.inf] = 0
+        #print sim.flatten().max()
+        #sim = np.log10(sim)
+        #im4 = ax[4].pcolormesh(kv, kp, sim)
+        #im4.set_clim(-10, -5)
+        #ax[4].set_xlim(kp.min(), kp.max())
+        #ax[4].set_ylim(kp.min(), kp.max())
+        #ax[4].loglog()
+        #ax[4].set_xlabel('log(k_v) [log(h/Mpc)]')
+        #ax[4].set_title(label + '\n simulation')
+
+        #ax[4].cax.colorbar(im4)
+
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
         #plt.title(label)
-        plt.savefig('./png/minerror_2d2d_power_%s'%file_name[:-3])
+        if len(mode_list) == 1:
+            plt.savefig('./png/minerror_2d2d_power_%s_%dmode'\
+                %(file_name[:-3], mode_list[0]))
+        else:
+            plt.savefig('./png/minerror_2d2d_power_%s'%file_name[:-3])
 
     if kind == '1d':
         # plot 1d power
@@ -255,8 +286,16 @@ def plot2dpower_minerror(file_root, file_name, mode_list, kind='2d'):
         ax = fig.add_subplot(111)
         label = file_name.replace("legendre_modes_0gwj_", "")
         label = label.replace("_%d", "")
+        if len(mode_list) == 1:
+            label += ' %d mode'%mode_list[0]
         ax.errorbar(bc[p1>0], p, pe, fmt='ro', label=label, capsize=4.5, elinewidth=1)
         ax.errorbar(bc[p1<0], p_negative, pe_negative, fmt='rs', mec='r', mfc='None', capsize=4.5, elinewidth=0.5, label=label + ' negative')
+
+        for i in range(len(bc[p1>0])):
+            print bc[p1>0][i], p[i], pe[1][i]
+        print 
+        for i in range(len(bc[p1<0])):
+            print bc[p1<0][i], p_negative[i], pe_negative[1][i]
 
         #fileroot = file_root.replace('power', 'reference')%20
         #filename = 'simmaps'
@@ -266,12 +305,18 @@ def plot2dpower_minerror(file_root, file_name, mode_list, kind='2d'):
         #check_2dpower.plot1dpower(fileroot, filename, ax, weights='noise', 
         #                          binedgs=True, color='0.3')
 
-        ymin = 1.e-1
-        ymax = 1.e4
+        ymin = 1.e-9
+        ymax = 1.e-4
+        if div_sim:
+            ymin = 1.e-1
+            ymax = 1.e4
         plt.ylim(ymin=ymin, ymax=ymax)
         plt.xlim(xmin=0.025, xmax=1.5)
         plt.xlabel('k [h/Mpc]')
-        plt.ylabel('$\Delta^2$ [$\Delta^2(k)/\Delta^2_{sim}(k)$]')
+        if div_sim:
+            plt.ylabel('$\Delta^2$ [$\Delta^2(k)/\Delta^2_{sim}(k)$]')
+        else:
+            plt.ylabel('$\Delta^2$ [$K^2$]')
         plt.loglog()
         plt.legend(loc=2, scatterpoints=1, frameon=False)
         
@@ -280,7 +325,11 @@ def plot2dpower_minerror(file_root, file_name, mode_list, kind='2d'):
 
 
         plt.loglog()
-        plt.savefig('./png/minerror_2d1d_power_%s'%file_name[:-3])
+        if len(mode_list) == 1:
+            plt.savefig('./png/minerror_2d1d_power_%s_%dmode'\
+                %(file_name[:-3], mode_list[0]))
+        else:
+            plt.savefig('./png/minerror_2d1d_power_%s'%file_name[:-3])
 
 def plot1dpower_minerror(file_root, file_name, mode_list):
 
@@ -378,16 +427,20 @@ if __name__=="__main__":
     conv = '14conv_new'
     hour = '15hr'
 
-    mode_list = [10, 15, 20, 25, 30, 35, 40]
+    #mode_list = [10, 15, 20, 25, 30, 35, 40]
+    mode_list = [15,]
     
     work_root = "/mnt/raid-project/gmrt/ycli/ps_result/"
 
     file_root = work_root + "power_auto_" + hour +\
-                "_IE_legendre_modes_0gwj_" + conv + "_%d/"
-    file_name = "auto_" + hour + "_IE_legendre_modes_0gwj_" + conv + "_%d"
+                "_ABCD_legendre_modes_0gwj_" + conv + "_%d/"
+    file_name = "auto_" + hour + "_ABCD_legendre_modes_0gwj_" + conv + "_%d"
 
     #plot1dpower_minerror(file_root, file_name, mode_list)
     #plot2dpower_minerror(file_root, file_name, mode_list, kind='2draw')
-    plot2dpower_minerror(file_root, file_name, mode_list, kind='2d')
-    plot2dpower_minerror(file_root, file_name, mode_list, kind='1d')
 
+    #plot2dpower_minerror(file_root, file_name, mode_list, kind='2d')
+    #plot2dpower_minerror(file_root, file_name, mode_list, kind='1d')
+
+    #plot2dpower_minerror(file_root, file_name, mode_list, kind='2d', div_sim=False)
+    plot2dpower_minerror(file_root, file_name, mode_list, kind='1d', div_sim=False)

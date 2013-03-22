@@ -59,6 +59,7 @@ params_init = {
                'freq_list2': (),
                'tack_on': None,
                'convolve': True,
+               'clip_weight_percent': None,
                'degrade_factor': 1.1,
                'factorizable_noise': True,
                'sub_weighted_mean': True,
@@ -631,6 +632,15 @@ class PairSet():
                 else:
                     noise_inv2 = algebra.ones_like(map2)
 
+            if self.params['clip_weight_percent'] is not None:
+                print "Note: your are clipping the weight maps"
+                mask1 = self.define_weightmask(noise_inv1, 
+                            percentile=self.params['clip_weight_percent'])
+                mask2 = self.define_weightmask(noise_inv2, 
+                            percentile=self.params['clip_weight_percent'])
+                noise_inv1 = self.saturate_weight(noise_inv1, mask1)
+                noise_inv2 = self.saturate_weight(noise_inv2, mask2)
+
             pair = map_pair.MapPair(map1 + sim1, map2 + sim2,
                                     noise_inv1, noise_inv2,
                                     self.freq_list1, self.freq_list2)
@@ -673,6 +683,32 @@ class PairSet():
             self.call_pairs("subtract_weighted_mean")
 
     @batch_handler.log_timing
+    def define_weightmask(self, input_weight, percentile=50.):
+        # flatten to Ra/Dec
+        input_weight = np.ma.array(input_weight)
+        input_weight[input_weight==np.inf] = np.ma.masked
+        input_weight[np.isnan(input_weight)] = np.ma.masked
+        weight_2d = np.mean(input_weight, axis=0)
+        print "define_weightmask: shape ", weight_2d.shape
+        w_at_percentile = np.percentile(weight_2d, percentile)
+    
+        # return a boolean mask (here True = masked)
+        return (weight_2d <= w_at_percentile)
+    
+    @batch_handler.log_timing
+    def saturate_weight(self, input_weight, weightmask):
+        r"""replace all weights above a given mask with the average in the
+        mask. Note that this clobbers the input array"""
+    
+        for freq_index in range(input_weight.shape[0]):
+            mweight = np.ma.array(input_weight[freq_index, ...], mask=weightmask)
+            meanslice = np.ma.mean(mweight)
+            input_weight[freq_index, np.logical_not(weightmask)] = meanslice
+    
+        return input_weight
+
+
+    @batch_handler.log_timing
     def calculate_correlation(self):
         r"""Note that multiprocessing's map() is more elegant than Process,
         but fails for handing in complex map_pair objects
@@ -681,6 +717,18 @@ class PairSet():
         for pairitem in self.pairlist:
             filename = self.output_root
             filename += "foreground_corr_pair_%s.pkl" % pairitem
+
+            #if self.params['clip_weight_percent'] is not None:
+            #    print "Note: your are clipping the weight maps"
+            #    mask1 = self.define_weightmask(self.pairs[pairitem].noise_inv1, 
+            #                percentile=self.params['clip_weight_percent'])
+            #    mask2 = self.define_weightmask(self.pairs[pairitem].noise_inv2, 
+            #                percentile=self.params['clip_weight_percent'])
+            #    self.pairs[pairitem].noise_inv1 =\
+            #                self.saturate_weight(self.pairs[pairitem].noise_inv1, mask1)
+            #    self.pairs[pairitem].noise_inv2 =\
+            #                self.saturate_weight(self.pairs[pairitem].noise_inv2, mask1)
+
             multi = Process(target=wrap_corr, args=([self.pairs[pairitem],
                             filename]), name=pairitem)
 
@@ -771,8 +819,10 @@ class PairSet():
                                    (self.params['realmap_dir'], tag1, tag2, n_modes)
                     realmap = algebra.make_vect(algebra.load(realmap_file))
                     print "Subtract realmap from result"
-                    map1 = pair.map1 - realmap
+                    map1 = copy.deepcopy(pair.map1) - realmap
                     map2 = copy.deepcopy(pair.map2)
+                    if map2.shape == map1.shape:
+                        map2 -= realmap
             else:
                 map1 = copy.deepcopy(pair.map1)
                 map2 = copy.deepcopy(pair.map2)

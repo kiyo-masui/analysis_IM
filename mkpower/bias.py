@@ -152,7 +152,7 @@ class BiasCalibrate(object):
                 print "k_beam and k0 are not match!!"
                 return 0
 
-            dpk = pk1-pk0
+            dpk = pk1 #-pk0
             #dpk[dpk<=0] = np.inf
             #pk_beam[pk_beam<=0] = np.inf
             dpk[dpk==0] = np.inf
@@ -162,7 +162,7 @@ class BiasCalibrate(object):
             dpk_lose = pk_beam/dpk
             dpk = dpk_beam*dpk_lose
 
-            dpk2= (pk12-pk02)
+            dpk2= pk12 #-pk02
             #dpk2[dpk2<=0] = np.inf
             #pk2_beam[pk2_beam<=0] = np.inf
             dpk2[dpk2==0] = np.inf

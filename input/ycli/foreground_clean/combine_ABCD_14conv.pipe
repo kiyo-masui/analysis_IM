@@ -11,9 +11,9 @@ input_root = '/mnt/scratch-gl/ycli/cln_result/'
 output_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
 
 pipe_modules.append(make_combined.MakeCombined)
-cb_sourceroot = input_root + '15hr_%sQU_extend_legendre_modes_0gwj_14conv_new/'
+cb_sourceroot = input_root + '1hr_%sQU_extend_legendre_modes_0gwj_14conv_new/'
 cb_sourcefile = 'Emap_clean_themselves/'
-cb_targetroot = output_root + '15hr_IE_legendre_modes_0gwj_14conv_new/'
+cb_targetroot = output_root + '1hr_IE_legendre_modes_0gwj_14conv_new/'
 cb_targetfile = 'mapmode_map/'
 cb_mode_list = mode_list
 cb_simnum = 100

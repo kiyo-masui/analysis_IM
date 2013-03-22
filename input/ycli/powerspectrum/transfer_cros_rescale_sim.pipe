@@ -84,7 +84,7 @@ for i in range(sim_num):
     mappath_a = imaps_a[1]['map;%dmodes'%mode]
     imap_list.append(mappath_a.split('/')[-1])
     imap_root.append(mappath_a.replace(mappath_a.split('/')[-1], ''))
-    
+
     wetpath_a = nmaps_a[1]['weight;%dmodes'%mode]
     nmap_list.append(wetpath_a.split('/')[-1])
     nmap_root.append(wetpath_a.replace(wetpath_a.split('/')[-1], ''))

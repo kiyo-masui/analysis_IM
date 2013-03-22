@@ -16,7 +16,7 @@ import os
 
 
 do_diag_noise = False
-do_inv_diag_noise = True
+do_inv_diag_noise = False
 do_IQUclean_themselves = True
 do_simulation = False
 do_simulation_IQUV = False
@@ -58,44 +58,10 @@ else:
     do_simulation = False
     do_simulation_IQU = False
 
-output_folder = '1hr_AQU_extend_legendre_modes_%dgwj_14conv/'%goodmodes 
-output_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
+output_folder = '1hr_AQU_extend_legendre_modes_%dgwj_14conv_new/'%goodmodes 
+#output_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
+output_root = '/mnt/scratch-gl/ycli/cln_result/'
 output_root += output_folder
-
-#-----------------------------------------------------------------------------
-# diagnal noise
-#-----------------------------------------------------------------------------
-if do_diag_noise:
-    noisedict = {}
-    noisedict['I_with_I'] = basemap+'15hr_41-90_fdgp_RM_noise_inv_I.npy'
-    noisedict['I_with_Q'] = basemap+'15hr_41-90_fdgp_RM_noise_inv_Q.npy'
-    noisedict['I_with_U'] = basemap+'15hr_41-90_fdgp_RM_noise_inv_U.npy'
-    noisedict['I_with_V'] = basemap+'15hr_41-90_fdgp_RM_noise_inv_V.npy'
-    noisedict = pair_set.diag_noise(noisedict, basemap_my + output_folder)
-
-    print noisedict
-if do_inv_diag_noise:
-    noisedict = {}
-    noisedict['sec_A_I'] = basemap+'secA_1hr_41-18_noise_diag_I_800.npy'
-    noisedict['sec_A_Q'] = basemap+'secA_1hr_41-18_noise_diag_Q_800.npy'
-    noisedict['sec_A_U'] = basemap+'secA_1hr_41-18_noise_diag_U_800.npy'
-    noisedict['sec_A_V'] = basemap+'secA_1hr_41-18_noise_diag_V_800.npy'
-    noisedict['sec_B_I'] = basemap+'secB_1hr_41-18_noise_diag_I_800.npy'
-    noisedict['sec_B_Q'] = basemap+'secB_1hr_41-18_noise_diag_Q_800.npy'
-    noisedict['sec_B_U'] = basemap+'secB_1hr_41-18_noise_diag_U_800.npy'
-    noisedict['sec_B_V'] = basemap+'secB_1hr_41-18_noise_diag_V_800.npy'
-    noisedict['sec_C_I'] = basemap+'secC_1hr_41-18_noise_diag_I_800.npy'
-    noisedict['sec_C_Q'] = basemap+'secC_1hr_41-18_noise_diag_Q_800.npy'
-    noisedict['sec_C_U'] = basemap+'secC_1hr_41-18_noise_diag_U_800.npy'
-    noisedict['sec_C_V'] = basemap+'secC_1hr_41-18_noise_diag_V_800.npy'
-    noisedict['sec_D_I'] = basemap+'secD_1hr_41-18_noise_diag_I_800.npy'
-    noisedict['sec_D_Q'] = basemap+'secD_1hr_41-18_noise_diag_Q_800.npy'
-    noisedict['sec_D_U'] = basemap+'secD_1hr_41-18_noise_diag_U_800.npy'
-    noisedict['sec_D_V'] = basemap+'secD_1hr_41-18_noise_diag_V_800.npy'
-    noisedict = pair_set.inv_diag_noise(noisedict, basemap_my + output_folder)
-
-    print noisedict
-
 
 #-----------------------------------------------------------------------------
 # use the base map parameters above to make a few map cleaning cases
@@ -108,35 +74,35 @@ pairlist = ['A_with_B', 'A_with_C', 'A_with_D']
 pairdict = {}
 pairdict['A_with_B'] = {}
 pairdict['A_with_B']['map1'] = basemap
-pairdict['A_with_B']['map1']+= 'secA_1hr_41-18_clean_map_I_800.npy'
+pairdict['A_with_B']['map1']+= 'secA_1hr_41-18_avg_fdgp_clean_map_I_800.npy'
 pairdict['A_with_B']['map2'] = basemap
-pairdict['A_with_B']['map2']+= 'secB_1hr_41-18_clean_map_E_800.npy'
-pairdict['A_with_B']['noise_inv1'] = basemap_my + output_folder +\
-                               'secA_1hr_41-18_noise_weight_I_800.npy'
-pairdict['A_with_B']['noise_inv2'] = basemap_my + output_folder +\
-                               'secB_1hr_41-18_noise_weight_E_800.npy'
+pairdict['A_with_B']['map2']+= 'secB_1hr_41-18_avg_fdgp_clean_map_E_800.npy'
+pairdict['A_with_B']['noise_inv1'] = basemap +\
+                               'secA_1hr_41-18_avg_fdgp_noise_inv_diag_I_800.npy'
+pairdict['A_with_B']['noise_inv2'] = basemap +\
+                               'secB_1hr_41-18_avg_fdgp_noise_inv_diag_E_800.npy'
 pairdict['A_with_B']['tag1'] = 'A'
 pairdict['A_with_B']['tag2'] = 'B'
 pairdict['A_with_C'] = {}
 pairdict['A_with_C']['map1'] = basemap
-pairdict['A_with_C']['map1']+= 'secA_1hr_41-18_clean_map_I_800.npy'
+pairdict['A_with_C']['map1']+= 'secA_1hr_41-18_avg_fdgp_clean_map_I_800.npy'
 pairdict['A_with_C']['map2'] = basemap
-pairdict['A_with_C']['map2']+= 'secC_1hr_41-18_clean_map_E_800.npy'
-pairdict['A_with_C']['noise_inv1'] = basemap_my + output_folder +\
-                               'secA_1hr_41-18_noise_weight_I_800.npy'
-pairdict['A_with_C']['noise_inv2'] = basemap_my + output_folder +\
-                               'secC_1hr_41-18_noise_weight_E_800.npy'
+pairdict['A_with_C']['map2']+= 'secC_1hr_41-18_avg_fdgp_clean_map_E_800.npy'
+pairdict['A_with_C']['noise_inv1'] = basemap +\
+                               'secA_1hr_41-18_avg_fdgp_noise_inv_diag_I_800.npy'
+pairdict['A_with_C']['noise_inv2'] = basemap +\
+                               'secC_1hr_41-18_avg_fdgp_noise_inv_diag_E_800.npy'
 pairdict['A_with_C']['tag1'] = 'A'
 pairdict['A_with_C']['tag2'] = 'C'
 pairdict['A_with_D'] = {}
 pairdict['A_with_D']['map1'] = basemap
-pairdict['A_with_D']['map1']+= 'secA_1hr_41-18_clean_map_I_800.npy'
+pairdict['A_with_D']['map1']+= 'secA_1hr_41-18_avg_fdgp_clean_map_I_800.npy'
 pairdict['A_with_D']['map2'] = basemap
-pairdict['A_with_D']['map2']+= 'secD_1hr_41-18_clean_map_E_800.npy'
-pairdict['A_with_D']['noise_inv1'] = basemap_my + output_folder +\
-                               'secA_1hr_41-18_noise_weight_I_800.npy'
-pairdict['A_with_D']['noise_inv2'] = basemap_my + output_folder +\
-                               'secD_1hr_41-18_noise_weight_E_800.npy'
+pairdict['A_with_D']['map2']+= 'secD_1hr_41-18_avg_fdgp_clean_map_E_800.npy'
+pairdict['A_with_D']['noise_inv1'] = basemap +\
+                               'secA_1hr_41-18_avg_fdgp_noise_inv_diag_I_800.npy'
+pairdict['A_with_D']['noise_inv2'] = basemap +\
+                               'secD_1hr_41-18_avg_fdgp_noise_inv_diag_E_800.npy'
 pairdict['A_with_D']['tag1'] = 'A'
 pairdict['A_with_D']['tag2'] = 'D'
 
@@ -169,28 +135,6 @@ if do_IQUclean_themselves:
 #-----------------------------------------------------------------------------
 # generate simulation maps for GBT and WiggleZ
 #-----------------------------------------------------------------------------
-if do_simulation:
-    # generate the simulation maps
-    pipe_modules.append((simulate_gbt.SimulateGbt, ('sg1_', 'sg_')))
-    instance_seed = struct.unpack("I", os.urandom(4))[0]
-    print "generating simulation with seed: %d" % instance_seed
-
-    sg1_output_root = simroot
-    sg1_template_file = basemap + 'secA_1hr_41-18_clean_map_I_800.npy'
-    sg1_seed = instance_seed
-    sg1_refinement = 2
-    sg1_weightfile = basemap_my + output_folder +\
-                    'secA_1hr_41-18_noise_weight_I_800.npy'
-    sg1_outfile_meansub = "sim_beammeansub_%03d.npy"
-    sg1_outfile_raw = "sim_raw_%03d.npy"
-    sg1_outfile_delta = "sim_delta_%03d.npy"
-    sg1_outfile_physical = "sim_phys_%03d.npy"
-    sg1_outfile_degrade = "sim_degradebeam_%03d.npy"
-    sg1_degrade_factor = degrade_factor
-    sg1_simnum = simnum
-
-    # clean_{map+sim} (map+sim) 
-    # using IxI clean first 3 modes
 
 if do_simulation_IQUV:
     sg1_output_root = simroot
