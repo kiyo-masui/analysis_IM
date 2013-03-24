@@ -139,7 +139,7 @@ pairdict['C_with_D']['tag1'] = 'C'
 pairdict['C_with_D']['tag2'] = 'D'
 
 if do_IQUclean_themselves:
-    pipe_modules.append((pair_set_legendre.PairSet_LegendreSVD, ('fs2_', 'fs_')))
+    pipe_modules.append((pair_set.PairSet, ('fs2_', 'fs_')))
 
     fs2_pairlist = pairlist
     fs2_pairdict = pairdict
@@ -169,7 +169,7 @@ if do_simulation_IQUV:
     sg1_outfile_meansub = "sim_beammeansub_%03d.npy"
     #sg1_outfile_meansub = "sim_degradebeam_%03d.npy"
 
-    pipe_modules.append((pair_set_legendre.PairSet_LegendreSVD, ('fs3_', 'fs_')))
+    pipe_modules.append((pair_set.PairSet, ('fs3_', 'fs_')))
 
     freq_list_iquv = freq_list
     freq_list_iquv+= tuple([ind +   nfreq for ind in freq_list])

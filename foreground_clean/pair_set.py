@@ -23,6 +23,7 @@ from kiyopy import parse_ini
 import kiyopy.utils
 from core import algebra
 from foreground_clean import map_pair
+from foreground_clean import find_modes
 from multiprocessing import Process, current_process
 from utils import batch_handler
 from mpi4py import MPI
@@ -61,6 +62,7 @@ params_init = {
                'convolve': True,
                'clip_weight_percent': None,
                'degrade_factor': 1.1,
+               'weighted_SVD' : False,
                'factorizable_noise': True,
                'sub_weighted_mean': True,
                'regenerate_noise_inv': True,
@@ -505,9 +507,14 @@ class PairSet():
 
         r"""main call to execute the various steps in foreground removal"""
         self.load_pairs()
+
         self.preprocess_pairs()
+
+        if self.params['weighted_SVD']:
+            self.call_pairs("apply_map_weights")
+
         self.calculate_correlation()
-        self.calculate_svd()
+        #self.calculate_svd()
 
         mode_list_stop = self.params['modes']
         mode_list_start = copy.deepcopy(self.params['modes'])
@@ -517,7 +524,14 @@ class PairSet():
         for (n_modes_start, n_modes_stop) in zip(mode_list_start,
                                              mode_list_stop):
             self.subtract_foregrounds(n_modes_start, n_modes_stop)
+
+            if self.params['weighted_SVD']:
+                self.call_pairs("apply_map_weights")
+
             self.save_data(n_modes_stop)
+
+            if self.params['weighted_SVD']:
+                self.call_pairs("apply_map_weights")
 
             # NOTE: if you use this you also need to copy the parallel pairs!
             #self.pairs = copy.deepcopy(self.uncleaned_pairs)
@@ -632,14 +646,14 @@ class PairSet():
                 else:
                     noise_inv2 = algebra.ones_like(map2)
 
-            if self.params['clip_weight_percent'] is not None:
-                print "Note: your are clipping the weight maps"
-                mask1 = self.define_weightmask(noise_inv1, 
-                            percentile=self.params['clip_weight_percent'])
-                mask2 = self.define_weightmask(noise_inv2, 
-                            percentile=self.params['clip_weight_percent'])
-                noise_inv1 = self.saturate_weight(noise_inv1, mask1)
-                noise_inv2 = self.saturate_weight(noise_inv2, mask2)
+            #if self.params['clip_weight_percent'] is not None:
+            #    print "Note: your are clipping the weight maps"
+            #    mask1 = self.define_weightmask(noise_inv1, 
+            #                percentile=self.params['clip_weight_percent'])
+            #    mask2 = self.define_weightmask(noise_inv2, 
+            #                percentile=self.params['clip_weight_percent'])
+            #    noise_inv1 = self.saturate_weight(noise_inv1, mask1)
+            #    noise_inv2 = self.saturate_weight(noise_inv2, mask2)
 
             pair = map_pair.MapPair(map1 + sim1, map2 + sim2,
                                     noise_inv1, noise_inv2,
@@ -716,32 +730,46 @@ class PairSet():
         process_list = []
         for pairitem in self.pairlist:
             filename = self.output_root
-            filename += "foreground_corr_pair_%s.pkl" % pairitem
+            filename_svd = filename + "SVD_pair_%s.pkl" % pairitem
 
-            #if self.params['clip_weight_percent'] is not None:
-            #    print "Note: your are clipping the weight maps"
-            #    mask1 = self.define_weightmask(self.pairs[pairitem].noise_inv1, 
-            #                percentile=self.params['clip_weight_percent'])
-            #    mask2 = self.define_weightmask(self.pairs[pairitem].noise_inv2, 
-            #                percentile=self.params['clip_weight_percent'])
-            #    self.pairs[pairitem].noise_inv1 =\
-            #                self.saturate_weight(self.pairs[pairitem].noise_inv1, mask1)
-            #    self.pairs[pairitem].noise_inv2 =\
-            #                self.saturate_weight(self.pairs[pairitem].noise_inv2, mask1)
+            map1 = copy.deepcopy(np.array(self.pairs[pairitem].map1))
+            map2 = copy.deepcopy(np.array(self.pairs[pairitem].map2))
+            weight1 = copy.deepcopy(np.array(self.pairs[pairitem].noise_inv1))
+            weight2 = copy.deepcopy(np.array(self.pairs[pairitem].noise_inv2))
+            freqs1 = copy.deepcopy(self.pairs[pairitem].freq_list1)
+            freqs2 = copy.deepcopy(self.pairs[pairitem].freq_list2)
 
-            multi = Process(target=wrap_corr, args=([self.pairs[pairitem],
-                            filename]), name=pairitem)
+            if self.params['clip_weight_percent'] is not None:
+                print "Note: your are clipping the weight maps"
+                percentile = self.params['clip_weight_percent']
+                mask1   = self.define_weightmask(weight1, percentile=percentile)
+                mask2   = self.define_weightmask(weight2, percentile=percentile)
+                weight1 = self.saturate_weight(weight1, mask1)
+                weight2 = self.saturate_weight(weight2, mask1)
 
-            process_list.append(multi)
+            (freq_cov, counts) = find_modes.freq_covariance(map1, map2,
+                                        weight1, weight2,
+                                        freqs, freqs,
+                                        no_weight=self.params['weighted_SVD'])
 
-            multi.start()
+            n_modes  = min(len(freqs1),len(freqs2))
+            svd_info = find_modes.get_freq_svd_modes(freq_cov, n_modes)
+            ft.save_pickle(svd_info, filename_svd)
 
-        for process in process_list:
-            process.join()
+        #    multi = Process(target=wrap_corr, args=([self.pairs[pairitem],
+        #                    filename]), name=pairitem)
+
+        #    process_list.append(multi)
+
+        #    multi.start()
+
+        #for process in process_list:
+        #    process.join()
 
     @batch_handler.log_timing
     def calculate_svd(self):
         r"""calculate the SVD of all pairs"""
+        # Not used! included in calulate_correlation()
         for pairitem in self.pairlist:
             filename = self.output_root
             filename_corr = filename + "foreground_corr_pair_%s.pkl" % pairitem
@@ -762,7 +790,10 @@ class PairSet():
     @batch_handler.log_timing
     def subtract_foregrounds(self, n_modes_start, n_modes_stop):
         for pairitem in self.pairlist:
-            filename_svd = "%s/SVD_pair_%s.pkl" % (self.SVD_root, pairitem)
+            if self.params['SVD_file'] != None:
+                filename_svd = "%s/%s" % (self.SVD_root, self.params['SVD_file'])
+            else:
+                filename_svd = "%s/SVD_pair_%s.pkl" % (self.SVD_root, pairitem)
             print "subtracting %d to %d modes from %s using %s" % (n_modes_start, \
                                                                 n_modes_stop, \
                                                                 pairitem, \
