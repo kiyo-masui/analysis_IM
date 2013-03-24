@@ -309,7 +309,7 @@ class MapPair(object):
 
         def make_factorizable(noise):
             r"""factorize the noise"""
-            noise[np.isnan(noise)] = 1.e-30
+            #noise[np.isnan(noise)] = 1.e-30
             noise[noise < weight_prior] = 1.e-30
             noise = 1. / noise
             noise = ma.array(noise)
