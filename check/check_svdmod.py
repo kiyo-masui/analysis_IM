@@ -299,11 +299,12 @@ if __name__=="__main__":
     #svd_savename = 'SVD_pair_IQ_IU_complex_eigenvalue'
 
     svd_list = [
-        [0, fg_root+'15hr_AQU_extend_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '15hr 1.4conv new '],
-        [0, fg_root+'15hr_AQU_extend_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/SVD_pair_A_with_C.pkl', '15hr 1.4conv new '],
-        [0, fg_root+'15hr_BQU_extend_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/SVD_pair_B_with_A.pkl', '15hr 1.4conv new '],
-        [0, fg_root+'15hr_AQU_extend_legendre_modes_0gwj_14conv/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '15hr 1.4conv '],
-        [0, fg_root+'15hr_ABCD_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '15hr 1.4conv new IxI'],
+        #[0, fg_root+'15hr_AQU_extend_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '15hr 1.4conv new '],
+        #[0, fg_root+'15hr_AQU_extend_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/SVD_pair_A_with_C.pkl', '15hr 1.4conv new '],
+        #[0, fg_root+'15hr_BQU_extend_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/SVD_pair_B_with_A.pkl', '15hr 1.4conv new '],
+        #[0, fg_root+'15hr_AQU_extend_legendre_modes_0gwj_14conv/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '15hr 1.4conv '],
+        [0, fg_root+'15hr_ABCD_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '15hr 1.4conv new IxI clip weight '],
+        [0, fg_root+'15hr_ABCD_legendre_modes_0gwj_14conv_new_noclip/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '15hr 1.4conv new IxI'],
         #[0, fg_root+'1hr_IQUV_extend_legendre_modes_0gwj_2conv/Emap_clean_themselves/SVD_pair_I_with_E.pkl', '1hr conv '],
         #[0, fg_root+'1hr_AQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '1hr conv '],
         #[0, fg_root+'1hr_AQUV_extend_legendre_modes_0gwj_2conv/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '1hr 2conv '],

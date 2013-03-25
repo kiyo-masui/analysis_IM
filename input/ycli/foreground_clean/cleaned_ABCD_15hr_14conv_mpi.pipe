@@ -57,7 +57,8 @@ else:
     do_simulation = False
     do_simulation_IQU = False
 
-output_folder = '15hr_ABCD_legendre_modes_%dgwj_14conv_new/'%goodmodes 
+#output_folder = '15hr_ABCD_legendre_modes_%dgwj_14conv_new/'%goodmodes 
+output_folder = '15hr_ABCD_legendre_modes_%dgwj_14conv_new_noclip/'%goodmodes 
 #output_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
 output_root = '/mnt/scratch-gl/ycli/cln_result/'
 output_root += output_folder
@@ -151,7 +152,7 @@ if do_IQUclean_themselves:
     fs2_factorizable_noise = True
     fs2_convolve = common_res_convolution
     fs2_degrade_factor = degrade_factor
-    fs2_clip_weight_percent = 50
+    #fs2_clip_weight_percent = 50
     fs2_sub_weighted_mean = sub_weighted_mean
     if goodmodes == 1:
         fs2_good_modes = 0

@@ -67,7 +67,8 @@ params_init = {
                'sub_weighted_mean': True,
                'regenerate_noise_inv': True,
                'modes': [10, 15],
-               'no_weights': False
+               'no_weights': False,
+               'save_section': True,
                }
 prefix = 'fs_'
 
@@ -736,8 +737,8 @@ class PairSet():
             map2 = copy.deepcopy(np.array(self.pairs[pairitem].map2))
             weight1 = copy.deepcopy(np.array(self.pairs[pairitem].noise_inv1))
             weight2 = copy.deepcopy(np.array(self.pairs[pairitem].noise_inv2))
-            freqs1 = copy.deepcopy(self.pairs[pairitem].freq_list1)
-            freqs2 = copy.deepcopy(self.pairs[pairitem].freq_list2)
+            freqs1 = copy.deepcopy(self.pairs[pairitem].freq1)
+            freqs2 = copy.deepcopy(self.pairs[pairitem].freq2)
 
             if self.params['clip_weight_percent'] is not None:
                 print "Note: your are clipping the weight maps"
@@ -749,7 +750,7 @@ class PairSet():
 
             (freq_cov, counts) = find_modes.freq_covariance(map1, map2,
                                         weight1, weight2,
-                                        freqs, freqs,
+                                        freqs1, freqs2,
                                         no_weight=self.params['weighted_SVD'])
 
             n_modes  = min(len(freqs1),len(freqs2))
