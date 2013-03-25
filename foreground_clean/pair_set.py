@@ -744,7 +744,8 @@ class PairSet():
                 print "Note: your are clipping the weight maps"
                 percentile = self.params['clip_weight_percent']
                 mask1   = self.define_weightmask(weight1, percentile=percentile)
-                mask2   = self.define_weightmask(weight2, percentile=percentile)
+                mask2   = self.define_weightmask(weight2[:weight1.shape[0], ...], 
+                                                 percentile=percentile)
                 weight1 = self.saturate_weight(weight1, mask1)
                 weight2 = self.saturate_weight(weight2, mask1)
 
