@@ -47,7 +47,11 @@ def discrete(params, array):
 def get_box(box_bin, imap, nmap, mmap=None):
     pass
 
-def get_box_bin(map_temp, box_shape):
+def get_box_xyz(map_temp, box_shape, position='centre'):
+    '''
+        position = 'centre' : return the value of bin centre
+        position = 'edges' : return the value of bin edges, with shape + 1
+    '''
     x_range, y_range, z_range = getedge(map_temp)
     boxunit = max((x_range[1]-x_range[0])/box_shape[0],
                   (x_range[1]-x_range[0])/box_shape[1],
@@ -56,15 +60,26 @@ def get_box_bin(map_temp, box_shape):
     y_centre = 0.5 * ( y_range[1] - y_range[0] ) + y_range[0]
     z_centre = 0.5 * ( z_range[1] - z_range[0] ) + z_range[0]
 
-    x_centre_idx = 0.5 * float(box_shape[0])
-    y_centre_idx = 0.5 * float(box_shape[1])
-    z_centre_idx = 0.5 * float(box_shape[2])
+    if position == 'centre':
+        x_centre_idx = 0.5 * float(box_shape[0] - 1)
+        y_centre_idx = 0.5 * float(box_shape[1] - 1)
+        z_centre_idx = 0.5 * float(box_shape[2] - 1)
 
-    x_bin = (np.arange(box_shape[0] + 1) - x_centre_idx) * boxunit + x_centre
-    y_bin = (np.arange(box_shape[1] + 1) - y_centre_idx) * boxunit + y_centre
-    z_bin = (np.arange(box_shape[2] + 1) - z_centre_idx) * boxunit + z_centre
+        x_bin = (np.arange(box_shape[0]) - x_centre_idx) * boxunit + x_centre
+        y_bin = (np.arange(box_shape[1]) - y_centre_idx) * boxunit + y_centre
+        z_bin = (np.arange(box_shape[2]) - z_centre_idx) * boxunit + z_centre
 
-    return x_bin, y_bin, z_bin
+        return x_bin, y_bin, z_bin
+    elif position == 'edges':
+        x_centre_idx = 0.5 * float(box_shape[0])
+        y_centre_idx = 0.5 * float(box_shape[1])
+        z_centre_idx = 0.5 * float(box_shape[2])
+
+        x_bin = (np.arange(box_shape[0] + 1) - x_centre_idx) * boxunit + x_centre
+        y_bin = (np.arange(box_shape[1] + 1) - y_centre_idx) * boxunit + y_centre
+        z_bin = (np.arange(box_shape[2] + 1) - z_centre_idx) * boxunit + z_centre
+
+        return x_bin, y_bin, z_bin
 
 #----------------------------------------------------------------------#
 def getedge(map_temp):
@@ -80,9 +95,9 @@ def getedge(map_temp):
 
     # find the ra bin edges
     ra   = map_temp.get_axis('ra')
+    ra   = ra - map_temp.info['ra_centre']
     ra   = np.append(ra, ra[-1] + map_temp.info['ra_delta'])
     ra   = (ra - 0.5 * map_temp.info['ra_delta']) * deg2rad
-    ra   = ra - map_temp.info['ra_centre']
 
     # find the dec bin edges
     dec  = map_temp.get_axis('dec')
@@ -428,6 +443,6 @@ if __name__=="__main__":
     x, y, z = getedge(map_temp)
     print x, y, z
 
-    x_bin, y_bin, z_bin = get_box_bin(map_temp, (10,10,10))
+    x_bin, y_bin, z_bin = get_box_xyz(map_temp, (10,10,10))
     print x_bin, y_bin, z_bin
 
