@@ -14,7 +14,7 @@ from core import algebra
 from utils import distance
 
 # li module
-#import MakePower
+import MakePower
 
 pi = 3.1415926
 deg2rad = pi/180.
