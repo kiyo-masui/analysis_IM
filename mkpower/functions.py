@@ -112,12 +112,31 @@ def get_box(box_bin, imap, nmap, mmap=None):
 
     ra, dec, r = get_radecr_bin_edges(imap)
 
-    print xyz_box[0,0], xyz_box[1,0],  xyz_box[2,0]**2
-    print xyz_box[0,0]**2 + xyz_box[1,0]**2 + xyz_box[2,0]**2
-    print r
-    print radec_box[0]
-    radec_box[0] = np.digitize(radec_box[0], r)
-    print radec_box[0]
+    index_box = np.zeros((3, x.shape[0] * y.shape[0] * z.shape[0]), dtype=int)
+    index_box[0] = np.digitize(radec_box[0], r) - 1
+    index_box[1] = np.digitize(radec_box[1], ra) - 1
+    index_box[2] = np.digitize(radec_box[2], dec) - 1
+
+    del radec_box
+
+    mask_box  = (index_box[0] == -1)
+    mask_box |= (index_box[1] == -1)
+    mask_box |= (index_box[2] == -1)
+    mask_box |= (index_box[0] == imap.shape[0])
+    mask_box |= (index_box[1] == imap.shape[1])
+    mask_box |= (index_box[2] == imap.shape[2])
+
+    index_box[0,mask_box] = imap.shape[0]
+    index_box[1,mask_box] = 0
+    index_box[2,mask_box] = 0
+
+    ext_map = np.zeros(imap.shape[1:])
+    imap = np.concatenate((imap, ext_map[None,:,:]), axis=0)
+    nmap = np.concatenate((nmap, ext_map[None,:,:]), axis=0)
+
+    ibox = imap[index_box[0], index_box[1], index_box[2]]
+    nbox = nmap[index_box[0], index_box[1], index_box[2]]
+    return ibox, nbox
 
 def get_box_xyz(map_temp, box_shape, position='centre'):
     '''
@@ -465,9 +484,10 @@ if __name__=="__main__":
     map_temp = algebra.make_vect(map_temp)
 
     x, y, z = getedge(map_temp)
-    print x, y, z
+    print x
 
     x_bin, y_bin, z_bin = get_box_xyz(map_temp, (256,128,64))
-    print z_bin
-    get_box([x_bin, y_bin, z_bin], map_temp, map_temp)
+    ibox, nbox = get_box([x_bin, y_bin, z_bin], map_temp, map_temp)
+
+    np.save(map_root + 'fftbox_' + map_file, ibox)
 

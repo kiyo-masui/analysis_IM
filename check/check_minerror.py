@@ -295,7 +295,7 @@ def plot2dpower_minerror(file_root, file_name, mode_list, kind='2d', div_sim=Tru
         label = label.replace("_%d", "")
         if len(mode_list) == 1:
             label += ' %d mode'%mode_list[0]
-        ax.errorbar(bc[p1>0], p, pe, fmt='ro', label=label, capsize=4.5, elinewidth=1)
+        ax.errorbar(bc[p1>0], p, pe, fmt='ro', mec='r', label=label, capsize=4.5, elinewidth=1)
         ax.errorbar(bc[p1<0], p_negative, pe_negative, fmt='rs', mec='r', mfc='None', capsize=4.5, elinewidth=0.5, label=label + ' negative')
 
         for i in range(len(bc[p1>0])):
@@ -324,7 +324,7 @@ def plot2dpower_minerror(file_root, file_name, mode_list, kind='2d', div_sim=Tru
             plt.ylabel('$\Delta^2$ [$\Delta^2(k)/\Delta^2_{sim}(k)$]')
         else:
             plt.ylabel('$\Delta^2$ [$K^2$]')
-            ax.errorbar(bc_sim, p1_sim, dp_sim, fmt='k.', label='simulation', capsize=4.5, elinewidth=1)
+            ax.errorbar(bc_sim, p1_sim, dp_sim, fmt='ko', mec='k', mfc='None', label='simulation', capsize=4.5, elinewidth=1)
         plt.loglog()
         plt.legend(loc=2, scatterpoints=1, frameon=False)
         

@@ -360,18 +360,19 @@ def twod2oned_reshape(p2, k2, dp2, k_range=[0., 0., 0., 0.], weight=None):
     goodlist = np.isnan(p2).__invert__()
     if not weight==None:
         weight = weight[kp_index[0]:kp_index[-1]+1, kv_index[0]:kv_index[-1]+1]
+        ones = np.ones(weight.shape)
         normal = weight[goodlist].sum()
-        p2 = p2*weight#/normal
-        dp2 = dp2*weight#/normal
+        p2 = p2*weight/normal
+        dp2 = dp2*weight/normal
     else:
         weight = np.ones(p2.shape)
+        ones = np.ones(weight.shape)
 
     dk = k2[0][1]/k2[0][0]
     bins = k2[0].tolist() +  [k2[0][-1]*dk,]
 
-    modenum, bin_edges = np.histogram(kmode[goodlist], 
-                                      bins=bins, 
-                                      weights=weight[goodlist])
+    modenum, bin_edges = np.histogram(kmode[goodlist], bins=bins,
+                                      weights=ones[goodlist])
     p, bin_edges = np.histogram(kmode[goodlist], bins=bins, weights=p2[goodlist])
     dp2 = dp2**2
     dp, bin_edges = np.histogram(kmode[goodlist], bins=bins, weights=dp2[goodlist])

@@ -405,7 +405,8 @@ elif len(sys.argv) == 2:
     freq = map.get_axis('freq')
     z = 1.42e9/freq - 1.
     r = functions.fq2r(freq)
-    boxidex = int((r[mapidex]-1400.)/2)
+    #boxidex = int((r[mapidex]-1400.)/2)
+    boxidex = int((r[mapidex]-1510.)/2)
     
     box = np.load(boxroot + boxname + '.npy')
     
