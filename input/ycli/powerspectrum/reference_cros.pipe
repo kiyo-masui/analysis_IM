@@ -80,7 +80,7 @@ for i in range(NUM):
 	
 	wetpath = nmaps_b
 	nmap_list.append(wetpath.split('/')[-1])
-	nmap_root.append(wetpath.replace(wetpath.split('/')[-1], ''))
+	nmap_root.append(wetpath.replace(wetpath.split('/')[-1], 'no'))
 	
 	print
 	print mappath

@@ -428,7 +428,7 @@ if __name__=="__main__":
     hour = '15hr'
 
     #mode_list = [10, 15, 20, 25, 30, 35, 40]
-    mode_list = [15,]
+    mode_list = [40,]
     
     work_root = "/mnt/raid-project/gmrt/ycli/ps_result/"
 

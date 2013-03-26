@@ -27,7 +27,7 @@ cmin = -9
 cmax = -3
 
 
-file_root = '/mnt/raid-project/gmrt/ycli/ps_result/reference_cros_15hr_ABCD_legendre_modes_0gwj_14conv_new_20/'
+file_root = '/mnt/raid-project/gmrt/ycli/ps_result/reference_cros_15hr_ABCD_legendre_modes_0gwj_14conv_new_40/'
 
 sim = np.load(file_root + "simmaps_p2_combined.npy")
 sim = np.ma.array(sim)

@@ -97,7 +97,7 @@ for i in range(sim_num):
 
     wetpath_b = nmaps_b
     nmap_list_multiply.append(wetpath_b.split('/')[-1])
-    nmap_root_multiply.append(wetpath_b.replace(wetpath_b.split('/')[-1], ''))
+    nmap_root_multiply.append(wetpath_b.replace(wetpath_b.split('/')[-1], 'no'))
 
     tabs_list_multiply.append('1_%03d_'%i)
 

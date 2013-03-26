@@ -4,7 +4,7 @@ import numpy as np
 from core import algebra
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
-#from mkpower import functions
+from mkpower import functions
 import math
 
 # my first map
@@ -173,7 +173,7 @@ import math
 #mapname = "fir_RA+10_parkes_2010_10_27beam_5_dirty_map_I_1316" 
 #mapname = "fir_RA+10_parkes_2010_10_27beam_6_dirty_map_I_1316" 
 
-maproot = "/mnt/scratch-gl/ycli/maps/1hr_41-18_avg_fdgp/"
+#maproot = "/mnt/scratch-gl/ycli/maps/1hr_41-18_avg_fdgp/"
 #mapname = "secA_1hr_41-18_avg_fdgp_clean_map_I_800"
 #mapname = "fir_1hr_41-18_avg_fdgp_new_clean_map_I_800"
 
@@ -181,8 +181,14 @@ maproot = "/mnt/scratch-gl/ycli/maps/1hr_41-18_avg_fdgp/"
 #maproot = "/mnt/raid-project/gmrt/tcv/maps/15hr_41-80_avg_fdgp_new/"
 #mapname = "secA_15hr_41-80_avg_fdgp_new_noise_inv_diag_I_800"
 
+#maproot = "/mnt/scratch-gl/ycli/cln_result/15hr_ABCD_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/"
+#mapname = "sec_D_cleaned_noise_inv_I_with_B_40modes"
+
 maproot = "/mnt/scratch-gl/ycli/cln_result/15hr_ABCD_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/"
-mapname = "sec_D_cleaned_noise_inv_I_with_B_40modes"
+mapname = "combined_clean_weight_10modes"
+#mapname = "sec_D_cleaned_noise_inv_I_with_B_40modes"
+boxroot = "/mnt/raid-project/gmrt/ycli/ps_result/reference_cros_15hr_ABCD_legendre_modes_0gwj_14conv_new_10/fftbox/"
+boxname = "fftbox_combined_clean_weight_10modes"
 
 mapidex = 32
 

@@ -1,9 +1,13 @@
 CC = gcc
 
-NUMPYINC = -I/opt/python/2.7.3-mkl/include/python2.7/
-ARRAYINC = -I/opt/python/2.7.3-mkl/lib/python2.7/site-packages/numpy/core/include/numpy
+#NUMPYINC = -I/opt/python/2.7.3-mkl/include/python2.7/
+#ARRAYINC = -I/opt/python/2.7.3-mkl/lib/python2.7/site-packages/numpy/core/include/numpy
+#LIB = -L/opt/python/2.7.3-mkl/lib/python2.7/config/ -L/usr/local/lib
+
+NUMPYINC = -I/opt/python/2.7.1-mkl/include/python2.7/
+ARRAYINC = -I/opt/python/2.7.1-mkl/lib/python2.7/site-packages/numpy/core/include/numpy
 CFLAGS = -fpic -c $(NUMPYINC) $(ARRAYINC) -std=gnu99
-LIB = -L/opt/python/2.7.3-mkl/lib/python2.7/config/ -L/usr/local/lib
+LIB = -L/opt/python/2.7.1-mkl/lib/python2.7/config/ -L/usr/local/lib
 
 .SUFFIXES: .o .c
 %.o: %.c
