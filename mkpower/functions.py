@@ -14,7 +14,7 @@ from core import algebra
 from utils import distance
 
 # li module
-import MakePower
+#import MakePower
 
 pi = 3.1415926
 deg2rad = pi/180.
@@ -44,8 +44,80 @@ def discrete(params, array):
     newarray[-1] = array[-1]
     return newarray
 #----------------------------------------------------------------------#
+def get_radecr_bin_edges(map_temp):
+    # find the ra bin edges
+    ra   = map_temp.get_axis('ra')
+    ra   = ra - map_temp.info['ra_centre']
+    ra   = np.append(ra, ra[-1] + map_temp.info['ra_delta'])
+    ra   = (ra - 0.5 * map_temp.info['ra_delta']) * deg2rad
+
+    # find the dec bin edges
+    dec  = map_temp.get_axis('dec')
+    dec  = np.append(dec, dec[-1] + map_temp.info['dec_delta'])
+    dec  = (dec - 0.5 * map_temp.info['dec_delta'])*deg2rad
+
+    # find the r bin edges
+    freq = map_temp.get_axis('freq')
+    freq = np.append(freq, freq[-1] + map_temp.info['freq_delta'])
+    freq = freq - 0.5 * map_temp.info['freq_delta']
+    r    = fq2r(freq)
+
+    return ra, dec, r
+
+def getedge(map_temp):
+    r'''
+        This function is used to find the suitable box edges in cartesion coordinate 
+        system of comoving distance for a map in ra-dec coordinate. 
+
+        input:
+            map_temp: one map as temp
+        output:
+            x_range, y_range, z_range
+    '''
+    ra, dec, r = get_radecr_bin_edges(map_temp)
+
+    radec_map = np.zeros((3,) + r.shape + ra.shape + dec.shape)
+    radec_map[0,...] = r[:, None, None]
+    radec_map[1,...] = ra[None, :, None]
+    radec_map[2,...] = dec[None, None, :]
+    xyz_map = np.zeros((3,) + r.shape + ra.shape + dec.shape)
+    xyz_map[0,...]=radec_map[0,...]*np.cos(radec_map[2,...])*np.cos(radec_map[1,...])
+    xyz_map[1,...]=radec_map[0,...]*np.cos(radec_map[2,...])*np.sin(radec_map[1,...])
+    xyz_map[2,...]=radec_map[0,...]*np.sin(radec_map[2,...])
+
+    x = xyz_map[0].flatten()
+    y = xyz_map[1].flatten()
+    z = xyz_map[2].flatten()
+
+    x_range = (x.min(), x.max())
+    y_range = (y.min(), y.max())
+    z_range = (z.min(), z.max())
+
+    return x_range, y_range, z_range
+
+#----------------------------------------------------------------------#
 def get_box(box_bin, imap, nmap, mmap=None):
-    pass
+
+    (x, y, z) = box_bin
+    xyz_box = np.zeros((3,) + x.shape + y.shape + z.shape)
+    xyz_box[0,...] = x[:, None, None]
+    xyz_box[1,...] = y[None, :, None]
+    xyz_box[2,...] = z[None, None, :]
+    xyz_box = xyz_box.reshape(-1, x.shape[0] * y.shape[0] * z.shape[0])
+
+    radec_box = np.zeros((3, x.shape[0] * y.shape[0] * z.shape[0]))
+    radec_box[0] = np.sqrt(xyz_box[0]**2 + xyz_box[1]**2 + xyz_box[2]**2)
+    radec_box[1] = np.arctan2(xyz_box[1], xyz_box[0])
+    radec_box[2] = np.arcsin(xyz_box[2]/radec_box[0])
+
+    ra, dec, r = get_radecr_bin_edges(imap)
+
+    print xyz_box[0,0], xyz_box[1,0],  xyz_box[2,0]**2
+    print xyz_box[0,0]**2 + xyz_box[1,0]**2 + xyz_box[2,0]**2
+    print r
+    print radec_box[0]
+    radec_box[0] = np.digitize(radec_box[0], r)
+    print radec_box[0]
 
 def get_box_xyz(map_temp, box_shape, position='centre'):
     '''
@@ -54,8 +126,8 @@ def get_box_xyz(map_temp, box_shape, position='centre'):
     '''
     x_range, y_range, z_range = getedge(map_temp)
     boxunit = max((x_range[1]-x_range[0])/box_shape[0],
-                  (x_range[1]-x_range[0])/box_shape[1],
-                  (x_range[1]-x_range[0])/box_shape[2])
+                  (y_range[1]-y_range[0])/box_shape[1],
+                  (z_range[1]-z_range[0])/box_shape[2])
     x_centre = 0.5 * ( x_range[1] - x_range[0] ) + x_range[0]
     y_centre = 0.5 * ( y_range[1] - y_range[0] ) + y_range[0]
     z_centre = 0.5 * ( z_range[1] - z_range[0] ) + z_range[0]
@@ -80,54 +152,6 @@ def get_box_xyz(map_temp, box_shape, position='centre'):
         z_bin = (np.arange(box_shape[2] + 1) - z_centre_idx) * boxunit + z_centre
 
         return x_bin, y_bin, z_bin
-
-#----------------------------------------------------------------------#
-def getedge(map_temp):
-    r'''
-        This function is used to find the suitable box edges in cartesion coordinate 
-        system of comoving distance for a map in ra-dec coordinate. 
-
-        input:
-            map_temp: one map as temp
-        output:
-            x_range, y_range, z_range
-    '''
-
-    # find the ra bin edges
-    ra   = map_temp.get_axis('ra')
-    ra   = ra - map_temp.info['ra_centre']
-    ra   = np.append(ra, ra[-1] + map_temp.info['ra_delta'])
-    ra   = (ra - 0.5 * map_temp.info['ra_delta']) * deg2rad
-
-    # find the dec bin edges
-    dec  = map_temp.get_axis('dec')
-    dec  = np.append(dec, dec[-1] + map_temp.info['dec_delta'])
-    dec  = (dec - 0.5 * map_temp.info['dec_delta'])*deg2rad
-
-    # find the r bin edges
-    freq = map_temp.get_axis('freq')
-    freq = np.append(freq, freq[-1] + map_temp.info['freq_delta'])
-    freq = freq - 0.5 * map_temp.info['freq_delta']
-    r    = fq2r(freq)
-
-    radec_map = np.zeros((3,) + r.shape + ra.shape + dec.shape)
-    radec_map[0,...] = r[:, None, None]
-    radec_map[1,...] = ra[None, :, None]
-    radec_map[2,...] = dec[None, None, :]
-    xyz_map = np.zeros((3,) + r.shape + ra.shape + dec.shape)
-    xyz_map[0,...]=radec_map[0,...]*np.cos(radec_map[2,...])*np.cos(radec_map[1,...])
-    xyz_map[1,...]=radec_map[0,...]*np.cos(radec_map[2,...])*np.sin(radec_map[1,...])
-    xyz_map[2,...]=radec_map[0,...]*np.sin(radec_map[2,...])
-
-    x = xyz_map[0].flatten()
-    y = xyz_map[1].flatten()
-    z = xyz_map[2].flatten()
-
-    x_range = (x.min(), x.max())
-    y_range = (y.min(), y.max())
-    z_range = (z.min(), z.max())
-
-    return x_range, y_range, z_range
 
 #----------------------------------------------------------------------#
 def fill(params, imap, nmap, mmap=None):
@@ -443,6 +467,7 @@ if __name__=="__main__":
     x, y, z = getedge(map_temp)
     print x, y, z
 
-    x_bin, y_bin, z_bin = get_box_xyz(map_temp, (10,10,10))
-    print x_bin, y_bin, z_bin
+    x_bin, y_bin, z_bin = get_box_xyz(map_temp, (256,128,64))
+    print z_bin
+    get_box([x_bin, y_bin, z_bin], map_temp, map_temp)
 

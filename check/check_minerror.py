@@ -18,6 +18,15 @@ def plot2dpower_minerror(file_root, file_name, mode_list, kind='2d', div_sim=Tru
                          file_name%mode_list[0] + 
                          '_k2_combined.npy')
 
+    sim= np.load(file_root.replace('power', 'reference')%20 + 
+                 'simmaps_p2_combined.npy')
+    sim_error= np.load(file_root.replace('power', 'reference')%20 + 
+                 'simmaps_p2_var_combined.npy')
+    p1_sim, modenum_sim, dp_sim, bc_sim, be_sim, power_sim, \
+        power_error_sim, power_weight_sim, kp_sim, kv_sim = \
+        check_2dpower.twod2oned_reshape(sim, power_k, sim_error,
+        k_range = [0.04, 1., 0.08, 0.25])
+
     for mode in mode_list:
         root = file_root%mode
         name = file_name%mode
@@ -29,8 +38,6 @@ def plot2dpower_minerror(file_root, file_name, mode_list, kind='2d', div_sim=Tru
 
         w2 = check_2dpower.getweight(root, name, 'noise', b = b2)
 
-        sim= np.load(file_root.replace('power', 'reference')%20 + 
-                     'simmaps_p2_combined.npy')
         sim[sim==0] = np.inf
         if div_sim:
             dp2 /= sim
@@ -317,6 +324,7 @@ def plot2dpower_minerror(file_root, file_name, mode_list, kind='2d', div_sim=Tru
             plt.ylabel('$\Delta^2$ [$\Delta^2(k)/\Delta^2_{sim}(k)$]')
         else:
             plt.ylabel('$\Delta^2$ [$K^2$]')
+            ax.errorbar(bc_sim, p1_sim, dp_sim, fmt='k.', label='simulation', capsize=4.5, elinewidth=1)
         plt.loglog()
         plt.legend(loc=2, scatterpoints=1, frameon=False)
         
