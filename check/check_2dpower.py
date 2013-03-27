@@ -388,10 +388,13 @@ def twod2oned(p2, k2, dp2, weight=None):
     goodlist = np.isnan(p2).__invert__()
     if not weight==None:
         normal = weight[goodlist].sum()
+        ones = np.ones(weight.shape)
         p2 = p2*weight#/normal
         dp2 = dp2*weight#/normal
     else:
         weight = np.ones(p2.shape)
+        ones = np.ones(weight.shape)
+
     kp= k2[0].reshape([k2.shape[1], 1])
     kv= k2[1]
     k = np.zeros(shape=(2,)+p2.shape)

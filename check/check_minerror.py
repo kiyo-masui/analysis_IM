@@ -78,11 +78,12 @@ def plot2dpower_minerror(file_root, file_name, mode_list, kind='2d', div_sim=Tru
     kp = power_k[0]
     kv = power_k[1]
 
-    #p1, modenum, dp, bc, be = check_2dpower.twod2oned(power, power_k, 
-    #                                                  power_error, power_weight)
-    p1, modenum, dp, bc, be, power, power_error, power_weight, kp, kv = \
-        check_2dpower.twod2oned_reshape(power, power_k, power_error,
-        k_range = [0.04, 1., 0.08, 0.25], weight=power_weight)
+    p1, modenum, dp, bc, be = check_2dpower.twod2oned(power, power_k, 
+                                                      power_error, power_weight)
+
+    #p1, modenum, dp, bc, be, power, power_error, power_weight, kp, kv = \
+    #    check_2dpower.twod2oned_reshape(power, power_k, power_error,
+    #    k_range = [0.04, 1., 0.08, 0.25], weight=power_weight)
     if kind=='2draw':
         # plot 2d power
         p2 = ma.array(power)
