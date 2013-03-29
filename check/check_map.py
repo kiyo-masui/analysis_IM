@@ -4,7 +4,7 @@ import numpy as np
 from core import algebra
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
-#from mkpower import functions
+from mkpower import functions
 import math
 
 # my first map
@@ -189,7 +189,7 @@ mapname = "secA_15hr_41-80_avg_fdgp_new_clean_map_I_800"
 boxroot = "/Users/ycli/DATA/"
 boxname = "fftbox_secA_15hr_41-80_avg_fdgp_new_clean_map_I_800"
 
-mapidex = 32
+mapidex = 200 
 
 def getedge(map):
     deg2rad = 3.1415926/180.
@@ -405,7 +405,7 @@ elif len(sys.argv) == 2:
     z = 1.42e9/freq - 1.
     r = functions.fq2r(freq)
     #boxidex = int((r[mapidex]-1400.)/2)
-    boxidex = int((r[mapidex]-1510.)/2)
+    boxidex = int((r[mapidex]-1510.)/3.49)
     
     box = np.load(boxroot + boxname + '.npy')
     
