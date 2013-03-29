@@ -16,7 +16,7 @@ from utils import distance
 # li module
 #import MakePower
 
-pi = 3.1415926
+pi = np.pi
 deg2rad = pi/180.
 #----------------------------------------------------------------------#
 def xyzv(ra, de, r, ra0=0.):
@@ -53,6 +53,7 @@ def get_radecr_bin_edges(map_temp):
 
     # find the dec bin edges
     dec  = map_temp.get_axis('dec')
+    dec  = dec - map_temp.info['dec_centre']
     dec  = np.append(dec, dec[-1] + map_temp.info['dec_delta'])
     dec  = (dec - 0.5 * map_temp.info['dec_delta'])*deg2rad
 
@@ -107,14 +108,14 @@ def get_box(box_bin, imap, nmap, mmap=None):
 
     radec_box = np.zeros((3, x.shape[0] * y.shape[0] * z.shape[0]))
     radec_box[0] = np.sqrt(xyz_box[0]**2 + xyz_box[1]**2 + xyz_box[2]**2)
-    radec_box[1] = np.arctan2(xyz_box[1], xyz_box[0])
+    radec_box[1] = np.arctan2(-xyz_box[1], xyz_box[0])
     radec_box[2] = np.arcsin(xyz_box[2]/radec_box[0])
 
     ra, dec, r = get_radecr_bin_edges(imap)
 
     index_box = np.zeros((3, x.shape[0] * y.shape[0] * z.shape[0]), dtype=int)
-    index_box[0] = np.digitize(radec_box[0], r) - 1
-    index_box[1] = np.digitize(radec_box[1], ra) - 1
+    index_box[0] = np.digitize(radec_box[0], r)   - 1
+    index_box[1] = np.digitize(radec_box[1], ra)  - 1
     index_box[2] = np.digitize(radec_box[2], dec) - 1
 
     del radec_box
@@ -136,6 +137,10 @@ def get_box(box_bin, imap, nmap, mmap=None):
 
     ibox = imap[index_box[0], index_box[1], index_box[2]]
     nbox = nmap[index_box[0], index_box[1], index_box[2]]
+
+    ibox = ibox.reshape(x.shape + y.shape + z.shape)
+    nbox = nbox.reshape(x.shape + y.shape + z.shape)
+
     return ibox, nbox
 
 def get_box_xyz(map_temp, box_shape, position='centre'):
@@ -147,6 +152,7 @@ def get_box_xyz(map_temp, box_shape, position='centre'):
     boxunit = max((x_range[1]-x_range[0])/box_shape[0],
                   (y_range[1]-y_range[0])/box_shape[1],
                   (z_range[1]-z_range[0])/box_shape[2])
+    print boxunit
     x_centre = 0.5 * ( x_range[1] - x_range[0] ) + x_range[0]
     y_centre = 0.5 * ( y_range[1] - y_range[0] ) + y_range[0]
     z_centre = 0.5 * ( z_range[1] - z_range[0] ) + z_range[0]
@@ -161,6 +167,7 @@ def get_box_xyz(map_temp, box_shape, position='centre'):
         z_bin = (np.arange(box_shape[2]) - z_centre_idx) * boxunit + z_centre
 
         return x_bin, y_bin, z_bin
+
     elif position == 'edges':
         x_centre_idx = 0.5 * float(box_shape[0])
         y_centre_idx = 0.5 * float(box_shape[1])
@@ -484,7 +491,7 @@ if __name__=="__main__":
     map_temp = algebra.make_vect(map_temp)
 
     x, y, z = getedge(map_temp)
-    print x
+    print x, y, z
 
     x_bin, y_bin, z_bin = get_box_xyz(map_temp, (256,128,64))
     ibox, nbox = get_box([x_bin, y_bin, z_bin], map_temp, map_temp)

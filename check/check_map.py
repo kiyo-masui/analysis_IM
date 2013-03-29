@@ -191,7 +191,7 @@ mapname = "combined_clean_map_0modes"
 boxroot = "/mnt/raid-project/gmrt/ycli/ps_result/reference_cros_15hr_ABCD_legendre_modes_0gwj_14conv_new_10/fftbox/"
 boxname = "fftbox_combined_clean_weight_10modes"
 
-mapidex = 32
+mapidex = 200 
 
 def getedge(map):
     deg2rad = 3.1415926/180.
@@ -411,7 +411,7 @@ elif len(sys.argv) == 2:
     z = 1.42e9/freq - 1.
     r = functions.fq2r(freq)
     #boxidex = int((r[mapidex]-1400.)/2)
-    boxidex = int((r[mapidex]-1510.)/2)
+    boxidex = int((r[mapidex]-1510.)/3.49)
     
     box = np.load(boxroot + boxname + '.npy')
     
