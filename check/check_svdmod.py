@@ -249,7 +249,7 @@ if __name__=="__main__":
 
 
 
-    do_plot_svd = False
+    do_plot_svd = True
     do_calc_eig = False
     do_plot_val = True
     do_plot_map = False
@@ -262,8 +262,9 @@ if __name__=="__main__":
 
     r'''I_AxI_{BCD}QUV'''
     #fg_file = '1hr_AQUV_extend_legendre_modes_0gwj_2conv/Emap_clean_themselves/'
+    fg_file = '1hr_AQU_extend_legendre_modes_0gwj_11conv/Emap_clean_themselves/'
     #fg_file = '15hr_AQU_extend_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/'
-    fg_file = '15hr_ABCD_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/'
+    #fg_file = '15hr_ABCD_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/'
     svdfile = 'SVD_pair_A_with_B.pkl'
     #svdfile = 'SVD_pair_A_with_C.pkl'
     #svdfile = 'SVD_pair_A_with_D.pkl'
@@ -303,13 +304,14 @@ if __name__=="__main__":
         #[0, fg_root+'15hr_AQU_extend_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/SVD_pair_A_with_C.pkl', '15hr 1.4conv new '],
         #[0, fg_root+'15hr_BQU_extend_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/SVD_pair_B_with_A.pkl', '15hr 1.4conv new '],
         #[0, fg_root+'15hr_AQU_extend_legendre_modes_0gwj_14conv/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '15hr 1.4conv '],
-        [0, fg_root+'15hr_ABCD_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '15hr 1.4conv new IxI clip weight '],
-        [0, fg_root+'15hr_ABCD_legendre_modes_0gwj_14conv_new_noclip/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '15hr 1.4conv new IxI'],
+        #[0, fg_root+'15hr_ABCD_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '15hr 1.4conv new IxI clip weight '],
+        #[0, fg_root+'15hr_ABCD_legendre_modes_0gwj_14conv_new_noclip/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '15hr 1.4conv new IxI'],
         #[0, fg_root+'1hr_IQUV_extend_legendre_modes_0gwj_2conv/Emap_clean_themselves/SVD_pair_I_with_E.pkl', '1hr conv '],
         #[0, fg_root+'1hr_AQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '1hr conv '],
         #[0, fg_root+'1hr_AQUV_extend_legendre_modes_0gwj_2conv/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '1hr 2conv '],
         #[0, fg_root+'1hr_AQUV_extend_legendre_modes_0gwj_2conv/Emap_clean_themselves/SVD_pair_A_with_C.pkl', '1hr 2conv '],
         #[0, fg_root+'1hr_AQUV_extend_legendre_modes_0gwj_2conv/Emap_clean_themselves/SVD_pair_A_with_D.pkl', '1hr 2conv '],
+        [0, fg_root+'1hr_AQU_extend_legendre_modes_0gwj_11conv/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '1hr 1.1conv '],
         ]
     svd_savename = 'SVD_pair_15hr_AxIQU_eigenvalue'
 

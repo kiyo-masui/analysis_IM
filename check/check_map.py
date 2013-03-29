@@ -184,8 +184,9 @@ import math
 #maproot = "/mnt/scratch-gl/ycli/cln_result/15hr_ABCD_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/"
 #mapname = "sec_D_cleaned_noise_inv_I_with_B_40modes"
 
-maproot = "/mnt/scratch-gl/ycli/cln_result/15hr_ABCD_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/"
-mapname = "combined_clean_weight_10modes"
+#maproot = "/mnt/scratch-gl/ycli/cln_result/15hr_ABCD_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/"
+maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_IE_legendre_modes_0gwj_11conv/mapmode_map/"
+mapname = "combined_clean_map_0modes"
 #mapname = "sec_D_cleaned_noise_inv_I_with_B_40modes"
 boxroot = "/mnt/raid-project/gmrt/ycli/ps_result/reference_cros_15hr_ABCD_legendre_modes_0gwj_14conv_new_10/fftbox/"
 boxname = "fftbox_combined_clean_weight_10modes"
@@ -283,11 +284,15 @@ if len(sys.argv) == 1:
     #vmin = map[mapidex].flatten().min()
     #vmax = map.flatten().max()
     #vmin = map.flatten().min()
-    vmax = 0.5
-    vmin = -0.5
+    #vmax = 0.5
+    #vmin = -0.5
 
-    #vmax = 0.04
-    #vmin = -0.04
+    vmax = 2
+    vmin = -2
+    #vmax = 0.001
+    #vmin = -0.001
+    #vmax = 0.0003
+    #vmin = -0.0003
 
     #vmax = 50
     #vmin = -50
@@ -322,7 +327,7 @@ if len(sys.argv) == 1:
                    )
     im = ax[0].pcolormesh(ra, dec, np.ma.mean(map, 0).swapaxes(0,1))
     #im = ax[0].pcolormesh(ra, dec, map[mapidex].swapaxes(0,1))
-    #im.set_clim(vmin, vmax)
+    im.set_clim(vmin, vmax)
     ax[0].set_xlim(ra.min(), ra.max())
     ax[0].set_ylim(dec.min(), dec.max())
     ax[0].set_xlabel('RA [deg]')
