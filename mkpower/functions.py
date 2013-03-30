@@ -6,15 +6,107 @@
 # public module
 import numpy as np
 import scipy as sp
+import gc
 from scipy import integrate
 from math import *
+import fftw3 as FFTW
 
 # kiyo module
 from core import algebra
 from utils import distance
+from utils import fftutil
 
 # li module
 #import MakePower
+
+class BOX(object):
+    def __init__(self, boxshape, imap1, imap2, weight1, weight2):
+        self.boxshape = boxshape
+        self.imap1 = imap1
+        self.imap2 = imap2
+        self.weight1 = weight1
+        self.weight2 = weight2
+
+    def mapping_to_xyz(self):
+        self.box_bin, self.boxunit = get_box_xyz(self.imap1, self.boxshape)
+
+        self.ibox1, self.nbox1 = get_box(self.box_bin, self.imap1, self.weight1)
+        self.ibox2, self.nbox2 = get_box(self.box_bin, self.imap2, self.weight2)
+
+    def estimate_ps_3d(self, window="blackman"):
+
+        window_function = fftutil.window_nd(self.box1.shape, name=window)
+        self.nbox1 *= window_function
+        self.nbox2 *= window_function
+
+        self.ibox1 *= self.nbox1
+        self.ibox2 *= self.nbox2
+        normal = (self.nbox1 * self.nbox2).flatten().sum()
+        delta_v = self.boxunit**3
+
+        iput_1 = np.zeros(self.boxshape, dtype=complex)
+        oput_1 = np.zeros(self.boxshape, dtype=complex)
+        plan_1 = FFTW.Plan(iput_1, oput_1, direction='forward', flags=['measure'])
+        iput_1.imag = 0.
+        iput_1.real = self.ibox1
+        FFTW.execute(plan_1)
+
+        iput_2 = np.zeros(self.boxshape, dtype=complex)
+        oput_2 = np.zeros(self.boxshape, dtype=complex)
+        plan_2 = FFTW.Plan(iput_2, oput_2, direction='forward', flags=['measure'])
+        iput_2.imag = 0.
+        iput_2.real = self.ibox2
+        FFTW.execute(plan_2)
+
+        oput_1 = np.fft.fftshift(oput_1)
+        oput_2 = np.fft.fftshift(oput_2)
+
+        self.ps_3d  = (oput_1 * out_2.conj()).real
+        self.ps_3d *= delta_v/normal
+
+        del iput_1
+        del iput_2
+        del oput_1
+        del oput_2
+        gc.collect()
+
+    def convert_ps_to_unitless(self):
+
+        k_bin_r = np.sqrt( (k_bin_x**2)[:, None, None] + 
+                           (k_bin_y**2)[None, :, None] + 
+                           (k_bin_z**2)[None, None, :] )
+        self.ps_3d = self.ps_3d * k_bin_r**3 / 2. / np.pi**2
+
+
+    def convert_3dps_to_2dps(self, k_edges_p, k_edges_v):
+        
+        k_bin_x = np.fft.fftshift(np.fft.fftfreq(self.boxshape[0], self.boxunit))
+        k_bin_y = np.fft.fftshift(np.fft.fftfreq(self.boxshape[1], self.boxunit))
+        k_bin_z = np.fft.fftshift(np.fft.fftfreq(self.boxshape[2], self.boxunit))
+
+        k_bin_p = k_bin_x
+        k_bin_v = np.sqrt( (k_bin_y**2)[:,None] + (k_bin_z**2)[None,:] )
+
+        k_bin_2d = np.zeros(shape=(2,)+ k_bin_p.shape + k_bin_v.shape)
+        k_bin_2d[0] = k_bin_p[:, None, None]
+        k_bin_2d[1] = k_bin_v[None, :, :]
+
+        kn_2d, xedges, yedges = np.histogram2d(k_bin_2d[0].flatten(), 
+                                               k_bin_2d[1].flatten(),
+                                               weights=np.ones_like(self.ps_3d))
+
+        ps_2d, xedges, yedges = np.histogram2d(k_bin_2d[0].flatten(), 
+                                               k_bin_2d[1].flatten(), 
+                                               weights=self.ps_3d)
+
+        kn_2d[kn_2d==0] = np.inf
+        ps_2d /= kn_2d
+        kn_2d[kn_2d==np.inf] = 0 
+
+        self.kn_2d = kn_2d
+        self.ps_2d = ps_2d
+
+
 
 pi = np.pi
 deg2rad = pi/180.
@@ -119,6 +211,7 @@ def get_box(box_bin, imap, nmap, mmap=None):
     index_box[2] = np.digitize(radec_box[2], dec) - 1
 
     del radec_box
+    del xyz_box
 
     mask_box  = (index_box[0] == -1)
     mask_box |= (index_box[1] == -1)
@@ -141,6 +234,9 @@ def get_box(box_bin, imap, nmap, mmap=None):
     ibox = ibox.reshape(x.shape + y.shape + z.shape)
     nbox = nbox.reshape(x.shape + y.shape + z.shape)
 
+    del index_box
+    gc.collect()
+
     return ibox, nbox
 
 def get_box_xyz(map_temp, box_shape, position='centre'):
@@ -152,7 +248,7 @@ def get_box_xyz(map_temp, box_shape, position='centre'):
     boxunit = max((x_range[1]-x_range[0])/box_shape[0],
                   (y_range[1]-y_range[0])/box_shape[1],
                   (z_range[1]-z_range[0])/box_shape[2])
-    print boxunit
+    #print boxunit
     x_centre = 0.5 * ( x_range[1] - x_range[0] ) + x_range[0]
     y_centre = 0.5 * ( y_range[1] - y_range[0] ) + y_range[0]
     z_centre = 0.5 * ( z_range[1] - z_range[0] ) + z_range[0]
@@ -166,7 +262,7 @@ def get_box_xyz(map_temp, box_shape, position='centre'):
         y_bin = (np.arange(box_shape[1]) - y_centre_idx) * boxunit + y_centre
         z_bin = (np.arange(box_shape[2]) - z_centre_idx) * boxunit + z_centre
 
-        return x_bin, y_bin, z_bin
+        return (x_bin, y_bin, z_bin), boxunit
 
     elif position == 'edges':
         x_centre_idx = 0.5 * float(box_shape[0])
@@ -177,9 +273,69 @@ def get_box_xyz(map_temp, box_shape, position='centre'):
         y_bin = (np.arange(box_shape[1] + 1) - y_centre_idx) * boxunit + y_centre
         z_bin = (np.arange(box_shape[2] + 1) - z_centre_idx) * boxunit + z_centre
 
-        return x_bin, y_bin, z_bin
+        return x_bin, y_bin, z_bin, boxunit
 
 #----------------------------------------------------------------------#
+def get_mapdict(dir, selection=None):
+    r"""
+    Generate a map dict according to the map file in a dir
+    """
+
+    if dir==None:
+        return None
+
+    maplist = os.listdir(dir)
+    mapdict = {}
+    for map in maplist:
+        if os.path.isfile(dir+map) and map.split('.')[-1]=='npy':
+            mapsplit = map.split('.')[0].split('_')
+            if mapsplit[0] == 'sec':
+                #print map
+                key1 = mapsplit[1] + '_with_' + mapsplit[7]
+                if mapsplit[2] == 'modes':
+                    key2 = mapsplit[2]
+                else:
+                    key2 = mapsplit[4]
+                if key2 == 'inv':
+                    key2 = mapsplit[3] + '_' + key2
+                key3 = mapsplit[-1]
+
+                mapdict['%s;%s;%s'%(key1, key2, key3)] = dir + map
+            if mapsplit[0] == 'combined':
+                key1 = mapsplit[2]
+                key2 = mapsplit[3]
+
+                mapdict['%s;%s'%(key1, key2)] = dir + map
+
+            if mapsplit[0] == 'secA' or\
+               mapsplit[0] == 'secB' or\
+               mapsplit[0] == 'secC' or\
+               mapsplit[0] == 'secD':
+                key1 = mapsplit[0][-1]
+                key2 = mapsplit[3] + '_' + mapsplit[4]
+                #if key2=='noise_inv' and mapsplit[5] == 'diag':
+                #    key2='noise_weight'
+
+                mapdict['%s;%s'%(key1, key2)] = dir + map
+
+            if  mapsplit[0] == 'sim' and mapsplit[1] == selection:
+                key1 = int(mapsplit[2])
+
+                mapdict['%d'%key1] = dir + map
+
+        if os.path.isfile(dir+map) and map.split('.')[-1]=='pkl':
+            mapsplit = map.split('.')[0].split('_')
+            if mapsplit[0] == 'SVD':
+                #print map
+                key1 = mapsplit[2] + '_with_' + mapsplit[4]
+                key2 = mapsplit[0]
+                #print key1, key2
+
+                mapdict['%s;%s'%(key1, key2)] = dir + map
+
+    maps = [mapdict.keys(), mapdict]
+    return maps
+
 def fill(params, imap, nmap, mmap=None):
     """
     Function that used to fill the fftbox with the intensity map
@@ -490,11 +646,15 @@ if __name__=="__main__":
     map_temp = algebra.load(map_root + map_file)
     map_temp = algebra.make_vect(map_temp)
 
-    x, y, z = getedge(map_temp)
-    print x, y, z
+    #x, y, z = getedge(map_temp)
+    #print x, y, z
 
-    x_bin, y_bin, z_bin = get_box_xyz(map_temp, (256,128,64))
-    ibox, nbox = get_box([x_bin, y_bin, z_bin], map_temp, map_temp)
+    #box_bin, boxunit = get_box_xyz(map_temp, (256,128,64))
+    #ibox, nbox = get_box(box_bin, map_temp, map_temp)
 
-    np.save(map_root + 'fftbox_' + map_file, ibox)
+    #np.save(map_root + 'fftbox_' + map_file, ibox)
+
+    fftbox = BOX((256,128,64), map_temp, map_temp, map_temp, map_temp,)
+    fftbox.mapping_to_xyz()
+    fftbox.convert_3dps_to_2dps()
 
