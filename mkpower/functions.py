@@ -73,9 +73,12 @@ class BOX(object):
 
     def convert_ps_to_unitless(self):
 
-        k_bin_x = np.fft.fftshift(np.fft.fftfreq(self.boxshape[0], self.boxunit))
-        k_bin_y = np.fft.fftshift(np.fft.fftfreq(self.boxshape[1], self.boxunit))
-        k_bin_z = np.fft.fftshift(np.fft.fftfreq(self.boxshape[2], self.boxunit))
+        k_bin_x = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[0],
+                                                              self.boxunit))
+        k_bin_y = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[1],
+                                                              self.boxunit))
+        k_bin_z = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[2],
+                                                              self.boxunit))
 
         k_bin_r = np.sqrt( (k_bin_x**2)[:, None, None] + 
                            (k_bin_y**2)[None, :, None] + 
@@ -85,11 +88,14 @@ class BOX(object):
 
     def convert_3dps_to_2dps(self, k_edges_p, k_edges_v):
         
-        k_bin_x = np.fft.fftshift(np.fft.fftfreq(self.boxshape[0], self.boxunit))
-        k_bin_y = np.fft.fftshift(np.fft.fftfreq(self.boxshape[1], self.boxunit))
-        k_bin_z = np.fft.fftshift(np.fft.fftfreq(self.boxshape[2], self.boxunit))
+        k_bin_x = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[0],
+                                                              self.boxunit))
+        k_bin_y = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[1],
+                                                              self.boxunit))
+        k_bin_z = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[2],
+                                                              self.boxunit))
 
-        k_bin_p = k_bin_x
+        k_bin_p = np.abs(k_bin_x)
         k_bin_v = np.sqrt( (k_bin_y**2)[:,None] + (k_bin_z**2)[None,:] )
 
         k_bin_2d = np.zeros(shape=(2,)+ k_bin_p.shape + k_bin_v.shape)

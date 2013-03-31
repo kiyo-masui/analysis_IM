@@ -133,11 +133,11 @@ class PowerSpectrumEstimator(object):
             comm.barrier()
 
     def get_kbin_edges(self, params):
-        k_e = np.logspace(params['kbin_min'], 
-                          params['kbin_max'], 
+        k_e = np.logspace(np.log10(params['kbin_min']), 
+                          np.log10(params['kbin_max']), 
                           num=params['kbin_num'])
         k_s = k_e[-1]/k_e[-2]
-        k_e = np.append( k_e, k_e[-1]*k_s ) / (0.5 * k_s)
+        k_e = np.append( k_e, k_e[-1]*k_s ) / (np.sqrt(k_s))
         return k_e
 
     def apply_cut_list(self, nmap):
@@ -258,8 +258,8 @@ class PowerSpectrumEstimator(object):
         if step == 'power' and params['ps_type'] == 'auto':
             ps_std /= sqrt(ps.shape[0])
 
-        k_bin = np.logspace(params['kbin_min'], 
-                            params['kbin_max'], 
+        k_bin = np.logspace(np.log10(params['kbin_min']), 
+                            np.log10(params['kbin_max']), 
                             num=params['kbin_num'])
 
         k_axes = ("k_p", "k_v")
@@ -268,6 +268,11 @@ class PowerSpectrumEstimator(object):
         info['k_p_centre'] = k_bin[params['kbin_num']//2]
         info['k_v_delta']  = k_bin[1]/k_bin[0]
         info['k_v_centre'] = k_bin[params['kbin_num']//2]
+
+        #k_edges_p = self.get_kbin_edges(params)
+        #k_edges_v = self.get_kbin_edges(params)
+        #info['k_p_edges'] = k_edges_p
+        #info['k_v_edges'] = k_edges_v
 
         ps_mean = algebra.make_vect(ps_mean, axis_names=k_axes)
         kn_mean = algebra.make_vect(kn_mean, axis_names=k_axes)
