@@ -73,8 +73,8 @@ class PowerSpectrumEstimator(object):
 
     def execute(self, nprocesses=1, comm=None, rank=0, size=1):
 
-        #self.estimate(comm, rank, size, 'rf')
-        #self.estimate(comm, rank, size, 'tr')
+        self.estimate(comm, rank, size, 'rf')
+        self.estimate(comm, rank, size, 'tr')
         self.estimate(comm, rank, size, 'ps')
         self.estimate(comm, rank, size, 'ns')
 
