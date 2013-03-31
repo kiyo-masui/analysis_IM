@@ -113,11 +113,11 @@ def convert_2dps_to_1dps(ps_root, ns_root, tr_root, rf_root):
 
     power_spectrum *= transfer_function
     power_spectrum *= weight
-    power_spectrum *= k_mode_number
+    #power_spectrum *= k_mode_number
 
     power_spectrum_err *= transfer_function
     power_spectrum_err *= weight
-    power_spectrum_err *= k_mode_number
+    #power_spectrum_err *= k_mode_number
     power_spectrum_err **= 2
 
     k_p_centre, k_v_centre = get_2d_k_bin_centre(power_spectrum)
@@ -125,15 +125,17 @@ def convert_2dps_to_1dps(ps_root, ns_root, tr_root, rf_root):
 
     k_edges_1d = k_p_edges
 
-    #k_mode,k_e = np.histogram(k_centre, k_edges_1d, weights=np.ones_like(k_centre))
-    k_mode,k_e = np.histogram(k_centre, k_edges_1d, weights=k_mode_number.flatten())
-    normal,k_e = np.histogram(k_centre, k_edges_1d, weights=weight.flatten())
+    k_mode,k_e = np.histogram(k_centre, k_edges_1d, weights=np.ones_like(k_centre))
+    #k_mode, k_e = np.histogram(k_centre, k_edges_1d, weights=k_mode_number.flatten())
+    #k_mode_2, k_e = np.histogram(k_centre, k_edges_1d, weights=(k_mode_number**2).flatten())
+    normal, k_e = np.histogram(k_centre, k_edges_1d, weights=weight.flatten())
+    normal_2, k_e = np.histogram(k_centre, k_edges_1d, weights=(weight**2).flatten())
     power, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum.flatten())
-    err,   k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum_err.flatten())
+    err, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum_err.flatten())
 
     k_mode[k_mode==0] = np.inf
     normal[normal==0] = np.inf
     power_1d = power/normal/k_mode
-    power_1d_err = np.sqrt(err)/normal/k_mode
+    power_1d_err = np.sqrt(err/normal_2)/k_mode
 
     return power_1d, power_1d_err, k_p_centre

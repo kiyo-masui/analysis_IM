@@ -6,22 +6,36 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
 
 
-rf_root = '/Users/ycli/DATA/ps_result/new_ps_estimation_test/auto_rf_20mode_2dpow'
-tr_root = '/Users/ycli/DATA/ps_result/new_ps_estimation_test/auto_tr_20mode_2dpow'
-ns_root = '/Users/ycli/DATA/ps_result/new_ps_estimation_test/auto_ns_20mode_2dpow'
-ps_root = '/Users/ycli/DATA/ps_result/new_ps_estimation_test/auto_ps_20mode_2dpow'
+rf_root = '/Users/ycli/DATA/ps_result/new_ps_estimation_test/auto_rf_40mode_2dpow'
+tr_root = '/Users/ycli/DATA/ps_result/new_ps_estimation_test/auto_tr_40mode_2dpow'
+ns_root = '/Users/ycli/DATA/ps_result/new_ps_estimation_test/auto_ns_40mode_2dpow'
+ps_root = '/Users/ycli/DATA/ps_result/new_ps_estimation_test/auto_ps_40mode_2dpow'
 
-def plot_1d_power_spectrum(rf_root, tr_root, ns_root, ps_root):
+def plot_1d_power_spectrum(rf_root, tr_root, ns_root, ps_root, filename):
     power_1d, power_1d_err, k_1d_centre =\
         ps_summary.convert_2dps_to_1dps(ps_root, ns_root, tr_root, rf_root)
     print power_1d
     print power_1d_err
 
-    power_1d_err_2 = np.zeros(shape=(2, power_1d_err.shape[0]))
-    power_1d_err_2[0] = power_1d_err
-    power_1d_err_2[1] = power_1d_err
-    power_1d_err_2[0].put(np.where(power_1d_err_2[0] >= power_1d), 
-                          power_1d[power_1d_err_2[0] >= power_1d] - 1.e-15)
+    k_1d_centre_positive = k_1d_centre[power_1d>0]
+    power_1d_positive = power_1d[power_1d>0]
+    power_1d_positive_err = power_1d_err[power_1d>0]
+    power_1d_positive_err_2 = np.zeros(shape=(2, power_1d_positive_err.shape[0]))
+    power_1d_positive_err_2[0] = power_1d_positive_err
+    power_1d_positive_err_2[1] = power_1d_positive_err
+    power_1d_positive_err_2[0].put(
+        np.where(power_1d_positive_err_2[0] >= power_1d_positive), 
+        power_1d_positive[power_1d_positive_err_2[0] >= power_1d_positive] - 1.e-15)
+
+    k_1d_centre_negative = k_1d_centre[power_1d<0]
+    power_1d_negative = power_1d[power_1d<0]
+    power_1d_negative_err = power_1d_err[power_1d<0]
+    power_1d_negative_err_2 = np.zeros(shape=(2, power_1d_negative_err.shape[0]))
+    power_1d_negative_err_2[0] = power_1d_negative_err
+    power_1d_negative_err_2[1] = power_1d_negative_err
+    power_1d_negative_err_2[0].put(
+        np.where(power_1d_negative_err_2[0] >= power_1d_negative), 
+        power_1d_negative[power_1d_negative_err_2[0] >= power_1d_negative] - 1.e-15)
 
     power_1d_sim, power_1d_err_sim, k_1d_centre_sim =\
         ps_summary.convert_2dps_to_1dps_sim(rf_root)
@@ -35,15 +49,23 @@ def plot_1d_power_spectrum(rf_root, tr_root, ns_root, ps_root):
                           power_1d_sim[power_1d_err_2_sim[0] >= power_1d_sim] - 1.e-15)
 
     fig = plt.figure(figsize=(8, 8))
-    plt.errorbar(k_1d_centre, power_1d, power_1d_err_2, 
-                 fmt='ro', mec='r', capsize=4.5, elinewidth=1)
+    label = filename.replace('_', ' ')
+    plt.errorbar(k_1d_centre_positive, power_1d_positive, power_1d_positive_err_2, 
+        fmt='ro', mec='r', capsize=4.5, elinewidth=1, label=label + ' positive')
+    plt.errorbar(k_1d_centre_negative, power_1d_negative, power_1d_negative_err_2, 
+        fmt='rs', mec='r', mfc='none', capsize=4.5, 
+        elinewidth=1, label=label + ' negative')
     plt.errorbar(k_1d_centre_sim, power_1d_sim, power_1d_err_2_sim, 
-                 fmt='ko', mec='k', mfc='none', capsize=4.5, elinewidth=1)
+        fmt='ko', mec='k', mfc='none', capsize=4.5, elinewidth=1, label='simulation')
     plt.loglog()
     plt.ylim(ymin=1.e-12, ymax=1.e-1)
     plt.xlim(xmin=0.025, xmax=1.5)
+    plt.xlabel('k [h/Mpc]')
+    plt.ylabel('$\Delta^2$ [$K^2$]')
+    plt.legend(frameon=False)
     plt.tick_params(length=6, width=1.)
     plt.tick_params(which='minor', length=3, width=1.)
+    plt.savefig('./png/' + filename + '.png', format='png')
     plt.show()
 
 def plot_2d_everthing(rf_root, tr_root, ns_root, ps_root):
@@ -136,12 +158,14 @@ def plot_2d_everthing(rf_root, tr_root, ns_root, ps_root):
 
 if __name__=='__main__':
 
-    result_root = '/Users/ycli/DATA/ps_result/new_ps_estimation_test/'
-    rf_root = result_root + 'auto_rf_20mode_2dpow'
-    tr_root = result_root + 'auto_tr_20mode_2dpow'
-    ns_root = result_root + 'auto_ns_20mode_2dpow'
-    ps_root = result_root + 'auto_ps_20mode_2dpow'
+    mode = 40
+    filename = 'auto_ps_15hour_%dmode'%mode
+    result_root = '/Users/ycli/DATA/ps_result/' + filename + '/'
+    rf_root = result_root + 'auto_rf_%dmode_2dpow'%mode
+    tr_root = result_root + 'auto_tr_%dmode_2dpow'%mode
+    ns_root = result_root + 'auto_ns_%dmode_2dpow'%mode
+    ps_root = result_root + 'auto_ps_%dmode_2dpow'%mode
     
     #plot_2d_everthing(rf_root, tr_root, ns_root, ps_root)
 
-    plot_1d_power_spectrum(rf_root, tr_root, ns_root, ps_root)
+    plot_1d_power_spectrum(rf_root, tr_root, ns_root, ps_root, filename)
