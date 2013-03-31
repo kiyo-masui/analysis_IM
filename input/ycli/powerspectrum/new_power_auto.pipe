@@ -1,0 +1,62 @@
+#########################################################################
+#                                                                       #
+#      This pipeline is used to calculate the auto power spectrum       #
+#                                                                       #
+#                                                                       #
+#########################################################################
+
+pipe_modules = []
+pipe_processes = 1
+
+import os
+WORKROOT = os.getenv('YICHAO_WORK_PS')
+
+hour = 15
+
+cut_list = []
+if hour==15:
+    cut_list = [6,  7,  8,  15, 16, 18, 19, 20, 21, 22, 37, 80, 103,104,
+                105,106,107,108,130,131,132,133,134,171,175,177,179,182,
+                183,187,189,192,193,194,195,196,197,198,201,204,208,209,
+                212,213,218,219,229,233,237,244,254,255]
+elif hour==22:
+	cut_list = [1,  2,  80, 206,201,200,196,192,189,186,182,217,212,211,
+                223,229,252,253,254,255,156,159,191,193,199,204,210,214,
+                219,240,250,209,215,213,187,198,157,197]
+elif hour==1:
+    cut_list = [6,  7,  8,  15, 16, 18, 19, 20, 21, 22, 37, 80, 103,104,
+                105,106,107,108,130,131,132,133,134,171,175,177,179,182,
+                183,187,189,192,193,194,195,196,197,198,201,204,208,209,
+                212,213,218,219,229,233,237,244,254,255]
+else:
+	print 'no cut_list'
+
+kbin_min = 0.003
+kbin_max = 2.5
+kbin_num = 45
+
+from mkpower import ps_estimator
+pipe_modules.append(ps_estimator.PowerSpectrumEstimator)
+"""  Prepare """
+pse_processes = 1
+
+pse_sim_root = '/mnt/scratch-gl/ycli/simulation_map/15hr_14/'
+pse_ssm_root = '/mnt/scratch-gl/ycli/cln_result/15hr_ABCD_legendre_modes_0gwj_14conv_new/simmapmode_simmap_beam_%03d_subreal/'
+pse_gbt_root = '/mnt/scratch-gl/ycli/cln_result/15hr_ABCD_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/'
+pse_opt_root = None
+
+pse_sim_numb = 100
+
+pse_cut_list = cut_list
+pse_boxshape = (256, 128, 64)
+pse_discrete = 3
+
+pse_kbin_num = kbin_num
+pse_kbin_min = kbin_min
+pse_kbin_max = kbin_max
+
+pse_ps_root  = WORKROOT 
+pse_ps_name  = 'new_ps_estimation_test'
+
+pse_ps_type  = 'auto'
+pse_ps_mode  = 20
