@@ -6,6 +6,7 @@
 # public module
 import numpy as np
 import scipy as sp
+import os
 import gc
 from scipy import integrate
 from math import *
@@ -35,7 +36,7 @@ class BOX(object):
 
     def estimate_ps_3d(self, window="blackman"):
 
-        window_function = fftutil.window_nd(self.box1.shape, name=window)
+        window_function = fftutil.window_nd(self.nbox1.shape, name=window)
         self.nbox1 *= window_function
         self.nbox2 *= window_function
 
@@ -61,7 +62,7 @@ class BOX(object):
         oput_1 = np.fft.fftshift(oput_1)
         oput_2 = np.fft.fftshift(oput_2)
 
-        self.ps_3d  = (oput_1 * out_2.conj()).real
+        self.ps_3d  = (oput_1 * oput_2.conj()).real
         self.ps_3d *= delta_v/normal
 
         del iput_1
@@ -71,6 +72,10 @@ class BOX(object):
         gc.collect()
 
     def convert_ps_to_unitless(self):
+
+        k_bin_x = np.fft.fftshift(np.fft.fftfreq(self.boxshape[0], self.boxunit))
+        k_bin_y = np.fft.fftshift(np.fft.fftfreq(self.boxshape[1], self.boxunit))
+        k_bin_z = np.fft.fftshift(np.fft.fftfreq(self.boxshape[2], self.boxunit))
 
         k_bin_r = np.sqrt( (k_bin_x**2)[:, None, None] + 
                            (k_bin_y**2)[None, :, None] + 
@@ -91,13 +96,16 @@ class BOX(object):
         k_bin_2d[0] = k_bin_p[:, None, None]
         k_bin_2d[1] = k_bin_v[None, :, :]
 
+        ones_weight = np.ones_like(self.ps_3d)
         kn_2d, xedges, yedges = np.histogram2d(k_bin_2d[0].flatten(), 
                                                k_bin_2d[1].flatten(),
-                                               weights=np.ones_like(self.ps_3d))
+                                               (k_edges_p, k_edges_v),
+                                               weights=ones_weight.flatten())
 
         ps_2d, xedges, yedges = np.histogram2d(k_bin_2d[0].flatten(), 
                                                k_bin_2d[1].flatten(), 
-                                               weights=self.ps_3d)
+                                               (k_edges_p, k_edges_v),
+                                               weights=self.ps_3d.flatten())
 
         kn_2d[kn_2d==0] = np.inf
         ps_2d /= kn_2d
@@ -287,7 +295,7 @@ def get_mapdict(dir, selection=None):
     maplist = os.listdir(dir)
     mapdict = {}
     for map in maplist:
-        if os.path.isfile(dir+map) and map.split('.')[-1]=='npy':
+        if map.split('.')[-1]=='npy':
             mapsplit = map.split('.')[0].split('_')
             if mapsplit[0] == 'sec':
                 #print map
@@ -640,11 +648,11 @@ def getpower_th(params):
 
 if __name__=="__main__":
     
-    map_root = '/Users/ycli/DATA/'
-    map_file = 'secA_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
+    #map_root = '/Users/ycli/DATA/'
+    #map_file = 'secA_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
 
-    map_temp = algebra.load(map_root + map_file)
-    map_temp = algebra.make_vect(map_temp)
+    #map_temp = algebra.load(map_root + map_file)
+    #map_temp = algebra.make_vect(map_temp)
 
     #x, y, z = getedge(map_temp)
     #print x, y, z
@@ -654,7 +662,9 @@ if __name__=="__main__":
 
     #np.save(map_root + 'fftbox_' + map_file, ibox)
 
-    fftbox = BOX((256,128,64), map_temp, map_temp, map_temp, map_temp,)
-    fftbox.mapping_to_xyz()
-    fftbox.convert_3dps_to_2dps()
+    #fftbox = BOX((256,128,64), map_temp, map_temp, map_temp, map_temp,)
+    #fftbox.mapping_to_xyz()
+    #fftbox.convert_3dps_to_2dps()
+
+    imaps_a = get_mapdict('/mnt/scratch-gl/ycli/cln_result/15hr_ABCD_legendre_modes_0gwj_14conv_new/simmapmode_simmap_beam_000_subreal')
 
