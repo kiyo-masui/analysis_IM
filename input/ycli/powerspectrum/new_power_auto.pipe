@@ -11,7 +11,11 @@ pipe_processes = 1
 import os
 WORKROOT = os.getenv('YICHAO_WORK_PS')
 
-hour = 15
+hour = int(os.getenv('HOUR'))
+mode = int(os.getenv('MODE'))
+sim_root = os.getenv('MAP_SIM')
+ssm_root = os.getenv('MAP_SSM')
+gbt_root = os.getenv('MAP_CLN')
 
 cut_list = []
 if hour==15:
@@ -40,9 +44,9 @@ pipe_modules.append(ps_estimator.PowerSpectrumEstimator)
 """  Prepare """
 pse_processes = 1
 
-pse_sim_root = '/mnt/scratch-gl/ycli/simulation_map/15hr_14/'
-pse_ssm_root = '/mnt/scratch-gl/ycli/cln_result/15hr_ABCD_legendre_modes_0gwj_14conv_new/simmapmode_simmap_beam_%03d_subreal/'
-pse_gbt_root = '/mnt/scratch-gl/ycli/cln_result/15hr_ABCD_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/'
+pse_sim_root = sim_root
+pse_ssm_root = ssm_root
+pse_gbt_root = gbt_root
 pse_opt_root = None
 
 pse_sim_numb = 100
@@ -56,7 +60,6 @@ pse_kbin_min = kbin_min
 pse_kbin_max = kbin_max
 
 pse_ps_root  = WORKROOT 
-pse_ps_name  = 'new_ps_estimation_test'
-
 pse_ps_type  = 'auto'
-pse_ps_mode  = 20
+pse_ps_name  = '%s_ps_%02dhour_%02dmode'%(pse_ps_type, hour, mode)
+pse_ps_mode  = mode
