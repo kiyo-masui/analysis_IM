@@ -63,3 +63,8 @@ pse_ps_root  = WORKROOT
 pse_ps_type  = 'auto'
 pse_ps_name  = '%s_ps_%02dhour_%02dmode'%(pse_ps_type, hour, mode)
 pse_ps_mode  = mode
+
+pse_est_transfer = True
+pse_est_powerspc = True
+pse_est_gausserr = True
+pse_est_powersim = True
