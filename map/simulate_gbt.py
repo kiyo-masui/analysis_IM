@@ -1,43 +1,31 @@
-"""Make simulated signal realizations in the GBT survey volume
-Notes on foreground calls for the future (also copy param member func.):
-    from simulations import foregroundsck
-    from simulations import pointsource
-    syn = foregroundsck.Synchrotron()
-    synfield = syn.getfield()
-    ps = pointsource.DiMatteo()
-    psf = ps.getfield()
-"""
-import os
-import copy
+"""Make a fake set of data that look like a real template but are thermal noise
+and simulated signal"""
 import numpy as np
-from simulations import corr21cm
 import core.algebra as algebra
-import map.beam as beam
 from numpy import random
 import struct
 from kiyopy import parse_ini
-from utils import units
 from utils import batch_handler
-
+from utils import data_paths
+from map import simulate_thermal
+from map import simulate_gbt_signal
+import os
 
 params_init = {
-               'output_root': "./",
-               'template_file': "ok.npy",
-               'outfile_physical': None,
-               'outfile_raw': None,
-               'outfile_delta': None,
-               'outfile_beam': None,
-               'outfile_meansub': None,
-               'outfile_degrade': None,
+               'template_key': "database to map",
+               'output_key': "database to out map",
+               'tack_on': None,
+               'total_integration': 100.,
                'scenario': 'str',
-               'seed': -1,
-               'refinement': 2,
-               'weightfile': None
+               'refinement': 2.,
+               'multiplier': 1.,
+               'seed': -1
                }
-prefix = 'sg_'
+prefix = 'sgbt_'
+
 
 class SimulateGbt(object):
-    r"""Class to handle signal-only sim ini files"""
+    r"""make a fake dataset based on a real one"""
 
     @batch_handler.log_timing
     def __init__(self, parameter_file=None, params_dict=None, feedback=0):
@@ -46,31 +34,17 @@ class SimulateGbt(object):
             self.params = parse_ini.parse(parameter_file, params_init,
                                           prefix=prefix)
 
-        if not os.path.isdir(self.params['output_root']):
-            os.mkdir(self.params['output_root'])
-
-        self.refinement = self.params['refinement']
+        self.template_key = self.params['template_key']
+        self.output_key = self.params['output_key']
+        self.total_integration = self.params['total_integration']
         self.scenario = self.params['scenario']
-        self.template_file = self.params['template_file']
-        self.output_root = self.params['output_root']
-        # here we use 300 h km/s from WiggleZ for streaming dispersion
-        self.streaming_dispersion = 300.*0.72
-
-        self.template_map = algebra.make_vect(
-                                algebra.load(self.template_file))
-
-        # determine the beam model
-        self.beam_data = np.array([0.316148488246, 0.306805630985,
-                                   0.293729620792, 0.281176247549,
-                                   0.270856788455, 0.26745856078,
-                                   0.258910010848, 0.249188429031])
-
-        self.freq_data = np.array([695, 725, 755, 785, 815, 845, 875, 905],
-                                 dtype=float)
-        self.freq_data *= 1.0e6
+        self.refinement = self.params['refinement']
+        self.multiplier = self.params['multiplier']
+        self.tack_on = self.params['tack_on']
 
         # set the random seed
         if (self.params['seed'] < 0):
+            print "no seed given; generating one (are you sure?)"
             # The usual seed is not fine enough for parallel jobs
             randsource = open("/dev/random", "rb")
             self.seed = struct.unpack("I", randsource.read(4))[0]
@@ -80,151 +54,127 @@ class SimulateGbt(object):
 
         random.seed(self.seed)
 
-        # register any maps that need to be produced
-        self.sim_map_phys = None
-        self.sim_map = None
-        self.sim_map_delta = None
-        self.sim_map_withbeam = None
-        self.sim_map_meansub = None
-        self.sim_map_degrade = None
+        self.datapath_db = data_paths.DataPath()
 
-    @batch_handler.log_timing
+        self.input_weight_maps = self.return_maplist(self.template_key,
+                                                     "noise_weight")
+
+        self.output_weight_maps = self.return_maplist(self.output_key,
+                                                      "noise_weight",
+                                                      tack_on=self.tack_on)
+
+        self.output_maps = self.return_maplist(self.output_key,
+                                               "clean_map",
+                                               tack_on=self.tack_on)
+
+        self.output_delta_thermal = []
+        self.output_thermal = []
+        for mapfile in self.output_maps:
+            basename = os.path.splitext(mapfile)[0]
+            self.output_delta_thermal.append(basename + "_deltat.npy")
+            self.output_thermal.append(basename + "_thermal.npy")
+
+        self.output_signal = "gaussian_signal_simulation.npy"
+
+        print "input weight maps: ", self.input_weight_maps
+        print "output weight maps: ", self.output_weight_maps
+        self.output_root = os.path.dirname(self.output_weight_maps[0])
+        self.output_root += "/"
+        print "output directory: ", self.output_root
+        if not os.path.isdir(self.output_root):
+            os.mkdir(self.output_root)
+
+
+    def return_maplist(self, db_key, map_type, tack_on=None,
+                       ignore=['firstpass']):
+        template_flist = self.datapath_db.fetch(db_key, tack_on=tack_on)
+        map_combinations = data_paths.unpack_cases(template_flist[0],
+                                                   "sec;map_type")
+
+        print map_combinations
+        assert map_type in map_combinations['map_type'], \
+               "no weight maps!"
+
+        maplist = []
+        seclist = map_combinations['sec']
+        if ignore is not None:
+            seclist = [tag for tag in seclist if tag not in ignore]
+
+        seclist.sort()
+
+        for sec in seclist:
+            mapname = "%s;%s" % (sec, map_type)
+            maplist.append(template_flist[1][mapname])
+
+        return maplist
+
     def execute(self, processes):
-        # this generates the raw physical and observation space sims
-        self.realize_simulation()
-
-        if self.params['outfile_raw']:
-            algebra.save(self.output_root + self.params['outfile_raw'],
-                         self.sim_map)
-
-        if self.params['outfile_physical']:
-            algebra.save(self.output_root + self.params['outfile_physical'],
-                         self.sim_map_phys)
-
-        if self.params['outfile_delta']:
-            self.make_delta_sim()
-            algebra.save(self.output_root + self.params['outfile_delta'],
-                         self.sim_map_delta)
-
-        if self.params['outfile_beam']:
-            self.convolve_by_beam()
-            algebra.save(self.output_root + self.params['outfile_beam'],
-                         self.sim_map_withbeam)
-
-        if self.params['outfile_meansub']:
-            self.subtract_mean()
-            algebra.save(self.output_root + self.params['outfile_meansub'],
-                         self.sim_map_meansub)
-
-        if self.params['outfile_degrade']:
-            self.degrade_to_common_res()
-            algebra.save(self.output_root + self.params['outfile_degrade'],
-                         self.sim_map_degrade)
+        self.execute_thermalsim()
+        self.execute_signalsim()
+        self.execute_assembledir()
 
     @batch_handler.log_timing
-    def realize_simulation(self):
-        """do basic handling to call Richard's simulation code
-        this produces self.sim_map and self.sim_map_phys
-        """
-        if self.scenario == "nostr":
-            print "running dd+vv and no streaming case"
-            simobj = corr21cm.Corr21cm.like_kiyo_map(self.template_map)
-            maps = simobj.get_kiyo_field_physical(refinement=self.refinement)
+    def execute_thermalsim(self):
+        # note that we want each section to have a different seed
+        # starting from the base random seed and incrementing
+        seed_inc = self.seed
+        for (weight_file, delta_file, thermal_file) in \
+                zip(self.input_weight_maps,
+                    self.output_delta_thermal,
+                    self.output_thermal):
 
-        else:
-            if self.scenario == "str":
-                print "running dd+vv and streaming simulation"
-                simobj = corr21cm.Corr21cm.like_kiyo_map(self.template_map,
-                                           sigma_v=self.streaming_dispersion)
+            params_init = {
+               'output_file': thermal_file,
+               'delta_temp_file': delta_file,
+               'weight_file': weight_file,
+               'total_integration': self.total_integration,
+               'max_stdev': np.inf,
+               'seed': seed_inc
+               }
 
-                maps = simobj.get_kiyo_field_physical(refinement=self.refinement)
-
-            if self.scenario == "ideal":
-                print "running dd-only and no mean simulation"
-                simobj = corr21cm.Corr21cm.like_kiyo_map(self.template_map)
-                maps = simobj.get_kiyo_field_physical(
-                                            refinement=self.refinement,
-                                            density_only=True,
-                                            no_mean=True,
-                                            no_evolution=True)
-
-        (gbtsim, gbtphys, physdim) = maps
-
-        # process the physical-space map
-        self.sim_map_phys = algebra.make_vect(gbtphys, axis_names=('freq', 'ra', 'dec'))
-        pshp = self.sim_map_phys.shape
-
-        # define the axes of the physical map; several alternatives are commented
-        info = {}
-        info['axes'] = ('freq', 'ra', 'dec')
-        info['type'] = 'vect'
-        info['freq_delta'] = abs(physdim[0] - physdim[1]) / float(pshp[0] - 1)
-        info['freq_centre'] = physdim[0] + info['freq_delta'] * float(pshp[0] // 2)
-        #        'freq_centre': abs(physdim[0] + physdim[1]) / 2.,
-
-        info['ra_delta'] = abs(physdim[2]) / float(pshp[1] - 1)
-        #info['ra_centre'] = info['ra_delta'] * float(pshp[1] // 2)
-        #        'ra_centre': abs(physdim[2]) / 2.,
-        info['ra_centre'] = 0.
-
-        info['dec_delta'] = abs(physdim[3]) / float(pshp[2] - 1)
-        #info['dec_centre'] = info['dec_delta'] * float(pshp[2] // 2)
-        #        'dec_centre': abs(physdim[3]) / 2.,
-        info['dec_centre'] = 0.
-
-        self.sim_map_phys.info = info
-
-        # process the map in observation coordinates
-        self.sim_map = algebra.make_vect(gbtsim, axis_names=('freq', 'ra', 'dec'))
-        self.sim_map.copy_axis_info(self.template_map)
+            print "parameters for thermal noise sim: ", params_init
+            simthermal = simulate_thermal.SimulateSingleThermal(
+                                                params_dict=params_init)
+            simthermal.execute(0)
+            seed_inc += 1
 
     @batch_handler.log_timing
-    def make_delta_sim(self):
-        r"""this produces self.sim_map_delta"""
-        freq_axis = self.sim_map.get_axis('freq') / 1.e6
-        z_axis = units.nu21 / freq_axis - 1.0
+    def execute_signalsim(self):
+        params_init = {
+               'output_root': self.output_root,
+               'template_file': self.input_weight_maps[0],
+               'outfile_physical': None,
+               'outfile_raw': None,
+               'outfile_delta': None,
+               'outfile_beam': self.output_signal,
+               'outfile_meansub': None,
+               'outfile_degrade': None,
+               'scenario': self.scenario,
+               'seed': self.seed,
+               'refinement': self.refinement,
+               'weightfile': self.input_weight_maps[0]
+               }
+        print "parameters for signal sim: ", params_init
+        sim_signal = simulate_gbt_signal.SimulateGbtSignal(
+                                                params_dict=params_init)
 
-        simobj = corr21cm.Corr21cm()
-        T_b = simobj.T_b(z_axis) * 1e-3
-
-        self.sim_map_delta = copy.deepcopy(self.sim_map)
-        self.sim_map_delta /= T_b[:, np.newaxis, np.newaxis]
-
-    @batch_handler.log_timing
-    def convolve_by_beam(self):
-        r"""this produces self.sim_map_withbeam"""
-        beamobj = beam.GaussianBeam(self.beam_data, self.freq_data)
-        self.sim_map_withbeam = beamobj.apply(self.sim_map)
-
-    @batch_handler.log_timing
-    def degrade_to_common_res(self):
-        r"""this produces self.sim_map_degrade"""
-        # this depends on having simulations with the means subtracted
-        if self.sim_map_meansub is None:
-            self.subtract_mean()
-
-        beam_diff = np.sqrt(max(1.1 * self.beam_data) ** 2 - (self.beam_data) ** 2)
-        common_resolution = beam.GaussianBeam(beam_diff, self.freq_data)
-        # Convolve to a common resolution.
-        self.sim_map_degrade = common_resolution.apply(self.sim_map_meansub)
-        #sim_map[np.isinf(sim_map)] = 0.
-        #sim_map[np.isnan(sim_map)] = 0.
+        sim_signal.execute(0)
 
     @batch_handler.log_timing
-    def subtract_mean(self):
-        r"""this produces self.sim_map_meansub"""
-        # this depends on having simulations convolved by the beam
-        if self.sim_map_withbeam is None:
-            self.convolve_by_beam()
+    def execute_assembledir(self):
+        # link the weights through to the simulation directory
+        for (weight_file_in, weight_file_out) in \
+                zip(self.input_weight_maps, self.output_weight_maps):
+            os.symlink(weight_file_in, weight_file_out)
+            os.symlink(weight_file_in + ".meta", weight_file_out + ".meta")
 
-        self.sim_map_meansub = copy.deepcopy(self.sim_map_withbeam)
-        print "sim meansub using: " + self.params['weightfile']
-        noise_inv = algebra.make_vect(algebra.load(self.params['weightfile']))
-        means = np.sum(np.sum(noise_inv * self.sim_map_meansub, -1), -1)
-        means /= np.sum(np.sum(noise_inv, -1), -1)
-        means.shape += (1, 1)
-        self.sim_map_meansub -= means
-        # the weights will be zero in some places
-        self.sim_map_meansub[noise_inv < 1.e-20] = 0.
-        #self.sim_map_meansub[np.isinf(self.sim_map)] = 0.
-        #self.sim_map_meansub[np.isnan(self.sim_map)] = 0.
+        signalfile = self.output_root + self.output_signal
+        signalmap = algebra.make_vect(algebra.load(signalfile))
+        signalmap *= self.multiplier
+
+        # now load the signal simulation add thermal noise and save
+        for (thermal_file, mapfile) in \
+                zip(self.output_thermal, self.output_maps):
+            thermalmap = algebra.make_vect(algebra.load(thermal_file))
+            algebra.save(mapfile, signalmap + thermalmap)
+
