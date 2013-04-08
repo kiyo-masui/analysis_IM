@@ -2,7 +2,7 @@
 
 import scipy as sp
 import numpy.ma as ma
-#import pylab as pl
+import pylab as pl
 import numpy as np
 
 import kiyopy.custom_exceptions as ce
@@ -23,7 +23,9 @@ class Calibrate(base_single.BaseSingle) :
     prefix = 'tc_'
     # These are the parameters that should be read from file.  These are in
     # addition to the ones defined at the top of base_single.py.
-    params_init = {'mueler_file' : 'default_fname' }
+    params_init = {'mueler_file' : 'default_fname', 
+                   'flux_cal_only' : 'False'
+                   }
     
     # The base single initialization method does a bunch of stuff, but we want
     # to add one thing.  We want to read a mueler matrix from file.
@@ -41,7 +43,7 @@ class Calibrate(base_single.BaseSingle) :
 #        print sess_num
 #        mueler_file_name = self.params['mueler_file']+str(sess_num)+'_mueller_matrix_from_params.txt'
 #        self.mueler
-#        mueler_file_name = self.params['mueler_file']+'67_mueller_matrix_from_jones.txt'
+#        mueler_file_name = self.params['mueler_file']+'87_mueller_matrix_from_params.txt'
 #        self.mueler = mueller(mueler_file_name)
     
     # This function tells BaseSingle what science to do.  Data is a
@@ -59,12 +61,17 @@ class Calibrate(base_single.BaseSingle) :
         # Main Action
         i = self.file_ind
         file_middle = self.params['file_middles'][i]
-        sess_num = file_middle.split('_')[0]
+        separate = file_middle.split('/')[1]
+        sess_num = separate.split('_')[0]
         sess_num = int(sess_num)
+        if (sess_num<10):
+            sess_num = '0'+str(sess_num)
+        project = file_middle.split('/')[0]
 #        print sess_num
-        mueler_file_name = self.params['mueler_file']+str(sess_num)+'_mueller_matrix_from_params_Mastro.txt'
+        mueler_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_mueller_matrix_from_inverted_params.txt'
+        self.flux_status = self.params['flux_cal_only']
         self.mueler = mueller(mueler_file_name)
-        calibrate_pol(Data, self.mueler)
+        calibrate_pol(Data, self.mueler, self.flux_status)
        	Data.add_history('Flux calibrated and Corrected for polarization leakage.', 
                	         ('Mueller matrix file: ' + self.params['mueler_file'],))
         
@@ -72,12 +79,14 @@ class Calibrate(base_single.BaseSingle) :
 #        pl.plot(frequency,Data.data[0,1,0,:],label='Q-mod')
 #        pl.plot(frequency,Data.data[0,2,0,:],label='U-mod')
 #        pl.plot(frequency,Data.data[0,3,0,:],label='V-mod')
+#        pl.plot(frequency,19.74748409*pow((750.0/frequency),0.49899785)*(2.28315426-0.000484307905*frequency),label='3C286-Isrc')
+#        pl.plot(frequency,25.15445092*pow((750.0/frequency),0.75578842)*(2.28315426-0.000484307905*frequency),label='3C48-Isrc')
 #        pl.legend()
 #        pl.ylim(-20,130)
 #        pl.xlabel("Frequency (MHz)")
 #        pl.ylabel("Sample Data")
-#        title0 = str(Data.field['SCAN'])+'_caloff_pol_params_'
-#        pl.savefig(title0+'Comparison_Test_for_3C48.png')
+#        title0 = str(Data.field['SCAN'])+'_caloff_pol_params_Mastro_'
+#        pl.savefig(title0+'Comparison_Test.png')
 #        pl.clf()
 
        	return Data
@@ -123,7 +132,7 @@ def mueller(mueler_file_name) :
                 m_total[j,k,i] = M_total[j,k]
 
     return m_total
-def calibrate_pol(Data, m_total) :
+def calibrate_pol(Data, m_total,flux_status) :
     """Subtracts a Map out of Data."""
         
     # Data is a DataBlock object.  It holds everything you need to know about
@@ -186,7 +195,9 @@ def calibrate_pol(Data, m_total) :
      # Tells which mueller matrix to use. 
                freq_limit = len(m_total[0,0,:])
                frequency = int(Data.freq[freq]/1000)
+#               print frequency
                bin = int((900000-frequency)*freq_limit/200000)
+#               print bin
 #               if freq_limit == 200:
 #                   bin = 900-frequency
 #Not setup to work with spectrometer data.
@@ -201,9 +212,21 @@ def calibrate_pol(Data, m_total) :
 
     # Next there is a matrix multiplication that will generate 
     # a new set of stokes values.
-               stokesmod = np.dot(MUELLER,STOKES)
+               stokesmod = STOKES
+               
+               if flux_status == 'False' : 
+                   stokesmod = np.dot(MUELLER,stokesmod)
                stokesmod = np.dot(M_sky,stokesmod)
+
+# You always want to include the M_sky matrix transformation, but you if you just want the flux cal, coment out the MUELLER, STOKES dot product above and include the flux multiplication below instead. 
+               if flux_status == 'True' :
+                   stokesmod[0]=stokesmod[0]*MUELLER[0,0]
+                   stokesmod[1]=stokesmod[1]*MUELLER[0,0]
+                   stokesmod[2]=stokesmod[2]*MUELLER[0,0]
+                   stokesmod[3]=stokesmod[3]*MUELLER[0,0]
 #               print stokesmod
+
+
                for i in range(0,Data.dims[1]):
                     Data.data[time_index,i,cal_index,freq] = stokesmod[i]	
 

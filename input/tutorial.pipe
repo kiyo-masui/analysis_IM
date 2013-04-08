@@ -1,0 +1,169 @@
+# Tutorial pipeline file.  To run this, from the analysis_IM directory run:
+# `python pipeline/manager.py input/tutorial.pipe`.
+
+import os
+
+from core import dir_data
+import scipy as sp
+
+# What data to process and how to split it up.
+field = '15hr'
+
+sessions = [42]
+
+file_middles = tuple(dir_data.get_data_files(sessions, field=field, 
+                                             project="GBT10B_036", 
+											 type='ralongmap'))
+map_centre = (217.87, 2.0)
+map_shape = (64, 34)
+map_spacing = .07
+
+base_dir = os.getenv('GBT_OUT')
+if not base_dir:
+  msg = "The environment variable `GBT_OUT` is not set."
+  raise RuntimeError(msg)
+data_dir = os.getenv('GBT_DATA')
+if not data_dir:
+  msg = "The environment variable `GBT_DATA` is not set."
+  raise RuntimeError(msg)
+kiyo_dir =  os.getenv('GBT_KM')
+if not kiyo_dir:
+  msg = "The environment variable `GBT_KM` is not set."
+  raise RuntimeError(msg)
+
+# prefix given to all output files.
+prefix = 'tut_'
+map_base = base_dir + 'maps/'
+map_prefix = prefix
+
+# Maximum number of processes to use.
+pipe_processes = 8
+
+
+####  List of modules to execute.  ####
+pipe_modules = []
+
+#### Calibration ####
+
+#from time_stream import flag_data
+#pipe_modules.append(flag_data.FlagData)
+
+from time_stream import rebin
+pipe_modules.append(rebin.Rebin)
+
+from time_stream import split_bands
+pipe_modules.append(split_bands.SplitBands)
+
+from time_stream import calibrate
+pipe_modules.append(calibrate.Calibrate)
+
+from time_stream import rotate_pol
+pipe_modules.append(rotate_pol.RotatePol)
+
+#### First Map making interation ####
+
+from map import dirty_map
+pipe_modules.append(dirty_map.DirtyMapMaker)
+
+from map import clean_map
+pipe_modules.append(clean_map.CleanMapMaker)
+
+#### Parameters for the various modules. ####
+
+# flag_data, RFI flagger.
+fd_input_root = data_dir
+fd_file_middles = file_middles
+fd_input_end = '.fits'
+fd_output_root = base_dir + 'flagged/' + prefix
+fd_output_end = '.fits'
+fd_scans = ()
+fd_IFs = ()
+
+fd_perform_hanning = False
+fd_rotate = True
+fd_cal_scale = True
+fd_sigma_thres = 3.5
+fd_badness_thres = 0.1
+fd_time_cut = 10
+
+# Rebin the time and frequency axis.
+# Flagging the data takes a long time so you can skip it and get the input from 
+# Kiyo's already flagged data.
+#rb_input_root = fd_output_root
+rb_input_root = kiyo_dir + 'flagged/'
+rb_file_middles = file_middles
+rb_input_end = '.fits'
+rb_output_root = base_dir + 'rebinned/' + prefix
+rb_output_end = '.fits'
+rb_scans = ()
+rb_IFs = ()
+
+rb_n_bins_combined_freq = 32
+rb_n_bins_combined_time = 2
+
+# split_bands
+sb_input_root = rb_output_root
+sb_file_middles = file_middles
+sb_input_end = '.fits'
+sb_output_root = base_dir + 'band_split_new/' + prefix
+sb_output_end = '.fits'
+sb_scans = ()
+sb_IFs = ()
+
+# etc. Band chosen such the upper end is ~5MHz from resonance.
+sb_n_bands = 1
+sb_n_bins_band = 40
+sb_offset = 68
+
+# calibrate
+cl_input_root = sb_output_root
+cl_file_middles = file_middles
+cl_input_end = '.fits'
+cl_output_root = base_dir + 'calibrated/' + prefix
+cl_output_end = '.fits'
+cl_scans = ()
+cl_IFs = ()
+
+cl_cal_temperature_files = (kiyo_dir + 'kevin_cal/cal_21.fits',)
+
+# rotate_pol
+rp_input_root = cl_output_root
+rp_file_middles = file_middles
+rp_input_end = '.fits'
+rp_output_root = base_dir + 'pol_selected/' + prefix
+rp_output_end = '.fits'
+rp_scans = ()
+rp_IFs = ()
+
+rp_new_pols = (1,)
+rp_average_cals = True
+
+
+# dirty_map
+dm_input_root = rp_output_root
+dm_file_middles = file_middles
+dm_input_end = '.fits'
+dm_output_root = map_base + map_prefix
+dm_scans = ()
+dm_IFs = ()
+
+dm_polarizations = ('I',)
+dm_field_centre = map_centre
+dm_pixel_spacing = map_spacing
+dm_map_shape = map_shape
+dm_time_block = 'scan'
+dm_n_files_group = 0
+dm_frequency_correlations = 'None'
+dm_number_frequency_modes = 0
+dm_noise_parameter_file = ''
+dm_deweight_time_mean = True
+dm_deweight_time_slope = True
+dm_interpolation = 'cubic'
+
+# clean_map
+cm_input_root = dm_output_root
+cm_output_root = cm_input_root
+cm_polarizations = ('I',)
+cm_bands = (762,)
+cm_save_noise_diag = True
+

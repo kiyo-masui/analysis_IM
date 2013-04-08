@@ -1,0 +1,702 @@
+# Pipeline file for guppi data.
+
+import os
+import scipy as sp
+from core import dir_data
+
+file_middles = tuple(dir_data.get_data_files(range(41,90), field='15hr', 
+                                             project="GBT10B_036", 
+											 type='ralongmap'))
+
+def mid_fun(session):
+  from core import dir_data
+  return tuple(dir_data.get_data_files([session],
+               field='15hr', project="GBT10B_036", type='ralongmap'))
+
+field = '15hr'
+
+
+middles_41 = mid_fun(41)
+middles_42 = mid_fun(42)
+middles_43 = mid_fun(43)
+middles_44 = mid_fun(44)
+middles_45 = mid_fun(45)
+middles_46 = mid_fun(46)
+middles_47 = mid_fun(47)
+middles_48 = mid_fun(48)
+middles_49 = mid_fun(49)
+middles_50 = mid_fun(50)
+middles_51 = mid_fun(51)
+middles_52 = mid_fun(52)
+middles_53 = mid_fun(53)
+middles_55 = mid_fun(55)
+middles_56 = mid_fun(56)
+middles_57 = mid_fun(57)
+middles_59 = mid_fun(59)
+middles_60 = mid_fun(60)
+middles_61 = mid_fun(61)
+middles_62 = mid_fun(62)
+middles_64 = mid_fun(64)
+middles_65 = mid_fun(65)
+middles_66 = mid_fun(66)
+middles_68 = mid_fun(68)
+middles_69 = mid_fun(69)
+middles_71 = mid_fun(71)
+middles_73 = mid_fun(73)
+middles_74 = mid_fun(74)
+middles_75 = mid_fun(75)
+middles_76 = mid_fun(76)
+middles_77 = mid_fun(77)
+middles_80 = mid_fun(80)
+middles_81 = mid_fun(81)
+
+#Here would it work better if GBT10B_KM (?????)
+base_dir = os.getenv('GBT_OUT')
+kiyo_dir = os.getenv('GBT_KM')
+data_dir = os.getenv('GBT_DATA')
+prefix = ''
+map_prefix = '' + field + '_' + '41-73' + '_'
+
+pipe_modules = []
+pipe_processes = 7 #max 8
+
+from time_stream import flag_data
+#pipe_modules.append(flag_data.FlagData)
+fd_input_root = data_dir
+fd_file_middles = file_middles
+fd_input_end = '.fits'
+fd_output_root = base_dir + 'flagged/' + prefix
+d_output_end = '.fits'
+fd_scans = ()
+fd_IFs = ()
+
+# No Hanning.  Guppi's filters take care of it.
+fd_perform_hanning = False
+fd_rotate = True
+fd_cal_scale = True
+fd_sigma_thres = 6
+fd_badness_thres = 0.1
+fd_time_cut = 40
+
+from time_stream import rebin_freq
+#pipe_modules.append(rebin_freq.RebinFreq)
+rf_input_root = os.getenv('GBT_KM') + 'flagged/'
+rf_file_middles = file_middles
+rf_input_end = '.fits'
+rf_output_root = base_dir + 'rebinned/' + prefix
+rf_output_end = '.fits'
+rf_scans = ()
+rf_IFs = ()
+
+rf_channel_width = 0.
+rf_n_bins_combined = 16
+rf_mean_instead_median = False
+
+#running pipe from here
+from time_stream import calibrate
+#pipe_modules.append(calibrate.Calibrate)
+cl_input_root = rf_output_root
+cl_file_middles = file_middles
+cl_input_end = '.fits'
+cl_output_root = base_dir + 'calibrated/' + prefix
+cl_output_end = '.fits'
+cl_scans = ()
+cl_IFs = ()
+
+cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
+
+from time_stream import rotate_pol
+#pipe_modules.append(rotate_pol.RotatePol)
+rp_input_root = cl_output_root
+#### Start from Nidhi's stuff. ####
+rp_input_root = os.getenv('GBT_NB') + 'calibrated/'
+rp_file_middles = file_middles
+rp_input_end = '.fits'
+rp_output_root = base_dir + 'pol_selected/' + prefix
+rp_output_end = '.fits'
+rp_scans = ()
+rp_IFs = ()
+
+rp_new_pols = (1,)
+rp_average_cals = True
+
+from map import dirty_map
+#pipe_modules.append(dirty_map.DirtyMapMaker)
+dm_input_root = rp_output_root
+dm_file_middles = file_middles
+dm_input_end = '.fits'
+dm_output_root = base_dir + 'maps/' + map_prefix
+dm_scans = ()
+dm_IFs = (0,)
+
+# Use new pixelization.
+dm_pixel_spacing = .0627
+dm_map_shape = (78, 43)
+dm_field_centre = (217.87, 2.0)
+#dm_field_centre = (217.9, 2.0)
+#dm_map_shape = (64, 32)
+#dm_pixel_spacing = .075
+#dm_map_shape = (128, 64)
+#dm_pixel_spacing = .0375
+dm_noise_model = 'disjoint_scans'
+dm_polarizations = ('I',)
+dm_noise_parameters_input_root = 'None'
+
+from map import clean_map
+#pipe_modules.append(clean_map.CleanMapMaker)
+cm_input_root = dm_output_root
+cm_output_root = base_dir + 'maps/' + map_prefix
+cm_polarizations = ('I',)
+
+from time_stream import subtract_map_data
+#pipe_modules.append(subtract_map_data.Subtract)
+sm_input_root = rp_output_root
+sm_file_middles = file_middles
+sm_input_end = '.fits'
+sm_output_root = base_dir + 'map_subtracted/'
+sm_output_end = '.fits'
+sm_scans = ()
+sm_IFs = ()
+
+sm_pols = ()
+sm_map_file = base_dir + 'maps/' + map_prefix + 'clean_map_I.npy'
+sm_solve_for_gain = True
+sm_gain_output_end = '_gain.pickle'
+sm_interpolation = 'linear'
+
+from time_stream import reflag
+#pipe_modules.append(reflag.ReFlag)
+sf_input_root = rp_output_root
+sf_file_middles = file_middles
+sf_input_end = '.fits'
+sf_output_root = base_dir + 'reflagged/'
+sf_output_end = '.fits'
+sf_scans = ()
+sf_IFs = ()
+
+sf_thres = 5.0
+sf_subtracted_input_root = sm_output_root
+sf_subtracted_output_root = base_dir + 'reflag_cal/'
+
+from noise import measure_noise
+#pipe_modules.append(measure_noise.Measure)
+mn_input_root = base_dir + 'map_subtracted/'
+mn_file_middles = file_middles
+mn_input_end = '.fits'
+mn_output_root = base_dir + 'noise_measurments/'
+
+mn_model = "scan_var"
+
+#### Make sub map 41 ####
+
+from map import dirty_map
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dm41_', 'dm_')))
+dm41_file_middles = middles_41
+dm41_input_root = sf_output_root
+dm41_output_root = base_dir + 'maps/' + "sess_41_calib_" + map_prefix
+
+dm41_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm41_', 'cm_')))
+cm41_input_root = dm41_output_root
+cm41_output_root = dm41_output_root
+cm41_save_noise_diag = True
+
+#### Make sub map 42 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm42_', 'dm_')))
+dm42_file_middles = middles_42
+dm42_input_root = sf_output_root
+dm42_output_root = base_dir + 'maps/' + "sess_42_calib_" + map_prefix
+
+dm42_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm42_', 'cm_')))
+cm42_input_root = dm42_output_root
+cm42_output_root = dm42_output_root
+cm42_save_noise_diag = True
+
+
+#### Make sub map 43 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm43_', 'dm_')))
+dm43_file_middles = middles_43
+dm43_input_root = sf_output_root
+dm43_output_root = base_dir + 'maps/' + "sess_43_calib_" + map_prefix
+
+dm43_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm43_', 'cm_')))
+cm43_input_root = dm43_output_root
+cm43_output_root = dm43_output_root
+cm43_save_noise_diag = True
+
+
+#### Make sub map 44 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm44_', 'dm_')))
+dm44_file_middles = middles_44
+dm44_input_root = sf_output_root
+dm44_output_root = base_dir + 'maps/' + "sess_44_calib_" + map_prefix
+
+dm44_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm44_', 'cm_')))
+cm44_input_root = dm44_output_root
+cm44_output_root = dm44_output_root
+cm44_save_noise_diag = True
+
+#### Make sub map 45 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm45_', 'dm_')))
+dm45_file_middles = middles_45
+dm45_input_root = sf_output_root
+dm45_output_root = base_dir + 'maps/' + "sess_45_calib_" + map_prefix
+
+dm45_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm45_', 'cm_')))
+cm45_input_root = dm45_output_root
+cm45_output_root = dm45_output_root
+cm45_save_noise_diag = True
+
+#### Make sub map 46 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm46_', 'dm_')))
+dm46_file_middles = middles_46
+dm46_input_root = sf_output_root
+dm46_output_root = base_dir + 'maps/' + "sess_46_calib_" + map_prefix
+
+dm46_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm46_', 'cm_')))
+cm46_input_root = dm46_output_root
+cm46_output_root = dm46_output_root
+cm46_save_noise_diag = True#
+
+#### Make sub map 47 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm47_', 'dm_')))
+dm47_file_middles = middles_47
+dm47_input_root = sf_output_root
+dm47_output_root = base_dir + 'maps/' + "sess_47_calib_" + map_prefix
+
+dm47_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm47_', 'cm_')))
+cm47_input_root = dm47_output_root
+cm47_output_root = dm47_output_root
+cm47_save_noise_diag = True
+
+#### Make sub map 48 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm48_', 'dm_')))
+dm48_file_middles = middles_48
+dm48_input_root = sf_output_root
+dm48_output_root = base_dir + 'maps/' + "sess_48_calib_" + map_prefix
+
+dm48_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm48_', 'cm_')))
+cm48_input_root = dm48_output_root
+cm48_output_root = dm48_output_root
+cm48_save_noise_diag = True
+
+#### Make sub map 49 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm49_', 'dm_')))
+dm49_file_middles = middles_49
+dm49_input_root = sf_output_root
+dm49_output_root = base_dir + 'maps/' + "sess_49_calib_" + map_prefix
+
+dm49_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm49_', 'cm_')))
+cm49_input_root = dm49_output_root
+cm49_output_root = dm49_output_root
+cm49_save_noise_diag = True
+
+#### Make sub map 50 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm50_', 'dm_')))
+dm50_file_middles = middles_50
+dm50_input_root = sf_output_root
+dm50_output_root = base_dir + 'maps/' + "sess_50_calib_" + map_prefix
+
+dm50_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm50_', 'cm_')))
+cm50_input_root = dm50_output_root
+cm50_output_root = dm50_output_root
+cm50_save_noise_diag = True
+
+#### Make sub map 51 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm51_', 'dm_')))
+dm51_file_middles = middles_51
+dm51_input_root = sf_output_root
+dm51_output_root = base_dir + 'maps/' + "sess_51_calib_" + map_prefix
+
+dm51_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm51_', 'cm_')))
+cm51_input_root = dm51_output_root
+cm51_output_root = dm51_output_root
+cm51_save_noise_diag = True
+
+#### Make sub map 52 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm52_', 'dm_')))
+dm52_file_middles = middles_52
+dm52_input_root = sf_output_root
+dm52_output_root = base_dir + 'maps/' + "sess_52_calib_" + map_prefix
+
+dm52_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm52_', 'cm_')))
+cm52_input_root = dm52_output_root
+cm52_output_root = dm52_output_root
+cm52_save_noise_diag = True
+
+#### Make sub map 53 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm53_', 'dm_')))
+dm53_file_middles = middles_53
+dm53_input_root = sf_output_root
+dm53_output_root = base_dir + 'maps/' + "sess_53_calib_" + map_prefix
+
+dm53_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm53_', 'cm_')))
+cm53_input_root = dm53_output_root
+cm53_output_root = dm53_output_root
+cm53_save_noise_diag = True
+
+#### Make sub map 55 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm55_', 'dm_')))
+dm55_file_middles = middles_55
+dm55_input_root = sf_output_root
+dm55_output_root = base_dir + 'maps/' + "sess_55_calib_" + map_prefix
+
+dm55_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm55_', 'cm_')))
+cm55_input_root = dm55_output_root
+cm55_output_root = dm55_output_root
+cm55_save_noise_diag = True
+
+#### Make sub map 56 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm56_', 'dm_')))
+dm56_file_middles = middles_56
+dm56_input_root = sf_output_root
+dm56_output_root = base_dir + 'maps/' + "sess_56_calib_" + map_prefix
+
+dm56_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm56_', 'cm_')))
+cm56_input_root = dm56_output_root
+cm56_output_root = dm56_output_root
+cm56_save_noise_diag = True
+
+#### Make sub map 57 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm57_', 'dm_')))
+dm57_file_middles = middles_57
+dm57_input_root = sf_output_root
+dm57_output_root = base_dir + 'maps/' + "sess_57_calib_" + map_prefix
+
+dm57_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm57_', 'cm_')))
+cm57_input_root = dm57_output_root
+cm57_output_root = dm57_output_root
+cm57_save_noise_diag = True
+
+#### Make sub map 59 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm59_', 'dm_')))
+dm59_file_middles = middles_59
+dm59_input_root = sf_output_root
+dm59_output_root = base_dir + 'maps/' + "sess_59_calib_" + map_prefix
+
+dm59_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm59_', 'cm_')))
+cm59_input_root = dm59_output_root
+cm59_output_root = dm59_output_root
+cm59_save_noise_diag = True
+
+#### Make sub map 61 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm61_', 'dm_')))
+dm61_file_middles = middles_61
+dm61_input_root = sf_output_root
+dm61_output_root = base_dir + 'maps/' + "sess_61_calib_" + map_prefix
+
+dm61_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm61_', 'cm_')))
+cm61_input_root = dm61_output_root
+cm61_output_root = dm61_output_root
+cm61_save_noise_diag = True
+
+#### Make sub map 62 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm62_', 'dm_')))
+dm62_file_middles = middles_62
+dm62_input_root = sf_output_root
+dm62_output_root = base_dir + 'maps/' + "sess_62_calib_" + map_prefix
+
+dm62_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm62_', 'cm_')))
+cm62_input_root = dm62_output_root
+cm62_output_root = dm62_output_root
+cm62_save_noise_diag = True
+
+#### Make sub map 64 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm64_', 'dm_')))
+dm64_file_middles = middles_64
+dm64_input_root = sf_output_root
+dm64_output_root = base_dir + 'maps/' + "sess_64_calib_" + map_prefix
+
+dm64_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm64_', 'cm_')))
+cm64_input_root = dm64_output_root
+cm64_output_root = dm64_output_root
+cm64_save_noise_diag = True
+
+#### Make sub map 65 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm65_', 'dm_')))
+dm65_file_middles = middles_65
+dm65_input_root = sf_output_root
+dm65_output_root = base_dir + 'maps/' + "sess_65_calib_" + map_prefix
+
+dm65_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm65_', 'cm_')))
+cm65_input_root = dm65_output_root
+cm65_output_root = dm65_output_root
+cm65_save_noise_diag = True
+
+#### Make sub map 66 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm66_', 'dm_')))
+dm66_file_middles = middles_66
+dm66_input_root = sf_output_root
+dm66_output_root = base_dir + 'maps/' + "sess_66_calib_" + map_prefix
+
+dm66_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm66_', 'cm_')))
+cm66_input_root = dm66_output_root
+cm66_output_root = dm66_output_root
+cm66_save_noise_diag = True
+
+#### Make sub map 68 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm68_', 'dm_')))
+dm68_file_middles = middles_68
+dm68_input_root = sf_output_root
+dm68_output_root = base_dir + 'maps/' + "sess_68_calib_" + map_prefix
+
+dm68_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm68_', 'cm_')))
+cm68_input_root = dm68_output_root
+cm68_output_root = dm68_output_root
+cm68_save_noise_diag = True
+
+#### Make sub map 69 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm69_', 'dm_')))
+dm69_file_middles = middles_69
+dm69_input_root = sf_output_root
+dm69_output_root = base_dir + 'maps/' + "sess_69_calib_" + map_prefix
+
+dm69_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm69_', 'cm_')))
+cm69_input_root = dm69_output_root
+cm69_output_root = dm69_output_root
+cm69_save_noise_diag = True
+
+#### Make sub map 71 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm71_', 'dm_')))
+dm71_file_middles = middles_71
+dm71_input_root = sf_output_root
+dm71_output_root = base_dir + 'maps/' + "sess_71_calib_" + map_prefix
+
+dm71_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm71_', 'cm_')))
+cm71_input_root = dm71_output_root
+cm71_output_root = dm71_output_root
+cm71_save_noise_diag = True
+
+#### Make sub map 73 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm73_', 'dm_')))
+dm73_file_middles = middles_73
+dm73_input_root = sf_output_root
+dm73_output_root = base_dir + 'maps/' + "sess_73_calib_" + map_prefix
+
+dm73_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm73_', 'cm_')))
+cm73_input_root = dm73_output_root
+cm73_output_root = dm73_output_root
+cm73_save_noise_diag = True
+
+#### Make sub map 74 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm74_', 'dm_')))
+dm74_file_middles = middles_74
+dm74_input_root = sf_output_root
+dm74_output_root = base_dir + 'maps/' + "sess_74_calib_" + map_prefix
+
+dm74_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm74_', 'cm_')))
+cm74_input_root = dm74_output_root
+cm74_output_root = dm74_output_root
+cm74_save_noise_diag = True
+
+#### Make sub map 75 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm75_', 'dm_')))
+dm75_file_middles = middles_75
+dm75_input_root = sf_output_root
+dm75_output_root = base_dir + 'maps/' + "sess_75_calib_" + map_prefix
+
+dm75_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm75_', 'cm_')))
+cm75_input_root = dm75_output_root
+cm75_output_root = dm75_output_root
+cm75_save_noise_diag = True
+
+#### Make sub map 76 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm76_', 'dm_')))
+dm76_file_middles = middles_76
+dm76_input_root = sf_output_root
+dm76_output_root = base_dir + 'maps/' + "sess_76_calib_" + map_prefix
+
+dm76_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm76_', 'cm_')))
+cm76_input_root = dm76_output_root
+cm76_output_root = dm76_output_root
+cm76_save_noise_diag = True
+
+#### Make sub map 77 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm77_', 'dm_')))
+dm77_file_middles = middles_77
+dm77_input_root = sf_output_root
+dm77_output_root = base_dir + 'maps/' + "sess_77_calib_" + map_prefix
+
+dm77_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm77_', 'cm_')))
+cm77_input_root = dm77_output_root
+cm77_output_root = dm77_output_root
+cm77_save_noise_diag = True
+
+#### Make sub map 80 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm80_', 'dm_')))
+dm80_file_middles = middles_80
+dm80_input_root = sf_output_root
+dm80_output_root = base_dir + 'maps/' + "sess_80_calib_" + map_prefix
+
+dm80_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm80_', 'cm_')))
+cm80_input_root = dm80_output_root
+cm80_output_root = dm80_output_root
+cm80_save_noise_diag = True
+
+#### Make sub map 81 ####
+
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dm81_', 'dm_')))
+dm81_file_middles = middles_81
+dm81_input_root = sf_output_root
+dm81_output_root = base_dir + 'maps/' + "sess_81_calib_" + map_prefix
+
+dm81_noise_parameters_input_root = mn_output_root
+
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cm81_', 'cm_')))
+cm81_input_root = dm81_output_root
+cm81_output_root = dm81_output_root
+cm81_save_noise_diag = True

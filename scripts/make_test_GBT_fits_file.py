@@ -9,11 +9,20 @@ testing, or regression testing.
 """
 
 import os
+import copy
+import shelve
 
 import scipy as sp
 import pyfits
 
-data_file_name  = (os.getenv('GBT10B_DATA')  + 
+from core import fitsGBT
+from time_stream import rebin_freq, rebin_time, split_bands, combine_cal
+from time_stream import rotate_pol
+from noise import measure_noise
+
+
+#### The origional spectrometer gbt test data file.
+data_file_name  = (os.getenv('GBT10B_SPEC')  + 
                   '/01_wigglez22hr_azel_17-24.raw.acs.fits')
 #                  '04_wigglez1hr_azel_113-120.raw.acs.fits')
 test_file_name = './testdata/testfile_GBTfits.fits'
@@ -51,3 +60,72 @@ inds = sp.array(inds_total)
 
 testhdulist[1].data = fitsdata[inds]
 testhdulist.writeto(test_file_name)
+
+
+#### A series of test data files created from guppi data.
+guppi_file_name  = (os.getenv('GBT_DATA')  + 
+                    '/GBT10B_036/42_wigglez15hrst_ralongmap_230-237.fits')
+Reader = fitsGBT.Reader(guppi_file_name)
+Blocks = Reader.read((0,1), None)
+for Data in Blocks:
+    rebin_freq.rebin(Data, 32, True, True)
+    rebin_time.rebin(Data, 2)
+
+split_Blocks = ()
+for Data in Blocks:
+    split_Blocks += split_bands.split(Data, 2, 32, 25)
+
+comb_Blocks = copy.deepcopy(split_Blocks)
+for Data in comb_Blocks:
+    combine_cal.combine(Data, sub_mean=False)
+
+rot_Blocks = copy.deepcopy(comb_Blocks)
+for Data in rot_Blocks:
+    rotate_pol.rotate(Data)
+
+# Measure some parameters from the noise.
+# Sort into 2 bands
+file_pars = {}
+band1_Blocks = []
+band2_Blocks = []
+band1 = 0
+band2 = 0
+for Data in rot_Blocks:
+    band = int(round(Data.field["CRVAL1"]/1e6))
+    if band == band1:
+        band1_Blocks.append(Data)
+    elif band == band2:
+        band2_Blocks.append(Data)
+    elif not band1:
+        band1 = band
+        band1_Blocks.append(Data)
+    elif not band2:
+        band2 = band
+        band2_Blocks.append(Data)
+    else :
+        raise RuntimeError()
+
+# Measure the parameters.
+file_pars[band1] = measure_noise.measure_noise_parameters(band1_Blocks, 
+                            ["channel_var", "mean_over_f",
+                             "freq_modes_over_f_2", "freq_modes_over_f_4",
+                             "freq_modes_over_f_6"])
+file_pars[band2] = measure_noise.measure_noise_parameters(band2_Blocks, 
+                            ["channel_var", "mean_over_f",
+                             "freq_modes_over_f_2", "freq_modes_over_f_4",
+                             "freq_modes_over_f_6"])
+out_db = shelve.open('./testdata/testfile_guppi_noise_parameters.shelve', 'n')
+out_db["testfile_guppi_rotated"] = file_pars
+out_db.close()
+
+
+
+Writer = fitsGBT.Writer(Blocks)
+Writer.write('./testdata/testfile_guppi_rebinned.fits')
+Writer = fitsGBT.Writer(split_Blocks)
+Writer.write('./testdata/testfile_guppi_split.fits')
+Writer = fitsGBT.Writer(comb_Blocks)
+Writer.write('./testdata/testfile_guppi_combined.fits')
+Writer = fitsGBT.Writer(rot_Blocks)
+Writer.write('./testdata/testfile_guppi_rotated.fits')
+

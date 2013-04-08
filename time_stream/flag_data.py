@@ -16,12 +16,13 @@ import hanning
 import cal_scale
 from time_stream import rotate_pol
 
-class FlagData(base_single.BaseSingle) :
-    """Pipeline module that flags rfi and other forms of bad data.
+# XXX
+#import matplotlib.pyplot as plt
 
-    For lots of information look at the doc-string for 
-    flag_data_aravind.apply_cuts.
-    """
+class FlagData(base_single.BaseSingle) :
+    '''Pipeline module that flags RFI and other forms of bad data.
+
+    '''
 
     prefix = 'fd_'
     params_init = {
@@ -29,20 +30,35 @@ class FlagData(base_single.BaseSingle) :
                    # once normalized to the time median.
                    'perform_hanning' : False,
                    'cal_scale' : False,
+                   'cal_phase' : False,
                    # Rotate to XX,XY,YX,YY is True.
                    'rotate' : False,
                    # Any frequency with variance > sigma_thres sigmas will be 
                    # flagged (recursively).
-                   'sigma_thres' : 6,
+                   'sigma_thres' : 6.,
                    # A Data that has more than badness_thres frequencies flagged
-                   # (as a %) will be considered bad.
+                   # (as a fraction) will be considered bad.
                    'badness_thres' : 0.1,
                    # How many times to hide around a bad time.
                    'time_cut' : 40
                    }
     feedback_title = 'New flags each data Block: '
     
-    def action(self, Data) :
+    def action(self, Data):
+        '''Prepares Data and flags RFI.
+        
+        Parameters
+        ----------
+        Data : DataBlock
+            Contains information in a usable format direct from GBT. 
+
+        Returns
+        -------
+        Data : DataBlock
+            The input `Data` with RFI flagged. Will also be cal scaled and
+            rotated to XX,YY... if so chosen.
+
+        '''
         params = self.params
         # Keep track of how many pre existing flags there are for feedback
         # purposes.
@@ -55,8 +71,9 @@ class FlagData(base_single.BaseSingle) :
         if params["perform_hanning"] :
             hanning.hanning_smooth(Data)
             Data.add_history('Hanning smoothed.')
-        if params["cal_scale"] :
-            cal_scale.scale_by_cal(Data, True, False, False)
+        if params["cal_scale"] or params["cal_phase"]:
+            cal_scale.scale_by_cal(Data, params['cal_scale'], False, False,
+                                  False, rotate=params['cal_phase'])
             Data.add_history('Converted to units of noise cal temperture.')
         # Flag the data.
         apply_cuts(Data, sigma_thres=params['sigma_thres'], 
@@ -68,29 +85,70 @@ class FlagData(base_single.BaseSingle) :
                     + str(self.params['time_cut'])))
         # Report the number of new flags.
         new_flags = ma.count_masked(Data.data) - already_flagged
-        self.block_feedback = str(new_flags) + ', '
+        percent = float(new_flags) / Data.data.size * 100
+        self.block_feedback = '%d (%f%%), ' % (new_flags, percent)
         return Data
 
 def apply_cuts(Data, sigma_thres=6, badness_thres=0.1, time_cut=40):
-    """Flags bad data from RFI and far outliers.
-    See flag_data for other parameters."""
+    '''Flags bad data from RFI and far outliers.
+
+    See `flag_data()` for parameter explanations and more info.
+    '''
     badness = flag_data(Data, sigma_thres, badness_thres, time_cut)
     # Can print or return badness here if you would like
     # to see if the Data had a problem in time or not.
     return
 
 def flag_data(Data, sigma_thres, badness_thres, time_cut):
-    '''Flag bad data from RFI and far outliers. See params_init dictionary
-    for sigma_thres, badness_thres. See 'flag_size' in 
-    destroy_time_with_mean_arrays for time_cut.'''
+    '''Flag bad data from RFI and far outliers.
+
+    Parameters
+    ----------
+    Data : DataBlock
+        Contains information in a usable format direct from GBT. Bad
+        frequencies will be flagged in all polarizations and cal states.
+    sigma_thres : int or float
+        Any frequency with variance > `sigma_thres` sigmas will be 
+        flagged (recursively).
+    badness_thres : float
+        A `Data` that has more than `badness_thres` frequencies flagged
+        (as a fraction) will be considered 'bad'. `0` means that everything
+        will be considered bad while `1` means nothing will be. 
+    time_cut : int
+        How many time bins (as an absolute number) to flag if `Data` has been
+        considered 'bad'. See `destroy_time_with_mean_arrays` for more 
+        infomation on this.
+
+    Returns
+    -------
+    badness : bool
+        Returns `True` iff a `Data` has been considered 'bad'.
+    
+    Notes
+    -----
+    'badness' is when more than a certain fraction of freqs has been flagged
+    from `Data`. This certain fraction comes from `badness_thres`. `Data` that
+    is 'bad' has a lot of frequencies flagged and this can because a lot of 
+    frequencies are actually bad or because there was a blip in time (maybe
+    the machine choked for a second).
+    If a `Data` gets considered 'bad' then the algorithm tries to find
+    something wrong in time (and masks those bad times) and redoes the RFI
+    flagging. If there is a significant decrease (5%) in the number of 
+    frequencies flagged, then the problem was in time and it uses the mask
+    from this second run with bad times flagged. If not, then the `Data` is
+    bad either way and it uses the mask from the first run. Increasing the
+    `time_cut` in this situation is not recommended since you lose a lot more
+    data (there are 10 times as many freq. bins as time bins in `Data`). 
+    '''
     # Flag data on a [deep]copy of Data. If too much destroyed,
     # check if localized in time. If that sucks too, then just hide freq.
+
     Data1 = copy.deepcopy(Data)
     itr = 0            # For recursion
     max_itr = 20       # For recursion
     bad_freqs = []
     amount_masked = -1 # For recursion
-    while not (amount_masked == 0) and itr < max_itr:                         
+    while not (amount_masked == 0) and itr < max_itr:
         amount_masked = destroy_with_variance(Data1, sigma_thres, bad_freqs) 
         itr += 1
     bad_freqs.sort()
@@ -121,15 +179,56 @@ def flag_data(Data, sigma_thres, badness_thres, time_cut):
         # a problem in time and it was solved, so use this mask.
         # If the data is still bad, then the mask from Data1 will be used.
         if not badness:
-            mask = Data2.data.mask
+            itr = 0
+            while not (amount_masked == 0) and itr < max_itr:
+                amount_masked = destroy_with_variance(Data2, sigma_thres,
+                                                      bad_freqs) 
+                itr += 1
+            Data1 = Data2
+    # We've flagged the RFI down to the foreground limit.  Filter out the
+    # foregrounds and flag again to get below the foreground limit.
+    # TODO, hard coded time_bins_smooth acctually depends on the scan speed and
+    # the time sampling.
+    filter_foregrounds(Data1, n_bands=40, time_bins_smooth=10)
+    itr = 0 
+    while not (amount_masked == 0) and itr < max_itr:
+        amount_masked = destroy_with_variance(Data1, sigma_thres, bad_freqs) 
+        itr += 1
+    mask = Data1.data.mask
+    # Finally copy the mask to origional data block.
     Data.data.mask = mask
     return badness
 
 def destroy_with_variance(Data, sigma_thres=6, bad_freq_list=[]):
-    '''Mask spikes in Data using variance. Polarizations must be in
-    XX,XY,YX,YY format.
-    sigma_thres represents how sensitive the flagger is (smaller = more masking).
-    The flagged frequencies are appended to bad_freq_list.'''
+    '''Mask frequencies with high variance.
+
+    Since the signal we are looking for is much weaker than what is in `Data`,
+    any frequency that is 'too spiky' is not signal and is RFI instead. Using
+    variance as a test really makes this 'spikyness' stand out.
+
+    Parameters
+    ----------
+    Data : DataBlock
+        Contains information in a usable format direct from GBT. Bad
+        frequencies will be flagged in all polarizations and cal states.
+    sigma_thres : int or float
+        Any frequency with variance > `sigma_thres` sigmas will be 
+        flagged (recursively).
+    bad_freq_list : list of int
+        A list of bad frequencies. Since this method is called over and over,
+        this list keeps track of what has been flagged. Bad frequencies that
+        are found will be appended to this list.
+
+    Returns
+    -------
+    amount_masked : int
+        The amount of frequencies masked.
+
+    Notes
+    -----
+    Polarizations must be in XX,XY,YX,YY format.
+
+    '''
     XX_YY_0 = ma.mean(Data.data[:, 0, 0, :], 0) * ma.mean(Data.data[:, 3, 0, :], 0)
     XX_YY_1 = ma.mean(Data.data[:, 0, 1, :], 0) * ma.mean(Data.data[:, 3, 1, :], 0)
     # Get the normalized variance array for each polarization.
@@ -167,11 +266,22 @@ def destroy_with_variance(Data, sigma_thres=6, bad_freq_list=[]):
     return amount_masked
 
 def destroy_time_with_mean_arrays(Data, flag_size=40):
-    '''If there is a problem in time, the mean over all frequencies
+    '''Mask times with high means.
+    
+    If there is a problem in time, the mean over all frequencies
     will stand out greatly [>10 sigma has been seen]. Flag these bad
-    times and +- flag_size times around it. Will only be called if a Data has
-    "badness" [see determine_badness].'''
-    # Get the means over all frequencies.
+    times and +- `flag_size` times around it. Will only be called if `Data`
+    has 'badness'.
+
+    Parameters
+    ----------
+    Data : DataBlock
+        Contains information in a usable format direct from GBT. Bad
+        times will be flagged in all polarizations and cal states.
+    time_cut : int
+        How many frequency bins (as an absolute number) to flag in time.
+    '''
+    # Get the means over all frequencies. (for all pols. and cals.)
     a = ma.mean(Data.data[:, 0, 0, :], -1)
     b = ma.mean(Data.data[:, 1, 0, :], -1)
     c = ma.mean(Data.data[:, 2, 0, :], -1)
@@ -203,6 +313,60 @@ def destroy_time_with_mean_arrays(Data, flag_size=40):
     for time in bad_times:
         Data.data[(time-flag_size):(time+flag_size),:,:,:].mask = True
     return
+
+def filter_foregrounds(Data, n_bands=20, time_bins_smooth=10.):
+    """Gets an estimate of the foregrounds and subtracts it out of the data.
+    
+    The Foreground removal is very rough, just used to push the foreground down
+    a bunch so the RFI can be more easily found.
+    Two things are done to estimate the foregrounds: averaging over a fairly
+    wide band, and smoothing to just below the beam crossing time scale.
+
+    Parameters
+    ----------
+    Data : DataBolock object
+        Data from which to remove the foregrounds.
+    n_bands : int
+        Number of bands to split the data into.  Forgrounds are assumed to
+        be the same throughout this band.
+    time_bins : float
+        Number of time bins to smooth over to find the foregrounds (full width
+        half max of the filter kernal). Should be
+        shorter than the beam crossing time (by about a factor of 2).
+    """
+    
+    # Some basic numbers.
+    n_chan = Data.dims[-1]
+    sub_band_width = float(n_chan)/n_bands
+    # First up, initialize the smoothing kernal.
+    width = time_bins_smooth/2.355
+    # Two sigma edge cut off.
+    nk = round(4*width) + 1
+    smoothing_kernal = sig.gaussian(nk, width)
+    smoothing_kernal /= sp.sum(smoothing_kernal)
+    smoothing_kernal.shape = (nk, 1, 1)
+    # Now loop through the sub-bands. Foregrounds are assumed to be identical
+    # within a sub-band.
+    for subband_ii in range(n_bands):
+        # Figure out what data is in this subband.
+        band_start = round(subband_ii * sub_band_width)
+        band_end = round((subband_ii + 1) * sub_band_width)
+        data = Data.data[:,:,:,band_start:band_end]
+        # Estimate the forgrounds.
+        # Take the band mean.
+        foregrounds = ma.mean(data, -1)
+        # Now low pass filter.
+        fore_weights = (sp.ones(foregrounds.shape, dtype=float)
+                        - ma.getmaskarray(foregrounds))
+        foregrounds -= ma.mean(foregrounds, 0)
+        foregrounds = foregrounds.filled(0)
+        foregrounds = sig.convolve(foregrounds, smoothing_kernal, mode='same')
+        fore_weights = sig.convolve(fore_weights, smoothing_kernal,
+                                    mode='same')
+        foregrounds /= fore_weights
+        # Subtract out the foregrounds.
+        data[...] -= foregrounds[:,:,:,None]
+
 
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":

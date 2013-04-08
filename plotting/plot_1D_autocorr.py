@@ -26,7 +26,7 @@ def save_1D_corr(mode_number, high, save):
     '''very hardcoded'''
     # Load pickle file.
 #    file_name = "/mnt/raid-project/gmrt/eswitzer/wiggleZ/modetest/73_ABCD_all_%d_modes_real3map/New_Slices_object.pkl" % (mode_number)
-    file_name = "/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/73_ABCD_all_15_modes_realmap_ra_fixed/New_Slices_object.pkl"
+    file_name = "/mnt/raid-project/gmrt/calinliv/wiggleZ/corr/doctest/New_Slices_object.pkl"
     f = open(file_name, "r")
     F = cPickle.load(f)
     f.close()
@@ -125,7 +125,7 @@ def save_1D_corr(mode_number, high, save):
        plt.axis([0.9, 100, 0.001, 1.0])
     
     if save:
-        name = "/cita/h/home-2/calinliv/Desktop/figures/check/1D_corr_map_%d_ra_fixed.png" % (mode_number)
+        name = "/cita/h/home-2/calinliv/Desktop/figures/check/1D_corr_map_%d_doctest.png" % (mode_number)
         #f = open(name, "w")
         plt.savefig(name)
 

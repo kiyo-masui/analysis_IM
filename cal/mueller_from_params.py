@@ -1,4 +1,6 @@
-"""Script for generating mueller matrix elements from mueller params"""
+"""Script for generating mueller matrix elements from mueller params (generated using any script), expected params are (in order): frequency, deltaG, alpha, psi, phi, epsilon, chi, and flux.
+Run from analysis_IM: python cal/mueller_from_params.py (note that it uses the file mueller_params_calc.txt that is currently in that folder). 
+"""
 
 import scipy as sp
 import numpy.ma as ma
@@ -50,7 +52,7 @@ for i in range(0,freq_limit):
     m_total[3,3,i] = flux*(sp.cos(al)*sp.cos(al)*sp.cos(ps)+sp.sin(al)*sp.sin(al)*sp.cos(ps+2*ch))
     M_total = sp.mat(m_total[:,:,i])
 #   print M_total
-    M_total = M_total.I
+#    M_total = M_total.I
 #   M_astron = sp.mat(m_astron[:,:,i])
 #   M_total = M_astron*M_total
     m_tot[i,0] = mp[i,0]
@@ -71,9 +73,9 @@ for i in range(0,freq_limit):
     m_tot[i,15] = M_total[3,2]
     m_tot[i,16] = M_total[3,3]
         
-prefix = '78'
+prefix = '18'
 #path = '$GBT10B_OUT/mueller_params/'
-suffix = '_mueller_matrix_from_params.txt'
+suffix = '_mueller_matrix_from_inverted_params.txt'
 filename = prefix+suffix
 np.savetxt(filename, m_tot[:,:], delimiter=' ')
 
