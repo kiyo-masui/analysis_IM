@@ -68,9 +68,14 @@ from plotting import plot_cube as pc
 #multiplier = 1000.
 #sigmarange = 3.
 
-full_list = ['/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/3903866168_simulation/gaussian_signal_simulation.npy',
-             '/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/3903866168_simulation/sec_A_15hr_41-90_clean_map_I.npy',
-             '/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/3903866168_simulation/sec_A_15hr_41-90_clean_map_I_thermal.npy']
+full_list = ['/mnt/raid-project/gmrt/tcv/maps/15hr_41-80_avg_fdgp_new/secA_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy',
+             '/mnt/raid-project/gmrt/tcv/maps/15hr_41-80_avg_fdgp_new/secA_15hr_41-80_avg_fdgp_new_clean_map_Q_800.npy',
+             '/mnt/raid-project/gmrt/tcv/maps/15hr_41-80_avg_fdgp_new/secA_15hr_41-80_avg_fdgp_new_clean_map_U_800.npy',
+             '/mnt/raid-project/gmrt/tcv/maps/15hr_41-80_avg_fdgp_new/secA_15hr_41-80_avg_fdgp_new_clean_map_V_800.npy']
+
+#full_list = ['/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/3903866168_simulation/gaussian_signal_simulation.npy',
+#             '/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/3903866168_simulation/sec_A_15hr_41-90_clean_map_I.npy',
+#             '/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/3903866168_simulation/sec_A_15hr_41-90_clean_map_I_thermal.npy']
 
 #full_list = ["/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_delta/15hr_v2/reg15data.npy",
 #             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr_v2/reg15separable.npy",

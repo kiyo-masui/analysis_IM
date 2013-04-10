@@ -97,8 +97,7 @@ class CompileAutopower(object):
 
         pwr_map.apply_2d_trans_by_treatment(transfer_dict)
 
-        # also combine the AxB, etc. into a signal piece that is subtracted
-        signal2d_agg = pwr_map.agg_stat_2d_pwrspec()
+        #signal2d_agg = pwr_map.agg_stat_2d_pwrspec()
 
         kx = pwr_map.kx_2d["center"]
         ky = pwr_map.ky_2d["center"]

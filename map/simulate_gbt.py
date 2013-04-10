@@ -146,6 +146,7 @@ class SimulateGbt(object):
                'outfile_physical': None,
                'outfile_raw': None,
                'outfile_delta': None,
+               'outfile_optsim': None,
                'outfile_beam': self.output_signal,
                'outfile_meansub': None,
                'outfile_degrade': None,
