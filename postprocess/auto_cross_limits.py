@@ -3,7 +3,13 @@ both the cross power and the auto power."""
 
 import numpy as np
 from scipy import stats, interpolate, integrate, optimize
+import matplotlib
 import matplotlib.pyplot as plt
+
+# Need this got get rid of 'Type 3 fonts' that MNRAS didn't like.
+matplotlib.rcParams['ps.useafm'] = True
+matplotlib.rcParams['pdf.use14corefonts'] = True
+matplotlib.rcParams['text.usetex'] = True
 
 #### Parameters ####
 

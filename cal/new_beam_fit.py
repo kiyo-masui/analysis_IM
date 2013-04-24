@@ -90,6 +90,5 @@ pol_beam.plot_beam_map(beam_map[35,...])
 
 
 
-
 # Other usefull plots, if you have two beam fits you want to compare.
 pol_beam.compare_beam_maps(beam_map_295[35], beam_map_147[35], 1)
