@@ -9,7 +9,9 @@ import scipy as sp
 field = '1hr'
 
 sessions_10B = range(41, 90)
-sessions_11B = range(1, 19)
+# The data for session 14 really messed up.
+sessions_11B = range(1, 14) + range(15, 19)
+
 
 file_middles = tuple(dir_data.get_data_files(sessions_11B, field=field, 
                                               project="GBT11B_055", 
@@ -59,7 +61,7 @@ prefix = ''
 map_prefix = '' + field + '_' + '41-90' + '_'
 
 # Maximum number of processes to use.
-pipe_processes = 12
+pipe_processes = 22
 
 
 ####  List of modules to execute.  ####
@@ -67,17 +69,17 @@ pipe_modules = []
 
 #### Calibration ####
 
-from time_stream import flag_data
-pipe_modules.append(flag_data.FlagData)
+#from time_stream import flag_data
+#pipe_modules.append(flag_data.FlagData)
 
-from time_stream import rebin
-pipe_modules.append(rebin.Rebin)
+#from time_stream import rebin
+#pipe_modules.append(rebin.Rebin)
 
-from time_stream import band_stop
-pipe_modules.append(band_stop.BandStop)
+#from time_stream import band_stop
+#pipe_modules.append(band_stop.BandStop)
 
-from time_stream import split_bands
-pipe_modules.append(split_bands.SplitBands)
+#from time_stream import split_bands
+#pipe_modules.append(split_bands.SplitBands)
 
 #from time_stream import flux_diff_gain_cal
 #pipe_modules.append(flux_diff_gain_cal.Calibrate)
@@ -105,8 +107,8 @@ pipe_modules.append(split_bands.SplitBands)
 #from time_stream import reflag
 #pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
 
-#from noise import measure_noise
-#pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
+from noise import measure_noise
+pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
 #from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
@@ -308,7 +310,7 @@ mn2_input_root = sf2_subtracted_output_root
 mn2_file_middles = file_middles
 mn2_input_end = '.fits'
 mn2_output_root = base_dir + 'noise_measurments_sec/'
-mn2_output_filename = "noise_parameters.shelve"
+mn2_output_filename = "noise_parameters_1hr.shelve"
 mn2_save_spectra_plots = True
 mn2_time_block = 'scan'
 mn2_scans = ()

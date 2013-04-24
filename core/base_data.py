@@ -72,7 +72,7 @@ class BaseData(object) :
         self._verify_single_axis_names(a_names)
         self.field[field_name] = sp.array(field_data)
         self.field_axes[field_name] = tuple(a_names)
-        self.field_formats[field_name] = format
+        self.field_formats[field_name] = str(format)
 
     def _verify_single_axis_names(self, axis_names) :
         axis_indices = []
@@ -133,6 +133,8 @@ class BaseData(object) :
             # TODO: This should do something better than just check that there
             # is a string.
             if not type(self.field_formats[field_name]) is str :
+                print type(self.field_formats[field_name])
+                print self.field_formats[field_name]
                 raise ce.DataError("The field_format must be type str. field: "
                                    + field_name)
         # The opposite of the first check in the loop.

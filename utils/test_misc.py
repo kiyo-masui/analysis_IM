@@ -3,8 +3,9 @@
 import unittest
 
 import scipy as sp
+import numpy as np
 from numpy import random
-import scipy.linalg as linalg
+from scipy import linalg, special
 
 import misc as utils
 
@@ -37,14 +38,57 @@ class TestElAz2RaDec(unittest.TestCase) :
         az = 50.5
         ra, dec = utils.elaz2radecGBT(el, az, UT)
         self.assertAlmostEqual(dec, 38.43312, 1) #GBT Latitude
+        c_az, c_el = utils.radec2azelGBT(ra, dec, UT)
+        self.assertAlmostEqual(c_el, el, 1)
+        
         el = 38.43312
         az = 0.
         ra, dec = utils.elaz2radecGBT(el, az, UT)
         self.assertAlmostEqual(dec, 90, 1)
+        c_az, c_el = utils.radec2azelGBT(ra, dec, UT)
+        self.assertAlmostEqual((c_az + 180) % 360, (az + 180) % 360, 1)
+        self.assertAlmostEqual(c_el, el, 1)
+        
         el = 90 - 38.43312
         az = 180.
         ra, dec = utils.elaz2radecGBT(el, az, UT)
         self.assertAlmostEqual(dec, 0, 1)
+        c_az, c_el = utils.radec2azelGBT(ra, dec, UT)
+        self.assertAlmostEqual(c_az, az, 1)
+        self.assertAlmostEqual(c_el, el, 1)
+
+class TestAzEl2P_GBT(unittest.TestCase):
+
+    def nieve_conversion(self, az, el):
+        """Basic conversion. Ignores precesions and only works for 
+        -90 < p < 90."""
+        
+        az_r = az * np.pi / 180
+        el_r = el * np.pi / 180
+        lat_r = (38. + 25./60 + 59.23/360) * np.pi / 180
+
+        sin_dec = np.sin(lat_r) * np.sin(el_r)
+        sin_dec += np.cos(lat_r) * np.cos(el_r) * np.cos(az_r)
+        dec_r = np.arcsin(sin_dec)
+
+        sin_p = -np.sin(az_r) * np.cos(lat_r) / np.cos(dec_r)
+        return np.arcsin(sin_p) * 180. / np.pi
+
+    def test_known_cases(self):
+        UT = '2000-01-01T12:00:00.00'
+        self.assertAlmostEqual(utils.azel2pGBT(0, 60, UT) % 360, 180, 1)
+        self.assertAlmostEqual(utils.azel2pGBT(90, 89.99, UT) % 360, 270, 1)
+        self.assertAlmostEqual(utils.azel2pGBT(270, 89.99, UT) % 360, 90, 1)
+
+    def test_simple_conversion(self):
+        UT = '2000-01-01T12:00:00.00'
+        self.assertAlmostEqual(utils.azel2pGBT(120, 88, UT) % 360, 
+                               self.nieve_conversion(120, 88) % 360, 0)
+        self.assertAlmostEqual(utils.azel2pGBT(15, 5, UT) % 360, 
+                               self.nieve_conversion(15, 5) % 360, 0)
+        self.assertAlmostEqual(utils.azel2pGBT(210, 30, UT) % 360, 
+                               self.nieve_conversion(210, 30) % 360, 0)
+
 
 class TestMakeMapGrid(unittest.TestCase) :
     
@@ -85,7 +129,8 @@ class TestAmpFit(unittest.TestCase):
         data = sp.arange(10, dtype=float)
         theory = data/2.0
         C = sp.identity(10)
-        a, s = utils.ampfit(data, C, theory)
+        out = utils.ampfit(data, C, theory)
+        a, s = out['amp'], out['error']
         self.assertAlmostEqual(a, 2)
 
     def test_uncorrelated_noscatter_error(self):
@@ -93,7 +138,8 @@ class TestAmpFit(unittest.TestCase):
         amp = 5.0
         theory = data/amp
         C = sp.diag((sp.arange(10, dtype=float) + 1.0)**2)
-        a, s = utils.ampfit(data, C, theory)
+        out = utils.ampfit(data, C, theory)
+        a, s = out['amp'], out['error']
         self.assertAlmostEqual(a, amp)
         self.assertAlmostEqual(s/a, 1.0/sp.sqrt(10))
 
@@ -104,7 +150,8 @@ class TestAmpFit(unittest.TestCase):
         theory = data/amp
         C = sp.diag((sp.arange(n, dtype=float) + 1.0)**2)
         data += random.normal(size=n)*data
-        a, s = utils.ampfit(data, C, theory)
+        out = utils.ampfit(data, C, theory)
+        a, s = out['amp'], out['error']
         self.assertTrue(sp.allclose(a, amp, rtol=5.0/sp.sqrt(n), atol=0))
         # Expect the next line to fail 1/100 trials.
         self.assertFalse(sp.allclose(a, amp, rtol=0.01/sp.sqrt(n), atol=0))
@@ -130,7 +177,8 @@ class TestAmpFit(unittest.TestCase):
         rand_vals = random.normal(size=n)*sp.sqrt(h)
         # Rotate back.
         data += sp.dot(R.T, rand_vals)
-        a, s = utils.ampfit(data, C, theory)
+        out = utils.ampfit(data, C, theory)
+        a, s = out['amp'], out['error']
         self.assertTrue(sp.allclose(a, amp, atol=5.0*s, rtol=0))
         # Expect the next line to fail 1/100 trials.
         self.assertFalse(sp.allclose(a, amp, atol=0.01*s, rtol=0))
@@ -225,6 +273,67 @@ class Test_OrthoPoly(unittest.TestCase):
                     self.assertTrue(sp.alltrue(abs(prod - 1.) < 1e-8))
                 else:
                     self.assertTrue(sp.alltrue(abs(prod) < 1e-8))
+
+class TestOrthoPoly2D(unittest.TestCase):
+    """Unit tests for the 2D orthonormal polynomial generator."""
+
+    def test_raise_errors_shape(self):
+        # Not 2D.
+        self.assertRaises(ValueError, utils.ortho_poly_2D, np.zeros(5), 
+                          np.zeros(5), 4, np.zeros(5))
+        # Not broadcastable.
+        self.assertRaises(ValueError, utils.ortho_poly_2D, np.zeros((5, 5)), 
+                          np.zeros(3), 4, np.zeros(5))
+        self.assertRaises(ValueError, utils.ortho_poly_2D, np.zeros((5, 5)), 
+                          np.zeros((5, 1)), 4, np.zeros((5, 6)))
+        self.assertRaises(ValueError, utils.ortho_poly_2D, np.zeros((5, 5)), 
+                          np.zeros((1, 5)), 4, np.zeros((5, 5, 1)))
+        # Make sure the output is the right shape.
+        x = np.arange(5)
+        x.shape = (5, 1)
+        y = np.arange(7)
+        y.shape = (1, 7)
+        #out = utils.ortho_poly_2D(x, y, 3, 1.)
+        #self.assertEquals(out.shape, (3, 3, 5, 7))
+
+    def test_gets_legendre(self):
+        # Define problem size.
+        m = 100
+        n = 8
+        x = np.arange(m)
+        x.shape = (m, 1)
+        y = np.arange(m)
+        y.shape = (1, m)
+        # Normalized domain.
+        z = (np.arange(m, dtype=float) + 0.5) * 2. / m - 1.
+        # Generate exact Legendre.
+        legendre = np.zeros((n, n, m, m), dtype=float)
+        for ii in range(n):
+            for jj in range(n - ii):
+                ljj = special.legendre(jj)
+                lii = special.legendre(ii)
+                this_leg = lii(z)
+                this_leg.shape = (m, 1)
+                this_leg = this_leg * ljj(z)
+                # Normalize.
+                this_leg /= np.sqrt(np.sum(this_leg**2))
+                legendre[ii,jj,...] = this_leg
+        # Generate the same with Gram-Schmidt.
+        #out = utils.ortho_poly_2D(x, y, n, 1.)
+        # Check that they are the same to within the a few times the number of
+        # points. Absolute toerance ~1/m**2 because 1/m is the magnitude of 
+        # the elements and I want an precision of 1/m.
+        #plt.imshow(out[1, 2])
+        #plt.colorbar()
+        #plt.figure()
+        #plt.imshow(legendre[1, 2])
+        #plt.colorbar()
+        #plt.figure()
+        #plt.imshow(out[1, 2] - legendre[1, 2])
+        #plt.colorbar()
+        #plt.show()
+        #self.assertTrue(np.allclose(out, legendre, atol=5./m**2))
+
 
 
 if __name__ == '__main__' :

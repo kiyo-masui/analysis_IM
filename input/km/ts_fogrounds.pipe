@@ -49,10 +49,11 @@ map_centre = (217.87, 2.0)
 map0_shape = (96, 52)
 map0_spacing = .050
 # Performance limited maps.
-#map_shape = (64, 34)
-#map_spacing = .07
-map_shape = (72, 38)
-map_spacing = .0627
+map_shape = (64, 34)
+map_spacing = .07
+# XXX
+#map_shape = (72, 38)
+#map_spacing = .0627
 
 base_dir_main = os.getenv('GBT_OUT')
 base_dir_new = "/mnt/raid-project/gmrt/kiyo/gbt_out_new/"
@@ -60,7 +61,8 @@ base_dir = "/mnt/raid-project/gmrt/kiyo/gbt_out_fg/"
 data_dir = os.getenv('GBT_DATA')
 base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
-map_base = base_dir + 'maps/june28/'
+map_base = base_dir + 'maps/july10/'
+#map_base = base_dir + 'maps/July9/'
 #map_base = '/mnt/scratch-pen/kiyo/gbt_out/' + 'maps/june8/'
 
 
@@ -118,17 +120,17 @@ pipe_modules = []
 #from noise import measure_noise
 #pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
-from map import dirty_map
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+#from map import dirty_map
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
-#from map import clean_map
+from map import clean_map
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
 
 
 #### Parameters for the various modules. ####
@@ -283,7 +285,7 @@ tf2_scans = ()
 tf2_IFs = ()
 
 tf2_output_filename = "foreground_modes.shelve"
-tf2_n_modes_removed = 3
+tf2_n_modes_removed = 5
 
 # second_flag
 sf2_input_root = mc2_output_root
@@ -336,6 +338,7 @@ dmA_time_block = 'scan'
 dmA_n_files_group = 280  # tpb nodes.
 #dmA_n_files_group = 120
 dmA_frequency_correlations = 'measured'
+#dmA_frequency_correlations = 'None'
 dmA_number_frequency_modes = 0  
 dmA_number_frequency_modes_discard = 0
 dmA_noise_parameter_file = mn2_output_root + mn2_output_filename
@@ -343,7 +346,9 @@ dmA_deweight_time_mean = True
 dmA_deweight_time_slope = True
 dmA_interpolation = 'cubic'
 dmA_ts_foreground_mode_file = tf2_output_root + tf2_output_filename
+# XXX
 dmA_n_ts_foreground_modes = tf2_n_modes_removed
+#dmA_n_ts_foreground_modes = 0
 
 # Other maps mostly copy parameters of map A.
 dmB_file_middles = middles_b

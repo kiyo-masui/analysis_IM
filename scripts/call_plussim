@@ -1,0 +1,4 @@
+#!/bin/bash
+for i in $( seq 100 ); do
+  SIM_INDEX=$i python pipeline/manager.py input/ers/clean_plus_power/GBT_15hr_optimalmap_selfcal_762_plussim.ini
+done

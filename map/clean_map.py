@@ -115,7 +115,7 @@ class CleanMapMaker(object) :
                         print "Using noise inverse: " + noise_fname
                     all_in_fname_list.append(
                         kiyopy.utils.abbreviate_file_path(noise_fname))
-                    noise_inv = algebra.open_memmap(noise_fname, 'c')
+                    noise_inv = algebra.open_memmap(noise_fname, 'r')
                     noise_inv = algebra.make_mat(noise_inv)
                     # Two cases for the noise.  If its the same shape as the map
                     # then the noise is diagonal.  Otherwise, it should be
