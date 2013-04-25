@@ -3,7 +3,13 @@ both the cross power and the auto power."""
 
 import numpy as np
 from scipy import stats, interpolate, integrate, optimize
+import matplotlib
 import matplotlib.pyplot as plt
+
+# Need this got get rid of 'Type 3 fonts' that MNRAS didn't like.
+matplotlib.rcParams['ps.useafm'] = True
+matplotlib.rcParams['pdf.use14corefonts'] = True
+matplotlib.rcParams['text.usetex'] = True
 
 #### Parameters ####
 
@@ -15,7 +21,7 @@ CERR = 0.07
 LOW = 1e-10  # Small number in units K**2
 # k ranges for joint constraints.
 KLOW = 0.075
-KLOW = 0.1
+KLOW = 0.12
 KHIGH = 0.30
 GAUSS_ERROR = True
 DECORR = True
@@ -50,13 +56,14 @@ sim_group_1 =("pwrspec_plots/GBT_1hr_map_oldcalpolstack_x_GBT_1hr_map"
               "_svdweighted_puresignal/sim_nobeam/")
 sim_case = "power_1d_from_2d_0modes.dat"
 
-modes_15hr = 15
-modes_1hr = 45
+modes_15hr = 10
+modes_1hr = 30
 
 #case_15hr = 'pk_15modes.dat'
 #case_1hr = 'pk_45modes.dat'
-case_15hr = 'pk_decorr_%dmodes.dat' % modes_15hr
-case_1hr = 'pk_decorr_%dmodes.dat' % modes_1hr
+file_type = 'pk_decorr_%dmodes.dat'
+case_15hr = file_type % modes_15hr
+case_1hr = file_type % modes_1hr
 case_15hr_noise = 'pk_%dmodes.dat' % modes_15hr
 case_1hr_noise = 'pk_%dmodes.dat' % modes_1hr
 case_15hr_0 = 'pk_0modes.dat'
@@ -303,20 +310,20 @@ else:
     error_fact = 1.1  # 68% students t factor.
 line15 = plot_log_pos_neg_errorbar(k, imK2 * auto_pow15, 
                                    error_fact * imK2 * auto_err15,
-                                   color='k', linestyle='', marker='o')
+                                   color='g', linestyle='', marker='o')
 line1 = plot_log_pos_neg_errorbar(1.02*k, imK2 * auto_pow1, 
                                   error_fact * imK2 * auto_err1,
                                   color='b', linestyle='', marker='s')
 # Plot the cross-power r=1 line.
 k_sim, sim_pow = get_sim(data_file_root + sim_group_1 + sim_case)
-cross_line = plt.plot(k_sim, imK2*CMEAN**2*sim_pow, 'k--', lw=2.)
+cross_line = plt.plot(k_sim, imK2*CMEAN**2*sim_pow, 'r--', lw=2.)
 # Foreground PS.
 data15, data1 = get_auto_match_k(data_file_root + group_15hr + case_15hr_0,
                                  data_file_root + group_1hr + case_1hr_0)
 k_0, auto_pow15_0, tmp = data15
 k1_0, auto_pow1_0, tmp = data1
 #fg_line = plt.step(k, imK2*auto_pow1_0, 'b', where='mid', lw=2)
-fg_line = plt.step(k, imK2*auto_pow15_0, 'k', where='mid', lw=2)
+fg_line = plt.step(k, imK2*auto_pow15_0, 'g', where='mid', lw=2)
 #plt.step(k, imK2*auto_pow1_0, 'b', where='mid', lw=2)
 # Noise PS.
 data15, data1 = get_auto_match_k(data_file_root + noise_group_15hr +
@@ -329,8 +336,16 @@ k_n1, noise_pow_1hr, tmp = data1
 if not np.allclose(k, k_n) or not np.allclose(k, k_n1):
     raise RuntimeError()
 #plt.step(k, imK2*noise_pow/np.sqrt(4), 'k:', where='mid', lw=2)
-therm15_line = plt.plot(k, imK2*noise_pow_15hr/np.sqrt(4), 'k:', lw=2)
+therm15_line = plt.plot(k, imK2*noise_pow_15hr/np.sqrt(4), 'g-.', lw=2)
 therm1_line = plt.plot(k, imK2*noise_pow_1hr/np.sqrt(4), 'b:', lw=2)
+# Formatting.
+xticks = np.arange(1, 10, 1)
+xticks = list(0.01 * xticks) + list(0.1 * xticks) + list(xticks)
+plt.xticks(xticks, xticks)
+plt.ylim([1e-3, 5e3])
+plt.xlim([0.97*min(k), 0.7])
+plt.savefig('auto_spectrum_no_leg.eps', bbox_extra_artists=(xlab, ylab),
+            bbox_inches='tight')
 # Legend.
 leg = plt.legend([line15,
                   therm15_line[0],
@@ -338,21 +353,15 @@ leg = plt.legend([line15,
                   line1,
                   therm1_line[0],
                   cross_line[0]],
-                 [r'15 hr auto-power',  
-                  r'15 hr noise',
-                  r'15 hr foreground', 
-                  r'1 hr auto-power', 
-                  r'1 hr noise',
+                 [r'deep auto-power',  
+                  r'deep noise',
+                  r'deep foreground', 
+                  r'wide auto-power', 
+                  r'wide noise',
                   r'$\Omega_{\rm HI}b_{\rm HI}=0.43 \times 10^{-3}$',], 
                  prop={'size' : 16, 'family' : 'serif'}, 
                  bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
                  ncol=2, mode="expand", borderaxespad=0.)
-# Tidy up plot
-xticks = np.arange(1, 10, 1)
-xticks = list(0.01 * xticks) + list(0.1 * xticks) + list(xticks)
-plt.xticks(xticks, xticks)
-plt.ylim([1e-3, 1e4])
-plt.xlim([0.97*min(k), 0.7])
 plt.savefig('auto_spectrum.eps', bbox_extra_artists=(xlab, ylab, leg),
             bbox_inches='tight')
 
@@ -362,7 +371,7 @@ plt.savefig('auto_spectrum.eps', bbox_extra_artists=(xlab, ylab, leg),
 #intervals = [.99, .95, .68]
 #interval_cols = ['1.0', '0.8', '0.6', '0.4']
 intervals = [.95, .68]
-interval_cols = ['1.0', '0.7', '0.5']
+interval_cols = ['1.0', '0.8', '0.65']
 imK2 = 1e6
 # Set up plot.
 f = plt.figure()
@@ -437,19 +446,23 @@ for jj in range(n_intervals - 1, 0, -1):
     #plt.bar(k_left, imK2*llim[jj,:], width=dk,
     #        color=interval_cols[jj], linewidth=None)
 # Plot the auto-power upper limits.
-cross_line = plt.plot(k_sim, imK2*CMEAN**2*sim_pow, 'k--', lw=2.)
+cross_line = plt.plot(k_sim, imK2*CMEAN**2*sim_pow, 'r--', lw=2.)
 # Plot 95% upper limit if no foregrounds.
-no_f_line = plt.step(k_left, imK2*ulim_no_f[0,:], 'k', lw=3, where='post')
+no_f_line = plt.step(k_left, imK2*ulim_no_f[0,:], lw=3, where='post',
+                     color=(.4,0,0))
 # Tidy up plot
 xticks = np.arange(1, 10, 1)
 xticks = list(0.01 * xticks) + list(0.1 * xticks) + list(xticks)
 plt.xticks(xticks, xticks)
-plt.ylim([imK2*1e-9, imK2*2e-6])
+plt.ylim([imK2*2e-9, imK2*4e-7])
 plt.xlim([0.97*min(k), 0.7])
+f.subplots_adjust(top=0.7)
+leg = plt.legend([no_f_line[0], cross_line[0]], 
+                 [r'statistical limit',
+                  r'$\Omega_{\rm HI}b_{\rm HI}=0.43 \times 10^{-3}$'],
+                 'lower right', prop={'size' : 16, 'family' : 'serif'})
 plt.savefig('allowed_signal.eps', bbox_extra_artists=(xlab, ylab),
             bbox_inches='tight')
-
-
 
 
 # Full Omega*b likelihood plot.
@@ -466,7 +479,11 @@ omega *= 1e-3
 #lomega = omega
 #xscale = 'linear'
 #xlim = [0.0, 1.5]
-print "68% confidence interval:", get_conf_interval(omega, likelihood, .68)
+median = get_conf_interval(omega, likelihood, 0.)[0]
+interval = get_conf_interval(omega, likelihood, .68)
+print "68% confidence interval:", interval
+print "or:", (interval[0] + interval[1])/2, "\pm", (interval[1] - interval[0])/2
+print "or:", median, "+", interval[1] - median, "-", median - interval[0]
 # Log scale.
 m = omega
 lomega = np.log(omega)
@@ -496,14 +513,41 @@ xlab = plt.xlabel(r'$\Omega_{\rm HI} b_{\rm HI}$')
 for item in ([ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
-line_cross = plt.plot(omega, likelihood_cross, 'b--', lw=3)
+line_cross = plt.plot(omega, likelihood_cross, 'r--', lw=3)
 line_auto1 = plt.plot(omega, likelihood_auto_1, 'g-.', lw=3)
-line_auto2 = plt.plot(omega, likelihood_auto_2, 'r:', lw=3)
+line_auto2 = plt.plot(omega, likelihood_auto_2, 'b:', lw=3)
 line = plt.plot(omega, likelihood, 'k', lw=2)
-plt.legend(('cross-power', '15 hr auto-power', '1 hr auto-power', 'combined'),
+plt.legend(('cross-power', 'deep auto-power', 'wide auto-power', 'combined'),
            'upper left', prop={'size' : 18, 'family' : 'serif'})
 plt.xlim(xlim)
 plt.savefig('likelihood.eps', bbox_extra_artists=(xlab, ylab),
             bbox_inches='tight')
 
+
 plt.show()
+
+# Full likelihood table vs n_modes.
+modes = range(5, 90, 5)
+print "n_modes, 15 hr, 1 hr"
+for mode in modes:
+    likelihoods = get_likelihood_omega(data_file_root + group_15hr
+                                         + file_type % mode, 
+                                         data_file_root + group_1hr
+                                         + file_type % 0,
+                                         data_file_root + sim_group_15 + sim_case,
+                                         data_file_root + sim_group_1 + sim_case)
+    omega, likelihood, likelihood_auto_1, likelihood_auto_2, likelihood_cross \
+            = likelihoods
+    ubound15 = get_conf_interval(omega, likelihood, .68)[1]
+    likelihoods = get_likelihood_omega(data_file_root + group_15hr
+                                         + file_type % 0, 
+                                         data_file_root + group_1hr
+                                         + file_type % mode,
+                                         data_file_root + sim_group_15 + sim_case,
+                                         data_file_root + sim_group_1 + sim_case)
+    omega, likelihood, likelihood_auto_1, likelihood_auto_2, likelihood_cross \
+            = likelihoods
+    ubound1 = get_conf_interval(omega, likelihood, .68)[1]
+    print "%02d" % mode, "    %4.2f" % ubound15, "    %4.2f" % ubound1
+
+
