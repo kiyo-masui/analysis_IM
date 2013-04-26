@@ -30,6 +30,15 @@ file_middles = tuple(dir_data.get_data_files(range(41,90), field='1hr', project=
 n_files = len(file_middles)
 middles_a = file_middles[:n_files//4]
 middles_b = file_middles[n_files//4:2*n_files//4]
+# need to remove problem file in middles_c
+#middles_c_orig = file_middles[2*n_files//4:3*n_files//4]
+#middles_c = []
+#for i in range(0,len(middles_c_orig)):
+#   if middles_c_orig[i]=='GBT11B_055/10_wigglez1hr_centre_ralongmap_60-69':
+#       print middles_c_orig[i]
+#   else:
+#       middles_c.append(middles_c_orig[i])
+
 middles_c = file_middles[2*n_files//4:3*n_files//4]
 middles_d = file_middles[3*n_files//4:n_files]
 
@@ -129,19 +138,19 @@ pipe_modules = []
 #from time_stream import reflag
 #pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
 
-from noise import measure_noise
-pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
+#from noise import measure_noise
+#pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
-#from map import dirty_map
+from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
-#from map import clean_map
+from map import clean_map
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
 
 
@@ -412,8 +421,9 @@ dmA_pixel_spacing = map_spacing
 dmA_map_shape = map_shape
 dmA_time_block = 'scan'
 #dmA_n_files_group = 420  # prawn
-dmA_n_files_group = 280  # tpb nodes.
+#dmA_n_files_group = 280  # tpb nodes.
 #dmA_n_files_group = 120
+dmA_n_files_group = 10
 dmA_frequency_correlations = 'None'
 #dmA_number_frequency_modes = 3
 dmA_number_frequency_modes = 3  # Probably most appropriate.

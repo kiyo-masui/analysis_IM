@@ -76,7 +76,7 @@ prefix = ''
 map_prefix = '' + field + '_' + 'absorb' + '_'
 
 # Maximum number of processes to use.
-pipe_processes = 12
+pipe_processes = 2
 
 
 ####  List of modules to execute.  ####
@@ -93,8 +93,8 @@ pipe_modules = []
 #from time_stream import band_stop
 #pipe_modules.append(band_stop.BandStop)
 
-from time_stream import split_bands
-pipe_modules.append(split_bands.SplitBands)
+#from time_stream import split_bands
+#pipe_modules.append(split_bands.SplitBands)
 
 # Not used.
 ##from time_stream import cal_filter
@@ -116,8 +116,8 @@ pipe_modules.append(split_bands.SplitBands)
 #from map import dirty_map
 #pipe_modules.append(dirty_map.DirtyMapMaker)
 
-#from map import clean_map
-#pipe_modules.append(clean_map.CleanMapMaker)
+from map import clean_map
+pipe_modules.append(clean_map.CleanMapMaker)
 
 
 #### Second Map making iteration ####
@@ -320,7 +320,7 @@ cm_output_root = cm_input_root
 cm_polarizations = ('I',)
 #cm_polarizations = ('I','Q','U','V')
 #cm_bands = (800,)
-cm_bands = (749,768,788,807,827)
+cm_bands = (712,732,751,771,790,810)
 cm_save_noise_diag = True
 
 #### Second round of map making #####

@@ -13,7 +13,7 @@ field = '11hr'
 #Here I'm grabbing the guppi data
 #file_middles = tuple(dir_data.get_data_files(range(17,19),field='1hr',project='GBT11B_055', type='ralongmap'))
 #file_middles = ('GBT12A_418/02_wigglez11hr_centre_ralongmap_101',)
-file_middles = tuple(dir_data.get_data_files(range(03,23), field='11hr', project='GBT12A_418', type = 'ralongmap'))
+file_middles = tuple(dir_data.get_data_files(range(01,23), field='11hr', project='GBT12A_418', type = 'ralongmap'))
 #file_middles = tuple(dir_data.get_data_files(range(41,57), field='15hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(58,90), field='15hr', project='GBT10B_036', type='ralongmap')) # some kind of corruption in session 57. - overall uncertainty 52-58 
 #file_middles = tuple(dir_data.get_data_files(range(41,90), field='22hr', project='GBT10B_036', type='ralongmap')) 
 #file_middles = tuple(dir_data.get_data_files(range(15,17), field='1hr', project='GBT11B_055', type='ralongmap'))
@@ -31,7 +31,7 @@ pipe_modules = []
 # Chime has 8 cores, but you should save a few for other people.  Use 6 max.
 # Prawn has 12 cores.
 # Sunnyvale must have more 12*2
-pipe_processes = 2
+pipe_processes =8 
 
 base_dir = os.getenv('GBT_OUT')
 
@@ -76,9 +76,9 @@ fd_sigma_thres = 6.
 fd_badness_thres = 0.1
 fd_time_cut = 40
 
-from time_stream import rebin_freq
+#from time_stream import rebin_freq
 # Comment this line to skip this step when running python pipeline/manager
-pipe_modules.append(rebin_freq.RebinFreq)
+#pipe_modules.append(rebin_freq.RebinFreq)
 rf_input_root = fd_output_root
 rf_file_middles = file_middles
 rf_input_end = '.fits'
@@ -91,8 +91,8 @@ rf_channel_width = 0.
 rf_n_bins_combined = 16
 rf_mean_instead_median = False
 
-#from time_stream import flux_diff_gain_cal
-#pipe_modules.append(flux_diff_gain_cal.Calibrate)
+from time_stream import flux_diff_gain_cal
+pipe_modules.append(flux_diff_gain_cal.Calibrate)
 #fgc_input_root = base_dir+'rebinned/'
 fgc_input_root = rf_output_root
 fgc_file_middles = file_middles
@@ -114,9 +114,9 @@ fgc_RM_correct = False
 fgc_Flux_special = True
 # set Flux special to True when using something like an average and set mueler file to the filename
 
-#from time_stream import rotate_pol
+from time_stream import rotate_pol
 # Comment this line to skip this step in pipline.
-#pipe_modules.append(rotate_pol.RotatePol)
+pipe_modules.append(rotate_pol.RotatePol)
 rp_input_root = fgc_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
