@@ -2259,20 +2259,6 @@ def scaled_inv(mat):
     out_mat = scal[:,None] * out_mat * scal[None,:]
     return out_mat
 
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) == 2:
-        par_file = sys.argv[1]
-        nproc = 1
-        DirtyMapMaker(par_file).execute(nproc)
-    elif len(sys.argv) == 3:
-        par_file = sys.argv[1]
-        nproc = int(sys.argv[2])
-        DirtyMapMaker(par_file).execute(nproc)
-    else:
-        print "Usage: `python map/dirty_map.py parameter_file [num_threads]"
-
-
 def split_elems(points, num_splits):
     '''Split a list of arbitrary type elements, points, into num_splits sets.
     Also, returns a list of the index that each set starts at.
@@ -2410,5 +2396,14 @@ def mpi_writearray(fname, local_array, comm, total_shape, start_ind, dtype,
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":
     import sys
-    DirtyMapMaker(str(sys.argv[1])).execute()
+    if len(sys.argv) == 2:
+        par_file = sys.argv[1]
+        nproc = 1
+        DirtyMapMaker(par_file).execute(nproc)
+    elif len(sys.argv) == 3:
+        par_file = sys.argv[1]
+        nproc = int(sys.argv[2])
+        DirtyMapMaker(par_file).execute(nproc)
+    else:
+        print "Usage: `python map/dirty_map.py parameter_file [num_threads]"
 
