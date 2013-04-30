@@ -227,7 +227,7 @@ class DirtyMapMaker(object):
                 map.set_axis_info('ra', params['field_centre'][0], ra_spacing)
                 map.set_axis_info('dec', params['field_centre'][1], 
                                    params['pixel_spacing'])
-                if self.uncorrelated_channels:
+                '''if self.uncorrelated_channels:
                     cov_inv = al.open_memmap(cov_filename, mode='w+',
                                              shape=map_shape + map_shape[1:],
                                              dtype=float)
@@ -242,13 +242,13 @@ class DirtyMapMaker(object):
                                       axis_names=('freq', 'ra', 'dec',
                                                   'freq', 'ra', 'dec'),
                                       row_axes=(0, 1, 2), col_axes=(3, 4, 5))
-                cov_inv.copy_axis_info(map)
+                cov_inv.copy_axis_info(map)'''
                 # The zeroing takes too long. Do it in memory, not hard disk.
                 #print 'zeroing cov_inv'
                 #cov_inv[...] = 0
                 #print 'zeroed'
                 self.map = map
-                self.cov_inv = cov_inv
+                #self.cov_inv = cov_inv
                 # Do work.
                 try:
                     print "self.make_map() now"
@@ -257,12 +257,12 @@ class DirtyMapMaker(object):
                     # I think yo need to do this to get a sensible error
                     # message, otherwise it will print cov_inv and fill the
                     # screen.
-                    del self.cov_inv, cov_inv
+                    #del self.cov_inv, cov_inv
                     raise
                 # IO.
                 # To write the noise_inverse, all we have to do is delete the
                 # memeory map object.
-                del self.cov_inv, cov_inv
+                #del self.cov_inv, cov_inv
                 al.save(map_filename, map)
         if not self.noise_params is None:
             self.noise_params.close()
@@ -275,7 +275,7 @@ class DirtyMapMaker(object):
         
         params = self.params
         map = self.map
-        cov_inv = self.cov_inv
+        #cov_inv = self.cov_inv
         # The current polarization index and value.
         pol_ind = self.pol_ind
         pol_val = self.pols[pol_ind]
@@ -499,22 +499,23 @@ class DirtyMapMaker(object):
                             # everything by just assigning a value instead of
                             # setting to zero then += value.
                             # TODO: writing to same place might hiccup.
-                            cov_inv[thread_f_ind,...] = thread_cov_ind_block
+                            #cov_inv[thread_f_ind,...] = thread_cov_inv_block
                             # Add stuff to diagonal now since it's not
                             # very fun later.
                             thread_cov_inv_block.flat \
                                     [::self.n_ra * self.n_dec + 1] += \
                                     1.0 / T_large**2
-                        else:
+                        #else:
                             # Not the first time through. Just add in vals.
-                            cov_inv[thread_f_ind,...] += thread_cov_inv_block
+                            #cov_inv[thread_f_ind,...] += thread_cov_inv_block
                         if self.feedback > 1:
                             print thread_f_ind,
                             sys.stdout.flush()
                 else:
                     # Keep all of a process' rows in memory, then use
                     # MPI and file views to write it out fast.
-                    thread_cov_inv_chunk = sp.zeros((len(index_list),
+                    if run ==0:
+                        thread_cov_inv_chunk = sp.zeros((len(index_list),
                                                      self.n_dec, self.n_chan,
                                                      self.n_ra, self.n_dec),
                                                      dtype=float)
@@ -529,17 +530,6 @@ class DirtyMapMaker(object):
                             thread_D.Pointing.noise_to_map_domain(
                                              thread_D.Noise, thread_f_ind,
                                              thread_ra_ind, thread_cov_inv_row)
-                        if start_file_ind == 0:
-                            #cov_inv[thread_f_ind,thread_ra_ind,...] = \
-                            #                          thread_cov_inv_row
-                            thread_cov_inv_chunk[ii,...] = \
-                                                      thread_cov_inv_row
-                            # Add the diagonal stuff.
-                        else:
-                            #cov_inv[thread_f_ind,thread_ra_ind,...] += \
-                            #                          thread_cov_inv_row
-                            thread_cov_inv_chunk[ii,...] += \
-                                                      thread_cov_inv_row
 
 
                         #writeout_filename = self.cov_filename \
@@ -551,6 +541,8 @@ class DirtyMapMaker(object):
                             and thread_ra_ind == self.n_ra - 1):
                             print thread_f_ind,
                             sys.stdout.flush()
+                        thread_cov_inv_chunk[ii,...] += \
+                                                 thread_cov_inv_row
                 # Once done with one list of DataSets, do next.
                 # Note: No need to pass anything the last time since
                 #       that data was the process' original data and
@@ -580,7 +572,7 @@ class DirtyMapMaker(object):
                 #dtype = thread_cov_inv_chunk.dtype
                 dtype = np.float64 # default for now
                 # Save array.
-                mpi_writearray('mpi_'+self.cov_filename, thread_cov_inv_chunk,
+                mpi_writearray(self.cov_filename+'_mpi', thread_cov_inv_chunk,
                                comm, total_shape, start_ind, dtype,
                                order='C', displacement=0)
     
@@ -2377,12 +2369,12 @@ def mpi_writearray(fname, local_array, comm, total_shape, start_ind, dtype,
     sub_arr.Commit()
 
     # Check to see if the type has the same shape.
-    if local_array.size != sub_arr.Get_size() / mpitype.Get_size():
-        raise Exception("Local array size is not consistent with array description.")
+    #if local_array.size != sub_arr.Get_size() / mpitype.Get_size():
+    #    raise Exception("Local array size is not consistent with array description.")
 
     # Open the file, and read out the segments. MODE_RDWR - read/write.
-    #f = MPI.File.Open(comm, fname, MPI.MODE_WRONLY | MPI.MODE_CREATE)
-    f = MPI.File.Open(comm, fname, MPI.MODE_CREATE)
+    f = MPI.File.Open(comm, fname, MPI.MODE_WRONLY | MPI.MODE_CREATE)
+    #f = MPI.File.Open(comm, fname, MPI.MODE_CREATE)
     f.Close()
     f = MPI.File.Open(comm, fname, MPI.MODE_WRONLY)
     # Set view and write out.
