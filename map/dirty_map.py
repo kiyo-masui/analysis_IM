@@ -401,6 +401,10 @@ class DirtyMapMaker(object):
 #                this_DataSet.setup_noise_from_model(model,
 #                        params['deweight_time_mean'],
 #                        params['deweight_time_slope'], noise_entry)
+                if params['deweight_time_mean']:
+                    this_DataSet.Noise.deweight_time_mean(T_huge**2)
+                if params['deweight_time_slope']:
+                    this_DataSet.Noise.deweight_time_slope(T_huge**2)
                 # Set the time stream foregrounds for this data.
                 if (params['ts_foreground_mode_file']
                     and params['n_ts_foreground_modes']) :
@@ -426,8 +430,8 @@ class DirtyMapMaker(object):
                     if thread_N is None:
                         return
                     else:
-                        thread_N.finalize(frequency_correlations=
-                                     (not self.uncorrelated_channels),
+                        thread_N.Noise.finalize(frequency_correlations=
+                                     not self.uncorrelated_channels,
                                                preserve_matrices=False)
                         if self.feedback > 1:
                             sys.stdout.write('.')
@@ -532,7 +536,7 @@ class DirtyMapMaker(object):
                                     self.n_ra, self.n_dec), dtype=float)
                         for thread_D in data_set_list: 
                             thread_D.Pointing.noise_channel_to_map(
-                                  thread_D.Noise, f_ind, thread_cov_inv_block)
+                                  thread_D.Noise, thread_f_ind, thread_cov_inv_block)
                         #if start_file_ind == 0:
                             # The first time through the matrix. We 'zero'
                             # everything by just assigning a value instead of
@@ -611,7 +615,7 @@ class DirtyMapMaker(object):
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
                 dtype = np.float64 # default for now
-                np.save(self.cov_filename+'_mpi_corr_proc'+self.rank,thread_cov_inv_chunk)
+                np.save(self.cov_filename+'_mpi_corr_proc'+str(self.rank),thread_cov_inv_chunk)
                 # Save array.
                 #mpi_writearray(self.cov_filename+'_mpi', thread_cov_inv_chunk,
                                #comm, total_shape, start_ind, dtype,
@@ -626,7 +630,7 @@ class DirtyMapMaker(object):
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
                 dtype = np.float64 # default for now
-                np.save(self.cov_filename+'_mpi_uncorr_proc'+self.rank,thread_cov_inv_chunk)
+                np.save(self.cov_filename+'_mpi_uncorr_proc'+str(self.rank),thread_cov_inv_chunk)
                 # Save array.
                 #mpi_writearray(self.cov_filename+'_mpi', thread_cov_inv_chunk,
                                #comm, total_shape, start_ind, dtype,                                                                                                              #order='C', displacement=0)
