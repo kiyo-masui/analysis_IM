@@ -416,17 +416,51 @@ class DirtyMapMaker(object):
                 # No need for time_stream_list since data in DataSet. 
                 #time_stream_list.append(this_DataSet.time_stream)
                 data_set_list.append(this_DataSet)
-            # Finalize the noises. Each process has a subset of the total
-            # noises, so no threading, just a loop.
             if self.feedback > 1:
                 print "Finalizing %d noise blocks: " % len(data_set_list)
+            noise_queue = Queue()
+            def thread_work():
+                while True:
+                    thread_N = noise_queue.get()
+                    #None will be the flag that there is no more work to do.
+                    if thread_N is None:
+                        return
+                    else:
+                        thread_N.finalize(frequency_correlations=
+                                     (not self.uncorrelated_channels),
+                                               preserve_matrices=False)
+                        if self.feedback > 1:
+                            sys.stdout.write('.')
+                            sys.stdout.flush()
+            #Start the worker threads.
+            thread_list = []
+            for ii in range(self.n_processes):
+                T = threading.Thread(target=thread_work)
+                T.start()
+                thread_list.append(T)
+            #Now put work on the queue for the threads to do.
+            for a_DataSet in data_set_list:
+                noise_queue.put(a_DataSet)
+            #At the end of the queue, tell the threads that they are done.
+            for ii in range(self.n_processes):
+                noise_queue.put(None)
+            #Wait for the threads.
+            for T in thread_list:
+                T.join()
+            if not noise_queue.empty():
+                msg = "A thread had an error in Noise finalization."
+                raise RuntimeError(msg)
+
+            '''# Finalize the noises. Each process has a subset of the total
+            # noises, so no threading, just a loop.
             for a_DataSet in data_set_list:
                 a_DataSet.Noise.finalize(frequency_correlations=
-                                       not self.uncorrelated_channels,
+                                       (not self.uncorrelated_channels),
                                    preserve_matrices=False)
                 if self.feedback > 1:
                     sys.stdout.write('.')
-                    sys.stdout.flush()
+                    sys.stdout.flush()'''
+
             if self.feedback > 1:
                 print
                 print "Noise finalized."
@@ -474,7 +508,7 @@ class DirtyMapMaker(object):
             # each DataSet list that the processes hold.
             for run in range(self.nproc):
                 # Each DataSet has to be applied to the dirty map, too.
-                # Since the dirty map is much smaller than the noise,
+                # Since the '_mpi'dirty map is much smaller than the noise,
                 # We will just let processor 0 do all the work
                 # for the dirty map.
                 # Must be done here to not pass the DataSets around twice.
@@ -488,13 +522,18 @@ class DirtyMapMaker(object):
                         map += P.apply_to_time_axis(w_time_stream)
                 if self.uncorrelated_channels:
                     # No actual threading going on.
+                    if run ==0:
+                        thread_cov_inv_chunk = sp.zeros((len(index_list),
+                                                        self.n_ra, self.n_dec,
+                                                        self.n_ra, self.n_dec),                                                                                                                             dtype=float)
                     for thread_f_ind in index_list:
+                    #for ii in xrange(len(index_list)):
                         thread_cov_inv_block = sp.zeros((self.n_ra, self.n_dec,
                                     self.n_ra, self.n_dec), dtype=float)
-                        for thread_D in data_set_list:
+                        for thread_D in data_set_list: 
                             thread_D.Pointing.noise_channel_to_map(
                                   thread_D.Noise, f_ind, thread_cov_inv_block)
-                        if start_file_ind == 0:
+                        #if start_file_ind == 0:
                             # The first time through the matrix. We 'zero'
                             # everything by just assigning a value instead of
                             # setting to zero then += value.
@@ -508,6 +547,7 @@ class DirtyMapMaker(object):
                         #else:
                             # Not the first time through. Just add in vals.
                             #cov_inv[thread_f_ind,...] += thread_cov_inv_block
+                        thread_cov_inv_chunk[thread_f_ind,...] += thread_cov_inv_block
                         if self.feedback > 1:
                             print thread_f_ind,
                             sys.stdout.flush()
@@ -571,11 +611,25 @@ class DirtyMapMaker(object):
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
                 dtype = np.float64 # default for now
+                np.save(self.cov_filename+'_mpi_corr_proc'+self.rank,thread_cov_inv_chunk)
                 # Save array.
-                mpi_writearray(self.cov_filename+'_mpi', thread_cov_inv_chunk,
-                               comm, total_shape, start_ind, dtype,
-                               order='C', displacement=0)
-    
+                #mpi_writearray(self.cov_filename+'_mpi', thread_cov_inv_chunk,
+                               #comm, total_shape, start_ind, dtype,
+                               #order='C', displacement=0)
+   
+
+            if self.uncorrelated_channels:
+                total_shape = (self.n_chan, self.n_ra,
+                               self.n_dec, self.n_ra, self.n_dec)
+                start_ind = (index_list[0],0,0,0,0)
+                # NOTE: using 'float' is not supprted in the saving because
+                # it has to know if it is 32 or 64 bits.
+                #dtype = thread_cov_inv_chunk.dtype
+                dtype = np.float64 # default for now
+                np.save(self.cov_filename+'_mpi_uncorr_proc'+self.rank,thread_cov_inv_chunk)
+                # Save array.
+                #mpi_writearray(self.cov_filename+'_mpi', thread_cov_inv_chunk,
+                               #comm, total_shape, start_ind, dtype,                                                                                                              #order='C', displacement=0)
                     
 
 
