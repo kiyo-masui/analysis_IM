@@ -2373,6 +2373,66 @@ def cross(set_list):
                 remaining.insert(0,cross_2)
                 return cross(remaining)
 
+def write_array(fname, local_array, comm, total_shape, start_ind, dtype, order='F', displacement=0):
+
+    import ctypes
+    import ctyppes.util
+    import os
+    import fcntl
+
+    _typemap = { np.float32 : MPI.FLOAT,
+                 np.float64 : MPI.DOUBLE,
+                 np.complex128 : MPI.COMPLEX16 }
+
+    if dtype not in _typemap:
+        raise Exception("Unsupported type.")
+
+    mpitype = _typemap[dtype]
+    data_size = mpitype.Get_size()
+
+    nproc = comm.Get_size()
+    rank = comm.Get_rank()
+
+    if rank == 0:
+        libc_name = ctypes.util.find_library('c')
+        libc = ctypes.CDLL(libc_name)
+
+        # Define off_t type
+        c_off_t = ctypes.c_int64
+
+        # Set up function
+        pf = libc.posix_fallocate
+        pf.restype = ctypes.c_int
+        pf.argtypes = [ctypes.c_int, c_off_t, c_off_t]
+
+        f = open(filename, "wb")
+
+        # Calculate file size needed
+        file_size = data_size
+        for el in total_shape
+             file_size = file_size*el
+
+        #Allocate appropriate space for file
+        pf(f.fileno(), 0, file_size)
+
+    #All processes wait for file space to be allocated
+    comm.Barrier()
+
+    #Calculate offset in file bytes needed for each node.  
+    offset = start_ind[0]*data_size
+    for el in total_shape[1:5]
+        offset = offset*el
+
+    #Size to be allocated for this process' portion of file.
+    size = local_array.size*data_size
+
+    #Now, lock each node to correct portion of file.
+    for i in range(nproc)
+        if i == rank
+            fd = open(filename, "wb")
+            fcntl.lock(fd, fcntl.LOCK_EX, size, offset, os.SEEK_SET)
+        #Barrier ensures file is opened and specific place is locked by only one process at a time
+        comm.Barrier()
 
 def mpi_writearray(fname, local_array, comm, total_shape, start_ind, dtype,
                    order='F', displacement=0):
