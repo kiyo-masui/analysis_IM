@@ -58,7 +58,7 @@ else:
     do_simulation_IQU = False
 
 #output_folder = '15hr_ABCD_legendre_modes_%dgwj_14conv_new/'%goodmodes 
-output_folder = '15hr_ABCD_legendre_modes_%dgwj_14conv_new_noclip/'%goodmodes 
+output_folder = '15hr_ABCD_14conv/'
 #output_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
 output_root = '/mnt/scratch-gl/ycli/cln_result/'
 output_root += output_folder

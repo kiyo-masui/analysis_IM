@@ -33,6 +33,7 @@ params_init = {
     'opt_root'  : './',
 
     'sim_numb'  : 100,
+    'sim_fact'  : 0,
 
     'cut_list'  : [],
 
@@ -49,6 +50,11 @@ params_init = {
     # 'None': return error, 'auto': , 'cros': , 'wigg'
     'ps_type'   : 'None', 
     'ps_mode'   : 10,
+
+    'est_transfer' : True,
+    'est_powerspc' : True,
+    'est_gausserr' : True,
+    'est_powersim' : True
 }
 prefix = 'pse_'
 
@@ -73,10 +79,15 @@ class PowerSpectrumEstimator(object):
 
     def execute(self, nprocesses=1, comm=None, rank=0, size=1):
 
-        self.estimate(comm, rank, size, 'rf')
-        self.estimate(comm, rank, size, 'tr')
-        self.estimate(comm, rank, size, 'ps')
-        self.estimate(comm, rank, size, 'ns')
+        if self.params['est_transfer']:
+            self.estimate(comm, rank, size, 'rf')
+            self.estimate(comm, rank, size, 'tr')
+        if self.params['est_powerspc']:
+            self.estimate(comm, rank, size, 'ps')
+        if self.params['est_gausserr']:
+            self.estimate(comm, rank, size, 'ns')
+        if self.params['est_powersim']:
+            self.estimate(comm, rank, size, 'si')
 
     def estimate(self, comm, rank, size, step):
         params = self.params
@@ -100,7 +111,12 @@ class PowerSpectrumEstimator(object):
             nmap_list = nmap_list[rank::size]
             print "rank %03d have %d maps to process"%(rank, len(imap_list))
 
-            ps, kn = self.process_maps(params, imap_list, nmap_list)
+            if params['sim_fact'] != 0:
+                if step == 'rf':   factors = [params['sim_fact'], params['sim_fact']]
+                elif step == 'tr': factors = [1., params['sim_fact']]
+                else:  factors = None
+            else: factors = None
+            ps, kn = self.process_maps(params, imap_list, nmap_list, factors)
 
         if comm != None:
             if rank < pair_numb:
@@ -145,10 +161,13 @@ class PowerSpectrumEstimator(object):
             nmap[self.params['cut_list']] = 0.
         return nmap
 
-    def ps_estimate(self, params, imap_pair, nmap_pair):
+    def ps_estimate(self, params, imap_pair, nmap_pair, factors=None):
         
         imap1 = algebra.make_vect(algebra.load(imap_pair[0]))
         imap2 = algebra.make_vect(algebra.load(imap_pair[1]))
+        if factors != None:
+            imap1 *= factors[0]
+            imap2 *= factors[1]
         if nmap_pair[0] != None:
             nmap1 = algebra.make_vect(algebra.load(nmap_pair[0]))
         else:
@@ -172,12 +191,12 @@ class PowerSpectrumEstimator(object):
 
         return ps_box.ps_2d, ps_box.kn_2d
 
-    def process_maps(self, params, imap_list, nmap_list):
+    def process_maps(self, params, imap_list, nmap_list, factors=None):
 
         ps = np.zeros(shape=(len(imap_list), params['kbin_num'], params['kbin_num']))
         kn = np.zeros(shape=(len(imap_list), params['kbin_num'], params['kbin_num']))
         for i in range(len(imap_list)):
-            ps[i], kn[i] = self.ps_estimate(params, imap_list[i], nmap_list[i])
+            ps[i], kn[i] = self.ps_estimate(params, imap_list[i], nmap_list[i], factors)
 
         return ps, kn
 
@@ -186,18 +205,20 @@ class PowerSpectrumEstimator(object):
         map_set: 'rf' : prepare maps for reference calculation, 
                  'tr' : prepare maps for transfer function calculation,
                  'ps' : prepare maps for power spectrum calculation,
+                 'si' : prepare maps for simulation.
         '''
 
         ps_mode = params['ps_mode']
         imap_list = []
         nmap_list = []
 
-        if map_set == 'rf':
+        if map_set == 'rf' or (map_set == 'si' and params['ps_type'] == 'cros'):
             print 'prepare maps for reference calculation'
             imaps_a = functions.get_mapdict(params['sim_root'], selection='raw')
             nmaps_a = functions.get_mapdict(params['gbt_root'])
 
-            imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
+            #imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
+            imaps_b = functions.get_mapdict(params['sim_root'], selection='raw')
             nmaps_b = functions.get_mapdict(params['opt_root'], selection='selection')
 
             for i in range(params['sim_numb']):
@@ -209,7 +230,8 @@ class PowerSpectrumEstimator(object):
             print 'prepare maps for transfer function calculation'
             nmaps_a = functions.get_mapdict(params['gbt_root'])
 
-            imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
+            #imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
+            imaps_b = functions.get_mapdict(params['sim_root'], selection='raw')
             nmaps_b = functions.get_mapdict(params['opt_root'], selection='selection')
 
             for i in range(params['sim_numb']):
@@ -242,6 +264,19 @@ class PowerSpectrumEstimator(object):
                                       imaps[1]['%s;map;%dmodes'%(s, ps_mode)]])
                     nmap_list.append([imaps[1]['%s;noise_inv;%dmodes'%(s, ps_mode)],
                                       imaps[1]['%s;noise_inv;%dmodes'%(s, ps_mode)]])
+        elif map_set == 'si' and params['ps_type'] == 'auto':
+            print 'prepare maps for simulation calculation'
+            imaps_a = functions.get_mapdict(params['sim_root'], selection='raw')
+            nmaps_a = functions.get_mapdict(params['gbt_root'])
+
+            imaps_b = functions.get_mapdict(params['sim_root'], selection='raw')
+            nmaps_b = functions.get_mapdict(params['gbt_root'])
+
+            for i in range(params['sim_numb']):
+                imap_list.append([imaps_a[1]['%d'%i], 
+                                  imaps_b[1]['%d'%i]])
+                nmap_list.append([nmaps_a[1]['weight;%dmodes'%ps_mode], 
+                                  nmaps_b[1]['weight;%dmodes'%ps_mode]])
         else:
             print 'error: map_set error!'
             exit()
@@ -255,7 +290,8 @@ class PowerSpectrumEstimator(object):
         kn_mean = np.mean(kn, axis=0)
         kn_std  = np.std(ps, axis=0)
 
-        if step == 'power' and params['ps_type'] == 'auto':
+        if step == 'ps' and params['ps_type'] == 'auto':
+            print ps.shape[0]
             ps_std /= sqrt(ps.shape[0])
 
         k_bin = np.logspace(np.log10(params['kbin_min']), 

@@ -34,6 +34,10 @@ class BOX(object):
         self.ibox1, self.nbox1 = get_box(self.box_bin, self.imap1, self.weight1)
         self.ibox2, self.nbox2 = get_box(self.box_bin, self.imap2, self.weight2)
 
+    def subtract_mean(self):
+        self.ibox1 = self.ibox1 - self.ibox1.flatten().mean()
+        self.ibox2 = self.ibox2 - self.ibox2.flatten().mean()
+
     def estimate_ps_3d(self, window="blackman"):
 
         window_function = fftutil.window_nd(self.nbox1.shape, name=window)
@@ -42,22 +46,27 @@ class BOX(object):
 
         self.ibox1 *= self.nbox1
         self.ibox2 *= self.nbox2
+
+        self.subtract_mean()
+
         normal = (self.nbox1 * self.nbox2).flatten().sum()
         delta_v = self.boxunit**3
 
         iput_1 = np.zeros(self.boxshape, dtype=complex)
-        oput_1 = np.zeros(self.boxshape, dtype=complex)
-        plan_1 = FFTW.Plan(iput_1, oput_1, direction='forward', flags=['measure'])
+        #oput_1 = np.zeros(self.boxshape, dtype=complex)
+        #plan_1 = FFTW.Plan(iput_1, oput_1, direction='forward', flags=['measure'])
         iput_1.imag = 0.
         iput_1.real = self.ibox1
-        FFTW.execute(plan_1)
+        #FFTW.execute(plan_1)
+        oput_1 = np.fft.fftn(iput_1)
 
         iput_2 = np.zeros(self.boxshape, dtype=complex)
-        oput_2 = np.zeros(self.boxshape, dtype=complex)
-        plan_2 = FFTW.Plan(iput_2, oput_2, direction='forward', flags=['measure'])
+        #oput_2 = np.zeros(self.boxshape, dtype=complex)
+        #plan_2 = FFTW.Plan(iput_2, oput_2, direction='forward', flags=['measure'])
         iput_2.imag = 0.
         iput_2.real = self.ibox2
-        FFTW.execute(plan_2)
+        #FFTW.execute(plan_2)
+        oput_2 = np.fft.fftn(iput_2)
 
         oput_1 = np.fft.fftshift(oput_1)
         oput_2 = np.fft.fftshift(oput_2)

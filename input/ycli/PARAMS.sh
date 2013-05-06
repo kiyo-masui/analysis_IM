@@ -23,11 +23,12 @@
 
 
 #export MAP_SIM="sim_15hr_oldmap_ideal"
-export MAP_SIM="sim_15hr_oldmap_str"
-export MAP_SSM="GBT_15hr_map_oldcal_cleaned_sims_noconv"
-export MAP_CLN="GBT_15hr_map_oldcal_cleaned_noconv"
-export MAP_WGZ="WiggleZ_15hr"
+export MAP_SIM="None"
+export MAP_SSM="None"
+export MAP_CLN="None"
+export MAP_WGZ="None"
 export MAP_MULTIPLIER=1
+export NAME=""
 export MODE="15"
 export HOUR="15"
 # -----------------------------------------------------------
@@ -39,6 +40,7 @@ export MAPFILE="sim_15hr_oldmap_str_beam_plus_fg"
 export SUBREAL=""
 export MAPGBT_MY="/mnt/scratch-3week/ycli/"
 export NOISEWEIGHT="sim_15hr_oldmap_str_beam_plus_fg"
+export SIM_FACTOR=1
 
 # -----------------------------------------------------------
 # For Parkes
