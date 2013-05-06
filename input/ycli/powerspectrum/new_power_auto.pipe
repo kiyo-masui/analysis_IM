@@ -13,16 +13,18 @@ WORKROOT = os.getenv('YICHAO_WORK_PS')
 
 hour = int(os.getenv('HOUR'))
 mode = int(os.getenv('MODE'))
+name = os.getenv('NAME')
 sim_root = os.getenv('MAP_SIM')
 ssm_root = os.getenv('MAP_SSM')
 gbt_root = os.getenv('MAP_CLN')
 
 cut_list = []
 if hour==15:
-    cut_list = [6,  7,  8,  15, 16, 18, 19, 20, 21, 22, 37, 80, 103,104,
-                105,106,107,108,130,131,132,133,134,171,175,177,179,182,
-                183,187,189,192,193,194,195,196,197,198,201,204,208,209,
-                212,213,218,219,229,233,237,244,254,255]
+    cut_list = [0,15,16,17,18,19,20,21,22,23,103,104,105,106,107,108,130,131,132,133,134]
+#    cut_list = [6,  7,  8,  15, 16, 18, 19, 20, 21, 22, 37, 80, 103,104,
+#                105,106,107,108,130,131,132,133,134,171,175,177,179,182,
+#                183,187,189,192,193,194,195,196,197,198,201,204,208,209,
+#                212,213,218,219,229,233,237,244,254,255]
 elif hour==22:
 	cut_list = [1,  2,  80, 206,201,200,196,192,189,186,182,217,212,211,
                 223,229,252,253,254,255,156,159,191,193,199,204,210,214,
@@ -50,9 +52,10 @@ pse_gbt_root = gbt_root
 pse_opt_root = None
 
 pse_sim_numb = 100
+pse_sim_fact = 0.4
 
 pse_cut_list = cut_list
-pse_boxshape = (256, 128, 64)
+pse_boxshape = (512, 128, 64)
 pse_discrete = 3
 
 pse_kbin_num = kbin_num
@@ -61,7 +64,7 @@ pse_kbin_max = kbin_max
 
 pse_ps_root  = WORKROOT 
 pse_ps_type  = 'auto'
-pse_ps_name  = '%s_ps_%02dhour_%02dmode'%(pse_ps_type, hour, mode)
+pse_ps_name  = '%s_%s_ps_%02dhour_%02dmode'%(name, pse_ps_type, hour, mode)
 pse_ps_mode  = mode
 
 pse_est_transfer = True

@@ -33,6 +33,7 @@ params_init = {
     'opt_root'  : './',
 
     'sim_numb'  : 100,
+    'sim_fact'  : 0,
 
     'cut_list'  : [],
 
@@ -110,7 +111,12 @@ class PowerSpectrumEstimator(object):
             nmap_list = nmap_list[rank::size]
             print "rank %03d have %d maps to process"%(rank, len(imap_list))
 
-            ps, kn = self.process_maps(params, imap_list, nmap_list)
+            if params['sim_fact'] != 0:
+                if step == 'rf':   factors = [params['sim_fact'], params['sim_fact']]
+                elif step == 'tr': factors = [1., params['sim_fact']]
+                else:  factors = None
+            else: factors = None
+            ps, kn = self.process_maps(params, imap_list, nmap_list, factors)
 
         if comm != None:
             if rank < pair_numb:
@@ -155,10 +161,13 @@ class PowerSpectrumEstimator(object):
             nmap[self.params['cut_list']] = 0.
         return nmap
 
-    def ps_estimate(self, params, imap_pair, nmap_pair):
+    def ps_estimate(self, params, imap_pair, nmap_pair, factors=None):
         
         imap1 = algebra.make_vect(algebra.load(imap_pair[0]))
         imap2 = algebra.make_vect(algebra.load(imap_pair[1]))
+        if factors != None:
+            imap1 *= factors[0]
+            imap2 *= factors[1]
         if nmap_pair[0] != None:
             nmap1 = algebra.make_vect(algebra.load(nmap_pair[0]))
         else:
@@ -182,12 +191,12 @@ class PowerSpectrumEstimator(object):
 
         return ps_box.ps_2d, ps_box.kn_2d
 
-    def process_maps(self, params, imap_list, nmap_list):
+    def process_maps(self, params, imap_list, nmap_list, factors=None):
 
         ps = np.zeros(shape=(len(imap_list), params['kbin_num'], params['kbin_num']))
         kn = np.zeros(shape=(len(imap_list), params['kbin_num'], params['kbin_num']))
         for i in range(len(imap_list)):
-            ps[i], kn[i] = self.ps_estimate(params, imap_list[i], nmap_list[i])
+            ps[i], kn[i] = self.ps_estimate(params, imap_list[i], nmap_list[i], factors)
 
         return ps, kn
 
@@ -208,7 +217,8 @@ class PowerSpectrumEstimator(object):
             imaps_a = functions.get_mapdict(params['sim_root'], selection='raw')
             nmaps_a = functions.get_mapdict(params['gbt_root'])
 
-            imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
+            #imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
+            imaps_b = functions.get_mapdict(params['sim_root'], selection='raw')
             nmaps_b = functions.get_mapdict(params['opt_root'], selection='selection')
 
             for i in range(params['sim_numb']):
@@ -220,7 +230,8 @@ class PowerSpectrumEstimator(object):
             print 'prepare maps for transfer function calculation'
             nmaps_a = functions.get_mapdict(params['gbt_root'])
 
-            imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
+            #imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
+            imaps_b = functions.get_mapdict(params['sim_root'], selection='raw')
             nmaps_b = functions.get_mapdict(params['opt_root'], selection='selection')
 
             for i in range(params['sim_numb']):

@@ -24,7 +24,7 @@ export SUBREAL=True
 export SIMFILE=1
 
 export EXP="-x MAPFILE -x NOISEWEIGHT -x GOODMODES -x SIMROOT -x SUBREAL -x SIMFILE"
-#
+
 #export pipeline=foreground_clean/cleaned_AQU_1hr_extend_14conv_mpi.pipe
 #mpirun $EXP -np 60 -npernode 20 -hostfile $PIPELINE_DIR/HOSTFILE python $PIPELINE_DIR/mpimanager.py $PIPELINE_DIR/$pipeline
 #
@@ -40,4 +40,4 @@ export EXP="-x MAPFILE -x NOISEWEIGHT -x GOODMODES -x SIMROOT -x SUBREAL -x SIMF
 export pipeline=foreground_clean/combine_ABCD_14conv.pipe
 python $PIPELINE_DIR/manager.py $PIPELINE_DIR/$pipeline
 mpirun $EXP -np 60 -npernode 20 -hostfile $PIPELINE_DIR/HOSTFILE python $PIPELINE_DIR/mpimanager.py $PIPELINE_DIR/$pipeline
-
+#

@@ -601,12 +601,12 @@ class PairSet():
                 map2 = map_dict['map']
                 noise_inv2 = map_dict['weight']
 
-                sim2 = sim1
+                sim2 = copy.deepcopy(sim1)
                 map_dict = {}
                 map_dict['imap'] = sim2
-                map_dict['qmap'] = sim2
-                map_dict['umap'] = sim2
-                map_dict['vmap'] = sim2
+                map_dict['qmap'] = algebra.zeros_like(sim1)
+                map_dict['umap'] = algebra.zeros_like(sim1)
+                map_dict['vmap'] = algebra.zeros_like(sim1)
                 map_dict = extend_iquv_map(map_dict=map_dict)
                 sim2 = map_dict['map']
             elif len(self.freq_list2) == 3*len(self.freq_list1):
@@ -623,11 +623,11 @@ class PairSet():
                 map2 = map_dict['map']
                 noise_inv2 = map_dict['weight']
 
-                sim2 = sim1
+                sim2 = copy.deepcopy(sim1)
                 map_dict = {}
                 map_dict['imap'] = sim2
-                map_dict['qmap'] = sim2
-                map_dict['umap'] = sim2
+                map_dict['qmap'] = algebra.zeros_like(sim1)
+                map_dict['umap'] = algebra.zeros_like(sim1)
                 map_dict = extend_iqu_map(map_dict=map_dict)
                 sim2 = map_dict['map']
             else:

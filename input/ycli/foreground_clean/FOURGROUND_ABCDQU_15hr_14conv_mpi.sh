@@ -9,7 +9,7 @@ source $PIPELINE_DIR/PARAMS.sh
 export MAPFILE="/mnt/raid-project/gmrt/tcv/maps/15hr_41-80_avg_fdgp_new/"
 export GOODMODES="0"
 export SIMROOT="/mnt/scratch-gl/ycli/simulation_map/15hr_14/"
-export SUBREAL=True
+export SUBREAL=False
 
 #export pipeline=foreground_clean/cleaned_AQU_15hr_extend_14conv_mpi.pipe
 #python $PIPELINE_DIR/manager.py $PIPELINE_DIR/$pipeline
@@ -21,8 +21,9 @@ export SUBREAL=True
 #python $PIPELINE_DIR/manager.py $PIPELINE_DIR/$pipeline
 
 export SIMFILE=1
+export SIM_FACTOR=0.4
 
-export EXP="-x MAPFILE -x NOISEWEIGHT -x GOODMODES -x SIMROOT -x SUBREAL -x SIMFILE"
+export EXP="-x MAPFILE -x NOISEWEIGHT -x GOODMODES -x SIMROOT -x SUBREAL -x SIMFILE -x SIM_FACTOR"
 
 #export pipeline=foreground_clean/cleaned_AQU_15hr_extend_14conv_mpi.pipe
 #mpirun $EXP -np 60 -npernode 20 -hostfile $PIPELINE_DIR/HOSTFILE python $PIPELINE_DIR/mpimanager.py $PIPELINE_DIR/$pipeline

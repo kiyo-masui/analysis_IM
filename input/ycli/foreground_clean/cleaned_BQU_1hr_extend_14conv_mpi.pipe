@@ -58,7 +58,7 @@ else:
     do_simulation = False
     do_simulation_IQU = False
 
-output_folder = '1hr_BQU_extend_legendre_modes_%dgwj_14conv_new/'%goodmodes 
+output_folder = '1hr_BQU_extend_14conv/'
 #output_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
 output_root = '/mnt/scratch-gl/ycli/cln_result/'
 output_root += output_folder
@@ -107,7 +107,7 @@ pairdict['B_with_D']['tag1'] = 'B'
 pairdict['B_with_D']['tag2'] = 'D'
 
 if do_IQUclean_themselves:
-    pipe_modules.append((pair_set_legendre.PairSet_LegendreSVD, ('fs2_', 'fs_')))
+    pipe_modules.append((pair_set.PairSet, ('fs2_', 'fs_')))
 
     freq_list_iquv = freq_list
     freq_list_iquv+= tuple([ind +   nfreq for ind in freq_list])
@@ -124,6 +124,7 @@ if do_IQUclean_themselves:
     fs2_factorizable_noise = True
     fs2_convolve = common_res_convolution
     fs2_degrade_factor = degrade_factor
+    fs2_clip_weight_percent = 50
     fs2_sub_weighted_mean = sub_weighted_mean
     if goodmodes == 1:
         fs2_good_modes = 0
@@ -140,7 +141,7 @@ if do_simulation_IQUV:
     sg1_output_root = simroot
     sg1_outfile_meansub = "sim_beammeansub_%03d.npy"
 
-    pipe_modules.append((pair_set_legendre.PairSet_LegendreSVD, ('fs3_', 'fs_')))
+    pipe_modules.append((pair_set.PairSet, ('fs3_', 'fs_')))
 
     freq_list_iquv = freq_list
     freq_list_iquv+= tuple([ind +   nfreq for ind in freq_list])
@@ -161,6 +162,7 @@ if do_simulation_IQUV:
     fs3_subtract_inputmap_from_sim = False
     fs3_subtract_sim_from_inputmap = False
     fs3_subtract_realmap_from_sim = subreal
+    fs3_clip_weight_percent = 50
     fs3_realmap_dir = output_root + "/Emap_clean_themselves/"
     if subreal:
         fs3_output_root = fs3_output_root[:-1] + "_subreal/"
