@@ -76,32 +76,68 @@ def load_power_spectrum(ps_root):
 
     return ps_2d, kn_2d, k_p_edges, k_v_edges
 
-def convert_2dps_to_1dps_sim(rf_root):
+def convert_2dps_to_1dps_sim(rf_root, ns_root=None, truncate_range=None ):
 
     power_spectrum = algebra.make_vect(algebra.load(rf_root))
     power_spectrum_err = algebra.make_vect(algebra.load(rf_root.replace('pow', 'err')))
     k_mode_number = algebra.make_vect(algebra.load(rf_root.replace('pow', 'kmn')))
+    if ns_root != None:
+        weight, k_p_edges, k_v_edges = load_weight(ns_root)
+    if ns_root != None:
+        weight, k_p_edges, k_v_edges = load_weight(ns_root )
+        k_mode_number *= weight
 
     k_p_edges, k_v_edges = get_2d_k_bin_edges(power_spectrum)
     k_p_centre, k_v_centre = get_2d_k_bin_centre(power_spectrum)
-    k_centre = np.sqrt(k_p_centre[:,None]**2 + k_v_centre[None, :]**2).flatten()
+    k_centre = np.sqrt(k_p_centre[:,None]**2 + k_v_centre[None, :]**2)
     k_edges_1d = k_p_edges
 
-    #power_spectrum *= k_mode_number
-    #power_spectrum_err *= k_mode_number
+    power_spectrum *= k_mode_number
+    power_spectrum_err *= k_mode_number
 
     power_spectrum_err **= 2
 
-    k_mode,k_e = np.histogram(k_centre, k_edges_1d, weights=np.ones_like(k_centre))
-    #k_mode,k_e = np.histogram(k_centre, k_edges_1d, weights=k_mode_number.flatten())
+    if truncate_range != None:
+        k_p_range = [truncate_range[0], truncate_range[1]]
+        k_v_range = [truncate_range[2], truncate_range[3]]
+        power_spectrum_err, kpe, kve = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                            k_v_edges, power_spectrum_err)
+        power_spectrum, kpe, kve     = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                            k_v_edges, power_spectrum)
+        k_centre, kpe, kve           = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                            k_v_edges, k_centre)
+        k_mode_number, kpe, kve      = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                            k_v_edges, k_mode_number)
+
+    k_centre = k_centre.flatten()
+
+    #k_mode,k_e = np.histogram(k_centre, k_edges_1d, weights=np.ones_like(k_centre))
+    k_mode,k_e = np.histogram(k_centre, k_edges_1d, weights=k_mode_number.flatten())
+    k_mode_2,k_e = np.histogram(k_centre, k_edges_1d, weights=(k_mode_number**2).flatten())
     power, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum.flatten())
     err,   k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum_err.flatten())
     k_mode[k_mode==0] = np.inf
+    k_mode_2[k_mode_2==0] = np.inf
     power_1d = power/k_mode
-    power_1d_err = np.sqrt(err)/k_mode
+    power_1d_err = np.sqrt(err/k_mode_2)
     return power_1d, power_1d_err, k_p_centre
 
-def convert_2dps_to_1dps(ps_root, ns_root, tr_root, rf_root):
+def truncate_2dps(k_p_range, k_v_range, k_p_edges, k_v_edges, power_spectrum):
+    
+    k_p_range_idx = np.digitize(k_p_range, k_p_edges) - 1
+    k_v_range_idx = np.digitize(k_v_range, k_v_edges) - 1
+
+    k_p_range_idx[k_p_range_idx<0] = 0
+    k_v_range_idx[k_v_range_idx<0] = 0
+    #print k_p_range_idx
+    #print k_v_range_idx
+
+    return power_spectrum[k_p_range_idx[0]:k_p_range_idx[1],
+                          k_v_range_idx[0]:k_v_range_idx[1]],\
+           k_p_edges[k_p_range_idx[0]:k_p_range_idx[1]+1],\
+           k_v_edges[k_v_range_idx[0]:k_v_range_idx[1]+1]
+
+def convert_2dps_to_1dps(ps_root, ns_root, tr_root, rf_root, truncate_range=None):
 
     transfer_function, k_p_edges, k_v_edges = load_transfer_function(rf_root, tr_root)
 
@@ -110,6 +146,8 @@ def convert_2dps_to_1dps(ps_root, ns_root, tr_root, rf_root):
     power_spectrum, k_mode_number, k_p_edges, k_v_edges = load_power_spectrum(ps_root)
 
     power_spectrum_err, k_p_edges, k_v_edges = load_power_spectrum_err(ps_root)
+
+    #k_mode_number *= weight
 
     power_spectrum *= transfer_function
     power_spectrum *= weight
@@ -121,21 +159,51 @@ def convert_2dps_to_1dps(ps_root, ns_root, tr_root, rf_root):
     power_spectrum_err **= 2
 
     k_p_centre, k_v_centre = get_2d_k_bin_centre(power_spectrum)
-    k_centre = np.sqrt(k_p_centre[:,None]**2 + k_v_centre[None, :]**2).flatten()
+    k_centre = np.sqrt(k_p_centre[:,None]**2 + k_v_centre[None, :]**2)
+
+    if truncate_range != None:
+        k_p_range = [truncate_range[0], truncate_range[1]]
+        k_v_range = [truncate_range[2], truncate_range[3]]
+        power_spectrum_err, kpe, kve = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                            k_v_edges, power_spectrum_err)
+        power_spectrum, kpe, kve     = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                            k_v_edges, power_spectrum)
+        k_centre, kpe, kve           = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                            k_v_edges, k_centre)
+        weight, kpe, kve             = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                            k_v_edges, weight)
+        k_mode_number, kpe, kve      = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                                      k_v_edges, k_mode_number)
+
+    #print power_spectrum.shape
+    power_spectrum_err = power_spectrum_err.flatten()
+    power_spectrum     = power_spectrum.flatten()
+    k_centre           = k_centre.flatten()
+    weight             = weight.flatten()
+    k_mode_number      = k_mode_number.flatten()
 
     k_edges_1d = k_p_edges
 
-    k_mode,k_e = np.histogram(k_centre, k_edges_1d, weights=np.ones_like(k_centre))
-    #k_mode, k_e = np.histogram(k_centre, k_edges_1d, weights=k_mode_number.flatten())
-    #k_mode_2, k_e = np.histogram(k_centre, k_edges_1d, weights=(k_mode_number**2).flatten())
-    normal, k_e = np.histogram(k_centre, k_edges_1d, weights=weight.flatten())
-    normal_2, k_e = np.histogram(k_centre, k_edges_1d, weights=(weight**2).flatten())
-    power, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum.flatten())
-    err, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum_err.flatten())
+    #k_mode,k_e = np.histogram(k_centre, k_edges_1d, weights=np.ones_like(k_centre))
+    #k_mode, k_e = np.histogram(k_centre, k_edges_1d, weights=k_mode_number)
+    #k_mode_2, k_e = np.histogram(k_centre, k_edges_1d, weights=(k_mode_number**2))
+    normal, k_e = np.histogram(k_centre, k_edges_1d, weights=weight)
+    normal_2, k_e = np.histogram(k_centre, k_edges_1d, weights=(weight**2))
+    power, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum)
+    err, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum_err)
 
-    k_mode[k_mode==0] = np.inf
+    #k_mode[k_mode==0] = np.inf
+    #k_mode_2[k_mode_2==0] = np.inf
     normal[normal==0] = np.inf
-    power_1d = power/normal/k_mode
-    power_1d_err = np.sqrt(err/normal_2)/k_mode
+    normal_2[normal_2==0] = np.inf
+    power_1d = power/normal
+    power_1d_err = np.sqrt(err/normal_2)
+    #power_1d = power/k_mode
+    #power_1d_err = np.sqrt(err/k_mode_2)
+
+    #normal[normal==0] = np.inf
+    #normal_2[normal_2==0] = np.inf
+    #power_1d = power/normal/k_mode
+    #power_1d_err = np.sqrt(err/normal_2)/k_mode
 
     return power_1d, power_1d_err, k_p_centre

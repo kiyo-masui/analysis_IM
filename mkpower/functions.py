@@ -10,7 +10,7 @@ import os
 import gc
 from scipy import integrate
 from math import *
-import fftw3 as FFTW
+#import fftw3 as FFTW
 
 # kiyo module
 from core import algebra
@@ -654,16 +654,17 @@ def getpower_th(params):
 
 if __name__=="__main__":
     
-    #map_root = '/Users/ycli/DATA/'
-    #map_file = 'secA_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
+    map_root = '/Users/ycli/DATA/maps/'
+    map_file = 'secA_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
 
-    #map_temp = algebra.load(map_root + map_file)
-    #map_temp = algebra.make_vect(map_temp)
+    map_temp = algebra.load(map_root + map_file)
+    map_temp = algebra.make_vect(map_temp)
 
     #x, y, z = getedge(map_temp)
     #print x, y, z
 
-    #box_bin, boxunit = get_box_xyz(map_temp, (256,128,64))
+    box_bin, boxunit = get_box_xyz(map_temp, (512,128,64))
+    print box_bin, boxunit
     #ibox, nbox = get_box(box_bin, map_temp, map_temp)
 
     #np.save(map_root + 'fftbox_' + map_file, ibox)
@@ -672,5 +673,5 @@ if __name__=="__main__":
     #fftbox.mapping_to_xyz()
     #fftbox.convert_3dps_to_2dps()
 
-    imaps_a = get_mapdict('/mnt/scratch-gl/ycli/cln_result/15hr_ABCD_legendre_modes_0gwj_14conv_new/simmapmode_simmap_beam_000_subreal')
+    #imaps_a = get_mapdict('/mnt/scratch-gl/ycli/cln_result/15hr_ABCD_legendre_modes_0gwj_14conv_new/simmapmode_simmap_beam_000_subreal')
 
