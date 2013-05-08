@@ -224,6 +224,70 @@ def histogram3d(sample, xedges, yedges, zedges):
 
     return count_cube
 
+def histogram3d_weights(sample, xedges, yedges, zedges):
+    """Make a 3D histogram from the sample and edge specification
+    indices in the sample: 0=x, 1=y, 2=z;
+    histogramdd was having problems with the galaxy catalogs
+    weights mean that bincount counting weights instead of +1
+    """
+    numcatalog = sample.size
+    x_size = xedges.size - 1
+    y_size = yedges.size - 1
+    z_size = zedges.size - 1
+    box_index = np.zeros(numcatalog)
+    count_array = np.zeros((x_size + 1) * (y_size + 1) * (z_size + 1))
+    # the final array to return is the value within the bin
+    count_cube = np.zeros((x_size, y_size, z_size))
+
+
+    # find which bin each galaxies lies in
+    x_index = np.digitize(sample[:, 0], xedges)
+    y_index = np.digitize(sample[:, 1], yedges)
+    z_index = np.digitize(sample[:, 2], zedges)
+
+    # create array with masses
+    mass = sample[:,3]
+
+    # digitize puts values outside of the bins either to 0 or len(bins)
+    x_out = np.logical_or((x_index == 0), (x_index == (x_size + 1)))
+    y_out = np.logical_or((y_index == 0), (y_index == (y_size + 1)))
+    z_out = np.logical_or((z_index == 0), (z_index == (z_size + 1)))
+    # now flag all those point which are inside the region
+    box_in = np.logical_not(np.logical_or(np.logical_or(x_out, y_out), z_out))
+
+    # the 0th bin center is recorded in the digitized index=1, so shift
+    # also throw out points that are not in the volume
+    x_index = x_index[box_in] - 1
+    y_index = y_index[box_in] - 1
+    z_index = z_index[box_in] - 1
+    # remove samples which are removed for x_index,y_index,z_index
+    mass = mass[box_in]
+
+    box_index = x_index + y_index * x_size + z_index * x_size * y_size
+
+    # note that bincount will only count up to the largest object in the list,
+    # which may be smaller than the dimension of the full count cube
+    try:
+        count_array[0:max(box_index) + 1] = np.bincount(box_index,mass)
+
+        # make the x y and z axes which index the bincount output
+        count_index = np.arange(x_size * y_size * z_size)
+        zind = count_index / (x_size * y_size)
+        yind = (count_index - x_size * y_size * zind) / x_size
+        xind = count_index - x_size * y_size * zind - x_size * yind
+
+        #count_cube[xind, yind, zind] = count_array[xind + yind * x_size +
+        #                                           zind * x_size * y_size]
+        count_cube[xind, yind, zind] = count_array[count_index]
+        #split_indices = cartesian((np.arange(z_size),
+        #                           np.arange(y_size),
+        #                           np.arange(x_size)))
+        #count_cube[split_indices] = count_array[count_index]
+    except MemoryError:
+        print "histogram3d: all points out of the volume"
+
+    return count_cube
+
 
 def azimuthal_average(image, center=None, bw = 3):
     """
