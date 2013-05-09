@@ -2,6 +2,18 @@
 
 import numpy as np
 from core import algebra
+from simulations import corr21cm
+
+def load_theory_ps(k_bins_centre):
+    c21 = corr21cm.Corr21cm()
+    #ps_theory  = c21.T_b(0.8)**2*c21.get_pwrspec(k_bins_centre)
+    #ps_theory *= k_bins_centre**3/2./np.pi**2
+
+    power_th = np.loadtxt('/Users/ycli/Code/analysis_IM/simulations/data/wigglez_halofit_z0.8.dat')
+    power_th[:,0] *= 0.72
+    ps_theory  = (c21.T_b(0.8)*1.e-3)**2*power_th[:,1]/0.72**3
+    ps_theory *= power_th[:,0]**3/2./np.pi**2
+    return ps_theory, power_th[:,0]
 
 def get_2d_k_bin_centre(ps_2d):
 
@@ -82,10 +94,9 @@ def convert_2dps_to_1dps_sim(rf_root, ns_root=None, truncate_range=None ):
     power_spectrum_err = algebra.make_vect(algebra.load(rf_root.replace('pow', 'err')))
     k_mode_number = algebra.make_vect(algebra.load(rf_root.replace('pow', 'kmn')))
     if ns_root != None:
-        weight, k_p_edges, k_v_edges = load_weight(ns_root)
-    if ns_root != None:
         weight, k_p_edges, k_v_edges = load_weight(ns_root )
-        k_mode_number *= weight
+        #k_mode_number *= weight
+        k_mode_number = weight
 
     k_p_edges, k_v_edges = get_2d_k_bin_edges(power_spectrum)
     k_p_centre, k_v_centre = get_2d_k_bin_centre(power_spectrum)

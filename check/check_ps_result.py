@@ -60,6 +60,10 @@ def plot_1d_power_spectrum(rf_root, tr_root, ns_root, ps_root, si_root, filename
     power_1d_err_2_sim[0].put(np.where(power_1d_err_2_sim[0] >= power_1d_sim), 
                           power_1d_sim[power_1d_err_2_sim[0] >= power_1d_sim] - 1.e-15)
 
+    #power_th = ps_summary.load_theory_ps(k_1d_centre_sim)
+    #power_th /= 0.72**3
+    power_th, power_th_k = ps_summary.load_theory_ps(k_1d_centre_sim)
+
     fig = plt.figure(figsize=(8, 8))
     label = filename.replace('_', ' ')
     if truncate_range != None:
@@ -73,6 +77,8 @@ def plot_1d_power_spectrum(rf_root, tr_root, ns_root, ps_root, si_root, filename
         elinewidth=1, label=label + ' negative')
     plt.errorbar(k_1d_centre_sim, power_1d_sim, power_1d_err_2_sim, 
         fmt='ko', mec='k', mfc='none', capsize=4.5, elinewidth=1, label='simulation')
+    #plt.plot(k_1d_centre_sim, power_th, c='r', label='theory')
+    plt.plot(power_th_k, power_th, c='r', label='theory')
     plt.loglog()
     plt.ylim(ymin=1.e-12, ymax=1.e-1)
     plt.xlim(xmin=0.025, xmax=1.5)
