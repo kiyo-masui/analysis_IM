@@ -47,14 +47,19 @@ def partial_derivatives(w, sigma=1.):
 	return w_x,w_y
 
 	
-def quadratic_estimators(map, sigma=1.):
+def quadratic_estimators(map, sigma=1., log_smooth=False):
 	t = time.time()
 	w = gaussian_window(map, sigma)
 	(w_x,w_y) = partial_derivatives(w, sigma)
+	if log_smooth:
+		map_smooth = convolve(map,w)
 	del w
 	delta_x = convolve(map,w_x)
 	delta_y = convolve(map,w_y)
 	del w_x, w_y
+	if log_smooth:
+		delta_x = delta_x/(1.+map_smooth)
+		delta_y = delta_y/(1.+map_smooth)
 	t_xx = delta_x*delta_x
 	t_yy = delta_y*delta_y
 	t_xy = delta_x*delta_y
@@ -187,30 +192,34 @@ def periodic_convolve(map1,map2):
 	return periodic_map
 
 
-	
-k_xx = k_set[0]
-t_xx = t_set[0]
 
-if_t_xx = np.fft.ifftshift(t_xx)
-if_t_xx = np.fft.fftn(if_t_xx)
-if_kap_xx = if_t_xx * k_xx
-if_kap_xx = np.fft.ifftn(if_kap_xx)
-if_kap_xx = if_kap_xx.real
-if_kap_xx = np.fft.fftshift(if_kap_xx)
-
-f_k_xx = np.fft.ifftn(k_xx)
-f_k_xx = f_k_xx.real
-f_k_xx = np.fft.fftshift(f_k_xx)
-f_kap_xx = periodic_convolve(t_xx, f_k_xx)
-
-f_k_yy = np.fft.ifftn(k_set[1])
-f_k_yy = f_k_yy.real
-f_k_yy = np.fft.fftshift(f_k_yy)
-f_kap_yy = periodic_convolve(t_set[1], f_k_yy)
-
-f_k_xy = np.fft.ifftn(k_set[2])
-f_k_xy = f_k_xy.real
-f_k_xy = np.fft.fftshift(f_k_xy)
-f_kap_xy = periodic_convolve(t_set[2], f_k_xy)
-kappa2 = f_kap_xx + f_kap_yy + 2*f_kap_xy
+##Comparison between 2 methods: (should give the same result) -> ok with periodic_convolve
+#k_xx = k_set[0]
+#t_xx = t_set[0]
+#
+##1st method : Get estimator in Fourier space, multiply with kernel K, then get the result in real space 
+#if_t_xx = np.fft.ifftshift(t_xx)
+#if_t_xx = np.fft.fftn(if_t_xx)
+#if_kap_xx = if_t_xx * k_xx
+#if_kap_xx = np.fft.ifftn(if_kap_xx)
+#if_kap_xx = if_kap_xx.real
+#if_kap_xx = np.fft.fftshift(if_kap_xx)
+#
+##2nd method : Get kernel K in real space, then convolve with estimator T
+#f_k_xx = np.fft.ifftn(k_xx)
+#f_k_xx = f_k_xx.real
+#f_k_xx = np.fft.fftshift(f_k_xx)
+#f_kap_xx = periodic_convolve(t_xx, f_k_xx)
+#
+##2nd method applied to map yy and xy
+#f_k_yy = np.fft.ifftn(k_set[1])
+#f_k_yy = f_k_yy.real
+#f_k_yy = np.fft.fftshift(f_k_yy)
+#f_kap_yy = periodic_convolve(t_set[1], f_k_yy)
+#
+#f_k_xy = np.fft.ifftn(k_set[2])
+#f_k_xy = f_k_xy.real
+#f_k_xy = np.fft.fftshift(f_k_xy)
+#f_kap_xy = periodic_convolve(t_set[2], f_k_xy)
+#kappa2 = f_kap_xx + f_kap_yy + 2*f_kap_xy
 
