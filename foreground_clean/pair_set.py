@@ -769,27 +769,6 @@ class PairSet():
         #    process.join()
 
     @batch_handler.log_timing
-    def calculate_svd(self):
-        r"""calculate the SVD of all pairs"""
-        # Not used! included in calulate_correlation()
-        for pairitem in self.pairlist:
-            filename = self.output_root
-            filename_corr = filename + "foreground_corr_pair_%s.pkl" % pairitem
-            filename_svd = filename + "SVD_pair_%s.pkl" % pairitem
-            print filename_corr
-            if os.access(filename_corr, os.F_OK):
-                print "SVD loading corr. functions: " + filename
-                (freq_cov, counts) = ft.load_pickle(filename_corr)
-
-                # (vals, modes1, modes2)
-                svd_info = ce.get_freq_svd_modes(freq_cov, 
-                           min(len(self.freq_list1),len(self.freq_list2)))
-                ft.save_pickle(svd_info, filename_svd)
-            else:
-                print "ERROR: in SVD, correlation functions not loaded"
-                sys.exit()
-
-    @batch_handler.log_timing
     def subtract_foregrounds(self, n_modes_start, n_modes_stop):
         for pairitem in self.pairlist:
             if self.params['SVD_file'] != None:

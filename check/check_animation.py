@@ -48,4 +48,3 @@ im_ani = animation.ArtistAnimation(fig, ims,interval=500)
 
 im_ani.save('./png/%s.mp4'%map_file)
 #plt.show()
-
