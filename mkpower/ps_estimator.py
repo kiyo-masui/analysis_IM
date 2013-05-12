@@ -332,6 +332,21 @@ class PowerSpectrumEstimator(object):
         algebra.save(file_root + file_name + '2derr', ps_std )
         algebra.save(file_root + file_name + '2dkmn', kn_mean)
 
+        if step == 'ps':
+            k_axes_each = ("map", "k_p", "k_v")
+            info_each = {'axes': k_axes_each, 'type': 'vect'}
+            info_each['map_delta']  = 1.
+            info_each['map_centre'] = range(ps.shape[0])[ps.shape[0]//2]
+            info_each['k_p_delta']  = k_bin[1]/k_bin[0]
+            info_each['k_p_centre'] = k_bin[params['kbin_num']//2]
+            info_each['k_v_delta']  = k_bin[1]/k_bin[0]
+            info_each['k_v_centre'] = k_bin[params['kbin_num']//2]
+
+            ps_each = algebra.make_vect(ps, axis_name=k_axes_each)
+            ps_each.info = info_each
+            algebra.save(file_root + file_name + '2draw', ps_each)
+
+
 if __name__ == '__main__':
     import sys
     if len(sys.argv)==2 :
