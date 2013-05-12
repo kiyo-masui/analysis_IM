@@ -47,7 +47,7 @@ params_init = {
     'ps_root'   : './',
     'ps_name'   : 'ps',
 
-    # 'None': return error, 'auto': , 'cros': , 'wigg'
+    # 'None': return error, 'auto': , 'cros': , 'wigg', '2df'
     'ps_type'   : 'None', 
     'ps_mode'   : 10,
 
