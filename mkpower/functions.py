@@ -38,6 +38,19 @@ class BOX(object):
         self.ibox1 = self.ibox1 - self.ibox1.flatten().mean()
         self.ibox2 = self.ibox2 - self.ibox2.flatten().mean()
 
+    def subtract_weighted_mean(self):
+        mean1 = np.sum(np.sum(self.ibox1, -1), -1)
+        mean1_weight = np.sum(np.sum(self.nbox1, -1), -1)
+        mean1_weight[mean1_weight==0] = np.inf
+        mean1 /= mean1_weight
+        self.ibox1 -= mean1[:, None, None]
+
+        mean2 = np.sum(np.sum(self.ibox2, -1), -1)
+        mean2_weight = np.sum(np.sum(self.nbox2, -1), -1)
+        mean2_weight[mean2_weight==0] = np.inf
+        mean2 /= mean2_weight
+        self.ibox2 -= mean2[:, None, None]
+
     def estimate_ps_3d(self, window="blackman"):
 
         window_function = fftutil.window_nd(self.nbox1.shape, name=window)
@@ -47,7 +60,8 @@ class BOX(object):
         self.ibox1 *= self.nbox1
         self.ibox2 *= self.nbox2
 
-        self.subtract_mean()
+        #self.subtract_mean()
+        self.subtract_weighted_mean()
 
         normal = (self.nbox1 * self.nbox2).flatten().sum()
         delta_v = self.boxunit**3
