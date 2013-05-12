@@ -342,7 +342,7 @@ class PowerSpectrumEstimator(object):
             info_each['k_v_delta']  = k_bin[1]/k_bin[0]
             info_each['k_v_centre'] = k_bin[params['kbin_num']//2]
 
-            ps_each = algebra.make_vect(ps, axis_name=k_axes_each)
+            ps_each = algebra.make_vect(ps, axis_names=k_axes_each)
             ps_each.info = info_each
             algebra.save(file_root + file_name + '2draw', ps_each)
 
