@@ -47,14 +47,15 @@ params_init = {
     'ps_root'   : './',
     'ps_name'   : 'ps',
 
-    # 'None': return error, 'auto': , 'cros': , 'wigg'
+    # 'None': return error, 'auto': , 'cros': , 'wigglez', '2df'
     'ps_type'   : 'None', 
     'ps_mode'   : 10,
 
-    'est_transfer' : True,
-    'est_powerspc' : True,
-    'est_gausserr' : True,
-    'est_powersim' : True
+    'est_transfer' : False,
+    'est_powerspc' : False,
+    'est_gausserr' : False,
+    'est_powersim' : False,
+    'est_powershn' : False,
 }
 prefix = 'pse_'
 
@@ -84,6 +85,8 @@ class PowerSpectrumEstimator(object):
             self.estimate(comm, rank, size, 'tr')
         if self.params['est_powerspc']:
             self.estimate(comm, rank, size, 'ps')
+        if self.params['est_powershn']:
+            self.estimate(comm, rank, size, 'sn')
         if self.params['est_gausserr']:
             self.estimate(comm, rank, size, 'ns')
         if self.params['est_powersim']:
@@ -277,6 +280,19 @@ class PowerSpectrumEstimator(object):
                                   imaps_b[1]['%d'%i]])
                 nmap_list.append([nmaps_a[1]['weight;%dmodes'%ps_mode], 
                                   nmaps_b[1]['weight;%dmodes'%ps_mode]])
+        elif map_set == 'ps' and params['ps_type'] == '2df':
+            print 'prepare maps of real catalog for 2df power sepctrum'
+            imap = functions.get_mapdict(params['opt_root'], selection='real')
+            nmap = functions.get_mapdict(params['opt_root'], selection='sele')
+            imap_list.append([imap, imap])
+            nmap_list.append([nmap, nmap])
+        elif map_set == 'sn' and params['ps_type'] == '2df':
+            print 'prepare maps of mock catalog for 2df power sepctrum short noise'
+            imap = functions.get_mapdict(params['opt_root'], selection='mock')
+            nmap = functions.get_mapdict(params['opt_root'], selection='sele')
+            for i in range(len(imap[0])):
+                imap_list.append([imap[1]['%d'%i]],[imap[1]['%d'%i]])
+                nmap_list.append([nmap, nmap])
         else:
             print 'error: map_set error!'
             exit()
@@ -320,7 +336,7 @@ class PowerSpectrumEstimator(object):
         ps_std.info = info
         kn_std.info = info
 
-        file_name = '%s_%s_%dmode_'%(params['ps_type'], step,params['ps_mode'])
+        file_name = '%s_%s_%dmode_'%(params['ps_type'], step, params['ps_mode'])
 
         file_root = params['ps_root'] + params['ps_name'] + '/'
         if not os.path.exists(file_root):
