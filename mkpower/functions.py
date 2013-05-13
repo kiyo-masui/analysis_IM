@@ -355,10 +355,17 @@ def get_mapdict(dir, selection=None):
 
                 mapdict['%s;%s'%(key1, key2)] = dir + map
 
-            if  mapsplit[0] == 'sim' and mapsplit[1] == selection:
+            if mapsplit[0] == 'sim' and mapsplit[1] == selection:
                 key1 = int(mapsplit[2])
 
                 mapdict['%d'%key1] = dir + map
+
+            if mapsplit[2] == '2df' and mapsplit[0] == selection:
+                if selection == 'real' or selection == 'sele':
+                    return dir + map
+                elif selection == 'mock':
+                    key1 = int(mapsplit[3])
+                    mapdict['%d'%key1] = dir + map
 
         if os.path.isfile(dir+map) and map.split('.')[-1]=='pkl':
             mapsplit = map.split('.')[0].split('_')
