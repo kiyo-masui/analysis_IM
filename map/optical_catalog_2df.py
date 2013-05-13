@@ -296,22 +296,22 @@ if __name__=="__main__":
     tempfile.info['freq_delta'] = -1000000.0
     tempfile.info['freq_centre'] = 1314500000.0
 
-    algebra.save('/Users/ycli/DATA/2df/tempfile', tempfile)
+    algebra.save('/mnt/scratch-gl/ycli/2df_catalog/temp/tempfile', tempfile)
 
-    map_dir = '/Users/ycli/DATA/2df/map_2929.5/'
+    map_dir = '/mnt/scratch-gl/ycli/2df_catalog/map/map_2929.5/'
     if not os.path.exists(map_dir):
         os.makedirs(map_dir)
 
     bin2dfparams_init = {
-        "infile_data": "/Users/ycli/DATA/2df/catalogue/real_catalogue_2df.out",
-        "infile_mock": "/Users/ycli/DATA/2df/catalogue/mock_catalogue_2df_%03d.out",
+        "infile_data": "/mnt/scratch-gl/ycli/2df_catalog/catalog/real_catalogue_2df.out",
+        "infile_mock": "/mnt/scratch-gl/ycli/2df_catalog/catalog/mock_catalogue_2df_%03d.out",
         "outfile_data": map_dir + "real_map_2df.npy",
         "outfile_mock": map_dir + "mock_map_2df_%03d.npy",
         "outfile_deltadata": map_dir + "real_map_2df_delta.npy",
         "outfile_deltamock": map_dir + "mock_map_2df_delta_%03d.npy",
         "outfile_selection": map_dir + "sele_map_2df.npy",
         "outfile_separable": map_dir + "sele_map_2df_separable.npy",
-        "template_file": "/Users/ycli/DATA/2df/tempfile",
+        "template_file": "/mnt/scratch-gl/ycli/2df_catalog/temp/tempfile",
         "mock_number": 100,
         }
     
