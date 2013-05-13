@@ -86,7 +86,13 @@ this_data, this_weight = BeamData.get_data_weight_chan(35)
 plt.plot(this_data[0,:])
 plt.plot(model_data[35,0,:])
 
-pol_beam.plot_beam_map(beam_map[35,...])
+pol_beam.plot_beam_map(beam_map[128,...], color_map=0.5, side=1.,
+                       normalize='max03', rotate='XXYYtoIQ')
+cbar = plt.colorbar()
+#cbar.set_label(r"Square root intensity, $ \sgn(I) \sqrt(|I|) $")
+cbar.set_label(r"Square root intensity, (${\rm{sgn}}(I)\,\sqrt{|I|}$)")
+plt.xlabel(r"IQUV, Azimuth (degrees)")
+plt.ylabel(r"Elevation (degrees)")
 
 
 
