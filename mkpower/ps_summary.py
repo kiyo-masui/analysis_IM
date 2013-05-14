@@ -79,6 +79,19 @@ def load_power_spectrum_err(ps_root):
 
     return ps_2derr, k_p_edges, k_v_edges
 
+def load_power_spectrum_opt(ps_root, sn_root):
+
+    ps_2d = algebra.make_vect(algebra.load(ps_root))
+    sn_2d = algebra.make_vect(algebra.load(sn_root))
+    ps_2derr = algebra.make_vect(algebra.load(sn_root.replace('pow', 'err')))
+
+    k_p_edges, k_v_edges = get_2d_k_bin_edges(ps_2d)
+
+    # subtract short noise
+    ps_2d -= sn_2d
+
+    return ps_2d, ps_2derr, k_p_edges, k_v_edges
+
 def load_power_spectrum(ps_root):
     
     ps_2d = algebra.make_vect(algebra.load(ps_root))
@@ -147,6 +160,41 @@ def truncate_2dps(k_p_range, k_v_range, k_p_edges, k_v_edges, power_spectrum):
                           k_v_range_idx[0]:k_v_range_idx[1]],\
            k_p_edges[k_p_range_idx[0]:k_p_range_idx[1]+1],\
            k_v_edges[k_v_range_idx[0]:k_v_range_idx[1]+1]
+
+def convert_2dps_to_1dps_opt(ps_root, sn_root, truncate_range=None):
+
+    power_spectrum, power_spectrum_err, k_p_edges, k_v_edges\
+        = load_power_spectrum_opt(ps_root, sn_root)
+
+    power_spectrum_err **= 2
+
+    k_p_centre, k_v_centre = get_2d_k_bin_centre(power_spectrum)
+    k_centre = np.sqrt(k_p_centre[:,None]**2 + k_v_centre[None, :]**2)
+
+    if truncate_range != None:
+        k_p_range = [truncate_range[0], truncate_range[1]]
+        k_v_range = [truncate_range[2], truncate_range[3]]
+        power_spectrum_err, kpe, kve = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                            k_v_edges, power_spectrum_err)
+        power_spectrum, kpe, kve     = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                            k_v_edges, power_spectrum)
+        k_centre, kpe, kve           = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                            k_v_edges, k_centre)
+    power_spectrum_err = power_spectrum_err.flatten()
+    power_spectrum     = power_spectrum.flatten()
+    k_centre           = k_centre.flatten()
+
+    k_edges_1d = k_p_edges
+
+    normal, k_e = np.histogram(k_centre, k_edges_1d)
+    power, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum)
+    err, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum_err)
+
+    #normal[normal==0] = np.inf
+    power_1d = power/normal.astype(float)
+    power_1d_err = np.sqrt(err/normal.astype(float))
+
+    return power_1d, power_1d_err, k_p_centre
 
 def convert_2dps_to_1dps(ps_root, ns_root, tr_root, rf_root, truncate_range=None):
 

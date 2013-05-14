@@ -186,7 +186,7 @@ class PowerSpectrumEstimator(object):
         k_edges_p = self.get_kbin_edges(params)
         k_edges_v = self.get_kbin_edges(params)
 
-        ps_box = functions.BOX(params['boxshape'], imap1, imap2, nmap1, nmap2)
+        ps_box = functions.BOX(imap1, imap2, nmap1, nmap2)
         ps_box.mapping_to_xyz()
         ps_box.estimate_ps_3d()
         ps_box.convert_ps_to_unitless()
