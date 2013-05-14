@@ -10,6 +10,7 @@ import os
 import gc
 from scipy import integrate
 from math import *
+from map import physical_gridding
 #import fftw3 as FFTW
 
 # kiyo module
@@ -21,18 +22,37 @@ from utils import fftutil
 #import MakePower
 
 class BOX(object):
-    def __init__(self, boxshape, imap1, imap2, weight1, weight2):
-        self.boxshape = boxshape
+    def __init__(self, imap1, imap2, weight1, weight2):
         self.imap1 = imap1
         self.imap2 = imap2
         self.weight1 = weight1
         self.weight2 = weight2
 
     def mapping_to_xyz(self):
-        self.box_bin, self.boxunit = get_box_xyz(self.imap1, self.boxshape)
+        #self.box_bin, self.boxunit = get_box_xyz(self.imap1, self.boxshape)
 
-        self.ibox1, self.nbox1 = get_box(self.box_bin, self.imap1, self.weight1)
-        self.ibox2, self.nbox2 = get_box(self.box_bin, self.imap2, self.weight2)
+        #self.ibox1, self.nbox1 = get_box(self.box_bin, self.imap1, self.weight1)
+        #self.ibox2, self.nbox2 = get_box(self.box_bin, self.imap2, self.weight2)
+
+        self.ibox1, ibox1_info = physical_gridding.physical_grid(self.imap1)
+        self.ibox2, ibox2_info = physical_gridding.physical_grid(self.imap2)
+        self.nbox1, nbox1_info = physical_gridding.physical_grid(self.weight1)
+        self.nbox2, nbox2_info = physical_gridding.physical_grid(self.weight2)
+
+        self.ibox1 = algebra.make_vect(self.ibox1, ibox1_info['axes'])
+        self.ibox2 = algebra.make_vect(self.ibox2, ibox2_info['axes'])
+        self.nbox1 = algebra.make_vect(self.nbox1, nbox1_info['axes'])
+        self.nbox2 = algebra.make_vect(self.nbox2, nbox2_info['axes'])
+
+        self.ibox1.info = ibox1_info
+        self.ibox2.info = ibox2_info
+        self.nbox1.info = nbox1_info
+        self.nbox2.info = nbox2_info
+
+        self.boxshape = self.ibox1.shape
+        self.boxunit = [self.ibox1.info['freq_delta'],
+                        self.ibox1.info['ra_delta'], 
+                        self.ibox1.info['dec_delta']]
 
     def subtract_mean(self):
         self.ibox1 = self.ibox1 - self.ibox1.flatten().mean()
@@ -64,7 +84,7 @@ class BOX(object):
         #self.subtract_weighted_mean()
 
         normal = (self.nbox1 * self.nbox2).flatten().sum()
-        delta_v = self.boxunit**3
+        delta_v = np.prod(self.boxunit)
 
         iput_1 = np.zeros(self.boxshape, dtype=complex)
         #oput_1 = np.zeros(self.boxshape, dtype=complex)
@@ -97,11 +117,11 @@ class BOX(object):
     def convert_ps_to_unitless(self):
 
         k_bin_x = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[0],
-                                                              self.boxunit))
+                                                              self.boxunit[0]))
         k_bin_y = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[1],
-                                                              self.boxunit))
+                                                              self.boxunit[1]))
         k_bin_z = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[2],
-                                                              self.boxunit))
+                                                              self.boxunit[2]))
 
         k_bin_r = np.sqrt( (k_bin_x**2)[:, None, None] + 
                            (k_bin_y**2)[None, :, None] + 
@@ -112,11 +132,11 @@ class BOX(object):
     def convert_3dps_to_2dps(self, k_edges_p, k_edges_v):
         
         k_bin_x = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[0],
-                                                              self.boxunit))
+                                                              self.boxunit[0]))
         k_bin_y = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[1],
-                                                              self.boxunit))
+                                                              self.boxunit[1]))
         k_bin_z = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[2],
-                                                              self.boxunit))
+                                                              self.boxunit[2]))
 
         k_bin_p = np.abs(k_bin_x)
         k_bin_v = np.sqrt( (k_bin_y**2)[:,None] + (k_bin_z**2)[None,:] )
@@ -223,6 +243,8 @@ def getedge(map_temp):
     y_range = (y.min(), y.max())
     z_range = (z.min(), z.max())
 
+    print x_range, y_range, z_range
+
     return x_range, y_range, z_range
 
 #----------------------------------------------------------------------#
@@ -262,6 +284,7 @@ def get_box(box_bin, imap, nmap, mmap=None):
     index_box[2,mask_box] = 0
 
     ext_map = np.zeros(imap.shape[1:])
+    print imap.dtype
     imap = np.concatenate((imap, ext_map[None,:,:]), axis=0)
     nmap = np.concatenate((nmap, ext_map[None,:,:]), axis=0)
 
@@ -684,8 +707,11 @@ def getpower_th(params):
 
 if __name__=="__main__":
     
-    map_root = '/Users/ycli/DATA/maps/'
-    map_file = 'secA_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
+    map_root = '/Users/ycli/DATA/2df/map_2929.5/'
+    map_file = 'real_map_2df.npy'
+     
+    #map_root = '/Users/ycli/DATA/maps/'
+    #map_file = 'secA_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
 
     map_temp = algebra.load(map_root + map_file)
     map_temp = algebra.make_vect(map_temp)
@@ -693,8 +719,16 @@ if __name__=="__main__":
     #x, y, z = getedge(map_temp)
     #print x, y, z
 
-    box_bin, boxunit = get_box_xyz(map_temp, (512,128,64))
-    print box_bin, boxunit
+    ibox_kiyo, ibox_kiyo_info = physical_gridding.physical_grid(map_temp, 
+                                                                refinement=2, 
+                                                                pad=5, 
+                                                                order=2)
+    ibox_kiyo = algebra.make_vect(ibox_kiyo, ibox_kiyo_info['axes'])
+    ibox_kiyo.info = ibox_kiyo_info
+    algebra.save(map_root + 'kiyo_fftbox_' + map_file, ibox_kiyo)
+
+    #box_bin, boxunit = get_box_xyz(map_temp, (512,128,64))
+    #print box_bin, boxunit
     #ibox, nbox = get_box(box_bin, map_temp, map_temp)
 
     #np.save(map_root + 'fftbox_' + map_file, ibox)

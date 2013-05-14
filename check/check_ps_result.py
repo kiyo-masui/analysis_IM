@@ -12,6 +12,60 @@ ns_root = '/Users/ycli/DATA/ps_result/new_ps_estimation_test/auto_ns_40mode_2dpo
 ps_root = '/Users/ycli/DATA/ps_result/new_ps_estimation_test/auto_ps_40mode_2dpow'
 si_root = '/Users/ycli/DATA/ps_result/new_ps_estimation_test/auto_si_40mode_2dpow'
 
+def seperate_positive_and_negetive_power(power, power_err, k_centre):
+
+    k_1d_centre_positive = k_centre[power>0]
+    power_1d_positive = power[power>0]
+    power_1d_positive_err = power_err[power>0]
+    power_1d_positive_err_2 = np.zeros(shape=(2, power_1d_positive_err.shape[0]))
+    power_1d_positive_err_2[0] = power_1d_positive_err
+    power_1d_positive_err_2[1] = power_1d_positive_err
+    power_1d_positive_err_2[0].put(
+        np.where(power_1d_positive_err_2[0] >= power_1d_positive), 
+        power_1d_positive[power_1d_positive_err_2[0] >= power_1d_positive] - 1.e-15)
+
+    k_1d_centre_negative = k_centre[power<0]
+    power_1d_negative = -power[power<0]
+    power_1d_negative_err = power_err[power<0]
+    power_1d_negative_err_2 = np.zeros(shape=(2, power_1d_negative_err.shape[0]))
+    power_1d_negative_err_2[0] = power_1d_negative_err
+    power_1d_negative_err_2[1] = power_1d_negative_err
+    power_1d_negative_err_2[0].put(
+        np.where(power_1d_negative_err_2[0] >= power_1d_negative), 
+        power_1d_negative[power_1d_negative_err_2[0] >= power_1d_negative] - 1.e-15)
+
+    return power_1d_positive, power_1d_positive_err_2, k_1d_centre_positive,\
+           power_1d_negative, power_1d_negative_err_2, k_1d_centre_negative
+
+def plot_1d_power_spectrum_opt(ps_root, sn_root, filename, truncate_range = None):
+    power_1d, power_1d_err, k_1d_centre =\
+        ps_summary.convert_2dps_to_1dps_opt(ps_root, sn_root, truncate_range)
+
+    power_1d_positive, power_1d_positive_err_2, k_1d_centre_positive,\
+    power_1d_negative, power_1d_negative_err_2, k_1d_centre_negative\
+        = seperate_positive_and_negetive_power(power_1d, power_1d_err, k_1d_centre)
+
+    fig = plt.figure(figsize=(8, 8))
+    label = filename.replace('_', ' ')
+
+    plt.errorbar(k_1d_centre_positive, power_1d_positive, power_1d_positive_err_2, 
+        fmt='ro', mec='r', capsize=4.5, elinewidth=1, label=label + ' positive')
+    plt.errorbar(k_1d_centre_negative, power_1d_negative, power_1d_negative_err_2, 
+        fmt='ro', mec='r', mfc='none', capsize=4.5, 
+        elinewidth=1, label=label + ' negative')
+
+    plt.loglog()
+    plt.ylim(ymin=1.e-12, ymax=1.e-1)
+    plt.xlim(xmin=0.025, xmax=1.5)
+    plt.xlabel('k [h/Mpc]')
+    plt.ylabel('$\Delta^2$ [$K^2$]')
+    plt.legend(frameon=False)
+    plt.tick_params(length=6, width=1.)
+    plt.tick_params(which='minor', length=3, width=1.)
+    plt.savefig('./png/' + filename + '.png', format='png')
+    plt.show()
+
+
 def plot_1d_power_spectrum(rf_root, tr_root, ns_root, ps_root, si_root, filename, 
                            truncate_range = None):
     power_1d, power_1d_err, k_1d_centre =\
@@ -20,32 +74,16 @@ def plot_1d_power_spectrum(rf_root, tr_root, ns_root, ps_root, si_root, filename
     #print power_1d
     #print power_1d_err
 
-    k_1d_centre_positive = k_1d_centre[power_1d>0]
-    power_1d_positive = power_1d[power_1d>0]
-    power_1d_positive_err = power_1d_err[power_1d>0]
-    power_1d_positive_err_2 = np.zeros(shape=(2, power_1d_positive_err.shape[0]))
-    power_1d_positive_err_2[0] = power_1d_positive_err
-    power_1d_positive_err_2[1] = power_1d_positive_err
-    power_1d_positive_err_2[0].put(
-        np.where(power_1d_positive_err_2[0] >= power_1d_positive), 
-        power_1d_positive[power_1d_positive_err_2[0] >= power_1d_positive] - 1.e-15)
-
-    k_1d_centre_negative = k_1d_centre[power_1d<0]
-    power_1d_negative = -power_1d[power_1d<0]
-    power_1d_negative_err = power_1d_err[power_1d<0]
-    power_1d_negative_err_2 = np.zeros(shape=(2, power_1d_negative_err.shape[0]))
-    power_1d_negative_err_2[0] = power_1d_negative_err
-    power_1d_negative_err_2[1] = power_1d_negative_err
-    power_1d_negative_err_2[0].put(
-        np.where(power_1d_negative_err_2[0] >= power_1d_negative), 
-        power_1d_negative[power_1d_negative_err_2[0] >= power_1d_negative] - 1.e-15)
+    power_1d_positive, power_1d_positive_err_2, k_1d_centre_positive,\
+    power_1d_negative, power_1d_negative_err_2, k_1d_centre_negative\
+        = seperate_positive_and_negetive_power(power_1d, power_1d_err, k_1d_centre)
 
     print 'positive power'
     for i in range(len(k_1d_centre_positive)):
-        print k_1d_centre_positive[i], power_1d_positive[i], power_1d_positive_err[i]
+        print k_1d_centre_positive[i],power_1d_positive[i],power_1d_positive_err_2[0][i]
     print 'negative power'
     for i in range(len(k_1d_centre_negative)):
-        print k_1d_centre_negative[i], power_1d_negative[i], power_1d_negative_err[i]
+        print k_1d_centre_negative[i],power_1d_negative[i],power_1d_negative_err_2[0][i]
 
     power_1d_sim, power_1d_err_sim, k_1d_centre_sim =\
         ps_summary.convert_2dps_to_1dps_sim(si_root, ns_root, 
@@ -321,6 +359,12 @@ def image_box_2d(x_list, y_list, plot_list, n_row=1, n_col=None, title_list=None
         plt.show()
 
 if __name__=='__main__':
+    
+    ps_root = "/Users/ycli/DATA/ps_result/29RA_2df_ps_29hour/2df_ps_2dpow"
+    sn_root = "/Users/ycli/DATA/ps_result/29RA_2df_ps_29hour/2df_sn_2dpow"
+    plot_1d_power_spectrum_opt(ps_root, sn_root, '2df_ps_2dpow')
+
+    exit()
 
     mode = 25 
     #mode = 10 
@@ -328,7 +372,7 @@ if __name__=='__main__':
     filename = '15hr_IE_14conv_auto_ps_15hour_%dmode'%mode
     #filename = '1hr_IE_14conv_auto_ps_01hour_%dmode'%mode
 
-    result_root = '/Users/ycli/DATA/ps_result/ps_result_subreal/'\
+    result_root = '/Users/ycli/DATA/ps_result/'\
                   + filename + '/'
     #result_root = '/Users/ycli/DATA/ps_result/' + filename + '/'
     rf_root = result_root + 'auto_rf_%dmode_2dpow'%mode

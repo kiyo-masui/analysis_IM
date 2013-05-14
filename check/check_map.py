@@ -7,253 +7,20 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 from mkpower import functions
 import math
 
-# my first map
-#maproot = "/mnt/raid-project/gmrt/ycli/map_result/maps/may04.2012/"
-#mapname = "fir_15hr_41-90_clean_map_I_762"
-#mapidex = 20
+maproot = "/Users/ycli/DATA/2df/map_2929.5/"
+mapname = "real_map_2df"
+boxroot = "/Users/ycli/DATA/2df/map_2929.5/"
+#boxname = "fftbox_real_map_2df"
+boxname = "kiyo_fftbox_real_map_2df"
 
-#maproot = "/mnt/raid-project/gmrt/ycli/map_result/maps/may04.2012/"
-#mapname = "secA_15hr_41-90_clean_map_I_762"
-#mapidex = 20
+#maproot = "/Users/ycli/DATA/maps/"
+#mapname = "secA_15hr_41-80_avg_fdgp_new_clean_map_I_800"
+#boxroot = "/Users/ycli/DATA/maps/"
+#boxname = "fftbox_secA_15hr_41-80_avg_fdgp_new_clean_map_I_800"
 
-#maproot = "/mnt/raid-project/gmrt/ycli/map_result/maps/may10.2012/"
-#mapname = "fir_1hr_41-90_clean_map_I_762"
-#mapidex = 10
+mapidex = 50
 
-#maproot = "/mnt/raid-project/gmrt/ycli/map_result/maps/may10.2012/"
-#mapname = "secD_1hr_41-90_dirty_map_I_762"
-#mapidex = 10
-
-#maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/GBT_15hr_map_oldcal_allsvd_mapmode_map/"
-#mapname = "combined_clean_map_15modes"
-#mapidex = 10
-
-#maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/GBT_15hr_map_oldcal_legendre_modes_5gwj_mapmode_map/"
-#mapname = "combined_clean_map_15modes"
-#mapidex = 10
-
-#maproot = "/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/"
-#mapname = "sec_A_15hr_41-90_clean_map_I"
-#mapidex = 20
-
-#maproot = "/mnt/raid-project/gmrt/tcv/maps/"
-#mapname = "15hr_41-90_fdgp_RM_clean_map_V"
-#mapidex = 20
-
-#maproot = "/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/"
-#mapname = "sec_A_15hr_41-90_noise_weight_I"
-#mapidex = 20
-
-#maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/GBT_1hr_map_oldcal_legendre_modes_0gwj/mapmode_map/"
-#mapname = "combined_clean_map_30modes"
-#mapidex = 10
-
-#maproot = "/mnt/raid-project/gmrt/eswitzer/GBT/maps/1hr_oldcal/"
-#mapname = "secA_1hr_41-18_clean_map_I_800"
-#mapidex = 10
-
-#maproot = "/mnt/raid-project/gmrt/eswitzer/GBT/cleaned_maps/GBT_1hr_map_oldcal/"
-#mapname = "combined_clean_map_50modes"
-##mapname = "sec_A_cleaned_clean_map_I_with_B_50modes"
-#mapidex = 10
-
-#maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/GBT_1hr_map_oldcal_legendre_modes_0gwj/mapmode_map/"
-#mapname = "combined_clean_map_50modes"
-#mapname = "sec_A_cleaned_clean_map_I_with_B_50modes"
-#mapidex = 10
-
-# maps and fftboxes
-#maproot = "/mnt/raid-project/gmrt/eswitzer/GBT/simulations/15hr_oldmap_ideal/"
-#mapname = "sim_temperature_000"
-#mapidex = 200
-#boxroot = "/mnt/raid-project/gmrt/ycli/ps_result/simulation_auto_sim_15hr_oldmap_ideal_15/fftbox/"
-#boxname = "fftbox_sim_temperature_000"
-
-#maproot = "/mnt/raid-project/gmrt/eswitzer/GBT/simulations/15hr_oldmap_str/"
-#mapname = "sim_temperature_000"
-#mapidex = 250
-#boxroot = "/mnt/raid-project/gmrt/ycli/ps_result/simulation_auto_sim_15hr_oldmap_str_15/fftbox/"
-#boxname = "fftbox_sim_temperature_000"
-
-#maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/IQV_legendre_modes_0gwj/IxI5svd/"
-#mapname = "sec_I_cleaned_clean_map_I_with_I_3modes"
-#mapidex = 150
-
-#maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/IQV_legendre_modes_0gwj/IQUmap_clean_withIxIsvd/"
-#mapname = "sec_I_cleaned_clean_map_I_with_Q_1modes"
-##mapname = "sec_Q_cleaned_clean_map_I_with_I_0modes"
-##mapname = "sec_U_cleaned_clean_map_I_with_I_1modes"
-#mapidex = 150
-
-#maproot = "/mnt/data-pen3/ycli/map_result/maps/parkes_linear_highres/"
-#mapname = "fir_dirty_map_I_1315"
-#mapname = "fir_clean_map_I_1315"
-#mapname = "fir_parkes_2008_09_12_west_dirty_map_I_1315"
-#mapname = "fir_parkes_2008_09_12_west_clean_map_I_1315"
-#mapname = "fir_parkes_2008_09_13_west_dirty_map_I_1315"
-#mapname = "fir_parkes_2008_09_13_west_clean_map_I_1315"
-#mapidex = 150
-
-#maproot = "/mnt/data-pen3/ycli/map_result/maps/parkes_12-13-14/"
-#maproot = "/mnt/raid-project/gmrt/ycli/map_result/maps/parkes/"
-#maproot = "/mnt/data-pen3/ycli/map_result/maps/parkes_linear_highres_combine/"
-#mapname = "fir_parkes_2008_09_12-13_west_dirty_map_I_1315"
-#mapname = "fir_parkes_2008_09_12-13_west_clean_map_I_1315"
-#mapname = "fir_parkes_2008_09_12-13-14_west_dirty_map_I_1315"
-#mapname = "fir_parkes_2008_09_11-12-13-14_clean_map_I_1315"
-#mapname = "fir_parkes_2008_09_12w-13-14_beam0testclean_map_I_1315"
-#mapname = "fir_parkes_2008_09_12w-13-14_beam0testdirty_map_I_1315"
-
-#mapname = "fir_parkes_2008_09_12w_13_14dirty_map_I_1315"
-#mapname = "fir_parkes_2008_09_12w_13_14_beam_0_dirty_map_I_1315"
-#mapname = "fir_parkes_2008_09_12w_13_14_beam_1_dirty_map_I_1315"
-#mapname = "fir_parkes_2008_09_12w_13_14_beam_2_dirty_map_I_1315"
-
-#mapname = "fir_parkes_2008_09_12w_13_14_beam_0_clean_map_I_1315"
-#mapname = "fir_parkes_2008_09_12w_13_14_beam_1_clean_map_I_1315"
-#mapname = "fir_parkes_2008_09_12w_13_14_beam_2_clean_map_I_1315"
-#mapname = "fir_parkes_2008_09_12w_13_14_beam_3_clean_map_I_1315"
-#mapname = "fir_parkes_2008_09_12w_13_14_clean_map_I_1315"
-#mapname = "fir_parkes_2008_09_12w_beam0testclean_map_I_1315"
-#mapname = "fir_parkes_2008_09_12w_beam1testdirty_map_I_1315"
-
-#mapname = "fir_RA+10_parkes_2008_09_12w_13_14_dirty_map_I_1315"
-#mapname = "fir_RA+10_parkes_2008_09_12w_13_14_beam_0_dirty_map_I_1315"
-#mapname = "fir_RA+10_parkes_2008_09_12w_13_14_beam_1_dirty_map_I_1315"
-#mapname = "fir_RA+10_parkes_2008_09_12w_13_14_beam_2_dirty_map_I_1315"
-#mapname = "fir_RA+10_parkes_2008_09_12w_13_14_clean_map_I_1315"
-
-#mapname = "fir_RA+10_parkes_2008_09_12w_13_14_clean_map_I_1315"
-#mapname = "fir_RA+10_parkes_2008_09_12w_13_14_beam_0_clean_map_I_1315"
-#mapname = "fir_RA+10_parkes_2008_09_12w_13_14_beam_1_clean_map_I_1315"
-#mapname = "fir_RA+10_parkes_2008_09_12w_13_14_beam_2_clean_map_I_1315"
-
-#mapname = "fir_RA+05_parkes_2008_09_12w_13_14_clean_map_I_1315"
-
-#maproot = "/mnt/data-pen3/tcv/oldmaps/1hr_41-16_fdg/"
-#mapname = "secA_1hr_41-18_clean_map_I_800"
-#maproot = "/mnt/raid-project/gmrt/tcv/maps/"
-#mapname = "fir_1hr_41-18_avg_fdgp_clean_map_I_800"
-#mapname = "fir_1hr_41-18_avg_fdgp_clean_map_Q_800"
-#mapname = "fir_1hr_41-18_avg_fdgp_clean_map_U_800"
-#mapname = "fir_1hr_41-18_avg_fdgp_clean_map_V_800"
-#maproot = "/mnt/data-pen3/ycli/map_gbt/15hr_IQUV_extend_legendre_modes_0gwj_conv/"
-#mapname = "15hr_41-80_avg_fdgp_noise_weight_I"
-#mapname = "15hr_41-80_avg_fdgp_noise_weight_Q"
-#mapname = "15hr_41-80_avg_fdgp_noise_weight_V"
-#maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_AQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/"
-#mapname = "sec_A_cleaned_noise_inv_I_with_B_0modes"
-#mapname = "sec_B_cleaned_noise_inv_I_with_A_0modes"
-#mapname = "sec_A_cleaned_clean_map_I_with_B_0modes"
-#mapname = "sec_B_cleaned_clean_map_I_with_A_0modes"
-#mapname = "fir_1hr_41-18_avg_fdgp_noise_diag_I_800"
-#maproot = "/mnt/data-pen3/ycli/map_gbt/1hr_AQUV_extend_legendre_modes_0gwj_conv/"
-#mapname = "secA_1hr_41-18_noise_weight_I_800"
-#mapname = "secA_1hr_41-18_noise_weight_Q_800"
-#mapname = "secB_1hr_41-18_noise_weight_U_800"
-#mapname = "secB_1hr_41-18_noise_weight_V_800"
-#maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_AQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/"
-#mapname = "sec_A_cleaned_clean_map_I_with_B_20modes"
-#maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/AQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/"
-#mapname = "sec_A_cleaned_clean_map_I_with_B_20modes"
-#maproot = "/mnt/scratch-3week/ycli/1hr_AQUV_extend_legendre_modes_0gwj_2conv_1sim/"
-#mapname = "secA_1hr_41-18_noise_weight_I_800"
-
-#maproot = "/scratch/ycli/map_result/maps/parkes/"
-#maproot = "/mnt/scratch-gl/ycli/map_result/maps/parkes/"
-#mapname = "fir_RA+10_parkes_2010_10_25dirty_map_I_1316" 
-#mapname = "fir_RA+10_parkes_2010_10_26dirty_map_I_1316" 
-#mapname = "fir_RA+10_parkes_2010_10_25clean_map_I_1316" 
-#mapname = "fir_RA+10_parkes_2010_10_27clean_map_I_1316" 
-#mapname = "fir_RA+10_parkes_2010_10_27dirty_map_I_1316" 
-#mapname = "fir_RA+10_parkes_2010_10_27beam_0_dirty_map_I_1316" 
-#mapname = "fir_RA+10_parkes_2010_10_27beam_1_dirty_map_I_1316" 
-#mapname = "fir_RA+10_parkes_2010_10_27beam_3_dirty_map_I_1316" 
-#mapname = "fir_RA+10_parkes_2010_10_27beam_4_dirty_map_I_1316" 
-#mapname = "fir_RA+10_parkes_2010_10_27beam_5_dirty_map_I_1316" 
-#mapname = "fir_RA+10_parkes_2010_10_27beam_6_dirty_map_I_1316" 
-
-#maproot = "/mnt/scratch-gl/ycli/maps/1hr_41-18_avg_fdgp/"
-#mapname = "secA_1hr_41-18_avg_fdgp_clean_map_I_800"
-#mapname = "fir_1hr_41-18_avg_fdgp_new_clean_map_I_800"
-
-
-#maproot = "/mnt/raid-project/gmrt/tcv/maps/15hr_41-80_avg_fdgp_new/"
-#mapname = "secA_15hr_41-80_avg_fdgp_new_noise_inv_diag_I_800"
-
-#maproot = "/mnt/scratch-gl/ycli/cln_result/15hr_ABCD_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/"
-#mapname = "sec_D_cleaned_noise_inv_I_with_B_40modes"
-
-#maproot = "/mnt/scratch-gl/ycli/cln_result/15hr_ABCD_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/"
-maproot = "/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_IE_legendre_modes_0gwj_11conv/mapmode_map/"
-mapname = "combined_clean_map_0modes"
-#mapname = "sec_D_cleaned_noise_inv_I_with_B_40modes"
-boxroot = "/mnt/raid-project/gmrt/ycli/ps_result/reference_cros_15hr_ABCD_legendre_modes_0gwj_14conv_new_10/fftbox/"
-boxname = "fftbox_combined_clean_weight_10modes"
-
-mapidex = 200 
-
-def getedge(map):
-    deg2rad = 3.1415926/180.
-    ra   = map.get_axis('ra')*deg2rad
-    ra   = ra - ra[round(ra.shape[0]/2.)]
-    dec  = map.get_axis('dec')*deg2rad
-    freq = map.get_axis('freq')
-    r    = functions.fq2r(freq)
-
-    print 'freq range: %f ~ %f'%(freq[0], freq[-1])
-    print 'r    range: %f ~ %f'%(r[0], r[-1])
-    print r.max() - r.min()
-
-    r.shape   = r.shape + (1, 1)
-    ra.shape  = (1,) + ra.shape + (1,)
-    dec.shape = (1, 1) + dec.shape
-    radec_map = np.zeros((3,)+map.shape)
-    radec_map[0,...] = r
-    radec_map[1,...] = ra
-    radec_map[2,...] = dec
-    xyz_map = np.zeros((3,)+map.shape)
-    xyz_map[0,...]=radec_map[0,...]*np.cos(radec_map[2,...])*np.cos(radec_map[1,...])
-    xyz_map[1,...]=radec_map[0,...]*np.cos(radec_map[2,...])*np.sin(radec_map[1,...])
-    xyz_map[2,...]=radec_map[0,...]*np.sin(radec_map[2,...])
-
-    x = xyz_map[0].flatten()
-    y = xyz_map[1].flatten()
-    z = xyz_map[2].flatten()
-
-    xrange = (math.floor(x.min()), math.floor(x.max())+1.)
-    yrange = (math.floor(y.min()), math.floor(y.max())+1.)
-    zrange = (math.floor(z.min()), math.floor(z.max())+1.)
-
-    plt.figure(figsize=(10,10))
-    plt.subplot(311)
-    plt.scatter(x,y, marker='.', alpha=0.1)
-    plt.vlines(xrange[0], yrange[0], yrange[1])
-    plt.vlines(xrange[1], yrange[0], yrange[1])
-    plt.hlines(yrange[0], xrange[0], xrange[1])
-    plt.hlines(yrange[1], xrange[0], xrange[1])
-    plt.subplot(312)
-    plt.scatter(y,z, marker='.', alpha=0.1)
-    plt.vlines(yrange[0], zrange[0], zrange[1])
-    plt.vlines(yrange[1], zrange[0], zrange[1])
-    plt.hlines(zrange[0], yrange[0], yrange[1])
-    plt.hlines(zrange[1], yrange[0], yrange[1])
-    plt.subplot(313)
-    plt.scatter(x,z, marker='.', alpha=0.1)
-    plt.vlines(xrange[0], zrange[0], zrange[1])
-    plt.vlines(xrange[1], zrange[0], zrange[1])
-    plt.hlines(zrange[0], xrange[0], xrange[1])
-    plt.hlines(zrange[1], xrange[0], xrange[1])
-
-    plt.savefig('./png/mapsize.png', formate='png')
-
-map = algebra.load(maproot + mapname + '.npy')
-map = algebra.make_vect(map)
-#getedge(map)
-#exit()
-print map.shape
-#print map.get_axis('freq')
-#exit()
+map = algebra.make_vect(algebra.load(maproot + mapname + '.npy'))
 
 if mapidex>=map.shape[0]:
     print 'index out of the maps!!'
@@ -312,7 +79,7 @@ if len(sys.argv) == 1:
     #plt.figure(figsize=(9,8))
     #f = plt.figure(figsize=(16,9))
     #f = plt.figure(figsize=(10,16))
-    f = plt.figure(figsize=(16,10))
+    f = plt.figure(figsize=(8,7))
     ax = ImageGrid(f, 111,
                    nrows_ncols = (1, 1),
                    direction = "row",
@@ -410,10 +177,15 @@ elif len(sys.argv) == 2:
     freq = map.get_axis('freq')
     z = 1.42e9/freq - 1.
     r = functions.fq2r(freq)
-    #boxidex = int((r[mapidex]-1400.)/2)
-    boxidex = int((r[mapidex]-1510.)/3.49)
+    boxidex = int((r[mapidex]-83.7065)/0.597)
+    #boxidex = int((r[mapidex]-1507.03)/1.768)
     
-    box = np.load(boxroot + boxname + '.npy')
+    box = algebra.make_vect(algebra.load(boxroot + boxname + '.npy'))
+    r_box = box.get_axis('freq')
+    print r_box
+    print r[mapidex]
+    boxidex = np.digitize([r[mapidex],], r_box)[0]
+    #box = np.load(boxroot + boxname + '.npy')
     
     if sys.argv[1]=='1':
         plt.figure(figsize=(8, 7))
@@ -462,7 +234,7 @@ elif len(sys.argv) == 2:
 
 pngname = './png/'+mapname+'%03d.png'%mapidex
 plt.savefig(pngname, format='png')
-#plt.show()
+plt.show()
 
 
 
