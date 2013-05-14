@@ -49,7 +49,7 @@ params_init = {
 
     # 'None': return error, 'auto': , 'cros': , 'wigglez', '2df'
     'ps_type'   : 'None', 
-    'ps_mode'   : 10,
+    'ps_mode'   : None,
 
     'est_transfer' : False,
     'est_powerspc' : False,
@@ -189,7 +189,7 @@ class PowerSpectrumEstimator(object):
         ps_box = functions.BOX(params['boxshape'], imap1, imap2, nmap1, nmap2)
         ps_box.mapping_to_xyz()
         ps_box.estimate_ps_3d()
-        ps_box.convert_ps_to_unitless()
+        #ps_box.convert_ps_to_unitless()
         ps_box.convert_3dps_to_2dps(k_edges_p, k_edges_v)
 
         return ps_box.ps_2d, ps_box.kn_2d
@@ -291,7 +291,7 @@ class PowerSpectrumEstimator(object):
             imap = functions.get_mapdict(params['opt_root'], selection='mock')
             nmap = functions.get_mapdict(params['opt_root'], selection='sele')
             for i in range(len(imap[0])):
-                imap_list.append([imap[1]['%d'%i]],[imap[1]['%d'%i]])
+                imap_list.append([imap[1]['%d'%i],imap[1]['%d'%i]])
                 nmap_list.append([nmap, nmap])
         else:
             print 'error: map_set error!'
@@ -336,7 +336,10 @@ class PowerSpectrumEstimator(object):
         ps_std.info = info
         kn_std.info = info
 
-        file_name = '%s_%s_%dmode_'%(params['ps_type'], step, params['ps_mode'])
+        if params['ps_mode'] == None:
+            file_name = '%s_%s_'%(params['ps_type'], step)
+        else:
+            file_name = '%s_%s_%dmode_'%(params['ps_type'], step, params['ps_mode'])
 
         file_root = params['ps_root'] + params['ps_name'] + '/'
         if not os.path.exists(file_root):

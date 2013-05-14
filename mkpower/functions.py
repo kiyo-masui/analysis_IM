@@ -61,7 +61,7 @@ class BOX(object):
         self.ibox2 *= self.nbox2
 
         #self.subtract_mean()
-        self.subtract_weighted_mean()
+        #self.subtract_weighted_mean()
 
         normal = (self.nbox1 * self.nbox2).flatten().sum()
         delta_v = self.boxunit**3

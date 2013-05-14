@@ -27,6 +27,7 @@ export MAP_SIM="None"
 export MAP_SSM="None"
 export MAP_CLN="None"
 export MAP_WGZ="None"
+export MAP_2DF="None"
 export MAP_MULTIPLIER=1
 export NAME=""
 export MODE="15"
