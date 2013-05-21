@@ -189,7 +189,7 @@ def make_cube_movie(source_key, colorbar_title, frame_dir,
                 draw_objects = [FWHM_circle, region_scale]
 
                 runlist.append((outfilename, cube[freqind, :, :], ra_axis,
-                                dec_axis, color_axis, ["RA", "Dec"], 1.,
+                                dec_axis, color_axis, ["X", "Y"], 1.,
                                 fulltitle, colorbar_title, draw_objects))
 
             else:
@@ -204,6 +204,7 @@ def make_cube_movie(source_key, colorbar_title, frame_dir,
 
 
     if saveslice is not None:
+        print saveslice
         print "saving just slice %d" % saveslice
         (outfilename, cube_slice, xaxis, yaxis, vaxis, xylabels, \
             aspect, fulltitle, cbar_title, draw_objects) = runlist[saveslice]

@@ -13,22 +13,31 @@ import string
 
 # i also changed plot_cube.py RA went to X Dec went to Y (when plotting slices)
 
-#TODO: i have added multiplier check how it works(concerns about numbers)
 
-
-def plotting(filename, file_directory="/tmp/mufma/data/",
+def plot_3D_map(filename, file_directory="/tmp/mufma/data/",
              title_name="Video", scale_name="Temperature(mK)",
              frame_directory="/tmp/mufma/data/", data_type="npy",
              output_directory="/cita/d/www/home/mufma/movies/",
              multiplier_num=1000.):
-    r"""given a datafile plot a movie to www directory"""
+    r"""
+    (data_set) -> jpeg-video
+
+    Returns a 3D_map to output_directory using filename
+
+    >>> plot_3D_map(data.npy)
+    """
+
     # TODO: determine how to specify title
     datapath_db = data_paths.DataPath()
+    saveslice_file = "/cita/d/www/home/mufma/Halos_40_bins.eps"
+    saveslice = None
     frame_dir = frame_directory
     given_tag = string.rstrip(filename, data_type)
     plot_cube.make_cube_movie(file_directory+filename, scale_name,
                               frame_dir,
-                              sigmarange=[0., 0.5*10.**(11)],
+                              saveslice=saveslice,
+                              saveslice_file=saveslice_file,
+                              sigmarange=[-0.05, 0.05],
                               multiplier=multiplier_num,
                               title=title_name,
                               outputdir=output_directory,
@@ -88,7 +97,7 @@ def main():
     print optdict
     if len(args) != 1:
         parser.error("wrong number of arguments")
-    plotting(*args, **optdict)
+    plot_3D_map(*args, **optdict)
 
 
 if __name__ == '__main__':

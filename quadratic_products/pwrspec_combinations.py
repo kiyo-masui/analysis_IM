@@ -7,7 +7,7 @@ from kiyopy import parse_ini
 from quadratic_products import pwrspec_estimator as pe
 from foreground_clean import map_pair as mp
 from utils import data_paths as dp
-
+import glob
 
 def pwrspec_caller(map1_key, map2_key,
                    noiseinv1_key, noiseinv2_key,
@@ -120,7 +120,7 @@ class GbtDataAutopower(object):
                 dbkeydict['noiseinv1_key'] = "%s:%s;noise_inv;%s" % mapset0
                 dbkeydict['noiseinv2_key'] = "%s:%s;noise_inv;%s" % mapset1
                 files = dp.convert_dbkeydict_to_filedict(dbkeydict,
-                                                datapath_db=self.datapath_db
+                                                datapath_db=self.datapath_db,
                                                 tack_on=tack_on)
 
                 execute_key = "%s:%s" % (item[0], treatment)
@@ -597,6 +597,50 @@ class SinglePhysicalSim(object):
                        self.params, execute_key=execute_key)
 
         caller.multiprocess_stack(self.params["outfile"], debug=False)
+
+
+# this does not actually do any batch processing, but just wraps a multiple
+# quadratic estimator output in the same packaging/pipeline interaction
+multidarkmsim_init = {
+        "sim_file_left": "sim_stuff",
+        "sim_file_right": "sim_stuff",
+        "outfile": "test_file.shelve",
+        "unitless": True,
+        "return_3d": False,
+        "truncate": False,
+        "window": None,
+        "ncpu": 1,
+        "bins": [0.00765314, 2.49977141, 35]
+               }
+multidarkmsim_prefix = 'sps_'
+
+
+class MultiDarkMSim(object):
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+        self.datapath_db = dp.DataPath()
+
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file,
+                                          multidarkmsim_init,
+                                          prefix=multidarkmsim_prefix)
+
+    def execute(self, processes):
+        funcname = "quadratic_products.pwrspec_combinations"
+        funcname += ".phys_pwrspec_caller"
+        caller = aggregate_outputs.AggregateOutputs(funcname)
+
+        execute_key = "sim:phys"
+        for name_left in glob.glob(self.params["sim_file_left"]):
+            caller.execute(name_left,name_left,self.params,
+                           execute_key=execute_key)
+            sim_l = name_left.partition('sim')[0].partition('dm_')[2]
+            red_l = name_left.partition('sim')[2].partition('red')[0]
+            caller.multiprocess_stack(self.params["outfile"] + sim_l + 'sim' +
+                                      red_l + 'red' + '.shelve',
+                                      debug=False, ncpu=self.params['ncpu'])
+
+
 
 
 cleanup_init = {

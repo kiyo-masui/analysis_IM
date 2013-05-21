@@ -42,7 +42,6 @@ class AggregateSummary(object):
         filelist = glob.glob('%s/%s*.shelve' % \
                              (self.params['directory'],
                               self.params['basefile']))
-
         print '%s/%s*.shelve' % \
               (self.params['directory'], self.params['basefile'])
 

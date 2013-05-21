@@ -11,29 +11,6 @@ convert_array_to_h5py() takes array from binary_reader and put it in h5py file
 which has directories and datasets
 """
 
-
-"""
-    physical_scale,mass_scale,velocity_scale = constants
-
-
-    save_info = np.zeros((7,0))
-    with open(file_name,"rb") as halofile:
-        header = halofile.read(record_header.size)
-        binary_info = halofile.read(halo_struct.size)
-        while binary_info:
-            halo_info = halo_struct.unpack(binary_info)
-            save_info = np.append(save_info,[[halo_info[0] * physical_scale],
-                                  [halo_info[1] * physical_scale],
-                                  [halo_info[2] * physical_scale],
-                                  [halo_info[6] * velocity_scale],
-                                  [halo_info[7] * velocity_scale],
-                                  [halo_info[8] * velocity_scale],
-                                  [halo_info[16] * mass_scale]],1)
-            binary_info = halofile.read(halo_struct.size)
-    return save_info
-"""
-
-
 def binary_reader(file_directory, header_struct, body_struct, constants,
                   reading_param, const_param):
     # binary file we want to convert
@@ -61,12 +38,14 @@ def binary_reader(file_directory, header_struct, body_struct, constants,
                 list[index].append(constants[const_param[index]] *
                                    halo_info[reading_param[index]])
             binary_info = halofile.read(halo_struct.size)
+        halofile.close()
     return list
 
 
 def convert_array_to_h5py(file_adress, directory_list, datasets_list, data):
     # part regarding HDF5 file and its structure
     file_name = file_adress
+    print "File adress is :", file_name
     create_file = h5py.File(file_name)
     directories = directory_list
     data_sets = datasets_list
@@ -82,18 +61,25 @@ def convert_array_to_h5py(file_adress, directory_list, datasets_list, data):
                 data_sets[name_index][data_index],
                 data=data_save[reading_index])
             reading_index = reading_index + 1
+    create_file.close()
 
 
-# calling functions defined above
-info = binary_reader("/cita/h/home-2/mufma/Secondary/0.696halo0.dat",
-                     "f", "<" + "f"*28,
-                     [505. * (1./2048.), 7.9955, 1.3313e10],
-                     [0, 1, 2, 6, 7, 8, 16], [0, 0, 0, 1, 1, 1, 2])
-
-# you can provide directories as follows: ['a1','a2',..]
-# and corresponding data sets as follows:
-# [['b11','b12',..],['b21','b22',..],..]
-convert_array_to_h5py('Tryout.hdf5',
-                      ['Positions', 'Velocities', 'Halo_Masses'],
-                      [['x', 'y', 'z'], ['x', 'y', 'z'], ['Halo_Masses']],
-                      info)
+if __name__ == "__main__":
+    list = [0.042,0.086,0.130,0.220,0.267,0.316,0.416,0.468,0.523,0.636,
+            0.696,0.758,0.889,0.958,1.030,1.185,1.267,1.353,1.538,1.638,
+            1.742,1.969,2.092,2.222,2.505,2.660,2.825]
+    sim_dir = "/mnt/raid-project/gmrt/mufma/halo_catalogs/"
+    for num in range(78,101):
+        print "Using catalog number : %d"%num
+        for red in list:
+            print "Reading binary file at redshift : %.3f"%red
+            info = binary_reader(sim_dir + "simulation%d"%num +"/%.3fhalo0.dat"%red,
+                                "f", "<" + "f"*28,
+                                [505. * (1./2048.), 7.9955, 1.3313e10],
+                                [0, 1, 2, 6, 7, 8, 16], [0, 0, 0, 1, 1, 1, 2])
+            print "Converting binary to h5py at %.3f"%red
+            convert_array_to_h5py('/mnt/raid-project/gmrt/mufma/h5py_catalogs/'
+                                  + 'simulation%d'%num +"/%.3fhalo_catalog.hdf5"%red,
+                                  ['Positions', 'Velocities', 'Halo_Masses'],
+                                  [['x', 'y', 'z'], ['x', 'y','z'],['Halo_Masses']],
+                                  info)
