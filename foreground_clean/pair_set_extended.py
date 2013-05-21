@@ -6,6 +6,7 @@ import copy
 import time
 import scipy as sp
 import numpy as np
+import numpy.ma as ma
 from utils import data_paths as dp
 from foreground_clean import find_modes
 from kiyopy import parse_ini
@@ -22,6 +23,11 @@ params_init = {
                'map2': 'GBT_15hr_map',
                'noise_inv1': 'GBT_15hr_map',
                'noise_inv2': 'GBT_15hr_map',
+               'map1_ext': None,
+               'map2_ext': None,
+               'noise_inv1_ext': None,
+               'noise_inv2_ext': None,
+               'index_ext': None,
                'simfile': None,
                'sim_multiplier': 1.,
                'subtract_inputmap_from_sim': False,
@@ -30,15 +36,18 @@ params_init = {
                'tack_on_input': None,
                'tack_on_output': None,
                'convolve': True,
+               'clip_weight_percent': None,
+               'conv_factor': 1.1,
+               'weighted_SVD': False,
                'factorizable_noise': True,
                'sub_weighted_mean': True,
                'svd_filename': None,
                'modes': [10, 15]
                }
-prefix = 'fs_'
+prefix = 'fse_'
 
 
-class PairSet():
+class PairSetExtended():
     r"""Class to manage a set of map pairs
     """
 
@@ -46,8 +55,11 @@ class PairSet():
     def __init__(self, parameter_file=None, params_dict=None, feedback=0):
         # recordkeeping
         self.pairs = {}
+        self.pairs_ext = {}
         self.pairs_parallel_track = {}
         self.pairlist = []
+        self.pairlist_ext = []
+        self.indexlist_ext = []
         self.datapath_db = dp.DataPath()
 
         self.params = params_dict
@@ -57,6 +69,7 @@ class PairSet():
 
         self.freq_list = sp.array(self.params['freq_list'], dtype=int)
         self.tack_on_input = self.params['tack_on_input']
+        self.conv_factor = self.params['conv_factor']
         self.output_root = self.datapath_db.fetch(self.params['output_root'],
                                             tack_on=self.params['tack_on_output'])
 
@@ -72,6 +85,9 @@ class PairSet():
         else:
             self.svd_filename = self.output_root + "/" + "SVD.hd5"
 
+        # save the signal and weight matrices
+        self.modeinput_filename = self.output_root + "/" + "mode_ingredients.hd5"
+
         # Write parameter file.
         parse_ini.write_params(self.params, self.output_root + 'params.ini',
                                prefix=prefix)
@@ -80,7 +96,22 @@ class PairSet():
     def execute(self, processes):
         r"""main call to execute the various steps in foreground removal"""
         self.load_pairs()
+
+        if self.params['index_ext'] is not None:
+            self.indexlist_ext = self.params['index_ext']
+            for (index, map1name, map2name, noise1name, noise2name) in \
+                zip(self.params['index_ext'], \
+                    self.params['map1_ext'], self.params['map2_ext'], \
+                    self.params['noise_inv1_ext'], \
+                    self.params['noise_inv2_ext']):
+                print "loading dataset extension: ", index
+                self.load_ext_pairs(index, map1name, map2name,
+                                    noise1name, noise2name)
+
         self.preprocess_pairs()
+
+        if self.params['weighted_SVD']:
+            self.call_pairs("apply_map_weights")
 
         if self.params['svd_filename'] is not None:
             print "WARNING: skipping correlation/SVD and using existing"
@@ -92,10 +123,18 @@ class PairSet():
         mode_list_start[1:] = mode_list_start[:-1]
 
         #self.uncleaned_pairs = copy.deepcopy(self.pairs)
-        for (n_modes_start, n_modes_stop) in zip(mode_list_start,
+        for (n_start, n_stop) in zip(mode_list_start,
                                              mode_list_stop):
-            self.subtract_foregrounds(n_modes_start, n_modes_stop)
-            self.save_data(n_modes_stop)
+            self.subtract_foregrounds(n_start, n_stop)
+
+            # TODO: if weighted SVD is an improvement, move this to save step
+            if self.params['weighted_SVD']:
+                self.call_pairs("unapply_map_weights")
+
+            self.save_data(n_stop)
+
+            if self.params['weighted_SVD']:
+                self.call_pairs("apply_map_weights")
 
             # NOTE: if you use this you also need to copy the parallel pairs!
             #self.pairs = copy.deepcopy(self.uncleaned_pairs)
@@ -139,7 +178,8 @@ class PairSet():
 
             pair = map_pair.MapPair(map1 + sim, map2 + sim,
                                     noise_inv1, noise_inv2,
-                                    self.freq_list)
+                                    self.freq_list,
+                                    conv_factor=self.conv_factor)
 
             pair.set_names(pdict['tag1'], pdict['tag2'])
 
@@ -151,17 +191,58 @@ class PairSet():
                 if par['subtract_inputmap_from_sim']:
                     pair_parallel_track = map_pair.MapPair(map1, map2,
                                                   noise_inv1, noise_inv2,
-                                                  self.freq_list)
+                                                  self.freq_list,
+                                                  conv_factor=self.conv_factor)
 
                 if par['subtract_sim_from_inputmap']:
                     pair_parallel_track = map_pair.MapPair(sim, sim,
                                                   noise_inv1, noise_inv2,
-                                                  self.freq_list)
+                                                  self.freq_list,
+                                                  conv_factor=self.conv_factor)
 
                 pair_parallel_track.set_names(pdict['tag1'], pdict['tag2'])
                 pair_parallel_track.params = self.params
                 self.pairs_parallel_track[pairitem] = pair_parallel_track
 
+
+    @batch_handler.log_timing
+    def load_ext_pairs(self, index, map1name, map2name,
+                       noise1name, noise2name):
+        r"""Load the external datasets (which improve cleaning)
+        """
+        par = self.params
+        (self.pairlist_ext, pairdict) = dp.cross_maps(map1name, map2name,
+                                             noise1name, noise2name,
+                                             noise_inv_suffix=";noise_weight",
+                                             verbose=False,
+                                             db_to_use=self.datapath_db)
+        # probably not wanted for external maps:
+        #                                    tack_on=self.tack_on_input,
+
+        self.pairs_ext[index] = {}
+        for pairitem in self.pairlist_ext:
+            pdict = pairdict[pairitem]
+            print "-" * 80
+            print "loading ext %s pair %s" % (index, pairitem)
+            dp.print_dictionary(pdict, sys.stdout,
+                                key_list=['map1', 'noise_inv1',
+                                          'map2', 'noise_inv2'])
+
+            map1 = algebra.make_vect(algebra.load(pdict['map1']))
+            map2 = algebra.make_vect(algebra.load(pdict['map2']))
+
+            noise_inv1 = algebra.make_vect(algebra.load(pdict['noise_inv1']))
+            noise_inv2 = algebra.make_vect(algebra.load(pdict['noise_inv2']))
+
+            pair = map_pair.MapPair(map1, map2,
+                                    noise_inv1, noise_inv2,
+                                    self.freq_list,
+                                    conv_factor=self.conv_factor)
+
+            pair.set_names(pdict['tag1'], pdict['tag2'])
+
+            pair.params = self.params
+            self.pairs_ext[index][pairitem] = pair
 
     @batch_handler.log_timing
     def preprocess_pairs(self):
@@ -180,46 +261,142 @@ class PairSet():
             self.call_pairs("subtract_weighted_mean")
 
     @batch_handler.log_timing
+    def define_weightmask(self, input_weight, percentile=50.):
+        # flatten to Ra/Dec
+        weight_2d = np.mean(input_weight, axis=0)
+        print "define_weightmask: shape ", weight_2d.shape
+        w_at_percentile = np.percentile(weight_2d, percentile)
+
+        # return a boolean mask (here True = masked)
+        return (weight_2d <= w_at_percentile)
+
+    @batch_handler.log_timing
+    def saturate_weight(self, input_weight, weightmask):
+        r"""replace all weights above a given mask with the average in the
+        mask. Note that this clobbers the input array"""
+
+        for freq_index in range(input_weight.shape[0]):
+            mweight = np.ma.array(input_weight[freq_index, ...], mask=weightmask)
+            meanslice = mweight.mean()
+            input_weight[freq_index, np.logical_not(weightmask)] = meanslice
+
+        return input_weight
+
+    @batch_handler.log_timing
     def calculate_correlation(self):
         r"""find the covariance in frequency space, take SVD"""
+        mode_inputdata_out = h5py.File(self.modeinput_filename, "w")
         svd_data_out = h5py.File(self.svd_filename, "w")
 
+        # define the subdirectories to hold the SVD outputs
         cov_out = svd_data_out.create_group("cov")
         counts_out = svd_data_out.create_group("cov_counts")
-        svd_vals_out = svd_data_out.create_group("svd_vals")
+        svd_vals1_out = svd_data_out.create_group("svd_vals1")
+        svd_vals2_out = svd_data_out.create_group("svd_vals2")
         svd_modes1_out = svd_data_out.create_group("svd_modes1")
         svd_modes2_out = svd_data_out.create_group("svd_modes2")
+        svd_extmodes1_out = svd_data_out.create_group("svd_extmodes1")
+        svd_extmodes2_out = svd_data_out.create_group("svd_extmodes2")
+
+        # define the subdirectories to hold the input map/weights
+        mode_inputdata_map1 = mode_inputdata_out.create_group("map1")
+        mode_inputdata_map2 = mode_inputdata_out.create_group("map2")
+        mode_inputdata_weight1 = mode_inputdata_out.create_group("weight1")
+        mode_inputdata_weight2 = mode_inputdata_out.create_group("weight2")
 
         nfreq = len(self.freq_list)
 
         for pairitem in self.pairlist:
-            (freq_cov, counts) = self.pairs[pairitem].freq_covariance()
+            print self.indexlist_ext
+
+            # start with the base maps and list of good freq indices
+            map1 = copy.deepcopy(np.array(self.pairs[pairitem].map1))
+            map2 = copy.deepcopy(np.array(self.pairs[pairitem].map2))
+            weight1 = copy.deepcopy(np.array(self.pairs[pairitem].noise_inv1))
+            weight2 = copy.deepcopy(np.array(self.pairs[pairitem].noise_inv2))
+            freqs = copy.deepcopy(self.pairs[pairitem].freq)
+
+            # TODO: does this need to be restricted to the freq_list?
+            if self.params['clip_weight_percent'] is not None:
+                print "WARNING: you are clipping the weight maps"
+                mask1 = self.define_weightmask(weight1,
+                                    percentile=self.params['clip_weight_percent'])
+
+                mask2 = self.define_weightmask(weight2,
+                                    percentile=self.params['clip_weight_percent'])
+
+            # now append the extended datasets
+            for index in self.indexlist_ext:
+                nfreqind = map1.shape[0]
+
+                map1 = np.concatenate([map1,
+                                np.array(self.pairs_ext[index][pairitem].map1)])
+
+                map2 = np.concatenate([map2,
+                                np.array(self.pairs_ext[index][pairitem].map2)])
+
+                weight1 = np.concatenate([weight1,
+                                np.array(self.pairs_ext[index][pairitem].noise_inv1)])
+
+                weight2 = np.concatenate([weight2,
+                                np.array(self.pairs_ext[index][pairitem].noise_inv2)])
+
+                freq_arr = np.array(self.pairs_ext[index][pairitem].freq)
+                freqs = np.concatenate([freqs, freq_arr + nfreqind])
+
+            if self.params['clip_weight_percent'] is not None:
+                weight1 = self.saturate_weight(weight1, mask1)
+                weight2 = self.saturate_weight(weight2, mask2)
+
+            mode_inputdata_map1[pairitem] = map1
+            mode_inputdata_map2[pairitem] = map2
+            mode_inputdata_weight1[pairitem] = weight1
+            mode_inputdata_weight2[pairitem] = weight2
+
+            # note that if weighted_SVD, these weights have been applied
+            # earlier
+            (freq_cov, counts) = find_modes.freq_covariance(map1, map2,
+                                        weight1, weight2,
+                                        freqs, freqs,
+                                        no_weight=self.params['weighted_SVD'])
+
             cov_out[pairitem] = freq_cov
             counts_out[pairitem] = counts
 
-            # (vals, modes1, modes2)
-            svd_info = find_modes.get_freq_svd_modes(freq_cov, nfreq)
-            svd_vals_out[pairitem] = svd_info[0]
+            # now find the SVD of this covariance
+
+            # note that the choice of 1x4 and 4x1 might be reversed, but this
+            # should only matter if the extended map (polarizations) are split
+            # into sections that have correlated noise
+            svd_info = find_modes.get_freq_svd_modes(freq_cov[0: nfreq, :], nfreq)
+            svd_vals1_out[pairitem] = svd_info[0]
             svd_modes1_out[pairitem] = svd_info[1]
+            svd_extmodes1_out[pairitem] = svd_info[2]
+
+            svd_info = find_modes.get_freq_svd_modes(freq_cov[:, 0: nfreq], nfreq)
+            svd_vals2_out[pairitem] = svd_info[0]
+            svd_extmodes2_out[pairitem] = svd_info[1]
             svd_modes2_out[pairitem] = svd_info[2]
 
+        mode_inputdata_out.close()
         svd_data_out.close()
 
     @batch_handler.log_timing
-    def subtract_foregrounds(self, n_modes_start, n_modes_stop):
+    def subtract_foregrounds(self, n_start, n_stop):
         r"""take the SVD modes from above and clean each LOS with them"""
         svd_data = h5py.File(self.svd_filename, "r")
         svd_modes1 = svd_data["svd_modes1"]
         svd_modes2 = svd_data["svd_modes2"]
+        nfreq = len(self.freq_list)
 
         for pairitem in self.pairlist:
             print "subtracting %d to %d modes from %s using %s" % \
-                    (n_modes_start, n_modes_stop, pairitem, self.svd_filename)
+                    (n_start, n_stop, pairitem, self.svd_filename)
 
             svd_modes1_pair = svd_modes1[pairitem].value
             svd_modes2_pair = svd_modes2[pairitem].value
-            svd_modes1_use = svd_modes1_pair[n_modes_start: n_modes_stop]
-            svd_modes2_use = svd_modes2_pair[n_modes_start: n_modes_stop]
+            svd_modes1_use = svd_modes1_pair[n_start: n_stop][0: nfreq]
+            svd_modes2_use = svd_modes2_pair[n_start: n_stop][0: nfreq]
 
             self.pairs[pairitem].subtract_frequency_modes(svd_modes1_use,
                                                           svd_modes2_use)
@@ -335,13 +512,29 @@ class PairSet():
             for pairitem in self.pairlist:
                 pair_parallel_track = self.pairs_parallel_track[pairitem]
                 try:
-                    method_to_call_parallel_track = getattr(pair_parallel_track, call)
+                    method_to_call_parallel_track = \
+                            getattr(pair_parallel_track, call)
+
                 except AttributeError:
                     print "ERROR: %s missing call %s" % (pairitem, call)
                     sys.exit()
 
                 print "calling %s() on pair %s" % (call, pairitem)
                 method_to_call_parallel_track()
+
+        for ext_index in self.pairs_ext:
+            for pairitem in self.pairlist:
+                pair = self.pairs_ext[ext_index][pairitem]
+                try:
+                    method_to_call = getattr(pair, call)
+                except AttributeError:
+                    print "ERROR: %s missing call %s" % (pairitem, call)
+                    sys.exit()
+
+                print "calling %s() on ext %s pair %s" % \
+                      (call, ext_index, pairitem)
+
+                method_to_call()
 
 
 if __name__ == '__main__':

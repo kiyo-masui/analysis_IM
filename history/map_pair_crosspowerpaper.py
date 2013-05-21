@@ -1,5 +1,8 @@
 r"""Program that calculates the correlation function across frequency slices.
 """
+
+import time
+import sys
 import gc
 import scipy as sp
 import numpy as np
@@ -7,60 +10,99 @@ import numpy.ma as ma
 from core import algebra
 from map import beam
 from map import physical_gridding as pg
+from kiyopy import parse_ini
 import kiyopy.utils
+from quadratic_products import corr_estimation
 from quadratic_products import pwrspec_estimator as pe
-from foreground_clean import find_modes
+from utils import data_paths
 from utils import batch_handler as bh
 # TODO: move single map operations to a separate class
+
+params_init = {
+               'output_root': "./data_test/",
+               'output_filetag': 'test',
+               'map1': "map1.npy",
+               'map2': "map2.npy",
+               'noise_inv1': "noise_inv1.npy",
+               'noise_inv2': "noise_inv2.npy",
+               'freq_list': (),
+               # Angular lags at which to calculate the correlation.  Upper
+               # edge bins in degrees.
+               'lags': tuple(sp.arange(0.002, 0.2, 0.12))
+               }
+prefix = 'fs_'
 
 
 class MapPair(object):
     r"""Pair of maps that are processed together and cross correlated.
+
+    Parameters
+    ----------
+    map1, map2: algebra_vector
+        Input Maps.
+    noise_inv1, noise_inv2: algebra_vector
+        Input Noise inverses.
+    freq: tuple of ints
+        The frequency indices to use.
+
+    Attributes
+    ----------
+    map1, map2: algebra_vector
+        Input Maps.
+    noise_inv1, noise_inv2: algebra_vector
+        Input Noise inverses.
+    map1_name, map2_name: str
+        The names of the maps from file_middles.
+    map1_code, map2_code: str
+        A single letter representing which section the map is.
+    freq: tuple of ints
+        The frequency indices to use.
+    modes1, modes2: 2D array
+        The modes for the 2 maps in a pair (from 1 to number of modes
+        to be subtracted).
+    left_modes, right_modes: 3D array
+        What was subtracted from the maps during cleaning.
+
     """
 
     def __init__(self, map1, map2, noise_inv1, noise_inv2, freq,
-                 input_filenames=False, conv_factor=1.1):
+                 input_filenames=False):
         r"""
         arguments: map1, map2, noise_inv1, noise_inv2, freq
-        conv_factor is the factor by which to multiply the largest beam
-        in the convolution to a common resolution
         """
         if input_filenames:
             self.map1 = algebra.make_vect(algebra.load(map1))
             self.map2 = algebra.make_vect(algebra.load(map2))
-            if noise_inv1:
-                print "loading noise1 file: " + noise_inv1
-                self.noise_inv1 = algebra.make_vect(algebra.load(noise_inv1))
-            else:
-                print "WARNING: map1 has unity weight; no file given"
-                self.noise_inv1 = algebra.ones_like(self.map1)
-
-            if noise_inv2:
-                print "loading noise2 file: " + noise_inv2
-                self.noise_inv2 = algebra.make_vect(algebra.load(noise_inv2))
-            else:
-                print "WARNING: map2 has unity weight; no file given"
-                self.noise_inv2 = algebra.ones_like(self.map2)
-
+            self.noise_inv1 = algebra.make_vect(algebra.load(noise_inv1))
+            self.noise_inv2 = algebra.make_vect(algebra.load(noise_inv2))
         else:
             self.map1 = map1
             self.map2 = map2
             self.noise_inv1 = noise_inv1
             self.noise_inv2 = noise_inv2
 
-        self.freq = freq
-        self.conv_factor = conv_factor
+        # older method that uses the database
+        #     self.datapath_db = data_paths.DataPath()
+        #     self.map1 = self.datapath_db.fetch_multi(map1)
+        #     self.map2 = self.datapath_db.fetch_multi(map2)
+        #     self.noise_inv1 = self.datapath_db.fetch_multi(noise_inv1)
+        #     self.noise_inv2 = self.datapath_db.fetch_multi(noise_inv2)
 
-        # maps in physical coordinates (derived)
+        self.freq = freq
+
+        # set the physical-dimension maps to None
         self.phys_map1 = None
         self.phys_map2 = None
         self.phys_noise_inv1 = None
         self.phys_noise_inv2 = None
 
-        # give infinite noise to masked bands
+        # Give infinite noise to unconsidered frequencies
         self.sanitize()
 
         # Set attributes.
+        self.counts = 0
+        self.modes1 = 0
+        self.modes2 = 0
         self.left_modes = 0
         self.right_modes = 0
         # For saving, to keep track of each mapname.
@@ -72,8 +114,14 @@ class MapPair(object):
 
     def set_names(self, name1, name2):
         r"""Set the map names and codes.
+
         Set map1_name to name1 and map2_name to name2.
         Also the map codes. Note it is hardcoded for 4 maps right now.
+
+        Parameters
+        ----------
+        name1, name2: str
+            The names of the maps.
         """
 
         # Note that "I" would not be a good idea since it represents
@@ -165,15 +213,13 @@ class MapPair(object):
 
         return
 
-    def degrade_resolution(self, mode="constant"):
+    def degrade_resolution(self):
         r"""Convolves the maps down to the lowest resolution.
 
         Also convolves the noise, making sure to deweight pixels near the edge
         as well.  Converts noise to factorizable form by averaging.
-
-        mode is the ndimage.convolve flag for behavior at the edge
         """
-        print "degrading the resolution to a common beam: ", self.conv_factor
+        print "degrading the resolution to a common beam"
         noise1 = self.noise_inv1
         noise2 = self.noise_inv2
 
@@ -184,7 +230,7 @@ class MapPair(object):
         freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
                              dtype=float)
         freq_data *= 1.0e6
-        beam_diff = sp.sqrt(max(self.conv_factor * beam_data) ** 2 - (beam_data) ** 2)
+        beam_diff = sp.sqrt(max(1.1 * beam_data) ** 2 - (beam_data) ** 2)
         common_resolution = beam.GaussianBeam(beam_diff, freq_data)
         # Convolve to a common resolution.
         self.map2 = common_resolution.apply(self.map2)
@@ -194,15 +240,13 @@ class MapPair(object):
         # twice (so we are sure to do the same thing to each).
         noise1[noise1 < 1.e-30] = 1.e-30
         noise1 = 1. / noise1
-        noise1 = common_resolution.apply(noise1, mode=mode, cval=1.e30)
-        noise1 = common_resolution.apply(noise1, mode=mode, cval=1.e30)
+        noise1 = common_resolution.apply(noise1, cval=1.e30)
         noise1 = 1. / noise1
         noise1[noise1 < 1.e-20] = 0.
 
         noise2[noise2 < 1.e-30] = 1.e-30
         noise2 = 1 / noise2
-        noise2 = common_resolution.apply(noise2, mode=mode, cval=1.e30)
-        noise2 = common_resolution.apply(noise2, mode=mode, cval=1.e30)
+        noise2 = common_resolution.apply(noise2, cval=1.e30)
         noise2 = 1. / noise2
         noise2[noise2 < 1.e-20] = 0.
 
@@ -261,17 +305,18 @@ class MapPair(object):
         self.map1[self.noise_inv1 < 1.e-20] = 0.
         self.map2[self.noise_inv2 < 1.e-20] = 0.
 
-    def apply_map_weights(self):
-        self.map1 = self.map1 * self.noise_inv1
-        self.map2 = self.map2 * self.noise_inv2
-
-    def unapply_map_weights(self):
-        self.map1 = self.map1 / self.noise_inv1
-        self.map2 = self.map2 / self.noise_inv2
-
     def subtract_frequency_modes(self, modes1, modes2=None,
                                  weighted=False, defer=False):
-        r"""Subtract frequency modes from the map.
+        r"""Subtract frequency mode from the map.
+
+        Parameters
+        ---------
+        modes1: list of 1D arrays.
+            Arrays must be the same length as self.freq.  Modes to subtract out
+            of the map one.
+        modes2: list of 1D arrays.
+            Modes to subtract out of map 2.  If `None` set to `modes1`.
+
         """
 
         if modes2 == None:
@@ -347,11 +392,70 @@ class MapPair(object):
 
         self.right_modes = outmap_right
 
+    def subtract_frequency_modes_slow(self, modes1, modes2=None):
+        r"""Subtract frequency mode from the map.
+
+        Parameters
+        ---------
+        modes1: list of 1D arrays.
+            Arrays must be the same length as self.freq.  Modes to subtract out
+            of the map one.
+        modes2: list of 1D arrays.
+            Modes to subtract out of map 2.  If `None` set to `modes1`.
+
+        """
+
+        if modes2 == None:
+            modes2 = modes1
+
+        map1 = self.map1
+        map2 = self.map2
+        freq = self.freq
+
+        # First map.
+        outmap_left = sp.empty((len(modes1), ) + map1.shape[1:])
+        outmap_left = algebra.make_vect(outmap_left,
+                                     axis_names=('freq', 'ra', 'dec'))
+        outmap_left.copy_axis_info(map1)
+        for ira in range(map1.shape[1]):
+            for jdec in range(map1.shape[2]):
+                # if sp.any(map1.data.mask[ira, jdec, freq]):
+                #    continue
+                # else:
+                for mode_index, mode_vector in enumerate(modes1):
+                    # v.shape = freq.shape
+                    mode_vector = mode_vector.reshape(freq.shape)
+                    # amp = sp.sum(mode_vector*map1.data[ira, jdec, freq])
+                    amp = sp.dot(mode_vector, map1[freq, ira, jdec])
+                    map1[freq, ira, jdec] -= amp * mode_vector
+                    outmap_left[mode_index, ira, jdec] = amp
+        self.left_modes = outmap_left
+
+        # Second map.
+        outmap_right = sp.empty((len(modes2), ) + map2.shape[1:])
+        outmap_right = algebra.make_vect(outmap_right,
+                                     axis_names=('freq', 'ra', 'dec'))
+        outmap_right.copy_axis_info(map2)
+        for ira in range(map2.shape[1]):
+            for jdec in range(map2.shape[2]):
+                # if sp.any(map2.data.mask[ira, jdec, freq]):
+                #    continue
+                # else:
+                for mode_index, mode_vector in enumerate(modes2):
+                    # mode_vector.shape = freq.shape
+                    mode_vector = mode_vector.reshape(freq.shape)
+                    amp = sp.dot(mode_vector, map2[freq, ira, jdec])
+                    map2[freq, ira, jdec] -= amp * mode_vector
+                    outmap_right[mode_index, ira, jdec] = amp
+        self.right_modes = outmap_right
+
+    # TODO: add documentation
     def pwrspec_summary(self, window=None, unitless=True, bins=None,
                     truncate=False, nbins=40, logbins=True,
                     refinement=2, pad=5, order=2, return_3d=False):
         r"""calculate the 1D power spectrum
         """
+
         self.make_physical(refinement=refinement, pad=pad, order=order)
 
         xspec = pe.calculate_xspec(self.phys_map1, self.phys_map2,
@@ -363,7 +467,44 @@ class MapPair(object):
         return xspec
 
     def freq_covariance(self):
-        return find_modes.freq_covariance(self.map1, self.map2,
-                                          self.noise_inv1,
-                                          self.noise_inv2,
-                                          self.freq, self.freq)
+        return corr_estimation.freq_covariance(self.map1, self.map2,
+                                               self.noise_inv1,
+                                               self.noise_inv2,
+                                               self.freq, self.freq)
+
+    def correlate(self, lags=(), speedup=False, verbose=False):
+        r"""Calculate the cross correlation function of the maps.
+
+        The cross correlation function is a function of f1, f2 and angular lag.
+        The angular lag bins are passed, all pairs of frequencies are
+        calculated.
+
+        Parameters
+        ----------
+        lags: array like
+            Angular lags bins (upper side bin edges).
+        speedup: boolean
+            Speeds up the correlation. This works fine, yes? Should be the
+            normal way if so.
+
+        Returns
+        -------
+        corr: array
+            The correlation between 2 maps.
+        counts: array
+            The weighting of the correlation based on the maps' weights.
+
+        """
+        # TODO: possibly revert to old correlation function calc?
+        return corr_estimation.corr_est(self.map1, self.map2,
+                                        self.noise_inv1, self.noise_inv2,
+                                        self.freq, self.freq,
+                                        lags=lags, speedup=speedup,
+                                        verbose=verbose)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) == 2:
+        CorrelateSingle(str(sys.argv[1])).execute()
+    else:
+        print 'Need one argument: parameter file name.'

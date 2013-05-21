@@ -3,7 +3,7 @@ from scipy.interpolate import interp1d
 import core.algebra as algebra
 from utils.cosmology import Cosmology
 from utils import units
-from core import utils
+from utils import misc
 from core import constants as cc
 # TODO: clean up the variable names, shorten code
 
@@ -182,7 +182,7 @@ def find_map_dimensions(map_in, silent=False):
         for key in infolist:
             print "%s: %s" % (key, map_in.info[key])
 
-        sexagesimal = utils.radec_to_sexagesimal(map_in.info["ra_centre"],
+        sexagesimal = misc.radec_to_sexagesimal(map_in.info["ra_centre"],
                                                  map_in.info["dec_centre"])
         (ralong, declong, decsign) = sexagesimal
         print "RA: %dH:%dm:%10.5fs, dec %s %dd:%dm:%10.5fs" % \

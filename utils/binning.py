@@ -84,7 +84,7 @@ def bin_edges(bins, log=False):
     bin_left, bin_right = bins[:-1], bins[1:]
     if log:
         bin_center = 10 ** (0.5 * (np.log10(bin_left) +
-                               np.log10(bin_right)))
+                                   np.log10(bin_right)))
     else:
         bin_center = 0.5 * (bin_left + bin_right)
 
@@ -164,7 +164,7 @@ def print_edges(sample, edges, name):
     """print bin edges for a catalog
     """
     print "Binning %s from range (%5.3g, %5.3g) into (%5.3g, %5.3g)" % (
-           name, min(sample), max(sample), min(edges), max(edges))
+          name, min(sample), max(sample), min(edges), max(edges))
 
 
 def histogram3d(sample, xedges, yedges, zedges):
@@ -187,9 +187,9 @@ def histogram3d(sample, xedges, yedges, zedges):
     z_index = np.digitize(sample[:, 2], zedges)
 
     # digitize puts values outside of the bins either to 0 or len(bins)
-    x_out = np.logical_or((x_index == 0), (x_index == (x_size + 1)))
-    y_out = np.logical_or((y_index == 0), (y_index == (y_size + 1)))
-    z_out = np.logical_or((z_index == 0), (z_index == (z_size + 1)))
+    x_out = np.logical_or((x_index == 0), (x_index == xedges.size))
+    y_out = np.logical_or((y_index == 0), (y_index == yedges.size))
+    z_out = np.logical_or((z_index == 0), (z_index == zedges.size))
     # now flag all those point which are inside the region
     box_in = np.logical_not(np.logical_or(np.logical_or(x_out, y_out), z_out))
 
@@ -289,7 +289,7 @@ def histogram3d_weights(sample, xedges, yedges, zedges):
     return count_cube
 
 
-def azimuthal_average(image, center=None, bw = 3):
+def azimuthal_average(image, center=None, bw=3):
     """
     Calculate the azimuthally averaged radial profile.
 
@@ -320,7 +320,8 @@ def azimuthal_average(image, center=None, bw = 3):
     r = np.hypot(x - center[0], y - center[1])
 
     # Get sorted radii
-    maxr = np.array([image.shape[0] - center[0], image.shape[1] - center[1]]).min()
+    maxr = np.array([image.shape[0] - center[0],
+                     image.shape[1] - center[1]]).min()
 
     ind = np.argsort(r.flat)
     r_sorted = r.flat[ind]
@@ -359,7 +360,7 @@ def azimuthal_average(image, center=None, bw = 3):
     return bl, radial_prof
 
 
-def azimuthal_average_nd(image, center=None, bw = 3):
+def azimuthal_average_nd(image, center=None, bw=3):
     """
     Calculate the azimuthally averaged radial profile.
 
@@ -389,7 +390,9 @@ def azimuthal_average_nd(image, center=None, bw = 3):
     r = np.sum((ia - center)**2, axis=-1)**0.5
 
     # Get sorted radii
-    #maxr = np.array([image.shape[0] - center[0], image.shape[1] - center[1]]).min()
+    #maxr = np.array([image.shape[0] - center[0], \
+    #                 image.shape[1] - center[1]]).min()
+
     maxr = (np.array(image.shape) - center).min()
 
     ind = np.argsort(r.flat)
@@ -464,6 +467,8 @@ class CatalogGriddingTest(unittest.TestCase):
                             [0,  0,  0],
                             [0,  0,  1]]])
 
+        print result
+        print answer
         self.assertTrue(np.array_equal(answer, result))
         self.assertTrue(np.array_equal(alternate, result))
 
@@ -471,7 +476,7 @@ class CatalogGriddingTest(unittest.TestCase):
         sample2 = np.array([[-1., -1., -1.]])
         result2 = histogram3d(sample2, edges, edges, edges)
         alternate2, histo_edges = np.histogramdd(sample2,
-                                                bins=[edges, edges, edges])
+                                                 bins=[edges, edges, edges])
 
         answer2 = np.zeros((3, 3, 3), dtype=int)
         self.assertTrue(np.array_equal(answer2, result2))
@@ -495,3 +500,6 @@ class CatalogGriddingTest(unittest.TestCase):
         endalt = time.clock()
         print (endalt - end) / 1000.
         print result - alternate
+
+if __name__ == '__main__':
+    unittest.main()

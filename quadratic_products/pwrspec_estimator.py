@@ -15,6 +15,7 @@ import copy
 import gc
 from utils import fftutil
 from utils import binning
+import h5py
 
 
 def cross_power_est(arr1, arr2, weight1, weight2,
@@ -50,7 +51,14 @@ def cross_power_est(arr1, arr2, weight1, weight2,
         #print k_name, n_axis, delta_axis
 
     if window:
-        window_function = fftutil.window_nd(arr1.shape, name=window)
+        # along all axes
+        #window_function = fftutil.window_nd(arr1.shape, name=window)
+
+        # apodize along frequency only
+        window_func = getattr(np, window)
+        window_function = window_func(arr1.shape[0])
+        window_function = window_function[:, None, None]
+
         weight1 *= window_function
         weight2 *= window_function
         del window_function
@@ -190,6 +198,9 @@ def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
     else:
         weights_2d_flat = counts_2d_flat.astype(float)
 
+    #print weights_2d_flat.shape, pwr_2d_flat.shape
+
+    old_settings = np.seterr(invalid="ignore")
     weight_pwr_prod = weights_2d_flat * pwr_2d_flat
     weight_pwr_prod[np.isnan(weight_pwr_prod)] = 0.
     weight_pwr_prod[np.isinf(weight_pwr_prod)] = 0.
@@ -214,12 +225,17 @@ def convert_2d_to_1d_pwrspec(pwr_2d, counts_2d, bin_kx, bin_ky, bin_1d,
     #binavg[weights_histo > 0.] = binsum_histo[weights_histo > 0.] / \
     #                             weights_histo[weights_histo > 0.]
     #binavg[weights_histo <= 0.] = nullval
-    old_settings = np.seterr(invalid="ignore")
+    #old_settings = np.seterr(invalid="ignore")
     binavg = binsum_histo / weights_histo
     binavg[np.isnan(binavg)] = nullval
+    # note that if the weights are 1/sigma^2, then the variance of the weighted
+    # sum is just 1/sum of weights; so return Gaussian errors based on that
+    gaussian_errors = np.sqrt(1./weights_histo)
+    gaussian_errors[np.isnan(binavg)] = nullval
+
     np.seterr(**old_settings)
 
-    return counts_histo, binavg
+    return counts_histo, gaussian_errors, binavg
 
 
 def calculate_xspec(cube1, cube2, weight1, weight2,
@@ -325,6 +341,64 @@ def calculate_xspec_file(cube1_file, cube2_file, bins,
     return calculate_xspec(cube1, cube2, weight1, weight2, bins=bins,
                            window=window, unitless=unitless,
                            truncate=truncate, return_3d=return_3d)
+
+
+def load_transferfunc(beamtransfer_file, modetransfer_file, treatment_list,
+                      beam_treatment="0modes"):
+    r"""Given two hd5 files containing a beam and mode loss transfer function,
+    load them and make a composite transfer function"""
+    # TODO: check that both files have the same treatment cases
+
+    if modetransfer_file is not None:
+        print "Applying 2d transfer from " + modetransfer_file
+        modetransfer_2d = h5py.File(modetransfer_file, "r")
+
+    if beamtransfer_file is not None:
+        print "Applying 2d transfer from " + beamtransfer_file
+        beamtransfer_2d = h5py.File(beamtransfer_file, "r")
+
+    # make a list of treatments or cross-check if given one
+    if modetransfer_file is not None:
+        if treatment_list is None:
+            treatment_list = modetransfer_2d.keys()
+        else:
+            assert modetransfer_2d.keys() == treatment_list, \
+                    "mode transfer treatments do not match data"
+    else:
+        if treatment_list is None:
+            treatment_list = [beam_treatment]
+
+    # given both
+    if (beamtransfer_file is not None) and (modetransfer_file is not None):
+        print "using the product of beam and mode transfer functions"
+        transfer_dict = {}
+
+        for treatment in modetransfer_2d:
+            transfer_dict[treatment] = modetransfer_2d[treatment].value
+            transfer_dict[treatment] *= \
+                                    beamtransfer_2d[beam_treatment].value
+
+    # given mode only
+    if (beamtransfer_file is None) and (modetransfer_file is not None):
+        print "using just the mode transfer function"
+        transfer_dict = {}
+
+        for treatment in modetransfer_2d:
+            transfer_dict[treatment] = modetransfer_2d[treatment].value
+
+    # given beam only
+    if (beamtransfer_file is not None) and (modetransfer_file is None):
+        print "using just the beam transfer function"
+        transfer_dict = {}
+        for treatment in treatment_list:
+            transfer_dict[treatment] = beamtransfer_2d[beam_treatment].value
+
+    # no transfer function
+    if (beamtransfer_file is None) and (modetransfer_file is None):
+        print "not using transfer function"
+        transfer_dict = None
+
+    return transfer_dict
 
 
 def test_with_random(unitless=True):
