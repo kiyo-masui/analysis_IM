@@ -17,6 +17,7 @@ name = os.getenv('NAME')
 sim_root = os.getenv('MAP_SIM')
 ssm_root = os.getenv('MAP_SSM')
 gbt_root = os.getenv('MAP_CLN')
+wgz_root = os.getenv('MAP_WGZ')
 
 cut_list = []
 if hour==15:
@@ -49,10 +50,10 @@ pse_processes = 1
 pse_sim_root = sim_root
 pse_ssm_root = ssm_root
 pse_gbt_root = gbt_root
-pse_opt_root = None
+pse_opt_root = wgz_root
 
 pse_sim_numb = 100
-pse_sim_fact = 0.4
+#pse_sim_fact = 0.4
 
 pse_cut_list = cut_list
 pse_boxshape = (512, 128, 64)
@@ -64,7 +65,7 @@ pse_kbin_max = kbin_max
 
 pse_ps_root  = WORKROOT 
 pse_ps_type  = 'auto'
-pse_ps_name  = '%s_%s_ps_%02dhour_%02dmode'%(name, pse_ps_type, hour, mode)
+pse_ps_name  = '%s_%s_ps_%02dmode'%(name, pse_ps_type, mode)
 pse_ps_mode  = mode
 
 pse_est_transfer = True

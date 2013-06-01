@@ -56,6 +56,9 @@ params_init = {
     'est_gausserr' : False,
     'est_powersim' : False,
     'est_powershn' : False,
+
+    'do_2dpower' : True,
+    'do_1dpower' : True,
 }
 prefix = 'pse_'
 
@@ -119,14 +122,17 @@ class PowerSpectrumEstimator(object):
                 elif step == 'tr': factors = [1., params['sim_fact']]
                 else:  factors = None
             else: factors = None
-            ps, kn = self.process_maps(params, imap_list, nmap_list, factors)
+            ps_2d, kn_2d, ps_1d, kn_1d =\
+                self.process_maps(params, imap_list, nmap_list, factors)
 
         if comm != None:
             if rank < pair_numb:
                 if rank != 0:
                     print "rank %d: sending data"%rank
-                    comm.ssend(ps, dest=0, tag=11)
-                    comm.ssend(kn, dest=0, tag=12)
+                    comm.ssend(ps_2d, dest=0, tag=11)
+                    comm.ssend(kn_2d, dest=0, tag=12)
+                    comm.ssend(ps_1d, dest=0, tag=13)
+                    comm.ssend(kn_1d, dest=0, tag=14)
                     print "rank %d: data sent"%rank
                 else:
                     if size > pair_numb:
@@ -135,8 +141,18 @@ class PowerSpectrumEstimator(object):
                         active_rank_num = size
                     for i in range(1, active_rank_num):
                         print "rank %d: receiving data from rank %d"%(rank, i)
-                        ps = np.concatenate([ps, comm.recv(source=i, tag=11)], axis=0)
-                        kn = np.concatenate([ps, comm.recv(source=i, tag=12)], axis=0)
+                        ps_2d = np.concatenate([ps_2d, comm.recv(source=i, 
+                                                                 tag=11)],
+                                                                 axis=0)
+                        kn_2d = np.concatenate([ps_2d, comm.recv(source=i, 
+                                                                 tag=12)], 
+                                                                 axis=0)
+                        ps_1d = np.concatenate([ps_1d, comm.recv(source=i, 
+                                                                 tag=13)],
+                                                                 axis=0)
+                        kn_1d = np.concatenate([ps_1d, comm.recv(source=i, 
+                                                                 tag=14)], 
+                                                                 axis=0)
                         print "rank %d: received data from rank %d"%(rank, i)
                     for i in range(active_rank_num, size):
                         message = comm.recv(source=i, tag=11)
@@ -146,7 +162,7 @@ class PowerSpectrumEstimator(object):
             comm.barrier()
 
         if rank == 0:
-            self.save(params, ps, kn, step)
+            self.save(params, ps_2d, kn_2d, ps_1d, kn_1d, step)
 
         if comm != None:
             comm.barrier()
@@ -166,18 +182,27 @@ class PowerSpectrumEstimator(object):
 
     def ps_estimate(self, params, imap_pair, nmap_pair, factors=None):
         
+        print "Estimate power using map from"
+        print len(imap_pair[0])*'-' +\
+              "\n [%s\n *%s]\n x[%s\n *%s]\n"%\
+              ( nmap_pair[0], imap_pair[0], nmap_pair[1], imap_pair[1]) +\
+              len(imap_pair[0])*'-' + '\n'
+
         imap1 = algebra.make_vect(algebra.load(imap_pair[0]))
         imap2 = algebra.make_vect(algebra.load(imap_pair[1]))
+
         if factors != None:
             imap1 *= factors[0]
             imap2 *= factors[1]
         if nmap_pair[0] != None:
             nmap1 = algebra.make_vect(algebra.load(nmap_pair[0]))
         else:
+            print "No weighting given, use 1"
             nmap1 = np.ones_like(imap1)
         if nmap_pair[1] != None:
             nmap2 = algebra.make_vect(algebra.load(nmap_pair[1]))
         else:
+            print "No weighting given, use 1"
             nmap2 = np.ones_like(imap2)
         
         self.apply_cut_list(nmap1)
@@ -189,19 +214,29 @@ class PowerSpectrumEstimator(object):
         ps_box = functions.BOX(imap1, imap2, nmap1, nmap2)
         ps_box.mapping_to_xyz()
         ps_box.estimate_ps_3d()
-        #ps_box.convert_ps_to_unitless()
+        ps_box.convert_ps_to_unitless()
         ps_box.convert_3dps_to_2dps(k_edges_p, k_edges_v)
+        ps_box.convert_3dps_to_1dps(k_edges_p)
 
-        return ps_box.ps_2d, ps_box.kn_2d
+        return ps_box.ps_2d, ps_box.kn_2d, ps_box.ps_1d, ps_box.kn_1d
 
     def process_maps(self, params, imap_list, nmap_list, factors=None):
 
-        ps = np.zeros(shape=(len(imap_list), params['kbin_num'], params['kbin_num']))
-        kn = np.zeros(shape=(len(imap_list), params['kbin_num'], params['kbin_num']))
+        ps_2d = np.zeros(shape=(len(imap_list), 
+                                params['kbin_num'], 
+                                params['kbin_num']))
+        kn_2d = np.zeros(shape=(len(imap_list), 
+                                params['kbin_num'], 
+                                params['kbin_num']))
+        ps_1d = np.zeros(shape=(len(imap_list), 
+                                params['kbin_num']))
+        kn_1d = np.zeros(shape=(len(imap_list), 
+                                params['kbin_num']))
         for i in range(len(imap_list)):
-            ps[i], kn[i] = self.ps_estimate(params, imap_list[i], nmap_list[i], factors)
+            ps_2d[i], kn_2d[i], ps_1d[i], kn_1d[i] =\
+                self.ps_estimate(params, imap_list[i], nmap_list[i], factors)
 
-        return ps, kn
+        return ps_2d, kn_2d, ps_1d, kn_1d
 
     def prepare_maps(self, params, map_set):
         '''
@@ -293,48 +328,92 @@ class PowerSpectrumEstimator(object):
             for i in range(len(imap[0])):
                 imap_list.append([imap[1]['%d'%i],imap[1]['%d'%i]])
                 nmap_list.append([nmap, nmap])
+        elif map_set == 'ps' and params['ps_type'] == 'wigglez':
+            print 'prepare maps of mock catalog for wigglez power sepctrum short noise'
+            imap = functions.get_mapdict(params['opt_root'], selection='data')
+            nmap = functions.get_mapdict(params['opt_root'].replace('binned_delta', 'binned'), 
+                                         selection='separable')
+            imap_list.append([imap, imap])
+            nmap_list.append([nmap, nmap])
+        elif map_set == 'sn' and params['ps_type'] == 'wigglez':
+            print 'prepare maps of mock catalog for wigglez power sepctrum short noise'
+            imap = functions.get_mapdict(params['opt_root'])
+            nmap = functions.get_mapdict(params['opt_root'].replace('binned_delta', 'binned'), 
+                                         selection='separable')
+            for i in range(len(imap[0])):
+                imap_list.append([imap[1]['%d'%i],imap[1]['%d'%i]])
+                nmap_list.append([nmap, nmap])
+            
+        elif map_set == 'si' and params['ps_type'] == '2df':
+            print 'prepare maps of simulation maps for 2df power sepctrum'
+            imaps_a = functions.get_mapdict(params['sim_root'], selection='delta')
+            nmaps_a = functions.get_mapdict(params['opt_root'], selection='selection')
+
+            imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
+            nmaps_b = functions.get_mapdict(params['opt_root'], selection='selection')
+
+            for i in range(params['sim_numb']):
+                imap_list.append([imaps_a[1]['%d'%i], 
+                                  imaps_b[1]['%d'%i]])
+                nmap_list.append([nmaps_a, nmaps_b])
         else:
             print 'error: map_set error!'
             exit()
         return imap_list, nmap_list
 
-    def save(self, params, ps, kn, step):
+    def save(self, params, ps_2d, kn_2d, ps_1d, kn_1d, step):
 
-        ps_mean = np.mean(ps, axis=0)
-        ps_std  = np.std(ps, axis=0)
+        print ps_2d.shape
+        ps_2d_mean = np.mean(ps_2d, axis=0)
+        ps_2d_std  = np.std(ps_2d, axis=0)
+        ps_1d_mean = np.mean(ps_1d, axis=0)
+        ps_1d_std  = np.std(ps_1d, axis=0)
 
-        kn_mean = np.mean(kn, axis=0)
-        kn_std  = np.std(ps, axis=0)
+        kn_2d_mean = np.mean(kn_2d, axis=0)
+        kn_2d_std  = np.std(ps_2d, axis=0)
+        kn_1d_mean = np.mean(kn_1d, axis=0)
+        kn_1d_std  = np.std(ps_1d, axis=0)
 
         if step == 'ps' and params['ps_type'] == 'auto':
-            print ps.shape[0]
-            ps_std /= sqrt(ps.shape[0])
+            print ps_2d.shape[0]
+            ps_2d_std /= sqrt(ps_2d.shape[0])
+            ps_1d_std /= sqrt(ps_1d.shape[0])
 
         k_bin = np.logspace(np.log10(params['kbin_min']), 
                             np.log10(params['kbin_max']), 
                             num=params['kbin_num'])
 
-        k_axes = ("k_p", "k_v")
-        info = {'axes': k_axes, 'type': 'vect'}
-        info['k_p_delta']  = k_bin[1]/k_bin[0]
-        info['k_p_centre'] = k_bin[params['kbin_num']//2]
-        info['k_v_delta']  = k_bin[1]/k_bin[0]
-        info['k_v_centre'] = k_bin[params['kbin_num']//2]
+        k_axes_2d = ("k_p", "k_v")
+        info_2d = {'axes': k_axes_2d, 'type': 'vect'}
+        info_2d['k_p_delta']  = k_bin[1]/k_bin[0]
+        info_2d['k_p_centre'] = k_bin[params['kbin_num']//2]
+        info_2d['k_v_delta']  = k_bin[1]/k_bin[0]
+        info_2d['k_v_centre'] = k_bin[params['kbin_num']//2]
 
-        #k_edges_p = self.get_kbin_edges(params)
-        #k_edges_v = self.get_kbin_edges(params)
-        #info['k_p_edges'] = k_edges_p
-        #info['k_v_edges'] = k_edges_v
+        ps_2d_mean = algebra.make_vect(ps_2d_mean, axis_names=k_axes_2d)
+        kn_2d_mean = algebra.make_vect(kn_2d_mean, axis_names=k_axes_2d)
+        ps_2d_std  = algebra.make_vect(ps_2d_std, axis_names=k_axes_2d)
+        kn_2d_std  = algebra.make_vect(kn_2d_std, axis_names=k_axes_2d)
 
-        ps_mean = algebra.make_vect(ps_mean, axis_names=k_axes)
-        kn_mean = algebra.make_vect(kn_mean, axis_names=k_axes)
-        ps_std  = algebra.make_vect(ps_std, axis_names=k_axes)
-        kn_std  = algebra.make_vect(kn_std, axis_names=k_axes)
+        ps_2d_mean.info = info_2d
+        kn_2d_mean.info = info_2d
+        ps_2d_std.info = info_2d
+        kn_2d_std.info = info_2d
 
-        ps_mean.info = info
-        kn_mean.info = info
-        ps_std.info = info
-        kn_std.info = info
+        k_axes_1d = ("k",)
+        info_1d = {'axes': k_axes_1d, 'type': 'vect'}
+        info_1d['k_delta']  = k_bin[1]/k_bin[0]
+        info_1d['k_centre'] = k_bin[params['kbin_num']//2]
+
+        ps_1d_mean = algebra.make_vect(ps_1d_mean, axis_names=k_axes_1d)
+        kn_1d_mean = algebra.make_vect(kn_1d_mean, axis_names=k_axes_1d)
+        ps_1d_std  = algebra.make_vect(ps_1d_std, axis_names=k_axes_1d)
+        kn_1d_std  = algebra.make_vect(kn_1d_std, axis_names=k_axes_1d)
+
+        ps_1d_mean.info = info_1d
+        kn_1d_mean.info = info_1d
+        ps_1d_std.info = info_1d
+        kn_1d_std.info = info_1d
 
         if params['ps_mode'] == None:
             file_name = '%s_%s_'%(params['ps_type'], step)
@@ -347,23 +426,37 @@ class PowerSpectrumEstimator(object):
 
         print file_root
 
-        algebra.save(file_root + file_name + '2dpow', ps_mean)
-        algebra.save(file_root + file_name + '2derr', ps_std )
-        algebra.save(file_root + file_name + '2dkmn', kn_mean)
+        algebra.save(file_root + file_name + '2dpow', ps_2d_mean)
+        algebra.save(file_root + file_name + '2derr', ps_2d_std )
+        algebra.save(file_root + file_name + '2dkmn', kn_2d_mean)
+        algebra.save(file_root + file_name + '1dpow', ps_1d_mean)
+        algebra.save(file_root + file_name + '1derr', ps_1d_std )
+        algebra.save(file_root + file_name + '1dkmn', kn_1d_mean)
 
-        if step == 'ps':
-            k_axes_each = ("map", "k_p", "k_v")
-            info_each = {'axes': k_axes_each, 'type': 'vect'}
-            info_each['map_delta']  = 1.
-            info_each['map_centre'] = range(ps.shape[0])[ps.shape[0]//2]
-            info_each['k_p_delta']  = k_bin[1]/k_bin[0]
-            info_each['k_p_centre'] = k_bin[params['kbin_num']//2]
-            info_each['k_v_delta']  = k_bin[1]/k_bin[0]
-            info_each['k_v_centre'] = k_bin[params['kbin_num']//2]
+        #if step == 'ps':
+        k_axes_each_2d = ("map", "k_p", "k_v")
+        info_each_2d = {'axes': k_axes_each_2d, 'type': 'vect'}
+        info_each_2d['map_delta']  = 1.
+        info_each_2d['map_centre'] = range(ps_2d.shape[0])[ps_2d.shape[0]//2]
+        info_each_2d['k_p_delta']  = k_bin[1]/k_bin[0]
+        info_each_2d['k_p_centre'] = k_bin[params['kbin_num']//2]
+        info_each_2d['k_v_delta']  = k_bin[1]/k_bin[0]
+        info_each_2d['k_v_centre'] = k_bin[params['kbin_num']//2]
 
-            ps_each = algebra.make_vect(ps, axis_names=k_axes_each)
-            ps_each.info = info_each
-            algebra.save(file_root + file_name + '2draw', ps_each)
+        k_axes_each_1d = ("map", "k")
+        info_each_1d = {'axes': k_axes_each_1d, 'type': 'vect'}
+        info_each_1d['map_delta']  = 1.
+        info_each_1d['map_centre'] = range(ps_1d.shape[0])[ps_1d.shape[0]//2]
+        info_each_1d['k_delta']  = k_bin[1]/k_bin[0]
+        info_each_1d['k_centre'] = k_bin[params['kbin_num']//2]
+
+        ps_2d_each = algebra.make_vect(ps_2d, axis_names=k_axes_each_2d)
+        ps_2d_each.info = info_each_2d
+        algebra.save(file_root + file_name + '2draw', ps_2d_each)
+
+        ps_1d_each = algebra.make_vect(ps_1d, axis_names=k_axes_each_1d)
+        ps_1d_each.info = info_each_1d
+        algebra.save(file_root + file_name + '1draw', ps_1d_each)
 
 
 if __name__ == '__main__':
