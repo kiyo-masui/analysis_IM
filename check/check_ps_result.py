@@ -37,13 +37,34 @@ def seperate_positive_and_negetive_power(power, power_err, k_centre):
     return power_1d_positive, power_1d_positive_err_2, k_1d_centre_positive,\
            power_1d_negative, power_1d_negative_err_2, k_1d_centre_negative
 
-def plot_1d_power_spectrum_opt(ps_root, sn_root, filename, truncate_range = None):
-    power_1d, power_1d_err, k_1d_centre =\
-        ps_summary.convert_2dps_to_1dps_opt(ps_root, sn_root, truncate_range)
+def plot_1d_power_spectrum_opt(ps_root, sn_root, filename, si_root=None, 
+                               truncate_range = None, from_1d=False):
+    if from_1d:
+        power_1d, power_1d_err, power_1d_kmn, k_1d_centre =\
+            ps_summary.load_power_spectrum_opt_1d(ps_root, sn_root)
+    else:
+        power_1d, power_1d_err, k_1d_centre =\
+            ps_summary.convert_2dps_to_1dps_opt(ps_root, sn_root, truncate_range)
+
 
     power_1d_positive, power_1d_positive_err_2, k_1d_centre_positive,\
     power_1d_negative, power_1d_negative_err_2, k_1d_centre_negative\
         = seperate_positive_and_negetive_power(power_1d, power_1d_err, k_1d_centre)
+
+
+    #power_1d_sim, power_1d_sim_err, k_1d_sim_centre =\
+    #    ps_summary.convert_2dps_to_1dps_sim(si_root, truncate_range = truncate_range)
+
+    #power_1d_sim_positive, power_1d_sim_positive_err_2, k_1d_centre_sim_positive,\
+    #power_1d_sim_negative, power_1d_sim_negative_err_2, k_1d_centre_sim_negative\
+    #    = seperate_positive_and_negetive_power(power_1d_sim, 
+    #                                           power_1d_sim_err,
+    #                                           k_1d_sim_centre)
+
+    k_paper_cole, power_paper_cole, power_err_paper_cole = \
+        ps_summary.load_2df_ps_from_paper('Cole')
+    k_paper, power_paper, power_err_paper = ps_summary.load_2df_ps_from_paper()
+    #k_th, power_th = ps_summary.load_camb()
 
     fig = plt.figure(figsize=(8, 8))
     label = filename.replace('_', ' ')
@@ -53,12 +74,24 @@ def plot_1d_power_spectrum_opt(ps_root, sn_root, filename, truncate_range = None
     plt.errorbar(k_1d_centre_negative, power_1d_negative, power_1d_negative_err_2, 
         fmt='ro', mec='r', mfc='none', capsize=4.5, 
         elinewidth=1, label=label + ' negative')
+    #plt.errorbar(k_1d_centre_sim_positive, power_1d_sim_positive, 
+    #    power_1d_sim_positive_err_2, 
+    #    fmt='ko', mec='k', capsize=4.5, elinewidth=1, label='sim positive')
+
+    plt.errorbar(k_paper, power_paper, power_err_paper, 
+        fmt='bo', mec='k', capsize=4.5, elinewidth=1, label='Percival et. al 2001 ')
+    plt.errorbar(k_paper_cole, power_paper_cole, power_err_paper_cole, 
+        fmt='go', mec='k', capsize=4.5, elinewidth=1, label='Cole et. al 2005 ')
+
+    #plt.plot(k_th, power_th, 'b--')
 
     plt.loglog()
-    plt.ylim(ymin=1.e-12, ymax=1.e-1)
-    plt.xlim(xmin=0.025, xmax=1.5)
+    plt.ylim(ymin=1.e-2, ymax=1.e2)
+    plt.xlim(xmin=0.05, xmax=2.5)
     plt.xlabel('k [h/Mpc]')
-    plt.ylabel('$\Delta^2$ [$K^2$]')
+    #plt.ylabel('$\Delta^2$ [$K^2$]')
+    plt.ylabel('$\Delta^2$ [$P(k)k^3/2\pi^2$]')
+    #plt.ylabel('$P(k)$ [$h^{-3}Mpc^3$]')
     plt.legend(frameon=False)
     plt.tick_params(length=6, width=1.)
     plt.tick_params(which='minor', length=3, width=1.)
@@ -360,17 +393,36 @@ def image_box_2d(x_list, y_list, plot_list, n_row=1, n_col=None, title_list=None
 
 if __name__=='__main__':
     
-    ps_root = "/Users/ycli/DATA/ps_result/29RA_2df_ps_29hour/2df_ps_2dpow"
-    sn_root = "/Users/ycli/DATA/ps_result/29RA_2df_ps_29hour/2df_sn_2dpow"
-    plot_1d_power_spectrum_opt(ps_root, sn_root, '2df_ps_2dpow')
+    # #file_name = "29RA_2df_ps_selection_10mock"
+    # #file_name = "29RA_2df_ps_separable_10mock"
+    # #file_name = "29RA_2df_ps_separable"
+    # file_name = "29RA_2df_ps"
 
-    exit()
+    # result_root = "/Users/ycli/DATA/ps_result/" + file_name + '/'
+    # ps_root = result_root + "2df_ps_2dpow"
+    # sn_root = result_root + "2df_sn_2dpow"
+    # si_root = result_root + "2df_si_2dpow"
+    # plot_1d_power_spectrum_opt(ps_root, sn_root, file_name, si_root)
+
+    # exit()
+
+    # ps_root = "/Users/ycli/DATA/ps_result/29RA_2df_ps/2df_ps_1dpow"
+    # sn_root = "/Users/ycli/DATA/ps_result/29RA_2df_ps/2df_sn_1dpow"
+    # #ps_root = "/Users/ycli/DATA/ps_result/15hr_wigglez_wigglez_ps/wigglez_ps_1dpow"
+    # #sn_root = "/Users/ycli/DATA/ps_result/15hr_wigglez_wigglez_ps/wigglez_sn_1dpow"
+    # si_root = "/Users/ycli/DATA/ps_result/29RA_2df_ps/2df_si_2dpow"
+    # plot_1d_power_spectrum_opt(ps_root, sn_root, '2df_ps_2dpow', si_root, from_1d=True)
+    # #plot_1d_power_spectrum_opt(ps_root, sn_root, 'wigglez_ps_2dpow', si_root, from_1d=True)
+
 
     mode = 25 
     #mode = 10 
     #filename = '15hr_II_14conv_auto_ps_15hour_%dmode'%mode
-    filename = '15hr_IE_14conv_auto_ps_15hour_%dmode'%mode
+    #filename = '15hr_IE_14conv_auto_ps_15hour_%dmode'%mode
     #filename = '1hr_IE_14conv_auto_ps_01hour_%dmode'%mode
+    #filename = '15hr_ABCD_14conv_auto_ps_%dmode'%mode
+    filename = '15hr_ABCD_14conv_test_me_auto_ps_%dmode'%mode
+    #filename = '15hr_ABCD_14conv_test_eric_auto_ps_%dmode'%mode
 
     result_root = '/Users/ycli/DATA/ps_result/'\
                   + filename + '/'

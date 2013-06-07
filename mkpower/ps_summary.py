@@ -3,6 +3,20 @@
 import numpy as np
 from core import algebra
 from simulations import corr21cm
+import os
+
+def load_2df_ps_from_paper(name='Percival'):
+    data = np.loadtxt('/Users/ycli/Code/analysis_IM/simulations/data/ps_2df_%s.dat'%name)
+    data[:,1] = data[:,1]*data[:,0]**3/2./np.pi**2.
+    data[:,2] = data[:,2]*data[:,0]**3/2./np.pi**2.
+    return data[:,0], data[:,1], data[:,2]
+
+def load_camb():
+    data = np.loadtxt('/Users/ycli/Code/analysis_IM/mkpower/cambini/_matterpower.dat')
+    data[:,0] *= 0.72
+    data[:,1] /= 0.72**3
+
+    return data[:,0], data[:,1]
 
 def load_theory_ps(k_bins_centre):
     c21 = corr21cm.Corr21cm()
@@ -15,6 +29,13 @@ def load_theory_ps(k_bins_centre):
     ps_theory *= power_th[:,0]**3/2./np.pi**2
     return ps_theory, power_th[:,0]
 
+def get_1d_k_bin_centre(ps_1d):
+
+    k = np.arange(ps_1d.shape[0]) - ps_1d.shape[0]//2
+    k = ps_1d.info['k_centre'] * ps_1d.info['k_delta']**k
+
+    return k
+
 def get_2d_k_bin_centre(ps_2d):
 
     k_p = np.arange(ps_2d.shape[0]) - ps_2d.shape[0]//2
@@ -24,6 +45,15 @@ def get_2d_k_bin_centre(ps_2d):
     k_v = ps_2d.info['k_v_centre'] * ps_2d.info['k_v_delta']**k_v
 
     return k_p, k_v
+
+def get_1d_k_bin_edges(ps_1d):
+    
+    k = get_1d_k_bin_centre(ps_1d)
+
+    k_edges  = np.append(k, k[-1]*ps_1d.info['k_delta'])
+    k_edges /= np.sqrt(ps_1d.info['k_delta'])
+
+    return k_edges
 
 def get_2d_k_bin_edges(ps_2d):
 
@@ -79,18 +109,32 @@ def load_power_spectrum_err(ps_root):
 
     return ps_2derr, k_p_edges, k_v_edges
 
+def load_power_spectrum_opt_1d(ps_root, sn_root):
+
+    ps_1d = algebra.make_vect(algebra.load(ps_root))
+    sn_1d = algebra.make_vect(algebra.load(sn_root))
+    ps_1derr = algebra.make_vect(algebra.load(sn_root.replace('pow', 'err')))
+    ps_1dkmn = algebra.make_vect(algebra.load(ps_root.replace('pow', 'kmn')))
+
+    k_edges = get_1d_k_bin_edges(ps_1d)
+
+    ps_1d -= sn_1d
+
+    return ps_1d, ps_1derr, ps_1dkmn, k_edges
+
 def load_power_spectrum_opt(ps_root, sn_root):
 
     ps_2d = algebra.make_vect(algebra.load(ps_root))
     sn_2d = algebra.make_vect(algebra.load(sn_root))
     ps_2derr = algebra.make_vect(algebra.load(sn_root.replace('pow', 'err')))
+    ps_2dkmn = algebra.make_vect(algebra.load(ps_root.replace('pow', 'kmn')))
 
     k_p_edges, k_v_edges = get_2d_k_bin_edges(ps_2d)
 
     # subtract short noise
     ps_2d -= sn_2d
 
-    return ps_2d, ps_2derr, k_p_edges, k_v_edges
+    return ps_2d, ps_2derr, ps_2dkmn, k_p_edges, k_v_edges
 
 def load_power_spectrum(ps_root):
     
@@ -107,43 +151,50 @@ def convert_2dps_to_1dps_sim(rf_root, ns_root=None, truncate_range=None ):
     power_spectrum_err = algebra.make_vect(algebra.load(rf_root.replace('pow', 'err')))
     k_mode_number = algebra.make_vect(algebra.load(rf_root.replace('pow', 'kmn')))
     if ns_root != None:
-        weight, k_p_edges, k_v_edges = load_weight(ns_root )
+        weight, k_p_edges, k_v_edges = load_weight(ns_root)
         #k_mode_number *= weight
-        k_mode_number = weight
+        #k_mode_number = weight
+    else:
+        weight = np.ones(power_spectrum.shape)
 
     k_p_edges, k_v_edges = get_2d_k_bin_edges(power_spectrum)
     k_p_centre, k_v_centre = get_2d_k_bin_centre(power_spectrum)
     k_centre = np.sqrt(k_p_centre[:,None]**2 + k_v_centre[None, :]**2)
     k_edges_1d = k_p_edges
 
-    power_spectrum *= k_mode_number
-    power_spectrum_err *= k_mode_number
+    power_spectrum *= weight
+    power_spectrum_err *= weight
 
     power_spectrum_err **= 2
 
     if truncate_range != None:
         k_p_range = [truncate_range[0], truncate_range[1]]
         k_v_range = [truncate_range[2], truncate_range[3]]
-        power_spectrum_err, kpe, kve = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
-                                            k_v_edges, power_spectrum_err)
-        power_spectrum, kpe, kve     = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
-                                            k_v_edges, power_spectrum)
-        k_centre, kpe, kve           = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
-                                            k_v_edges, k_centre)
-        k_mode_number, kpe, kve      = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
-                                            k_v_edges, k_mode_number)
+        power_spectrum_err, kpe, kve=truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                          k_v_edges, power_spectrum_err)
+        power_spectrum, kpe, kve    =truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                          k_v_edges, power_spectrum)
+        weight, kpe, kve            =truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                          k_v_edges, weight)
+        k_centre, kpe, kve          =truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                          k_v_edges, k_centre)
+        k_mode_number, kpe, kve     =truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                          k_v_edges, k_mode_number)
 
-    k_centre = k_centre.flatten()
+    k_mode_number = k_mode_number.flatten()
+    power_spectrum_err = power_spectrum_err.flatten()[k_mode_number!=0.]
+    power_spectrum = power_spectrum.flatten()[k_mode_number!=0.]
+    weight = weight.flatten()[k_mode_number!=0]
+    k_centre = k_centre.flatten()[k_mode_number!=0]
 
-    #k_mode,k_e = np.histogram(k_centre, k_edges_1d, weights=np.ones_like(k_centre))
-    k_mode,k_e = np.histogram(k_centre, k_edges_1d, weights=k_mode_number.flatten())
-    k_mode_2,k_e = np.histogram(k_centre, k_edges_1d, weights=(k_mode_number**2).flatten())
-    power, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum.flatten())
-    err,   k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum_err.flatten())
-    k_mode[k_mode==0] = np.inf
-    k_mode_2[k_mode_2==0] = np.inf
-    power_1d = power/k_mode
-    power_1d_err = np.sqrt(err/k_mode_2)
+    normal,k_e = np.histogram(k_centre, k_edges_1d, weights=weight)
+    normal_2,k_e = np.histogram(k_centre, k_edges_1d, weights=weight**2)
+    power, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum)
+    err,   k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum_err)
+    normal[normal==0] = np.inf
+    normal_2[normal_2==0] = np.inf
+    power_1d = power/normal
+    power_1d_err = np.sqrt(err/normal_2)
     return power_1d, power_1d_err, k_p_centre
 
 def truncate_2dps(k_p_range, k_v_range, k_p_edges, k_v_edges, power_spectrum):
@@ -163,7 +214,7 @@ def truncate_2dps(k_p_range, k_v_range, k_p_edges, k_v_edges, power_spectrum):
 
 def convert_2dps_to_1dps_opt(ps_root, sn_root, truncate_range=None):
 
-    power_spectrum, power_spectrum_err, k_p_edges, k_v_edges\
+    power_spectrum, power_spectrum_err, power_spectrum_kmn, k_p_edges, k_v_edges\
         = load_power_spectrum_opt(ps_root, sn_root)
 
     power_spectrum_err **= 2
@@ -174,31 +225,46 @@ def convert_2dps_to_1dps_opt(ps_root, sn_root, truncate_range=None):
     if truncate_range != None:
         k_p_range = [truncate_range[0], truncate_range[1]]
         k_v_range = [truncate_range[2], truncate_range[3]]
+        power_spectrum_kmn, kpe, kve = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                            k_v_edges, power_spectrum_kmn)
         power_spectrum_err, kpe, kve = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
                                             k_v_edges, power_spectrum_err)
         power_spectrum, kpe, kve     = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
                                             k_v_edges, power_spectrum)
         k_centre, kpe, kve           = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
                                             k_v_edges, k_centre)
-    power_spectrum_err = power_spectrum_err.flatten()
-    power_spectrum     = power_spectrum.flatten()
-    k_centre           = k_centre.flatten()
+    power_spectrum_kmn = power_spectrum_kmn.flatten()
+    power_spectrum_err = power_spectrum_err.flatten()[power_spectrum_kmn!=0]
+    power_spectrum     = power_spectrum.flatten()[power_spectrum_kmn!=0]
+    k_centre           = k_centre.flatten()[power_spectrum_kmn!=0]
+    power_spectrum_kmn = power_spectrum_kmn[power_spectrum_kmn!=0]
+
+    power_spectrum *= power_spectrum_kmn
+    power_spectrum_err *= power_spectrum_kmn**2
+
 
     k_edges_1d = k_p_edges
 
-    normal, k_e = np.histogram(k_centre, k_edges_1d)
+    normal, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum_kmn)
+    normal_2, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum_kmn**2)
     power, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum)
     err, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum_err)
 
-    #normal[normal==0] = np.inf
-    power_1d = power/normal.astype(float)
-    power_1d_err = np.sqrt(err/normal.astype(float))
+    normal = normal.astype(float)
+    normal[normal==0] = np.inf
+    normal_2[normal_2==0] = np.inf
+    power_1d = power/normal
+    power_1d_err = np.sqrt(err/normal_2)
 
     return power_1d, power_1d_err, k_p_centre
 
 def convert_2dps_to_1dps(ps_root, ns_root, tr_root, rf_root, truncate_range=None):
 
-    transfer_function, k_p_edges, k_v_edges = load_transfer_function(rf_root, tr_root)
+    if os.path.exists(rf_root):
+        transfer_function = load_transfer_function(rf_root, tr_root)[0]
+    else:
+        print "Reference file or Transfer file are not esits, ignore compensation"
+        transfer_function = None
 
     weight, k_p_edges, k_v_edges = load_weight(ns_root, transfer_function)
 
@@ -206,16 +272,17 @@ def convert_2dps_to_1dps(ps_root, ns_root, tr_root, rf_root, truncate_range=None
 
     power_spectrum_err, k_p_edges, k_v_edges = load_power_spectrum_err(ps_root)
 
-    #k_mode_number *= weight
+    if transfer_function != None:
+        power_spectrum *= transfer_function
+        power_spectrum_err *= transfer_function
 
-    power_spectrum *= transfer_function
+    print power_spectrum.max()
+    print power_spectrum.min()
+
     power_spectrum *= weight
-    #power_spectrum *= k_mode_number
-
-    power_spectrum_err *= transfer_function
     power_spectrum_err *= weight
-    #power_spectrum_err *= k_mode_number
-    power_spectrum_err **= 2
+
+    power_spectrum_err **= 2.
 
     k_p_centre, k_v_centre = get_2d_k_bin_centre(power_spectrum)
     k_centre = np.sqrt(k_p_centre[:,None]**2 + k_v_centre[None, :]**2)
@@ -223,23 +290,37 @@ def convert_2dps_to_1dps(ps_root, ns_root, tr_root, rf_root, truncate_range=None
     if truncate_range != None:
         k_p_range = [truncate_range[0], truncate_range[1]]
         k_v_range = [truncate_range[2], truncate_range[3]]
-        power_spectrum_err, kpe, kve = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+        power_spectrum_err, kpe, kve = truncate_2dps(k_p_range,k_v_range,k_p_edges, 
                                             k_v_edges, power_spectrum_err)
-        power_spectrum, kpe, kve     = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+        power_spectrum, kpe, kve     = truncate_2dps(k_p_range,k_v_range,k_p_edges, 
                                             k_v_edges, power_spectrum)
-        k_centre, kpe, kve           = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+        k_centre, kpe, kve           = truncate_2dps(k_p_range,k_v_range,k_p_edges, 
                                             k_v_edges, k_centre)
-        weight, kpe, kve             = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+        weight, kpe, kve             = truncate_2dps(k_p_range,k_v_range,k_p_edges, 
                                             k_v_edges, weight)
-        k_mode_number, kpe, kve      = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+        k_mode_number, kpe, kve      = truncate_2dps(k_p_range,k_v_range,k_p_edges, 
                                                       k_v_edges, k_mode_number)
 
     #print power_spectrum.shape
+    #k_mode_number      = k_mode_number.flatten()
+    #power_spectrum_err = power_spectrum_err.flatten()[k_mode_number!=0]
+    #power_spectrum     = power_spectrum.flatten()[k_mode_number!=0]
+    #weight             = weight.flatten()[k_mode_number!=0]
+    #k_centre           = k_centre.flatten()[k_mode_number!=0]
+
+    #power_spectrum_err = power_spectrum_err[weight!=0]
+    #power_spectrum     = power_spectrum[weight!=0]
+    #k_centre           = k_centre[weight!=0]
+    #weight             = weight[weight!=0]
+
+    power_spectrum_err[ k_mode_number == 0 ] = 0.
+    power_spectrum[ k_mode_number == 0 ] = 0.
+    weight[ k_mode_number == 0 ] = 0.
+
     power_spectrum_err = power_spectrum_err.flatten()
-    power_spectrum     = power_spectrum.flatten()
-    k_centre           = k_centre.flatten()
-    weight             = weight.flatten()
-    k_mode_number      = k_mode_number.flatten()
+    power_spectrum = power_spectrum.flatten()
+    weight = weight.flatten()
+    k_centre = k_centre.flatten()
 
     k_edges_1d = k_p_edges
 

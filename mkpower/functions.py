@@ -720,7 +720,7 @@ if __name__=="__main__":
     #print x, y, z
 
     ibox_kiyo, ibox_kiyo_info = physical_gridding.physical_grid(map_temp, 
-                                                                refinement=2, 
+                                                                refinement=1, 
                                                                 pad=5, 
                                                                 order=2)
     ibox_kiyo = algebra.make_vect(ibox_kiyo, ibox_kiyo_info['axes'])

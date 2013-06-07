@@ -14,7 +14,7 @@ from core import algebra, hist
 from kiyopy import parse_ini
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
-from mpi4py import MPI
+#from mpi4py import MPI
 
 pi = 3.1415926
 
@@ -86,7 +86,7 @@ params_init = {
     'transfer_k_per_logint'   : 0,
     'transfer_num_redshifts'  : 1,
     'transfer_interp_matterpower' : 'T',
-    'transfer_redshift'       : 0,
+    'transfer_redshift'       : 0.7,
     'transfer_redshift(1)'    : 0,
     'transfer_filename(1)'    : 'Transfer_out.dat',
     'transfer_matterpower(1)' : 'matterpower.dat',

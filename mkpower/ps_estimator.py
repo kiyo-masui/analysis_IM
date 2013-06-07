@@ -139,9 +139,9 @@ class PowerSpectrumEstimator(object):
                         kn = np.concatenate([ps, comm.recv(source=i, tag=12)], axis=0)
                         print "rank %d: received data from rank %d"%(rank, i)
                     for i in range(active_rank_num, size):
-                        message = comm.recv(source=i, tag=11)
+                        message = comm.recv(source=i, tag=13)
             else:
-                comm.ssend(1, dest=0, tag=11)
+                comm.ssend(1, dest=0, tag=13)
 
             comm.barrier()
 
