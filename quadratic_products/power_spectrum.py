@@ -7,12 +7,18 @@ from utils import binning
 from plotting import plot_slice
 import copy
 
+
 class PowerSpectrum(object):
     r"""
     All power spectra are in groups:
+
         autopower: 6 pairs, T treatments
+
         cross-power: 1 pair signal, N pairs sim; T treatments for all
-        cleaning transfer function: N pairs sim, 1 pair signal, (T treatments); M pairs template
+
+        cleaning transfer function: N pairs sim, 1 pair signal, (T treatments);
+        M pairs template
+
         beam transfer function: N pairs sim, M pairs template
 
     TODO:
@@ -24,7 +30,8 @@ class PowerSpectrum(object):
     def __init__(self, filename):
         pwrspec_compilation = shelve.open(filename, "r")
         case_key = "combination:treatment"
-        self.pwr_cases = dp.unpack_cases(pwrspec_compilation.keys(), case_key, divider=":")
+        self.pwr_cases = dp.unpack_cases(pwrspec_compilation.keys(),
+                                         case_key, divider=":")
 
         # gather the lists if pair combinations and treatments (cleaning)
         self.comb_cases = self.pwr_cases["combination"]
@@ -43,6 +50,7 @@ class PowerSpectrum(object):
 
         self.counts_1d = {}
         self.counts_1d_from_2d = {}
+        self.gauss_errors_1d_from_2d = {}
         self.counts_2d = {}
 
         for pwrspec_case in pwrspec_compilation:
@@ -84,6 +92,10 @@ class PowerSpectrum(object):
         r"""here transfer_dict has keys for each treament and the value is the
         2d transfer function. Note that this changes the values saved in the
         class."""
+        if transfer_dict is None:
+            print "power_spectrum: ignoring 2D transfer function"
+            return
+
         print "power_spectrum: applying 2D transfer function"
         for treatment in self.treatment_cases:
             transfer = transfer_dict[treatment]
@@ -93,7 +105,8 @@ class PowerSpectrum(object):
 
                 self.pwrspec_2d[pwrcase] /= transfer
                 self.counts_2d[pwrcase] *= transfer * transfer
-                #print self.pwrspec_2d[pwrcase].shape, np.max(transfer), transfer.shape
+                #print self.pwrspec_2d[pwrcase].shape, transfer.shape
+                #print np.max(transfer)
 
                 nanmask = np.isnan(self.counts_2d[pwrcase])
                 infmask = np.isnan(self.counts_2d[pwrcase])
@@ -144,6 +157,9 @@ class PowerSpectrum(object):
         if bins is None:
             bins = bins_1d
 
+        if weights_2d is not None:
+            print "using 2d weights for 2d->1d"
+
         for treatment in self.treatment_cases:
             if weights_2d is not None:
                 weights_2d_treat = weights_2d[treatment]
@@ -153,6 +169,7 @@ class PowerSpectrum(object):
             for comb in self.comb_cases:
                 pwrcase = "%s:%s" % (comb, treatment)
                 (self.counts_1d_from_2d[pwrcase], \
+                self.gauss_errors_1d_from_2d[pwrcase], \
                 self.pwrspec_1d_from_2d[pwrcase]) = \
                                         pe.convert_2d_to_1d_pwrspec(
                                             self.pwrspec_2d[pwrcase],
@@ -168,9 +185,14 @@ class PowerSpectrum(object):
         self.k_1d_from_2d["right"] = bin_right
         self.num_k_1d_from_2d = bin_center.shape[0]
 
-    def combination_array_1d(self, from_2d=False, counts=False, debug=False):
-        r"""pack the various pair combinations for each treatment into an array"""
-        summary_treatment = {}
+    def combination_array_1d(self, from_2d=True, debug=False):
+        r"""pack the various pair combinations for each treatment -> array
+        """
+
+        summary_pwr = {}
+        summary_counts = {}
+        summary_gerror = {}
+
         if from_2d:
             num_k = self.num_k_1d_from_2d
         else:
@@ -178,37 +200,46 @@ class PowerSpectrum(object):
 
         for treatment in self.treatment_cases:
             pwr_treatment = np.zeros((num_k, self.num_comb))
+            counts_treatment = np.zeros((num_k, self.num_comb))
+            gerror_treatment = np.zeros((num_k, self.num_comb))
+
             for comb, comb_index in zip(self.comb_cases, range(self.num_comb)):
                 pwrcase = "%s:%s" % (comb, treatment)
-                if counts:
-                    if from_2d:
-                        if debug:
-                            print "combining 2D->1D counts"
-                        pwr_treatment[:, comb_index] = \
-                                self.counts_1d_from_2d[pwrcase]
-                    else:
-                        if debug:
-                            print "combining 1D counts"
-                        pwr_treatment[:, comb_index] = \
-                                self.counts_1d[pwrcase]
+                if from_2d:
+                    if debug:
+                        print "combining 2D->1D counts"
+
+                    counts_treatment[:, comb_index] = \
+                            self.counts_1d_from_2d[pwrcase]
+
+                    gerror_treatment[:, comb_index] = \
+                            self.gauss_errors_1d_from_2d[pwrcase]
+
+                    pwr_treatment[:, comb_index] = \
+                            self.pwrspec_1d_from_2d[pwrcase]
                 else:
-                    if from_2d:
-                        if debug:
-                            print "combining 2D->1D P(k)"
-                        pwr_treatment[:, comb_index] = \
-                                self.pwrspec_1d_from_2d[pwrcase]
-                    else:
-                        if debug:
-                            print "combining 1D P(k)"
-                        pwr_treatment[:, comb_index] = \
-                                self.pwrspec_1d[pwrcase]
+                    if debug:
+                        print "WARNING: combining 1D counts"
 
-            summary_treatment[treatment] = pwr_treatment
+                    counts_treatment[:, comb_index] = \
+                            self.counts_1d[pwrcase]
 
-        return summary_treatment
+                    gerror_treatment[:, comb_index] = \
+                            np.zeros_like(counts_treatment[:, comb_index])
+
+                    pwr_treatment[:, comb_index] = \
+                            self.pwrspec_1d[pwrcase]
+
+            summary_counts[treatment] = counts_treatment
+            summary_gerror[treatment] = gerror_treatment
+            summary_pwr[treatment] = pwr_treatment
+
+        return summary_counts, summary_gerror, summary_pwr
 
     def combination_array_2d(self, counts=False, debug=None):
-        r"""pack the various pair combinations for each treatment into an array"""
+        r"""pack the various pair combinations for each treatment into an array
+        """
+
         summary_treatment = {}
         for treatment in self.treatment_cases:
             pwr_treatment = np.zeros((self.num_kx, self.num_ky,
@@ -230,11 +261,11 @@ class PowerSpectrum(object):
 
                 if (debug is not None) and (treatment == "20modes"):
                     plot_slice.simpleplot_2D(outplot_power_file,
-                                         np.abs(pwr_treatment[:, :, comb_index]),
-                                         np.log10(self.kx_2d['center']),
-                                         np.log10(self.ky_2d['center']),
-                                         ["logkx", "logky"], 1., "2d array",
-                                         "log(abs(array))", logscale=True)
+                                    np.abs(pwr_treatment[:, :, comb_index]),
+                                    np.log10(self.kx_2d['center']),
+                                    np.log10(self.ky_2d['center']),
+                                    ["logkx", "logky"], 1., "2d array",
+                                    "log(abs(array))", logscale=True)
 
             summary_treatment[treatment] = pwr_treatment
 
@@ -242,24 +273,28 @@ class PowerSpectrum(object):
 
     def agg_stat_1d_pwrspec(self, from_2d=False, use_masked=False):
         r"""TODO: use masked array here"""
-        comb_arr = self.combination_array_1d(from_2d=from_2d, counts=False)
-        counts_arr = self.combination_array_1d(from_2d=from_2d, counts=True)
+        (counts_arr, gerror_arr, comb_arr) = \
+            self.combination_array_1d(from_2d=from_2d)
 
         stat_summary = {}
         for treatment in self.treatment_cases:
             entry = {}
             if use_masked:
+                gerror_ma = ma.masked_invalid(gerror_arr[treatment])
                 counts_ma = ma.masked_invalid(counts_arr[treatment])
                 comb_ma = ma.masked_invalid(comb_arr[treatment])
+
                 if self.num_comb > 1:
                     entry['counts'] = np.ma.mean(counts_ma, axis=1)
                     entry['mean'] = np.ma.mean(comb_ma, axis=1)
+                    entry['gauss_std'] = np.ma.mean(gerror_ma, axis=1)
                     entry['std'] = np.ma.std(comb_ma, axis=1, ddof=1)
                     entry['corr'] = np.ma.corrcoef(comb_ma)
                     entry['cov'] = np.ma.cov(comb_ma)
                 else:
-                    entry['counts'] = counts_ma[:,0]
-                    entry['mean'] = comb_ma[:,0]
+                    entry['counts'] = counts_ma[:, 0]
+                    entry['mean'] = comb_ma[:, 0]
+                    entry['gauss_std'] = gerror_ma[:, 0]
                     entry['std'] = 0.
                     entry['corr'] = 0.
                     entry['cov'] = 0.
@@ -268,12 +303,26 @@ class PowerSpectrum(object):
                 if self.num_comb > 1:
                     entry['counts'] = np.mean(counts_arr[treatment], axis=1)
                     entry['mean'] = np.mean(comb_treat, axis=1)
+                    entry['gauss_std'] = np.mean(gerror_arr[treatment], axis=1)
                     entry['std'] = np.std(comb_treat, axis=1, ddof=1)
-                    entry['corr'] = np.corrcoef(comb_treat)
-                    entry['cov'] = np.cov(comb_treat)
+                    try:
+                        entry['corr'] = np.corrcoef(comb_treat)
+                    except FloatingPointError:
+                        print "error in calculating corr function"
+                        nside = entry['mean'].shape[0]
+                        entry['corr'] = np.zeros((nside, nside))
+
+                    try:
+                        entry['cov'] = np.cov(comb_treat)
+                    except FloatingPointError:
+                        print "error in calculating cov function"
+                        nside = entry['mean'].shape[0]
+                        entry['cov'] = np.zeros((nside, nside))
+
                 else:
-                    entry['counts'] = counts_arr[treatment][:,0]
-                    entry['mean'] = comb_treat[:,0]
+                    entry['counts'] = counts_arr[treatment][:, 0]
+                    entry['mean'] = comb_treat[:, 0]
+                    entry['gauss_std'] = gerror_arr[treatment][:, 0]
                     entry['std'] = 0.
                     entry['corr'] = 0.
                     entry['cov'] = 0.
@@ -303,7 +352,11 @@ class PowerSpectrum(object):
                 entry['counts'] = np.mean(counts_arr[treatment], axis=2)
                 entry['mean'] = np.mean(comb_arr[treatment], axis=2)
                 if self.num_comb > 1:
-                    entry['std'] = np.std(comb_arr[treatment], axis=2, ddof=1)
+                    try:
+                        entry['std'] = np.std(comb_arr[treatment], axis=2, ddof=1)
+                    except FloatingPointError:
+                        print "ERROR: stdev of spectral pairs failed"
+                        entry['std'] = 0.
                 else:
                     entry['std'] = 0.
             stat_summary[treatment] = entry
@@ -327,12 +380,14 @@ class PowerSpectrum(object):
         stat_summary = self.agg_stat_1d_pwrspec(from_2d=from_2d)
         mean_1d = stat_summary[treatment]["mean"]
         std_1d = stat_summary[treatment]["std"]
+        gauss_std_1d = stat_summary[treatment]["gauss_std"]
         corrmat_1d = stat_summary[treatment]["corr"]
 
         outfile = open(filename, "w")
         for specdata in zip(self.bin_left, self.bin_center,
-                            self.bin_right, mean_1d, std_1d):
-            outfile.write(("%10.15g " * 5 + "\n") % specdata)
+                            self.bin_right, mean_1d,
+                            std_1d, gauss_std_1d):
+            outfile.write(("%10.15g " * 6 + "\n") % specdata)
         outfile.close()
 
         bin_left_lt = np.log10(self.bin_left)
@@ -344,8 +399,9 @@ class PowerSpectrum(object):
             for xind in range(len(bin_center)):
                 for yind in range(len(bin_center)):
                     outstr = ("%10.15g " * 7 + "\n") % \
-                            (bin_left_lt[xind], bin_center_lt[xind], bin_right_lt[xind], \
-                             bin_left_lt[yind], bin_center_lt[yind], bin_right_lt[yind], \
+                            (bin_left_lt[xind], bin_center_lt[xind], \
+                             bin_right_lt[xind], bin_left_lt[yind], \
+                             bin_center_lt[yind], bin_right_lt[yind], \
                              corrmat_1d[xind, yind])
                     outfile.write(outstr)
 

@@ -65,6 +65,7 @@ def phys_pwrspec_caller(cube1_file, cube2_file, params):
 
 gbtdataautopower_init = {
         "map_key": "test_map",
+        "tack_on": None,
         "outfile": "test_file.shelve",
         "unitless": True,
         "return_3d": False,
@@ -73,13 +74,16 @@ gbtdataautopower_init = {
         "degrade_resolution": False,
         "factorizable_noise": False,
         "meansub": False,
+        "ncpu": 24,
         "refinement": 2,
         "pad": 5,
         "order": 2,
+        "treatments": None,
         "freq_list": tuple(range(256)),
         "bins": [0.00765314, 2.49977141, 35]
                }
 gbtdataautopower_prefix = 'xs_'
+
 
 class GbtDataAutopower(object):
     r"""Handle GBT x GBT
@@ -95,12 +99,12 @@ class GbtDataAutopower(object):
 
         self.freq_list = np.array(self.params['freq_list'], dtype=int)
 
-
     def execute(self, processes):
         funcname = "quadratic_products.pwrspec_combinations.pwrspec_caller"
         caller = aggregate_outputs.AggregateOutputs(funcname)
 
         map_key = self.params['map_key']
+        tack_on = self.params['tack_on']
         map_cases = self.datapath_db.fileset_cases(map_key,
                                                    "pair;type;treatment")
 
@@ -108,7 +112,13 @@ class GbtDataAutopower(object):
                                               map_cases['pair'],
                                               cross_sym="_with_")
 
-        for treatment in map_cases['treatment']:
+        # unless specified otherwise find power spectra for all treatments
+        if self.params['treatments'] is None:
+            treatment_list = map_cases['treatment']
+        else:
+            treatment_list = self.params['treatments']
+
+        for treatment in treatment_list:
             for item in unique_pairs:
                 dbkeydict = {}
                 mapset0 = (map_key, item[0], treatment)
@@ -118,7 +128,8 @@ class GbtDataAutopower(object):
                 dbkeydict['noiseinv1_key'] = "%s:%s;noise_inv;%s" % mapset0
                 dbkeydict['noiseinv2_key'] = "%s:%s;noise_inv;%s" % mapset1
                 files = dp.convert_dbkeydict_to_filedict(dbkeydict,
-                                                         datapath_db=self.datapath_db)
+                                                datapath_db=self.datapath_db,
+                                                tack_on=tack_on)
 
                 execute_key = "%s:%s" % (item[0], treatment)
                 caller.execute(files['map1_key'],
@@ -128,12 +139,13 @@ class GbtDataAutopower(object):
                                self.params,
                                execute_key=execute_key)
 
-
-        caller.multiprocess_stack(self.params["outfile"], debug=False)
+        caller.multiprocess_stack(self.params["outfile"],
+                                  debug=False, ncpu=self.params['ncpu'])
 
 
 gbtdatanoisepower_init = {
         "map_key": "test_map",
+        "tack_on": None,
         "outfile": "test_file.shelve",
         "unitless": True,
         "return_3d": False,
@@ -142,13 +154,16 @@ gbtdatanoisepower_init = {
         "degrade_resolution": False,
         "factorizable_noise": False,
         "meansub": False,
+        "ncpu": 24,
         "refinement": 2,
         "pad": 5,
         "order": 2,
+        "treatments": None,
         "freq_list": tuple(range(256)),
         "bins": [0.00765314, 2.49977141, 35]
                }
 gbtdatanoisepower_prefix = 'ns_'
+
 
 class GbtDataNoisePower(object):
     r"""Handle GBT x GBT; AxA, BxB, CxC, etc.
@@ -164,12 +179,12 @@ class GbtDataNoisePower(object):
 
         self.freq_list = np.array(self.params['freq_list'], dtype=int)
 
-
     def execute(self, processes):
         funcname = "quadratic_products.pwrspec_combinations.pwrspec_caller"
         caller = aggregate_outputs.AggregateOutputs(funcname)
 
         map_key = self.params['map_key']
+        tack_on = self.params['tack_on']
         map_cases = self.datapath_db.fileset_cases(map_key,
                                                    "pair;type;treatment")
 
@@ -182,7 +197,13 @@ class GbtDataNoisePower(object):
                        "D_with_D": "D_with_A"
                       }
 
-        for treatment in map_cases['treatment']:
+        # unless specified otherwise find power spectra for all treatments
+        if self.params['treatments'] is None:
+            treatment_list = map_cases['treatment']
+        else:
+            treatment_list = self.params['treatments']
+
+        for treatment in treatment_list:
             for item in noise_pairs:
                 dbkeydict = {}
                 mapset0 = (map_key, noise_pairs[item], treatment)
@@ -192,7 +213,8 @@ class GbtDataNoisePower(object):
                 dbkeydict['noiseinv1_key'] = "%s:%s;noise_inv;%s" % mapset0
                 dbkeydict['noiseinv2_key'] = "%s:%s;noise_inv;%s" % mapset1
                 files = dp.convert_dbkeydict_to_filedict(dbkeydict,
-                                                         datapath_db=self.datapath_db)
+                                                datapath_db=self.datapath_db,
+                                                tack_on=tack_on)
 
                 execute_key = "%s:%s" % (item, treatment)
                 caller.execute(files['map1_key'],
@@ -202,8 +224,8 @@ class GbtDataNoisePower(object):
                                self.params,
                                execute_key=execute_key)
 
-
-        caller.multiprocess_stack(self.params["outfile"], debug=False)
+        caller.multiprocess_stack(self.params["outfile"],
+                                  debug=False, ncpu=self.params['ncpu'])
 
 
 crosspower_init = {
@@ -220,6 +242,7 @@ crosspower_init = {
         "degrade_resolution": False,
         "factorizable_noise": False,
         "meansub": False,
+        "ncpu": 24,
         "refinement": 2,
         "pad": 5,
         "order": 2,
@@ -227,6 +250,7 @@ crosspower_init = {
         "bins": [0.00765314, 2.49977141, 35]
                }
 crosspower_prefix = 'wxs_'
+
 
 class WiggleZxGBT(object):
     r"""Handle GBT x WiggleZ
@@ -242,7 +266,6 @@ class WiggleZxGBT(object):
 
         print self.params
         self.freq_list = np.array(self.params['freq_list'], dtype=int)
-
 
     def execute(self, processes):
         funcname = "quadratic_products.pwrspec_combinations.pwrspec_caller"
@@ -281,7 +304,7 @@ class WiggleZxGBT(object):
                            execute_key=execute_key)
 
         caller_data.multiprocess_stack(self.params["outfile_data"],
-                                       debug=False, ncpu=6)
+                                       debug=False, ncpu=self.params['ncpu'])
 
         for treatment in map_cases['treatment']:
             for item in mock_files[0]:
@@ -294,7 +317,8 @@ class WiggleZxGBT(object):
 
                 dbkeydict['noiseinv2_key'] = sel_key
                 files = dp.convert_dbkeydict_to_filedict(dbkeydict,
-                                                         datapath_db=self.datapath_db)
+                                                datapath_db=self.datapath_db)
+
                 execute_key = "mock%s:%s" % (item, treatment)
                 #print files, execute_key
 
@@ -305,9 +329,8 @@ class WiggleZxGBT(object):
                                self.params,
                                execute_key=execute_key)
 
-
         caller_mock.multiprocess_stack(self.params["outfile_mock"],
-                                       debug=False, ncpu=6)
+                                       debug=False, ncpu=self.params['ncpu'])
 
 
 crosspowersim_init = {
@@ -323,6 +346,7 @@ crosspowersim_init = {
         "degrade_resolution": False,
         "factorizable_noise": False,
         "meansub": False,
+        "ncpu": 24,
         "refinement": 2,
         "pad": 5,
         "order": 2,
@@ -330,6 +354,7 @@ crosspowersim_init = {
         "bins": [0.00765314, 2.49977141, 35]
                }
 crosspowersim_prefix = 'wxss_'
+
 
 class WiggleZxGBT_modesim(object):
     r"""Handle GBT x WiggleZ mode subtraction simulations
@@ -350,13 +375,19 @@ class WiggleZxGBT_modesim(object):
         print self.params
         self.freq_list = np.array(self.params['freq_list'], dtype=int)
 
-
     def execute(self, processes):
         funcname = "quadratic_products.pwrspec_combinations.pwrspec_caller"
         caller_data = aggregate_outputs.AggregateOutputs(funcname)
 
         wigglez_sim_file = self.params['wigglez_sim_file']
-        sel_key = self.params['wigglez_sel_key']
+
+        if self.params['wigglez_sel_key']:
+            sel_key = self.params['wigglez_sel_key']
+            wigglez_selfile = self.datapath_db.fetch(sel_key)
+        else:
+            print "Warning: in WiggleZxGBT_modesim no selection function"
+            wigglez_selfile = False
+
         map_key = self.params['map_key']
         tack_on = self.params['tack_on']
 
@@ -365,10 +396,12 @@ class WiggleZxGBT_modesim(object):
 
         for treatment in map_cases['treatment']:
             sim_mapkey = "%s:map;%s" % (map_key, treatment)
-            sim_mapfile = self.datapath_db.fetch(sim_mapkey, tack_on=tack_on)
+            sim_mapfile = self.datapath_db.fetch(sim_mapkey,
+                                                 tack_on=tack_on)
+
             sim_noisekey = "%s:weight;%s" % (map_key, treatment)
-            sim_noisefile = self.datapath_db.fetch(sim_noisekey, tack_on=tack_on)
-            wigglez_selfile = self.datapath_db.fetch(sel_key)
+            sim_noisefile = self.datapath_db.fetch(sim_noisekey,
+                                                   tack_on=tack_on)
 
             execute_key = "sim:%s" % treatment
 
@@ -380,7 +413,7 @@ class WiggleZxGBT_modesim(object):
                                 execute_key=execute_key)
 
         caller_data.multiprocess_stack(self.params["outfile_data"],
-                                       debug=False, ncpu=1)
+                                       debug=False, ncpu=self.params['ncpu'])
 
 
 # this does not actually do any batch processing, but just wraps a single
@@ -398,6 +431,7 @@ batchsimcrosspower_init = {
         "degrade_resolution": False,
         "factorizable_noise": False,
         "meansub": False,
+        "ncpu": 24,
         "refinement": 2,
         "pad": 5,
         "order": 1,
@@ -405,6 +439,7 @@ batchsimcrosspower_init = {
         "bins": [0.00765314, 2.49977141, 35]
                }
 batchsimcrosspower_prefix = 'bxs_'
+
 
 class BatchSimCrosspower(object):
     r"""Take cross-power relevant for finding the cross beam transfer function
@@ -420,28 +455,39 @@ class BatchSimCrosspower(object):
 
         self.freq_list = np.array(self.params['freq_list'], dtype=int)
 
-
     def execute(self, processes):
         funcname = "quadratic_products.pwrspec_combinations.pwrspec_caller"
         caller = aggregate_outputs.AggregateOutputs(funcname)
 
-        dbkeydict = {}
-        dbkeydict['noiseinv1_key'] = "%s:weight;0modes" % \
-                                     self.params['map_key']
+        # TODO: simplify this
+        try:
+            dbkeydict = {}
+            dbkeydict['noiseinv1_key'] = "%s:weight;0modes" % \
+                                         self.params['map_key']
 
-        dbkeydict['noiseinv2_key'] = self.params['wigglez_sel_key']
-        files = dp.convert_dbkeydict_to_filedict(dbkeydict,
-                                                 datapath_db=self.datapath_db)
+            files = dp.convert_dbkeydict_to_filedict(dbkeydict,
+                                                     datapath_db=self.datapath_db)
+        except KeyError:
+            print "WARNING: NO 21cm weight in WiggleZxGBT_modesim"
+            files = {'noiseinv1_key': False}
+
+        if self.params['wigglez_sel_key']:
+            sel_key = self.params['wigglez_sel_key']
+            wigglez_selfile = self.datapath_db.fetch(sel_key)
+        else:
+            print "Warning: in WiggleZxGBT_modesim no selection function"
+            wigglez_selfile = False
 
         execute_key = "sim:0modes"
         caller.execute(self.params['sim_file'],
                        self.params['wigglez_sim_file'],
                        files['noiseinv1_key'],
-                       files['noiseinv2_key'],
+                       wigglez_selfile,
                        self.params,
                        execute_key=execute_key)
 
-        caller.multiprocess_stack(self.params["outfile"], debug=False)
+        caller.multiprocess_stack(self.params["outfile"],
+                                  debug=False, ncpu=self.params['ncpu'])
 
 
 batchsimautopower_init = {
@@ -455,6 +501,7 @@ batchsimautopower_init = {
         "degrade_resolution": False,
         "factorizable_noise": False,
         "meansub": False,
+        "ncpu": 24,
         "refinement": 2,
         "pad": 5,
         "order": 2,
@@ -462,6 +509,7 @@ batchsimautopower_init = {
         "bins": [0.00765314, 2.49977141, 35]
                }
 batchsimautopower_prefix = 'bs_'
+
 
 class BatchSimAutopower(object):
     r"""Handler to call the power spectral estimation for different
@@ -477,7 +525,6 @@ class BatchSimAutopower(object):
                                           prefix=batchsimautopower_prefix)
 
         self.freq_list = np.array(self.params['freq_list'], dtype=int)
-
 
     def execute(self, processes):
         funcname = "quadratic_products.pwrspec_combinations.pwrspec_caller"
@@ -503,7 +550,7 @@ class BatchSimAutopower(object):
             dbkeydict['noiseinv1_key'] = "%s:%s;noise_inv;%s" % mapset0
             dbkeydict['noiseinv2_key'] = "%s:%s;noise_inv;%s" % mapset1
             files = dp.convert_dbkeydict_to_filedict(dbkeydict,
-                                                     datapath_db=self.datapath_db)
+                                            datapath_db=self.datapath_db)
 
             execute_key = "%s:%s" % (item[0], treatment)
             caller.execute(sim_file,
@@ -513,7 +560,9 @@ class BatchSimAutopower(object):
                            self.params,
                            execute_key=execute_key)
 
-        caller.multiprocess_stack(self.params["outfile"], debug=False)
+        caller.multiprocess_stack(self.params["outfile"],
+                                  debug=False, ncpu=self.params['ncpu'])
+
 
 batchphysicalsim_init = {
         "sim_key": "sim_stuff",
@@ -522,9 +571,11 @@ batchphysicalsim_init = {
         "return_3d": False,
         "truncate": False,
         "window": None,
+        "ncpu": 24,
         "bins": [0.00765314, 2.49977141, 35]
                }
 batchphysicalsim_prefix = 'bps_'
+
 
 class BatchPhysicalSim(object):
     def __init__(self, parameter_file=None, params_dict=None, feedback=0):
@@ -550,7 +601,8 @@ class BatchPhysicalSim(object):
                            self.params,
                            execute_key=execute_key)
 
-        caller.multiprocess_stack(self.params["outfile"], debug=False)
+        caller.multiprocess_stack(self.params["outfile"],
+                                  debug=False, ncpu=self.params['ncpu'])
 
 # this does not actually do any batch processing, but just wraps a single
 # quadratic estimator output in the same packaging/pipeline interaction
@@ -562,9 +614,11 @@ singlephysicalsim_init = {
         "return_3d": False,
         "truncate": False,
         "window": None,
+        "ncpu": 1,
         "bins": [0.00765314, 2.49977141, 35]
                }
 singlephysicalsim_prefix = 'sps_'
+
 
 class SinglePhysicalSim(object):
     def __init__(self, parameter_file=None, params_dict=None, feedback=0):
@@ -586,7 +640,8 @@ class SinglePhysicalSim(object):
                        self.params['sim_file_right'],
                        self.params, execute_key=execute_key)
 
-        caller.multiprocess_stack(self.params["outfile"], debug=False)
+        caller.multiprocess_stack(self.params["outfile"],
+                                  debug=False, ncpu=self.params['ncpu'])
 
 
 cleanup_init = {
@@ -595,6 +650,7 @@ cleanup_init = {
     }
 
 cleanup_prefix = "clean_"
+
 
 class CleanupCleanedMaps(object):
     r"""delete cleaned maps to save space (~4 GB each)"""

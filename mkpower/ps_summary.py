@@ -76,8 +76,8 @@ def load_transfer_function(rf_root, tr_root, auto=True):
 
     transfer_function = ps_rf/ps_tr
 
-    if auto:
-        transfer_function **=2
+    #if auto:
+    #    transfer_function **=2
 
     k_p_edges, k_v_edges = get_2d_k_bin_edges(ps_rf)
 
