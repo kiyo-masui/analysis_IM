@@ -1,15 +1,17 @@
 import numpy as np
 from kiyopy import parse_ini
 import h5py
-from core import utils
+from utils import misc as utils
 
 crosssumparams_init = {
         "summary_file": "file",
         "theory_curve": "file",
         "krange": [0.06, 1.],
-        "outdir": "./"
+        "outdir": "./",
+        "pk_column": 4
                }
 crosssumprefix = 'crosssum_'
+
 
 class SummarizeCross(object):
     def __init__(self, parameter_file=None, params_dict=None, feedback=0):
@@ -26,14 +28,18 @@ class SummarizeCross(object):
         cross_summary = h5py.File(self.params["summary_file"], "r")
         # this has: kvec, power_1d, power_1d_cov
 
+        print "using col:%d of %s" % (self.params["pk_column"],
+                                      self.params["theory_curve"])
+
         theory_curve = np.genfromtxt(self.params["theory_curve"])
-        theory_curve = theory_curve[:, 4]
+        theory_curve = theory_curve[:, self.params["pk_column"]]
+        #print theory_curve
 
         bin_center = cross_summary["kvec"]["k_1d_center"].value
         (kmin, kmax) = tuple(self.params["krange"])
         restrict = np.where(np.logical_and(bin_center > kmin,
                                            bin_center < kmax))
-        res_slice = slice(min(restrict[0]), max(restrict[0]))
+        res_slice = slice(min(restrict[0]), max(restrict[0]) + 1)
         #restrict_alt = np.where(restrict)[0][np.newaxis, :]
         #restricted_cov = covmock[restrict_alt][0]
 
@@ -48,7 +54,7 @@ class SummarizeCross(object):
                                      theory_curve[res_slice])
 
             nmodes = float(treatment.split("modes")[0])
-            snr = amplitude['amp']/amplitude['error']
+            snr = amplitude['amp'] / amplitude['error']
             outstr = "%d " % nmodes
             outstr += "%(amp)10.5f %(error)10.5f " % amplitude
             outstr += "%(chi2)10.5f %(dof)10.5f %(pte)10.5f " % amplitude
