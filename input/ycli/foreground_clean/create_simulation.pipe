@@ -42,9 +42,11 @@ if do_simulation:
     print "generating simulation with seed: %d" % instance_seed
 
     sg1_output_root = simroot
+    #sg1_template_file = basemap + 'secA_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
     sg1_template_file = basemap + 'secA_1hr_41-18_avg_fdgp_clean_map_I_800.npy'
     sg1_seed = instance_seed
     sg1_refinement = 2
+    #sg1_weightfile = basemap + 'secA_15hr_41-80_avg_fdgp_new_noise_inv_diag_I_800.npy'
     sg1_weightfile = basemap + 'secA_1hr_41-18_avg_fdgp_noise_inv_diag_I_800.npy'
     sg1_outfile_meansub = "sim_beammeansub_%03d.npy"
     sg1_outfile_raw = "sim_raw_%03d.npy"

@@ -220,7 +220,7 @@ class MapPair(object):
 
         return
 
-    def degrade_resolution(self):
+    def degrade_resolution(self, mode='constant'):
         r"""Convolves the maps down to the lowest resolution.
 
         Also convolves the noise, making sure to deweight pixels near the edge
@@ -244,8 +244,8 @@ class MapPair(object):
         def degrade_resolution_for_noise(noise, common_resolution):
             noise[noise < 1.e-30] = 1.e-30
             noise = 1. / noise
-            noise = common_resolution.apply(noise, cval=1.e30)
-            noise = common_resolution.apply(noise, cval=1.e30)
+            noise = common_resolution.apply(noise, mode=mode, cval=1.e30)
+            noise = common_resolution.apply(noise, mode=mode, cval=1.e30)
             noise = 1. / noise
             noise[noise < 1.e-20] = 0.
 
@@ -326,6 +326,7 @@ class MapPair(object):
             noise_pmean = ma.mean(ma.mean(noise, 1), 1)
             # Combine.
             noise = noise_pmean[:, None, None] * noise_fmean[None, :, :]
+            noise[noise==0] = np.inf
             noise = (1. / noise).filled(0)
 
             return noise

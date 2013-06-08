@@ -36,6 +36,8 @@ class BOX(object):
         #self.ibox1, self.nbox1 = get_box(self.box_bin, self.imap1, self.weight1)
         #self.ibox2, self.nbox2 = get_box(self.box_bin, self.imap2, self.weight2)
 
+        self.flag_nan(target="map")
+
         self.ibox1, ibox1_info = gridding.physical_grid(self.imap1, refinement=1)
         self.ibox2, ibox2_info = gridding.physical_grid(self.imap2, refinement=1)
         self.nbox1, nbox1_info = gridding.physical_grid(self.weight1, refinement=1)
@@ -64,19 +66,33 @@ class BOX(object):
         #                self.ibox1.info['ra_delta'], 
         #                self.ibox1.info['dec_delta']]
 
-    def flag_nan(self):
-        self.ibox1[np.isnan(self.ibox1)] = 0.
-        self.ibox2[np.isnan(self.ibox2)] = 0.
-        self.nbox1[np.isnan(self.ibox1)] = 0.
-        self.nbox1[np.isnan(self.nbox1)] = 0.
-        self.nbox2[np.isnan(self.ibox2)] = 0.
-        self.nbox2[np.isnan(self.nbox2)] = 0.
-        self.ibox1[np.isinf(self.ibox1)] = 0.
-        self.ibox2[np.isinf(self.ibox2)] = 0.
-        self.nbox1[np.isinf(self.ibox1)] = 0.
-        self.nbox1[np.isinf(self.nbox1)] = 0.
-        self.nbox2[np.isinf(self.ibox2)] = 0.
-        self.nbox2[np.isinf(self.nbox2)] = 0.
+    def flag_nan(self, target="box"):
+        if target == "box":
+            self.ibox1[np.isnan(self.ibox1)] = 0.
+            self.ibox2[np.isnan(self.ibox2)] = 0.
+            self.nbox1[np.isnan(self.ibox1)] = 0.
+            self.nbox1[np.isnan(self.nbox1)] = 0.
+            self.nbox2[np.isnan(self.ibox2)] = 0.
+            self.nbox2[np.isnan(self.nbox2)] = 0.
+            self.ibox1[np.isinf(self.ibox1)] = 0.
+            self.ibox2[np.isinf(self.ibox2)] = 0.
+            self.nbox1[np.isinf(self.ibox1)] = 0.
+            self.nbox1[np.isinf(self.nbox1)] = 0.
+            self.nbox2[np.isinf(self.ibox2)] = 0.
+            self.nbox2[np.isinf(self.nbox2)] = 0.
+        elif target == "map":
+            self.imap1[np.isnan(self.imap1)] = 0.
+            self.imap2[np.isnan(self.imap2)] = 0.
+            self.weight1[np.isnan(self.imap1)] = 0.
+            self.weight1[np.isnan(self.weight1)] = 0.
+            self.weight2[np.isnan(self.imap2)] = 0.
+            self.weight2[np.isnan(self.weight2)] = 0.
+            self.imap1[np.isinf(self.imap1)] = 0.
+            self.imap2[np.isinf(self.imap2)] = 0.
+            self.weight1[np.isinf(self.imap1)] = 0.
+            self.weight1[np.isinf(self.weight1)] = 0.
+            self.weight2[np.isinf(self.imap2)] = 0.
+            self.weight2[np.isinf(self.weight2)] = 0.
 
     def subtract_mean(self):
         self.ibox1 = self.ibox1 - self.ibox1.flatten().mean()
@@ -97,7 +113,7 @@ class BOX(object):
 
     def estimate_ps_3d(self, window="blackman"):
 
-        self.flag_nan()
+        self.flag_nan(target="box")
 
         window_function = fftutil.window_nd(self.nbox1.shape, name=window)
         self.nbox1 *= window_function
@@ -106,8 +122,9 @@ class BOX(object):
         self.ibox1 *= self.nbox1
         self.ibox2 *= self.nbox2
 
+
         #self.subtract_mean()
-        #self.subtract_weighted_mean()
+        self.subtract_weighted_mean()
 
         normal = np.sum(self.nbox1 * self.nbox2)
         delta_v = np.prod(self.boxunit)
@@ -182,6 +199,7 @@ class BOX(object):
         kn_1d = kn_1d.astype(float)
         #kn_1d[kn_1d==0] = np.inf
         ps_1d[kn_1d != 0] /= kn_1d[kn_1d != 0] 
+        ps_1d[kn_1d == 0] = 0.
         #kn_1d[kn_1d==np.inf] = 0.
 
         self.kn_1d = kn_1d
@@ -215,6 +233,7 @@ class BOX(object):
         kn_2d = kn_2d.astype(float)
         #kn_2d[kn_2d==0] = np.inf
         ps_2d[kn_2d!=0] /= kn_2d[kn_2d!=0]
+        ps_2d[kn_2d==0] = 0.
         #kn_2d[kn_2d==np.inf] = 0. 
 
         self.kn_2d = kn_2d
@@ -442,7 +461,7 @@ def get_mapdict(dir, selection=None):
 
             if len(mapsplit)>=3:
                 if mapsplit[2] == '2df' and mapsplit[0] == selection:
-                    if selection == 'sele' and mapsplit[-1] == 'separable':
+                    if selection == 'sele' and mapsplit[-1] != 'separable':
                         return dir + map
                     if len(mapsplit)>=4 and mapsplit[3] == 'delta':
                         if selection == 'real':

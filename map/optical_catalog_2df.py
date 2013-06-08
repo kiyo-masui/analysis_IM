@@ -151,7 +151,7 @@ bin2dfparams_init = {
         "outfile_separable": "/Users/ycli/DATA/2df/map/sele_map_2df_separable.npy",
         "template_file": "/Users/ycli/DATA/2df/tempfile",
         "mock_number": 10,
-        "mock_alpha": 10,
+        "mock_alpha": 1,
         }
 bin2dfprefix = 'bin2df_'
 
@@ -202,11 +202,11 @@ class Bin2dF(object):
         pass
         #np.set_printoptions(threshold=np.nan)
         print "finding the binned data"
-        self.realmap()
+        #self.realmap()
         print "finding the binned mock and selection function"
-        self.selection()
+        #self.selection()
         print "finding the separable form of the selection"
-        self.separable()
+        #self.separable()
         print "finding the optical overdensity"
         self.delta()
 
@@ -264,7 +264,7 @@ class Bin2dF(object):
         # adding the real map back to the selection function is a kludge which
         # ensures the selection function is not zero where there is real data
         # (limit of insufficient mocks)
-        self.selection_function *= self.params['mock_alpha']
+        #self.selection_function *= self.params['mock_alpha']
         self.selection_function += self.realmap_binning
         self.selection_function /= float(self.params['mock_number'] + 1)
         print np.mean(self.selection_function)
@@ -300,8 +300,8 @@ class Bin2dF(object):
 
     def produce_delta_map(self, optical_file, optical_selection_file, mock=False):
         map_optical = algebra.make_vect(algebra.load(optical_file))
-        if mock:
-            map_optical *= self.params['mock_alpha']
+        #if mock:
+        #    map_optical *= self.params['mock_alpha']
         map_nbar = algebra.make_vect(algebra.load(optical_selection_file))
 
         old_settings = np.seterr(invalid="ignore", under="ignore")
@@ -319,8 +319,8 @@ class Bin2dF(object):
         return map_delta
 
     def delta(self):
-        selection_file = self.outfile_separable
-        #selection_file = self.outfile_selection
+        #selection_file = self.outfile_separable
+        selection_file = self.outfile_selection
         """find the overdensity using a separable selection function"""
         delta_data = self.produce_delta_map(self.outfile_data, selection_file)
 
@@ -331,7 +331,7 @@ class Bin2dF(object):
             mockinfile = self.outfile_mock%mockindex
             mockoutfile = self.outfile_delta_mock%mockindex
 
-            delta_mock = self.produce_delta_map(mockinfile, selection_file)
+            delta_mock = self.produce_delta_map(mockinfile, selection_file, mock=True)
 
             algebra.save(mockoutfile, delta_mock)
 
@@ -359,7 +359,7 @@ if __name__=="__main__":
 
     algebra.save('/mnt/scratch-gl/ycli/2df_catalog/temp/tempfile', tempfile)
 
-    map_dir = '/mnt/scratch-gl/ycli/2df_catalog/map/map_2929.5/'
+    map_dir = '/mnt/scratch-gl/ycli/2df_catalog/map/map_2929.5_selection/'
     if not os.path.exists(map_dir):
         os.makedirs(map_dir)
 
@@ -375,7 +375,7 @@ if __name__=="__main__":
         "outfile_separable": map_dir + "sele_map_2df_separable.npy",
         "template_file": "/mnt/scratch-gl/ycli/2df_catalog/temp/tempfile",
         "mock_number": 100,
-        "mock_alpha" : 0.1,
+        "mock_alpha" : 1.,
         }
     
     Bin2dF(params_dict=bin2dfparams_init).execute(2)
