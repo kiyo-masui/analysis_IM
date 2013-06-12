@@ -490,12 +490,16 @@ class DirtyMapMaker(object):
             # This does not have to be rediscovered for every DataSet list
             # passed in, so get the indices first.
             chan_index_list = range(self.n_chan)
+            dtype=np.float64
+            dsize=MPI.DOUBLE.Get_size()
             if self.uncorrelated_channels:
                 # Using self.rank after gets the info for
                 # the approproate process.
                 # 'junk' for now.
                 index_list,junk = split_elems(chan_index_list,self.nproc)
                 index_list = index_list[self.rank]
+                # Allocate hdf5 file
+                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename+'_mpi_uncorr_proc', 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_ra, self.n_dec), dtype)
             else:
                 ra_index_list = range(self.n_ra)
                 # cross product = A x B = (a,b) for all a in A, for all b in B
@@ -507,6 +511,10 @@ class DirtyMapMaker(object):
                 # is at. This is needed for knowing which part of the
                 # total matrix a process has.
                 f_ra_start_ind = start_list[self.rank]
+                # Allocate hdf5 file
+                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename+'_mpi_corr_proc', 'inv_cov', (self.n_chan*self.n_ra, self.n_dec,                                                                self.n_chan, self.n_ra, self.n_dec), dtype)
+            # Wait for file to be written before continuing.
+            comm.Barrier()
             # Since the DataSets are split evenly over the processes,
             # have to put in the pointing/noise at each index for
             # each DataSet list that the processes hold.
@@ -608,14 +616,15 @@ class DirtyMapMaker(object):
             # data from all DataSets, write it out.
             # Only dealing with correlated channels now.
             if not self.uncorrelated_channels:
-                total_shape = (self.n_chan*self.n_ra, self.n_dec,
+                #total_shape = (self.n_chan*self.n_ra, self.n_dec,
                                self.n_chan, self.n_ra, self.n_dec)
-                start_ind = (f_ra_start_ind,0,0,0,0)
+                #start_ind = (f_ra_start_ind,0,0,0,0)
+                lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename+'_mpi_corr_proc', data_offset + dsize*f_ra_start_ind*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
-                dtype = np.float64 # default for now
-                np.save(self.cov_filename+'_mpi_corr_proc'+str(self.rank),thread_cov_inv_chunk)
+                #dtype = np.float64 # default for now
+                #np.save(self.cov_filename+'_mpi_corr_proc'+str(self.rank),thread_cov_inv_chunk)
                 # Save array.
                 #mpi_writearray(self.cov_filename+'_mpi', thread_cov_inv_chunk,
                                #comm, total_shape, start_ind, dtype,
@@ -623,14 +632,15 @@ class DirtyMapMaker(object):
    
 
             if self.uncorrelated_channels:
-                total_shape = (self.n_chan, self.n_ra,
+                #total_shape = (self.n_chan, self.n_ra,
                                self.n_dec, self.n_ra, self.n_dec)
-                start_ind = (index_list[0],0,0,0,0)
+                #start_ind = (index_list[0],0,0,0,0)
+                lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename+'_mpi_uncorr_proc', data_offset + dsize*index_list[0]*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
-                dtype = np.float64 # default for now
-                np.save(self.cov_filename+'_mpi_uncorr_proc'+str(self.rank),thread_cov_inv_chunk)
+                #dtype = np.float64 # default for now
+                #np.save(self.cov_filename+'_mpi_uncorr_proc'+str(self.rank),thread_cov_inv_chunk)
                 # Save array.
                 #mpi_writearray(self.cov_filename+'_mpi', thread_cov_inv_chunk,
                                #comm, total_shape, start_ind, dtype,                                                                                                              #order='C', displacement=0)
@@ -2373,7 +2383,177 @@ def cross(set_list):
                 remaining.insert(0,cross_2)
                 return cross(remaining)
 
-def write_array(fname, local_array, comm, total_shape, start_ind, dtype, order='F', displacement=0):
+
+def lock_and_write_buffer(obj, fname, offset, size):
+    """Write the contents of a buffer to disk at a given offset, and explicitly
+    lock the region of the file whilst doing so.
+
+    Parameters
+    ----------
+    obj : buffer
+        Data to write to disk.
+    fname : string
+        Filename to write.
+    offset : integer
+        Offset into the file to start writing at.
+    size : integer
+        Size of the region to write to (and lock).
+    """
+    import os
+    #import os.fcntl as fcntl
+    import fcntl
+    import h5py
+
+    buf = buffer(obj)
+
+    if len(buf) > size:
+        raise Exception("Size doesn't match array length.")
+
+    fd = os.open(fname, os.O_RDWR | os.O_CREAT)
+    #fd = open(fname, 'rw')
+    #fd = h5py.File(fname, 'r+')
+
+    fcntl.lockf(fd, fcntl.LOCK_EX, size, offset, os.SEEK_SET)
+    #blah=fd.id
+    #blah2=fcntl.LOCK_EX
+
+    #fcntl.lockf(blah, blah2, size, offset, 0,)
+
+    os.lseek(fd, offset, 0)
+
+    nb = os.write(fd, buf)
+
+    if nb != len(buf):
+        raise Exception("Something funny happened with the reading.")
+
+    fcntl.lockf(fd, fcntl.LOCK_UN)
+
+    os.close(fd)
+
+
+def allocate_hdf5_dataset(fname, dsetname, shape, dtype, comm=MPI.COMM_WORLD):
+    """Create a hdf5 dataset and return its offset and size.
+
+    The dataset will be created contiguously and immediately allocated,
+    however it will not be filled.
+
+    Parameters
+    ----------
+    fname : string
+        Name of the file to write.
+    dsetname : string
+        Name of the dataset to write (must be at root level).
+    shape : tuple
+        Shape of the dataset.
+    dtype : numpy datatype
+        Type of the dataset.
+    comm : MPI communicator
+        Communicator over which to broadcast results.
+
+    Returns
+    -------
+    offset : integer
+        Offset into the file at which the dataset starts (in bytes).
+    size : integer
+        Size of the dataset in bytes.
+
+    """
+
+    import h5py
+
+    state = None
+
+    if comm.rank == 0:
+
+        # Create/open file
+        f = h5py.File(fname, 'a')
+
+        # Create dataspace and HDF5 datatype
+        sp = h5py.h5s.create_simple(shape, shape)
+        tp = h5py.h5t.py_create(dtype)
+
+        # Create a new plist and tell it to allocate the space for dataset
+        # immediately, but don't fill the file with zeros.
+        plist = h5py.h5p.create(h5py.h5p.DATASET_CREATE)
+        plist.set_alloc_time(h5py.h5d.ALLOC_TIME_EARLY)
+        plist.set_fill_time(h5py.h5d.FILL_TIME_NEVER)
+
+        # Create the dataset
+        dset = h5py.h5d.create(f.id, dsetname, tp, sp, plist)
+
+        # Get the offset of the dataset into the file.
+        state = dset.get_offset(), dset.get_storage_size()
+
+        f.close()
+
+    state = comm.bcast(state, root=0)
+
+    return state
+
+
+def prepare_file(fname, dsetname, comm, shape, dtype):
+    import h5py
+
+    state = None
+
+    if comm.rank == 0:
+        # Create/open file
+        f = h5py.File(fname, 'a')
+
+        # Create dataspace and HDF5 datatype
+        sp = h5py.h5s.create_simple(shape, shape)
+        tp = h5py.h5t.py_create(dtype)
+
+        # Create a new plist and tell it to allocate the space for dataset
+        # immediately, but don't fill the file with zeros.
+        plist = h5py.h5p.create(h5py.h5p.DATASET_CREATE)
+        plist.set_alloc_time(h5py.h5d.ALLOC_TIME_EARLY)
+        plist.set_fill_time(h5py.h5d.FILL_TIME_NEVER)
+
+        # Create the dataset
+        dset = h5py.h5d.create(f.id, dsetname, tp, sp, plist)
+
+        # Get the offset of the dataset into the file.
+        state = dset.get_offset(), dset.get_storage_size()
+
+        f.close()
+
+    state = comm.bcast(state, root=0)
+
+    return state
+
+def allocate_portion(fname, offset, size, dtype):
+    import ctypes
+    import ctyppes.util
+    import os
+    import fcntl
+
+    _typemap = { np.float32 : MPI.FLOAT,
+                 np.float64 : MPI.DOUBLE,
+                 np.complex128 : MPI.COMPLEX16 }
+
+    if dtype not in _typemap:
+        raise Exception("Unsupported type.")
+
+    mpitype = _typemap[dtype]
+    data_size = mpitype.Get_size()
+
+    libc_name = ctypes.util.find_library('c')
+    libc = ctypes.CDLL(libc_name)
+
+    # Define off_t type
+    c_off_t = ctypes.c_int64
+
+    # Set up function
+    pf = libc.posix_fallocate
+    pf.restype = ctypes.c_int
+    pf.argtypes = [ctypes.c_int, c_off_t, c_off_t]
+
+    fd = open(fname, 'w+')
+
+    fcntl.lockf(fd, fcntl.LOCK_EX, size, offset, os.SEEK_SET)
+
+'''def allocate_portion(fname, local_shape, comm, total_shape, start_ind, dtype, order='F', displacement=0):
 
     import ctypes
     import ctyppes.util
@@ -2393,30 +2573,29 @@ def write_array(fname, local_array, comm, total_shape, start_ind, dtype, order='
     nproc = comm.Get_size()
     rank = comm.Get_rank()
 
-    if rank == 0:
-        libc_name = ctypes.util.find_library('c')
-        libc = ctypes.CDLL(libc_name)
+    libc_name = ctypes.util.find_library('c')
+    libc = ctypes.CDLL(libc_name)
 
-        # Define off_t type
-        c_off_t = ctypes.c_int64
+    # Define off_t type
+    c_off_t = ctypes.c_int64
 
-        # Set up function
-        pf = libc.posix_fallocate
-        pf.restype = ctypes.c_int
-        pf.argtypes = [ctypes.c_int, c_off_t, c_off_t]
+    # Set up function
+    pf = libc.posix_fallocate
+    pf.restype = ctypes.c_int
+    pf.argtypes = [ctypes.c_int, c_off_t, c_off_t]
 
-        f = open(filename, "wb")
+    f = open(filename, 'w+')
 
         # Calculate file size needed
-        file_size = data_size
-        for el in total_shape
-             file_size = file_size*el
+        #file_size = data_size
+        #for el in total_shape
+        #     file_size = file_size*el
 
         #Allocate appropriate space for file
-        pf(f.fileno(), 0, file_size)
+        #pf(f.fileno(), 0, file_size)
 
     #All processes wait for file space to be allocated
-    comm.Barrier()
+    #comm.Barrier()
 
     #Calculate offset in file bytes needed for each node.  
     offset = start_ind[0]*data_size
@@ -2432,7 +2611,7 @@ def write_array(fname, local_array, comm, total_shape, start_ind, dtype, order='
             fd = open(filename, "wb")
             fcntl.lock(fd, fcntl.LOCK_EX, size, offset, os.SEEK_SET)
         #Barrier ensures file is opened and specific place is locked by only one process at a time
-        comm.Barrier()
+        comm.Barrier()'''
 
 def mpi_writearray(fname, local_array, comm, total_shape, start_ind, dtype,
                    order='F', displacement=0):
