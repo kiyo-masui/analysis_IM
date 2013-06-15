@@ -19,6 +19,7 @@ from kiyopy import parse_ini
 from utils import units
 from utils import batch_handler
 from utils import data_paths
+from mpi4py import MPI
 
 
 params_init = {
@@ -36,21 +37,93 @@ params_init = {
                'refinement': 2,
                'selection_file': None,
                'optcatalog_file': None,
-               'weightfile': None
+               'weightfile': None,
+               'simnum' : None
                }
 prefix = 'sg_'
 
 class SimulateGbtSignal(object):
     r"""Class to handle signal-only sim ini files"""
 
-    @batch_handler.log_timing
+    #@batch_handler.log_timing
     def __init__(self, parameter_file=None, params_dict=None, feedback=0):
         self.params = params_dict
         if parameter_file:
             self.params = parse_ini.parse(parameter_file, params_init,
                                           prefix=prefix)
 
-        if not os.path.isdir(self.params['output_root']):
+
+    def mpiexecute(self, processes):
+        r"""The MPI method """
+        
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        params = self.params
+
+        if params['simnum'] != None:
+            n_sim = params['simnum']
+        else: 
+            print 'MPI need total simulation number. '
+            n_sim = 1
+            exit()
+
+        outfile_raw_temp = params['outfile_raw']
+        outfile_physical_temp = params['outfile_physical']
+        outfile_delta_temp = params['outfile_delta']
+        outfile_optsim_temp = params['outfile_optsim']
+        outfile_beam_temp = params['outfile_beam']
+        outfile_meansub_temp = params['outfile_meansub']
+        outfile_degrade_temp = params['outfile_degrade']
+
+        seed_list = np.loadtxt("/home/ycli/random_seeds").astype('int')
+
+        comm.barrier()
+
+        if rank<n_sim:
+            sim_list = range(rank, n_sim, size)
+            print "RANK %d : "%rank, sim_list
+            print 
+            for sim in sim_list:
+                if outfile_raw_temp:
+                    self.params['outfile_raw'] = outfile_raw_temp%sim
+
+                if outfile_physical_temp:
+                    self.params['outfile_physical'] = outfile_physical_temp%sim
+
+                if outfile_delta_temp:
+                    self.params['outfile_delta'] = outfile_delta_temp%sim
+
+                if outfile_optsim_temp:
+                    self.params['outfile_optsim'] = outfile_optsim_temp%sim
+
+                if outfile_beam_temp:
+                    self.params['outfile_beam'] = outfile_beam_temp%sim
+
+                if outfile_meansub_temp:
+                    self.params['outfile_meansub'] = outfile_meansub_temp%sim
+
+                if outfile_degrade_temp:
+                    self.params['outfile_degrade'] = outfile_degrade_temp%sim
+                print "RANK %d : creat sim_%03d maps"%(rank, sim)
+                print 
+
+                ## set the random seed
+                self.seed = seed_list[sim]
+                random.seed(self.seed)
+
+                self.execute(processes, rank)
+                print "RANK %d : creat sim_%03d maps finished"%(rank, sim)
+
+        comm.barrier()
+
+
+    #@batch_handler.log_timing
+    def execute(self, processes, rank=0):
+
+        #if not os.path.isdir(self.params['output_root']):
+        if not os.path.exists(self.params['output_root']):
             os.mkdir(self.params['output_root'])
 
         self.refinement = self.params['refinement']
@@ -60,10 +133,9 @@ class SimulateGbtSignal(object):
         # here we use 300 h km/s from WiggleZ for streaming dispersion
         self.streaming_dispersion = 300.*0.72
 
-        #self.template_map = algebra.make_vect(
-        #                        algebra.load(self.template_file))
-        self.datapath_db = data_paths.DataPath()
-        self.template_map = self.datapath_db.fetch_multi(self.template_file)
+        self.template_map = algebra.make_vect( algebra.load(self.template_file))
+        #self.datapath_db = data_paths.DataPath()
+        #self.template_map = self.datapath_db.fetch_multi(self.template_file)
 
         # determine the beam model
         self.beam_data = np.array([0.316148488246, 0.306805630985,
@@ -75,17 +147,6 @@ class SimulateGbtSignal(object):
                                  dtype=float)
         self.freq_data *= 1.0e6
 
-        # set the random seed
-        if (self.params['seed'] < 0):
-            # The usual seed is not fine enough for parallel jobs
-            randsource = open("/dev/random", "rb")
-            self.seed = struct.unpack("I", randsource.read(4))[0]
-            #self.seed = abs(long(outfile_physical.__hash__()))
-        else:
-            self.seed = self.params['seed']
-
-        random.seed(self.seed)
-
         # register any maps that need to be produced
         self.sim_map_phys = None
         self.sim_map = None
@@ -95,10 +156,20 @@ class SimulateGbtSignal(object):
         self.sim_map_meansub = None
         self.sim_map_degrade = None
 
-    @batch_handler.log_timing
-    def execute(self, processes):
+        ## set the random seed
+        #if (self.params['seed'] < 0):
+        #    # The usual seed is not fine enough for parallel jobs
+        #    randsource = open("/dev/random", "rb")
+        #    self.seed = struct.unpack("I", randsource.read(4))[0]
+        #    randsource.close()
+        #    #self.seed = abs(long(outfile_physical.__hash__()))
+        #else:
+        #    self.seed = self.params['seed']
+        #print "Rank %d: set random seed: "%rank, self.seed
+        #random.seed(self.seed)
+
         # this generates the raw physical and observation space sims
-        self.realize_simulation()
+        self.realize_simulation(rank)
 
         if self.params['outfile_raw']:
             filename = self.output_root + self.params['outfile_raw']
@@ -145,8 +216,8 @@ class SimulateGbtSignal(object):
             print "saving beam-convolved, meansub, degrade sim to ", filename
             algebra.save(filename, self.sim_map_degrade)
 
-    @batch_handler.log_timing
-    def realize_simulation(self):
+    #@batch_handler.log_timing
+    def realize_simulation(self, rank=0):
         """do basic handling to call Richard's simulation code
         this produces self.sim_map and self.sim_map_phys
         """
@@ -171,6 +242,8 @@ class SimulateGbtSignal(object):
                                             density_only=True,
                                             no_mean=True,
                                             no_evolution=True)
+
+        print "Rank %d"%rank + "set scenario: " + self.scenario
 
         (gbtsim, gbtphys, physdim) = maps
 
@@ -201,8 +274,9 @@ class SimulateGbtSignal(object):
         # process the map in observation coordinates
         self.sim_map = algebra.make_vect(gbtsim, axis_names=('freq', 'ra', 'dec'))
         self.sim_map.copy_axis_info(self.template_map)
+        print "Rank %d: creat sim map"%rank
 
-    @batch_handler.log_timing
+    #@batch_handler.log_timing
     def make_delta_sim(self):
         r"""this produces self.sim_map_delta"""
         print "making sim in units of overdensity"
@@ -215,7 +289,7 @@ class SimulateGbtSignal(object):
         self.sim_map_delta = copy.deepcopy(self.sim_map)
         self.sim_map_delta /= T_b[:, np.newaxis, np.newaxis]
 
-    @batch_handler.log_timing
+    #@batch_handler.log_timing
     def make_opt_sim(self):
         r"""this produces self.sim_map_optsim"""
 
@@ -247,14 +321,14 @@ class SimulateGbtSignal(object):
 
         self.sim_map_optsim.copy_axis_info(self.sim_map_delta)
 
-    @batch_handler.log_timing
+    #@batch_handler.log_timing
     def convolve_by_beam(self):
         r"""this produces self.sim_map_withbeam"""
         print "convolving simulation by beam"
         beamobj = beam.GaussianBeam(self.beam_data, self.freq_data)
         self.sim_map_withbeam = beamobj.apply(self.sim_map)
 
-    @batch_handler.log_timing
+    #@batch_handler.log_timing
     def degrade_to_common_res(self):
         r"""this produces self.sim_map_degrade"""
         print "degrading to common resolution"
@@ -269,7 +343,7 @@ class SimulateGbtSignal(object):
         #sim_map[np.isinf(sim_map)] = 0.
         #sim_map[np.isnan(sim_map)] = 0.
 
-    @batch_handler.log_timing
+    #@batch_handler.log_timing
     def subtract_mean(self):
         r"""this produces self.sim_map_meansub"""
         print "subtracting mean from simulation"
@@ -279,8 +353,8 @@ class SimulateGbtSignal(object):
 
         self.sim_map_meansub = copy.deepcopy(self.sim_map_withbeam)
         print "sim meansub using: " + self.params['weightfile']
-        noise_inv = self.datapath_db.fetch_multi(self.params['weightfile'])
-        #noise_inv = algebra.make_vect(algebra.load(self.params['weightfile']))
+        #noise_inv = self.datapath_db.fetch_multi(self.params['weightfile'])
+        noise_inv = algebra.make_vect(algebra.load(self.params['weightfile']))
         means = np.sum(np.sum(noise_inv * self.sim_map_meansub, -1), -1)
         means /= np.sum(np.sum(noise_inv, -1), -1)
         means.shape += (1, 1)

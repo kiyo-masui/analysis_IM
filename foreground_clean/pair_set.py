@@ -17,7 +17,7 @@ import time
 import scipy as sp
 import numpy as np
 from utils import file_tools as ft
-from utils import data_paths as dp
+#from utils import data_paths as dp
 from quadratic_products import corr_estimation as ce
 from kiyopy import parse_ini
 import kiyopy.utils
@@ -566,16 +566,14 @@ class PairSet():
 
         for pairitem in self.pairlist:
             pdict = pairdict[pairitem]
-            print "-" * 80
-            dp.print_dictionary(pdict, sys.stdout,
-                                key_list=['map1', 'noise_inv1',
-                                          'map2', 'noise_inv2'])
+            #print "=" * 80
+            #dp.print_dictionary(pdict, sys.stdout,
+            #                    key_list=['map1', 'noise_inv1',
+            #                              'map2', 'noise_inv2'])
 
             # map1 & noise_inv1
             map1 = algebra.make_vect(algebra.load(pdict['map1']))
             if par['simfile1'] is not None:
-                print "adding %s with multiplier %s" % (par['simfile1'],
-                                                        par['sim_multiplier'])
 
                 sim1 = algebra.make_vect(algebra.load(par['simfile1']))
                 sim1 *= par['sim_multiplier']
@@ -639,8 +637,6 @@ class PairSet():
                 '''For common case'''
                 map2 = algebra.make_vect(algebra.load(pdict['map2']))
                 if par['simfile2'] is not None:
-                    print "adding %s with multiplier %s" % (par['simfile2'],
-                                                            par['sim_multiplier'])
                     sim2 = algebra.make_vect(algebra.load(par['simfile2']))
                     sim2 *= par['sim_multiplier']
                 else:
@@ -651,6 +647,15 @@ class PairSet():
                                     calc_diagnal = par['calc_diagnal'])
                 else:
                     noise_inv2 = algebra.ones_like(map2)
+
+            if (par['simfile1'] is not None) and (par['simfile2'] is not None):
+                print "="*80 + "\n  map1:%s \n+ %s with multiplier %s \nx weight1:%s \n"\
+                    %(pdict['map1'],         par['simfile1'], 
+                      par['sim_multiplier'], pdict['noise_inv1'])\
+                    + "-"*80 + "\n  map2:%s \n+ %s with multiplier %s \nx weight2:%s \n"\
+                    %(pdict['map2'],         par['simfile2'], 
+                      par['sim_multiplier'], pdict['noise_inv2'])\
+                    + "="*80 + "\n\n"\
 
             #if self.params['clip_weight_percent'] is not None:
             #    print "Note: your are clipping the weight maps"

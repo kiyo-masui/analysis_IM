@@ -166,16 +166,17 @@ def plot_sky(cat_root, map_root_list, save_name='./png/real_real_cat.png'):
     y = binning.find_edges(real_box.get_axis('freq'))
     x = binning.find_edges(real_box.get_axis('ra'))
     
-    fig = plt.figure(figsize=(15,10))
+    #fig = plt.figure(figsize=(15,10))
+    fig = plt.figure(figsize=(26,8))
     fig.clf()
     
     ax1, aux_ax1, ax2, aux_ax2, ax3 =\
-        setup_axes(fig, 1.5*15, 2.5*15, 0.01, 0.3)
+        setup_axes(fig, -3*15, 4*15, 0.01, 0.3)
     
     aux_ax1.scatter(real_cat[:,0]*180./np.pi, real_cat[:,2], s=4, 
-                   edgecolor='none', alpha=0.5)
+                   edgecolor='none', alpha=0.025)
     
-    aux_ax2.scatter(ras, decs, s=10, edgecolor='none', alpha=0.03)
+    aux_ax2.scatter(ras, decs, s=4, edgecolor='none', alpha=0.0025)
     
     real_box = np.ma.sum(real_box, axis=2)
     real_box = np.ma.array(real_box)
@@ -193,16 +194,16 @@ if __name__=="__main__":
     import os
     
     
-    root_cat = '/mnt/scratch-gl/ycli/2df_catalog/catalog/'
+    root_cat = '/mnt/scratch-gl/ycli/2df_catalog/catalog_positave_seeds/'
 
-    root_map = '/mnt/scratch-gl/ycli/2df_catalog/map/map_2929.5/'
+    root_map = '/mnt/scratch-gl/ycli/2df_catalog/map/map_2929.5_full/'
 
-    #name_cat = 'real_catalogue_2df'
-    #name_map = 'real_map_2df'
+    name_cat = 'real_catalogue_2df'
+    name_map = 'real_map_2df'
 
-    #plot_sky(root_cat + name_cat + '.out', 
-    #         [root_map + name_map + '.npy', ], 
-    #         save_name='./png/real_cat.png')
+    plot_sky(root_cat + name_cat + '.out', 
+             [root_map + name_map + '.npy', ], 
+             save_name='./png/real_cat.png')
 
 
     #name_cat = 'mock_catalogue_2df_090'
@@ -229,12 +230,12 @@ if __name__=="__main__":
              [root_map + name_map + '.npy',], 
              save_name='./png/sele_cat.png')
 
-    #name_cat = 'mock_catalogue_2df_090'
-    #name_map = 'sele_map_2df_separable'
+    name_cat = 'mock_catalogue_2df_090'
+    name_map = 'sele_map_2df_separable'
 
-    #plot_sky(root_cat + name_cat + '.out', 
-    #         [root_map + name_map + '.npy',], 
-    #         save_name='./png/sele_cat_separable.png')
+    plot_sky(root_cat + name_cat + '.out', 
+             [root_map + name_map + '.npy',], 
+             save_name='./png/sele_cat_separable.png')
 
 
 

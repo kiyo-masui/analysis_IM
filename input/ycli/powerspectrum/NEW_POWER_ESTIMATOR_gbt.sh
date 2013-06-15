@@ -7,7 +7,7 @@ cd $PIPELINE_DIR
 source $PIPELINE_DIR/PARAMS.sh
 
 HOUR="15"
-MAP_SIM="/mnt/scratch-gl/ycli/simulation_map/15hr_14_old/"
+MAP_SIM="/mnt/scratch-gl/ycli/simulation_map/15hr_14/"
 #MAP_CLN="/mnt/raid-project/gmrt/ycli/foreground_cleand/15hr_IE_14conv/mapmode_map/"
 #MAP_SSM="/mnt/raid-project/gmrt/ycli/foreground_cleand/15hr_IE_14conv/simmapmode_simmap_beam_%03d_subreal/"
 #MAP_SSM="/mnt/raid-project/gmrt/ycli/foreground_cleand/15hr_IE_14conv/simmapmode_simmap_beam_%03d/"

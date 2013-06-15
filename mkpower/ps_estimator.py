@@ -252,16 +252,19 @@ class PowerSpectrumEstimator(object):
 
         if map_set == 'rf' or (map_set == 'si' and params['ps_type'] == 'cros'):
             print 'prepare maps for reference calculation'
-            imaps_a = functions.get_mapdict(params['sim_root'], selection='raw')
+            #imaps_a = functions.get_mapdict(params['sim_root'], selection='raw')
+            #imaps_a = functions.get_mapdict(params['sim_root'], selection='beammeansub')
             nmaps_a = functions.get_mapdict(params['gbt_root'])
 
-            #imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
-            imaps_b = functions.get_mapdict(params['sim_root'], selection='raw')
+            imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
+            #imaps_b = functions.get_mapdict(params['sim_root'], selection='raw')
             nmaps_b = functions.get_mapdict(params['gbt_root'])
             #nmaps_b = functions.get_mapdict(params['opt_root'], selection='selection')
 
             for i in range(params['sim_numb']):
-                imap_list.append([imaps_a[1]['%d'%i], 
+                imaps_a = functions.get_mapdict(params['ssm_root']%i)
+                imap_list.append([#imaps_a[1]['%d'%i], 
+                                  imaps_a[1]['map;0modes'], 
                                   imaps_b[1]['%d'%i]])
                 nmap_list.append([nmaps_a[1]['weight;%dmodes'%ps_mode], 
                                   nmaps_b[1]['weight;%dmodes'%ps_mode]])
@@ -269,9 +272,9 @@ class PowerSpectrumEstimator(object):
             print 'prepare maps for transfer function calculation'
             nmaps_a = functions.get_mapdict(params['gbt_root'])
 
-            #imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
+            imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
             #imaps_b = functions.get_mapdict(params['sim_root'], selection='raw')
-            imaps_b = functions.get_mapdict(params['sim_root'], selection='beammeansub')
+            #imaps_b = functions.get_mapdict(params['sim_root'], selection='beammeansub')
             nmaps_b = functions.get_mapdict(params['gbt_root'])
             #nmaps_b = functions.get_mapdict(params['opt_root'], selection='selection')
 
@@ -310,9 +313,12 @@ class PowerSpectrumEstimator(object):
         elif map_set == 'si' and params['ps_type'] == 'auto':
             print 'prepare maps for simulation calculation'
             imaps_a = functions.get_mapdict(params['sim_root'], selection='raw')
+            #imaps_a = functions.get_mapdict(params['sim_root'], selection='beammeansub')
+            #imaps_a = functions.get_mapdict(params['sim_root'], selection='degradebeam')
             nmaps_a = functions.get_mapdict(params['gbt_root'])
 
             imaps_b = functions.get_mapdict(params['sim_root'], selection='raw')
+            #imaps_b = functions.get_mapdict(params['sim_root'], selection='beammeansub')
             nmaps_b = functions.get_mapdict(params['gbt_root'])
 
             for i in range(params['sim_numb']):

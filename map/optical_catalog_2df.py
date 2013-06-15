@@ -115,6 +115,9 @@ def bin_catalog_file(filename, freq_axis, ra_axis,
     catalog['RA'] = catalog['RA']*180./np.pi
     catalog['Dec'] = catalog['Dec']*180./np.pi
 
+    # change the RA range to -180 ~ 180
+    catalog['RA'][catalog['RA']>180.] -= 360.
+
     if debug:
         print filename + ": " + repr(catalog.dtype.names) + \
               ", n_records = " + repr(catalog.size)
@@ -202,11 +205,11 @@ class Bin2dF(object):
         pass
         #np.set_printoptions(threshold=np.nan)
         print "finding the binned data"
-        #self.realmap()
+        self.realmap()
         print "finding the binned mock and selection function"
-        #self.selection()
+        self.selection()
         print "finding the separable form of the selection"
-        #self.separable()
+        self.separable()
         print "finding the optical overdensity"
         self.delta()
 
@@ -339,14 +342,14 @@ if __name__=="__main__":
     
     import os
 
-    #tempfile = algebra.make_vect(np.ones(shape=(64,200,140)), 
+    #tempfile = algebra.make_vect(np.ones(shape=(256,256,32)), 
     #                             axis_names=('freq', 'ra', 'dec'))
-    #tempfile.info['ra_delta']  = -0.05744777707
-    #tempfile.info['dec_delta'] = 0.05
-    #tempfile.info['ra_centre'] = 29.0
+    #tempfile.info['ra_delta']  = -0.35
+    #tempfile.info['dec_delta'] = 0.35
+    #tempfile.info['ra_centre'] = 7.00
     #tempfile.info['dec_centre'] = -29.5
     #tempfile.info['freq_delta'] = -1000000.0
-    #tempfile.info['freq_centre'] = 1314500000.0
+    #tempfile.info['freq_centre'] = 1221900000.0
 
     tempfile = algebra.make_vect(np.ones(shape=(256,128,128)), 
                                  axis_names=('freq', 'ra', 'dec'))
@@ -359,7 +362,8 @@ if __name__=="__main__":
 
     algebra.save('/mnt/scratch-gl/ycli/2df_catalog/temp/tempfile', tempfile)
 
-    map_dir = '/mnt/scratch-gl/ycli/2df_catalog/map/map_2929.5_selection/'
+    #map_dir = '/mnt/scratch-gl/ycli/2df_catalog/map/map_2929.5_oneseed_separable/'
+    map_dir = '/mnt/scratch-gl/ycli/2df_catalog/map/map_2929.5_oneseed_selection/'
     if not os.path.exists(map_dir):
         os.makedirs(map_dir)
 
