@@ -9,6 +9,7 @@ def load_2df_ps_from_paper(name='Percival'):
     data = np.loadtxt('/Users/ycli/Code/analysis_IM/simulations/data/ps_2df_%s.dat'%name)
     data[:,1] = data[:,1]*data[:,0]**3/2./np.pi**2.
     data[:,2] = data[:,2]*data[:,0]**3/2./np.pi**2.
+
     return data[:,0], data[:,1], data[:,2]
 
 def load_camb():
@@ -31,7 +32,7 @@ def load_theory_ps(k_bins_centre):
 
 def get_1d_k_bin_centre(ps_1d):
 
-    k = np.arange(ps_1d.shape[0]) - ps_1d.shape[0]//2
+    k = np.arange(ps_1d.shape[-1]) - ps_1d.shape[-1]//2
     k = ps_1d.info['k_centre'] * ps_1d.info['k_delta']**k
 
     return k
@@ -72,12 +73,18 @@ def load_transfer_function(rf_root, tr_root, auto=True):
     ps_rf = algebra.make_vect(algebra.load(rf_root))
     ps_tr = algebra.make_vect(algebra.load(tr_root))
 
-    ps_tr[ps_tr==0] = np.inf
+    #ps_tr[ps_tr==0] = np.inf
+    ps_rf[ps_rf==0] = np.inf
 
-    transfer_function = ps_rf/ps_tr
+    transfer_function = ps_tr/ps_rf
 
-    #if auto:
-    #    transfer_function **=2
+    transfer_function[transfer_function == 0.] = np.inf
+    #transfer_function[transfer_function > 1.] = 1.
+
+    transfer_function = 1./transfer_function
+
+    if auto:
+        transfer_function *= transfer_function
 
     k_p_edges, k_v_edges = get_2d_k_bin_edges(ps_rf)
 
@@ -108,6 +115,20 @@ def load_power_spectrum_err(ps_root):
     k_p_edges, k_v_edges = get_2d_k_bin_edges(ps_2derr)
 
     return ps_2derr, k_p_edges, k_v_edges
+
+def load_power_spectrum_1d(ps_root, raw=False):
+    
+    ps_1d = algebra.make_vect(algebra.load(ps_root))
+
+    if not raw:
+        ps_1derr = algebra.make_vect(algebra.load(sn_root.replace('pow', 'err')))
+        ps_1dkmn = algebra.make_vect(algebra.load(ps_root.replace('pow', 'kmn')))
+        k_centre = get_1d_k_bin_centre(ps_1d)
+        return ps_1d, ps_1derr, ps_1dkmn, k_centre
+    else:
+        k_centre = get_1d_k_bin_centre(ps_1d)
+        return ps_1d, k_centre
+        
 
 def load_power_spectrum_opt_1d(ps_root, sn_root):
 

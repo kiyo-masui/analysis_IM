@@ -12,7 +12,12 @@ ns_root = '/Users/ycli/DATA/ps_result/new_ps_estimation_test/auto_ns_40mode_2dpo
 ps_root = '/Users/ycli/DATA/ps_result/new_ps_estimation_test/auto_ps_40mode_2dpow'
 si_root = '/Users/ycli/DATA/ps_result/new_ps_estimation_test/auto_si_40mode_2dpow'
 
-def seperate_positive_and_negetive_power(power, power_err, k_centre):
+def seperate_positive_and_negative_power(power, power_err, k_centre, lower=1.e-15):
+    '''
+        This function used to separate the positive and negative power,
+        and change the lower bound of the error bar to a tiny positive value, 
+        if it was negative
+    '''
 
     k_1d_centre_positive = k_centre[power>0]
     power_1d_positive = power[power>0]
@@ -22,7 +27,7 @@ def seperate_positive_and_negetive_power(power, power_err, k_centre):
     power_1d_positive_err_2[1] = power_1d_positive_err
     power_1d_positive_err_2[0].put(
         np.where(power_1d_positive_err_2[0] >= power_1d_positive), 
-        power_1d_positive[power_1d_positive_err_2[0] >= power_1d_positive] - 1.e-15)
+        power_1d_positive[power_1d_positive_err_2[0] >= power_1d_positive] - lower)
 
     k_1d_centre_negative = k_centre[power<0]
     power_1d_negative = -power[power<0]
@@ -32,13 +37,67 @@ def seperate_positive_and_negetive_power(power, power_err, k_centre):
     power_1d_negative_err_2[1] = power_1d_negative_err
     power_1d_negative_err_2[0].put(
         np.where(power_1d_negative_err_2[0] >= power_1d_negative), 
-        power_1d_negative[power_1d_negative_err_2[0] >= power_1d_negative] - 1.e-15)
+        power_1d_negative[power_1d_negative_err_2[0] >= power_1d_negative] - lower)
 
     return power_1d_positive, power_1d_positive_err_2, k_1d_centre_positive,\
            power_1d_negative, power_1d_negative_err_2, k_1d_centre_negative
 
-def plot_1d_power_spectrum_opt(ps_root, sn_root, filename, si_root=None, 
-                               truncate_range = None, from_1d=False):
+def plot_1d_power_spectrum_opt_multi(file_root, file_name, save_name='power_opt',
+                                     positive_only=False):
+    '''
+        This function used to plot a batch of optical power spectrum
+    '''
+    
+    #color = "bgrcmykw"
+    color = "rcmykw"
+    color_index = 0
+
+    if isinstance(file_name, np.ndarray):
+        file_name = file_name.tolist()
+    if not isinstance(file_name, list):
+        file_name = [file_name]
+
+    fig = plt.figure(figsize=(8, 8))
+
+    k_paper_cole, power_paper_cole, power_err_paper_cole = \
+        ps_summary.load_2df_ps_from_paper('Cole')
+    k_paper, power_paper, power_err_paper = ps_summary.load_2df_ps_from_paper()
+    plt.errorbar(k_paper, power_paper, power_err_paper, 
+        fmt='bo', mec='b', capsize=2.5, elinewidth=1, markersize=5,
+        label='Percival et. al 2001 ')
+    plt.errorbar(k_paper_cole, power_paper_cole, power_err_paper_cole, 
+        fmt='go', mec='g', capsize=2.5, elinewidth=1, markersize=5,
+        label='Cole et. al 2005 ')
+
+
+    for name in file_name:
+        result_root = file_root + name + '/'
+        ps_root = result_root + "2df_ps_2dpow"
+        sn_root = result_root + "2df_sn_2dpow"
+        plot_1d_power_spectrum_opt(ps_root, sn_root, name, fig=fig, 
+                                   color = color[color_index], 
+                                   positive_only = positive_only)
+        color_index += 1
+
+    plt.loglog()
+    plt.ylim(ymin=1.e-3, ymax=5.e2)
+    plt.xlim(xmin=0.01, xmax=2.5)
+    plt.xlabel('k [h/Mpc]')
+    #plt.ylabel('$\Delta^2$ [$K^2$]')
+    plt.ylabel('$\Delta^2$ [$P(k)k^3/2\pi^2$]')
+    #plt.ylabel('$P(k)$ [$h^{-3}Mpc^3$]')
+    plt.legend(frameon=False, loc=0)
+    plt.tick_params(length=6, width=1.)
+    plt.tick_params(which='minor', length=3, width=1.)
+    plt.savefig('./png/' + save_name + '.png', format='png')
+    plt.show()
+
+def plot_1d_power_spectrum_opt(ps_root, sn_root, label, si_root=None, from_1d=False,
+                               truncate_range = None, fig=None, color='r', 
+                               positive_only=False):
+    '''
+        This function used to plot optical power spectrum
+    '''
     if from_1d:
         power_1d, power_1d_err, power_1d_kmn, k_1d_centre =\
             ps_summary.load_power_spectrum_opt_1d(ps_root, sn_root)
@@ -49,67 +108,78 @@ def plot_1d_power_spectrum_opt(ps_root, sn_root, filename, si_root=None,
 
     power_1d_positive, power_1d_positive_err_2, k_1d_centre_positive,\
     power_1d_negative, power_1d_negative_err_2, k_1d_centre_negative\
-        = seperate_positive_and_negetive_power(power_1d, power_1d_err, k_1d_centre)
+        = seperate_positive_and_negative_power(power_1d, power_1d_err, k_1d_centre)
 
 
-    #power_1d_sim, power_1d_sim_err, k_1d_sim_centre =\
-    #    ps_summary.convert_2dps_to_1dps_sim(si_root, truncate_range = truncate_range)
+    if fig == None:
+        fig = plt.figure(figsize=(8, 8))
+        filename = label
+    else:
+        filename = None
+    label = label.replace('_', ' ')
 
-    #power_1d_sim_positive, power_1d_sim_positive_err_2, k_1d_centre_sim_positive,\
-    #power_1d_sim_negative, power_1d_sim_negative_err_2, k_1d_centre_sim_negative\
-    #    = seperate_positive_and_negetive_power(power_1d_sim, 
-    #                                           power_1d_sim_err,
-    #                                           k_1d_sim_centre)
+    fmt = color + 'o'
+    mec = color
+    plt.errorbar(k_1d_centre_positive, power_1d_positive, power_1d_positive_err_2, 
+        fmt=fmt, mec=mec, capsize=4.5, elinewidth=1, label=label + ' positive')
+    if not positive_only:
+        plt.errorbar(k_1d_centre_negative, power_1d_negative, 
+                     power_1d_negative_err_2, 
+                     fmt=fmt, mec=mec, mfc='none', capsize=4.5, 
+                     elinewidth=1, label=label + ' negative')
 
-    k_paper_cole, power_paper_cole, power_err_paper_cole = \
-        ps_summary.load_2df_ps_from_paper('Cole')
-    k_paper, power_paper, power_err_paper = ps_summary.load_2df_ps_from_paper()
-    #k_th, power_th = ps_summary.load_camb()
+    if filename != None:
+        plt.loglog()
+        plt.ylim(ymin=1.e-3, ymax=1.e2)
+        plt.xlim(xmin=0.01, xmax=2.5)
+        plt.xlabel('k [h/Mpc]')
+        #plt.ylabel('$\Delta^2$ [$K^2$]')
+        plt.ylabel('$\Delta^2$ [$P(k)k^3/2\pi^2$]')
+        #plt.ylabel('$P(k)$ [$h^{-3}Mpc^3$]')
+        plt.legend(frameon=False)
+        plt.tick_params(length=6, width=1.)
+        plt.tick_params(which='minor', length=3, width=1.)
+        plt.savefig('./png/' + filename + '.png', format='png')
+        plt.show()
+
+def plot_1d_power_spectrum_raw(ps_root, filename): 
+    power_1d, k_1d_centre = ps_summary.load_power_spectrum_1d(ps_root, raw=True)
 
     fig = plt.figure(figsize=(8, 8))
     label = filename.replace('_', ' ')
 
-    plt.errorbar(k_1d_centre_positive, power_1d_positive, power_1d_positive_err_2, 
-        fmt='ro', mec='r', capsize=4.5, elinewidth=1, label=label + ' positive')
-    plt.errorbar(k_1d_centre_negative, power_1d_negative, power_1d_negative_err_2, 
-        fmt='ro', mec='r', mfc='none', capsize=4.5, 
-        elinewidth=1, label=label + ' negative')
-    #plt.errorbar(k_1d_centre_sim_positive, power_1d_sim_positive, 
-    #    power_1d_sim_positive_err_2, 
-    #    fmt='ko', mec='k', capsize=4.5, elinewidth=1, label='sim positive')
-
-    plt.errorbar(k_paper, power_paper, power_err_paper, 
-        fmt='bo', mec='k', capsize=4.5, elinewidth=1, label='Percival et. al 2001 ')
-    plt.errorbar(k_paper_cole, power_paper_cole, power_err_paper_cole, 
-        fmt='go', mec='k', capsize=4.5, elinewidth=1, label='Cole et. al 2005 ')
-
-    #plt.plot(k_th, power_th, 'b--')
+    for i in range(power_1d.shape[0]):
+        print power_1d[i]
+        #print k_1d_centre
+        power_positive, power_positive_err, k_positive,\
+        power_negative, power_negative_err, k_negative = \
+        seperate_positive_and_negative_power(power_1d[i], power_1d[i], k_1d_centre)
+        plt.scatter(k_positive, power_positive, c='g', marker='o', alpha=0.4, 
+                    edgecolors = 'g')
+        plt.scatter(k_negative, power_negative, c='g', marker='o', alpha=0.4, 
+                    edgecolors = 'g', facecolors = 'none')
 
     plt.loglog()
-    plt.ylim(ymin=1.e-2, ymax=1.e2)
-    plt.xlim(xmin=0.05, xmax=2.5)
+    plt.ylim(ymin=1.e-12, ymax=1.e-1)
+    plt.xlim(xmin=0.025, xmax=1.5)
     plt.xlabel('k [h/Mpc]')
-    #plt.ylabel('$\Delta^2$ [$K^2$]')
-    plt.ylabel('$\Delta^2$ [$P(k)k^3/2\pi^2$]')
-    #plt.ylabel('$P(k)$ [$h^{-3}Mpc^3$]')
-    plt.legend(frameon=False)
+    plt.ylabel('$\Delta^2$ [$K^2$]')
+    #plt.legend(frameon=False)
     plt.tick_params(length=6, width=1.)
     plt.tick_params(which='minor', length=3, width=1.)
     plt.savefig('./png/' + filename + '.png', format='png')
     plt.show()
 
 
-def plot_1d_power_spectrum(rf_root, tr_root, ns_root, ps_root, si_root, filename, 
-                           truncate_range = None):
+def plot_1d_power_spectrum_gbt(rf_root, tr_root, ns_root, ps_root, si_root, 
+                               filename, truncate_range = None):
     power_1d, power_1d_err, k_1d_centre =\
         ps_summary.convert_2dps_to_1dps(ps_root, ns_root, tr_root, 
                                         rf_root, truncate_range)
-    #print power_1d
-    #print power_1d_err
 
     power_1d_positive, power_1d_positive_err_2, k_1d_centre_positive,\
     power_1d_negative, power_1d_negative_err_2, k_1d_centre_negative\
-        = seperate_positive_and_negetive_power(power_1d, power_1d_err, k_1d_centre)
+        = seperate_positive_and_negative_power(power_1d, power_1d_err, k_1d_centre)
 
     print 'positive power'
     for i in range(len(k_1d_centre_positive)):
@@ -290,6 +360,7 @@ def plot_2d_transfer_function(rf_root, tr_root, filename, truncate_range=None):
                  ylim=[min(k_p_edges), max(k_p_edges)],
                  clim=[3, 9])
     plt.savefig('./png/%s_transfer_function.png'%filename, format='png')
+    plt.show()
 
 def plot_2d_everthing(rf_root, tr_root, ns_root, ps_root):
 
@@ -393,18 +464,33 @@ def image_box_2d(x_list, y_list, plot_list, n_row=1, n_col=None, title_list=None
 
 if __name__=='__main__':
     
-    # #file_name = "29RA_2df_ps_selection_10mock"
-    # #file_name = "29RA_2df_ps_separable_10mock"
-    # #file_name = "29RA_2df_ps_separable"
-    # file_name = "29RA_2df_ps"
+    #file_name = "29RA_2df_ps_selection_10mock"
+    #file_name = "29RA_2df_ps_separable_10mock"
+    #file_name = "29RA_2df_ps_separable"
+    #file_name = "29RA_2df_ps"
+    #file_name = "FULL_2df_ps_selection_nosubmean"
+    #file_name = "FULL_2df_ps"
 
-    # result_root = "/Users/ycli/DATA/ps_result/" + file_name + '/'
-    # ps_root = result_root + "2df_ps_2dpow"
-    # sn_root = result_root + "2df_sn_2dpow"
-    # si_root = result_root + "2df_si_2dpow"
-    # plot_1d_power_spectrum_opt(ps_root, sn_root, file_name, si_root)
+    #result_root = "/Users/ycli/DATA/ps_result/" + file_name + '/'
+    #ps_root = result_root + "2df_ps_2dpow"
+    #sn_root = result_root + "2df_sn_2dpow"
+    #si_root = result_root + "2df_si_2dpow"
+    #plot_1d_power_spectrum_opt(ps_root, sn_root, file_name, si_root)
 
-    # exit()
+    file_root = "/Users/ycli/DATA/ps_result/"
+    file_name_list = [#"FULL_2df_ps_selection_nosubmean", 
+                      "FULL_2df_ps_selection_but_separableweight",
+                      "FULL_2df_ps_selection_submean",
+                      "FULL_2df_ps_separable_submean",
+                      #"FULL_2df_ps_selection_submean_oneseed",
+                      "29RA_2df_ps_selection_submean",
+                      "29RA_2df_ps_separable_submean",
+                      ]
+    plot_1d_power_spectrum_opt_multi(file_root, file_name_list, 
+                                     save_name='2df', 
+                                     positive_only = True)
+
+    exit()
 
     # ps_root = "/Users/ycli/DATA/ps_result/29RA_2df_ps/2df_ps_1dpow"
     # sn_root = "/Users/ycli/DATA/ps_result/29RA_2df_ps/2df_sn_1dpow"
@@ -442,6 +528,20 @@ if __name__=='__main__':
     #plot_2d_weight(rf_root, tr_root, ns_root, filename, truncate_range)
     #plot_2d_power_spectrum(rf_root, tr_root, ps_root, filename, truncate_range)
 
-    plot_1d_power_spectrum(rf_root, tr_root, ns_root, ps_root, si_root, filename)
-    plot_1d_power_spectrum(rf_root, tr_root, ns_root, ps_root, si_root, filename, 
-                           truncate_range=truncate_range)
+    #plot_1d_power_spectrum_gbt(rf_root, tr_root, ns_root, ps_root, rf_root, filename)
+    #plot_1d_power_spectrum_gbt(rf_root, tr_root, ns_root, ps_root, tr_root, filename)
+    plot_1d_power_spectrum_gbt(rf_root, tr_root, ns_root, ps_root, si_root, filename)
+    plot_1d_power_spectrum_gbt(rf_root, tr_root, ns_root, ps_root, si_root, 
+                               filename, truncate_range=truncate_range)
+
+    #si_root = result_root + 'sim_raw_x_beammeansub/auto_si_%dmode_2dpow'%mode
+    #si_root = result_root + 'sim_beammeansub_x_beammeansub/auto_si_%dmode_2dpow'%mode
+    #plot_1d_power_spectrum_gbt(rf_root, tr_root, ns_root, ps_root, si_root, filename)
+
+    #si_root = result_root + 'auto_tr_%dmode_1draw'%mode
+    #si_root = result_root + 'auto_si_%dmode_1draw'%mode
+    #si_root = result_root + 'sim_raw_x_beammeansub/auto_si_%dmode_1draw'%mode
+    #si_root = result_root + 'sim_beammeansub_x_beammeansub/auto_si_%dmode_1draw'%mode
+    #plot_1d_power_spectrum_raw(si_root, filename + '_1draw')
+
+
