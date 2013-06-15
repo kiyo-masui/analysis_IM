@@ -5,7 +5,7 @@ from core import algebra
 from utils import data_paths
 from utils import units
 from utils import cosmology as cosmo
-from utils import batch_handler
+#from utils import batch_handler
 
 
 #@batch_handler.memoize_persistent

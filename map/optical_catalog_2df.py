@@ -22,12 +22,29 @@ from core import algebra
 from core import constants as cc
 from utils import binning
 from utils import data_paths
+from utils import cosmology as cosmo
 from kiyopy import parse_ini
 # TODO: make better parameter passing for catalog binning
 
+def estimate_bias(apparent_mag, redshift, type='blue', absolute_mag_star=-19.66):
+    '''
+        absolute_mag_star comes from paper Hawkins 2003 MNRAS 346, 78
+        bias calculation comes from paper Cole 2005 MNRAS 362, 505
+    '''
+
+    cosmology = cosmo.Cosmology()
+    distance = cosmology.luminosity_distance(redshift)
+    absolute_mag = apparent_mag - 5. * np.log10(distance) + 2.5
+    if type=='red':
+        bias = 1.3 * ( 0.85 + 0.15 * (absolute_mag - absolute_mag_star))
+    else: 
+        bias = 0.9 * ( 0.85 + 0.15 * (absolute_mag - absolute_mag_star))
+    return bias
+
 
 def bin_catalog_data(catalog, freq_axis, ra_axis,
-                     dec_axis, debug=False, use_histogramdd=False):
+                     dec_axis, debug=False, use_histogramdd=False, 
+                     get_bias = False):
     """
     bin catalog data onto a grid in RA, Dec, and frequency
     This currently assumes that all of the axes are uniformly spaced
@@ -57,8 +74,21 @@ def bin_catalog_data(catalog, freq_axis, ra_axis,
         print edges
     else:
         count_cube = binning.histogram3d(sample, freq_edges, ra_edges, dec_edges)
+        if get_bias:
+            bias = estimate_bias(catalog['mag'], catalog['z'])
+            print bias
+            bias_cube = binning.histogram3d(sample, freq_edges, ra_edges, 
+                                            dec_edges, weight=bias)
+            old_settings = np.seterr(invalid='ignore', divide='ignore')
+            bias_cube /= count_cube
+            bias_cube[np.isnan(bias_cube)] = 0.
+            bias_cube[np.isinf(bias_cube)] = 0.
+            np.seterr(**old_settings)
 
-    return count_cube
+    if get_bias:
+        return count_cube, bias_cube
+    else:
+        return count_cube
 
 
 def bin_catalog_file(filename, freq_axis, ra_axis,
@@ -85,12 +115,19 @@ def bin_catalog_file(filename, freq_axis, ra_axis,
     catalog['RA'] = catalog['RA']*180./np.pi
     catalog['Dec'] = catalog['Dec']*180./np.pi
 
+    # change the RA range to -180 ~ 180
+    catalog['RA'][catalog['RA']>180.] -= 360.
+
     if debug:
         print filename + ": " + repr(catalog.dtype.names) + \
               ", n_records = " + repr(catalog.size)
 
-    return bin_catalog_data(catalog, freq_axis, ra_axis, dec_axis,
-                            debug=debug)
+    if mock:
+        return bin_catalog_data(catalog, freq_axis, ra_axis, dec_axis, 
+                                debug=debug)
+    else:
+        return bin_catalog_data(catalog, freq_axis, ra_axis, dec_axis, 
+                                debug=debug, get_bias=True)
 
 def convert_B1950_to_J2000(ra, dec, degree_in=False, degree_out=True):
     if degree_in:
@@ -109,6 +146,7 @@ bin2dfparams_init = {
         "infile_data": "/Users/ycli/DATA/2df/catalogue/real_catalogue_2df.out",
         "infile_mock": "/Users/ycli/DATA/2df/catalogue/mock_catalogue_2df_%03d.out",
         "outfile_data": "/Users/ycli/DATA/2df/map/real_map_2df.npy",
+        "outfile_bias": "/Users/ycli/DATA/2df/map/bias_map_2df.npy",
         "outfile_mock": "/Users/ycli/DATA/2df/map/mock_map_2df_%03d.npy",
         "outfile_deltadata": "/Users/ycli/DATA/2df/map/real_map_2df_delta.npy",
         "outfile_deltamock": "/Users/ycli/DATA/2df/map/mock_map_2df_delta_%03d.npy",
@@ -116,6 +154,7 @@ bin2dfparams_init = {
         "outfile_separable": "/Users/ycli/DATA/2df/map/sele_map_2df_separable.npy",
         "template_file": "/Users/ycli/DATA/2df/tempfile",
         "mock_number": 10,
+        "mock_alpha": 1,
         }
 bin2dfprefix = 'bin2df_'
 
@@ -136,6 +175,8 @@ class Bin2dF(object):
 
         # gather names of all the output files
         self.outfile_data = self.params['outfile_data']
+
+        self.outfile_bias = self.params['outfile_bias']
 
         self.outfile_delta_data = self.params['outfile_deltadata']
 
@@ -167,24 +208,35 @@ class Bin2dF(object):
         self.realmap()
         print "finding the binned mock and selection function"
         self.selection()
-        #print "finding the separable form of the selection"
-        #self.separable()
-        #print "finding the optical overdensity"
-        #self.delta()
+        print "finding the separable form of the selection"
+        self.separable()
+        print "finding the optical overdensity"
+        self.delta()
 
     def realmap(self):
         """bin the real WiggleZ catalog"""
-        self.realmap_binning = bin_catalog_file(self.infile_data,
-                                                self.freq_axis,
-                                                self.ra_axis, self.dec_axis,
-                                                skip_header=1,
-                                                debug=False)
+        self.realmap_binning, self.biasmap_binning\
+            = bin_catalog_file(self.infile_data, self.freq_axis, self.ra_axis,
+                               self.dec_axis, skip_header=1, debug=False)
 
         map_2df = algebra.make_vect(self.realmap_binning,
                                         axis_names=('freq', 'ra', 'dec'))
-
         map_2df.copy_axis_info(self.template_map)
         algebra.save(self.outfile_data, map_2df)
+
+        bias_2df = algebra.make_vect(self.biasmap_binning,
+                                        axis_names=('freq', 'ra', 'dec'))
+        bias_2df.copy_axis_info(self.template_map)
+        algebra.save(self.outfile_bias, bias_2df)
+
+        #old_setting = np.seterr(divide='ignore')
+        #bias_x_map = self.realmap_binning / self.biasmap_binning
+        #bias_x_map[np.isnan(bias_x_map)] = 0.
+        #bias_x_map[np.isinf(bias_x_map)] = 0.
+        #np.seterr(**old_setting)
+        #bias_x_map = algebra.make_vect(bias_x_map, axis_names=('freq', 'ra', 'dec'))
+        #bias_x_map.copy_axis_info(self.template_map)
+        #algebra.save(self.outfile_data, bias_x_map)
 
         return
 
@@ -215,6 +267,7 @@ class Bin2dF(object):
         # adding the real map back to the selection function is a kludge which
         # ensures the selection function is not zero where there is real data
         # (limit of insufficient mocks)
+        #self.selection_function *= self.params['mock_alpha']
         self.selection_function += self.realmap_binning
         self.selection_function /= float(self.params['mock_number'] + 1)
         print np.mean(self.selection_function)
@@ -248,8 +301,10 @@ class Bin2dF(object):
         return
 
 
-    def produce_delta_map(self, optical_file, optical_selection_file):
+    def produce_delta_map(self, optical_file, optical_selection_file, mock=False):
         map_optical = algebra.make_vect(algebra.load(optical_file))
+        #if mock:
+        #    map_optical *= self.params['mock_alpha']
         map_nbar = algebra.make_vect(algebra.load(optical_selection_file))
 
         old_settings = np.seterr(invalid="ignore", under="ignore")
@@ -267,9 +322,10 @@ class Bin2dF(object):
         return map_delta
 
     def delta(self):
+        #selection_file = self.outfile_separable
+        selection_file = self.outfile_selection
         """find the overdensity using a separable selection function"""
-        delta_data = self.produce_delta_map(self.outfile_data,
-                                            self.outfile_separable)
+        delta_data = self.produce_delta_map(self.outfile_data, selection_file)
 
         algebra.save(self.outfile_delta_data, delta_data)
 
@@ -278,8 +334,7 @@ class Bin2dF(object):
             mockinfile = self.outfile_mock%mockindex
             mockoutfile = self.outfile_delta_mock%mockindex
 
-            delta_mock = self.produce_delta_map(mockinfile,
-                                                self.outfile_separable)
+            delta_mock = self.produce_delta_map(mockinfile, selection_file, mock=True)
 
             algebra.save(mockoutfile, delta_mock)
 
@@ -287,18 +342,28 @@ if __name__=="__main__":
     
     import os
 
-    tempfile = algebra.make_vect(np.ones(shape=(64,200,140)), 
+    #tempfile = algebra.make_vect(np.ones(shape=(256,256,32)), 
+    #                             axis_names=('freq', 'ra', 'dec'))
+    #tempfile.info['ra_delta']  = -0.35
+    #tempfile.info['dec_delta'] = 0.35
+    #tempfile.info['ra_centre'] = 7.00
+    #tempfile.info['dec_centre'] = -29.5
+    #tempfile.info['freq_delta'] = -1000000.0
+    #tempfile.info['freq_centre'] = 1221900000.0
+
+    tempfile = algebra.make_vect(np.ones(shape=(256,128,128)), 
                                  axis_names=('freq', 'ra', 'dec'))
-    tempfile.info['ra_delta']  = -0.05744777707
-    tempfile.info['dec_delta'] = 0.05
+    tempfile.info['ra_delta']  = -0.079
+    tempfile.info['dec_delta'] = 0.079
     tempfile.info['ra_centre'] = 29.0
     tempfile.info['dec_centre'] = -29.5
     tempfile.info['freq_delta'] = -1000000.0
-    tempfile.info['freq_centre'] = 1314500000.0
+    tempfile.info['freq_centre'] = 1221900000.0
 
     algebra.save('/mnt/scratch-gl/ycli/2df_catalog/temp/tempfile', tempfile)
 
-    map_dir = '/mnt/scratch-gl/ycli/2df_catalog/map/map_2929.5/'
+    #map_dir = '/mnt/scratch-gl/ycli/2df_catalog/map/map_2929.5_oneseed_separable/'
+    map_dir = '/mnt/scratch-gl/ycli/2df_catalog/map/map_2929.5_oneseed_selection/'
     if not os.path.exists(map_dir):
         os.makedirs(map_dir)
 
@@ -306,6 +371,7 @@ if __name__=="__main__":
         "infile_data": "/mnt/scratch-gl/ycli/2df_catalog/catalog/real_catalogue_2df.out",
         "infile_mock": "/mnt/scratch-gl/ycli/2df_catalog/catalog/mock_catalogue_2df_%03d.out",
         "outfile_data": map_dir + "real_map_2df.npy",
+        "outfile_bias": map_dir + "bias_map_2df.npy",
         "outfile_mock": map_dir + "mock_map_2df_%03d.npy",
         "outfile_deltadata": map_dir + "real_map_2df_delta.npy",
         "outfile_deltamock": map_dir + "mock_map_2df_delta_%03d.npy",
@@ -313,6 +379,7 @@ if __name__=="__main__":
         "outfile_separable": map_dir + "sele_map_2df_separable.npy",
         "template_file": "/mnt/scratch-gl/ycli/2df_catalog/temp/tempfile",
         "mock_number": 100,
+        "mock_alpha" : 1.,
         }
     
     Bin2dF(params_dict=bin2dfparams_init).execute(2)

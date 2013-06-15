@@ -8,10 +8,12 @@ import numpy as np
 import scipy as sp
 import os
 import gc
+import string
 from scipy import integrate
 from math import *
-from map import physical_gridding
-#import fftw3 as FFTW
+from map import physical_gridding as gridding
+import copy
+import fftw3 as FFTW
 
 # kiyo module
 from core import algebra
@@ -34,10 +36,12 @@ class BOX(object):
         #self.ibox1, self.nbox1 = get_box(self.box_bin, self.imap1, self.weight1)
         #self.ibox2, self.nbox2 = get_box(self.box_bin, self.imap2, self.weight2)
 
-        self.ibox1, ibox1_info = physical_gridding.physical_grid(self.imap1)
-        self.ibox2, ibox2_info = physical_gridding.physical_grid(self.imap2)
-        self.nbox1, nbox1_info = physical_gridding.physical_grid(self.weight1)
-        self.nbox2, nbox2_info = physical_gridding.physical_grid(self.weight2)
+        self.flag_nan(target="map")
+
+        self.ibox1, ibox1_info = gridding.physical_grid(self.imap1, refinement=1)
+        self.ibox2, ibox2_info = gridding.physical_grid(self.imap2, refinement=1)
+        self.nbox1, nbox1_info = gridding.physical_grid(self.weight1, refinement=1)
+        self.nbox2, nbox2_info = gridding.physical_grid(self.weight2, refinement=1)
 
         self.ibox1 = algebra.make_vect(self.ibox1, ibox1_info['axes'])
         self.ibox2 = algebra.make_vect(self.ibox2, ibox2_info['axes'])
@@ -49,10 +53,46 @@ class BOX(object):
         self.nbox1.info = nbox1_info
         self.nbox2.info = nbox2_info
 
-        self.boxshape = self.ibox1.shape
-        self.boxunit = [self.ibox1.info['freq_delta'],
-                        self.ibox1.info['ra_delta'], 
-                        self.ibox1.info['dec_delta']]
+        self.boxshape = []
+        self.boxunit = []
+        for i in range(self.ibox1.ndim):
+            self.boxshape.append(self.ibox1.shape[i])
+            axis_name = self.ibox1.axes[i]
+            axis = self.ibox1.get_axis(axis_name)
+            delta_axis = np.fabs(axis[1] - axis[0])
+            self.boxunit.append(delta_axis)
+        #axis = self.ibox1.get_axis()
+        #self.boxunit = [self.ibox1.info['freq_delta'],
+        #                self.ibox1.info['ra_delta'], 
+        #                self.ibox1.info['dec_delta']]
+
+    def flag_nan(self, target="box"):
+        if target == "box":
+            self.ibox1[np.isnan(self.ibox1)] = 0.
+            self.ibox2[np.isnan(self.ibox2)] = 0.
+            self.nbox1[np.isnan(self.ibox1)] = 0.
+            self.nbox1[np.isnan(self.nbox1)] = 0.
+            self.nbox2[np.isnan(self.ibox2)] = 0.
+            self.nbox2[np.isnan(self.nbox2)] = 0.
+            self.ibox1[np.isinf(self.ibox1)] = 0.
+            self.ibox2[np.isinf(self.ibox2)] = 0.
+            self.nbox1[np.isinf(self.ibox1)] = 0.
+            self.nbox1[np.isinf(self.nbox1)] = 0.
+            self.nbox2[np.isinf(self.ibox2)] = 0.
+            self.nbox2[np.isinf(self.nbox2)] = 0.
+        elif target == "map":
+            self.imap1[np.isnan(self.imap1)] = 0.
+            self.imap2[np.isnan(self.imap2)] = 0.
+            self.weight1[np.isnan(self.imap1)] = 0.
+            self.weight1[np.isnan(self.weight1)] = 0.
+            self.weight2[np.isnan(self.imap2)] = 0.
+            self.weight2[np.isnan(self.weight2)] = 0.
+            self.imap1[np.isinf(self.imap1)] = 0.
+            self.imap2[np.isinf(self.imap2)] = 0.
+            self.weight1[np.isinf(self.imap1)] = 0.
+            self.weight1[np.isinf(self.weight1)] = 0.
+            self.weight2[np.isinf(self.imap2)] = 0.
+            self.weight2[np.isinf(self.weight2)] = 0.
 
     def subtract_mean(self):
         self.ibox1 = self.ibox1 - self.ibox1.flatten().mean()
@@ -73,6 +113,8 @@ class BOX(object):
 
     def estimate_ps_3d(self, window="blackman"):
 
+        self.flag_nan(target="box")
+
         window_function = fftutil.window_nd(self.nbox1.shape, name=window)
         self.nbox1 *= window_function
         self.nbox2 *= window_function
@@ -80,33 +122,35 @@ class BOX(object):
         self.ibox1 *= self.nbox1
         self.ibox2 *= self.nbox2
 
+
         #self.subtract_mean()
         self.subtract_weighted_mean()
 
-        normal = (self.nbox1 * self.nbox2).flatten().sum()
+        normal = np.sum(self.nbox1 * self.nbox2)
         delta_v = np.prod(self.boxunit)
 
         iput_1 = np.zeros(self.boxshape, dtype=complex)
-        #oput_1 = np.zeros(self.boxshape, dtype=complex)
-        #plan_1 = FFTW.Plan(iput_1, oput_1, direction='forward', flags=['measure'])
+        oput_1 = np.zeros(self.boxshape, dtype=complex)
         iput_1.imag = 0.
         iput_1.real = self.ibox1
-        #FFTW.execute(plan_1)
-        oput_1 = np.fft.fftn(iput_1)
+        plan_1 = FFTW.Plan(iput_1, oput_1, direction='forward', flags=['measure'])
+        FFTW.execute(plan_1)
+        #oput_1 = np.fft.fftn(iput_1)
 
         iput_2 = np.zeros(self.boxshape, dtype=complex)
-        #oput_2 = np.zeros(self.boxshape, dtype=complex)
-        #plan_2 = FFTW.Plan(iput_2, oput_2, direction='forward', flags=['measure'])
+        oput_2 = np.zeros(self.boxshape, dtype=complex)
         iput_2.imag = 0.
         iput_2.real = self.ibox2
-        #FFTW.execute(plan_2)
-        oput_2 = np.fft.fftn(iput_2)
+        plan_2 = FFTW.Plan(iput_2, oput_2, direction='forward', flags=['measure'])
+        FFTW.execute(plan_2)
+        #oput_2 = np.fft.fftn(iput_2)
 
         oput_1 = np.fft.fftshift(oput_1)
         oput_2 = np.fft.fftshift(oput_2)
 
         self.ps_3d  = (oput_1 * oput_2.conj()).real
-        self.ps_3d *= delta_v/normal
+        self.ps_3d *= delta_v
+        self.ps_3d /= normal
 
         del iput_1
         del iput_2
@@ -114,51 +158,83 @@ class BOX(object):
         del oput_2
         gc.collect()
 
-    def convert_ps_to_unitless(self):
-
+    def get_k_bin_centre(self):
+        print self.boxunit
         k_bin_x = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[0],
                                                               self.boxunit[0]))
         k_bin_y = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[1],
                                                               self.boxunit[1]))
         k_bin_z = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[2],
                                                               self.boxunit[2]))
+        return k_bin_x, k_bin_y, k_bin_z
+
+    def convert_ps_to_unitless(self):
+
+        print "convert power to unitless", 
+        print self.boxshape
+        k_bin_x, k_bin_y, k_bin_z = self.get_k_bin_centre()
 
         k_bin_r = np.sqrt( (k_bin_x**2)[:, None, None] + 
                            (k_bin_y**2)[None, :, None] + 
                            (k_bin_z**2)[None, None, :] )
         self.ps_3d = self.ps_3d * k_bin_r**3 / 2. / np.pi**2
 
+    def convert_3dps_to_1dps(self, k_edges):
+
+        print "convert 3d power ot 1d power",
+        print self.boxshape
+        k_bin_x, k_bin_y, k_bin_z = self.get_k_bin_centre()
+
+        k_bin_r = np.sqrt( (k_bin_x**2)[:, None, None] + 
+                           (k_bin_y**2)[None, :, None] + 
+                           (k_bin_z**2)[None, None, :] )
+
+        ps_3d_flatten = copy.deepcopy(self.ps_3d.flatten())
+        k_bin_r = k_bin_r.flatten()[np.isfinite(ps_3d_flatten)]
+        ps_3d_flatten = ps_3d_flatten[np.isfinite(ps_3d_flatten)]
+
+        kn_1d, edges = np.histogram(k_bin_r, k_edges)
+        ps_1d, edges = np.histogram(k_bin_r, k_edges, weights=ps_3d_flatten)
+
+        kn_1d = kn_1d.astype(float)
+        #kn_1d[kn_1d==0] = np.inf
+        ps_1d[kn_1d != 0] /= kn_1d[kn_1d != 0] 
+        ps_1d[kn_1d == 0] = 0.
+        #kn_1d[kn_1d==np.inf] = 0.
+
+        self.kn_1d = kn_1d
+        self.ps_1d = ps_1d
 
     def convert_3dps_to_2dps(self, k_edges_p, k_edges_v):
         
-        k_bin_x = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[0],
-                                                              self.boxunit[0]))
-        k_bin_y = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[1],
-                                                              self.boxunit[1]))
-        k_bin_z = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[2],
-                                                              self.boxunit[2]))
+        print "convert 3d power ot 2d power",
+        print self.boxshape
+        k_bin_x, k_bin_y, k_bin_z = self.get_k_bin_centre()
 
-        k_bin_p = np.abs(k_bin_x)
+        k_bin_p = np.fabs( k_bin_x)
         k_bin_v = np.sqrt( (k_bin_y**2)[:,None] + (k_bin_z**2)[None,:] )
 
         k_bin_2d = np.zeros(shape=(2,)+ k_bin_p.shape + k_bin_v.shape)
         k_bin_2d[0] = k_bin_p[:, None, None]
         k_bin_2d[1] = k_bin_v[None, :, :]
 
-        ones_weight = np.ones_like(self.ps_3d)
-        kn_2d, xedges, yedges = np.histogram2d(k_bin_2d[0].flatten(), 
-                                               k_bin_2d[1].flatten(),
-                                               (k_edges_p, k_edges_v),
-                                               weights=ones_weight.flatten())
+        ps_3d_flatten = copy.deepcopy(self.ps_3d.flatten())
+        k_bin_2d = k_bin_2d.reshape(2, -1)
+        k_bin_2d = k_bin_2d[:, np.isfinite(ps_3d_flatten)]
+        ps_3d_flatten = ps_3d_flatten[np.isfinite(ps_3d_flatten)]
 
-        ps_2d, xedges, yedges = np.histogram2d(k_bin_2d[0].flatten(), 
-                                               k_bin_2d[1].flatten(), 
-                                               (k_edges_p, k_edges_v),
-                                               weights=self.ps_3d.flatten())
+        kn_2d, xedges, yedges = np.histogram2d(k_bin_2d[0], k_bin_2d[1],
+                                               (k_edges_p, k_edges_v),)
 
-        kn_2d[kn_2d==0] = np.inf
-        ps_2d /= kn_2d
-        kn_2d[kn_2d==np.inf] = 0 
+        ps_2d, xedges, yedges = np.histogram2d(k_bin_2d[0], k_bin_2d[1],
+                                               (k_edges_p, k_edges_v),
+                                               weights=ps_3d_flatten)
+
+        kn_2d = kn_2d.astype(float)
+        #kn_2d[kn_2d==0] = np.inf
+        ps_2d[kn_2d!=0] /= kn_2d[kn_2d!=0]
+        ps_2d[kn_2d==0] = 0.
+        #kn_2d[kn_2d==np.inf] = 0. 
 
         self.kn_2d = kn_2d
         self.ps_2d = ps_2d
@@ -383,12 +459,24 @@ def get_mapdict(dir, selection=None):
 
                 mapdict['%d'%key1] = dir + map
 
-            if mapsplit[2] == '2df' and mapsplit[0] == selection:
-                if selection == 'real' or selection == 'sele':
+            if len(mapsplit)>=3:
+                if mapsplit[2] == '2df' and mapsplit[0] == selection:
+                    if selection == 'sele' and mapsplit[-1] != 'separable':
+                        return dir + map
+                    if len(mapsplit)>=4 and mapsplit[3] == 'delta':
+                        if selection == 'real':
+                            return dir + map
+                        elif selection == 'mock':
+                            key1 = int(mapsplit[4])
+                            mapdict['%d'%key1] = dir + map
+
+            if mapsplit[0][:3] == 'reg':
+                if mapsplit[0].split('.')[0][5:] == selection:
                     return dir + map
-                elif selection == 'mock':
-                    key1 = int(mapsplit[3])
-                    mapdict['%d'%key1] = dir + map
+                elif len(mapsplit[0].split('.')[0]) == 12 and\
+                     mapsplit[0].split('.')[0][5:-3] == 'rand':
+                    key1 = string.atoi(mapsplit[0].split('.')[0][-3:])
+                    mapdict['%s'%key1] = dir + map
 
         if os.path.isfile(dir+map) and map.split('.')[-1]=='pkl':
             mapsplit = map.split('.')[0].split('_')

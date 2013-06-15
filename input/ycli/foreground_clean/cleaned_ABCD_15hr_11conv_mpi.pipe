@@ -39,7 +39,7 @@ cutlist = [0,15,16,17,18,19,20,21,22,23,103,104,105,106,107,108,130,131,132,133,
 freq_list = tuple([ind for ind in range(nfreq) if ind not in cutlist])
 mode_list = range(0, 45, 5) 
 common_res_convolution = True
-degrade_factor = 1.4
+degrade_factor = 1.1
 sub_weighted_mean = True
 sim_multiplier = 1.
 simnum = 100
@@ -55,7 +55,7 @@ else:
     do_simulation_IQU = False
 
 #output_folder = '15hr_ABCD_legendre_modes_%dgwj_14conv_new/'%goodmodes 
-output_folder = '15hr_ABCD_14conv/'
+output_folder = '15hr_ABCD_11conv/'
 #output_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
 output_root = '/mnt/scratch-gl/ycli/cln_result/'
 output_root += output_folder
@@ -150,7 +150,6 @@ if do_IQUclean_themselves:
     fs2_convolve = common_res_convolution
     fs2_degrade_factor = degrade_factor
     fs2_clip_weight_percent = 50
-    fs2_weighted_SVD = True
     fs2_sub_weighted_mean = sub_weighted_mean
     if goodmodes == 1:
         fs2_good_modes = 0
@@ -196,7 +195,6 @@ if do_simulation_IQUV:
     fs3_factorizable_noise = True
     fs3_convolve = common_res_convolution
     fs3_clip_weight_percent = 50
-    fs3_weighted_SVD = True
     fs3_degrade_factor = degrade_factor
     fs3_sub_weighted_mean = sub_weighted_mean
     fs3_good_modes = goodmodes
