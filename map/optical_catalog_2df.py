@@ -204,12 +204,12 @@ class Bin2dF(object):
     def execute(self, processes):
         pass
         #np.set_printoptions(threshold=np.nan)
-        print "finding the binned data"
-        self.realmap()
-        print "finding the binned mock and selection function"
-        self.selection()
-        print "finding the separable form of the selection"
-        self.separable()
+        #print "finding the binned data"
+        #self.realmap()
+        #print "finding the binned mock and selection function"
+        #self.selection()
+        #print "finding the separable form of the selection"
+        #self.separable()
         print "finding the optical overdensity"
         self.delta()
 
@@ -342,42 +342,44 @@ if __name__=="__main__":
     
     import os
 
-    #tempfile = algebra.make_vect(np.ones(shape=(256,256,32)), 
-    #                             axis_names=('freq', 'ra', 'dec'))
-    #tempfile.info['ra_delta']  = -0.35
-    #tempfile.info['dec_delta'] = 0.35
-    #tempfile.info['ra_centre'] = 7.00
-    #tempfile.info['dec_centre'] = -29.5
-    #tempfile.info['freq_delta'] = -1000000.0
-    #tempfile.info['freq_centre'] = 1221900000.0
-
-    tempfile = algebra.make_vect(np.ones(shape=(256,128,128)), 
+    tempfile = algebra.make_vect(np.ones(shape=(256,256,32)), 
                                  axis_names=('freq', 'ra', 'dec'))
-    tempfile.info['ra_delta']  = -0.079
-    tempfile.info['dec_delta'] = 0.079
-    tempfile.info['ra_centre'] = 29.0
+    tempfile.info['ra_delta']  = -0.35
+    tempfile.info['dec_delta'] = 0.35
+    tempfile.info['ra_centre'] = 7.00
     tempfile.info['dec_centre'] = -29.5
     tempfile.info['freq_delta'] = -1000000.0
     tempfile.info['freq_centre'] = 1221900000.0
 
+    #tempfile = algebra.make_vect(np.ones(shape=(256,128,128)), 
+    #                             axis_names=('freq', 'ra', 'dec'))
+    #tempfile.info['ra_delta']  = -0.079
+    #tempfile.info['dec_delta'] = 0.079
+    #tempfile.info['ra_centre'] = 29.0
+    #tempfile.info['dec_centre'] = -29.5
+    #tempfile.info['freq_delta'] = -1000000.0
+    #tempfile.info['freq_centre'] = 1221900000.0
+
     algebra.save('/mnt/scratch-gl/ycli/2df_catalog/temp/tempfile', tempfile)
 
     #map_dir = '/mnt/scratch-gl/ycli/2df_catalog/map/map_2929.5_oneseed_separable/'
-    map_dir = '/mnt/scratch-gl/ycli/2df_catalog/map/map_2929.5_oneseed_selection/'
+    #map_dir = '/mnt/scratch-gl/ycli/2df_catalog/map/map_2929.5_full_selection_10000mock/'
+    map_dir = '/mnt/scratch-gl/ycli/2df_catalog/map/map_2929.5_parkes_selection_1000mock/'
     if not os.path.exists(map_dir):
         os.makedirs(map_dir)
 
     bin2dfparams_init = {
         "infile_data": "/mnt/scratch-gl/ycli/2df_catalog/catalog/real_catalogue_2df.out",
-        "infile_mock": "/mnt/scratch-gl/ycli/2df_catalog/catalog/mock_catalogue_2df_%03d.out",
+        "infile_mock": "/mnt/scratch-gl/ycli/2df_catalog/catalog/mock_catalogue_2df_%04d.out",
         "outfile_data": map_dir + "real_map_2df.npy",
         "outfile_bias": map_dir + "bias_map_2df.npy",
-        "outfile_mock": map_dir + "mock_map_2df_%03d.npy",
+        "outfile_mock": map_dir + "mock_map_2df_%04d.npy",
         "outfile_deltadata": map_dir + "real_map_2df_delta.npy",
         "outfile_deltamock": map_dir + "mock_map_2df_delta_%03d.npy",
         "outfile_selection": map_dir + "sele_map_2df.npy",
         "outfile_separable": map_dir + "sele_map_2df_separable.npy",
-        "template_file": "/mnt/scratch-gl/ycli/2df_catalog/temp/tempfile",
+        #"template_file": "/mnt/scratch-gl/ycli/2df_catalog/temp/tempfile",
+        "template_file": "/mnt/raid-project/gmrt/anderson/first_parkes_pipe/maps/test_allbeams_27n30_10by7_clean_map_I_1315.npy",
         "mock_number": 100,
         "mock_alpha" : 1.,
         }

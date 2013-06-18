@@ -9,6 +9,86 @@ import mpl_toolkits.axisartist.angle_helper as angle_helper
 from matplotlib.projections import PolarAxes
 from map import physical_gridding as gridding
 
+def setup_axes_ra_dec(fig, ra0, ra1, dec0, dec1, label0=r'$\alpha[2000]$', 
+                      label1=r'$\delta$'):
+    rotate_angle = 90. - 0.5*(ra0 + ra1)  + 180.
+    # rotate a bit for better orientation
+    tr_rotate = Affine2D().translate(rotate_angle, 0)
+
+    # scale degree to radians
+    tr_scale = Affine2D().scale(np.pi/180., np.pi/180.)
+
+    tr = tr_rotate + tr_scale + PolarAxes.PolarTransform()
+
+    grid_locator1 = angle_helper.LocatorD(4)
+    tick_formatter1 = None
+
+    grid_locator2 = angle_helper.LocatorD(4)
+    tick_formatter2 = None
+
+    grid_helper = GridHelperCurveLinear(tr,
+                                        extremes=(ra1, ra0, dec1, dec0),
+                                        grid_locator1=grid_locator1,
+                                        grid_locator2=grid_locator2,
+                                        tick_formatter1=tick_formatter1,
+                                        tick_formatter2=tick_formatter2,
+                                        )
+
+    ax1 = FloatingSubplot(fig, 211, grid_helper=grid_helper)
+    fig.add_subplot(ax1)
+
+    # adjust axis
+    ax1.axis["left"].toggle(ticklabels=False)
+    ax1.axis["right"].toggle(ticklabels=True)
+    ax1.axis["right"].set_axis_direction("bottom")
+    ax1.axis["right"].label.set_visible(True)
+    #ax1.axis["right"].major_ticklabels.set_pad(5) #label.set_visible(True)
+
+    ax1.axis["bottom"].major_ticklabels.set_axis_direction("top")
+    ax1.axis["bottom"].label.set_axis_direction("top")
+
+    ax1.axis["top"].set_visible(False)
+
+    ax1.axis["bottom"].label.set_text(label0)
+    ax1.axis["right"].label.set_text(label1)
+
+    aux_ax1 = ax1.get_aux_axes(tr)
+
+    aux_ax1.patch = ax1.patch # for aux_ax to have a clip path as in ax
+    ax1.patch.zorder=0.9 # but this has a side effect that the patch is
+                        # drawn twice, and possibly over some other
+                        # artists. So, we decrease the zorder a bit to
+                        # prevent this.
+
+    ax2 = FloatingSubplot(fig, 212, grid_helper=grid_helper)
+    fig.add_subplot(ax2)
+
+    # adjust axis
+    ax2.axis["left"].toggle(ticklabels=False)
+    ax2.axis["right"].toggle(ticklabels=True)
+    ax2.axis["right"].set_axis_direction("bottom")
+    ax2.axis["right"].label.set_visible(True)
+    #ax2.axis["right"].major_ticklabels.set_pad(5) #label.set_visible(True)
+
+    ax2.axis["bottom"].major_ticklabels.set_axis_direction("top")
+    ax2.axis["bottom"].label.set_axis_direction("top")
+
+    ax2.axis["top"].set_visible(False)
+
+    ax2.axis["bottom"].label.set_text(label0)
+    ax2.axis["right"].label.set_text(label1)
+
+    aux_ax2 = ax2.get_aux_axes(tr)
+
+    aux_ax2.patch = ax2.patch # for aux_ax to have a clip path as in ax
+    ax2.patch.zorder=0.9 # but this has a side effect that the patch is
+                        # drawn twice, and possibly over some other
+                        # artists. So, we decrease the zorder a bit to
+                        # prevent this.
+
+
+    return ax1, aux_ax1 , ax2, aux_ax2
+
 def setup_axes(fig, ra0, ra1, cz0, cz1, label0=r'$\alpha[2000]$', label1='z'):
 
     rotate_angle = 90. - 0.5*(ra0 + ra1)
@@ -126,45 +206,107 @@ def average_map(map_root_list):
 
     return map
 
-def plot_sky(cat_root, map_root_list, save_name='./png/real_real_cat.png'):
+def project_to_2d(map_root_list, integrate_axis=2):
 
-    real_cat = np.loadtxt(cat_root)
-    
     if len(map_root_list) == 1:
         real_map = algebra.make_vect(algebra.load(map_root_list[0]))
     else:
         real_map = average_map(map_root_list)
     
-    real_box, real_box_info = gridding.physical_grid(real_map, refinement=1)
+    #real_box, real_box_info = gridding.physical_grid_largeangle(real_map, 
+    #                                                            refinement=1)
     
-    real_map_ra_z = np.ma.array(np.sum(real_map, axis=2))
-    real_map_ra_z[real_map_ra_z==0] = np.ma.masked
-    ra = real_map.get_axis('ra')
-    #dec = real_map.get_axis('dec')
-    freq = real_map.get_axis('freq')
-    z = 1420.e6/freq - 1.
-    ra_bin_edge = binning.find_edges(ra)
-    z_bin_edge = binning.find_edges(z)
+    real_map_2d = np.ma.array(np.sum(real_map, axis=integrate_axis))
+    real_map_2d[real_map_2d==0] = np.ma.masked
+    coor = np.zeros((2, real_map_2d.shape[0]+1, real_map_2d.shape[1]+1))
+    coor_index = 0
+    for axis_index in range(real_map.ndim):
+        if axis_index == integrate_axis:
+            continue
+        axis_name = real_map.axes[axis_index]
+        axis_cent = real_map.get_axis(axis_name)
+        axis_delt = real_map.info['%s_delta'%axis_name]
+        axis_edge = axis_cent - 0.5*axis_delt
+        axis_edge = np.append(axis_edge, axis_edge[-1]+axis_delt)
+        if coor_index == 0:
+            coor[coor_index,...] = axis_edge[:, None]
+            coor_index += 1
+        else:
+            coor[coor_index,...] = axis_edge[None, :]
+
+    coor_index_array = np.arange(np.product(coor.shape[1:])).reshape(coor.shape[1:])
+    coor_tri_up = np.zeros(real_map_2d.shape + (3,))
+    coor_tri_up[...,0] = coor_index_array[:-1, :-1]
+    coor_tri_up[...,1] = coor_index_array[1: , :-1]
+    coor_tri_up[...,2] = coor_index_array[:-1, 1: ]
+    coor_tri_lo = np.zeros(real_map_2d.shape + (3,))
+    coor_tri_lo[...,0] = coor_index_array[1: , :-1]
+    coor_tri_lo[...,1] = coor_index_array[1: , 1: ]
+    coor_tri_lo[...,2] = coor_index_array[:-1, 1: ]
+
+    coor_tri_2d = np.append(coor_tri_up, coor_tri_lo, axis=0)
+    real_map_2d = np.append(real_map_2d, real_map_2d, axis=0)
+
+    return real_map_2d, coor, coor_tri_2d
+
+    #ra = real_map.get_axis('ra')
+    ##dec = real_map.get_axis('dec')
+    #freq = real_map.get_axis('freq')
+    #z = 1420.e6/freq - 1.
+    #ra_bin_edge = binning.find_edges(ra)
+    #z_bin_edge = binning.find_edges(z)
+    #
+    #real_map_coor = np.zeros(shape= (2,) + ra.shape + z.shape)
+    #real_map_coor[0] = ra[:, None]
+    #real_map_coor[1] =  z[None, :]
+    #print real_map_coor.shape
+    #real_map_coor = real_map_coor.reshape(2,-1)
+    #real_map = 10. * np.sum(real_map, axis=-1)
+    #print real_map.shape
+    #real_map = real_map.T.flatten()
+    #ras = []
+    #decs = []
+    #for i in range(real_map_coor.shape[1]):
+    #    for j in range(int(real_map[i])):
+    #        ras.append(real_map_coor[0][i])
+    #        decs.append(real_map_coor[1][i])
+    #
+    #real_box = algebra.make_vect(real_box, real_box_info['axes'])
+    #real_box.info = real_box_info
+    #y = binning.find_edges(real_box.get_axis('freq'))
+    #x = binning.find_edges(real_box.get_axis('ra'))
+
+def plot_sky_ra_dec(cat_root, map_root_list, save_name='./png/ra_dec.png'):
+
+    real_cat = np.loadtxt(cat_root)
+
+    real_map ,real_coor, triang= project_to_2d(map_root_list, integrate_axis=0)
+
+    fig = plt.figure(figsize=(20,20))
+    fig.clf()
+    ax1, aux_ax1, ax2, aux_ax2\
+        = setup_axes_ra_dec(fig, -3*15, 4*15, -38., -22.)
+
+    aux_ax1.scatter(real_cat[:,0]*180./np.pi, real_cat[:,1]*180./np.pi, s=4, 
+                   edgecolor='none', alpha=0.5)
+
+    real_coor = real_coor.reshape(2, -1)
+    triang = triang.reshape(-1,3).astype('int')
+    real_map = real_map.flatten()
+    cmap = plt.get_cmap('Greens')
+    #norm = plt.normalize(real_map.flatten().min(), real_map.flatten().max())
+    im = aux_ax2.tripcolor(real_coor[0], real_coor[1], triang, 
+                           facecolors=real_map, edgecolors='none',
+                           mask= real_map==0,
+                           cmap=cmap)
+    #plt.colorbar(im, orientation='horizontal')
+
+    plt.savefig(save_name)
+
+def plot_sky(cat_root, map_root_list, save_name='./png/real_real_cat.png'):
+
+    real_cat = np.loadtxt(cat_root)
     
-    real_map_coor = np.zeros(shape= (2,) + ra.shape + z.shape)
-    real_map_coor[0] = ra[:, None]
-    real_map_coor[1] =  z[None, :]
-    print real_map_coor.shape
-    real_map_coor = real_map_coor.reshape(2,-1)
-    real_map = 10. * np.sum(real_map, axis=-1)
-    print real_map.shape
-    real_map = real_map.T.flatten()
-    ras = []
-    decs = []
-    for i in range(real_map_coor.shape[1]):
-        for j in range(int(real_map[i])):
-            ras.append(real_map_coor[0][i])
-            decs.append(real_map_coor[1][i])
-    
-    real_box = algebra.make_vect(real_box, real_box_info['axes'])
-    real_box.info = real_box_info
-    y = binning.find_edges(real_box.get_axis('freq'))
-    x = binning.find_edges(real_box.get_axis('ra'))
     
     #fig = plt.figure(figsize=(15,10))
     fig = plt.figure(figsize=(26,8))
@@ -174,7 +316,7 @@ def plot_sky(cat_root, map_root_list, save_name='./png/real_real_cat.png'):
         setup_axes(fig, -3*15, 4*15, 0.01, 0.3)
     
     aux_ax1.scatter(real_cat[:,0]*180./np.pi, real_cat[:,2], s=4, 
-                   edgecolor='none', alpha=0.025)
+                    edgecolor='none', alpha=0.025)
     
     aux_ax2.scatter(ras, decs, s=4, edgecolor='none', alpha=0.0025)
     
@@ -194,16 +336,21 @@ if __name__=="__main__":
     import os
     
     
-    root_cat = '/mnt/scratch-gl/ycli/2df_catalog/catalog_positave_seeds/'
+    root_cat = '/mnt/scratch-gl/ycli/2df_catalog/catalog/'
 
-    root_map = '/mnt/scratch-gl/ycli/2df_catalog/map/map_2929.5_full/'
+    root_map = '/mnt/scratch-gl/ycli/2df_catalog/map/map_2929.5_full_selection_1000mock/'
 
     name_cat = 'real_catalogue_2df'
     name_map = 'real_map_2df'
 
-    plot_sky(root_cat + name_cat + '.out', 
-             [root_map + name_map + '.npy', ], 
-             save_name='./png/real_cat.png')
+    plot_sky_ra_dec(root_cat + name_cat + '.out',
+                    [root_map + name_map + '.npy',], 
+                    save_name='./png/real_cat_ra_dec.png')
+
+
+    #plot_sky(root_cat + name_cat + '.out', 
+    #         [root_map + name_map + '.npy', ], 
+    #         save_name='./png/real_cat.png')
 
 
     #name_cat = 'mock_catalogue_2df_090'
@@ -223,19 +370,23 @@ if __name__=="__main__":
     #         save_name='./png/mock_cat_average.png')
 
 
-    name_cat = 'mock_catalogue_2df_090'
+    name_cat = 'mock_catalogue_2df_0090'
     name_map = 'sele_map_2df'
 
-    plot_sky(root_cat + name_cat + '.out', 
-             [root_map + name_map + '.npy',], 
-             save_name='./png/sele_cat.png')
+    plot_sky_ra_dec(root_cat + name_cat + '.out',
+                    [root_map + name_map + '.npy',], 
+                    save_name='./png/sele_cat_ra_dec.png')
 
-    name_cat = 'mock_catalogue_2df_090'
+    #plot_sky(root_cat + name_cat + '.out', 
+    #         [root_map + name_map + '.npy',], 
+    #         save_name='./png/sele_cat.png')
+
+    name_cat = 'mock_catalogue_2df_0090'
     name_map = 'sele_map_2df_separable'
 
-    plot_sky(root_cat + name_cat + '.out', 
-             [root_map + name_map + '.npy',], 
-             save_name='./png/sele_cat_separable.png')
+    #plot_sky(root_cat + name_cat + '.out', 
+    #         [root_map + name_map + '.npy',], 
+    #         save_name='./png/sele_cat_separable.png')
 
 
 

@@ -28,7 +28,8 @@ def physical_grid_largeangle(input_array, refinement=2, pad=5, order=2):
     nu_lower, nu_upper = freq_axis.min(), freq_axis.max()
     ra_fact = sp.cos(sp.pi * input_array.info['dec_centre'] / 180.0)
     thetax, thetay = np.ptp(ra_axis), np.ptp(dec_axis)
-    thetax = 2.*arcsin(ra_fact*sin( 0.5 * thetax )) # For large angle
+    # For large angle
+    thetax = 180.*2.*np.arcsin(ra_fact*np.sin(0.5*np.pi*thetax/180.))/np.pi 
     (numz, numx, numy) = input_array.shape
 
     cosmology = cosmo.Cosmology()
@@ -103,11 +104,18 @@ def physical_grid_largeangle(input_array, refinement=2, pad=5, order=2):
     # For Large Angle
     radius_axis_grid = np.sqrt(radius_axis[: ,None ,None ]**2 + \
                        x_axis[None, :, None]**2 + y_axis[None, None, :]**2)
+    #print radius_axis_grid.shape
 
     # Construct an array of the redshifts on each slice of the cube.
     comoving_inv = cosmo.inverse_approx(cosmology.comoving_distance, z1, z2)
     za = comoving_inv(radius_axis_grid)  # redshifts on the constant-D spacing
     nua = units.nu21 / (1. + za)
+    #proper_z = cosmology.proper_distance(za)
+    proper_z = cosmology.proper_distance(radius_axis_grid, comoving=True)
+
+    #print za.shape
+    #print nua.shape
+    print
 
     gridy, gridx = np.meshgrid(y_axis, x_axis)
     interpol_grid = np.zeros((3, n[1], n[2]))
@@ -117,11 +125,11 @@ def physical_grid_largeangle(input_array, refinement=2, pad=5, order=2):
         #print nua[i], freq_axis[0], freq_axis[-1], (nua[i] - freq_axis[0]) / \
         #                                (freq_axis[-1] - freq_axis[0]) * numz
 
-        interpol_grid[0, :, :] = (nua[i,...] - freq_axis[0]) / \
+        interpol_grid[0, :, :] = (nua[i, :, :,] - freq_axis[0]) / \
                                (freq_axis[-1] - freq_axis[0]) * numz
-        proper_z = cosmology.proper_distance(za[i,...])
+        #proper_z = cosmology.proper_distance(za[i, :, :,])
 
-        angscale = proper_z * units.degree
+        angscale = proper_z[i,:,:] * units.degree
         interpol_grid[1, :, :] = gridx / angscale / thetax * numx + numx / 2
         interpol_grid[2, :, :] = gridy / angscale / thetay * numy + numy / 2
 
@@ -129,13 +137,16 @@ def physical_grid_largeangle(input_array, refinement=2, pad=5, order=2):
                                                            interpol_grid,
                                                            order=order)
 
+        interpol_grid[0, :, :] = np.logical_or(interpol_grid[0, :, :] > numz,
+                                               interpol_grid[0, :, :] < 0)
         interpol_grid[1, :, :] = np.logical_or(interpol_grid[1, :, :] > numx,
-                                             interpol_grid[1, :, :] < 0)
-        interpol_grid[2, :, :] = np.logical_or(interpol_grid[1, :, :] > numy,
-                                             interpol_grid[1, :, :] < 0)
-        mask = np.logical_not(np.logical_or(interpol_grid[1, :, :],
-                                            interpol_grid[2, :, :]))
-        phys_map_npy *= mask
+                                               interpol_grid[1, :, :] < 0)
+        interpol_grid[2, :, :] = np.logical_or(interpol_grid[2, :, :] > numy,
+                                               interpol_grid[2, :, :] < 0)
+        mask[i] = np.logical_not(np.logical_or(interpol_grid[0, :, :],
+                                            interpol_grid[1, :, :],
+                                            interpol_grid[2, :, :],))
+        phys_map_npy[i] *= mask[i]
 
     return phys_map_npy, info
 

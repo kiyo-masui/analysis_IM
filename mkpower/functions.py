@@ -37,11 +37,12 @@ class BOX(object):
         #self.ibox2, self.nbox2 = get_box(self.box_bin, self.imap2, self.weight2)
 
         self.flag_nan(target="map")
+        gridding_method = gridding.physical_grid_largeangle
 
-        self.ibox1, ibox1_info = gridding.physical_grid(self.imap1, refinement=1)
-        self.ibox2, ibox2_info = gridding.physical_grid(self.imap2, refinement=1)
-        self.nbox1, nbox1_info = gridding.physical_grid(self.weight1, refinement=1)
-        self.nbox2, nbox2_info = gridding.physical_grid(self.weight2, refinement=1)
+        self.ibox1, ibox1_info = gridding_method(self.imap1, refinement=1)
+        self.ibox2, ibox2_info = gridding_method(self.imap2, refinement=1)
+        self.nbox1, nbox1_info = gridding_method(self.weight1, refinement=1)
+        self.nbox2, nbox2_info = gridding_method(self.weight2, refinement=1)
 
         self.ibox1 = algebra.make_vect(self.ibox1, ibox1_info['axes'])
         self.ibox2 = algebra.make_vect(self.ibox2, ibox2_info['axes'])
@@ -211,7 +212,7 @@ class BOX(object):
         print self.boxshape
         k_bin_x, k_bin_y, k_bin_z = self.get_k_bin_centre()
 
-        k_bin_p = np.fabs( k_bin_x)
+        k_bin_p = np.sqrt( k_bin_x**2)
         k_bin_v = np.sqrt( (k_bin_y**2)[:,None] + (k_bin_z**2)[None,:] )
 
         k_bin_2d = np.zeros(shape=(2,)+ k_bin_p.shape + k_bin_v.shape)
