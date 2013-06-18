@@ -94,7 +94,7 @@ def plot_1d_power_spectrum_opt_multi(file_root, file_name, save_name='power_opt'
 
 def plot_1d_power_spectrum_opt(ps_root, sn_root, label, si_root=None, from_1d=False,
                                truncate_range = None, fig=None, color='r', 
-                               positive_only=False):
+                               positive_only=False, plotshortnoise=True):
     '''
         This function used to plot optical power spectrum
     '''
@@ -102,7 +102,7 @@ def plot_1d_power_spectrum_opt(ps_root, sn_root, label, si_root=None, from_1d=Fa
         power_1d, power_1d_err, power_1d_kmn, k_1d_centre =\
             ps_summary.load_power_spectrum_opt_1d(ps_root, sn_root)
     else:
-        power_1d, power_1d_err, k_1d_centre =\
+        power_1d, power_1d_err, k_1d_centre, shortnoise =\
             ps_summary.convert_2dps_to_1dps_opt(ps_root, sn_root, truncate_range)
 
 
@@ -127,6 +127,9 @@ def plot_1d_power_spectrum_opt(ps_root, sn_root, label, si_root=None, from_1d=Fa
                      power_1d_negative_err_2, 
                      fmt=fmt, mec=mec, mfc='none', capsize=4.5, 
                      elinewidth=1, label=label + ' negative')
+
+    plt.step(k_1d_centre, shortnoise, where='mid', c=color, 
+             label='short noise of ' + label)
 
     if filename != None:
         plt.loglog()
@@ -464,44 +467,34 @@ def image_box_2d(x_list, y_list, plot_list, n_row=1, n_col=None, title_list=None
 
 if __name__=='__main__':
     
-    #file_name = "29RA_2df_ps_selection_10mock"
-    #file_name = "29RA_2df_ps_separable_10mock"
-    #file_name = "29RA_2df_ps_separable"
-    #file_name = "29RA_2df_ps"
-    #file_name = "FULL_2df_ps_selection_nosubmean"
-    #file_name = "FULL_2df_ps"
-
-    #result_root = "/Users/ycli/DATA/ps_result/" + file_name + '/'
-    #ps_root = result_root + "2df_ps_2dpow"
-    #sn_root = result_root + "2df_sn_2dpow"
-    #si_root = result_root + "2df_si_2dpow"
-    #plot_1d_power_spectrum_opt(ps_root, sn_root, file_name, si_root)
-
     file_root = "/Users/ycli/DATA/ps_result/"
     file_name_list = [#"FULL_2df_ps_selection_nosubmean", 
-                      "FULL_2df_ps_selection_but_separableweight",
+                      #"FULL_2df_ps_selection_but_separableweight",
                       "FULL_2df_ps_selection_submean",
                       "FULL_2df_ps_separable_submean",
+                      #"FULL_2df_ps_separable_100mock",
+                      "FULL_2df_ps_selection_100mock",
+                      "FULL_2df_ps_selection_1000mock",
+                      "FULL_2df_ps_selection_10000mock",
                       #"FULL_2df_ps_selection_submean_oneseed",
-                      "29RA_2df_ps_selection_submean",
-                      "29RA_2df_ps_separable_submean",
+                      #"29RA_2df_ps_selection_submean",
+                      #"29RA_2df_ps_separable_submean",
                       ]
     plot_1d_power_spectrum_opt_multi(file_root, file_name_list, 
                                      save_name='2df', 
                                      positive_only = True)
-
     exit()
 
-    # ps_root = "/Users/ycli/DATA/ps_result/29RA_2df_ps/2df_ps_1dpow"
-    # sn_root = "/Users/ycli/DATA/ps_result/29RA_2df_ps/2df_sn_1dpow"
-    # #ps_root = "/Users/ycli/DATA/ps_result/15hr_wigglez_wigglez_ps/wigglez_ps_1dpow"
-    # #sn_root = "/Users/ycli/DATA/ps_result/15hr_wigglez_wigglez_ps/wigglez_sn_1dpow"
-    # si_root = "/Users/ycli/DATA/ps_result/29RA_2df_ps/2df_si_2dpow"
-    # plot_1d_power_spectrum_opt(ps_root, sn_root, '2df_ps_2dpow', si_root, from_1d=True)
-    # #plot_1d_power_spectrum_opt(ps_root, sn_root, 'wigglez_ps_2dpow', si_root, from_1d=True)
+    ps_root = "/Users/ycli/DATA/ps_result/29RA_2df_ps/2df_ps_1dpow"
+    sn_root = "/Users/ycli/DATA/ps_result/29RA_2df_ps/2df_sn_1dpow"
+    #ps_root = "/Users/ycli/DATA/ps_result/15hr_wigglez_wigglez_ps/wigglez_ps_1dpow"
+    #sn_root = "/Users/ycli/DATA/ps_result/15hr_wigglez_wigglez_ps/wigglez_sn_1dpow"
+    si_root = "/Users/ycli/DATA/ps_result/29RA_2df_ps/2df_si_2dpow"
+    plot_1d_power_spectrum_opt(ps_root, sn_root, '2df_ps_2dpow', si_root, from_1d=True)
+    #plot_1d_power_spectrum_opt(ps_root, sn_root, 'wigglez_ps_2dpow', si_root, from_1d=True)
 
 
-    mode = 25 
+    mode = 20 
     #mode = 10 
     #filename = '15hr_II_14conv_auto_ps_15hour_%dmode'%mode
     #filename = '15hr_IE_14conv_auto_ps_15hour_%dmode'%mode

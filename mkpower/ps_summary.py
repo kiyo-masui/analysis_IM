@@ -155,7 +155,7 @@ def load_power_spectrum_opt(ps_root, sn_root):
     # subtract short noise
     ps_2d -= sn_2d
 
-    return ps_2d, ps_2derr, ps_2dkmn, k_p_edges, k_v_edges
+    return ps_2d, ps_2derr, ps_2dkmn, k_p_edges, k_v_edges, sn_2d
 
 def load_power_spectrum(ps_root):
     
@@ -235,8 +235,8 @@ def truncate_2dps(k_p_range, k_v_range, k_p_edges, k_v_edges, power_spectrum):
 
 def convert_2dps_to_1dps_opt(ps_root, sn_root, truncate_range=None):
 
-    power_spectrum, power_spectrum_err, power_spectrum_kmn, k_p_edges, k_v_edges\
-        = load_power_spectrum_opt(ps_root, sn_root)
+    power_spectrum, power_spectrum_err, power_spectrum_kmn,\
+    k_p_edges, k_v_edges, shortnoise = load_power_spectrum_opt(ps_root, sn_root)
 
     power_spectrum_err **= 2
 
@@ -254,14 +254,18 @@ def convert_2dps_to_1dps_opt(ps_root, sn_root, truncate_range=None):
                                             k_v_edges, power_spectrum)
         k_centre, kpe, kve           = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
                                             k_v_edges, k_centre)
+        shortnoise, kpe, kve         = truncate_2dps( k_p_range, k_v_range, k_p_edges, 
+                                            k_v_edges, shortnoise)
     power_spectrum_kmn = power_spectrum_kmn.flatten()
     power_spectrum_err = power_spectrum_err.flatten()[power_spectrum_kmn!=0]
     power_spectrum     = power_spectrum.flatten()[power_spectrum_kmn!=0]
     k_centre           = k_centre.flatten()[power_spectrum_kmn!=0]
+    shortnoise         = shortnoise.flatten()[power_spectrum_kmn!=0]
     power_spectrum_kmn = power_spectrum_kmn[power_spectrum_kmn!=0]
 
     power_spectrum *= power_spectrum_kmn
     power_spectrum_err *= power_spectrum_kmn**2
+    shortnoise *= power_spectrum_kmn
 
 
     k_edges_1d = k_p_edges
@@ -270,14 +274,16 @@ def convert_2dps_to_1dps_opt(ps_root, sn_root, truncate_range=None):
     normal_2, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum_kmn**2)
     power, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum)
     err, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum_err)
+    short, k_e = np.histogram(k_centre, k_edges_1d, weights=shortnoise)
 
     normal = normal.astype(float)
     normal[normal==0] = np.inf
     normal_2[normal_2==0] = np.inf
     power_1d = power/normal
     power_1d_err = np.sqrt(err/normal_2)
+    shortnoise_1d = short/normal
 
-    return power_1d, power_1d_err, k_p_centre
+    return power_1d, power_1d_err, k_p_centre, shortnoise_1d
 
 def convert_2dps_to_1dps(ps_root, ns_root, tr_root, rf_root, truncate_range=None):
 

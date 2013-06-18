@@ -249,33 +249,6 @@ def project_to_2d(map_root_list, integrate_axis=2):
 
     return real_map_2d, coor, coor_tri_2d
 
-    #ra = real_map.get_axis('ra')
-    ##dec = real_map.get_axis('dec')
-    #freq = real_map.get_axis('freq')
-    #z = 1420.e6/freq - 1.
-    #ra_bin_edge = binning.find_edges(ra)
-    #z_bin_edge = binning.find_edges(z)
-    #
-    #real_map_coor = np.zeros(shape= (2,) + ra.shape + z.shape)
-    #real_map_coor[0] = ra[:, None]
-    #real_map_coor[1] =  z[None, :]
-    #print real_map_coor.shape
-    #real_map_coor = real_map_coor.reshape(2,-1)
-    #real_map = 10. * np.sum(real_map, axis=-1)
-    #print real_map.shape
-    #real_map = real_map.T.flatten()
-    #ras = []
-    #decs = []
-    #for i in range(real_map_coor.shape[1]):
-    #    for j in range(int(real_map[i])):
-    #        ras.append(real_map_coor[0][i])
-    #        decs.append(real_map_coor[1][i])
-    #
-    #real_box = algebra.make_vect(real_box, real_box_info['axes'])
-    #real_box.info = real_box_info
-    #y = binning.find_edges(real_box.get_axis('freq'))
-    #x = binning.find_edges(real_box.get_axis('ra'))
-
 def plot_sky_ra_dec(cat_root, map_root_list, save_name='./png/ra_dec.png'):
 
     real_cat = np.loadtxt(cat_root)
@@ -307,6 +280,7 @@ def plot_sky(cat_root, map_root_list, save_name='./png/real_real_cat.png'):
 
     real_cat = np.loadtxt(cat_root)
     
+    real_map ,real_coor, triang= project_to_2d(map_root_list, integrate_axis=0)
     
     #fig = plt.figure(figsize=(15,10))
     fig = plt.figure(figsize=(26,8))
@@ -318,13 +292,22 @@ def plot_sky(cat_root, map_root_list, save_name='./png/real_real_cat.png'):
     aux_ax1.scatter(real_cat[:,0]*180./np.pi, real_cat[:,2], s=4, 
                     edgecolor='none', alpha=0.025)
     
-    aux_ax2.scatter(ras, decs, s=4, edgecolor='none', alpha=0.0025)
+    #aux_ax2.scatter(ras, decs, s=4, edgecolor='none', alpha=0.0025)
+    real_coor = real_coor.reshape(2, -1)
+    triang = triang.reshape(-1,3).astype('int')
+    real_map = real_map.flatten()
+    cmap = plt.get_cmap('Greens')
+    #norm = plt.normalize(real_map.flatten().min(), real_map.flatten().max())
+    im = aux_ax2.tripcolor(real_coor[0], real_coor[1], triang, 
+                           facecolors=real_map, edgecolors='none',
+                           mask= real_map==0,
+                           cmap=cmap)
     
-    real_box = np.ma.sum(real_box, axis=2)
-    real_box = np.ma.array(real_box)
-    real_box[real_box==0] = np.ma.masked
-    im = ax3.pcolormesh(x, y, real_box, )
-    plt.colorbar(im)
+    #real_box = np.ma.sum(real_box, axis=2)
+    #real_box = np.ma.array(real_box)
+    #real_box[real_box==0] = np.ma.masked
+    #im = ax3.pcolormesh(x, y, real_box, )
+    #plt.colorbar(im)
     
     plt.savefig(save_name)
 
@@ -348,9 +331,11 @@ if __name__=="__main__":
                     save_name='./png/real_cat_ra_dec.png')
 
 
-    #plot_sky(root_cat + name_cat + '.out', 
-    #         [root_map + name_map + '.npy', ], 
-    #         save_name='./png/real_cat.png')
+    plot_sky(root_cat + name_cat + '.out', 
+             [root_map + name_map + '.npy', ], 
+             save_name='./png/real_cat.png')
+
+    exit()
 
 
     #name_cat = 'mock_catalogue_2df_090'
