@@ -14,9 +14,9 @@ import string
 # i also changed plot_cube.py RA went to X Dec went to Y (when plotting slices)
 
 
-def plot_3D_map(filename, file_directory="/tmp/mufma/data/",
+def plot_3D_map(filename, file_directory="/mnt/raid-project/gmrt/mufma/movie_data/",
              title_name="Video", scale_name="Temperature(mK)",
-             frame_directory="/tmp/mufma/data/", data_type="npy",
+             frame_directory="/mnt/raid-project/gmrt/mufma/movie_data/", data_type="npy",
              output_directory="/cita/d/www/home/mufma/movies/",
              multiplier_num=1000.):
     r"""
@@ -33,7 +33,8 @@ def plot_3D_map(filename, file_directory="/tmp/mufma/data/",
     saveslice = None
     frame_dir = frame_directory
     given_tag = string.rstrip(filename, data_type)
-    plot_cube.make_cube_movie(file_directory+filename, scale_name,
+    print type(filename), filename
+    plot_cube.make_cube_movie(filename, scale_name,
                               frame_dir,
                               saveslice=saveslice,
                               saveslice_file=saveslice_file,
@@ -57,7 +58,7 @@ def main():
     parser.add_option("-f", "--frame_dir",
                       action="store",
                       type="string",
-                      default="/tmp/mufma/",
+                      default="/mnt/raid-project/gmrt/mufma/movie_data/",
                       dest="frame_directory",
                       help="give a frame_directory")
     parser.add_option("-s", "--scale",
@@ -75,7 +76,7 @@ def main():
     parser.add_option("-d", "--destination",
                       action="store",
                       type="string",
-                      default="/tmp/mufma/data/",
+                      default="/mnt/raid-project/gmrt/mufma/movie_data/",
                       dest="file_directory",
                       help="give a file_directory")
     parser.add_option("--dt", "--data_type",

@@ -8,7 +8,7 @@ from scipy.interpolate import interp1d
 from matplotlib import rc
 
 # Data from the Tinker code
-file = open("/cita/h/home-2/mufma/code/Tinker/test.dndM", "r")
+file = open("/cita/h/home-2/mufma/code/pilot/data/halo_mf.dndM", "r")
 tdata = np.genfromtxt(file)
 log_halo_mf = interp1d(np.log10(tdata[:,0]),np.log10(tdata[:,1]))
 halo_mf = interp1d(tdata[:,0], tdata[:,1])
@@ -20,6 +20,16 @@ def log_log_f(x):
 def log_f(x):
     return halo_mf(10.**x)*10.**x*math.log(10)
 
+# Printing the interpolated function
+if sys.argv[1] == "inter":
+    x = np.arange(11.,16.,0.01)
+    y = log_log_f(x)
+    plt.plot(x,y)
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.show()
+
+
 # Comparing different integration methods
 if sys.argv[1] == "print":
     power = float(sys.argv[2])
@@ -28,10 +38,10 @@ if sys.argv[1] == "print":
     print "fixed_quad : ", fixed_quad(halo_mf, bound, 1e16)
     print "quadrature : ", quadrature(halo_mf, bound, 1e16)
     print "romberg : ", romberg(halo_mf, bound, 1e16)
-    print "log_f quad : ", quad(log_f, power, 16)
-    print "log_f fixed_quad : ", fixed_quad(log_f, power, 16)
-    print "log_f quadrature : ", quadrature(log_f, power, 16)
-    print "log_f romberg : ", romberg(log_f, power, 16)
+    print "log_f quad : ", quad(log_f, power, 16.)
+    print "log_f fixed_quad : ", fixed_quad(log_f, power, 16.)
+    print "log_f quadrature : ", quadrature(log_f, power, 16.)
+    print "log_f romberg : ", romberg(log_f, power, 16.)
 
 # Thorough test for the log_f methods
 if sys.argv[1] == "plot_err":
