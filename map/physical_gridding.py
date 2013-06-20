@@ -64,7 +64,7 @@ def physical_grid_largeangle(input_array, refinement=2, pad=5, order=2):
     print "converting from obs. to physical coord refinement=%s, pad=%s" % \
                       (refinement, pad)
 
-    print "(%d, %d, %d)->(%f to %f) x %f x %f (%d, %d, %d) (h^-1 cMpc)^3" % \
+    print "(%d, %d, %d)->(%f to %f) x %f x %f (%d, %d, %d) (h^-1 cMpc)^3\n" % \
                       (numz, numx, numy, c1, c2, \
                        phys_dim[1], phys_dim[2], \
                        n[0], n[1], n[2])
@@ -113,11 +113,11 @@ def physical_grid_largeangle(input_array, refinement=2, pad=5, order=2):
     #proper_z = cosmology.proper_distance(za)
     proper_z = cosmology.proper_distance(radius_axis_grid, comoving=True)
 
-    #print za.shape
-    #print nua.shape
-    print
-
     gridy, gridx = np.meshgrid(y_axis, x_axis)
+    proper_x = np.arcsin(gridx[None, :, :] / proper_z) / units.degree
+    proper_y = np.arcsin(gridy[None, :, :] / proper_z) / units.degree
+    #proper_x = gridx[None, :, :] / proper_z / units.degree
+    #proper_y = gridy[None, :, :] / proper_z / units.degree
     interpol_grid = np.zeros((3, n[1], n[2]))
 
     for i in range(n[0]):
@@ -129,9 +129,11 @@ def physical_grid_largeangle(input_array, refinement=2, pad=5, order=2):
                                (freq_axis[-1] - freq_axis[0]) * numz
         #proper_z = cosmology.proper_distance(za[i, :, :,])
 
-        angscale = proper_z[i,:,:] * units.degree
-        interpol_grid[1, :, :] = gridx / angscale / thetax * numx + numx / 2
-        interpol_grid[2, :, :] = gridy / angscale / thetay * numy + numy / 2
+        #angscale = proper_z[i,:,:] * units.degree
+        #interpol_grid[1, :, :] = gridx / angscale / thetax * numx + numx / 2
+        #interpol_grid[2, :, :] = gridy / angscale / thetay * numy + numy / 2
+        interpol_grid[1, :, :] = proper_x[i,:,:] / thetax * numx + numx / 2
+        interpol_grid[2, :, :] = proper_y[i,:,:] / thetay * numy + numy / 2
 
         phys_map_npy[i, :, :] = sp.ndimage.map_coordinates(input_array,
                                                            interpol_grid,
