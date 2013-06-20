@@ -155,9 +155,9 @@ class PowerSpectrumEstimator(object):
                                                                  axis=0)
                         print "rank %d: received data from rank %d"%(rank, i)
                     for i in range(active_rank_num, size):
-                        message = comm.recv(source=i, tag=13)
+                        message = comm.recv(source=i, tag=15)
             else:
-                comm.ssend(1, dest=0, tag=13)
+                comm.ssend(1, dest=0, tag=15)
 
             comm.barrier()
 
@@ -286,6 +286,19 @@ class PowerSpectrumEstimator(object):
                                   #imaps_a[1]['map;%dmodes'%ps_mode]])
                 nmap_list.append([nmaps_a[1]['weight;%dmodes'%ps_mode], 
                                   nmaps_b[1]['weight;%dmodes'%ps_mode]])
+        elif map_set == 'ps' and params['ps_type'] == 'cros':
+            imaps_a = '/mnt/scratch-gl/ycli/maps/pks_27n30_10by7/'\
+                    + 'test_allbeams_27n30_10by7_clean_map_I_1315.npy'
+            nmaps_a = '/mnt/scratch-gl/ycli/maps/pks_27n30_10by7/'\
+                    + 'test_allbeams_27n30_10by7_noise_weight_I_1315.npy'
+            imaps_b = '/mnt/scratch-gl/ycli/2df_catalog/map/'\
+                    + 'map_2929.5_parkes_selection_1000mock/'\
+                    + 'real_map_2df_delta.npy'
+            nmaps_b = '/mnt/scratch-gl/ycli/2df_catalog/map/'\
+                    + 'map_2929.5_parkes_selection_1000mock/'\
+                    + 'sele_map_2df.npy'
+            imap_list = [[imaps_a, imaps_b],]
+            nmap_list = [[nmaps_a, nmaps_b],]
         elif map_set == 'ps' and params['ps_type'] == 'auto':
             print 'prepare maps for power spectrum calculation'
             imaps = functions.get_mapdict(params['gbt_root'])
@@ -339,6 +352,17 @@ class PowerSpectrumEstimator(object):
             for i in range(len(imap[0])):
                 imap_list.append([imap[1]['%d'%i],imap[1]['%d'%i]])
                 nmap_list.append([nmap, nmap])
+        elif map_set == 'sn' and params['ps_type'] == 'cros':
+            print 'prepare maps of mock catalog for 2df power sepctrum short noise'
+            imaps_a = '/mnt/scratch-gl/ycli/maps/pks_27n30_10by7/'\
+                    + 'test_allbeams_27n30_10by7_clean_map_I_1315.npy'
+            nmaps_a = '/mnt/scratch-gl/ycli/maps/pks_27n30_10by7/'\
+                    + 'test_allbeams_27n30_10by7_noise_weight_I_1315.npy'
+            imap = functions.get_mapdict(params['opt_root'], selection='mock')
+            nmap = functions.get_mapdict(params['opt_root'], selection='sele')
+            for i in range(len(imap[0])):
+                imap_list.append([imaps_a, imap[1]['%d'%i]])
+                nmap_list.append([nmaps_a, nmap])
         elif map_set == 'ps' and params['ps_type'] == 'wigglez':
             print 'prepare maps of mock catalog for wigglez power sepctrum short noise'
             imap = functions.get_mapdict(params['opt_root'], selection='data')
