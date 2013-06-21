@@ -3,7 +3,7 @@ import galaxy_calc as gc
 
 # Initialize settings
 HI = True
-galaxy = True
+galaxy = False
 redshift = [0.900, 1.000, 1.100, 1.200, 1.300, 1.400, 1.500, 1.600,
             1.700, 1.800, 1.900, 2.000, 2.100, 2.200, 2.300, 2.400,
             2.500, 2.700, 3.000, 3.500, 4.000, 4.500, 5.000, 6.000,
