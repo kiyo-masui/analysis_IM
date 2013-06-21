@@ -103,8 +103,10 @@ def interpol_f():
     directory = "/cita/h/home-2/mufma/code/Tinker/test.dndM"
     file = open(directory, "r")
     halo_mf_data = np.genfromtxt(file)
-    z = np.arange(8.,12.,0.03)
+    z = np.arange(6.5,12.,0.03)
     x = abundance_match(halo_mf_data, z)
+    print "x_max", x.max()
+    print "x_min", x.min()
     f = interp1d(x, z)
     file.close()
     return f
@@ -116,6 +118,8 @@ def M_halo_to_M_HI(filename, func, regim):
     catalog = h5py.File(filename,'%s'%regim)
     catalog.create_group('HI_Masses')
     Halo_mass = catalog['Halo_Masses']['Halo_Masses'][:]
+    print "halo_mass max",Halo_mass.max()
+    print "halo_mass min",Halo_mass.min()
     HI_mass = 10**(func(np.log10(Halo_mass)))
     catalog['HI_Masses'].create_dataset('HI_Masses', data=HI_mass)
     catalog.close()
