@@ -128,7 +128,7 @@ def M_HI_to_21(filename, redshift, regim):
     HI_mass = catalog['HI_Masses']['HI_Masses'][:]
     omega_m, omega_lambda, omega_HI = \
     0.27, 0.7, 4e-4
-    HI_aver = np.sum(HI_mass)/len(HI_mass)
+    HI_aver = np.mean(HI_mass)
     z = redshift
     coef = 0.29*1e3*((1.+z)*0.37/1.8)**0.5*omega_HI*(omega_m +
 (1.+z)**(-3)*omega_lambda)**(-0.5)
@@ -140,8 +140,7 @@ def M_HI_to_21(filename, redshift, regim):
 
 
 if __name__ == '__main__':
-    # here is the pipeline for producing 21cm datasets
-    f = interpol_f()
+    # here is the pipeline for the joe's catalogs
     """
     path = "/mnt/raid-project/gmrt/mufma/h5py_catalogs/"
     redshift = [0.042,0.086,0.130,0.220,0.267,0.316,0.416,0.468,0.523,0.636,
