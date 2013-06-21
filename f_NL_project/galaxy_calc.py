@@ -13,14 +13,6 @@ M_0 = 10**(13.077)
 sigma_log_M = 0.596
 alpha = 1.0127
 
-def ones(arr):
-    for ind in range(len(arr)):
-        if arr[ind] == True:
-            arr[ind] = 1
-        if arr[ind] == False:
-            arr[ind] = 0
-    return arr
-
 def galaxy_calc(h5py_file):
     # open halo catalog
     file = h5py.File(h5py_file,'r+')
@@ -39,7 +31,7 @@ def galaxy_calc(h5py_file):
     check = np.random.random(len(A_sat))
     bool = (check < A_sat)
     print "length of the array to convert:", len(bool)
-    N_cen = ones(bool)
+    N_cen = np.array(bool, dtype=float)
     galaxies = N_cen + N_sat
 
     # saving a new column with number of galaxies
@@ -47,19 +39,4 @@ def galaxy_calc(h5py_file):
     file["Galaxies_number"].create_dataset("Galaxies_number", data = galaxies)
     file.close()
 
-
-if __name__ == '__main__':
-    """
-    redshift  = [0.800, 0.900, 1.000, 1.100, 1.200, 1.300, 1.400, 1.500,
-                 1.600, 1.700, 1.800, 1.900, 2.000, 2.100, 2.200]
-    index = [0,1,2,3,4,5,6,7]
-    """
-    redshift = [0.800]
-    index = [1,2,3,4,5,6,7]
-    path = "/mnt/raid-project/gmrt/mufma/JD_h5py_catalogs/"
-    for red in redshift:
-        for ind in index:
-            print "finished processing index", ind
-            galaxy_calc(path + '%.3fhalo_catalog000%d.hdf5'%(red,ind))
-        print "finished processing redshift", red
 
