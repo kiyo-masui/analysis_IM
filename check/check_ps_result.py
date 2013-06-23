@@ -173,6 +173,35 @@ def plot_1d_power_spectrum_raw(ps_root, filename):
     plt.savefig('./png/' + filename + '.png', format='png')
     plt.show()
 
+def plot_1d_power_spectrum_sim(si_root):
+
+    power_1d_sim, power_1d_err_sim, k_1d_centre_sim =\
+        ps_summary.convert_2dps_to_1dps_sim(si_root)
+
+    power_1d_sim_positive, power_1d_sim_positive_err_2, k_1d_centre_sim_positive,\
+    power_1d_sim_negative, power_1d_sim_negative_err_2, k_1d_centre_sim_negative\
+        = seperate_positive_and_negative_power(power_1d_sim, 
+                                               power_1d_err_sim, 
+                                               k_1d_centre_sim)
+
+    power_th, power_th_k = ps_summary.load_theory_ps(k_1d_centre_sim)
+
+    fig = plt.figure(figsize=(8, 8))
+    plt.errorbar(k_1d_centre_sim_positive, power_1d_sim_positive, 
+        power_1d_sim_positive_err_2, fmt='ko', mec='k', mfc='none', 
+        capsize=4.5, elinewidth=1, label='simulation')
+    #plt.plot(k_1d_centre_sim_positive, power_th, c='r', label='theory')
+    plt.plot(power_th_k, power_th, c='r', label='theory')
+    plt.loglog()
+    plt.ylim(ymin=1.e-12, ymax=1.e-1)
+    plt.xlim(xmin=0.025, xmax=1.5)
+    plt.xlabel('k [h/Mpc]')
+    plt.ylabel('$\Delta^2$ [$K^2$]')
+    plt.legend(frameon=False,)
+    plt.tick_params(length=6, width=1.)
+    plt.tick_params(which='minor', length=3, width=1.)
+    plt.savefig('./png/test.png', format='png')
+    plt.show()
 
 def plot_1d_power_spectrum_gbt(rf_root, tr_root, ns_root, ps_root, si_root, 
                                filename, truncate_range = None):
@@ -467,6 +496,11 @@ def image_box_2d(x_list, y_list, plot_list, n_row=1, n_col=None, title_list=None
 
 if __name__=='__main__':
     
+    si_root = "/Users/ycli/DATA/ps_result/test_ideal_2df_ps/2df_si_2dpow"
+    plot_1d_power_spectrum_sim(si_root)
+
+    exit()
+
     # -----------------------------------------------------------------------
     file_root = "/Users/ycli/DATA/ps_result/"
     file_name_list = [#"FULL_2df_ps_selection_nosubmean", 

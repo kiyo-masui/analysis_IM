@@ -25,8 +25,9 @@ def load_theory_ps(k_bins_centre):
     #ps_theory *= k_bins_centre**3/2./np.pi**2
 
     power_th = np.loadtxt('/Users/ycli/Code/analysis_IM/simulations/data/wigglez_halofit_z0.8.dat')
-    power_th[:,0] *= 0.72
-    ps_theory  = (c21.T_b(0.8)*1.e-3)**2*power_th[:,1]/0.72**3
+    #power_th[:,0] *= 0.72
+    #ps_theory  = (c21.T_b(0.8)*1.e-3)**2*power_th[:,1]/0.72**3
+    ps_theory  = power_th[:,1]
     ps_theory *= power_th[:,0]**3/2./np.pi**2
     return ps_theory, power_th[:,0]
 

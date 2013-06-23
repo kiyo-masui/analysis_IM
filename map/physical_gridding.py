@@ -7,7 +7,7 @@ from utils import units
 from utils import cosmology as cosmo
 #from utils import batch_handler
 
-def physical_grid_largeangle(input_array, refinement=2, pad=5, order=2):
+def physical_grid_largeangle(input_array, refinement=2, pad=5, order=2, info_only=False):
     r"""Project from freq, ra, dec into physical coordinates
 
     Parameters
@@ -95,6 +95,10 @@ def physical_grid_largeangle(input_array, refinement=2, pad=5, order=2):
 
     phys_map.info = info
     print info
+
+    if info_only:
+        return phys_map
+
 
     # same as np.linspace(c1, c2, n[0], endpoint=True)
     radius_axis = phys_map.get_axis("freq")

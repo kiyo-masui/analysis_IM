@@ -23,7 +23,9 @@ from core import constants as cc
 from utils import binning
 from utils import data_paths
 from utils import cosmology as cosmo
+from utils import units
 from kiyopy import parse_ini
+from map import physical_gridding
 # TODO: make better parameter passing for catalog binning
 
 def estimate_bias(apparent_mag, redshift, type='blue', absolute_mag_star=-19.66):
@@ -49,10 +51,10 @@ def bin_catalog_data(catalog, freq_axis, ra_axis,
     bin catalog data onto a grid in RA, Dec, and frequency
     This currently assumes that all of the axes are uniformly spaced
     """
-    catalog_frequencies = cc.freq_21cm_MHz * 1.e6 / (1 + catalog['z'])
+    #catalog_frequencies = cc.freq_21cm_MHz * 1.e6 / (1 + catalog['z'])
     num_catalog = catalog.size
     sample = np.zeros((num_catalog, 3))
-    sample[:, 0] = catalog_frequencies
+    sample[:, 0] = catalog['z']
     sample[:, 1] = catalog['RA']
     sample[:, 2] = catalog['Dec']
 
@@ -89,10 +91,24 @@ def bin_catalog_data(catalog, freq_axis, ra_axis,
         return count_cube, bias_cube
     else:
         return count_cube
+def convert_to_physical_coordinate(freq, ra, dec, ra_fact):
+    
+    ra = np.arcsin(ra_fact*np.sin(ra*np.pi/180.))*180./np.pi
 
+    freq = freq/1.e6
+    cosmology = cosmo.Cosmology()
+    z = units.nu21 / freq - 1.
+    c = cosmology.comoving_distance(z)
+    d = cosmology.proper_distance(z)
+    y = d * ra * np.pi / 180.
+    z = d * dec * np.pi / 180.
+    x = np.sqrt(c*c - y*y - z*z)
 
-def bin_catalog_file(filename, freq_axis, ra_axis,
-                     dec_axis, skip_header=None, debug=False, mock=False):
+    return x, y, z
+
+def bin_catalog_file(filename, freq_axis, ra_axis, dec_axis, 
+                     physical_cube=False, ra_centre=None, dec_centre=None,
+                     skip_header=None, debug=False, mock=False):
     """Bin the catalog given in `filename` using the given freq, ra, and dec
     axes.
     """
@@ -112,11 +128,20 @@ def bin_catalog_file(filename, freq_axis, ra_axis,
     # argument here! skiprows is identical
     catalog = np.genfromtxt(filename, dtype=ndtype, skiprows=skip_header)
 
-    catalog['RA'] = catalog['RA']*180./np.pi
+    catalog['RA']  = catalog['RA']*180./np.pi
     catalog['Dec'] = catalog['Dec']*180./np.pi
+    catalog['z']   = cc.freq_21cm_MHz * 1.e6 / (1 + catalog['z'])
 
     # change the RA range to -180 ~ 180
     catalog['RA'][catalog['RA']>180.] -= 360.
+
+    if ra_centre != None:
+        catalog['RA'] -= ra_centre
+    if dec_centre != None:
+        catalog['DEC'] -= dec_centre
+    if physical_cube:
+        catalog['z'], catalog['RA'], catalog['DEC'] = convert_to_physical_coordinate(
+            catalog['z'], catalog['RA'], catalog['DEC'], sp.cos(sp.pi*dec_centre/180.0))
 
     if debug:
         print filename + ": " + repr(catalog.dtype.names) + \
@@ -153,6 +178,7 @@ bin2dfparams_init = {
         "outfile_selection": "/Users/ycli/DATA/2df/map/sele_map_2df.npy",
         "outfile_separable": "/Users/ycli/DATA/2df/map/sele_map_2df_separable.npy",
         "template_file": "/Users/ycli/DATA/2df/tempfile",
+        "physical_cube": False,
         "mock_number": 10,
         "mock_alpha": 1,
         }
@@ -191,6 +217,13 @@ class Bin2dF(object):
         # gather axis information from the template file
         self.template_map = \
             algebra.make_vect(algebra.load(self.params['template_file']))
+
+        self.ra_centre = self.template_map.info['ra_centre']
+        self.dec_centre = self.template_map.info['dec_centre']
+
+        if self.params['physical_cube']:
+            self.template_map = physical_gridding.physical_grid_largeangle(
+                self.template_map, refinement=1, pad=5, order=2, infor_only=True)
 
         self.freq_axis = self.template_map.get_axis('freq')
         self.ra_axis = self.template_map.get_axis('ra')
