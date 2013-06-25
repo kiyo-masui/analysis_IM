@@ -34,8 +34,8 @@ def tinker_reader():
     directory = "/cita/h/home-2/mufma/code/Tinker/test0_696.dndM"
     file = open(directory, "r")
     halo_mf_data = np.genfromtxt(file)
-    mass = halo_mf_data[47:99,0]
-    dndM = halo_mf_data[47:99,1]
+    mass = halo_mf_data[0:99,0]
+    dndM = halo_mf_data[0:99,1]
     file.close()
     return mass, dndM
 
@@ -76,6 +76,8 @@ if __name__ == '__main__':
     #cumul = append_joe_catalog(0.696)
     h_mass, h_dndM = make_hist(cumul, 1000)
     f = interp1d(h_mass, h_dndM)
+    print "h_max", h_mass.max(), ""
+    print "t_max", t_mass.max(), ""
     y_axis = f(t_mass)
     plot(t_mass, t_dndM, t_mass, y_axis)
     #plot(h_mass, h_dndM, t_mass, t_dndM)
