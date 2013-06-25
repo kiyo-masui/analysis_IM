@@ -141,21 +141,3 @@ def M_HI_to_21(filename, redshift, regim):
     catalog.create_group('T_b21')
     catalog['T_b21'].create_dataset('T_b21', data=HI_bright)
     catalog.close()
-
-
-if __name__ == '__main__':
-    # here is the pipeline for the joe's catalogs
-    """
-    path = "/mnt/raid-project/gmrt/mufma/h5py_catalogs/"
-    redshift = [0.042,0.086,0.130,0.220,0.267,0.316,0.416,0.468,0.523,0.636,
-                0.696,0.758,0.889,0.958,1.030,1.185,1.267,1.353,1.538,1.638,
-                1.742,1.969,2.092,2.222,2.505,2.660,2.825]
-    for list in range(1,66),range(67,77),range(78,101):
-        for num in list:
-            print "finished catalog number %d"%num
-            for red in redshift:
-                M_halo_to_M_HI(path + 'simulation%d/'%num +
-                               '%.3fhalo_catalog.hdf5'%red, f)
-                M_HI_to_21(path + 'simulation%d/'%num +
-                           '%.3fhalo_catalog.hdf5'%red, red)
-    """
