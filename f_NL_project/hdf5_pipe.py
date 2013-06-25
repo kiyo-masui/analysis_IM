@@ -7,13 +7,14 @@ JD_redshift = [0.800, 0.900, 1.000, 1.100, 1.200, 1.300, 1.400, 1.500,
                2.400, 2.500, 2.700, 3.000, 3.500, 4.000, 4.500, 5.000,
                6.000, 7.000, 8.000, 9.000, 10.000]
 index = [0,1,2,3,4,5,6,7]
-JD_bins = 512
+# Actually it is 512 but due to issues write 513
+JD_bins = 513
 JD_path = "/mnt/raid-project/gmrt/mufma/JD_h5py_catalogs/"
 JD_file = "%.3fhalo_catalog000%d.hdf5"
-group_1 = 'T_b21'
-subgroup_1 = 'T_b21'
-group_2 = 'Galaxies_number'
-subgroup_2 = 'Galaxies_number'
+JD_group_1 = 'T_b21'
+JD_subgroup_1 = 'T_b21'
+JD_group_2 = 'Galaxies_number'
+JD_subgroup_2 = 'Galaxies_number'
 JD_directory = "/mnt/raid-project/gmrt/mufma/JD_algebra_deltas_%d/"
 JD_savefile_1 = 'T_b21_%dind%.3fred.npy'
 JD_savefile_2 = 'Galaxies_%dind%.3f.npy'
@@ -42,11 +43,13 @@ if get_algebra == True:
             print "finished processing catalog %d"%nums
 
 if get_JD_algebra == True:
-    for red in redshift:
+    for red in JD_redshift:
         print "Started to work with redshift", red, "\n"
         for ind in index:
             print "Started to work with index", ind
-            ha.converter(JD_path + JD_file%(red,ind), JD_bins, JD_group,
-                         JD_subgroup, JD_directory, JD_savefile%(red,ind))
+            ha.converter(JD_path + JD_file%(red,ind), JD_bins, JD_group_1,
+                         JD_subgroup_1, JD_directory, JD_savefile_1%(ind,red))
+            ha.converter(JD_path + JD_file%(red,ind), JD_bins, JD_group_2,
+                         JD_subgroup_2, JD_directory, JD_savefile_2%(ind,red))
             print "Index ", ind, " done!"
         print "Done!", "\n"
