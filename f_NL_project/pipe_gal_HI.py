@@ -4,14 +4,14 @@ import galaxy_calc as gc
 # Initialize settings
 HI = True
 galaxy = False
-redshift = [0.900, 1.000, 1.100, 1.200, 1.300, 1.400, 1.500, 1.600,
-            1.700, 1.800, 1.900, 2.000, 2.100, 2.200, 2.300, 2.400,
-            2.500, 2.700, 3.000, 3.500, 4.000, 4.500, 5.000, 6.000,
-            7.000, 8.000, 9.000, 10.000]
+redshift = [0.800, 0.900, 1.000, 1.100, 1.200, 1.300, 1.400, 1.500,
+            1.600, 1.700, 1.800, 1.900, 2.000, 2.100, 2.200, 2.300,
+            2.400, 2.500, 2.700, 3.000, 3.500, 4.000, 4.500, 5.000,
+            6.000, 7.000, 8.000, 9.000, 10.000]
 index = [0,1,2,3,4,5,6,7]
 path = "/mnt/raid-project/gmrt/mufma/JD_h5py_catalogs/"
-print "Redshifts are:"
-print redshift
+print "\n", "Redshifts are:"
+print redshift, "\n"
 
 
 # Calculate number of galaxies
@@ -24,7 +24,7 @@ if galaxy == True:
             print "finished processing index", ind
 
 # Separation between tasks
-print 20*"#", 7*" ", 20*"#", 7*" ", 20*"#"
+print 2*"\n", 20*"#", 7*" ", 20*"#", 7*" ", 20*"#", 2*"\n"
 
 # Calculate 21 temperature brightness
 if HI == True:
