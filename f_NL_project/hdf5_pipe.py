@@ -43,6 +43,10 @@ if get_algebra == True:
 
 if get_JD_algebra == True:
     for red in redshift:
+        print "Started to work with redshift", red, "\n"
         for ind in index:
+            print "Started to work with index", ind
             ha.converter(JD_path + JD_file%(red,ind), JD_bins, JD_group,
                          JD_subgroup, JD_directory, JD_savefile%(red,ind))
+            print "Index ", ind, " done!"
+        print "Done!", "\n"
