@@ -35,8 +35,8 @@ savefile  = 'dm_%dsim%.3fred.npy'
 
 # Convert h5py catalogs to the algebra_npy files
 if get_algebra == True:
-    for list in catalogs:
-        for num in list:
+    for index_list in catalogs:
+        for num in index_list:
             for red in redshift:
                 ha.converter_halo(path + folder_file%(num,red), num_bins, group,
                              subgroup, directory, savefile%(num,red))
@@ -52,10 +52,10 @@ if get_JD_algebra == True:
         print "Length of the catalog: ", len(JD_list)
         print "Catalogs list is ready!", "\n"
         print "Started to work with 21 brightness"
-        ha.join_index_algebra(list, JD_bins, JD_group_1, JD_subgroup_1,
+        ha.join_index_algebra(JD_list, JD_bins, JD_group_1, JD_subgroup_1,
                               JD_directory, JD_savefile_1%red)
         print "Done!", "\n"
         print "Started to work with Galaxies"
-        ha.join_index_algebra(list, JD_bins, JD_group_2, JD_subgroup_2,
+        ha.join_index_algebra(JD_list, JD_bins, JD_group_2, JD_subgroup_2,
                               JD_directory, JD_savefile_2%red)
         print "Done!", 2*"\n"
