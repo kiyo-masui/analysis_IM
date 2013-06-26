@@ -49,7 +49,7 @@ if get_JD_algebra == True:
         JD_list = []
         for ind in index:
             JD_list.append(JD_path + JD_file%(red,ind))
-        print "Length of the catalog", len(JD_list)
+        print "Length of the catalog: ", len(JD_list)
         print "Catalogs list is ready!", "\n"
         print "Started to work with 21 brightness"
         ha.join_index_algebra(list, JD_bins, JD_group_1, JD_subgroup_1,
