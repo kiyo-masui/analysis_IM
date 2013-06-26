@@ -44,11 +44,18 @@ if get_algebra == True:
 
 if get_JD_algebra == True:
     for red in JD_redshift:
+        print "Starting to work with redshift", red, "\n"
         print "Started to prepare catalogs list"
         JD_list = []
         for ind in index:
             JD_list.append(JD_path + JD_file%(red,ind))
+        print "Length of the catalog", len(JD_list)
+        print "Catalogs list is ready!", "\n"
+        print "Started to work with 21 brightness"
         ha.join_index_algebra(list, JD_bins, JD_group_1, JD_subgroup_1,
                               JD_directory, JD_savefile_1%red)
+        print "Done!", "\n"
+        print "Started to work with Galaxies"
         ha.join_index_algebra(list, JD_bins, JD_group_2, JD_subgroup_2,
                               JD_directory, JD_savefile_2%red)
+        print "Done!", 2*"\n"
