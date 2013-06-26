@@ -15,9 +15,9 @@ JD_group_1 = 'T_b21'
 JD_subgroup_1 = 'T_b21'
 JD_group_2 = 'Galaxies_number'
 JD_subgroup_2 = 'Galaxies_number'
-JD_directory = "/mnt/raid-project/gmrt/mufma/JD_algebra_deltas_%d/"
-JD_savefile_1 = 'T_b21_%dind%.3fred.npy'
-JD_savefile_2 = 'Galaxies_%dind%.3f.npy'
+JD_directory = "/mnt/raid-project/gmrt/mufma/JD_algebra_binned_%d/"
+JD_savefile_1 = 'T_b21_%.3fred.npy'
+JD_savefile_2 = 'Galaxies_%.3fred.npy'
 
 # Initialize JOE settings
 get_algebra = False
@@ -38,18 +38,17 @@ if get_algebra == True:
     for list in catalogs:
         for num in list:
             for red in redshift:
-                ha.converter(path + folder_file%(num,red), num_bins, group,
+                ha.converter_halo(path + folder_file%(num,red), num_bins, group,
                              subgroup, directory, savefile%(num,red))
             print "finished processing catalog %d"%nums
 
 if get_JD_algebra == True:
     for red in JD_redshift:
-        print "Started to work with redshift", red, "\n"
+        print "Started to prepare catalogs list"
+        JD_list = []
         for ind in index:
-            print "Started to work with index", ind
-            ha.converter(JD_path + JD_file%(red,ind), JD_bins, JD_group_1,
-                         JD_subgroup_1, JD_directory, JD_savefile_1%(ind,red))
-            ha.converter(JD_path + JD_file%(red,ind), JD_bins, JD_group_2,
-                         JD_subgroup_2, JD_directory, JD_savefile_2%(ind,red))
-            print "Index ", ind, " done!"
-        print "Done!", "\n"
+            JD_list.append(JD_path + JD_file%(red,ind))
+        ha.join_index_algebra(list, JD_bins, JD_group_1, JD_subgroup_1,
+                              JD_directory, JD_savefile_1%red)
+        ha.join_index_algebra(list, JD_bins, JD_group_2, JD_subgroup_2,
+                              JD_directory, JD_savefile_2%red)
