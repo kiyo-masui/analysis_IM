@@ -90,7 +90,7 @@ def bin_map(catalog, num_bins, group, subgroup):
 def join_index_algebra(catalog_list, num_bins, group, subgroup,
                        directory, savefile):
     binned_map, info = bin_map(catalog_list[0], num_bins, group, subgroup)
-    for num in range(1,catalog_list):
+    for num in range(1,len(catalog_list)):
         binned_map = binned_map + bin_map(catalog_list[num], num_bins, group,
 subgroup)[0]
     # save data for pipeline in manager.py
