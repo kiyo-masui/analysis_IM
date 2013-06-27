@@ -26,20 +26,20 @@ def binary_reader(file_directory, header_struct, body_struct, constants,
     # it moves cursor along
     # the "opened_file" on "move_cursor.size" steps
     # the while loop works until the variable binary_info becomes False
-    list = []
+    data_list = []
     for i in range(len(reading_param)):
-        list.append([])
+        data_list.append([])
     with open(file_name, "rb") as halofile:
         header = halofile.read(record_header.size)
         binary_info = halofile.read(halo_struct.size)
         while binary_info:
             halo_info = halo_struct.unpack(binary_info)
             for index in range(len(reading_param)):
-                list[index].append(constants[const_param[index]] *
+                data_list[index].append(constants[const_param[index]] *
                                    halo_info[reading_param[index]])
             binary_info = halofile.read(halo_struct.size)
         halofile.close()
-    return list
+    return data_list
 
 
 def convert_array_to_h5py(file_name, directory_list, datasets_list, data):
