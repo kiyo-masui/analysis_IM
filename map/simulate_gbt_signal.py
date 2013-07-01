@@ -34,6 +34,7 @@ params_init = {
                'outfile_degrade': None,
                'scenario': 'str',
                'seed': -1,
+               'seed_file': '',
                'refinement': 2,
                'selection_file': None,
                'optcatalog_file': None,
@@ -77,7 +78,7 @@ class SimulateGbtSignal(object):
         outfile_meansub_temp = params['outfile_meansub']
         outfile_degrade_temp = params['outfile_degrade']
 
-        seed_list = np.loadtxt("/home/ycli/random_seeds").astype('int')
+        seed_list = np.loadtxt(params['seed_file']).astype('int')
 
         comm.barrier()
 

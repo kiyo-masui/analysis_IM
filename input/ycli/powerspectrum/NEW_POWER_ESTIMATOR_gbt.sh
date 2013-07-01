@@ -25,7 +25,7 @@ MAP_SIM="/mnt/scratch-gl/ycli/simulation_map/15hr_14/"
 #
 #NAME="15hr_ABCD_14conv_test_eric"
 
-MAP_WGZ="/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr/"
+MAP_WGZ="/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr_delta/"
 MAP_CLN="/mnt/scratch-gl/ycli/cln_result/15hr_ABCD_14conv/Emap_clean_themselves/"
 MAP_SSM="/mnt/scratch-gl/ycli/cln_result/15hr_ABCD_14conv/simmapmode_simmap_beam_%03d_subreal/"
 

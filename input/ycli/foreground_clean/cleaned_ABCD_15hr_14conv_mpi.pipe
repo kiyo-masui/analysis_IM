@@ -4,7 +4,6 @@ pipe_modules = []
 pipe_processes = 1
 
 
-from foreground_clean import pair_set_legendre
 from foreground_clean import pair_set
 
 #from quadratic_products import pwrspec_combinations
@@ -57,7 +56,7 @@ else:
 #output_folder = '15hr_ABCD_legendre_modes_%dgwj_14conv_new/'%goodmodes 
 output_folder = '15hr_ABCD_14conv/'
 #output_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
-output_root = '/mnt/scratch-gl/ycli/cln_result/'
+output_root = '/home/ycli/data/cln_result/'
 output_root += output_folder
 
 #-----------------------------------------------------------------------------

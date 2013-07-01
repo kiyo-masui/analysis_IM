@@ -13,7 +13,8 @@ from scipy import integrate
 from math import *
 from map import physical_gridding as gridding
 import copy
-import fftw3 as FFTW
+#import fftw3 as FFTW
+#import pyfftw.FFTW as FFTW
 
 # kiyo module
 from core import algebra
@@ -134,17 +135,17 @@ class BOX(object):
         oput_1 = np.zeros(self.boxshape, dtype=complex)
         iput_1.imag = 0.
         iput_1.real = self.ibox1
-        plan_1 = FFTW.Plan(iput_1, oput_1, direction='forward', flags=['measure'])
-        FFTW.execute(plan_1)
-        #oput_1 = np.fft.fftn(iput_1)
+        #plan_1 = FFTW.Plan(iput_1, oput_1, direction='forward', flags=['measure'])
+        #FFTW.execute(plan_1)
+        oput_1 = np.fft.fftn(iput_1)
 
         iput_2 = np.zeros(self.boxshape, dtype=complex)
         oput_2 = np.zeros(self.boxshape, dtype=complex)
         iput_2.imag = 0.
         iput_2.real = self.ibox2
-        plan_2 = FFTW.Plan(iput_2, oput_2, direction='forward', flags=['measure'])
-        FFTW.execute(plan_2)
-        #oput_2 = np.fft.fftn(iput_2)
+        #plan_2 = FFTW.Plan(iput_2, oput_2, direction='forward', flags=['measure'])
+        #FFTW.execute(plan_2)
+        oput_2 = np.fft.fftn(iput_2)
 
         oput_1 = np.fft.fftshift(oput_1)
         oput_2 = np.fft.fftshift(oput_2)

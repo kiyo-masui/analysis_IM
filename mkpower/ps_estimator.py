@@ -14,7 +14,6 @@ from scipy import integrate
 from math import *
 from sys import *
 import matplotlib.pyplot as plt
-import mkpower
 from mpi4py import MPI
 import os
 
@@ -258,8 +257,8 @@ class PowerSpectrumEstimator(object):
 
             imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
             #imaps_b = functions.get_mapdict(params['sim_root'], selection='raw')
-            nmaps_b = functions.get_mapdict(params['gbt_root'])
-            #nmaps_b = functions.get_mapdict(params['opt_root'], selection='selection')
+            #nmaps_b = functions.get_mapdict(params['gbt_root'])
+            nmaps_b = functions.get_mapdict(params['opt_root'], selection='selection')
 
             for i in range(params['sim_numb']):
                 #imaps_a = functions.get_mapdict(params['ssm_root']%i)
@@ -267,7 +266,8 @@ class PowerSpectrumEstimator(object):
                                   #imaps_a[1]['map;0modes'], 
                                   imaps_b[1]['%d'%i]])
                 nmap_list.append([nmaps_a[1]['weight;%dmodes'%ps_mode], 
-                                  nmaps_b[1]['weight;%dmodes'%ps_mode]])
+                                  #nmaps_b[1]['weight;%dmodes'%ps_mode]])
+                                  nmaps_b])
         elif map_set == 'tr':
             print 'prepare maps for transfer function calculation'
             nmaps_a = functions.get_mapdict(params['gbt_root'])
@@ -275,8 +275,8 @@ class PowerSpectrumEstimator(object):
             imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
             #imaps_b = functions.get_mapdict(params['sim_root'], selection='raw')
             #imaps_b = functions.get_mapdict(params['sim_root'], selection='beammeansub')
-            nmaps_b = functions.get_mapdict(params['gbt_root'])
-            #nmaps_b = functions.get_mapdict(params['opt_root'], selection='selection')
+            #nmaps_b = functions.get_mapdict(params['gbt_root'])
+            nmaps_b = functions.get_mapdict(params['opt_root'], selection='selection')
 
             for i in range(params['sim_numb']):
                 imaps_a = functions.get_mapdict(params['ssm_root']%i)
@@ -285,7 +285,8 @@ class PowerSpectrumEstimator(object):
                                   #imaps_b[1]['0']])
                                   #imaps_a[1]['map;%dmodes'%ps_mode]])
                 nmap_list.append([nmaps_a[1]['weight;%dmodes'%ps_mode], 
-                                  nmaps_b[1]['weight;%dmodes'%ps_mode]])
+                                  #nmaps_b[1]['weight;%dmodes'%ps_mode]])
+                                  nmaps_b])
         elif map_set == 'ps' and params['ps_type'] == 'cros':
             imaps_a = '/mnt/scratch-gl/ycli/maps/pks_27n30_10by7/'\
                     + 'test_allbeams_27n30_10by7_clean_map_I_1315.npy'
@@ -349,7 +350,8 @@ class PowerSpectrumEstimator(object):
             print 'prepare maps of mock catalog for 2df power sepctrum short noise'
             imap = functions.get_mapdict(params['opt_root'], selection='mock')
             nmap = functions.get_mapdict(params['opt_root'], selection='sele')
-            for i in range(len(imap[0])):
+            #for i in range(len(imap[0])):
+            for i in range(100):
                 imap_list.append([imap[1]['%d'%i],imap[1]['%d'%i]])
                 nmap_list.append([nmap, nmap])
         elif map_set == 'sn' and params['ps_type'] == 'cros':
@@ -497,9 +499,3 @@ class PowerSpectrumEstimator(object):
 
 if __name__ == '__main__':
     import sys
-    if len(sys.argv)==2 :
-        PowerSpectrumMaker(str(sys.argv[1])).execute()
-    elif len(sys.argv)>2 :
-        print 'Maximun one argument, a parameter file name.'
-    else :
-        PowerSpectrumMaker().execute()
