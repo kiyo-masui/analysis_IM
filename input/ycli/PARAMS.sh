@@ -47,3 +47,5 @@ export YICHAO_WORK_PS="/home/ycli/data/ps_result/"
 # -----------------------------------------------------------
 # For Parkes
 export BEAMS="None"
+export YICHAO_WORK_PKS=""
+export PARKES_DATA=""

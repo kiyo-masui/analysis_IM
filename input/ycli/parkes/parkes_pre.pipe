@@ -5,8 +5,8 @@ import os
 #from core import dir_data
 import scipy as sp
 
-base_dir = "/mnt/scratch-gl/ycli/map_result/"
-data_dir = "/mnt/raid-project/gmrt/ycli/parkes/"
+base_dir = os.getenv('YICHAO_WORK_PKS')
+data_dir = os.getenv('PARKES_DATA')
 
 ''' >> Data Direction << '''
 ''' 2012-10-24 '''
@@ -40,28 +40,28 @@ data_dir = "/mnt/raid-project/gmrt/ycli/parkes/"
 #prefix = 'nobpcal_beamcal_'
 
 ''' 2012-10-27 '''
-parkes_session = 'RAWDATA_SDF/20121027/'
-parkesfiles = [] 
-listfile = os.listdir(data_dir+parkes_session)
-listfile.sort(key=lambda x:int(x[11:15]))
-for file in listfile:
-    if file.split('.')[-1] == 'sdfits':
-        parkesfiles.append(file)
-        print file
-outputname = 'parkes_2012_10_27_P641'
-file_middles = tuple(['parkes_2012_10_27_P641',])
-#prefix = 'average_beamcal_'
-prefix = ''
-
-''' 2012-10-28 '''
-#parkes_session = 'CALDATA_SDF_beamcal/1028/'
+#parkes_session = 'RAWDATA_SDF/20121027/'
 #parkesfiles = [] 
-#for file in os.listdir(data_dir + parkes_session):
+#listfile = os.listdir(data_dir+parkes_session)
+#listfile.sort(key=lambda x:int(x[11:15]))
+#for file in listfile:
 #    if file.split('.')[-1] == 'sdfits':
 #        parkesfiles.append(file)
-#outputname = 'parkes_2012_10_28_P641'
-#file_middles = tuple(['parkes_2012_10_28_P641',])
-#prefix = 'nobpcal_beamcal_'
+#        print file
+#outputname = 'parkes_2012_10_27_P641'
+#file_middles = tuple(['parkes_2012_10_27_P641',])
+##prefix = 'average_beamcal_'
+#prefix = ''
+
+''' 2012-10-28 '''
+parkes_session = '/RAWDATA_SDF/20121028/'
+parkesfiles = [] 
+for file in os.listdir(data_dir + parkes_session):
+    if file.split('.')[-1] == 'sdfits':
+        parkesfiles.append(file)
+outputname = 'parkes_2012_10_28_P641'
+file_middles = tuple(['parkes_2012_10_28_P641',])
+prefix = 'nobpcal_nobmcal_'
 
 # Maximum number of processes to use.
 pipe_processes = 12
