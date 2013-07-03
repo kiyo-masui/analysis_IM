@@ -169,8 +169,8 @@ bs_scans = ()
 bs_IFs = ()
 
 # The two wings of the band pass and the two resonances.
-bs_band_stops = [(690e6, 702e6), (796e6, 800e6), (815e6, 820e6), 
-                 (898e6, 910e6)]
+bs_band_stops = [(690e6, 703e6), (794e6, 800e6), (814e6, 821e6), 
+                 (897e6, 910e6)]
 
 # split_bands
 sb_input_root = bs_output_root
