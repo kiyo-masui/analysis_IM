@@ -22,15 +22,15 @@ from cal import beam_fit
 data_root = os.getenv('GBT_DATA') + 'GBT12A_418/'
 end = '.fits'
 
-#source = '3C147'
+source = '3C147'
 #source = '3C295'
-source = '3C286'
+#source = '3C286'
 
 # These files we will use to calibrate.
 # Slow scans.
-#cal_files = ['22_3C147_track_' + str(ii) for ii in range(27, 35)]
+cal_files = ['22_3C147_track_' + str(ii) for ii in range(27, 35)]
 #cal_files = ['22_3C295_track_' + str(ii) for ii in range(59, 67)]
-cal_files = ['21_3C286_track_' + str(ii) for ii in range(18, 26)]
+#cal_files = ['21_3C286_track_' + str(ii) for ii in range(18, 26)]
 
 # The following two loops is a standard set of things we do to our raw data
 # when it comes from the telescope.  Our data format is roughly SDfits.
@@ -97,4 +97,4 @@ plt.ylabel(r"Elevation (degrees)")
 
 
 # Other usefull plots, if you have two beam fits you want to compare.
-pol_beam.compare_beam_maps(beam_map_295[35], beam_map_147[35], 1)
+pol_beam.compare_beam_maps(beam_map_295[35], beam_map_147[35], 1.)

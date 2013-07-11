@@ -25,8 +25,9 @@ KLOW = 0.12
 KHIGH = 0.30
 GAUSS_ERROR = True
 DECORR = True
-# Jeffery's prior has uncontrolled divergences.
-JEFFREY_PRIOR = False
+# Flags for which prior to use.
+FORE_FLAT =  False
+OMEGA_FLAT = False
 
 data_file_root = '/cita/h/home-2/eswitzer/code/analysis_IM/'
 
@@ -123,11 +124,10 @@ def get_likelihood_omega(fname1, fname2, fname_sim1, fname_sim2=None):
     # Calculate cross power pdf.
     p_cross_int_r = p_cross_given_auto_int_r(omega_sq, 1.)
     # Calculate prior.
-    if JEFFREY_PRIOR:
-        prior = 1/omega
+    if OMEGA_FLAT:
+        prior = np.ones(len(omega))  # Flat prior on Omega, 1/sqrt on power.
     else:
         prior = omega  # Flat prior on power.
-        #prior = np.ones(len(omega))  # Flat prior on Omega, 1/sqrt on power.
     # Construct total likelihood.
     likelihood = p_auto_int_f_1 * p_auto_int_f_2 * p_cross_int_r * prior
     likelihood_auto_1 = p_auto_int_f_1 * prior
@@ -166,11 +166,10 @@ def signal_likelihood_k_bin(sim_pow, auto_pow1, auto_err1, auto_pow2,
     p_auto_int_f_1 = p_auto_given_signal_int_f(signal_pow, auto_pow1, auto_err1)
     p_auto_int_f_2 = p_auto_given_signal_int_f(signal_pow, auto_pow2, auto_err2)
     # Calculate prior.
-    if JEFFREY_PRIOR:
-        prior = 1./signal_pow
+    if OMEGA_FLAT:
+        prior = 1. /  np.sqrt(signal_pow)  # Flat prior on Omega.
     else:
         prior = np.ones(len(signal_pow))  # Flat prior on power.
-        #prior = 1. /  np.sqrt(signal_pow)  # Flat prior on Omega.
     # Combine.
     likelihood = p_cross_int_r * p_auto_int_f_1 * p_auto_int_f_2 * prior
     likelihood = normalize_pdf(signal_pow, likelihood)
@@ -264,12 +263,12 @@ def p_auto_given_signal_int_f(signal_pow, auto_mean, auto_err):
     Function is unnormalized but has the right dependance on `signal_pow`.
     """
 
-    if JEFFREY_PRIOR:
+    if not FORE_FLAT:
         # See Apr 29 of Kiyo's notes.
         # This prior doesn't work since the integral diverges at f->0.
         # Get the integration domain.
-        min_f = auto_err / 50.
-        max_f = auto_mean + 3 * auto_err
+        min_f = auto_err / 10.
+        max_f = auto_mean + 4 * auto_err
         forground_pow = np.arange(min_f, max_f, min_f)
         # Simpson's rule integration requires an even number of samples.
         if not (len(forground_pow) % 2):
@@ -283,10 +282,13 @@ def p_auto_given_signal_int_f(signal_pow, auto_mean, auto_err):
         else:
             integrand = stats.t.pdf((integrand - auto_mean) / auto_err, NDEF)
         # Add the prior.
-        integrand /= forground_pow
+        print auto_mean, auto_err
+        #integrand[forground_pow > 10] = 0
+        integrand *= 1. / (1 + (forground_pow / auto_err / 2)**2)
+        #integrand *= 1. / (forground_pow)**0.9
+        #integrand[forground_pow < CMEAN**2 /50] =0
         # Integrate.
         p_auto = integrate.simps(integrand, dx=min_f, axis=-1)
-        #print p_auto[:10]
     else:
         # See Feb 26, 2013 of Kiyo's notes for derivation.
         if GAUSS_ERROR:
@@ -517,6 +519,8 @@ interval = get_conf_interval(omega, likelihood, .68)
 print "68% confidence interval:", interval
 print "or:", (interval[0] + interval[1])/2, "\pm", (interval[1] - interval[0])/2
 print "or:", median, "+", interval[1] - median, "-", median - interval[0]
+interval = get_conf_interval(omega, likelihood, .95)
+print "95% confidence interval:", interval
 # Log scale.
 m = omega
 lomega = np.log(omega)
