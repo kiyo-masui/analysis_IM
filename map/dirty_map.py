@@ -430,8 +430,8 @@ class DirtyMapMaker(object):
                     if thread_N is None:
                         return
                     else:
-                        thread_N.Noise.finalize(frequency_correlations=
-                                     not self.uncorrelated_channels,
+                        thread_N.Noise.finalize(frequency_correlations=(
+                                     not self.uncorrelated_channels),
                                                preserve_matrices=False)
                         if self.feedback > 1:
                             sys.stdout.write('.')
@@ -499,7 +499,11 @@ class DirtyMapMaker(object):
                 index_list,junk = split_elems(chan_index_list,self.nproc)
                 index_list = index_list[self.rank]
                 # Allocate hdf5 file
-                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename+'_mpi_uncorr_proc', 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_ra, self.n_dec), dtype)
+                if self.rank == 0:
+                    print self.n_chan
+                    print self.n_ra
+                    print self.n_dec
+                data_offset, file_size = allocate_hdf5_dataset('mpi_uncorr_proc_'+self.cov_filename, 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_ra, self.n_dec), dtype)
             else:
                 ra_index_list = range(self.n_ra)
                 # cross product = A x B = (a,b) for all a in A, for all b in B
@@ -512,7 +516,7 @@ class DirtyMapMaker(object):
                 # total matrix a process has.
                 f_ra_start_ind = start_list[self.rank]
                 # Allocate hdf5 file
-                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename+'_mpi_corr_proc', 'inv_cov', (self.n_chan*self.n_ra, self.n_dec,                                                                self.n_chan, self.n_ra, self.n_dec), dtype)
+                data_offset, file_size = allocate_hdf5_dataset('mpi_corr_proc_'+self.cov_filename, 'inv_cov', (self.n_chan*self.n_ra, self.n_dec,                                                                self.n_chan, self.n_ra, self.n_dec), dtype)
             # Wait for file to be written before continuing.
             comm.Barrier()
             # Since the DataSets are split evenly over the processes,
@@ -538,10 +542,15 @@ class DirtyMapMaker(object):
                         thread_cov_inv_chunk = sp.zeros((len(index_list),
                                                         self.n_ra, self.n_dec,
                                                         self.n_ra, self.n_dec),                                                                                                                             dtype=float)
+                    #for thread_f_ind in index_list:
                     for thread_f_ind in index_list:
                     #for ii in xrange(len(index_list)):
                         thread_cov_inv_block = sp.zeros((self.n_ra, self.n_dec,
                                     self.n_ra, self.n_dec), dtype=float)
+                        if run == 0 and start_file_ind == 0:
+                            thread_cov_inv_block.flat[::self.n_ra * self.n_dec + 1] += \
+                                                      1.0 / T_large**2
+
                         for thread_D in data_set_list: 
                             thread_D.Pointing.noise_channel_to_map(
                                   thread_D.Noise, thread_f_ind, thread_cov_inv_block)
@@ -553,13 +562,14 @@ class DirtyMapMaker(object):
                             #cov_inv[thread_f_ind,...] = thread_cov_inv_block
                             # Add stuff to diagonal now since it's not
                             # very fun later.
-                            thread_cov_inv_block.flat \
-                                    [::self.n_ra * self.n_dec + 1] += \
-                                    1.0 / T_large**2
+                            #thread_cov_inv_block.flat \
+                            #        [::self.n_ra * self.n_dec + 1] += \
+                            #        1.0 / T_large**2
                         #else:
                             # Not the first time through. Just add in vals.
                             #cov_inv[thread_f_ind,...] += thread_cov_inv_block
-                        thread_cov_inv_chunk[thread_f_ind,...] += thread_cov_inv_block
+                        #thread_cov_inv_chunk[thread_f_ind,...] += thread_cov_inv_block
+                        thread_cov_inv_chunk[thread_f_ind-index_list[0],...] += thread_cov_inv_block
                         if self.feedback > 1:
                             print thread_f_ind,
                             sys.stdout.flush()
@@ -617,7 +627,7 @@ class DirtyMapMaker(object):
             # Only dealing with correlated channels now.
             if not self.uncorrelated_channels:
                 #total_shape = (self.n_chan*self.n_ra, self.n_dec,
-                               self.n_chan, self.n_ra, self.n_dec)
+                             #  self.n_chan, self.n_ra, self.n_dec)
                 #start_ind = (f_ra_start_ind,0,0,0,0)
                 lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename+'_mpi_corr_proc', data_offset + dsize*f_ra_start_ind*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
                 # NOTE: using 'float' is not supprted in the saving because
@@ -633,7 +643,7 @@ class DirtyMapMaker(object):
 
             if self.uncorrelated_channels:
                 #total_shape = (self.n_chan, self.n_ra,
-                               self.n_dec, self.n_ra, self.n_dec)
+                             #  self.n_dec, self.n_ra, self.n_dec)
                 #start_ind = (index_list[0],0,0,0,0)
                 lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename+'_mpi_uncorr_proc', data_offset + dsize*index_list[0]*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
                 # NOTE: using 'float' is not supprted in the saving because
