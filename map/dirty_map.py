@@ -503,7 +503,7 @@ class DirtyMapMaker(object):
                     print self.n_chan
                     print self.n_ra
                     print self.n_dec
-                data_offset, file_size = allocate_hdf5_dataset('mpi_uncorr_proc_'+self.cov_filename, 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_ra, self.n_dec), dtype)
+                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename[0:-4]+ 'mpi_uncorr_proc_' + '.npy', 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_ra, self.n_dec), dtype)
             else:
                 ra_index_list = range(self.n_ra)
                 # cross product = A x B = (a,b) for all a in A, for all b in B
@@ -516,7 +516,7 @@ class DirtyMapMaker(object):
                 # total matrix a process has.
                 f_ra_start_ind = start_list[self.rank]
                 # Allocate hdf5 file
-                data_offset, file_size = allocate_hdf5_dataset('mpi_corr_proc_'+self.cov_filename, 'inv_cov', (self.n_chan*self.n_ra, self.n_dec,                                                                self.n_chan, self.n_ra, self.n_dec), dtype)
+                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename[0:-4] + 'mpi_corr_proc_' + '.npy', 'inv_cov', (self.n_chan*self.n_ra, self.n_dec,                                                                self.n_chan, self.n_ra, self.n_dec), dtype)
             # Wait for file to be written before continuing.
             comm.Barrier()
             # Since the DataSets are split evenly over the processes,
@@ -629,7 +629,7 @@ class DirtyMapMaker(object):
                 #total_shape = (self.n_chan*self.n_ra, self.n_dec,
                              #  self.n_chan, self.n_ra, self.n_dec)
                 #start_ind = (f_ra_start_ind,0,0,0,0)
-                lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename+'_mpi_corr_proc', data_offset + dsize*f_ra_start_ind*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
+                lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename[0:-4] + '_mpi_corr_proc' + '.npy', data_offset + dsize*f_ra_start_ind*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
@@ -645,7 +645,7 @@ class DirtyMapMaker(object):
                 #total_shape = (self.n_chan, self.n_ra,
                              #  self.n_dec, self.n_ra, self.n_dec)
                 #start_ind = (index_list[0],0,0,0,0)
-                lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename+'_mpi_uncorr_proc', data_offset + dsize*index_list[0]*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
+                lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename[0:-4] + '_mpi_uncorr_proc' + '.npy', data_offset + dsize*index_list[0]*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
