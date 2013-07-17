@@ -135,15 +135,15 @@ pipe_modules = []
 
 from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
 pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
-from map import clean_map
+#from map import clean_map
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
-pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
-pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
-pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
 
 
 #### Parameters for the various modules. ####
@@ -414,8 +414,8 @@ dmA_output_root = map_base + 'secA_' + map_prefix
 dmA_scans = ()
 dmA_IFs = ()
 
-dmA_polarizations = ('I','Q','U','V')
-#dmA_polarizations = ('V',)
+#dmA_polarizations = ('I','Q','U','V')
+dmA_polarizations = ('U',)
 dmA_field_centre = map_centre
 dmA_pixel_spacing = map_spacing
 dmA_map_shape = map_shape

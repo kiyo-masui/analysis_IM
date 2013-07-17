@@ -83,7 +83,7 @@ prefix = ''
 map_prefix = '' + field + '_' + '41-18_avg_fdgp_new' + '_'
 
 # Maximum number of processes to use.
-pipe_processes = 2
+pipe_processes = 1
 
 
 ####  List of modules to execute.  ####
@@ -138,18 +138,18 @@ pipe_modules = []
 #from time_stream import reflag
 #pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
 
-from noise import measure_noise
-pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
+#from noise import measure_noise
+#pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
-#from map import dirty_map
+from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
-#from map import clean_map
+from map import clean_map
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
 
@@ -303,8 +303,8 @@ dm_output_root = map_base + 'fir_' + map_prefix
 dm_scans = ()
 dm_IFs = ()
 
-dm_polarizations = ('I','Q','U','V')
-#dm_polarizations = ('V',)
+#dm_polarizations = ('I','Q','U','V')
+dm_polarizations = ('U',)
 dm_field_centre = map_centre
 dm_pixel_spacing = map0_spacing
 dm_map_shape = map0_shape
