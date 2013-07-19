@@ -18,6 +18,7 @@ import numpy as np
 import shelve
 import random
 import copy
+import ephem
 from core import algebra
 from core import constants as cc
 from utils import binning
@@ -128,6 +129,10 @@ def bin_catalog_file(filename, freq_axis, ra_axis, dec_axis,
     # argument here! skiprows is identical
     catalog = np.genfromtxt(filename, dtype=ndtype, skiprows=skip_header)
 
+    convert_B1950_to_J2000 = np.vectorize(self.convert_B1950_to_J2000)
+    catalog['RA'], catalog['Dec'] = convert_B1950_to_J2000(catalog['RA'], 
+                                                           catalog['Dec'])
+
     catalog['RA']  = catalog['RA']*180./np.pi
     catalog['Dec'] = catalog['Dec']*180./np.pi
     catalog['z']   = cc.freq_21cm_MHz * 1.e6 / (1 + catalog['z'])
@@ -155,17 +160,32 @@ def bin_catalog_file(filename, freq_axis, ra_axis, dec_axis,
                                 debug=debug, get_bias=True)
 
 def convert_B1950_to_J2000(ra, dec, degree_in=False, degree_out=True):
-    if degree_in:
-        ra = ra*np.pi/180.
-        dec = dec*np.pi/180.
-    ra2000 = ra + 0.640265 + 0.27836 * np.sin(ra) * np.tan(dec)
-    dec2000 = dec + 0.27836 * np.cos(ra)
+    if not degree_in:
+        ra = ra*180./np.pi
+        dec = dec*180./np.pi
+    ra /= 15. # in unit of hour
+    coor = ephem.Equatorial("%f"%ra, "%f"%dec, epoch=ephem.B1950)
+    coor = ephem.Equatorial(coor, epoch=ephem.J2000)
+
+    ra2000 = coor.ra
+    dec2000 = coor.dec
 
     if degree_out:
         ra2000 = ra2000*180./np.pi
         dec2000 = dec2000*180./np.pi
 
     return ra2000, dec2000
+    #if degree_in:
+    #    ra = ra*np.pi/180.
+    #    dec = dec*np.pi/180.
+    #ra2000 = ra + 0.640265 + 0.27836 * np.sin(ra) * np.tan(dec)
+    #dec2000 = dec + 0.27836 * np.cos(ra)
+
+    #if degree_out:
+    #    ra2000 = ra2000*180./np.pi
+    #    dec2000 = dec2000*180./np.pi
+
+    #return ra2000, dec2000
 
 bin2dfparams_init = {
         "infile_data": "/Users/ycli/DATA/2df/catalogue/real_catalogue_2df.out",
