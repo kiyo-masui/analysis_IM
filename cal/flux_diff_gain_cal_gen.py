@@ -67,6 +67,8 @@ class MuellerGen(object) :
         RM = self.RM
         wavelength = 300.0/freq_val[f]
         Phi = RM*wavelength*wavelength
+        BW = 0*180./sp.pi
+        JtoK = 8*1380.648*BW**2/(sp.pi*wavelength**2)
 #        Phi[:] = 0
 #        print Phi
 #        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*2 
