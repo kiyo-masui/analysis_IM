@@ -133,8 +133,8 @@ def bin_catalog_file(filename, freq_axis, ra_axis, dec_axis,
     catalog['RA'], catalog['Dec'] = convert_B1950_to_J2000(catalog['RA'], 
                                                            catalog['Dec'])
 
-    catalog['RA']  = catalog['RA']*180./np.pi
-    catalog['Dec'] = catalog['Dec']*180./np.pi
+    #catalog['RA']  = catalog['RA']*180./np.pi
+    #catalog['Dec'] = catalog['Dec']*180./np.pi
     catalog['z']   = cc.freq_21cm_MHz * 1.e6 / (1 + catalog['z'])
 
     # change the RA range to -180 ~ 180

@@ -63,12 +63,12 @@ def plot_1d_power_spectrum_opt_multi(file_root, file_name, ps_type,
     k_paper_cole, power_paper_cole, power_err_paper_cole = \
         ps_summary.load_2df_ps_from_paper('Cole')
     k_paper, power_paper, power_err_paper = ps_summary.load_2df_ps_from_paper()
-    plt.errorbar(k_paper, power_paper, power_err_paper, 
+    plt.errorbar(k_paper, power_paper*1.26, power_err_paper, 
         fmt='bo', mec='b', capsize=2.5, elinewidth=1, markersize=5,
-        label='Percival et. al 2001 ')
-    plt.errorbar(k_paper_cole, power_paper_cole, power_err_paper_cole, 
+        label='Percival et. al 2001 x 1.26')
+    plt.errorbar(k_paper_cole, power_paper_cole*1.26, power_err_paper_cole, 
         fmt='go', mec='g', capsize=2.5, elinewidth=1, markersize=5,
-        label='Cole et. al 2005 ')
+        label='Cole et. al 2005 x 1.26')
 
 
     for name in file_name:
@@ -497,9 +497,8 @@ def image_box_2d(x_list, y_list, plot_list, n_row=1, n_col=None, title_list=None
 if __name__=='__main__':
     
     si_root = "/Users/ycli/DATA/ps_result/test_ideal_2df_ps/2df_si_2dpow"
-    plot_1d_power_spectrum_sim(si_root)
-
-    exit()
+    #plot_1d_power_spectrum_sim(si_root)
+    #exit()
 
     # -----------------------------------------------------------------------
     file_root = "/Users/ycli/DATA/ps_result/"
@@ -508,10 +507,12 @@ if __name__=='__main__':
                       #"FULL_2df_ps_selection_submean",
                       #"FULL_2df_ps_separable_submean",
                       #"FULL_2df_ps_separable_100mock",
-                      "FULL_2df_ps_selection_100mock",
-                      "FULL_2df_ps_selection_1000mock",
-                      "FULL_2df_ps_selection_10000mock",
+                      #"FULL_2df_ps_selection_100mock",
+                      #"FULL_2df_ps_selection_1000mock",
+                      #"FULL_2df_ps_selection_10000mock",
+                      #"FULL_PHY_2df_ps",
                       "FULL_2df_ps",
+                      #"FULL_2df_ps",
                       #"FULL_2df_ps_selection_submean_oneseed",
                       #"29RA_2df_ps_selection_submean",
                       #"29RA_2df_ps_separable_submean",
@@ -528,11 +529,11 @@ if __name__=='__main__':
     file_name_list = [
                       "PKS_cros_ps",
                       ]
-    plot_1d_power_spectrum_opt_multi(file_root, file_name_list, 
-                                     ps_type = 'cros',
-                                     save_name ='2df', 
-                                     positive_only = True)
-    exit()
+    #plot_1d_power_spectrum_opt_multi(file_root, file_name_list, 
+    #                                 ps_type = 'cros',
+    #                                 save_name ='2df', 
+    #                                 positive_only = False)
+    #exit()
 
     # -----------------------------------------------------------------------
 
@@ -541,8 +542,8 @@ if __name__=='__main__':
     #filename = '15hr_II_14conv_auto_ps_15hour_%dmode'%mode
     #filename = '15hr_IE_14conv_auto_ps_15hour_%dmode'%mode
     #filename = '1hr_IE_14conv_auto_ps_01hour_%dmode'%mode
-    #filename = '15hr_ABCD_14conv_auto_ps_%dmode'%mode
-    filename = '15hr_ABCD_14conv_test_me_auto_ps_%dmode'%mode
+    filename = '15hr_ABCD_14conv_auto_ps_%dmode'%mode
+    #filename = '15hr_ABCD_14conv_test_me_auto_ps_%dmode'%mode
     #filename = '15hr_ABCD_14conv_test_eric_auto_ps_%dmode'%mode
 
     result_root = '/Users/ycli/DATA/ps_result/'\
