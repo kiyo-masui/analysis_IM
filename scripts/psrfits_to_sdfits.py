@@ -1122,7 +1122,8 @@ params_init_manager = {
                       "error_file" : "",
                       "rsync_file" : "",
                       "nprocesses": 1,
-                      "dry_run" : False
+                      "dry_run" : False,
+                      "skip_quality" : False
                       }
 
 class DataManager(object) :
@@ -1292,7 +1293,7 @@ class DataManager(object) :
                             checked_out_fname))
                     else :
                         files_to_check.append(file_middle)
-            if len(files_to_check) != 0 :
+            if len(files_to_check) != 0 and not params["skip_quality"]:
                 # Build up input parameters for DataChecker.
                 checker_params = {
                                   "output_end" : ".pdf",
