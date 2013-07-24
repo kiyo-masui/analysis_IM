@@ -1839,4 +1839,17 @@ def scaled_inv(mat):
     out_mat = scal[:,None] * out_mat * scal[None,:]
     return out_mat
 
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) == 2:
+        par_file = sys.argv[1]
+        nproc = 1
+        DirtyMapMaker(par_file).execute(nproc)
+    elif len(sys.argv) == 3:
+        par_file = sys.argv[1]
+        nproc = int(sys.argv[2])
+        DirtyMapMaker(par_file).execute(nproc)
+    else:
+        print "Usage: `python map/dirty_map.py parameter_file [num_threads]"
+
 
