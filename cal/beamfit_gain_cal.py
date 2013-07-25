@@ -259,55 +259,60 @@ n_chan = len(freq)
 for i in range(0,20):
     f_ind = i*n_chan/20.
     plt.figure()
-    color_map=1
-    spec_beam_map = beam_map[f_ind,...]
-    n_pol = spec_beam_map.shape[0]
-    n_side = spec_beam_map.shape[1]
-    norm_x = spec_beam_map[0,n_side//2,n_side//2]
-    norm_y = spec_beam_map[3,n_side//2,n_side//2]
+#    color_map=1
+#    spec_beam_map = beam_map[f_ind,...]
+#    n_pol = spec_beam_map.shape[0]
+#    n_side = spec_beam_map.shape[1]
+#    norm_x = spec_beam_map[0,n_side//2,n_side//2]
+#    norm_y = spec_beam_map[3,n_side//2,n_side//2]
 #    print np.where(np.isnan(norm_x))[0],np.where(np.isinf(norm_x))[0],np.where(norm_x==0)[0]
 #    print np.where(np.isnan(norm_y))[0],np.where(np.isinf(norm_y))[0],np.where(norm_y==0)[0]
-    badx = 0
-    bady = 0
-    if norm_x==0:
-        if norm_y==0:
-            norm_x =1.
-        else:
-            norm_x = norm_y 
-        print 'XX Normalization failed'
-        badx = 1
-    if norm_y==0:
-        if norm_x==0:
-            norm_y = 1.
-        else:
-            norm_y = norm_x
-        bady = 1
-        print 'YY Normalization failed'
-    norm_cross = np.sqrt(norm_x*norm_y)
-    spec_beam_map[0] /=norm_x
-    spec_beam_map[3] /=norm_y
-    spec_beam_map[[1,2]]/=norm_cross
-    neg = spec_beam_map<0
-    spec_beam_map = abs(spec_beam_map)**color_map
-    spec_beam_map.shape = (n_pol*n_side,n_side)
+#    badx = 0
+#    bady = 0
+#    if norm_x==0:
+#        if norm_y==0:
+#            norm_x =1.
+#        else:
+#            norm_x = norm_y 
+#        print 'XX Normalization failed'
+#        badx = 1
+#    if norm_y==0:
+#        if norm_x==0:
+#            norm_y = 1.
+#        else:
+#            norm_y = norm_x
+#        bady = 1
+#        print 'YY Normalization failed'
+#    norm_cross = np.sqrt(norm_x*norm_y)
+#    spec_beam_map[0] /=norm_x
+#    spec_beam_map[3] /=norm_y
+#    spec_beam_map[[1,2]]/=norm_cross
+#    neg = spec_beam_map<0
+#    spec_beam_map = abs(spec_beam_map)**color_map
+#    spec_beam_map.shape = (n_pol*n_side,n_side)
 #    spec_beam_map.shape = (n_pol*1.,1.)
-    plt.imshow(spec_beam_map.T)
+#    plt.imshow(spec_beam_map.T)
 #    pol_beam.plot_beam_map(beam_map[f_ind,...],color_map=0.5)
-    cbar = plt.colorbar()
-    if badx==0:
-        if bady==0:           
-           cbar.set_label(r"Beam Center Normalized Intensity")
-        elif bady==0:
-           cbar.set_label(r"Beam Center Normalized Intensity (Y-norm failed)")
-    elif badx==1:
-        if bady==0:
-           cbar.set_label(r"Beam Center Normalized Intensity (X-norm failed)")
-        elif bady==1:
-           cbar.set_label(r"Beam Center Un-Normalized Intensity")
-    plt.xlabel(r"XX'XY'YX'YY, Azimuth")
-    plt.ylabel(r"Elevation")
+#    cbar = plt.colorbar()
+#    if badx==0:
+#        if bady==0:           
+#           cbar.set_label(r"Beam Center Normalized Intensity")
+#        elif bady==0:
+#           cbar.set_label(r"Beam Center Normalized Intensity (Y-norm failed)")
+#    elif badx==1:
+#        if bady==0:
+#           cbar.set_label(r"Beam Center Normalized Intensity (X-norm failed)")
+#        elif bady==1:
+#           cbar.set_label(r"Beam Center Un-Normalized Intensity")
+#    plt.xlabel(r"XX'XY'YX'YY, Azimuth")
+#    plt.ylabel(r"Elevation")
 #    plt.xlabel(r"XX'XY'YX'YY, Azimuth (degrees)")
 #    plt.ylabel(r"Elevation (degrees)")
+    pol_beam.plot_beam_map(beam_map[f_ind,...],color_map=0.5,side=1.,normalize='max03',rotate='XXYYtoIQ')
+    cbar = plt.colorbar()
+    cbar.set_label(r"Root Intensity (Normalized to I beam center with Sign)")
+    plt.xlabel(r"IQUV, Azimuth (degrees)")
+    plt.ylabel(r"Elevation (degrees)")
     plt.title("Beam Patterns for %0.1f MHz" %freq[f_ind])
     raw_title = source+'_'+str(int(freq[f_ind]))+'_MHz_beam_pattern'
     plt.savefig(raw_title,dpi=300)
