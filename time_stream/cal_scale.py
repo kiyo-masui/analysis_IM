@@ -21,7 +21,8 @@ class CalScale(base_single.BaseSingle) :
                    'scale_freq_average' : False,
                    'subtract_time_median' : False,
                    'scale_freq_average_mod' : False,
-                   'rotate_to_cal_phase' : False
+                   'rotate_to_cal_phase' : False,
+                   'invert_cal' : False,
                    }
 
     def action(self, Data):
@@ -29,14 +30,15 @@ class CalScale(base_single.BaseSingle) :
                      self.params['scale_freq_average'], 
                      self.params['subtract_time_median'],
                      self.params['scale_freq_average_mod'],
-                     self.params['rotate_to_cal_phase']
+                     self.params['rotate_to_cal_phase'],
+                     self.params['invert_cal']
                      )
         Data.add_history('Converted to units of noise cal temperture.')
         return Data
 
 
 def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False,
-                 scale_f_ave_mod=False, rotate=False) :
+                 scale_f_ave_mod=False, rotate=False,invert=False) :
     """Puts all data in units of the cal temperature.
     
     Data is put into units of the cal temperature, thus removing dependence on
@@ -55,6 +57,9 @@ def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False,
     
     on_ind = 0
     off_ind = 1
+    if invert:
+        on_ind = 1
+        off_ind = 0
     if (Data.field['CAL'][on_ind] != 'T' or
         Data.field['CAL'][off_ind] != 'F') :
             raise ce.DataError('Cal states not in expected order.')
