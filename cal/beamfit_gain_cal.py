@@ -12,7 +12,7 @@ import matplotlib.animation as animation
 
 from core import fitsGBT, dir_data
 from time_stream import rotate_pol, cal_scale, flag_data, rebin_freq
-from time_stream import rebin_time, combine_cal
+from time_stream import rebin_time, combine_cal, stitch_windows_crude
 from map import pol_beam
 from utils import misc
 import cal.source
@@ -127,35 +127,49 @@ def calcGain(OnData,OffData,file_num,freq_len,src,beamwidth):
 #    np.savetxt(out_path,p_val_out,delimiter = ' ')
     return p_val_out,JtoK
 
-data_root = '/home/scratch/kmasui/converted_fits/GBT12A_418/'
-end = '.fits'
+#data_root = '/home/scratch/kmasui/converted_fits/GBT12A_418/'
+#end = '.fits'
+end = '.raw.acs.fits'
 
 source = '3C295'
 gain_source = '3C295'
 
 #beam_cal_files = ['21_3C286_track_'+str(ii) for ii in range(18,26)]
-beam_cal_files = ['22_3C295_track_'+str(ii) for ii in range(59,67)]
+#beam_cal_files = ['22_3C295_track_'+str(ii) for ii in range(59,67)]
 
-gain_cal_files = ['22_3C295_onoff_76-77','22_3C295_onoff_78-79']
+#gain_cal_files = ['22_3C295_onoff_76-77','22_3C295_onoff_78-79']
 #gain_cal_files = ['22_3C147_onoff_50-51','22_3C147_onoff_52-53','22_3C147_onoff_6-7','22_3C147_onoff_8-9']
 
+IFs = arange(0,8)
+#IFs = [0,]
+#GUPPI=True
+GUPPI=False
 beam_cal_Blocks = []
 for fname in beam_cal_files:
     # Read.
     fpath = data_root + fname + end
     Reader = fitsGBT.Reader(fpath)
-    Data = Reader.read(0,0)
-    beam_cal_Blocks.append(Data)
+    if len(IFs>1):
+        single_data = []
+        for i in range(IFs[0],IFs[-1]+1):
+            Data = Reader.read(0,i)
+            single_data.append(Data)
+        stitch_windows_crude.stitch(single_data) 
+        beam_cal_Blocks.append(single_data)
+    elif len(IFs)==1:
+        Data = Reader.read(0,0)
+        beam_cal_Blocks.append(Data)
 
 for Data in beam_cal_Blocks:
     # Preprocess.
-    rotate_pol.rotate(Data, (-5, -7, -8, -6))
-    cal_scale.scale_by_cal(Data, True, False, False, False, True)
-    flag_data.flag_data(Data, 5, 0.1, 40)
+    if GUPPI:
+        rotate_pol.rotate(Data, (-5, -7, -8, -6))
+    cal_scale.scale_by_cal(Data, True, False, False, False, True,True)
+    flag_data.flag_data(Data, 5, 0.1, 2)
     #rebin_freq.rebin(Data, 16, True, True)
     rebin_freq.rebin(Data, 16, True, True)
     #combine_cal.combine(Data, (0.5, 0.5), False, True)
-    combine_cal.combine(Data, (0., 1.), False, True)
+#    combine_cal.combine(Data, (0., 1.), False, True)
     #rebin_time.rebin(Data, 4)
 
 gain_cal_OnBlocks = []
@@ -164,32 +178,46 @@ for fname in gain_cal_files:
     # Read.
     fpath = data_root + fname + end
     Reader = fitsGBT.Reader(fpath)
-    OnData = Reader.read(0,0)
-    OffData = Reader.read(1,0)
-    gain_cal_OnBlocks.append(OnData)
-    gain_cal_OffBlocks.append(OffData)
+    single_data_on = [] 
+    single_data_off = []
+    if len(IFs>1):
+        for i in range(IFs[0],IFs[-1]+1):
+            OnData = Reader.read(0,i)
+            single_data_on.append(OnData)
+            OffData = Reader.read(1,i)
+            single_data_off.append(OffData)
+        stitch_windows_crude.stitch(single_data_on) 
+        stitcy_windows_crude.stitch(single_data_off)
+        gain_cal_OnBlocks.append(single_data_on)
+        gain_cal_OffBlocks.append(single_data_off)
+    elif len(IFs)==1:
+        OnData = Reader.read(0,0)
+        OffData = Reader.read(1,0)
+        gain_cal_OnBlocks.append(OnData)
+        gain_cal_OffBlocks.append(OffData)
 
 for Data in gain_cal_OnBlocks:
     # Preprocess.
-    rotate_pol.rotate(Data, (-5, -7, -8, -6))
-    cal_scale.scale_by_cal(Data, True, False, False, False, True)
+    if GUPPI:
+        rotate_pol.rotate(Data, (-5, -7, -8, -6))
+    cal_scale.scale_by_cal(Data, True, False, False, False, True,True)
     flag_data.flag_data(Data, 5, 0.1, 40)
     #rebin_freq.rebin(Data, 16, True, True)
     rebin_freq.rebin(Data, 16, True, True)
     #combine_cal.combine(Data, (0.5, 0.5), False, True)
-    combine_cal.combine(Data, (0., 1.), False, True)
+#    combine_cal.combine(Data, (0., 1.), False, True)
     #rebin_time.rebin(Data, 4)
 
 for Data in gain_cal_OffBlocks:
     # Preprocess.
-    rotate_pol.rotate(Data, (-5, -7, -8, -6))
-    cal_scale.scale_by_cal(Data, True, False, False, False, True)
+    if GUPPI:
+        rotate_pol.rotate(Data, (-5, -7, -8, -6))
+    cal_scale.scale_by_cal(Data, True, False, False, False, True,True)
     flag_data.flag_data(Data, 5, 0.1, 40)
     #rebin_freq.rebin(Data, 16, True, True)
     rebin_freq.rebin(Data, 16, True, True)
     #combine_cal.combine(Data, (0.5, 0.5), False, True)
-
-    combine_cal.combine(Data, (0., 1.), False, True)
+#    combine_cal.combine(Data, (0., 1.), False, True)
     #rebin_time.rebin(Data, 4)
 
 Data.calc_freq()
