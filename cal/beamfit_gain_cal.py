@@ -127,36 +127,63 @@ def calcGain(OnData,OffData,file_num,freq_len,src,beamwidth):
 #    np.savetxt(out_path,p_val_out,delimiter = ' ')
     return p_val_out,JtoK
 
+##################################################################################
+#Main Code:
+
+#Data Info for Old Guppi Data:
 #data_root = '/home/scratch/kmasui/converted_fits/GBT12A_418/'
 #end = '.fits'
-end = '.raw.acs.fits'
-
-source = '3C295'
-gain_source = '3C295'
-
+#source = '3C295'
+#gain_source = '3C295' 
+ 
 #beam_cal_files = ['21_3C286_track_'+str(ii) for ii in range(18,26)]
 #beam_cal_files = ['22_3C295_track_'+str(ii) for ii in range(59,67)]
 
 #gain_cal_files = ['22_3C295_onoff_76-77','22_3C295_onoff_78-79']
 #gain_cal_files = ['22_3C147_onoff_50-51','22_3C147_onoff_52-53','22_3C147_onoff_6-7','22_3C147_onoff_8-9']
 
-IFs = arange(0,8)
+
+#Data Info for Spectrometer Data:
+data_root = '/users/chanders/sdfits_files/July24/'
+end = '.raw.acs.fits'
+beam_cal_files = ['83/TGBT13A_510_04',]
+
+source = '3C295'
+gain_source = '3C295'
+
+gain_cal_files = []
+
+out_dir = '/users/tvoytek/beamcal_results/'
+#IF/Guppi Settings (num IFs corresponds to number of freq windows, GUPPI=True means guppi data)
+IFs = tuple(np.arange(0,8))
+STITCH=True
 #IFs = [0,]
 #GUPPI=True
 GUPPI=False
+
+#Which Processing to do:
+Beam_cal = False
+Gain_cal = False
+Plotting = False
+
+#File Prep/Preproccessing:
 beam_cal_Blocks = []
 for fname in beam_cal_files:
     # Read.
     fpath = data_root + fname + end
     Reader = fitsGBT.Reader(fpath)
-    if len(IFs>1):
-        single_data = []
-        for i in range(IFs[0],IFs[-1]+1):
-            Data = Reader.read(0,i)
-            single_data.append(Data)
-        stitch_windows_crude.stitch(single_data) 
-        beam_cal_Blocks.append(single_data)
-    elif len(IFs)==1:
+#    Data = Reader.read(0,IFs)
+#    beam_cal_Blocks.append(Data)
+    if STITCH:
+        Data = Reader.read(0,IFs)
+#        single_data = []
+#        for i in range(IFs[0],IFs[-1]+1):
+#            Data = Reader.read(0,i,force_tuple=True)
+#            single_data.append(Data)
+        Stitch = stitch_windows_crude.stitch(Data) 
+        beam_cal_Blocks.append(Stitch)
+        print 'Shape of Data after Frequency Stitching',np.shape(Stitch.data)
+    else:
         Data = Reader.read(0,0)
         beam_cal_Blocks.append(Data)
 
@@ -164,13 +191,20 @@ for Data in beam_cal_Blocks:
     # Preprocess.
     if GUPPI:
         rotate_pol.rotate(Data, (-5, -7, -8, -6))
+    print 'Shape of Data in XX/YY Polarization',np.shape(Data.data)
     cal_scale.scale_by_cal(Data, True, False, False, False, True,True)
+    print 'Shape of Data after Cal Scaling',np.shape(Data.data)
     flag_data.flag_data(Data, 5, 0.1, 2)
+    print 'Shape of Data after RFI Flagging',np.shape(Data.data)
     #rebin_freq.rebin(Data, 16, True, True)
     rebin_freq.rebin(Data, 16, True, True)
+    print 'Shape of Data after Frequency Rebinning',np.shape(Data.data)
     #combine_cal.combine(Data, (0.5, 0.5), False, True)
 #    combine_cal.combine(Data, (0., 1.), False, True)
     #rebin_time.rebin(Data, 4)
+
+Data.calc_freq()
+beam_cal_freq = Data.freq
 
 gain_cal_OnBlocks = []
 gain_cal_OffBlocks = []
@@ -221,153 +255,115 @@ for Data in gain_cal_OffBlocks:
     #rebin_time.rebin(Data, 4)
 
 Data.calc_freq()
+gain_cal_freq = Data.freq
 
-BeamData = beam_fit.FormattedData(beam_cal_Blocks)
-#GainCalOnData = beam_fit.FormattedData(gain_cal_OnBlocks)
-#GainCalOffData = beam_fit.FormattedData(gain_cal_OffBlocks)
+if Beam_cal:
+    BeamData = beam_fit.FormattedData(beam_cal_Blocks)
 
 # Source object.  This just calculates the ephemeris of the source compared to
 # where the telescope is pointing.
-S = cal.source.Source(source)
+    S = cal.source.Source(source)
 
 # Do a preliminary fit to just the XX and YY polarizations.  This is a
 # non-linear fit to the Gaussian and gets things like the centriod and the
 # Gaussian width.  All fits are channel-by-channel (independantly).
-center_offset, width, amps, Tsys = beam_fit.fit_simple_gaussian(BeamData, S)
+    center_offset, width, amps, Tsys = beam_fit.fit_simple_gaussian(BeamData, S)
 
 # Basis basis functions to be used in the fit.
-HermiteBasis = pol_beam.HermiteBasis(Data.freq, center_offset, width)
+    HermiteBasis = pol_beam.HermiteBasis(beam_cal_freq, center_offset, width)
 # Perform the fit.
-beam_params, scan_params, model_data = beam_fit.linear_fit(BeamData, HermiteBasis,
-                                                           S, 3, 2)
-p_val_out,JtoK = calcGain(gain_cal_OnBlocks,gain_cal_OffBlocks,len(gain_cal_files),len(Data.freq),gain_source,width)
-
-#out_path = output_root+sess+'_diff_gain_calc'+output_end
-np.savetxt(source+'_test_cal',p_val_out,delimiter = ' ')
+    beam_params, scan_params, model_data = beam_fit.linear_fit(BeamData, HermiteBasis,
+                                                               S, 3, 2)
 
 # Make a beam object from the basis funtions and the fit parameters (basis
 # coefficients).
-Beam = pol_beam.LinearBeam(HermiteBasis, beam_params)
+    Beam = pol_beam.LinearBeam(HermiteBasis, beam_params)
+
+if Gain_cal:
+    p_val_out,JtoK = calcGain(gain_cal_OnBlocks,gain_cal_OffBlocks,len(gain_cal_files),len(gain_cal_freq),gain_source,width)
+
+    np.savetxt(out_dir+source+'_test_cal.txt',p_val_out,delimiter = ' ')
 
 # Some plots.
-beam_map = Beam.get_full_beam(100, 1.)
+##beam_map = Beam.get_full_beam(100, 1.)
 
-freq = Data.freq/1e6
-plt.figure()
-plt.plot(freq,center_offset[:,0])
-plt.plot(freq,center_offset[:,1])
-plt.xlabel('Frequency (MHz)')
-plt.ylabel('Pointing Offset (Degrees)')
-plt.legend(('Az','El'))
-plt.xlim(700,900)
-plt.ylim(-0.05,0.05)
-plt.grid()
-plt.savefig(source+'_pointing_offsets',dpi=300)
-plt.clf()
+##freq = Data.freq/1e6
+if Plotting:
+    freq = beam_cal_freq/1e6
 
-plt.figure()
-plt.plot(freq,width)
-plt.xlabel('Frequency (MHz)')
-plt.ylabel('Beam Width (Degrees)')
-plt.xlim(700,900)
-plt.grid()
-plt.savefig(source+'_beamwidth',dpi=300)
-plt.clf()
-
-plt.figure()
-plt.plot(freq,JtoK)
-plt.xlabel('Frequency (MHz)')
-plt.ylabel('Jansky to Kelvin Conversion')
-plt.xlim(700,900)
-plt.grid()
-plt.savefig(source+'_JytoK_convert',dpi=300)
-plt.clf()
-
-n_chan = len(freq)
-for i in range(0,20):
-    f_ind = i*n_chan/20.
+#Pointing Offset Plot
     plt.figure()
-#    color_map=1
-#    spec_beam_map = beam_map[f_ind,...]
-#    n_pol = spec_beam_map.shape[0]
-#    n_side = spec_beam_map.shape[1]
-#    norm_x = spec_beam_map[0,n_side//2,n_side//2]
-#    norm_y = spec_beam_map[3,n_side//2,n_side//2]
-#    print np.where(np.isnan(norm_x))[0],np.where(np.isinf(norm_x))[0],np.where(norm_x==0)[0]
-#    print np.where(np.isnan(norm_y))[0],np.where(np.isinf(norm_y))[0],np.where(norm_y==0)[0]
-#    badx = 0
-#    bady = 0
-#    if norm_x==0:
-#        if norm_y==0:
-#            norm_x =1.
-#        else:
-#            norm_x = norm_y 
-#        print 'XX Normalization failed'
-#        badx = 1
-#    if norm_y==0:
-#        if norm_x==0:
-#            norm_y = 1.
-#        else:
-#            norm_y = norm_x
-#        bady = 1
-#        print 'YY Normalization failed'
-#    norm_cross = np.sqrt(norm_x*norm_y)
-#    spec_beam_map[0] /=norm_x
-#    spec_beam_map[3] /=norm_y
-#    spec_beam_map[[1,2]]/=norm_cross
-#    neg = spec_beam_map<0
-#    spec_beam_map = abs(spec_beam_map)**color_map
-#    spec_beam_map.shape = (n_pol*n_side,n_side)
-#    spec_beam_map.shape = (n_pol*1.,1.)
-#    plt.imshow(spec_beam_map.T)
-#    pol_beam.plot_beam_map(beam_map[f_ind,...],color_map=0.5)
-#    cbar = plt.colorbar()
-#    if badx==0:
-#        if bady==0:           
-#           cbar.set_label(r"Beam Center Normalized Intensity")
-#        elif bady==0:
-#           cbar.set_label(r"Beam Center Normalized Intensity (Y-norm failed)")
-#    elif badx==1:
-#        if bady==0:
-#           cbar.set_label(r"Beam Center Normalized Intensity (X-norm failed)")
-#        elif bady==1:
-#           cbar.set_label(r"Beam Center Un-Normalized Intensity")
-#    plt.xlabel(r"XX'XY'YX'YY, Azimuth")
-#    plt.ylabel(r"Elevation")
-#    plt.xlabel(r"XX'XY'YX'YY, Azimuth (degrees)")
-#    plt.ylabel(r"Elevation (degrees)")
-    pol_beam.plot_beam_map(beam_map[f_ind,...],color_map=0.5,side=1.,normalize='max03',rotate='XXYYtoIQ')
-    cbar = plt.colorbar()
-    cbar.set_label(r"Root Intensity (Normalized to I beam center with Sign)")
-    plt.xlabel(r"IQUV, Azimuth (degrees)")
-    plt.ylabel(r"Elevation (degrees)")
-    plt.title("Beam Patterns for %0.1f MHz" %freq[f_ind])
-    raw_title = source+'_'+str(int(freq[f_ind]))+'_MHz_beam_pattern'
-    plt.savefig(raw_title,dpi=300)
+    plt.plot(freq,center_offset[:,0])
+    plt.plot(freq,center_offset[:,1])
+    plt.xlabel('Frequency (MHz)')
+    plt.ylabel('Pointing Offset (Degrees)')
+    plt.legend(('Az','El'))
+    plt.xlim(700,900)
+    plt.ylim(-0.05,0.05)
+    plt.grid()
+    plt.savefig(out_dir+source+'_pointing_offsets',dpi=300)
     plt.clf()
 
-plt.figure()
-Tsys_Kel = Tsys
-Tsys_Kel[:,0] = Tsys[:,0]*p_val_out[:,1]
-Tsys_Kel[:,1] = Tsys[:,1]*p_val_out[:,2]
-plt.plot(freq,Tsys_Kel[:,0])
-plt.plot(freq,Tsys_Kel[:,1])
-plt.xlabel('Frequency (MHz)')
-plt.ylabel('Tsys (Kelvin)')
-plt.grid()
-plt.legend(('XX','YY'))
-plt.savefig(gain_source+'_Tsys_Kelvin',dpi=300)
-plt.clf()
+#Beam Width Plot
+    plt.figure()
+    plt.plot(freq,width)
+    plt.xlabel('Frequency (MHz)')
+    plt.ylabel('Beam Width (Degrees)')
+    plt.xlim(700,900)
+    plt.grid()
+    plt.savefig(out_dir+source+'_beamwidth',dpi=300)
+    plt.clf()
 
-plt.figure()
-plt.plot(freq,p_val_out[:,1])
-plt.plot(freq,p_val_out[:,2])
-plt.xlabel('Frequency (MHz)')
-plt.ylabel('Tcal (Kelvin)')
-plt.grid()
-plt.legend(('XX','YY'))
-plt.savefig(gain_source+'_Tcal_Kelvin',dpi=300)
-plt.clf()
+#Jansky to Kelvin Conversion Factor Plot
+    plt.figure()
+    plt.plot(freq,JtoK)
+    plt.xlabel('Frequency (MHz)')
+    plt.ylabel('Jansky to Kelvin Conversion')
+    plt.xlim(700,900)
+    plt.grid()
+    plt.savefig(out_dir+source+'_JytoK_convert',dpi=300)
+    plt.clf()
+
+#Beam Map Plots
+    n_chan = len(freq)
+    beam_map = Beam.get_full_beam(100,1.)
+    for i in range(0,20):
+        f_ind = i*n_chan/20.
+        plt.figure()
+        pol_beam.plot_beam_map(beam_map[f_ind,...],color_map=0.5,side=1.,normalize='max03',rotate='XXYYtoIQ')
+        cbar = plt.colorbar()
+        cbar.set_label(r"Root Intensity (Normalized to I beam center with Sign)")
+        plt.xlabel(r"IQUV, Azimuth (degrees)")
+        plt.ylabel(r"Elevation (degrees)")
+        plt.title("Beam Patterns for %0.1f MHz" %freq[f_ind])
+        raw_title = out_dir+source+'_'+str(int(freq[f_ind]))+'_MHz_beam_pattern'
+        plt.savefig(raw_title,dpi=300)
+        plt.clf()
+
+#Tsys Plot
+    plt.figure()
+    Tsys_Kel = Tsys
+    Tsys_Kel[:,0] = Tsys[:,0]*p_val_out[:,1]
+    Tsys_Kel[:,1] = Tsys[:,1]*p_val_out[:,2]
+    plt.plot(freq,Tsys_Kel[:,0])
+    plt.plot(freq,Tsys_Kel[:,1])
+    plt.xlabel('Frequency (MHz)')
+    plt.ylabel('Tsys (Kelvin)')
+    plt.grid()
+    plt.legend(('XX','YY'))
+    plt.savefig(out_dir+source+'_Tsys_Kelvin',dpi=300)
+    plt.clf()
+
+#Tcal Plot
+    plt.figure()
+    plt.plot(freq,p_val_out[:,1])
+    plt.plot(freq,p_val_out[:,2])
+    plt.xlabel('Frequency (MHz)')
+    plt.ylabel('Tcal (Kelvin)')
+    plt.grid()
+    plt.legend(('XX','YY'))
+    plt.savefig(out_dir+source+'_Tcal_Kelvin',dpi=300)
+    plt.clf()
 
 
 #plt.figure()
