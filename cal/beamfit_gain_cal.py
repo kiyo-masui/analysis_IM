@@ -13,6 +13,7 @@ import matplotlib.animation as animation
 from core import fitsGBT, dir_data
 from time_stream import rotate_pol, cal_scale, flag_data, rebin_freq
 from time_stream import rebin_time, combine_cal, stitch_windows_crude
+from time_stream import split_bands
 from map import pol_beam
 from utils import misc
 import cal.source
@@ -143,26 +144,32 @@ def calcGain(OnData,OffData,file_num,freq_val,src,beamwidth):
 #gain_cal_files = ['22_3C147_onoff_50-51','22_3C147_onoff_52-53','22_3C147_onoff_6-7','22_3C147_onoff_8-9']
 
 #Data Info for Guppi Data:
-#data_root = '/home/scratch/tvoytek/converted_fits/GBT13A_510/'
-#end ='.fits'
-#beam_cal_files = ['05_3C286_track_2',]
-#source = '3C286'
+data_root = '/home/scratch/tvoytek/converted_fits/GBT13A_510/'
+end ='.fits'
+beam_cal_files = ['06_3C48_track_'+str(ii) for ii in range(26,34)]
+gain_cal_files = ['06_3C48_onoff_54-55','06_3C48_onoff_56-57']
+source = '3C48'
 #gain_cal_files = []
-#out_dir = '/users/tvoytek/beamcal_results_guppi/'
+out_dir = '/users/tvoytek/beamcal_results_guppi/'
 
 #Data Info for Spectrometer Data:
-data_root = '/users/chanders/sdfits_files/July25/'
-end = '.raw.acs.fits'
-beam_cal_files = ['5:12/TGBT13A_510_06',]
-gain_cal_files = ['1:2/TGBT13A_510_06','3:4/TGBT13A_510_06']
-source = '3C286'
-out_dir = '/users/tvoytek/beamcal_results/'
+#data_root = '/users/chanders/sdfits_files/July25/'
+#end = '.raw.acs.fits'
+#beam_cal_files = ['70:77/TGBT13A_510_06',]#Error because one time step is exactly at second 60.00
+#beam_cal_files = ['82:89/TGBT13A_510_06',]#Noise Cal "off" always
+#beam_cal_files = ['98:105/TGBT13A_510_06',]
+#gain_cal_files = ['66:67/TGBT13A_510_06','68:69/TGBT13A_510_06']
+#gain_cal_files = ['78:79/TGBT13A_510_06','80:81/TGBT13A_510_06']#Noise Cal "off" always
+#gain_cal_files = ['94:95/TGBT13A_510_06','96:97/TGBT13A_510_06']
+#source = '3C48'
+#out_dir = '/users/tvoytek/beamcal_results/'
 
-#IF/Guppi Settings (num IFs corresponds to number of freq windows, GUPPI=True means guppi data)
+#IF/Guppi Settings (num IFs corresponds to number of freq windows, GUPPI=True means guppi data, STITCH=True means multiple freq windows, SPIDER=True only for spectrom files (Guppi files stored separately).
 IFs = tuple(np.arange(0,8))
-STITCH=True
-GUPPI=False
-SPIDER=True
+#STITCH=True
+STITCH=False
+GUPPI=True
+SPIDER=False
 Scans=np.arange(0,8)
 
 #Which Processing to do:
@@ -193,27 +200,29 @@ for fname in beam_cal_files:
 #        print 'Shape of Data after Frequency Stitching',np.shape(Stitch.data)
     else:
         Data = Reader.read(0,0)
-        beam_cal_Blocks.append(Data)
+        trunc_Data=split_bands.split(Data,n_bands=1,bins_band=1026,offset=2559)
+        beam_cal_Blocks.append(trunc_Data[0])
 
 for Data in beam_cal_Blocks:
     # Preprocess.
     if GUPPI:
         rotate_pol.rotate(Data, (-5, -7, -8, -6))
 #        print 'Shape of Data in XX/YY Polarization',np.shape(Data.data)
-#    cal_scale.scale_by_cal(Data, True, False, False, False, True,True)
+    cal_scale.scale_by_cal(Data, True, False, False, False, True,False)
 #    print 'Shape of Data after Cal Scaling',np.shape(Data.data)
-#    flag_data.flag_data(Data, 5, 0.1, 1)
+    flag_data.flag_data(Data, 5, 0.1,40)
 #    print 'Shape of Data after RFI Flagging',np.shape(Data.data)
     #rebin_freq.rebin(Data, 16, True, True)
     rebin_freq.rebin(Data, 16, True, True)
 #    print 'Shape of Data after Frequency Rebinning',np.shape(Data.data)
     #combine_cal.combine(Data, (0.5, 0.5), False, True)
-    combine_cal.combine(Data, (0., 1.), False, True) #weights inverted due to cal inverted
+    combine_cal.combine(Data, (1., 0.), False, True) #weights inverted due to cal inverted
 #    print 'Shape of Data after Combine Cal',np.shape(Data.data)
     #rebin_time.rebin(Data, 4)
 
-Data.calc_freq()
-beam_cal_freq = Data.freq
+#Data.calc_freq()
+beam_cal_Blocks[0].calc_freq()
+beam_cal_freq = beam_cal_Blocks[0].freq
 
 gain_cal_OnBlocks = []
 gain_cal_OffBlocks = []
@@ -232,35 +241,37 @@ for fname in gain_cal_files:
     else:
         OnData = Reader.read(0,0)
         OffData = Reader.read(1,0)
-        gain_cal_OnBlocks.append(OnData)
-        gain_cal_OffBlocks.append(OffData)
+        trunc_OnData=split_bands.split(OnData,n_bands=1,bins_band=1026,offset=2559)
+        trunc_OffData=split_bands.split(OffData,n_bands=1,bins_band=1026,offset=2559)
+        gain_cal_OnBlocks.append(trunc_OnData[0])
+        gain_cal_OffBlocks.append(trunc_OffData[0])
 
 for Data in gain_cal_OnBlocks:
     # Preprocess.
     if GUPPI:
         rotate_pol.rotate(Data, (-5, -7, -8, -6))
-#    cal_scale.scale_by_cal(Data, True, False, False, False, True,True)
-#    flag_data.flag_data(Data, 5, 0.1, 1)
+    cal_scale.scale_by_cal(Data, True, False, False, False, True,False)
+    flag_data.flag_data(Data, 5, 0.1, 40)
     #rebin_freq.rebin(Data, 16, True, True)
     rebin_freq.rebin(Data, 16, True, True)
     #combine_cal.combine(Data, (0.5, 0.5), False, True)
-    combine_cal.combine(Data, (0., 1.), False, True)
+    combine_cal.combine(Data, (1., 0.), False, True)
     #rebin_time.rebin(Data, 4)
 
 for Data in gain_cal_OffBlocks:
     # Preprocess.
     if GUPPI:
         rotate_pol.rotate(Data, (-5, -7, -8, -6))
-#    cal_scale.scale_by_cal(Data, True, False, False, False, True,True)
-#    flag_data.flag_data(Data, 5, 0.1, 1)
+    cal_scale.scale_by_cal(Data, True, False, False, False, True,False)
+    flag_data.flag_data(Data, 5, 0.1,40)
     #rebin_freq.rebin(Data, 16, True, True)
     rebin_freq.rebin(Data, 16, True, True)
     #combine_cal.combine(Data, (0.5, 0.5), False, True)
-    combine_cal.combine(Data, (0., 1.), False, True)
+    combine_cal.combine(Data, (1., 0.), False, True)
     #rebin_time.rebin(Data, 4)
 
 Data.calc_freq()
-gain_cal_freq = Data.freq/1e6 -280
+gain_cal_freq = Data.freq/1e6
 
 if Beam_cal:
     BeamData = beam_fit.FormattedData(beam_cal_Blocks)
@@ -293,7 +304,7 @@ if Gain_cal:
 
 ##freq = Data.freq/1e6
 if Plotting:
-    freq = beam_cal_freq/1e6-280
+    freq = beam_cal_freq/1e6
 
 #Pointing Offset Plot
     plt.figure()
@@ -353,6 +364,7 @@ if Plotting:
     plt.plot(freq,Tsys_Kel[:,1])
     plt.xlabel('Frequency (MHz)')
     plt.ylabel('Tsys (Kelvin)')
+    plt.ylim(0,1000)
     plt.grid()
     plt.legend(('XX','YY'))
     plt.savefig(out_dir+source+'_Tsys_Kelvin',dpi=300)
