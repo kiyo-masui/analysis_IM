@@ -19,7 +19,7 @@ import cal.source
 from cal import beam_fit
 #from cal import flux_diff_gain_gen_beamfit
 
-def calcGain(OnData,OffData,file_num,freq_len,src,beamwidth):
+def calcGain(OnData,OffData,file_num,freq_val,src,beamwidth):
     """ Perform gain calibration on dataset.
 
     """
@@ -71,6 +71,7 @@ def calcGain(OnData,OffData,file_num,freq_len,src,beamwidth):
     YY_ind = 3
     XY_ind = 1
     YX_ind = 2
+    freq_len = len(freq_val)
 
     S_med_src = sp.zeros((file_num,4,freq_len))
     S_med = sp.zeros((file_num,4,freq_len))
@@ -85,8 +86,8 @@ def calcGain(OnData,OffData,file_num,freq_len,src,beamwidth):
         Data.calc_PA()
         for i in range(0,4):
             PA_on.append(ma.mean(Data.PA))
-        Data.calc_freq()
-        freq_val = Data.freq/1e6
+#        Data.calc_freq()
+#        freq_val = Data.freq/1e6
         m+=1
 
     PA_off = []
@@ -134,7 +135,6 @@ def calcGain(OnData,OffData,file_num,freq_len,src,beamwidth):
 #data_root = '/home/scratch/kmasui/converted_fits/GBT12A_418/'
 #end = '.fits'
 #source = '3C295'
-#gain_source = '3C295' 
  
 #beam_cal_files = ['21_3C286_track_'+str(ii) for ii in range(18,26)]
 #beam_cal_files = ['22_3C295_track_'+str(ii) for ii in range(59,67)]
@@ -142,29 +142,33 @@ def calcGain(OnData,OffData,file_num,freq_len,src,beamwidth):
 #gain_cal_files = ['22_3C295_onoff_76-77','22_3C295_onoff_78-79']
 #gain_cal_files = ['22_3C147_onoff_50-51','22_3C147_onoff_52-53','22_3C147_onoff_6-7','22_3C147_onoff_8-9']
 
+#Data Info for Guppi Data:
+#data_root = '/home/scratch/tvoytek/converted_fits/GBT13A_510/'
+#end ='.fits'
+#beam_cal_files = ['05_3C286_track_2',]
+#source = '3C286'
+#gain_cal_files = []
+#out_dir = '/users/tvoytek/beamcal_results_guppi/'
 
 #Data Info for Spectrometer Data:
-data_root = '/users/chanders/sdfits_files/July24/'
+data_root = '/users/chanders/sdfits_files/July25/'
 end = '.raw.acs.fits'
-beam_cal_files = ['83/TGBT13A_510_04',]
-
-source = '3C295'
-gain_source = '3C295'
-
-gain_cal_files = []
-
+beam_cal_files = ['5:12/TGBT13A_510_06',]
+gain_cal_files = ['1:2/TGBT13A_510_06','3:4/TGBT13A_510_06']
+source = '3C286'
 out_dir = '/users/tvoytek/beamcal_results/'
+
 #IF/Guppi Settings (num IFs corresponds to number of freq windows, GUPPI=True means guppi data)
 IFs = tuple(np.arange(0,8))
 STITCH=True
-#IFs = [0,]
-#GUPPI=True
 GUPPI=False
+SPIDER=True
+Scans=np.arange(0,8)
 
 #Which Processing to do:
-Beam_cal = False
-Gain_cal = False
-Plotting = False
+Beam_cal = True
+Gain_cal = True
+Plotting = True
 
 #File Prep/Preproccessing:
 beam_cal_Blocks = []
@@ -172,17 +176,21 @@ for fname in beam_cal_files:
     # Read.
     fpath = data_root + fname + end
     Reader = fitsGBT.Reader(fpath)
-#    Data = Reader.read(0,IFs)
-#    beam_cal_Blocks.append(Data)
-    if STITCH:
+    if SPIDER:
+        if STITCH:
+            for i in range(0,len(Scans)):
+                Data = Reader.read(i,IFs)
+                Stitch = stitch_windows_crude.stitch(Data)
+                beam_cal_Blocks.append(Stitch)
+        else:
+            for i in range(0,len(Scans)):
+                Data = Reader.read(i,0)
+                beam_cal_Blocks.append(Data)
+    elif STITCH:
         Data = Reader.read(0,IFs)
-#        single_data = []
-#        for i in range(IFs[0],IFs[-1]+1):
-#            Data = Reader.read(0,i,force_tuple=True)
-#            single_data.append(Data)
         Stitch = stitch_windows_crude.stitch(Data) 
         beam_cal_Blocks.append(Stitch)
-        print 'Shape of Data after Frequency Stitching',np.shape(Stitch.data)
+#        print 'Shape of Data after Frequency Stitching',np.shape(Stitch.data)
     else:
         Data = Reader.read(0,0)
         beam_cal_Blocks.append(Data)
@@ -191,16 +199,17 @@ for Data in beam_cal_Blocks:
     # Preprocess.
     if GUPPI:
         rotate_pol.rotate(Data, (-5, -7, -8, -6))
-    print 'Shape of Data in XX/YY Polarization',np.shape(Data.data)
-    cal_scale.scale_by_cal(Data, True, False, False, False, True,True)
-    print 'Shape of Data after Cal Scaling',np.shape(Data.data)
-    flag_data.flag_data(Data, 5, 0.1, 2)
-    print 'Shape of Data after RFI Flagging',np.shape(Data.data)
+#        print 'Shape of Data in XX/YY Polarization',np.shape(Data.data)
+#    cal_scale.scale_by_cal(Data, True, False, False, False, True,True)
+#    print 'Shape of Data after Cal Scaling',np.shape(Data.data)
+#    flag_data.flag_data(Data, 5, 0.1, 1)
+#    print 'Shape of Data after RFI Flagging',np.shape(Data.data)
     #rebin_freq.rebin(Data, 16, True, True)
     rebin_freq.rebin(Data, 16, True, True)
-    print 'Shape of Data after Frequency Rebinning',np.shape(Data.data)
+#    print 'Shape of Data after Frequency Rebinning',np.shape(Data.data)
     #combine_cal.combine(Data, (0.5, 0.5), False, True)
-#    combine_cal.combine(Data, (0., 1.), False, True)
+    combine_cal.combine(Data, (0., 1.), False, True) #weights inverted due to cal inverted
+#    print 'Shape of Data after Combine Cal',np.shape(Data.data)
     #rebin_time.rebin(Data, 4)
 
 Data.calc_freq()
@@ -212,19 +221,15 @@ for fname in gain_cal_files:
     # Read.
     fpath = data_root + fname + end
     Reader = fitsGBT.Reader(fpath)
-    single_data_on = [] 
-    single_data_off = []
-    if len(IFs>1):
-        for i in range(IFs[0],IFs[-1]+1):
-            OnData = Reader.read(0,i)
-            single_data_on.append(OnData)
-            OffData = Reader.read(1,i)
-            single_data_off.append(OffData)
-        stitch_windows_crude.stitch(single_data_on) 
-        stitcy_windows_crude.stitch(single_data_off)
-        gain_cal_OnBlocks.append(single_data_on)
-        gain_cal_OffBlocks.append(single_data_off)
-    elif len(IFs)==1:
+    if STITCH:
+        OnData = Reader.read(0,IFs)
+        OffData = Reader.read(1,IFs)
+        OnStitch = stitch_windows_crude.stitch(OnData)
+        OffStitch = stitch_windows_crude.stitch(OffData)
+        gain_cal_OnBlocks.append(OnStitch)
+        gain_cal_OffBlocks.append(OffStitch)
+#        print 'Shape of Data after Frequency Stitching',np.shape(Stitch.data)
+    else:
         OnData = Reader.read(0,0)
         OffData = Reader.read(1,0)
         gain_cal_OnBlocks.append(OnData)
@@ -234,28 +239,28 @@ for Data in gain_cal_OnBlocks:
     # Preprocess.
     if GUPPI:
         rotate_pol.rotate(Data, (-5, -7, -8, -6))
-    cal_scale.scale_by_cal(Data, True, False, False, False, True,True)
-    flag_data.flag_data(Data, 5, 0.1, 40)
+#    cal_scale.scale_by_cal(Data, True, False, False, False, True,True)
+#    flag_data.flag_data(Data, 5, 0.1, 1)
     #rebin_freq.rebin(Data, 16, True, True)
     rebin_freq.rebin(Data, 16, True, True)
     #combine_cal.combine(Data, (0.5, 0.5), False, True)
-#    combine_cal.combine(Data, (0., 1.), False, True)
+    combine_cal.combine(Data, (0., 1.), False, True)
     #rebin_time.rebin(Data, 4)
 
 for Data in gain_cal_OffBlocks:
     # Preprocess.
     if GUPPI:
         rotate_pol.rotate(Data, (-5, -7, -8, -6))
-    cal_scale.scale_by_cal(Data, True, False, False, False, True,True)
-    flag_data.flag_data(Data, 5, 0.1, 40)
+#    cal_scale.scale_by_cal(Data, True, False, False, False, True,True)
+#    flag_data.flag_data(Data, 5, 0.1, 1)
     #rebin_freq.rebin(Data, 16, True, True)
     rebin_freq.rebin(Data, 16, True, True)
     #combine_cal.combine(Data, (0.5, 0.5), False, True)
-#    combine_cal.combine(Data, (0., 1.), False, True)
+    combine_cal.combine(Data, (0., 1.), False, True)
     #rebin_time.rebin(Data, 4)
 
 Data.calc_freq()
-gain_cal_freq = Data.freq
+gain_cal_freq = Data.freq/1e6 -280
 
 if Beam_cal:
     BeamData = beam_fit.FormattedData(beam_cal_Blocks)
@@ -272,15 +277,14 @@ if Beam_cal:
 # Basis basis functions to be used in the fit.
     HermiteBasis = pol_beam.HermiteBasis(beam_cal_freq, center_offset, width)
 # Perform the fit.
-    beam_params, scan_params, model_data = beam_fit.linear_fit(BeamData, HermiteBasis,
-                                                               S, 3, 2)
+    beam_params, scan_params, model_data = beam_fit.linear_fit(BeamData, HermiteBasis,S, 3, 2)
 
 # Make a beam object from the basis funtions and the fit parameters (basis
 # coefficients).
     Beam = pol_beam.LinearBeam(HermiteBasis, beam_params)
 
 if Gain_cal:
-    p_val_out,JtoK = calcGain(gain_cal_OnBlocks,gain_cal_OffBlocks,len(gain_cal_files),len(gain_cal_freq),gain_source,width)
+    p_val_out,JtoK = calcGain(gain_cal_OnBlocks,gain_cal_OffBlocks,len(gain_cal_files),gain_cal_freq,source,width)
 
     np.savetxt(out_dir+source+'_test_cal.txt',p_val_out,delimiter = ' ')
 
@@ -289,7 +293,7 @@ if Gain_cal:
 
 ##freq = Data.freq/1e6
 if Plotting:
-    freq = beam_cal_freq/1e6
+    freq = beam_cal_freq/1e6-280
 
 #Pointing Offset Plot
     plt.figure()

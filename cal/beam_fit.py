@@ -221,7 +221,9 @@ def fit_simple_gaussian(BeamData, Source):
         data, weights = BeamData.get_data_weight_chan(ii)
         # Use only XX and YY polarizations.
         data = data[[0,3],:]
+#        weights = np.ones((2,len(data[0])))
         weights = weights[[0,3],:]
+#        weights = np.ones(np.shape(weights))
         # Construct the residual funciton.
         get_residuals = lambda p: ((data - model(p)) * weights).flat[:]
         fit_pars, ier = optimize.leastsq(get_residuals, init_pars, ftol=1e-5, 

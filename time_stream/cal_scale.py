@@ -60,9 +60,10 @@ def scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False, sub_med=False,
     if invert:
         on_ind = 1
         off_ind = 0
-    if (Data.field['CAL'][on_ind] != 'T' or
-        Data.field['CAL'][off_ind] != 'F') :
-            raise ce.DataError('Cal states not in expected order.')
+    else: 
+        if (Data.field['CAL'][on_ind] != 'T' or
+            Data.field['CAL'][off_ind] != 'F') :
+                raise ce.DataError('Cal states not in expected order.')
     
     if tuple(Data.field['CRVAL4']) == (-5, -7, -8, -6) :
         # Here we check the polarizations and cal indicies
