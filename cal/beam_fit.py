@@ -193,7 +193,7 @@ def fit_simple_gaussian(BeamData, Source):
     UT = BeamData.get_all_field('UT')
     az_s, el_s = Source.azelGBT(UT)
     az_factor = np.cos(np.mean(el_s) * np.pi / 180)
-    az = (BeamData.get_all_field('az') - az_s) * az_factor
+    az = (BeamData.get_all_field('az')%360. - az_s) * az_factor
     el = BeamData.get_all_field('el') - el_s
     
     # Construct the model function.
