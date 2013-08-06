@@ -616,7 +616,7 @@ class DirtyMapMaker(object):
                 #       has already been processed.
                 if (run != (self.nproc - 1)):
                     # Send out the DataSet list I have to next guy.
-                    print 'Passing data_set_list, run ' + str(run) + '\n'
+                    print 'Process ' + str(self.rank) + ' is passing data_set_list to process ' + str(self.next_guy) ', at the end of run ' + str(run) + '\n'
                     comm.send(data_set_list,dest=self.next_guy)
                     # Receive the DataSet list being sent to me by prev guy.
                     data_set_list = comm.recv(source=self.prev_guy)
