@@ -519,10 +519,12 @@ class DirtyMapMaker(object):
                 data_offset, file_size = allocate_hdf5_dataset(self.cov_filename[0:-4] + '_mpi_corr_proc_' + '.npy', 'inv_cov', (self.n_chan*self.n_ra, self.n_dec,                                                                self.n_chan, self.n_ra, self.n_dec), dtype)
             # Wait for file to be written before continuing.
             comm.Barrier()
+            print 'Process ' + str(self.rank) + ' Passed first barrier.' + '\n'
             # Since the DataSets are split evenly over the processes,
             # have to put in the pointing/noise at each index for
             # each DataSet list that the processes hold.
             for run in range(self.nproc):
+                print 'Prcoess' + ' ' + str(self.rank) + ' ' +  ',run' + ' ' + str(run) + '\n'
                 # Each DataSet has to be applied to the dirty map, too.
                 # Since the '_mpi'dirty map is much smaller than the noise,
                 # We will just let processor 0 do all the work
@@ -530,6 +532,7 @@ class DirtyMapMaker(object):
                 # Must be done here to not pass the DataSets around twice.
                 if self.rank == 0:
                     for ii in xrange(len(data_set_list)):
+                        print 'Process ' + str(self.rank) + 'adding to map data piece' + ' ' + str(ii) + ' of ' + str(len(data_set_list)) +' during run ' + str(run) + '\n'
                         #time_stream = time_stream_list[ii]
                         time_stream = data_set_list[ii].time_stream
                         N = data_set_list[ii].Noise
@@ -542,7 +545,8 @@ class DirtyMapMaker(object):
                         thread_cov_inv_chunk = sp.zeros((len(index_list),
                                                         self.n_ra, self.n_dec,
                                                         self.n_ra, self.n_dec),                                                                                                                             dtype=float)
-                    #for thread_f_ind in index_list:
+                        #for thread_f_ind in index_list:
+                        print 'Process ' + str(self.rank) + ' just created inv_chunk' + ' during run ' + str(run) + '\n'
                     for thread_f_ind in index_list:
                     #for ii in xrange(len(index_list)):
                         thread_cov_inv_block = sp.zeros((self.n_ra, self.n_dec,
@@ -570,6 +574,7 @@ class DirtyMapMaker(object):
                             #cov_inv[thread_f_ind,...] += thread_cov_inv_block
                         #thread_cov_inv_chunk[thread_f_ind,...] += thread_cov_inv_block
                         thread_cov_inv_chunk[thread_f_ind-index_list[0],...] += thread_cov_inv_block
+                        print 'Process ' + str(self.rank) + ' added to cov_inv block at freq' + str(thread_f_ind) + ' , using data from pass ' + str(run) + ' of ' + str(self.nproc) + '\n'  
                         if self.feedback > 1:
                             print thread_f_ind,
                             sys.stdout.flush()
@@ -611,6 +616,7 @@ class DirtyMapMaker(object):
                 #       has already been processed.
                 if (run != (self.nproc - 1)):
                     # Send out the DataSet list I have to next guy.
+                    print 'Passing data_set_list, run ' + str(run) + '\n'
                     comm.send(data_set_list,dest=self.next_guy)
                     # Receive the DataSet list being sent to me by prev guy.
                     data_set_list = comm.recv(source=self.prev_guy)
