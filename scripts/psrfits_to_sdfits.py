@@ -725,6 +725,9 @@ class Converter(object):
                       blacklist=params['blacklist'], feedback=self.feedback)
         Set.prepare_scans(params['guppi_input_roots'],
                           params['guppi_input_end'])
+        # Make sure that there is actually data to convert.
+        if not Set.Scan_objects:
+            return
         Set.convert_scans(params['time_bins_to_average'],
                           params['partition_cal'], params['cal_fold_time'])
         Set.write_out(params['output_root'])
