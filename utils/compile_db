@@ -1,0 +1,7 @@
+pushd /cita/d/www/home/eswitzer/GBT_param
+python path_database.py
+cd /cita/h/home-2/eswitzer/code/analysis_IM
+python utils/data_paths.py
+cd /cita/d/www/home/eswitzer/GBT_param
+./build
+popd

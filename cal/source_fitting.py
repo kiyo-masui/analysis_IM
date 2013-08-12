@@ -19,7 +19,7 @@ def residuals(params,freq,data):
    err = data-function(freq,params)
    return err
 
-source = "3C067" # Or whatever source you want to use.
+source = "3C295" # Or whatever source you want to use.
 data_filename = source+"_source_data.txt"
 data = np.loadtxt(data_filename)
 freq = data[:,0]

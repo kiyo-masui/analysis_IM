@@ -15,6 +15,10 @@ middles_a = file_middles[:n_files//4]
 middles_b = file_middles[n_files//4:2*n_files//4]
 middles_c = file_middles[2*n_files//4:3*n_files//4]
 middles_d = file_middles[3*n_files//4:n_files]
+print file_middles
+
+balh
+
 
 base_dir = os.getenv('GBT_OUT')
 data_dir = os.getenv('GBT_DATA')

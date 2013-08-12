@@ -282,16 +282,17 @@ class TestClasses(unittest.TestCase):
         Noise.finalize()
         #### Test the full inverse.
         # Frist get a full representation of the noise matrix
-        tmp_mat = sp.zeros((nf_d, nt, nf_d, nt))
-        tmp_mat.flat[::nt*nf_d + 1] += Noise.diagonal.flat
-        for jj in xrange(Noise.time_modes.shape[0]):
-            tmp_mat += (Noise.time_mode_noise[jj,:,None,:,None]
-                        * Noise.time_modes[jj,None,:,None,None]
-                        * Noise.time_modes[jj,None,None,None,:])
-        for jj in xrange(Noise.freq_modes.shape[0]):
-            tmp_mat +=  (Noise.freq_mode_noise[jj,None,:,None,:]
-                         * Noise.freq_modes[jj,:,None,None,None]
-                         * Noise.freq_modes[jj,None,None,:,None])
+        #tmp_mat = sp.zeros((nf_d, nt, nf_d, nt))
+        #tmp_mat.flat[::nt*nf_d + 1] += Noise.diagonal.flat
+        #for jj in xrange(Noise.time_modes.shape[0]):
+        #    tmp_mat += (Noise.time_mode_noise[jj,:,None,:,None]
+        #                * Noise.time_modes[jj,None,:,None,None]
+        #                * Noise.time_modes[jj,None,None,None,:])
+        #for jj in xrange(Noise.freq_modes.shape[0]):
+        #    tmp_mat +=  (Noise.freq_mode_noise[jj,None,:,None,:]
+        #                 * Noise.freq_modes[jj,:,None,None,None]
+        #                 * Noise.freq_modes[jj,None,None,:,None])
+        tmp_mat = Noise.get_mat()
         tmp_mat.shape = (nt*nf_d, nt*nf_d)
         # Check that the matrix I built for testing is indeed symetric.
         self.assertTrue(sp.allclose(tmp_mat, tmp_mat.transpose()))
@@ -360,7 +361,7 @@ class TestClasses(unittest.TestCase):
         Noise2.add_mask(mask_inds)
         Noise2.deweight_time_slope()
         Noise2.add_correlated_over_f(0.01, -1.2, 0.1)
-        Noise2.freq_mode_noise += dirty_map.T_medium
+        Noise2.freq_mode_noise += dirty_map.T_huge**2
         Noise2.finalize()
         N2 = Noise2.get_inverse()
         N2_m = N2.view()
@@ -397,7 +398,7 @@ class TestClasses(unittest.TestCase):
         N.deweight_time_slope()
         # Correlated modes.
         f_0 = 1.
-        amps = [1, 0.01, 0.001]
+        amps = [0.05, 0.01, 0.001]
         index = [-2.5, -1.7, -1.2]
         for ii in range(3):
             mode = sp.arange(nf, dtype=float)
@@ -406,7 +407,7 @@ class TestClasses(unittest.TestCase):
             mode = sp.cos(mode)
             mode /= sp.sqrt(sp.sum(mode**2))
             N.add_over_f_freq_mode(amps[ii], index[ii], f_0, 
-                                   0.0003 * BW * 2., mode)
+                                   0.0003 * BW * 2., mode, True)
         # All freq modes over_f.
         N.add_all_chan_low(thermal, -0.9, 0.01)
         N.finalize()
@@ -414,6 +415,55 @@ class TestClasses(unittest.TestCase):
         N_mat.shape = (nf * nt,) * 2
         e, v = linalg.eigh(N_mat)
         self.assertTrue(sp.amin(e) > 0)
+
+    def deactivated_test_extreme_index(self):
+        """Set of parameters know to have cased issues in the past with
+        numerical stability."""
+
+        nf = 40
+        nt = 150
+        n = nf * nt
+        dt = 0.26214
+        BW = 1. / dt / 2.
+        time_stream = sp.zeros((nf, nt))
+        time_stream = al.make_vect(time_stream, axis_names=("freq", "time"))
+        time = dt * (sp.arange(nt) + 50)
+        N = dirty_map.Noise(time_stream, time)
+        # Thermal.
+        thermal = sp.zeros(nf, dtype=float) + 0.0002 * BW * 2.
+        thermal[22] = dirty_map.T_infinity**2
+        N.add_thermal(thermal)
+        # Time mean and slope.
+        N.deweight_time_mean()
+        N.deweight_time_slope()
+        # Extreem index over_f bit.
+        mode = -sp.ones(nf, dtype=float) / sp.sqrt(nf - 1)
+        mode[22] = 0
+        # Parameters measured from one of the data sets.  Known to screw things
+        # up.
+        #N.add_over_f_freq_mode(8.128e-7, -4.586, 1.0, 1.422e-7, mode, True)
+        N.add_over_f_freq_mode(0.001729, -0.777, 1.0, 1e-8, mode, True)
+        #N.orthogonalize_modes()
+        N.finalize()
+        # Check if the fast inverse works.
+        N_mat = N.get_mat()
+        N_mat.shape = (n, n)
+        N_inv = N.get_inverse()
+        N_inv.shape = (n, n)
+        #eye = sp.dot(N_mat, N_inv)
+        #plt.figure()
+        #plt.plot(eye.flat[::n + 1])
+        #plt.figure()
+        #plt.imshow(sp.reshape(eye.flat[::n + 1], (nf, nt)))
+        #plt.colorbar()
+        #eye.shape = (nf, nt, nf, nt)
+        #plt.figure()
+        #plt.imshow(eye[1,:,1,:])
+        #plt.colorbar()
+        #plt.figure()
+        #plt.imshow(eye[:,1,:,1])
+        #plt.colorbar()
+        #plt.show()
 
     def test_uncoupled_channels(self):
         time_stream, ra, dec, az, el, time, mask_inds = \
@@ -967,7 +1017,8 @@ class TestPreprocessor(unittest.TestCase):
         self.Blocks = Reader.read((), 1)
         Data = self.Blocks[0]
         Data.calc_freq()
-        Maker = dirty_map.DirtyMapMaker({}, feedback=0)
+        params = {'dm_deweight_time_slope' : True}
+        Maker = dirty_map.DirtyMapMaker(params, feedback=0)
         n_chan = Data.dims[-1]
         Maker.n_chan = n_chan
         Maker.pols = (1, 2, 3, 4)
