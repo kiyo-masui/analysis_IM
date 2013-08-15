@@ -133,17 +133,17 @@ pipe_modules = []
 #from noise import measure_noise
 #pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
-from map import dirty_map
+#from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
-#from map import clean_map
+from map import clean_map
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
+pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
 
 
 #### Parameters for the various modules. ####
@@ -450,8 +450,8 @@ dmD_output_root = map_base + 'secD_' + map_prefix
 cmA_input_root = dmA_output_root
 cmA_output_root = cmA_input_root
 
-#cmA_polarizations = ('V',)
-cmA_polarizations = ('I','Q','U','V')
+cmA_polarizations = ('U',)
+#cmA_polarizations = ('I','Q','U','V')
 cmA_bands = (800,)
 cmA_save_noise_diag = True
 cmA_save_cholesky = False
