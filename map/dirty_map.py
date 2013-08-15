@@ -21,6 +21,8 @@ import scipy.fftpack as fft
 from scipy import linalg
 from scipy import interpolate
 import numpy as np
+#import kiyopy.pickle_method
+import warnings
 #import matplotlib.pyplot as plt
 
 import core.algebra as al
@@ -503,7 +505,7 @@ class DirtyMapMaker(object):
                     print self.n_chan
                     print self.n_ra
                     print self.n_dec
-                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename[0:-4]+ '_mpi_uncorr_proc_' + '.npy', 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_ra, self.n_dec), dtype)
+                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename[0:-4]+ '_mpi_uncorr_proc' + '.npy', 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_ra, self.n_dec), dtype)
             else:
                 ra_index_list = range(self.n_ra)
                 # cross product = A x B = (a,b) for all a in A, for all b in B
@@ -516,7 +518,7 @@ class DirtyMapMaker(object):
                 # total matrix a process has.
                 f_ra_start_ind = start_list[self.rank]
                 # Allocate hdf5 file
-                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename[0:-4] + '_mpi_corr_proc_' + '.npy', 'inv_cov', (self.n_chan*self.n_ra, self.n_dec,                                                                self.n_chan, self.n_ra, self.n_dec), dtype)
+                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename[0:-4] + '_mpi_corr_proc' + '.npy', 'inv_cov', (self.n_chan*self.n_ra, self.n_dec,                                                                self.n_chan, self.n_ra, self.n_dec), dtype)
             # Wait for file to be written before continuing.
             comm.Barrier()
             print '\n' + 'Process ' + str(self.rank) + ' Passed first barrier.' + '\n'
@@ -616,7 +618,7 @@ class DirtyMapMaker(object):
                 #       has already been processed.
                 if (run != (self.nproc - 1)):
                     # Send out the DataSet list I have to next guy.
-                    print '\n' + 'Process ' + str(self.rank) + ' is passing data_set_list to process ' + str(self.next_guy) ', at the end of run ' + str(run) + '\n'
+                    print '\n' + 'Process ' + str(self.rank) + ' is passing data_set_list to process ' + str(self.next_guy) + ', at the end of run ' + str(run) + '\n'
                     comm.send(data_set_list,dest=self.next_guy)
                     # Receive the DataSet list being sent to me by prev guy.
                     data_set_list = comm.recv(source=self.prev_guy)
@@ -2429,7 +2431,7 @@ def lock_and_write_buffer(obj, fname, offset, size):
     #fd = open(fname, 'rw')
     #fd = h5py.File(fname, 'r+')
 
-    fcntl.lockf(fd, fcntl.LOCK_EX, size, offset, os.SEEK_SET)
+    #fcntl.lockf(fd, fcntl.LOCK_EX, size, offset, os.SEEK_SET)
     #blah=fd.id
     #blah2=fcntl.LOCK_EX
 
@@ -2442,7 +2444,7 @@ def lock_and_write_buffer(obj, fname, offset, size):
     if nb != len(buf):
         raise Exception("Something funny happened with the reading.")
 
-    fcntl.lockf(fd, fcntl.LOCK_UN)
+    #fcntl.lockf(fd, fcntl.LOCK_UN)
 
     os.close(fd)
 
