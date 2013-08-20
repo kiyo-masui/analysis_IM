@@ -89,7 +89,6 @@ pipe_modules = []
 #from map import clean_map
 #pipe_modules.append(clean_map.CleanMapMaker)
 
-
 #### Second Map making iteration ####
 
 #from cal import correlate_map
@@ -112,9 +111,9 @@ pipe_modules = []
 
 from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
 #from map import clean_map
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
@@ -166,23 +165,23 @@ bs_scans = ()
 bs_IFs = ()
 
 # The two wings of the band pass and the two resonances.
-bs_band_stops = [(690e6, 702e6), (796e6, 800e6), (815e6, 820e6), 
-                 (898e6, 910e6)]
+bs_band_stops = [(690e6, 703e6), (794e6, 800e6), (814e6, 821e6), 
+                 (897e6, 910e6)]
 
 # split_bands
-#sb_input_root = bs_output_root
-#sb_file_middles = file_middles
-#sb_input_end = '.fits'
-#sb_output_root = base_dir + 'band_split/' + prefix
-#sb_output_end = '.fits'
-#sb_scans = ()
-#sb_IFs = ()
+sb_input_root = bs_output_root
+sb_file_middles = file_middles
+sb_input_end = '.fits'
+sb_output_root = base_dir + 'band_split/' + prefix
+sb_output_end = '.fits'
+sb_scans = ()
+sb_IFs = ()
 
 # 128 bins -> 3 bands of 40, starting at 4 ending at 124.
-#sb_n_bands = 1
-#sb_n_bins_band = 240
+sb_n_bands = 1
+sb_n_bins_band = 240
 #sb_offset = 8 + 2 * sb_n_bins_band
-#sb_offset = 8
+sb_offset = 8
 # For now deal with a single lowish noise band that misses resonances, rfi,
 # etc. Band chosen such the upper end is ~5MHz from resonance.
 #sb_n_bands = 1
@@ -351,7 +350,7 @@ dmA_input_end = '.fits'
 dmA_output_root = map_base + 'secA_' + map_prefix
 dmA_scans = ()
 # XXX
-dmA_IFs = (0,)
+dmA_IFs = (2,)
 
 dmA_polarizations = ('I',)
 dmA_field_centre = map_centre
@@ -359,7 +358,7 @@ dmA_pixel_spacing = map_spacing
 dmA_map_shape = map_shape
 dmA_time_block = 'scan'
 #dmA_n_files_group = 420  # prawn
-dmA_n_files_group = 280  # tpb nodes.
+dmA_n_files_group = 120  # tpb nodes.
 #dmA_n_files_group = 120
 dmA_frequency_correlations = 'measured'
 dmA_number_frequency_modes = 3  # Probably most appropriate.

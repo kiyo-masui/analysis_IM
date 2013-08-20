@@ -509,6 +509,54 @@ def save(file, iarray, metafile=None, version=(1,0)) :
     finally :
         info_fid.close()
 
+def save_h5(h5obj, path, iarray):
+    """Store the info array in an hdf5 file.
+
+    Parameters
+    ----------
+    h5obj : h5py File or Group object
+        File to which the info array will be written.
+    path : string
+        Path within `h5obj` to write the array.
+    iarray : info_array
+        info_array to write.
+    """
+    
+    # TODO: Allow `h5obj` to be a string with a path to a new file to be
+    # created (and closed at the end). Acctually, this would require us to
+    # import h5py, which we don't want to do (could do it locally).
+    data = h5obj.create_dataset(path, iarray.shape, iarray.dtype)
+    data[:] = iarray[:]
+    for key, value in iarray.info.iteritems():
+        data.attrs[key] = repr(value)
+
+def load_h5(h5obj, path):
+    """Load an info array from an hdf5 file.
+
+    Parameters
+    ----------
+    h5obj : h5py File or Group object
+        File from which the info array will be read from.
+    path : string
+        Path within `h5obj` to read the array.
+
+    Returns
+    -------
+    iarray : info_array
+        Array loaded from file.
+    """
+    
+    # TODO:  Allow `h5obj` to be a string with a path to a file to be opened
+    # and then closed.
+    data = h5obj[path]
+    iarray = np.empty(data.shape, data.dtype)
+    iarray[:] = data[:]
+    info = {}
+    for key, value in data.attrs.iteritems():
+        info[key] = safe_eval(value)
+    iarray = info_array(iarray, info)
+    return iarray
+
 
 # ---- Functions for manipulating above arrays as matrices and vectors. -------
 
@@ -2090,3 +2138,150 @@ def compressed_array_summary(array, name, axes=[1, 2], extras=False):
         print min_nu.flatten()
         print max_nu.flatten()
     print ""
+
+
+def cartesian(arrays, out=None):
+    """
+    SO: using-numpy-to-build-an-array-of-all-combinations-of-two-arrays
+    Generate a cartesian product of input arrays. ~5x faster than itertools
+
+    Parameters
+    ----------
+    arrays : list of array-like
+        1-D arrays to form the cartesian product of.
+    out : ndarray
+        Array to place the cartesian product in.
+
+    Returns
+    -------
+    out : ndarray
+        2-D array of shape (M, len(arrays)) containing cartesian products
+        formed of input arrays.
+
+    Examples
+    --------
+    >>> cartesian(([1, 2, 3], [4, 5], [6, 7]))
+    array([[1, 4, 6],
+           [1, 4, 7],
+           [1, 5, 6],
+           [1, 5, 7],
+           [2, 4, 6],
+           [2, 4, 7],
+           [2, 5, 6],
+           [2, 5, 7],
+           [3, 4, 6],
+           [3, 4, 7],
+           [3, 5, 6],
+           [3, 5, 7]])
+
+    """
+
+    arrays = [np.asarray(x) for x in arrays]
+    dtype = arrays[0].dtype
+
+    n = np.prod([x.size for x in arrays])
+    if out is None:
+        out = np.zeros([n, len(arrays)], dtype=dtype)
+
+    m = n / arrays[0].size
+    out[:, 0] = np.repeat(arrays[0], m)
+    if arrays[1:]:
+        cartesian(arrays[1: ], out=out[0: m, 1: ])
+        for j in xrange(1, arrays[0].size):
+            out[j * m: (j + 1) * m, 1: ] = out[0: m, 1: ]
+
+    return out
+
+
+def roll_zeropad(a, shift, axis=None):
+    """
+    SO: python-numpy-roll-with-padding
+    Roll array elements along a given axis.
+
+    Elements off the end of the array are treated as zeros.
+
+    Parameters
+    ----------
+    a : array_like
+        Input array.
+    shift : int
+        The number of places by which elements are shifted.
+    axis : int, optional
+        The axis along which elements are shifted.  By default, the array
+        is flattened before shifting, after which the original
+        shape is restored.
+
+    Returns
+    -------
+    res : ndarray
+        Output array, with the same shape as `a`.
+
+    See Also
+    --------
+    roll     : Elements that roll off one end come back on the other.
+    rollaxis : Roll the specified axis backwards, until it lies in a
+               given position.
+
+    Examples
+    --------
+    >>> x = np.arange(10)
+    >>> roll_zeropad(x, 2)
+    array([0, 0, 0, 1, 2, 3, 4, 5, 6, 7])
+    >>> roll_zeropad(x, -2)
+    array([2, 3, 4, 5, 6, 7, 8, 9, 0, 0])
+
+    >>> x2 = np.reshape(x, (2,5))
+    >>> x2
+    array([[0, 1, 2, 3, 4],
+           [5, 6, 7, 8, 9]])
+    >>> roll_zeropad(x2, 1)
+    array([[0, 0, 1, 2, 3],
+           [4, 5, 6, 7, 8]])
+    >>> roll_zeropad(x2, -2)
+    array([[2, 3, 4, 5, 6],
+           [7, 8, 9, 0, 0]])
+    >>> roll_zeropad(x2, 1, axis=0)
+    array([[0, 0, 0, 0, 0],
+           [0, 1, 2, 3, 4]])
+    >>> roll_zeropad(x2, -1, axis=0)
+    array([[5, 6, 7, 8, 9],
+           [0, 0, 0, 0, 0]])
+    >>> roll_zeropad(x2, 1, axis=1)
+    array([[0, 0, 1, 2, 3],
+           [0, 5, 6, 7, 8]])
+    >>> roll_zeropad(x2, -2, axis=1)
+    array([[2, 3, 4, 0, 0],
+           [7, 8, 9, 0, 0]])
+
+    >>> roll_zeropad(x2, 50)
+    array([[0, 0, 0, 0, 0],
+           [0, 0, 0, 0, 0]])
+    >>> roll_zeropad(x2, -50)
+    array([[0, 0, 0, 0, 0],
+           [0, 0, 0, 0, 0]])
+    >>> roll_zeropad(x2, 0)
+    array([[0, 1, 2, 3, 4],
+           [5, 6, 7, 8, 9]])
+
+    """
+    a = np.asanyarray(a)
+    if shift == 0: return a
+    if axis is None:
+        n = a.size
+        reshape = True
+    else:
+        n = a.shape[axis]
+        reshape = False
+    if np.abs(shift) > n:
+        res = np.zeros_like(a)
+    elif shift < 0:
+        shift += n
+        zeros = np.zeros_like(a.take(np.arange(n-shift), axis))
+        res = np.concatenate((a.take(np.arange(n-shift,n), axis), zeros), axis)
+    else:
+        zeros = np.zeros_like(a.take(np.arange(n-shift,n), axis))
+        res = np.concatenate((zeros, a.take(np.arange(n-shift), axis)), axis)
+    if reshape:
+        return res.reshape(a.shape)
+    else:
+        return res
