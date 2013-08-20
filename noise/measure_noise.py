@@ -479,6 +479,7 @@ def fit_overf_const(power, window, freq):
         new_weights = abs(model(params))
         weights = old_weights + new_weights
         old_weights = new_weights
+        print params,
         # XXX
         #plt.figure()
         #plt.loglog(freq, power)
@@ -490,6 +491,7 @@ def fit_overf_const(power, window, freq):
         params, cov_x, info, mesg, ier = sp.optimize.leastsq(residuals, 
                     params, Dfun=jacobian, col_deriv=True, xtol=0.001,
                     full_output=True)
+    print
     #plt.figure()
     #plt.loglog(freq, power)
     #plt.loglog(freq, model(params))
