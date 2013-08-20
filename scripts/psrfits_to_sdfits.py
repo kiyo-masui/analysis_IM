@@ -788,8 +788,8 @@ def format_data(data, ntime, npol, nfreq) :
     
     The input data matrix is not preserved in this function.
     """
-    if (not data.dtype == sp.uint8) or (len(data.shape) != 1) :
-        raise TypeError("Expected flat uint8 data.")
+    if (not data.dtype == sp.uint8) or (data.size != ntime * npol * nfreq):
+        raise TypeError("Got data of wronge type of size.")
     out_data = sp.empty((ntime, npol, nfreq), dtype=sp.float32)
     # Reshape the data making the last index the one that is
     # averaged over when we rebin.
