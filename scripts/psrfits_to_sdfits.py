@@ -820,10 +820,16 @@ def get_cal_mask(data, n_bins_cal) :
     I_data = data[:,0,:].copy()
     # For solving for the cal phase, throw away high varience channels (RFI).
     # Divide by time mean, makes a good noise weight and normalizes variences.
-    I_data /= sp.mean(I_data, 0)
+    I_mean = sp.mean(I_data, 0)
+    # Some channels might be all zeros, don't want to divide by that.
+    good_chans = I_mean > 0.1 * sp.mean(I_mean)
+    I_mean[sp.logical_not(good_chans)] = 1.
+    I_data *= good_chans
+    I_data /= I_mean
     # Evaluate the noise in each channel.
     I_vars = sp.var(I_data, 0)
-    mean_var = sp.mean(I_vars)
+    # Only use channels with lowish noise.
+    mean_var = sp.sum(I_vars) / sp.sum(good_chans)
     good_chans = I_vars < 2 * mean_var
     I_data *= good_chans
     # Fold the Stokes I data on the cal period to figure out the phase.
