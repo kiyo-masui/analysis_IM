@@ -14,6 +14,7 @@ from Queue import Queue
 import shelve
 import sys
 import time as time_mod
+import pickle
 
 import scipy as sp
 import numpy.ma as ma
@@ -505,7 +506,7 @@ class DirtyMapMaker(object):
                     print self.n_chan
                     print self.n_ra
                     print self.n_dec
-                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename[0:-4]+ '_mpi_uncorr_proc' + '.npy', 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_ra, self.n_dec), dtype)
+                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename[0:-4]+ '_mpi_uncorr_proc_pickle' + '.npy', 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_ra, self.n_dec), dtype)
             else:
                 ra_index_list = range(self.n_ra)
                 # cross product = A x B = (a,b) for all a in A, for all b in B
@@ -518,7 +519,7 @@ class DirtyMapMaker(object):
                 # total matrix a process has.
                 f_ra_start_ind = start_list[self.rank]
                 # Allocate hdf5 file
-                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename[0:-4] + '_mpi_corr_proc' + '.npy', 'inv_cov', (self.n_chan*self.n_ra, self.n_dec,                                                                self.n_chan, self.n_ra, self.n_dec), dtype)
+                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename[0:-4] + '_mpi_corr_proc_pickle' + '.npy', 'inv_cov', (self.n_chan*self.n_ra, self.n_dec,                                                                self.n_chan, self.n_ra, self.n_dec), dtype)
             # Wait for file to be written before continuing.
             comm.Barrier()
             print '\n' + 'Process ' + str(self.rank) + ' Passed first barrier.' + '\n'
@@ -619,9 +620,23 @@ class DirtyMapMaker(object):
                 if (run != (self.nproc - 1)):
                     # Send out the DataSet list I have to next guy.
                     print '\n' + 'Process ' + str(self.rank) + ' is passing data_set_list to process ' + str(self.next_guy) + ', at the end of run ' + str(run) + '\n'
-                    comm.send(data_set_list,dest=self.next_guy)
+                    #Pickling DataSet objects in data_set_list 
+                    def pickle_list(list):
+                        pickled_list = []
+                        for item in list:
+                            pickled_list.append(pickle.dumps(item))
+                        return pickled_list
+                    data_set_list_pickled = pickle_list(data_set_list)
+                    comm.send(data_set_list_pickled,dest=self.next_guy)
                     # Receive the DataSet list being sent to me by prev guy.
-                    data_set_list = comm.recv(source=self.prev_guy)
+                    data_set_list_pickled = comm.recv(source=self.prev_guy)
+                    #Unpickling DataSet objects
+                    def unpickle_list(list):
+                        unpickled_list = []
+                        for item in list:
+                            unpickled_list.append(pickle.loads(item))
+                        return unpickled_list
+                    data_set_list=unpickle_list(data_set_list_pickled)
                     ## Same for time_stream_list.
                     #comm.send(time_stream_list,dest=self.next_guy)
                     #time_stream_list = comm.recv(source=self.prev_guy)
@@ -637,7 +652,7 @@ class DirtyMapMaker(object):
                 #total_shape = (self.n_chan*self.n_ra, self.n_dec,
                              #  self.n_chan, self.n_ra, self.n_dec)
                 #start_ind = (f_ra_start_ind,0,0,0,0)
-                lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename[0:-4] + '_mpi_corr_proc' + '.npy', data_offset + dsize*f_ra_start_ind*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
+                lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename[0:-4] + '_mpi_corr_proc_pickle' + '.npy', data_offset + dsize*f_ra_start_ind*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
@@ -653,7 +668,7 @@ class DirtyMapMaker(object):
                 #total_shape = (self.n_chan, self.n_ra,
                              #  self.n_dec, self.n_ra, self.n_dec)
                 #start_ind = (index_list[0],0,0,0,0)
-                lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename[0:-4] + '_mpi_uncorr_proc' + '.npy', data_offset + dsize*index_list[0]*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
+                lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename[0:-4] + '_mpi_uncorr_proc_pickle' + '.npy', data_offset + dsize*index_list[0]*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
@@ -1209,6 +1224,23 @@ class DataSet(object):
         vector /= sp.sum(vector**2)
         return vector
 
+    def __getstate__(self):
+        return (self.params, self.freq, self.delta_freq, self.n_chan,                      self.pols, self.pol_ind, self.band_centres, self.band_ind,                 self.file_middle, self.Pointing, self.Noise,                               self.time_stream)
+
+    def __setstate__(self,val):
+        self.params=val[0]
+        self.freq=val[1]
+        self.delta_freq=val[2]
+        self.n_chan=val[3]
+        self.pols=val[4]
+        self.pol_ind=val[5]
+        self.band_centres=val[6]
+        self.band_ind=val[7]
+        self.file_middle=val[8]
+        self.Pointing=val[9]
+        self.Noise=val[10]
+        #self.time_stream, ra, dec, az, el, time, mask_inds = val[11]
+        self.time_stream=val[11]
 
 
 class Pointing(object):
