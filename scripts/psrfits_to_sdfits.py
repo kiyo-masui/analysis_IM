@@ -27,6 +27,9 @@ import scipy as sp
 import scipy.interpolate as interp
 import scipy.fftpack as fft
 import pyfits
+# The before importing pyplot eliminates the need for a working X-server.
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from time_stream import rotate_pol, cal_scale, rebin_freq
@@ -731,6 +734,9 @@ class Converter(object):
             n_new = nprocesses
             proc_list = range(n_new)
             n_tasks = len(initial_scans)
+            # Use a Lock for writing files, as this briefly doubles the memory
+            # useage.
+            self.write_lock = mp.Lock()
             for ii in range(n_new + n_tasks):
                 # End the task number ii - n_new.
                 if ii >= n_new:
@@ -757,7 +763,8 @@ class Converter(object):
         Set.convert_scans(params['time_bins_to_average'],
                           params['partition_cal'], params['cal_fold_time'],
                           params['fast_flag'])
-        Set.write_out(params['output_root'])
+        with self.write_lock:
+            Set.write_out(params['output_root'])
 
 
 # Functions for the most error prone parts of the above script.  Unit testing
@@ -1001,8 +1008,9 @@ def separate_cal(data, n_bins_cal, cal_mask=None, flag=10.) :
                     counts[t_inds[jj],1,f_inds[jj]] -= 1
                     flag_counts += 1
                 out_data[:,:,1,:] += data[:,ii,:,:]
-        if flag_counts:
-            print "(flagged %d samples)" % flag_counts,
+        if float(flag_counts) / (nfreq * ntime) > 0.001:
+            percent_flagged = float(flag_counts) / (nfreq * ntime) * 100
+            print "(flagged %4.1f%% of samples)" % percent_flagged,
         out_data /= counts[:,None,:,:]
     return out_data
 
@@ -1029,6 +1037,7 @@ class DataChecker(object) :
 
     def execute(self, nprocesses=1) :
         params = self.params
+        utils.mkparents(params["output_root"])
         n = len(params["file_middles"])
         np = nprocesses
         procs = [None]*np
@@ -1280,11 +1289,11 @@ class DataManager(object) :
         fits_root = params["fits_log_root"] + "%02d"%number + "/"
         outroot = params["output_root"]
         print ("Processing sesson " + str(number) + ", in guppi directories "
-                + str(guppi_dirs))
+                + str(guppi_dirs) + " and raw fits directories " + fits_root)
         # Check that all the directories are present.
         for dir in guppi_dirs :
             if (not os.path.isdir(dir) or not os.path.isdir(fits_root)) :
-                print "Skipped do to missing data."
+                print "Skipped due to missing data."
                 return
         # First thing we do is start to rsync to the archive.
         if number in params['sessions_to_archive'] and not params["dry_run"]:
