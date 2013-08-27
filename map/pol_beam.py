@@ -197,8 +197,10 @@ class HermiteBasis(object):
         # Convert, x and y to 2D arrays broadcastable to the length of the
         # frequency axis.
         x, y = np.broadcast_arrays(x, y)
+        return_1D = False
         if x.ndim == 0:
             shape = (1, 1)
+            return_1D = True
         elif x.ndim == 1:
             shape = (1, x.shape[0])
         elif x.ndim == 2:
@@ -224,6 +226,8 @@ class HermiteBasis(object):
                 this_x = x[0,:]
                 this_y = y[0,:]
             out[ii,:] = self.eval_basis_chan(mode, this_x, this_y, ii)
+        if return_1D:
+            out.shape = (n_chan,)
         return out
 
     def eval_basis_chan(self, mode, x, y, chan):
@@ -313,6 +317,17 @@ class LinearBeam(object):
         self.Basis = Basis
         self.coefficients = coefficients
 
+    def get_skewer(self, x, y):
+        
+        out = np.zeros((self.n_chan, self.n_pol), dtype=np.float64)
+        for ii in range(self.n_modes):
+            for jj in range(self.n_modes):
+                if not np.all(self.coefficients[:,:,ii,jj] == 0):
+                    basis_function = self.Basis.eval_basis((ii, jj), x, y)
+                    out += (basis_function[:,None]
+                            * self.coefficients[:,:,ii,jj])
+        return out
+
     def get_full_beam(self, n_side, size):
 
         out = np.zeros((self.n_chan, self.n_pol, n_side, n_side),
@@ -329,6 +344,27 @@ class LinearBeam(object):
 
 def plot_beam_map(beam_map, color_map=1, side=None, normalize=None,
                   rotate=None):
+    """
+    Plotting function for precomputed beam maps.
+    
+    Parameters
+    ----------
+    beam_map : array with shape [n_pol, n_side, n_side]
+        Map of the beam at a single frequency but all polarizations.
+    color_map : scalar
+        power law index for the color scale. 1 for linear color, .5 for sqrt,
+        etc.
+    side : float
+        size of the side of the map, e.g. 1 degree
+    normalize : list or string
+        How to normalize the polarizations.  Either pass a list of scalars (one
+        for each polarization) or a key such as 'max03' which normalized to the
+        maximum of the 0th and 3rd polarization (appropriate for XX,XY,YX,YY
+        polarizations).
+    rotate : string
+        How to rotate the polarizations (after normalizing).  Currently only
+        'XXYYtoIQ' is implemented.
+    """
 
     import matplotlib.pyplot as plt
 

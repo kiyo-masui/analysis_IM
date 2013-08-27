@@ -272,7 +272,7 @@ def linear_fit(BeamData, Basis, Source, beam_modes=2, time_modes=2):
     model_data = np.empty((n_chan, n_pol, n_time), dtype=np.float64)
 
     # Loop over channels and fit each independantly.
-    for ii in xrange(BeamData.n_chan - 69):
+    for ii in xrange(BeamData.n_chan):
         # Get the data for this channel.
         data, weights = BeamData.get_data_weight_chan(ii)
         # Evaluate the basis functions for this channel at the telescope
