@@ -186,14 +186,16 @@ class TestWriter(unittest.TestCase) :
         self.Writer.add_data(Block)
 
     def test_add_data(self) :
-        for field_name in fitsGBT.fields_and_axes.iterkeys() :
-            self.assertEqual(len(self.Writer.field[field_name]),
-                             ntimes_scan*npol*ncal)
         Block = self.Reader.read(1, 0)
-        self.Writer.add_data(Block)
         for field_name in fitsGBT.fields_and_axes.iterkeys() :
-            self.assertEqual(len(self.Writer.field[field_name]),
-                             2*ntimes_scan*npol*ncal)
+            if field_name in Block.field.keys():
+                self.assertEqual(len(self.Writer.field[field_name]),
+                                 ntimes_scan*npol*ncal)
+        self.Writer.add_data(Block)
+        for field_name in fitsGBT.fields_and_axes.iterkeys():
+            if field_name in Block.field.keys():
+                self.assertEqual(len(self.Writer.field[field_name]),
+                                 2*ntimes_scan*npol*ncal)
 
     def test_error_on_bad_format(self) :
         Block = self.Reader.read(1, 0)
@@ -231,8 +233,9 @@ class TestCircle(unittest.TestCase) :
                 self.assertEqual(OldDB.dims[ii], NewDB.dims[ii])
             self.assertTrue(ma.allclose(OldDB.data, NewDB.data))
             for field, axis in fitsGBT.fields_and_axes.iteritems() :
-                self.assertEqual(axis, OldDB.field_axes[field])
-                self.assertEqual(axis, NewDB.field_axes[field])
+                if field in OldDB.field.keys():
+                    self.assertEqual(axis, OldDB.field_axes[field])
+                    self.assertEqual(axis, NewDB.field_axes[field])
             for field in ['SCAN', 'OBJECT', 'TIMESTAMP',
                           'OBSERVER', 'CRPIX1', 'CDELT1'] :
                 self.assertEqual(OldDB.field[field], NewDB.field[field])

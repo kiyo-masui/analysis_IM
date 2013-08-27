@@ -55,6 +55,9 @@ fields_and_axes = {
                    # and I think refraction.
                    'CRVAL2' : ('time', ), # Azimuth
                    'CRVAL3' : ('time', ), # Elevation
+                   # RA and DEC as extracted from the antenna fits files.
+                   'RA' : ('time', ),
+                   'DEC' : ('time', ),
                    # Polarization indicies
                    'CRVAL4' : ('pol', ),
                    'CAL' : ('cal', )
