@@ -14,7 +14,7 @@ from Queue import Queue
 import shelve
 import sys
 import time as time_mod
-import pickle
+import cPickle
 
 import scipy as sp
 import numpy.ma as ma
@@ -624,7 +624,7 @@ class DirtyMapMaker(object):
                     def pickle_list(list):
                         pickled_list = []
                         for item in list:
-                            pickled_list.append(pickle.dumps(item))
+                            pickled_list.append(cPickle.dumps(item))
                         return pickled_list
                     data_set_list_pickled = pickle_list(data_set_list)
                     comm.send(data_set_list_pickled,dest=self.next_guy)
@@ -634,7 +634,7 @@ class DirtyMapMaker(object):
                     def unpickle_list(list):
                         unpickled_list = []
                         for item in list:
-                            unpickled_list.append(pickle.loads(item))
+                            unpickled_list.append(cPickle.loads(item))
                         return unpickled_list
                     data_set_list=unpickle_list(data_set_list_pickled)
                     ## Same for time_stream_list.
@@ -978,6 +978,9 @@ class DataSet(object):
 
     def __init__(self, params, Blocks, map, n_chan, delta_freq, pols, pol_ind,
                        band_centres, band_ind, file_middle):
+        #self.Blocks = Blocks
+        #self.map = map
+        #above this line are added instances to try __getinitargs__() pickle technique
         self.params = params
         self.freq = map.get_axis('freq')
         self.delta_freq = delta_freq
@@ -1223,6 +1226,9 @@ class DataSet(object):
         vector = sp.copy(db_vects[chan_start_ind:chan_start_ind + n_chan])
         vector /= sp.sum(vector**2)
         return vector
+
+    #def __getnewargs__(self):
+        #return (self.params, self.Blocks, self.map, self.n_chan, self.delta_freq, self.pols, self.pol_ind, self.band_centres, self.band_ind, self.file_middle)
 
     def __getstate__(self):
         return (self.params, self.freq, self.delta_freq, self.n_chan,                      self.pols, self.pol_ind, self.band_centres, self.band_ind,                 self.file_middle, self.Pointing, self.Noise,                               self.time_stream)
@@ -2292,6 +2298,89 @@ class Noise(object):
         # Combine the terms.
         out = diag_weighted - update_term
         return out 
+
+    def __getstate__(self):
+        attr_list=[]
+        attr_list.append(self.n_chan)
+        attr_list.append(self.n_time)
+        attr_list.append(self.info)
+        attr_list.append(self._finalized)
+        attr_list.append(self.time)
+        try:
+            attr_list.append(self.diagonal)
+        except:
+            attr_list.append(1)
+        try:
+            attr_list.append(self.time_modes)
+        except:
+            attr_list.append(1)
+        try:
+            attr_list.append(self.time_mode_noise)
+        except:
+            attr_list.append(1)
+        try:
+            attr_list.append(self.freq_modes)
+        except:
+            attr_list.append(1)
+        try:
+            attr_list.append(self.freq_mode_noise)
+        except:
+            attr_list.append(1)
+        try:
+            attr_list.append(self.debug)
+        except:
+            attr_list.append(1)
+        try:
+            attr_list.append(self.diagonal_inv)
+        except:
+            attr_list.append(1)
+        try:
+            attr_list.append(self._frequency_correlations)
+        except:
+            attr_list.append(1)
+        try:
+            attr_list.append(self.freq_mode_update)
+        except:
+            attr_list.append(1)
+        try:
+            attr_list.append(self.time_mode_update)
+        except:
+            attr_list.append(1)
+        try:
+            attr_list.append(self.cross_update)
+        except:
+            attr_list.append(1)
+        return tuple(attr_list)
+
+    def __setstate__(self, val):
+        self.n_chan=val[0]
+        self.n_time=val[1]
+        self.info=val[2]
+        self._finalized=val[3]
+        self.time=val[4]
+        if (val[5]!=1)
+            self.diagonal=val[5]
+        if (val[6]!=1)
+            self.time_modes=val[6]
+        if (val[7]!=1)
+            self.time_mode_noise=val[7]
+        if (val[8]!=1)
+            self.freq_modes=val[8]
+        if (val[9]!=1)
+            self.freq_mode_noise=val[9]
+        if (val[10]!=1)
+            self.debug=val[10]
+        if (val[11]!=1)
+            self.diagonal_inv=val[11]
+        if (val[12]!=1)
+            self._frequency_correlations=val[12]
+        if (val[13]!=1)
+            self.freq_mode_update=val[13]
+        if (val[14]!=1)
+            self.time_modes_update=val[14]
+        if (val[15]!=1)
+            self.cross_update=val[15]
+
 
 
 #### Utilities ####
