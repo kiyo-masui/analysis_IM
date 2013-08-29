@@ -1461,6 +1461,19 @@ class Pointing(object):
                    " `noise_to_map_domain` instead.")
             raise RuntimeError(msg)
 
+    def __getstate__(self):
+        return (self._axis_names, self._coords, self._scheme, self._map_axes, self._map_shape, self.dtype, self._pixel_inds, self._weights)
+
+    def __setstate__(self, val):
+        self._axis_names = val[0]
+        self._coords = val[1]
+        self._scheme = val[2]
+        self._map_axes = val[3]
+        self._map_shape = val[4]
+        self.dtype = val[5]
+        self._pixel_inds = val[6]
+        self._weights = val[7]
+
 
 class NoiseError(Exception):
     """Exception to raise if the there is something wrong with the noise and
