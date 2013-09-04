@@ -40,9 +40,9 @@ def calcGain(OnData,OffData,file_num,freq_val,src,beamwidth):
 
     #Setting up Residuals for Least Squares Fitting
     def residuals(p,errors,freq_val,src,theta,data,width,file_num):
-        wavelength = 300.0/freq_val
+        wavelength = 300./freq_val
         BW = width*sp.pi/180.
-        JtoK = (sp.pi*wavelength**2)/(8*1380.648*BW**2)
+        JtoK = sp.pi*wavelength**2/(8*1380.648*BW**2)
         Jsrc_name = ['3C286','3C48','3C67','3C147','3C295']
         Jsrc_val = [19.74748409*pow((750.0/freq_val),0.49899785),
                     25.15445092*pow((750.0/freq_val),0.75578842),
@@ -54,12 +54,12 @@ def calcGain(OnData,OffData,file_num,freq_val,src,beamwidth):
                 src_ind = i
         PAsrc = [33.*sp.pi/180.,0.,0.,0.,0.,0.]
         Psrc = [0.07,0.,0.,0.,0.]
-        Isrc = Jsrc_val[src_ind]*JtoK
+        Isrc = Jsrc_val[src_ind]
         Qsrc = Isrc*Psrc[src_ind]*sp.cos(2*PAsrc[src_ind])
         Usrc = Isrc*Psrc[src_ind]*sp.sin(2*PAsrc[src_ind])
         Vsrc = 0
-        XXsrc0 = Isrc-Qsrc
-        YYsrc0 = Isrc+Qsrc
+        XXsrc0 = (Isrc-Qsrc)*JtoK[0]
+        YYsrc0 = (Isrc+Qsrc)*JtoK[1]
         expec =sp.zeros(4*file_num)
         for i in range(0,len(source),4):
             expec[i] = (0.5*(1+sp.cos(2*theta[i]))*XXsrc0-sp.sin(2*theta[i])*Usrc
@@ -128,7 +128,11 @@ def calcGain(OnData,OffData,file_num,freq_val,src,beamwidth):
         p_val_out[f,1] = pval[0]
         p_val_out[f,2] = pval[1]
 
-    JtoK = sp.pi*(300./freq_val)**2/(8*1380.648*(beamwidth*sp.pi/180.)**2)
+
+    wavelength = sp.ones((len(freq_val),2))
+    for i in range(0,len(freq_val)):
+        wavelength[i] = [300./freq_val[i],300./freq_val[i]]
+    JtoK = sp.pi*(wavelength)**2/(8*1380.648*(beamwidth*sp.pi/180.)**2)
     return p_val_out,JtoK
 
 ##################################################################################
@@ -291,12 +295,13 @@ if Beam_cal:
 # non-linear fit to the Gaussian and gets things like the centriod and the
 # Gaussian width.  All fits are channel-by-channel (independantly).
     center_offset, width, amps, Tsys = beam_fit.fit_simple_gaussian(BeamData, S)
+    print width[0]
     elevation = ma.mean(BeamData.get_all_field('el'))
 
 #Hermite Fitting
 if Hermite:
 # Basic basis functions to be used in the fit.
-    HermiteBasis = pol_beam.HermiteBasis(beam_cal_freq, center_offset, width)
+    HermiteBasis = pol_beam.HermiteBasis(beam_cal_freq, center_offset, width[:,0])
 # Perform the fit.
     beam_params, scan_params, model_data = beam_fit.linear_fit(BeamData, HermiteBasis,S, 3, 2)
 
@@ -332,9 +337,11 @@ if Plotting:
 
 #Beam Width Plot
     plt.figure()
-    plt.plot(freq,width)
+    plt.plot(freq,width[:,0])
+    plt.plot(freq,width[:,1])
     plt.xlabel('Frequency (MHz)')
     plt.ylabel('Beam Width (Degrees)')
+    plt.legend(('XX','YY'))
     plt.xlim(700,900)
     plt.title('Symmetric Gaussian FWHM from '+source+' at %0.1f degrees El' %elevation)
     plt.grid()
@@ -344,10 +351,12 @@ if Plotting:
 #Jansky to Kelvin Conversion Factor Plot
     if Gain_cal:
         plt.figure()
-        plt.plot(freq,JtoK)
+        plt.plot(freq,JtoK[:,0])
+        plt.plot(freq,JtoK[:,1])
         plt.xlabel('Frequency (MHz)')
         plt.ylabel('Jansky to Kelvin Conversion Factor')
         plt.xlim(700,900)
+        plt.legend(('XX','YY'))
         plt.title('Jy to K Conversion Factor from '+source+' at %0.1f degrees El' %elevation)
         plt.grid()
         plt.savefig(out_dir+source+'_'+str(int(elevation))+'_JytoK_convert',dpi=300)

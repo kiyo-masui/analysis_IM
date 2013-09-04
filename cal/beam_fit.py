@@ -200,21 +200,24 @@ def fit_simple_gaussian(BeamData, Source):
     def model(pars):
         az_off = pars[0]
         el_off = pars[1]
-        width = pars[2]
-        XX_amp = pars[3]
-        YY_amp = pars[4]
-        XX_Tsys = pars[5]
-        YY_Tsys = pars[6]
-        sigma = width / (2 * np.sqrt(2 * np.log(2)))
-        gauss = np.exp(-((az - az_off)**2 + (el - el_off)**2) / (2 * sigma**2))
-        model = np.array([XX_amp, YY_amp])[:,None] * gauss
+        XX_width = pars[2]
+        YY_width = pars[3]
+        XX_amp = pars[4]
+        YY_amp = pars[5]
+        XX_Tsys = pars[6]
+        YY_Tsys = pars[7]
+        sigmaXX = XX_width / (2 * np.sqrt(2 * np.log(2)))
+        sigmaYY = YY_width / (2 * np.sqrt(2 * np.log(2)))
+        gaussXX = np.exp(-((az - az_off)**2 + (el - el_off)**2) / (2 * sigmaXX**2))
+        gaussYY = np.exp(-((az - az_off)**2 + (el - el_off)**2) / (2 * sigmaYY**2))
+        model = np.array([XX_amp, YY_amp])[:,None]*np.array([gaussXX,gaussYY])[:,None] 
         model += np.array([XX_Tsys, YY_Tsys])[:,None]
         return model
     
     # Allocate memory for outputs.
-    all_pars = np.empty((BeamData.n_chan, 7), dtype=np.float64)
+    all_pars = np.empty((BeamData.n_chan, 8), dtype=np.float64)
     # Initialization parameters.
-    init_pars = [0, 0, 0.25, 10, 10, 10, 10]
+    init_pars = [0, 0, 0.25,0.25, 10, 10, 10, 10]
     # Loop over channels and fit each one independantly.
     for ii in xrange(BeamData.n_chan):
         # Get the data for this channel.
@@ -232,9 +235,9 @@ def fit_simple_gaussian(BeamData, Source):
     
     # Unpack the parameters and return.
     source = all_pars[:,0:2].copy()
-    width = all_pars[:,2].copy()
-    amps = all_pars[:,3:5].copy()
-    Tsys = all_pars[:,5:7].copy()
+    width = all_pars[:,2:4].copy()
+    amps = all_pars[:,4:6].copy()
+    Tsys = all_pars[:,6:8].copy()
     return source, width, amps, Tsys
 
 
