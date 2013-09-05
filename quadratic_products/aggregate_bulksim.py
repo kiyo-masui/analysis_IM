@@ -48,14 +48,19 @@ class AggregateSummary(object):
 
     def execute(self, processes):
         """produce a list of files to combine and run"""
-        outfile = self.params["outfile"]
-        filelist = glob.glob('%s/%s*.shelve' % \
-                             (self.params['directory'],
-                              self.params['basefile']))
-        print '%s/%s*.shelve' % \
-              (self.params['directory'], self.params['basefile'])
-
-        self.produce_summary(filelist, outfile)
+        redshift = [0.042,0.086,0.130,0.220,0.267,0.316,0.416,0.468,0.523,0.636,
+                    0.696,0.758,0.889,0.958,1.030,1.185,1.267,1.353,1.538,1.638,
+                    1.742,1.969,2.092,2.222,2.505,2.660,2.825]
+        for red in redshift:
+            print "the redshift is:", red
+            outfile = self.params["outfile"] + "dm%.3fredshift/"%red + "dm%.3fred_aver.hd5"%red
+            filelist = glob.glob('%s/*sim%.3fred.shelve' % \
+                                (self.params['directory'],
+                                red))
+            print '%s/*sim%.3fred.shelve' % \
+                (self.params['directory'], red)
+            print filelist
+            self.produce_summary(filelist, outfile)
 
     def produce_summary(self, filelist, outfile, debug=False):
         num_sim = len(filelist)
@@ -262,53 +267,62 @@ class AggregateStatistics(object):
             self.params = parse_ini.parse(parameter_file,
                                           aggregatestatistics_init,
                                           prefix=aggregatestatistics_prefix)
-
-        print "opening: ", self.params["aggfile_in"]
-        self.summary = h5py.File(self.params["aggfile_in"], "r")
-        # get the list of treatments
-        self.treatments = self.summary["results"].keys()
+        redshift = [0.042,0.086,0.130,0.220,0.267,0.316,0.416,0.468,0.523,0.636,
+                    0.696,0.758,0.889,0.958,1.030,1.185,1.267,1.353,1.538,1.638,
+                    1.742,1.969,2.092,2.222,2.505,2.660,2.825]
+        cumul_files = []
+        for red in redshift:
+            print "opening: ", self.params["aggfile_in"] + "dm%.3fredshift/dm%.3fred_aver.hd5"%(red, red)
+            cumul_files.append(h5py.File(self.params["aggfile_in"] + "dm%.3fredshift/dm%.3fred_aver.hd5"%(red, red), "r"))
+        self.summary = cumul_files
+        # get the list of treatments 0th since all of them have the same keys
+        self.treatments = self.summary[0]["results"].keys()
         print "AggregateStatistics: treatment cases: ", self.treatments
 
     def execute(self, processes):
         """produce a list of files to combine and run"""
-        stat_results = {}
-        for treatment in self.treatments:
-            stat_summary = {}
-            (stat_1d, error_stat_1d, counts_1d) = \
-                    self.aggregate_1d_statistics(treatment, from2d=False)
+        redshift = [0.042,0.086,0.130,0.220,0.267,0.316,0.416,0.468,0.523,0.636,
+                    0.696,0.758,0.889,0.958,1.030,1.185,1.267,1.353,1.538,1.638,
+                    1.742,1.969,2.092,2.222,2.505,2.660,2.825]
+        for index in range(len(self.summary)):
+            stat_results = {}
+            for treatment in self.treatments:
+                stat_summary = {}
+                (stat_1d, error_stat_1d, counts_1d) = \
+                        self.aggregate_1d_statistics(index, treatment, from2d=False)
 
-            stat_summary["pk_1d_stat"] = stat_1d
-            stat_summary["pk_1d_errstat"] = error_stat_1d
-            stat_summary["pk_1d_counts"] = counts_1d
+                stat_summary["pk_1d_stat"] = stat_1d
+                stat_summary["pk_1d_errstat"] = error_stat_1d
+                stat_summary["pk_1d_counts"] = counts_1d
 
-            (stat_1d, error_stat_1d, counts_1d) = \
-                    self.aggregate_1d_statistics(treatment, from2d=True)
+                (stat_1d, error_stat_1d, counts_1d) = \
+                        self.aggregate_1d_statistics(index, treatment, from2d=True)
 
-            stat_summary["pk_1d_from_2d_stat"] = stat_1d
-            stat_summary["pk_1d_from_2d_errstat"] = error_stat_1d
-            stat_summary["pk_1d_from_2d_counts"] = counts_1d
+                stat_summary["pk_1d_from_2d_stat"] = stat_1d
+                stat_summary["pk_1d_from_2d_errstat"] = error_stat_1d
+                stat_summary["pk_1d_from_2d_counts"] = counts_1d
 
-            (stat_2d, counts_2d) = self.aggregate_2d_statistics(treatment)
+                (stat_2d, counts_2d) = self.aggregate_2d_statistics(index, treatment)
 
-            stat_summary["pk_2d_stat"] = stat_2d
-            stat_summary["pk_2d_counts"] = counts_2d
+                stat_summary["pk_2d_stat"] = stat_2d
+                stat_summary["pk_2d_counts"] = counts_2d
 
-            stat_summary["k_1d"] = self.summary["k_1d"]["center"].value
-            stat_summary["k_1d_from_2d"] = \
-                    self.summary["k_1d_from_2d"]["center"].value
+                stat_summary["k_1d"] = self.summary[index]["k_1d"]["center"].value
+                stat_summary["k_1d_from_2d"] = \
+                        self.summary[index]["k_1d_from_2d"]["center"].value
 
-            stat_summary["kx_2d"] = self.summary["kx_2d"]["center"].value
-            stat_summary["ky_2d"] = self.summary["ky_2d"]["center"].value
+                stat_summary["kx_2d"] = self.summary[index]["kx_2d"]["center"].value
+                stat_summary["ky_2d"] = self.summary[index]["ky_2d"]["center"].value
 
-            stat_results[treatment] = copy.deepcopy(stat_summary)
+                stat_results[treatment] = copy.deepcopy(stat_summary)
 
-        # in shelve file model
-        #self.summary["stats"] = stat_results
-        #print self.summary["stats"]["0modes"].keys()
+            # in shelve file model
+            #self.summary["stats"] = stat_results
+            #print self.summary["stats"]["0modes"].keys()
 
-        self.summary.close()
-        file_tools.convert_numpytree_hdf5(stat_results,
-                                          self.params["statfile_out"])
+            self.summary[index].close()
+            file_tools.convert_numpytree_hdf5(stat_results,
+                                          self.params["statfile_out"] + "dm%.3fredshift/dm%.3fred_aver_stat_phys.hd5"%(redshift[index], redshift[index]))
 
     def calc_stat_1d(self, trial_array, calc_corr=True):
         """take an 1D array of power spectra and find some basic statistics
@@ -338,26 +352,29 @@ class AggregateStatistics(object):
 
         return stat_1d
 
-    def aggregate_1d_statistics(self, treatment, from2d=False):
+    def aggregate_1d_statistics(self, index, treatment, from2d=False):
         r"""Find the mean, std, cov, corr etc of 1D p(k)'s"""
-        results = self.summary["results"][treatment]
+        results = self.summary[index]["results"][treatment]
+        redshift = [0.042,0.086,0.130,0.220,0.267,0.316,0.416,0.468,0.523,0.636,
+                    0.696,0.758,0.889,0.958,1.030,1.185,1.267,1.353,1.538,1.638,
+                    1.742,1.969,2.092,2.222,2.505,2.660,2.825]
 
         if from2d:
-            k_1d = self.summary["k_1d_from_2d"]
+            k_1d = self.summary[index]["k_1d_from_2d"]
             trial_array_1d = results["pk_1d_from_2d"].value
             error_array_1d = results["pkstd_1d_from_2d"].value
             counts_array_1d = results["counts_1d_from_2d"].value
 
             outfile = "%s/power_1d_from_2d_%s.dat" % \
-                      (self.params['outplotdir'], treatment)
+                      (self.params['outplotdir'] + "dm%.3fred_aver/sim_phys/"%redshift[index], treatment)
         else:
-            k_1d = self.summary["k_1d"]
+            k_1d = self.summary[index]["k_1d"]
             trial_array_1d = results["pk_1d"].value
             error_array_1d = results["pkstd_1d"].value
             counts_array_1d = results["counts_1d"].value
 
             outfile = "%s/power_1d_%s.dat" % \
-                      (self.params['outplotdir'], treatment)
+                      (self.params['outplotdir'] + "dm%.3fred_aver/sim_phys/"%redshift[index], treatment)
 
         stat_1d = self.calc_stat_1d(trial_array_1d)
         error_stat_1d = self.calc_stat_1d(error_array_1d)
@@ -375,14 +392,14 @@ class AggregateStatistics(object):
         logk_1d = np.log10(k_1d['center'])
         if self.make_plot:
             outplot_file = "%s/sim_corr_1d_%s.png" % \
-                           (self.params['outplotdir'], treatment)
+                           (self.params['outplotdir'] + "dm%.3fred_aver/sim_phys/"%redshift[index], treatment)
             plot_slice.simpleplot_2D(outplot_file, stat_1d['corr'],
                                      logk_1d, logk_1d,
                                      ["logk", "logk"], 1.,
                                      "1D corr", "corr")
 
             outplot_file = "%s/sim_cov_1d_%s.png" % \
-                           (self.params['outplotdir'], treatment)
+                           (self.params['outplotdir'] + "dm%.3fred_aver/sim_phys/"%redshift[index], treatment)
             plot_slice.simpleplot_2D(outplot_file, stat_1d['cov'],
                                      logk_1d, logk_1d,
                                      ["logk", "logk"], 1.,
@@ -433,13 +450,16 @@ class AggregateStatistics(object):
         np.seterr(**old_settings)
         return stat_2d
 
-    def aggregate_2d_statistics(self, treatment):
-        kx_2d = self.summary["kx_2d"]
-        ky_2d = self.summary["ky_2d"]
-        trial_array_2d = self.summary["results"][treatment]["pk_2d"]
-        counts_array_2d = self.summary["results"][treatment]["counts_2d"]
+    def aggregate_2d_statistics(self, index, treatment):
+        redshift = [0.042,0.086,0.130,0.220,0.267,0.316,0.416,0.468,0.523,0.636,
+                    0.696,0.758,0.889,0.958,1.030,1.185,1.267,1.353,1.538,1.638,
+                    1.742,1.969,2.092,2.222,2.505,2.660,2.825]
+        kx_2d = self.summary[index]["kx_2d"]
+        ky_2d = self.summary[index]["ky_2d"]
+        trial_array_2d = self.summary[index]["results"][treatment]["pk_2d"]
+        counts_array_2d = self.summary[index]["results"][treatment]["counts_2d"]
         outfile = "%s/power_2d_%s.dat" % \
-                  (self.params['outplotdir'], treatment)
+                  (self.params['outplotdir'] + "dm%.3fred_aver/sim_phys/"%redshift[index], treatment)
 
         stat_2d = self.calc_stat_2d(trial_array_2d)
         counts_2d = self.calc_stat_2d(counts_array_2d)
@@ -453,7 +473,7 @@ class AggregateStatistics(object):
 
         if self.make_plot:
             outplot_file = "%s/sim_mean_2d_%s.png" % \
-                      (self.params['outplotdir'], treatment)
+                      (self.params['outplotdir'] + "dm%.3fred_aver/sim_phys/"%redshift[index], treatment)
             plot_slice.simpleplot_2D(outplot_file, stat_2d['mean'],
                                      logkx, logky,
                                      ["logkx", "logky"], 1.,

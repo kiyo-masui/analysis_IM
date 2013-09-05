@@ -87,7 +87,7 @@ def abundance_match(arr, axis_1):
     axis_2 = np.zeros_like(axis_1)
     i = 0
     for HI_mass in axis_1:
-        axis_2[i] = brentq(equality, 10., 16., args=(arr,
+        axis_2[i] = brentq(equality, 8.9, 16., args=(arr,
                            HI_mass, 0.006,-1.37, 10**9.8), xtol=10**(-8))
         i = i + 1
     return axis_2
@@ -103,7 +103,7 @@ def interpol_f():
     directory = "/cita/h/home-2/mufma/code/Tinker/test.dndM"
     file = open(directory, "r")
     halo_mf_data = np.genfromtxt(file)
-    z = np.arange(6.5,12.,0.03)
+    z = np.arange(4.0,12.,0.03)
     x = abundance_match(halo_mf_data, z)
     print "x_max", x.max()
     print "x_min", x.min()
@@ -116,6 +116,10 @@ def M_halo_to_M_HI(filename, func, regim):
     This function takes catalog and add a dataset of HI_masses.
     """
     catalog = h5py.File(filename,'%s'%regim)
+    try:
+        del catalog['HI_Masses']
+    except:
+        pass
     catalog.create_group('HI_Masses')
     Halo_mass = catalog['Halo_Masses']['Halo_Masses'][:]
     print "halo_mass max",Halo_mass.max()
@@ -138,6 +142,10 @@ def M_HI_to_21(filename, redshift, regim):
 (1.+z)**(-3)*omega_lambda)**(-0.5)
     #in microKelvins
     HI_bright = coef*(HI_mass - HI_aver)/HI_aver
+    try:
+        del catalog['T_b21']
+    except:
+        pass
     catalog.create_group('T_b21')
     catalog['T_b21'].create_dataset('T_b21', data=HI_bright)
     catalog.close()

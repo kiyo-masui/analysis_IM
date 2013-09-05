@@ -686,6 +686,133 @@ class MultiDarkMSim(object):
                                       debug=False, ncpu=self.params['ncpu'])
 
 
+# this does not actually do any batch processing, but just wraps a multiple
+# quadratic estimator output in the same packaging/pipeline interaction
+jdcrossmultidarkmsim_init = {
+        "sim_file_left": "sim_stuff",
+        "sim_file_right": "sim_stuff",
+        "outfile": "test_file.shelve",
+        "unitless": True,
+        "return_3d": False,
+        "truncate": False,
+        "window": None,
+        "ncpu": 1,
+        "bins": [0.00765314, 2.49977141, 35]
+               }
+jdcrossmultidarkmsim_prefix = 'sps_'
+
+
+class JDcrossMultiDarkMSim(object):
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+        self.datapath_db = dp.DataPath()
+
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file,
+                                          multidarkmsim_init,
+                                          prefix=multidarkmsim_prefix)
+
+    def execute(self, processes):
+        funcname = "quadratic_products.pwrspec_combinations"
+        funcname += ".phys_pwrspec_caller"
+        caller = aggregate_outputs.AggregateOutputs(funcname)
+
+        execute_key = "sim:phys"
+        for name_left in glob.glob(self.params["sim_file_left"]):
+            wrapper = name_left.partition('Galaxies')
+            name_right = wrapper[0] + "T_b21" + wrapper[2]
+            caller.execute(name_left,name_right,self.params,
+                           execute_key=execute_key)
+            red_l = name_left.partition('Galaxies')[2].partition('red')[0]
+            caller.multiprocess_stack(self.params["outfile"] + 'gal_21_cross' +
+                                      red_l + 'red' + '.shelve',
+                                      debug=False, ncpu=self.params['ncpu'])
+
+
+
+# this does not actually do any batch processing, but just wraps a multiple
+# quadratic estimator output in the same packaging/pipeline interaction
+jdgalautomultidarkmsim_init = {
+        "sim_file_left": "sim_stuff",
+        "sim_file_right": "sim_stuff",
+        "outfile": "test_file.shelve",
+        "unitless": True,
+        "return_3d": False,
+        "truncate": False,
+        "window": None,
+        "ncpu": 1,
+        "bins": [0.00765314, 2.49977141, 35]
+               }
+jdgalautomultidarkmsim_prefix = 'sps_'
+
+
+class JDgalautoMultiDarkMSim(object):
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+        self.datapath_db = dp.DataPath()
+
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file,
+                                          multidarkmsim_init,
+                                          prefix=multidarkmsim_prefix)
+
+    def execute(self, processes):
+        funcname = "quadratic_products.pwrspec_combinations"
+        funcname += ".phys_pwrspec_caller"
+        caller = aggregate_outputs.AggregateOutputs(funcname)
+
+        execute_key = "sim:phys"
+        for name_left in glob.glob(self.params["sim_file_left"]):
+            caller.execute(name_left,name_left,self.params,
+                           execute_key=execute_key)
+            red_l = name_left.partition('Galaxies_')[2].partition('red')[0]
+            caller.multiprocess_stack(self.params["outfile"] + "gal_auto" +
+                                      red_l + 'red' + '.shelve',
+                                      debug=False, ncpu=self.params['ncpu'])
+
+
+
+# this does not actually do any batch processing, but just wraps a multiple
+# quadratic estimator output in the same packaging/pipeline interaction
+jd21automultidarkmsim_init = {
+        "sim_file_left": "sim_stuff",
+        "sim_file_right": "sim_stuff",
+        "outfile": "test_file.shelve",
+        "unitless": True,
+        "return_3d": False,
+        "truncate": False,
+        "window": None,
+        "ncpu": 1,
+        "bins": [0.00765314, 2.49977141, 35]
+               }
+jd21automultidarkmsim_prefix = 'sps_'
+
+
+class JD21autoMultiDarkMSim(object):
+    def __init__(self, parameter_file=None, params_dict=None, feedback=0):
+        self.params = params_dict
+        self.datapath_db = dp.DataPath()
+
+        if parameter_file:
+            self.params = parse_ini.parse(parameter_file,
+                                          multidarkmsim_init,
+                                          prefix=multidarkmsim_prefix)
+
+    def execute(self, processes):
+        funcname = "quadratic_products.pwrspec_combinations"
+        funcname += ".phys_pwrspec_caller"
+        caller = aggregate_outputs.AggregateOutputs(funcname)
+
+        execute_key = "sim:phys"
+        for name_left in glob.glob(self.params["sim_file_left"]):
+            caller.execute(name_left,name_left,self.params,
+                           execute_key=execute_key)
+            red_l = name_left.partition('T_b21_')[2].partition('red')[0]
+            caller.multiprocess_stack(self.params["outfile"] + "auto_21_" +
+                                      red_l + 'red' + '.shelve',
+                                      debug=False, ncpu=self.params['ncpu'])
+
+
 
 
 cleanup_init = {
