@@ -141,11 +141,14 @@ class TestFoldOnCal(unittest.TestCase) :
             i_t = rand.randint(0, self.ntime)
             i_p = rand.randint(0, 4)
             self.data[i_t,i_p,i_f] += self.level[i_f] * 5 
-        data = p2s.separate_cal(self.data, self.n_bins_cal)
+        data, weights = p2s.separate_cal(self.data, self.n_bins_cal, flag=10)
         right_answer = sp.empty((4, 2, self.nfreq))
         right_answer[...] = self.dc
         right_answer[0,0,:] += self.level
-        self.assertTrue(sp.allclose(data, right_answer, atol=self.level / 10)) 
+        self.assertTrue(sp.allclose(data, right_answer, atol=self.level / 10))
+        self.assertTrue(sp.all(weights <= 1.))
+        kept_fraction = 1. - 4./self.n_bins_cal - (4./self.n_bins_cal/10) 
+        self.assertTrue(sp.allclose(sp.mean(weights), kept_fraction, rtol=1e-3))
             
 
 
@@ -174,9 +177,14 @@ class TestSeparateCal(unittest.TestCase) :
                                  sys.maxint, self.n_bins_cal)
 
     def check_answer(self) :
-        data = p2s.separate_cal(self.data, self.n_bins_cal)
-        self.assertTrue(sp.allclose(data[:,:,0,:], 1.0))
-        self.assertTrue(sp.allclose(data[:,:,1,:], 0.0))
+        data = self.data.copy()
+        outdata, weights = p2s.separate_cal(data, self.n_bins_cal, flag=-1)
+        self.assertTrue(sp.allclose(outdata[:,:,0,:], 1.0))
+        self.assertTrue(sp.allclose(outdata[:,:,1,:], 0.0))
+        data = self.data.copy()
+        outdata, weights = p2s.separate_cal(data, self.n_bins_cal, flag=10)
+        self.assertTrue(sp.allclose(outdata[:,:,0,:], 1.0))
+        self.assertTrue(sp.allclose(outdata[:,:,1,:], 0.0))
 
     def test_works_no_transition(self) :
         self.post_setup()
