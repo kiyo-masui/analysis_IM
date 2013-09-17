@@ -472,6 +472,10 @@ class DirtyMapMaker(object):
                 print
                 print "Noise finalized."
 
+            #temporary code to be sure all noise has time_mode_update attribute
+            for data in data_set_list:
+                time_mode=data.Noise.time_mode_update
+
             # Each process holds a subset of the DataSets. They will be
             # passed around "in a circle" with mpi so that each process
             # sees all the sets. Right now, find the "previous" and "next"
@@ -554,7 +558,7 @@ class DirtyMapMaker(object):
                     #for ii in xrange(len(index_list)):
                         thread_cov_inv_block = sp.zeros((self.n_ra, self.n_dec,
                                     self.n_ra, self.n_dec), dtype=float)
-                        if run == 0 and start_file_ind == 0:
+                        if run == 0:
                             thread_cov_inv_block.flat[::self.n_ra * self.n_dec + 1] += \
                                                       1.0 / T_large**2
 
@@ -2313,6 +2317,7 @@ class Noise(object):
         return out 
 
     def __getstate__(self):
+        print '\n' + 'Running Noise getstate method' + '\n'
         attr_list=[]
         attr_list.append(self.n_chan)
         attr_list.append(self.n_time)
@@ -2366,6 +2371,7 @@ class Noise(object):
         return tuple(attr_list)
 
     def __setstate__(self, val):
+        print '\n' + 'Running Noise setstate method' + '\n'
         self.n_chan=val[0]
         self.n_time=val[1]
         self.info=val[2]
