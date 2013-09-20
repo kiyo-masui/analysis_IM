@@ -272,11 +272,14 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
 #    print np.any(np.isinf(R_data))
 #    print freqs    
 
+        mask_num = 0
+        mask_num2 = -1
         for j in range(0,Data.dims[3]):
             if int(freqs[j])==710:
                 mask_num = j
             if int(freqs[j])==740:
                 mask_num2 = j
+        print mask_num,mask_num2,Data.dims[3]
         Datain = R_data[mask_num:mask_num2]
         fin = freqs[mask_num:mask_num2]
         bad_pts = np.logical_or(np.isnan(Datain),np.isinf(Datain))
