@@ -1,0 +1,20 @@
+#!/bin/bash
+while [ 1 ]
+do
+  #num=`ps aux | grep eswitzer | grep python | grep "R+" | wc -l`
+  username=`whoami`
+  num=`ls -1 /tmp | grep $username.busy | wc -l`
+  stamp=`date +%s`
+  #num=`ps aux | grep python | wc -l`
+  echo $num
+  if [ "$num" -lt "4" ]; then
+    echo "< 4 running; spawning one more"
+    nohup python pipeline/manager.py input/ers/autopower/puresignal_sim.ini >& bulkpuresim$stamp.log &
+    #nohup python pipeline/manager.py input/ers/autopower/bulkerrors.ini >& bulkerror$stamp.log &
+    #nohup python pipeline/manager.py input/ers/crosspower/GBT_15hr_v2_map_oldcal_cross_bulksim.ini >& bulksim$stamp.log &
+    #nohup python pipeline/manager.py input/ers/crosspower/GBT_1hr_v2_map_oldcal_cross_bulksim.ini >& bulksim$stamp.log &
+  else
+    echo ">= 4 running"
+  fi
+  sleep 60
+done

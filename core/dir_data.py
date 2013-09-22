@@ -4,10 +4,6 @@ import os
 import re
 import glob
 
-_data_dir = os.getenv('GBT10B_DATA')
-_kiyo_data_dir = os.getenv('GBT10B_KM')+'data/'
-# This line is cheating, will break for other people.
-_guppi_data_dir = os.getenv('GBT10B_KM') + 'guppi_data/'
 
 field_name_versions = {
     'wigglez15hr' : ['wigglez15hr', '15hr', 'wigglez15hrst'],
@@ -86,7 +82,17 @@ def get_data_files(session_list, project='GBT10B_036', field='15hr',
     return out_file_name_list
 
 
+# These variables all old.
 
+_data_dir = os.getenv('GBT10B_DATA')
+_kiyo_data_dir = os.getenv('GBT10B_KM')
+if not _kiyo_data_dir:
+    _kiyo_data_dir = ''
+_kiyo_data_dir = _kiyo_data_dir + 'data/'
+_guppi_data_dir = os.getenv('GBT10B_KM')
+if not _guppi_data_dir:
+    _guppi_data_dir = ''
+_guppi_data_dir = _guppi_data_dir + 'guppi_data/'
 
 #### All depricated. ####
 

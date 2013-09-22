@@ -6,7 +6,11 @@ from core import dir_data
 
 import scipy as sp
 
+<<<<<<< HEAD
 file_middles = tuple(dir_data.get_data_files(range(61,62),project='GBT10B_036',field='3C286',type='onoff'))
+=======
+file_middles = tuple(dir_data.get_data_files(range(01,18),project='GBT12A_418',field='3C295',type='onoff'))
+>>>>>>> master
 #file_middles = tuple(dir_data.get_cal_files(range(66,69),'48',type='guppi'))
 
 #file_middles = ('41_3C286_onoff_6-7','41_3C286_onoff_8-9','41_3C286_onoff_124-125','41_3C286_onoff_126-127','42_3C286_onoff_10-11','42_3C286_onoff_12-13','42_3C286_onoff_328-329','42_3C286_onoff_330-331', '43_3C286_onoff_156-157', '43_3C286_onoff_158-159', '43_3C286_onoff_6-7', '43_3C286_onoff_8-9', '44_3C286_onoff_13-14', '44_3C286_onoff_15-16', '44_3C286_onoff_363-364', '44_3C286_onoff_365-366', '44_3C286_onoff_367-368', '44_3C286_onoff_369-370', '45_3C286_onoff_138-139', '45_3C286_onoff_140-141', '45_3C286_onoff_6-7', '45_3C286_onoff_8-9')

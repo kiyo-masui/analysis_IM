@@ -91,6 +91,10 @@ fgc_R_to_sky = True
 fgc_DP_correct = True
 fgc_RM_correct = False
 fgc_Flux_special = False
+<<<<<<< HEAD
+=======
+
+>>>>>>> master
 #from time_stream import rotate_pol 
 # Comment this line to skip this step in pipline.
 #pipe_modules.append(rotate_pol.RotatePol)

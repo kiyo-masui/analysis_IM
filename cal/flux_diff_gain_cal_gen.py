@@ -70,14 +70,18 @@ class MuellerGen(object) :
 #        print Phi
 #        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*2 
 #        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*(2.28315426-0.000484307905*freq_val[f]) # Added linear fit for Jansky to Kelvin conversion.
-        Isrc = 19.74748409*pow((750.0/freq_val[f]),0.49899785)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C286
+#        Isrc = 19.74748409*pow((750.0/freq_val[f]),0.49899785)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C286
 #        Isrc = 25.15445092*pow((750.0/freq_val[f]),0.75578842)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for  3C48
 #        Isrc = 4.56303633*pow((750.0/freq_val[f]),0.59237327)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C67
 #        Isrc = 31.32846821*pow((750.0/freq_val[f]),0.52113534)*(2.28315426-0.000484307905*freq_val[f]) #My fit solution for 3C147
+#<<<<<<< HEAD
 # 	Isrc = 34.11187767*pow((750.0/freq_val[f]),0.62009421)*(2.28315426-0.000484307905*freq_val[f]) #My fit solution for 3C295
+#=======
+        Isrc = 34.11187767*pow((750.0/freq_val[f]),0.62009421)*(2.28315426-0.000484307905*freq_val[f]) #My fit solution for 3C295
+#>>>>>>> master
         PAsrc = 33.0*sp.pi/180.0 # for 3C286, doesn't matter for unpolarized. 
-        Psrc = 0.07 #for 3C286 
-#        Psrc = 0 #for #3C48,3C67, 3C147, 3C295
+#        Psrc = 0.07 #for 3C286 
+        Psrc = 0 #for #3C48,3C67, 3C147, 3C295
         Qsrc = Isrc*Psrc*sp.cos(2*PAsrc) 
         Usrc = Isrc*Psrc*sp.sin(2*PAsrc) 
         Vsrc = 0
@@ -175,7 +179,7 @@ class MuellerGen(object) :
             RM = sp.zeros(n_scans)
             m = 0           
             for Data in Blocks:
-                Comp_Time = 0.0
+#                Comp_Time = 0.0
                 freq_len = Data.dims[3]
                 time_len = Data.dims[0]
 #                print time_len
@@ -186,6 +190,7 @@ class MuellerGen(object) :
                 PA[m] = ma.mean(Data.PA)  
 		print PA[m]
 #Include RM stuff in the code:
+#<<<<<<< HEAD
                 Full_date = Data.field['DATE-OBS'][Data.dims[0]/2]
                 print Full_date
 		AZ_mean = Data.field['CRVAL2'][Data.dims[0]/2]
@@ -193,6 +198,10 @@ class MuellerGen(object) :
 		PA[m] = utils.azel2pGBT(AZ_mean,EL_mean,Full_date)
 		PA[m] = PA[m]*sp.pi/180.0
 		print PA[m]
+#=======
+#                Full_date = Data.field['DATE-OBS'][Data.dims[0]/2]
+#                print Full_date
+#>>>>>>> master
 #                Date = Full_date.split('T')[0]
 #                Year = Date.split('-')[0]
 #                Month = Date.split('-')[1]
@@ -238,7 +247,7 @@ class MuellerGen(object) :
 #                DEC = ma.mean(Data.field['CRVAL3'])
 #                print RA, DEC
 #                print ma.mean(DEC)
-                print '_____________'
+#                print '_____________'
 #                print RA_RM, DEC_RM
 #                valid = []
 #                for i in range(0,len(RA_RM)):
@@ -247,7 +256,11 @@ class MuellerGen(object) :
 #                            print RA_RM[i], DEC_RM[i]
 #                            if abs(DEC-DEC_RM[i])<10.0:
 #                                print RA_RM[i], DEC_RM[i]
+#<<<<<<< HEAD
 #                                RM[m]=RM_data[i,3]
+#=======
+##                                RM[m]=RM_data[i,3]
+#>>>>>>> master
 #                                valid.append(i)
 #                print valid
 #                RA_M=10.0
@@ -355,8 +368,12 @@ class MuellerGen(object) :
 #        sess_num = int(session_nums[0])
 #        print sess_num
 #        np.savetxt(output_root+str(sess_num)+'_flux_mueller_matrix_calc'+output_end, p_val_out, delimiter = ' ')
+#<<<<<<< HEAD
 #        out_path = output_root+sess+'_diff_gain_calc_new'+output_end
         out_path = output_root+'15hr_avg_diff_gain_calc_high_res'+output_end
+#=======
+#        out_path = output_root+sess+'_diff_gain_calc'+output_end
+#>>>>>>> master
         np.savetxt(out_path,p_val_out,delimiter = ' ')
 #        np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')
 

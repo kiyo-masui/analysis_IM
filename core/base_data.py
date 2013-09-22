@@ -15,7 +15,7 @@ class BaseData(object) :
     # This should be overwritten by classes inheriting from this one.
     axes = ()
 
-    def __init__(self, data=None) :
+    def __init__(self, data=None, copy=True) :
         """Can either be initialized with a raw data array or with None"""
         
         # Dictionary that holds all data other than .data.  This is safe to 
@@ -40,12 +40,12 @@ class BaseData(object) :
             self.data = ma.zeros(tuple(sp.zeros(len(self.axes))), float)
             self.data_set = False
         else :
-            self.set_data(data)
+            self.set_data(data, copy=copy)
 
-    def set_data(self, data) :
+    def set_data(self, data, copy=True) :
         """Set the data to passed array."""
         # Feel free to play around with the precision.
-        self.data = ma.array(data, dtype=sp.float64, copy=True)
+        self.data = ma.array(data, dtype=sp.float64, copy=copy)
         self.data_set = True
         self.dims = sp.shape(data)
 
@@ -72,7 +72,7 @@ class BaseData(object) :
         self._verify_single_axis_names(a_names)
         self.field[field_name] = sp.array(field_data)
         self.field_axes[field_name] = tuple(a_names)
-        self.field_formats[field_name] = format
+        self.field_formats[field_name] = str(format)
 
     def _verify_single_axis_names(self, axis_names) :
         axis_indices = []
@@ -133,6 +133,8 @@ class BaseData(object) :
             # TODO: This should do something better than just check that there
             # is a string.
             if not type(self.field_formats[field_name]) is str :
+                print type(self.field_formats[field_name])
+                print self.field_formats[field_name]
                 raise ce.DataError("The field_format must be type str. field: "
                                    + field_name)
         # The opposite of the first check in the loop.

@@ -11,7 +11,10 @@ import base_single
 import map.tools
 
 from core import fits_map
+#<<<<<<< HEAD
 #from utils import misc
+#=======
+#>>>>>>> master
 import utils.misc as utils
 #from core import utils
 import time
@@ -72,7 +75,11 @@ class Calibrate(base_single.BaseSingle) :
         project = file_middle.split('/')[0]
 #        print sess_num
 
+#<<<<<<< HEAD
         fg_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_diff_gain_calc_new.txt'
+#=======
+#        fg_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_diff_gain_calc.txt'
+#>>>>>>> master
         if self.params['RM_correct']==True:
             fg_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_diff_gain_calc_RM.txt'
 
@@ -162,6 +169,10 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
     # This gives an array (Data.PA) of PA values of length = time dim.
 # This gives the wrong answer. New code in misc.utils has to be built in for each time step.
 #   print Data.dims[0]1
+
+
+
+# This segment of the code is for Rotation Measure Component
 
 
 
@@ -272,14 +283,20 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
 #    print np.any(np.isinf(R_data))
 #    print freqs    
 
+#<<<<<<< HEAD
         mask_num = 0
         mask_num2 = -1
+#=======
+#>>>>>>> master
         for j in range(0,Data.dims[3]):
             if int(freqs[j])==710:
                 mask_num = j
             if int(freqs[j])==740:
                 mask_num2 = j
+#<<<<<<< HEAD
         print mask_num,mask_num2,Data.dims[3]
+#=======
+#>>>>>>> master
         Datain = R_data[mask_num:mask_num2]
         fin = freqs[mask_num:mask_num2]
         bad_pts = np.logical_or(np.isnan(Datain),np.isinf(Datain))
@@ -300,6 +317,7 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
 # This starts the actual data processing for the given scan
          
     for time_index in range(0,Data.dims[0]):
+#<<<<<<< HEAD
         AZ = Data.field['CRVAL2'][time_index]
         EL = Data.field['CRVAL3'][time_index]
 	UT = Data.field['DATE-OBS'][time_index]
@@ -310,6 +328,15 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
 #        print DEC
 	    RA = AZ
 	    DEC = EL
+#=======
+
+# Extra data needed for Rotation Measure Correction
+        if RM_correct==True:
+            RA = Data.field['CRVAL2'][time_index]
+            DEC = Data.field['CRVAL3'][time_index]
+#        print RA
+#        print DEC
+#>>>>>>> master
             RM = 0
             valid = []
             for i in range(0,len(RA_RM)):
@@ -369,6 +396,7 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
                    Phi = RM*wavelength*wavelength
 #               print Phi
                    m_sky = sp.zeros((4,4)) 
+#<<<<<<< HEAD
                    m_sky[0,0] = 0.5*(1+ma.cos(2*PA*sp.pi/180+Phi))
                    m_sky[0,1] = -ma.sin(2*PA*sp.pi/180+Phi) 
                    m_sky[0,3] = 0.5*(1-ma.cos(2*PA*sp.pi/180+Phi))
@@ -379,6 +407,18 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
                    m_sky[3,0] = 0.5*(1-ma.cos(2*PA*sp.pi/180+Phi))
                    m_sky[3,1] = ma.sin(2*PA*sp.pi/180+Phi)
                    m_sky[3,3] = 0.5*(1+ma.cos(2*PA*sp.pi/180+Phi))
+#=======
+#                   m_sky[0,0] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
+#                   m_sky[0,1] = -ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi) 
+#                   m_sky[0,3] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
+#                   m_sky[1,0] = 0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi) 
+#                   m_sky[1,1] = ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi) 
+#                   m_sky[1,3] = -0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi)
+#                   m_sky[2,2] = 1
+#                   m_sky[3,0] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
+#                   m_sky[3,1] = ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi)
+#                   m_sky[3,3] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
+#>>>>>>> master
   
                    M_sky = sp.mat(m_sky)
                    M_sky = M_sky.I 

@@ -22,7 +22,11 @@ min_sess2 = 01
 min_sess3 = 01
 max_sess = 90
 max_sess2 = 19
+#<<<<<<< HEAD
 max_sess3 = 03
+#=======
+#max_sess3 = 18
+#>>>>>>> master
 #Number of sessions used
 len = max_sess - min_sess
 len2 = max_sess2-min_sess2

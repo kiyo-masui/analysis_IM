@@ -31,7 +31,7 @@ class Calibrate(base_single.BaseSingle) :
         # Call the base_single init.
         base_single.BaseSingle.__init__(self, parameter_file_or_dict, 
                                         feedback)
-        # Read in the calibration file.
+        # Read in calibration table.
         file_names = self.params['cal_temperature_files']
         if len(file_names) > 1 :
             raise NotImplementedError('Can use a single calibration file'
