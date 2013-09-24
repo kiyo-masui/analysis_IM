@@ -300,9 +300,13 @@ class DirtyMapMaker(object):
             # possible). This way is most efficient in memory and efficiency.
             # This also allows a smaller number of mpi calls when passing
             # DataSets around later to fill cov_inv.
-            this_file_middles,junk = split_elems(all_this_file_middles,
-                                             self.nproc)
-            this_file_middles = this_file_middles[self.rank]
+
+            #this_file_middles,junk = split_elems(all_this_file_middles,
+                                             #self.nproc)
+            #this_file_middles = this_file_middles[self.rank]
+
+            this_file_middles = all_this_file_middles
+
             # Don't need the 'junk' from above right now. That was added
             # at a later point for something else.
             if self.feedback > 1:
@@ -530,7 +534,8 @@ class DirtyMapMaker(object):
             # Since the DataSets are split evenly over the processes,
             # have to put in the pointing/noise at each index for
             # each DataSet list that the processes hold.
-            for run in range(self.nproc):
+            #for run in range(self.nproc):
+            for run in range(1):
                 print '\n' + 'Process' + ' ' + str(self.rank) + ' ' +  ',run' + ' ' + str(run) + '\n'
                 # Each DataSet has to be applied to the dirty map, too.
                 # Since the '_mpi'dirty map is much smaller than the noise,
@@ -558,7 +563,7 @@ class DirtyMapMaker(object):
                     #for ii in xrange(len(index_list)):
                         thread_cov_inv_block = sp.zeros((self.n_ra, self.n_dec,
                                     self.n_ra, self.n_dec), dtype=float)
-                        if run == 0:
+                        if run == 0 and start_file_ind == 0:
                             thread_cov_inv_block.flat[::self.n_ra * self.n_dec + 1] += \
                                                       1.0 / T_large**2
 
@@ -621,7 +626,8 @@ class DirtyMapMaker(object):
                 # Note: No need to pass anything the last time since
                 #       that data was the process' original data and
                 #       has already been processed.
-                if (run != (self.nproc - 1)):
+                #if (run != (self.nproc - 1)):
+                if run == 1:
                     # Send out the DataSet list I have to next guy.
                     print '\n' + 'Process ' + str(self.rank) + ' is passing data_set_list to process ' + str(self.next_guy) + ', at the end of run ' + str(run) + '\n'
                     #Pickling DataSet objects in data_set_list 
