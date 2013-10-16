@@ -658,11 +658,11 @@ class DirtyMapMaker(object):
             # Now that thread_cov_inv_chunk is all filled with
             # data from all DataSets, write it out.
             # Only dealing with correlated channels now.
-            if not self.uncorrelated_channels:
+        if not self.uncorrelated_channels:
                 #total_shape = (self.n_chan*self.n_ra, self.n_dec,
                              #  self.n_chan, self.n_ra, self.n_dec)
                 #start_ind = (f_ra_start_ind,0,0,0,0)
-                lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename[0:-4] + '_mpi_corr_proc_pickle' + '.npy', data_offset + dsize*f_ra_start_ind*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
+            lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename[0:-4] + '_mpi_corr_proc_pickle' + '.npy', data_offset + dsize*f_ra_start_ind*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
@@ -674,11 +674,11 @@ class DirtyMapMaker(object):
                                #order='C', displacement=0)
    
 
-            if self.uncorrelated_channels:
+        if self.uncorrelated_channels:
                 #total_shape = (self.n_chan, self.n_ra,
                              #  self.n_dec, self.n_ra, self.n_dec)
                 #start_ind = (index_list[0],0,0,0,0)
-                lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename[0:-4] + '_mpi_uncorr_proc_pickle' + '.npy', data_offset + dsize*index_list[0]*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
+            lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename[0:-4] + '_mpi_uncorr_proc_pickle' + '.npy', data_offset + dsize*index_list[0]*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
