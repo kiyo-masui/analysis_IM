@@ -553,7 +553,7 @@ class DirtyMapMaker(object):
                         map += P.apply_to_time_axis(w_time_stream)
                 if self.uncorrelated_channels:
                     # No actual threading going on.
-                    if run ==0:
+                    if run == 0 and start_file_ind == 0:
                         thread_cov_inv_chunk = sp.zeros((len(index_list),
                                                         self.n_ra, self.n_dec,
                                                         self.n_ra, self.n_dec),                                                                                                                             dtype=float)
@@ -563,13 +563,18 @@ class DirtyMapMaker(object):
                     #for ii in xrange(len(index_list)):
                         thread_cov_inv_block = sp.zeros((self.n_ra, self.n_dec,
                                     self.n_ra, self.n_dec), dtype=float)
-                        if run == 0 and start_file_ind == 0:
-                            thread_cov_inv_block.flat[::self.n_ra * self.n_dec + 1] += \
-                                                      1.0 / T_large**2
+                        #if run == 0 and start_file_ind == 0:
+                        #    thread_cov_inv_block.flat[::self.n_ra * self.n_dec + 1] += \
+                        #                              1.0 / T_large**2
 
                         for thread_D in data_set_list: 
                             thread_D.Pointing.noise_channel_to_map(
                                   thread_D.Noise, thread_f_ind, thread_cov_inv_block)
+                        
+                        if run == 0 and start_file_ind == 0:
+                            thread_cov_inv_block.flat[::self.n_ra * self.n_dec + 1] += \
+                                                      1.0 / T_large**2
+
                         #if start_file_ind == 0:
                             # The first time through the matrix. We 'zero'
                             # everything by just assigning a value instead of
@@ -678,7 +683,7 @@ class DirtyMapMaker(object):
                 #total_shape = (self.n_chan, self.n_ra,
                              #  self.n_dec, self.n_ra, self.n_dec)
                 #start_ind = (index_list[0],0,0,0,0)
-            lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename[0:-4] + '_mpi_uncorr_proc_pickle' + '.npy', data_offset + dsize*index_list[0]*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
+            lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename[0:-4] + '_mpi_uncorr_proc_pickle' + '.npy', data_offset + dsize*index_list[0]*self.n_dec*self.n_ra*self.n_dec*self.n_ra, dsize*thread_cov_inv_chunk.size)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
