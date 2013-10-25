@@ -117,7 +117,8 @@ def find_weight_re_diagnal(filename):
     serializeable). Return the info separately.
     """
     print "loading noise: " + filename
-    noise_inv = algebra.make_mat(algebra.open_memmap(filename, mode='r'))
+    #noise_inv = algebra.make_mat(algebra.open_memmap(filename, mode='r'))
+    noise_inv = algebra.make_mat(algebra.load(filename))
     noise_inv_diag = noise_inv.mat_diag()
 
     return noise_inv_diag, noise_inv_diag.info

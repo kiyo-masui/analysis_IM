@@ -26,4 +26,5 @@ NAME="FULL"
 export EXP="-x MAP_2DF -x HOUR -x NAME"
 
 #===== Auto  Power ======
-mpirun $EXP -np 20 -npernode 5 -hostfile $PIPELINE_DIR/HOSTFILE python $PIPELINE_DIR/mpimanager.py $PIPELINE_DIR_P/new_power_2df.pipe
+mpirun $EXP -np 20  python $PIPELINE_DIR/mpimanager.py $PIPELINE_DIR_P/new_power_2df.pipe
+#mpirun $EXP -np 20 -npernode 5 -hostfile $PIPELINE_DIR/HOSTFILE python $PIPELINE_DIR/mpimanager.py $PIPELINE_DIR_P/new_power_2df.pipe

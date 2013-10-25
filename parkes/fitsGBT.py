@@ -462,4 +462,5 @@ class Writer() :
         hdulist.writeto(file_name, clobber=True)
         if self.feedback > 0 :
             print 'Wrote data to file: ' + fname_abbr
+        hdulist.close()
 

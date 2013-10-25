@@ -434,7 +434,7 @@ def get_mapdict(dir, selection=None):
                     key2 = mapsplit[2]
                 else:
                     key2 = mapsplit[4]
-                if key2 == 'inv':
+                if key2 == 'inv' or key2 == 'diag':
                     key2 = mapsplit[3] + '_' + key2
                 key3 = mapsplit[-1]
 

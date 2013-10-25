@@ -43,7 +43,7 @@ class SVD(object):
         print corr_eigvector[:,0:3]
         print corr_eigvalue
 
-    def plotvalue(self, savename, mod_start=0, mod_stop=50):
+    def plotvalue(self, savename, mod_start=0, mod_stop=40):
         plt.figure(figsize=(7,7))
         for i in range(len(self.svdlist)):
             bias = int(self.biaslist[i])
@@ -51,7 +51,7 @@ class SVD(object):
             plt.plot(x, self.svdlist[i][0][mod_start:mod_stop], '-', marker='.',
                     label=self.lprelist[i]+'eigenvalue %s'%self.labellist[i],)
         plt.semilogy()
-        plt.ylim(ymax=20, ymin=1.e-7)
+        #plt.ylim(ymax=3.e3, ymin=1.e-1)
         plt.xlim(xmin=-2)
         plt.xlabel('Mode Number')
         plt.ylabel('Eigenvalue')
@@ -59,6 +59,7 @@ class SVD(object):
         plt.legend(frameon=False)
 
         plt.savefig('./png/'+savename+'_eigenvalue.png', format='png')
+        plt.show()
 
     def plot_real(self, savename, mod_start=0, mod_stop=6):
         svd_lvect_real = self.svd_lvect.real
@@ -167,12 +168,31 @@ class SVD(object):
         if svd_rvect_raw is None:
             svd_rvect_raw = self.svd_rvect
 
-        nfreq = 256 
-        cutlist = [6, 7, 8, 15, 16, 18, 19, 20, 21, 22, 37, 80, 103, 104, 105, 106, \
-                   107, 108, 130, 131, 132, 133, 134, 171, 175, 177, 179, 182, 183, \
-                   187, 189, 192, 193, 194, 195, 196, 197, 198, 201, 204, 208, 209, \
-                   212, 213, 218, 219, 229, 233, 237, 244, 254, 255]
+        #cutlist = [6,  7,  8,  15, 16, 18, 19, 20, 21, 22, 37, 80, 103,104,105,\
+        #           106,107,108,130,131,132,133,134,171,175,177,179,182,183,187,\
+        #           189,192,193,194,195,196,197,198,201,204,208,209,212,213,218,\
+        #           219, 229, 233, 237, 244, 254, 255]
+
+        nfreq = 64
+        #cutlist = [0,1,2,3,4,59,60,61,62,63]
+        cutlist = [0,1,2,3,4,5,6,7,8,9,10,11,12,59,60,61,62,63]
         freq_list = tuple([ind for ind in range(nfreq) if ind not in cutlist])
+
+        #nfreq = 215
+        #freq_list = ( 0  ,1  ,8  ,9  ,10 ,12 ,13 ,14 ,16 ,17 ,20 ,21 ,22 ,23 ,
+        #              24 ,25 ,27 ,30, 31 ,34 ,35 ,37 ,38 ,40 ,41 ,42 ,43 ,44 ,
+        #              45 ,46 ,47 ,48 ,51 ,52 ,53 ,54, 59 ,60 ,61 ,63 ,65 ,66 ,
+        #              67 ,68 ,69 ,70 ,74 ,76 ,77 ,78 ,79 ,80 ,82 ,83, 84 ,85 ,
+        #              86 ,88 ,89 ,91 ,92 ,93 ,94 ,95 ,96 ,97 ,101,102,103,105,
+        #              106,113,115,123,124,125,126,127,129,130,131,132,133,135,
+        #              136,137,139,140,141,142,143,145,146,148,149,151,152,158,
+        #              159,160,161,163,164,165,166,167,169,170,171,172,173,174,
+        #              175,176,177,178,181,182,183,184,186,187,188,189,190,191,
+        #              192,193,196,197,198,199,202,203,208,209,212,213,214,)
+
+        #nfreq =  2745
+        #freq_list = tuple(range(nfreq))
+
         for i in range(1, combined):
             freq_list += tuple([ind + i*nfreq\
                                 for ind in range(nfreq) if ind not in cutlist])
@@ -223,6 +243,7 @@ class SVD(object):
 
         plt.savefig('./png/'+savename+'_%d-%dmod.png'%(mod_start, mod_stop),
                     format='png')
+        plt.show()
         
 
 
@@ -254,22 +275,28 @@ if __name__=="__main__":
     do_plot_val = True
     do_plot_map = False
 
-    #fg_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
-    fg_root = '/mnt/scratch-gl/ycli/cln_result/'
+    fg_root = '/home/ycli/data/cln_result/'
     combined = 1
 
     '''>>>  parameters for plot svd eigenvector  <<<'''
 
     r'''I_AxI_{BCD}QUV'''
     #fg_file = '1hr_AQUV_extend_legendre_modes_0gwj_2conv/Emap_clean_themselves/'
-    fg_file = '1hr_AQU_extend_legendre_modes_0gwj_11conv/Emap_clean_themselves/'
-    #fg_file = '15hr_AQU_extend_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/'
-    #fg_file = '15hr_ABCD_legendre_modes_0gwj_14conv_new/Emap_clean_themselves/'
-    svdfile = 'SVD_pair_A_with_B.pkl'
-    #svdfile = 'SVD_pair_A_with_C.pkl'
-    #svdfile = 'SVD_pair_A_with_D.pkl'
-    combined= 3
+    #fg_file = '1hr_AQU_extend_legendre_modes_0gwj_11conv/Emap_clean_themselves/'
+    #fg_file = 'PKS_AA_allbeams_10by7_freq_cut/Emap_clean_themselves/'
+    #fg_file = 'PKS_ABC_allbeams_10by7_freq_cut_1pt1_cov/Emap_clean_themselves/'
+    #fg_file = 'PKS_n03n30_10by7_0627pixel_AA_freq_cut_1pt1_cov/Emap_clean_themselves/'
+    fg_file = 'PKS_p3500n3000_parkes_2010_10_24-28_AA_freq_cut_1pt1_cov/Emap_clean_themselves/'
+    #fg_file = 'PKS_07n30_10by7_0627pixel_AA_freq_cut_1pt1_cov/Emap_clean_themselves/'
+    #fg_file = 'PKS_17n30_10by7_0627pixel_AA_freq_cut_1pt1_cov/Emap_clean_themselves/'
+    #fg_file = 'DRACO_AA_dirty_map/Emap_clean_themselves/'
+    #fg_file = 'DRACO_AA_dirty_map_centre_4000pix_flagged/Emap_clean_themselves/'
+    #fg_file = '3C286/Emap_clean_themselves/'
+    #fg_file = '/15hr_AA_fine_freq_11conv/Emap_clean_themselves/'
 
+    svdfile = 'SVD_pair_A_with_A.pkl'
+
+    #combined= 3
     r'''I_BxI_{ACD}QUV'''
     #fg_file = '1hr_BQUV_extend_legendre_modes_0gwj_conv/Emap_clean_themselves/'
     #svdfile = 'SVD_pair_B_with_A.pkl'
@@ -311,9 +338,29 @@ if __name__=="__main__":
         #[0, fg_root+'1hr_AQUV_extend_legendre_modes_0gwj_2conv/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '1hr 2conv '],
         #[0, fg_root+'1hr_AQUV_extend_legendre_modes_0gwj_2conv/Emap_clean_themselves/SVD_pair_A_with_C.pkl', '1hr 2conv '],
         #[0, fg_root+'1hr_AQUV_extend_legendre_modes_0gwj_2conv/Emap_clean_themselves/SVD_pair_A_with_D.pkl', '1hr 2conv '],
-        [0, fg_root+'1hr_AQU_extend_legendre_modes_0gwj_11conv/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '1hr 1.1conv '],
+        #[0, fg_root+'1hr_AQU_extend_legendre_modes_0gwj_11conv/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '1hr 1.1conv '],
+        #[0, fg_root+'PKS_AA_allbeams_10by7_freq_cut/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'parkes 10by7 AA '],
+        #[0, fg_root+'PKS_ABC_allbeams_10by7_freq_cut/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'parkes 10by7 AB '],
+        #[0, fg_root+'PKS_ABC_allbeams_10by7_freq_cut/Emap_clean_themselves/SVD_pair_A_with_C.pkl', 'parkes 10by7 AC '],
+        #[0, fg_root+'PKS_ABC_allbeams_10by7_freq_cut/Emap_clean_themselves/SVD_pair_B_with_C.pkl', 'parkes 10by7 BC '],
+        #[0, fg_root+'PKS_ABC_allbeams_10by7_freq_cut_1pt1_cov/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'parkes 10by7 AB 1.1 conv '],
+        #[0, fg_root+'PKS_ABC_allbeams_10by7_freq_cut_1pt1_cov/Emap_clean_themselves/SVD_pair_A_with_C.pkl', 'parkes 10by7 AC 1.1 conv '],
+        #[0, fg_root+'PKS_ABC_allbeams_10by7_freq_cut_1pt1_cov/Emap_clean_themselves/SVD_pair_B_with_C.pkl', 'parkes 10by7 BC 1.1 conv '],
+        #[0, fg_root+'PKS_n03n30_10by7_0627pixel_AA_freq_cut_1pt1_cov/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'parkes n03n30 10by7 1.1 conv '],
+        #[0, fg_root+'PKS_07n30_10by7_0627pixel_AA_freq_cut_1pt1_cov/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'parkes 07n30 10by7 1.1 conv '],
+        #[0, fg_root+'PKS_17n30_10by7_0627pixel_AA_freq_cut_1pt1_cov/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'parkes 17n30 10by7 1.1 conv '],
+        [0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_AA_freq_cut_1pt1_cov/Emap_clean_themselves_fewfreqcut/SVD_pair_A_with_A.pkl', 'parkes 35n30 1.1 conv few freq cut'],
+        [0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_AA_freq_cut_1pt1_cov/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'parkes 35n30 1.1 conv '],
+        [0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_AA_freq_cut_1pt1_cov/Emap_clean_themselves_badconv/SVD_pair_A_with_A.pkl', 'parkes 35n30 1.1 conv bad conv'],
+        #[0, fg_root+'DRACO_AA_dirty_map/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'DRACO '],
+        #[0, fg_root+'DRACO_AA_dirty_map_centre_4000pix_flagged/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'DRACO flagged'],
+        #[0, fg_root+'/15hr_AA_fine_freq_11conv/Emap_clean_themselves/SVD_pair_A_with_A.pkl', '15hr_AA_fine_freq_11conv'],
+        #[0, fg_root+'3C286/Emap_clean_themselves/SVD_pair_A_with_A.pkl', '3C286 '],
         ]
-    svd_savename = 'SVD_pair_15hr_AxIQU_eigenvalue'
+    svd_savename = 'SVD_pair_PKS_eigenvalue'
+    #svd_savename = 'SVD_pair_DRACO_AA_eigenvalue'
+    #svd_savename = 'SVD_pair_3C286_AA_eigenvalue'
+    #svd_savename = 'SVD_pair_15hr_AA_fine_freq_11conv_AA'
 
 
     if do_plot_svd:

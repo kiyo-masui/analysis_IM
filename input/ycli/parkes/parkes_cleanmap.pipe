@@ -10,22 +10,35 @@ do_clean_map = True
 
 #map_input = os.getenv("YICHAO_WORK_MAP") + 'pol_selected/'
 #map_base = os.getenv("YICHAO_WORK_MAP") + 'maps/parkes/'
-map_input = '/scratch/ycli/map_result/maps/parkes/'
-map_base = '/scratch/ycli/map_result/maps/parkes/'
-map_shape = (128, 96)
-map_spacing = .08
-map_centre = (45.0, -30.0) #(30, -30)
-ra_centre = 'W' # if ra_cente = 'W', it will connect 360 and 0; or ra_centre = 'E'
-map_prefix = 'RA+10_' + 'parkes_2010_10_26'
+map_input = '/home_local/ycli/data/map_result/pol_selected/'
+map_base = '/home_local/ycli/data/map_result/maps/parkes/'
 
-if os.getenv('BEAMS') != 'None':
-    beams = int(os.getenv('BEAMS'))
-    if beams >=0 and beams<13:
-        dm_beams = (beams,)
-    map_prefix += 'beam_%d_' % beams
+# chris
+#map_shape = (200, 140)
+#map_spacing = 0.05
+#map_centre = (27.0, -30)
+
+# small field for checking flux
+#map_shape = (25, 25)
+#map_spacing = 0.08
+#map_centre = (27.5, -29.5)
+
+# my maps
+map_shape = (256, 96)
+map_spacing = .08
+map_centre = (35.0, -30.0)
+
+ra_centre = 'W' # if ra_cente = 'W', it will connect 360 and 0; or ra_centre = 'E'
+#map_prefix = 'p3500n3000_' + 'parkes_2010_10_24-28_'
+#map_prefix = 'p3500n3000_' + 'parkes_2010_10_24_'
+map_prefix = 'p3500n3000_' + 'parkes_2010_10_25_'
 
 file_middles = tuple([
-                      "nobpcal_beamcal_parkes_2012_10_26_P641",
+                      #"parkes_2012_10_24_P641",
+                      "parkes_2012_10_25_P641",
+                      #"parkes_2012_10_26_P641",
+                      #"parkes_2012_10_27_P641",
+                      #"parkes_2012_10_28_P641",
                       ])
 #map_prefix = '' + 'parkes_2008_09_12w-13-14_beam0test'
 
@@ -69,4 +82,5 @@ cm_output_root = cm_input_root
 cm_polarizations = ('I',)
 cm_bands = (1316,)
 cm_save_noise_diag = True
+cm_save_noise_inv_diag = True
 

@@ -10,14 +10,29 @@ do_clean_map = False
 
 #map_input = os.getenv("YICHAO_WORK_MAP") + 'pol_selected/'
 #map_base = os.getenv("YICHAO_WORK_MAP") + 'maps/parkes/'
-map_input = '/mnt/scratch-gl/ycli/map_result/pol_selected/'
+map_input = '/home_local/ycli/data/map_result/pol_selected/'
 #map_base = '/mnt/scratch-gl/ycli/map_result/maps/parkes/'
-map_base = '/scratch/ycli/map_result/maps/parkes/'
-map_shape = (128, 96)
+map_base = '/home_local/ycli/data/map_result/maps/parkes/'
+
+# chris
+#map_shape = (200, 140)
+#map_spacing = 0.05
+#map_centre = (27.0, -30)
+
+# small field for checking flux
+#map_shape = (25, 25)
+#map_spacing = 0.08
+#map_centre = (27.5, -29.5)
+
+# my maps
+map_shape = (256, 96)
 map_spacing = .08
-map_centre = (45.0, -30.0)
+map_centre = (35.0, -30.0)
+
 ra_centre = 'W' # if ra_cente = 'W', it will connect 360 and 0; or ra_centre = 'E'
-map_prefix = 'RA+10_' + 'parkes_2010_10_26'
+#map_prefix = 'p3500n3000_' + 'parkes_2010_10_24-28_'
+#map_prefix = 'p3500n3000_' + 'parkes_2010_10_24_'
+map_prefix = 'p3500n3000_' + 'parkes_2010_10_25_'
 
 if os.getenv('BEAMS') != 'None':
     beams = int(os.getenv('BEAMS'))
@@ -25,10 +40,14 @@ if os.getenv('BEAMS') != 'None':
         dm_beams = (beams,)
     map_prefix += 'beam_%d_' % beams
 else:
-    dm_beams = (0, 1, 2, 5, 6, 7, 8, 9, 10, 11, 12) # beam 4 and 5 have problem
+    dm_beams = (0, 1, 2, 5, 6, 7, 8, 10, 11, 12) # beam 3 ,4 and 9 have problem
 
 file_middles = tuple([
-                      "nobpcal_beamcal_parkes_2012_10_26_P641",
+                      #"parkes_2012_10_24_P641",
+                      "parkes_2012_10_25_P641",
+                      #"parkes_2012_10_26_P641",
+                      #"parkes_2012_10_27_P641",
+                      #"parkes_2012_10_28_P641",
                       ])
 #map_prefix = '' + 'parkes_2008_09_12w-13-14_beam0test'
 

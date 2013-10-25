@@ -60,15 +60,19 @@ def plot_1d_power_spectrum_opt_multi(file_root, file_name, ps_type,
 
     fig = plt.figure(figsize=(8, 8))
 
-    k_paper_cole, power_paper_cole, power_err_paper_cole = \
-        ps_summary.load_2df_ps_from_paper('Cole')
-    k_paper, power_paper, power_err_paper = ps_summary.load_2df_ps_from_paper()
-    plt.errorbar(k_paper, power_paper*1.26, power_err_paper, 
-        fmt='bo', mec='b', capsize=2.5, elinewidth=1, markersize=5,
-        label='Percival et. al 2001 x 1.26')
-    plt.errorbar(k_paper_cole, power_paper_cole*1.26, power_err_paper_cole, 
-        fmt='go', mec='g', capsize=2.5, elinewidth=1, markersize=5,
-        label='Cole et. al 2005 x 1.26')
+    #k_paper_cole, power_paper_cole, power_err_paper_cole = \
+    #    ps_summary.load_2df_ps_from_paper('Cole')
+    #k_paper, power_paper, power_err_paper = ps_summary.load_2df_ps_from_paper()
+    #plt.errorbar(k_paper, power_paper*1.26, power_err_paper, 
+    #    fmt='bo', mec='b', capsize=2.5, elinewidth=1, markersize=5,
+    #    label='Percival et. al 2001 x 1.26')
+    #plt.errorbar(k_paper_cole, power_paper_cole*1.26, power_err_paper_cole, 
+    #    fmt='go', mec='g', capsize=2.5, elinewidth=1, markersize=5,
+    #    label='Cole et. al 2005 x 1.26')
+
+    power_th_k = np.logspace(0.1, 2, 100)
+    power_th = ps_summary.load_theory_ps(power_th_k, redshift=0.08, cross=True)
+    plt.plot(power_th_k, power_th, 'k-')
 
 
     for name in file_name:

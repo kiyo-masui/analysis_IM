@@ -7,7 +7,9 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 from parkes import fitsGBT
 
 #rawdatapath = ('/home/ycli/DATA/parkes/CALDATA_SDF_beamcal/1027_average/2012-10-27_1908-P641_west1_1315_P641.sdfits',)
-rawdatapath = ('/mnt/raid-project/gmrt/ycli/parkes/RAWDATA_RPF/20121027/2012-10-27_1908-P641_west1_1315_P641.rpfits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/parkes/RAWDATA_RPF/20121027/2012-10-27_1908-P641_west1_1315_P641.rpfits',)
+#rawdatapath = ('/home/ycli/data/map_result/flagged/parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/home/ycli/data/map_result/flagged/parkes_2012_10_28_P641.fits',)
 
 #rawdatapath = ('/mnt/scratch-gl/ycli/map_result/parkes/parkes_2012_10_27_P641.fits',)
 #rawdatapath = ('/mnt/scratch-gl/ycli/map_result/flagged/parkes_2012_10_27_P641.fits',)
@@ -98,7 +100,7 @@ class CheckFitsFile(object):
         plt.legend(ncol=4, frameon=False)
         plt.xlabel('time ')
         plt.ylabel('x pol Tsys [%s]'%unit)
-        plt.ylim(ymin=15, ymax=40)
+        plt.ylim(ymin=15, ymax=50)
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
 
@@ -108,7 +110,7 @@ class CheckFitsFile(object):
         plt.legend(ncol=4, frameon=False)
         plt.xlabel('time ')
         plt.ylabel('y pol Tsys [%s]'%unit)
-        plt.ylim(ymin=15, ymax=40)
+        plt.ylim(ymin=15, ymax=50)
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
 
@@ -229,7 +231,7 @@ class CheckFitsFile(object):
         spectrum_xx = self.tbdata.field('DATA')[0::2,:].T #* tsys_x[None,:]
         spectrum_yy = self.tbdata.field('DATA')[1::2,:].T #* tsys_y[None,:]
 
-        scan_n = 10 
+        scan_n = 0 
         if scan_n != 0:
             spectrum_xx = spectrum_xx[:,:scan_n*90*13]
             spectrum_yy = spectrum_yy[:,:scan_n*90*13]
@@ -243,10 +245,10 @@ class CheckFitsFile(object):
         df = self.tbdata.field('CDELT1')[0]/1.e9
         y = (range(shape[0]) - cf_ind) * df + cf
 
-        cmin = -0.6
-        cmax = 0.6
-        #cmin = 0.0
-        #cmax = 70 
+        #cmin = -0.6
+        #cmax = 0.6
+        cmin = 0.0
+        cmax = 70 
 
         plt.figure(figsize=(30, 50))
 
@@ -367,18 +369,19 @@ class CheckFitsFile(object):
             plt.ylabel('flux [Jy] [X pol beam %d]'%i)
             plt.xlabel('freq [GHz]' )
             plt.xlim(x.min(), x.max())
-            plt.ylim(ymin, ymax)
+            #plt.ylim(ymin, ymax)
 
             plt.subplot(13,2,2*i+2)
             plt.plot(x, spectrum_yy[:, i::13][:, time].T, c='r')
             plt.ylabel('flux [Jy] [Y pol beam %d]'%i)
             plt.xlabel('freq [GHz]' )
             plt.xlim(x.min(), x.max())
-            plt.ylim(ymin, ymax)
+            #plt.ylim(ymin, ymax)
 
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
         plt.savefig('./png/parkes_test_freq.png', format='png')
+        #plt.show()
 
     def plotfreq(self):
         spectrum_xx = self.tbdata.field('DATA')[0::2,:][0::13,:]
@@ -566,12 +569,12 @@ class CheckFitsFile(object):
 if __name__=="__main__":
     checkfits = CheckFitsFile(rawdatapath[0])
 
-    checkfits.printhead()
-    checkfits.printlabel()
+    #checkfits.printhead()
+    #checkfits.printlabel()
 
     #checkfits.plotfreq_time()
-    #checkfits.plotfreq_time_all()
-    #checkfits.plottsys()
+    checkfits.plotfreq_time_all()
+    checkfits.plottsys()
     #checkfits.plottsys(in_K=True)
     #checkfits.plotT()
     #checkfits.plotfreq()

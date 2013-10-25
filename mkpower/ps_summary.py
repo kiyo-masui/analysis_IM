@@ -19,17 +19,22 @@ def load_camb():
 
     return data[:,0], data[:,1]
 
-def load_theory_ps(k_bins_centre):
+def load_theory_ps(k_bins_centre, redshift=0.8, cross=False):
     c21 = corr21cm.Corr21cm()
-    #ps_theory  = c21.T_b(0.8)**2*c21.get_pwrspec(k_bins_centre)
-    #ps_theory *= k_bins_centre**3/2./np.pi**2
+    if cross:
+        ps_theory  = c21.T_b(redshift)*c21.get_pwrspec(k_bins_centre)
+    else:
+        ps_theory  = c21.T_b(redshift)**2.*c21.get_pwrspec(k_bins_centre)
+    ps_theory *= k_bins_centre**3/2./np.pi**2
 
-    power_th = np.loadtxt('/Users/ycli/Code/analysis_IM/simulations/data/wigglez_halofit_z0.8.dat')
-    #power_th[:,0] *= 0.72
-    #ps_theory  = (c21.T_b(0.8)*1.e-3)**2*power_th[:,1]/0.72**3
-    ps_theory  = power_th[:,1]
-    ps_theory *= power_th[:,0]**3/2./np.pi**2
-    return ps_theory, power_th[:,0]
+    return ps_theory
+
+    #power_th = np.loadtxt('/Users/ycli/Code/analysis_IM/simulations/data/wigglez_halofit_z0.8.dat')
+    ##power_th[:,0] *= 0.72
+    ##ps_theory  = (c21.T_b(0.8)*1.e-3)**2*power_th[:,1]/0.72**3
+    #ps_theory  = power_th[:,1]
+    #ps_theory *= power_th[:,0]**3/2./np.pi**2
+    #return ps_theory, power_th[:,0]
 
 def get_1d_k_bin_centre(ps_1d):
 

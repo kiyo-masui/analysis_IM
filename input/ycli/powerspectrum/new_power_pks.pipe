@@ -13,13 +13,15 @@ WORKROOT = os.getenv('YICHAO_WORK_PS')
 
 hour = int(os.getenv('HOUR'))
 name = os.getenv('NAME')
+mode = int(os.getenv('MODE'))
+pks_root = os.getenv('MAP_PKS')
 IIdf_root = os.getenv('MAP_2DF')
 
 cut_list = []
 
-kbin_min = 0.01
-kbin_max = 1.00
-kbin_num = 45 
+kbin_min = 0.1
+kbin_max = 1.5
+kbin_num = 10 
 
 from mkpower import ps_estimator
 pipe_modules.append(ps_estimator.PowerSpectrumEstimator)
@@ -28,7 +30,7 @@ pse_processes = 1
 
 pse_sim_root = None
 pse_ssm_root = None
-pse_gbt_root = None
+pse_gbt_root = pks_root
 pse_opt_root = IIdf_root
 
 pse_cut_list = cut_list
@@ -37,13 +39,17 @@ pse_kbin_num = kbin_num
 pse_kbin_min = kbin_min
 pse_kbin_max = kbin_max
 
+
 pse_ps_root  = WORKROOT 
-pse_ps_type  = '2df'
+#pse_ps_type  = 'cros'
+pse_ps_type  = 'auto'
 #pse_ps_type  = 'wigglez'
-pse_ps_name  = '%s_%s_ps'%(name, pse_ps_type)
+pse_ps_name  = '%s_%s_ps_%02dmode'%(name, pse_ps_type, mode)
+pse_ps_mode = mode
 
 pse_est_transfer = False
+pse_est_noiseerr = True
 pse_est_powerspc = True
-pse_est_powershn = True
-pse_est_gausserr = False
+pse_est_powershn = False
+pse_est_gausserr = True
 pse_est_powersim = False
