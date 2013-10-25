@@ -17,19 +17,36 @@ def load_camb():
     data[:,0] *= 0.72
     data[:,1] /= 0.72**3
 
-    return data[:,0], data[:,1]
+    return data
+    #return data[:,0], data[:,1]
 
-def load_theory_ps(k_bins_centre):
-    c21 = corr21cm.Corr21cm()
-    #ps_theory  = c21.T_b(0.8)**2*c21.get_pwrspec(k_bins_centre)
-    #ps_theory *= k_bins_centre**3/2./np.pi**2
+def load_theory_ps(k_bins_centre, redshift=0.8, cross=False, in_Jy=True):
+    c21 = corr21cm.Corr21cm(redshift=redshift, nu_upper=1400., nu_lower=1200.)
+    T_b = c21.T_b(redshift) * 1.e-3
+    if in_Jy:
+        jy = 2.*1.38e-23/1.e-26/((1.+redshift)*0.21)**2
+    else:
+        jy = 1.
 
-    power_th = np.loadtxt('/Users/ycli/Code/analysis_IM/simulations/data/wigglez_halofit_z0.8.dat')
+    if cross:
+        ps_theory  = jy*c21.get_pwrspec(k_bins_centre)/T_b
+    else:
+        ps_theory  = jy**2.*c21.get_pwrspec(k_bins_centre)
+
+    print ps_theory
+
+    ps_theory *= k_bins_centre**3./2./(np.pi**2.)
+
+    print ps_theory
+
+    return ps_theory
+
+    #power_th = np.loadtxt('/Users/ycli/Code/analysis_IM/simulations/data/wigglez_halofit_z0.8.dat')
     #power_th[:,0] *= 0.72
-    #ps_theory  = (c21.T_b(0.8)*1.e-3)**2*power_th[:,1]/0.72**3
-    ps_theory  = power_th[:,1]
-    ps_theory *= power_th[:,0]**3/2./np.pi**2
-    return ps_theory, power_th[:,0]
+    #power_th = load_camb()
+    #ps_theory  = c21.T_b(0.08)*1.e-3*power_th[:,1]
+    #ps_theory *= power_th[:,0]**3/2./np.pi**2
+    #return ps_theory, power_th[:,0]
 
 def get_1d_k_bin_centre(ps_1d):
 
@@ -109,13 +126,14 @@ def load_weight(ns_root, transfer_function=None):
 
     return weight, k_p_edges, k_v_edges
 
-def load_power_spectrum_err(ps_root):
-    
-    ps_2derr = algebra.make_vect(algebra.load(ps_root.replace('pow', 'err')))
+def load_noise_err(ne_root):
 
-    k_p_edges, k_v_edges = get_2d_k_bin_edges(ps_2derr)
+    noise_error = algebra.make_vect(algebra.load(ne_root))
 
-    return ps_2derr, k_p_edges, k_v_edges
+    k_p_edges, k_v_edges = get_2d_k_bin_edges(noise_error)
+
+    return noise_error, k_p_edges, k_v_edges
+
 
 def load_power_spectrum_1d(ps_root, raw=False):
     
@@ -154,7 +172,7 @@ def load_power_spectrum_opt(ps_root, sn_root):
     k_p_edges, k_v_edges = get_2d_k_bin_edges(ps_2d)
 
     # subtract short noise
-    ps_2d -= sn_2d
+    #ps_2d -= sn_2d
 
     return ps_2d, ps_2derr, ps_2dkmn, k_p_edges, k_v_edges, sn_2d
 
@@ -166,6 +184,67 @@ def load_power_spectrum(ps_root):
     k_p_edges, k_v_edges = get_2d_k_bin_edges(ps_2d)
 
     return ps_2d, kn_2d, k_p_edges, k_v_edges
+
+def load_power_spectrum_err(ps_root):
+    
+    ps_2derr = algebra.make_vect(algebra.load(ps_root.replace('pow', 'err')))
+
+    k_p_edges, k_v_edges = get_2d_k_bin_edges(ps_2derr)
+
+    return ps_2derr, k_p_edges, k_v_edges
+
+def load_power_spectrum_sec(ps_root, ne_root, sec=['A', 'B', 'C', 'D'], 
+                            transfer_function=None):
+    
+    power_list = []
+    k_num_list = []
+    weight_list = []
+
+    k_p_edges = []
+    k_v_edges = []
+
+    for i in range(len(sec)):
+        for j in range(i+1, len(sec)):
+            tab_l = sec[i] + sec[j]
+            weight_l = load_weight(ne_root%tab_l, transfer_function)[0]
+            tab_r = sec[j] + sec[i]
+            weight_r = load_weight(ne_root%tab_r, transfer_function)[0]
+
+            weight = weight_l * weight_r
+            weight_list.append(weight)
+
+            tab = tab_l + 'x' + tab_r
+            ps_2d = algebra.make_vect(algebra.load(ps_root%tab))
+            kn_2d = algebra.make_vect(algebra.load((ps_root%tab).replace('pow','kmn')))
+
+            if k_p_edges == []:
+                k_p_edges, k_v_edges = get_2d_k_bin_edges(ps_2d)
+
+            ps_2d *= weight
+            kn_2d *= weight
+
+            power_list.append(ps_2d)
+            k_num_list.append(kn_2d)
+
+    power = np.sum(np.array(power_list), axis=0)
+    k_num = np.sum(np.array(k_num_list), axis=0)
+    power_err = np.sum((power[None, ...] - np.array(power_list))**2., axis=0)
+    weight = np.sum(np.array(weight_list), axis=0)
+    weight_square = np.sum(np.array(weight_list)**2, axis=0)
+    weight_mean = np.mean(np.array(weight_list), axis=0)
+
+    weight[weight==0] = np.inf
+    power /= weight
+    k_num /= weight
+    power_err /= weight_square
+    power_err = np.sqrt(power_err)
+
+    power = algebra.make_vect(power, axis_names=power_list[0].info['axes'])
+    power.info = power_list[0].info
+    k_num = algebra.make_vect(k_num, axis_names=k_num_list[0].info['axes'])
+    power.info = k_num_list[0].info
+
+    return power, power_err, k_num, k_p_edges, k_v_edges, weight_mean
 
 def convert_2dps_to_1dps_sim(rf_root, ns_root=None, truncate_range=None ):
 
@@ -286,7 +365,8 @@ def convert_2dps_to_1dps_opt(ps_root, sn_root, truncate_range=None):
 
     return power_1d, power_1d_err, k_p_centre, shortnoise_1d
 
-def convert_2dps_to_1dps(ps_root, ns_root, tr_root, rf_root, truncate_range=None):
+def convert_2dps_to_1dps(ps_root, ns_root, tr_root, rf_root, ne_root=None, 
+                         sec=['A', 'B', 'C', 'D'], truncate_range=None):
 
     if os.path.exists(rf_root):
         transfer_function = load_transfer_function(rf_root, tr_root)[0]
@@ -294,11 +374,14 @@ def convert_2dps_to_1dps(ps_root, ns_root, tr_root, rf_root, truncate_range=None
         print "Reference file or Transfer file are not esits, ignore compensation"
         transfer_function = None
 
-    weight, k_p_edges, k_v_edges = load_weight(ns_root, transfer_function)
-
-    power_spectrum, k_mode_number, k_p_edges, k_v_edges = load_power_spectrum(ps_root)
-
-    power_spectrum_err, k_p_edges, k_v_edges = load_power_spectrum_err(ps_root)
+    if ne_root != None:
+        power_spectrum, power_spectrum_err, k_mode_number, k_p_edges, k_v_edges,\
+            weight = load_power_spectrum_sec(ps_root, ne_root, sec,transfer_function)
+    else: 
+        weight, k_p_edges, k_v_edges = load_weight(ns_root, transfer_function)
+        power_spectrum, k_mode_number, k_p_edges, k_v_edges =\
+            load_power_spectrum(ps_root)
+        power_spectrum_err, k_p_edges, k_v_edges = load_power_spectrum_err(ps_root)
 
     if transfer_function != None:
         power_spectrum *= transfer_function

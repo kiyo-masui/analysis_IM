@@ -4,6 +4,7 @@ import numpy as np
 from mkpower import ps_summary
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
+import os
 
 
 rf_root = '/Users/ycli/DATA/ps_result/new_ps_estimation_test/auto_rf_40mode_2dpow'
@@ -42,9 +43,10 @@ def seperate_positive_and_negative_power(power, power_err, k_centre, lower=1.e-1
     return power_1d_positive, power_1d_positive_err_2, k_1d_centre_positive,\
            power_1d_negative, power_1d_negative_err_2, k_1d_centre_negative
 
-def plot_1d_power_spectrum_opt_multi(file_root, file_name, ps_type,
+def plot_1d_power_spectrum_opt_multi(file_root, file_name, ps_type, 
                                      save_name='power_opt',
-                                     positive_only=False, ):
+                                     positive_only=False, plot_error=False, 
+                                     from_sec=False, sec=['A', 'B', 'C', 'D']):
     '''
         This function used to plot a batch of optical power spectrum
     '''
@@ -60,42 +62,165 @@ def plot_1d_power_spectrum_opt_multi(file_root, file_name, ps_type,
 
     fig = plt.figure(figsize=(8, 8))
 
-    k_paper_cole, power_paper_cole, power_err_paper_cole = \
-        ps_summary.load_2df_ps_from_paper('Cole')
-    k_paper, power_paper, power_err_paper = ps_summary.load_2df_ps_from_paper()
-    plt.errorbar(k_paper, power_paper*1.26, power_err_paper, 
-        fmt='bo', mec='b', capsize=2.5, elinewidth=1, markersize=5,
-        label='Percival et. al 2001 x 1.26')
-    plt.errorbar(k_paper_cole, power_paper_cole*1.26, power_err_paper_cole, 
-        fmt='go', mec='g', capsize=2.5, elinewidth=1, markersize=5,
-        label='Cole et. al 2005 x 1.26')
+    #k_paper_cole, power_paper_cole, power_err_paper_cole = \
+    #    ps_summary.load_2df_ps_from_paper('Cole')
+    #k_paper, power_paper, power_err_paper = ps_summary.load_2df_ps_from_paper()
+    #plt.errorbar(k_paper, power_paper*1.26, power_err_paper, 
+    #    fmt='bo', mec='b', capsize=2.5, elinewidth=1, markersize=5,
+    #    label='Percival et. al 2001 x 1.26')
+    #plt.errorbar(k_paper_cole, power_paper_cole*1.26, power_err_paper_cole, 
+    #    fmt='go', mec='g', capsize=2.5, elinewidth=1, markersize=5,
+    #    label='Cole et. al 2005 x 1.26')
 
+    power_th_k = np.logspace(np.log10(0.1), np.log10(5.), 100)
+    power_th = ps_summary.load_theory_ps(power_th_k, redshift=0.08, 
+                                         cross=ps_type=='cros', in_Jy=False)
+    plt.plot(power_th_k, power_th, 'k-', linewidth=2)
 
+    offsets = np.arange(len(file_name)) - 0.5*float(len(file_name) - 1.)
     for name in file_name:
-        result_root = file_root + name + '/'
-        ps_root = result_root + "%s_ps_2dpow"%ps_type
-        sn_root = result_root + "%s_sn_2dpow"%ps_type
-        plot_1d_power_spectrum_opt(ps_root, sn_root, name, fig=fig, 
-                                   color = color[color_index], 
-                                   positive_only = positive_only)
+        if ps_type=='cros':
+            result_root = file_root + name
+            ps_root = result_root%(ps_type, 'ps')
+            sn_root = result_root%(ps_type, 'sn')
+            plot_1d_power_spectrum_opt(ps_root, sn_root, name.split('/')[0], 
+                                       fig=fig, color = color[color_index], 
+                                       positive_only = positive_only,
+                                       plot_error = plot_error, 
+                                       offset = offsets[color_index],
+                                       convert_to_K = True)
+        elif ps_type=='auto':
+            result_root = file_root + name
+            ns_root = result_root%(ps_type, 'ns')
+            rf_root = result_root%(ps_type, 'rf')
+            tr_root = result_root%(ps_type, 'tr')
+            if from_sec:
+                ps_root = result_root%(ps_type, 'ps') + '_%s'
+                ne_root = result_root%(ps_type, 'ne') + '_%s'
+            else:
+                ps_root = result_root%(ps_type, 'ps')
+                ne_root = None
+            plot_1d_power_spectrum_gbt(rf_root, tr_root, ns_root, ps_root, 
+                                       name.split('/')[0], 
+                                       ne_root=ne_root, sec=sec, fig=fig, 
+                                       filename=None, color=color[color_index], 
+                                       plot_error=plot_error,
+                                       truncate_range = None,
+                                       offset = offsets[color_index], 
+                                       convert_to_K = True)
         color_index += 1
 
     plt.loglog()
-    plt.ylim(ymin=1.e-3, ymax=5.e2)
+    if ps_type=='cros':
+        plt.ylim(ymin=1.e-5, ymax=4.e-2)
+    elif ps_type=='auto':
+        plt.ylim(ymin=1.e-9, ymax=5.e-4)
     plt.xlim(xmin=0.01, xmax=2.5)
     plt.xlabel('k [h/Mpc]')
     #plt.ylabel('$\Delta^2$ [$K^2$]')
     plt.ylabel('$\Delta^2$ [$P(k)k^3/2\pi^2$]')
     #plt.ylabel('$P(k)$ [$h^{-3}Mpc^3$]')
-    plt.legend(frameon=False, loc=0)
+    plt.legend(frameon=False, loc=2, ncol=1)
     plt.tick_params(length=6, width=1.)
     plt.tick_params(which='minor', length=3, width=1.)
     plt.savefig('./png/' + save_name + '.png', format='png')
     plt.show()
 
+def plot_1d_power_spectrum_gbt(rf_root, tr_root, ns_root, ps_root, label, 
+                               ne_root=None, sec = ['A', 'B', 'C', 'D'],
+                               si_root=None, fig=None, filename=None, color='r',
+                               plot_error=False, truncate_range = None, 
+                               offset=0., convert_to_K=False):
+    power_1d, power_1d_err, k_1d_centre =\
+        ps_summary.convert_2dps_to_1dps(ps_root, ns_root, tr_root, 
+                                        rf_root, ne_root, sec, truncate_range)
+
+    if convert_to_K:
+        power_1d /= 1.1**2
+        power_1d_err /= 1.1**2
+
+    power_1d_positive, power_1d_positive_err_2, k_1d_centre_positive,\
+    power_1d_negative, power_1d_negative_err_2, k_1d_centre_negative\
+        = seperate_positive_and_negative_power(power_1d, power_1d_err, k_1d_centre)
+
+    dk = k_1d_centre_positive[1]/k_1d_centre_positive[0]
+    offset = dk**(0.1*offset)
+    k_1d_centre_positive *= offset
+    k_1d_centre_negative *= offset
+
+
+    #print 'positive power'
+    #for i in range(len(k_1d_centre_positive)):
+    #    print k_1d_centre_positive[i],power_1d_positive[i],power_1d_positive_err_2[0][i]
+    #print 'negative power'
+    #for i in range(len(k_1d_centre_negative)):
+    #    print k_1d_centre_negative[i],power_1d_negative[i],power_1d_negative_err_2[0][i]
+
+    #power_1d_sim, power_1d_err_sim, k_1d_centre_sim =\
+    #    ps_summary.convert_2dps_to_1dps_sim(si_root, ns_root, 
+    #    truncate_range = truncate_range)
+
+    #print power_1d_sim
+    #print power_1d_err_sim
+
+    #power_1d_err_2_sim = np.zeros(shape=(2, power_1d_err_sim.shape[0]))
+    #power_1d_err_2_sim[0] = power_1d_err_sim
+    #power_1d_err_2_sim[1] = power_1d_err_sim
+    #power_1d_err_2_sim[0].put(np.where(power_1d_err_2_sim[0] >= power_1d_sim), 
+    #                      power_1d_sim[power_1d_err_2_sim[0] >= power_1d_sim] - 1.e-15)
+
+    #power_th = ps_summary.load_theory_ps(k_1d_centre_sim)
+    #power_th /= 0.72**3
+    #power_th, power_th_k = ps_summary.load_theory_ps(k_1d_centre_sim)
+
+    if fig == None:
+        fig = plt.figure(figsize=(8, 8))
+        filename = label
+    else:
+        filename = None
+
+    fmt=color + 'o'
+    mec=color
+
+    label = label.replace('_', ' ')
+    if truncate_range != None:
+        title = 'truncated k_p[%5.3f %5.3f] k_v[%5.3f %5.3f]'%tuple(truncate_range)
+    else:
+        title = 'no truncating'
+    plt.errorbar(k_1d_centre_positive, power_1d_positive, power_1d_positive_err_2, 
+        fmt=fmt, mec=mec, capsize=4.5, elinewidth=1, label=label + ' positive')
+    plt.errorbar(k_1d_centre_negative, power_1d_negative, power_1d_negative_err_2, 
+        fmt=fmt, mec=mec, mfc='none', capsize=4.5, elinewidth=1,)
+        #label=label + ' negative')
+
+    if plot_error:
+        plt.step(k_1d_centre, power_1d_err, where='mid', c=color, 
+                 label='error of ' + label)
+    #plt.errorbar(k_1d_centre_sim, power_1d_sim, power_1d_err_2_sim, 
+    #    fmt='ko', mec='k', mfc='none', capsize=4.5, elinewidth=1, label='simulation')
+    #plt.plot(k_1d_centre_sim, power_th, c='r', label='theory')
+    #plt.plot(power_th_k, power_th, c='r', label='theory')
+
+    if filename != None:
+        plt.loglog()
+        plt.ylim(ymin=1.e-12, ymax=1.e-1)
+        plt.xlim(xmin=0.025, xmax=1.5)
+        plt.xlabel('k [h/Mpc]')
+        plt.ylabel('$\Delta^2$ [$K^2$]')
+        plt.legend(frameon=False, title=title)
+        plt.tick_params(length=6, width=1.)
+        plt.tick_params(which='minor', length=3, width=1.)
+        if truncate_range != None:
+            plt.savefig('./png/' + filename + '_truncated.png', format='png')
+        else:
+            plt.savefig('./png/' + filename + '.png', format='png')
+        #plt.show()
+
 def plot_1d_power_spectrum_opt(ps_root, sn_root, label, si_root=None, from_1d=False,
                                truncate_range = None, fig=None, color='r', 
-                               positive_only=False, plotshortnoise=True):
+                               positive_only=False, plotshortnoise=True, 
+                               plot_error=False, offset=0.,
+                               convert_to_K=False):
     '''
         This function used to plot optical power spectrum
     '''
@@ -106,9 +231,18 @@ def plot_1d_power_spectrum_opt(ps_root, sn_root, label, si_root=None, from_1d=Fa
         power_1d, power_1d_err, k_1d_centre, shortnoise =\
             ps_summary.convert_2dps_to_1dps_opt(ps_root, sn_root, truncate_range)
 
+    if convert_to_K:
+        power_1d /= 1.1
+        power_1d_err /= 1.1
+
     power_1d_positive, power_1d_positive_err_2, k_1d_centre_positive,\
     power_1d_negative, power_1d_negative_err_2, k_1d_centre_negative\
         = seperate_positive_and_negative_power(power_1d, power_1d_err, k_1d_centre)
+
+    dk = k_1d_centre_positive[1]/k_1d_centre_positive[0]
+    offset = dk**(0.04*offset)
+    k_1d_centre_positive *= offset
+    k_1d_centre_negative *= offset
 
 
     if fig == None:
@@ -126,10 +260,14 @@ def plot_1d_power_spectrum_opt(ps_root, sn_root, label, si_root=None, from_1d=Fa
         plt.errorbar(k_1d_centre_negative, power_1d_negative, 
                      power_1d_negative_err_2, 
                      fmt=fmt, mec=mec, mfc='none', capsize=4.5, 
-                     elinewidth=1, label=label + ' negative')
+                     elinewidth=1,)
+                     #label=label + ' negative')
+    if plot_error:
+        plt.step(k_1d_centre, power_1d_err, where='mid', c=color, 
+                 label='error of ' + label)
 
-    plt.step(k_1d_centre, shortnoise, where='mid', c=color, 
-             label='short noise of ' + label)
+    #plt.step(k_1d_centre, shortnoise, where='mid', c=color, 
+    #         label='short noise of ' + label)
 
     if filename != None:
         plt.loglog()
@@ -203,69 +341,6 @@ def plot_1d_power_spectrum_sim(si_root):
     plt.savefig('./png/test.png', format='png')
     plt.show()
 
-def plot_1d_power_spectrum_gbt(rf_root, tr_root, ns_root, ps_root, si_root, 
-                               filename, truncate_range = None):
-    power_1d, power_1d_err, k_1d_centre =\
-        ps_summary.convert_2dps_to_1dps(ps_root, ns_root, tr_root, 
-                                        rf_root, truncate_range)
-
-    power_1d_positive, power_1d_positive_err_2, k_1d_centre_positive,\
-    power_1d_negative, power_1d_negative_err_2, k_1d_centre_negative\
-        = seperate_positive_and_negative_power(power_1d, power_1d_err, k_1d_centre)
-
-    print 'positive power'
-    for i in range(len(k_1d_centre_positive)):
-        print k_1d_centre_positive[i],power_1d_positive[i],power_1d_positive_err_2[0][i]
-    print 'negative power'
-    for i in range(len(k_1d_centre_negative)):
-        print k_1d_centre_negative[i],power_1d_negative[i],power_1d_negative_err_2[0][i]
-
-    power_1d_sim, power_1d_err_sim, k_1d_centre_sim =\
-        ps_summary.convert_2dps_to_1dps_sim(si_root, ns_root, 
-        truncate_range = truncate_range)
-
-    #print power_1d_sim
-    #print power_1d_err_sim
-
-    power_1d_err_2_sim = np.zeros(shape=(2, power_1d_err_sim.shape[0]))
-    power_1d_err_2_sim[0] = power_1d_err_sim
-    power_1d_err_2_sim[1] = power_1d_err_sim
-    power_1d_err_2_sim[0].put(np.where(power_1d_err_2_sim[0] >= power_1d_sim), 
-                          power_1d_sim[power_1d_err_2_sim[0] >= power_1d_sim] - 1.e-15)
-
-    #power_th = ps_summary.load_theory_ps(k_1d_centre_sim)
-    #power_th /= 0.72**3
-    power_th, power_th_k = ps_summary.load_theory_ps(k_1d_centre_sim)
-
-    fig = plt.figure(figsize=(8, 8))
-    label = filename.replace('_', ' ')
-    if truncate_range != None:
-        title = 'truncated k_p[%5.3f %5.3f] k_v[%5.3f %5.3f]'%tuple(truncate_range)
-    else:
-        title = 'no truncating'
-    plt.errorbar(k_1d_centre_positive, power_1d_positive, power_1d_positive_err_2, 
-        fmt='ro', mec='r', capsize=4.5, elinewidth=1, label=label + ' positive')
-    plt.errorbar(k_1d_centre_negative, power_1d_negative, power_1d_negative_err_2, 
-        fmt='ro', mec='r', mfc='none', capsize=4.5, 
-        elinewidth=1, label=label + ' negative')
-    plt.errorbar(k_1d_centre_sim, power_1d_sim, power_1d_err_2_sim, 
-        fmt='ko', mec='k', mfc='none', capsize=4.5, elinewidth=1, label='simulation')
-    #plt.plot(k_1d_centre_sim, power_th, c='r', label='theory')
-    plt.plot(power_th_k, power_th, c='r', label='theory')
-    plt.loglog()
-    plt.ylim(ymin=1.e-12, ymax=1.e-1)
-    plt.xlim(xmin=0.025, xmax=1.5)
-    plt.xlabel('k [h/Mpc]')
-    plt.ylabel('$\Delta^2$ [$K^2$]')
-    plt.legend(frameon=False, title=title)
-    plt.tick_params(length=6, width=1.)
-    plt.tick_params(which='minor', length=3, width=1.)
-    if truncate_range != None:
-        plt.savefig('./png/' + filename + '_truncated.png', format='png')
-    else:
-        plt.savefig('./png/' + filename + '.png', format='png')
-    plt.show()
-
 def plot_2d_power_spectrum(rf_root, tr_root, ps_root, filename, truncate_range=None):
     plot_list = []
     x_list = []
@@ -278,8 +353,12 @@ def plot_2d_power_spectrum(rf_root, tr_root, ps_root, filename, truncate_range=N
     power_spectrum_err, k_p_edges, k_v_edges =\
         ps_summary.load_power_spectrum_err(ps_root)
 
-    transfer_function, k_p_edges, k_v_edges =\
-        ps_summary.load_transfer_function(rf_root, tr_root)
+    if os.path.exists(rf_root) and os.path.exists(tr_root):
+        transfer_function, k_p_edges, k_v_edges =\
+            ps_summary.load_transfer_function(rf_root, tr_root)
+    else:
+        print 'No transfer function'
+        transfer_function = np.ones(power_spectrum.shape)
 
     power_spectrum *= transfer_function
     power_spectrum_err *= transfer_function
@@ -290,6 +369,7 @@ def plot_2d_power_spectrum(rf_root, tr_root, ps_root, filename, truncate_range=N
     plot_list.append(power_spectrum)
     x_list.append(k_v_edges)
     y_list.append(k_p_edges)
+
     title_list.append('%s\n 2d power spectrum'%filename)
     
     power_spectrum_err = np.ma.array(power_spectrum_err)
@@ -393,6 +473,70 @@ def plot_2d_transfer_function(rf_root, tr_root, filename, truncate_range=None):
                  clim=[3, 9])
     plt.savefig('./png/%s_transfer_function.png'%filename, format='png')
     plt.show()
+
+def plot_2d_gauss_error(ne_root, filename, sec=None):
+
+    plot_list = []
+    x_list = []
+    y_list = []
+    title_list = []
+
+    if sec == None:
+        sec = ['A', 'B', 'C', 'D']
+    for s1 in sec:
+        for s2 in sec:
+            if s1 == s2:
+                continue
+            tab = "%s%s"%(s1, s2)
+            ne_root_sec = ne_root%tab
+            noise_error, k_p_edges, k_v_edges = ps_summary.load_noise_err(ne_root_sec)
+            noise_error = np.ma.array(noise_error)
+            noise_error[noise_error==0] = np.ma.masked
+            noise_error = np.ma.log10(noise_error)
+            plot_list.append(noise_error)
+            x_list.append(k_v_edges)
+            y_list.append(k_p_edges)
+            title_list.append('%s\n gauss noise %s'\
+                             %(filename.replace('_', ' '), tab))
+    image_box_2d(x_list, y_list, plot_list, title_list=title_list, 
+                 xlim=[min(k_v_edges), max(k_v_edges)],
+                 ylim=[min(k_p_edges), max(k_p_edges)],
+                 n_row = 2,
+                 clim=[-6, -3],
+                 )
+    plt.savefig('./png/%s_gauss_power.png'%filename, format='png')
+
+def plot_2d_noise_error(ne_root, filename, sec=None):
+
+    plot_list = []
+    x_list = []
+    y_list = []
+    title_list = []
+
+    if sec == None:
+        sec = ['A', 'B', 'C', 'D']
+    for s1 in sec:
+        for s2 in sec:
+            if s1 == s2:
+                continue
+            tab = "%s%s"%(s1, s2)
+            ne_root_sec = ne_root%tab
+            noise_error, k_p_edges, k_v_edges = ps_summary.load_noise_err(ne_root_sec)
+            noise_error = np.ma.array(noise_error)
+            noise_error[noise_error==0] = np.ma.masked
+            noise_error = np.ma.log10(noise_error)
+            plot_list.append(noise_error)
+            x_list.append(k_v_edges)
+            y_list.append(k_p_edges)
+            title_list.append('%s\n noise diag power %s'\
+                             %(filename.replace('_', ' '), tab))
+    image_box_2d(x_list, y_list, plot_list, title_list=title_list, 
+                 xlim=[min(k_v_edges), max(k_v_edges)],
+                 ylim=[min(k_p_edges), max(k_p_edges)],
+                 n_row = 2,
+                 clim=[-3, -1],
+                 )
+    plt.savefig('./png/%s_noise_diag_power.png'%filename, format='png')
 
 def plot_2d_everthing(rf_root, tr_root, ns_root, ps_root):
 
@@ -517,32 +661,79 @@ if __name__=='__main__':
                       #"29RA_2df_ps_selection_submean",
                       #"29RA_2df_ps_separable_submean",
                       ]
-    plot_1d_power_spectrum_opt_multi(file_root, file_name_list, 
-                                     ps_type = '2df',
-                                     save_name ='2df', 
-                                     positive_only = True)
-
-    exit()
-
-    # -----------------------------------------------------------------------
-    file_root = "/Users/ycli/DATA/ps_result/"
-    file_name_list = [
-                      "PKS_cros_ps",
-                      ]
     #plot_1d_power_spectrum_opt_multi(file_root, file_name_list, 
-    #                                 ps_type = 'cros',
+    #                                 ps_type = '2df',
     #                                 save_name ='2df', 
-    #                                 positive_only = False)
+    #                                 positive_only = True)
+
     #exit()
 
     # -----------------------------------------------------------------------
 
-    mode = 20 
+    #parkes_field = 'n03n30_10by7_0627pixel_'
+    #parkes_field = '07n30_10by7_0627pixel_'
+    #parkes_field = '17n30_10by7_0627pixel_'
+    parkes_field = 'p3500n3000_parkes_2010_10_24-28_'
+
+    file_root = "/Users/ycli/DATA/ps_result/"
+    file_name_list = [
+        #"PKS_cros_ps/%s_%s_2dpow",
+
+        #"PKS_cros_ps_00mode/%s_%s_0mode_2dpow",
+        #"PKS_cros_ps_01mode/%s_%s_1mode_2dpow",
+        #"PKS_cros_ps_02mode/%s_%s_2mode_2dpow",
+        #"PKS_cros_ps_03mode/%s_%s_3mode_2dpow",
+        #"PKS_cros_ps_04mode/%s_%s_4mode_2dpow",
+
+        #"PKS_cros_ps_00mode/%s_%s_0mode_2dpow",
+        #"PKS_cros_ps_01mode/%s_%s_1mode_2dpow",
+        #"PKS_cros_ps_02mode/%s_%s_2mode_2dpow",
+        #"PKS_cros_ps_03mode/%s_%s_3mode_2dpow",
+
+        #"PKS_auto_ps_00mode/%s_%s_0mode_2dpow",
+        #"PKS_auto_ps_01mode/%s_%s_1mode_2dpow",
+        #"PKS_auto_ps_02mode/%s_%s_2mode_2dpow",
+        #"PKS_auto_ps_03mode/%s_%s_3mode_2dpow",
+
+        #"PKS_1pt1_cov_auto_ps_00mode/%s_%s_0mode_2dpow",
+        #"PKS_1pt1_cov_auto_ps_01mode/%s_%s_1mode_2dpow",
+        #"PKS_1pt1_cov_auto_ps_02mode/%s_%s_2mode_2dpow",
+        #"PKS_1pt1_cov_auto_ps_03mode/%s_%s_3mode_2dpow",
+
+        "PKS_%s1pt1_cov_cros_ps_00mode/"%parkes_field + "%s_%s_0mode_2dpow",
+        #"PKS_%s1pt1_cov_cros_ps_01mode/"%parkes_field + "%s_%s_1mode_2dpow",
+        "PKS_%s1pt1_cov_cros_ps_02mode/"%parkes_field + "%s_%s_2mode_2dpow",
+        #"PKS_%s1pt1_cov_cros_ps_03mode/"%parkes_field + "%s_%s_3mode_2dpow",
+        "PKS_%s1pt1_cov_cros_ps_04mode/"%parkes_field + "%s_%s_4mode_2dpow",
+        #"PKS_%s1pt1_cov_cros_ps_05mode/"%parkes_field + "%s_%s_5mode_2dpow",
+        #"PKS_%s1pt1_cov_cros_ps_08mode/"%parkes_field + "%s_%s_8mode_2dpow",
+
+        #"PKS_%s1pt1_cov_fewfreqcut_cros_ps_00mode/"%parkes_field + "%s_%s_0mode_2dpow",
+        #"PKS_%s1pt1_cov_fewfreqcut_cros_ps_01mode/"%parkes_field + "%s_%s_1mode_2dpow",
+        #"PKS_%s1pt1_cov_fewfreqcut_cros_ps_02mode/"%parkes_field + "%s_%s_2mode_2dpow",
+        #"PKS_%s1pt1_cov_fewfreqcut_cros_ps_03mode/"%parkes_field + "%s_%s_3mode_2dpow",
+        #"PKS_%s1pt1_cov_fewfreqcut_cros_ps_04mode/"%parkes_field + "%s_%s_4mode_2dpow",
+
+        ]
+    plot_1d_power_spectrum_opt_multi(file_root, file_name_list, 
+                                     ps_type = 'cros',
+                                     save_name ='pks_%scros_1pt1_cov'%parkes_field, 
+                                     positive_only = False,
+                                     plot_error = True, 
+                                     from_sec = False,)
+                                     #sec = ['A', 'B', 'C'])
+    exit()
+
+    # -----------------------------------------------------------------------
+
+    mode = 0 
     #mode = 10 
     #filename = '15hr_II_14conv_auto_ps_15hour_%dmode'%mode
     #filename = '15hr_IE_14conv_auto_ps_15hour_%dmode'%mode
     #filename = '1hr_IE_14conv_auto_ps_01hour_%dmode'%mode
-    filename = '15hr_ABCD_14conv_auto_ps_%dmode'%mode
+    #filename = '15hr_ABCD_14conv_auto_ps_%dmode'%mode
+    filename = 'PKS_auto_ps_%02dmode'%mode
+    #filename = 'PKS_1pt1_cov_auto_ps_%02dmode'%mode
     #filename = '15hr_ABCD_14conv_test_me_auto_ps_%dmode'%mode
     #filename = '15hr_ABCD_14conv_test_eric_auto_ps_%dmode'%mode
 
@@ -555,7 +746,7 @@ if __name__=='__main__':
     ps_root = result_root + 'auto_ps_%dmode_2dpow'%mode
     si_root = result_root + 'auto_si_%dmode_2dpow'%mode
     
-    truncate_range = [0.035,1.,0.08,0.3]
+    #truncate_range = [0.035,1.,0.08,0.3]
     #truncate_range = [0.035,1.,0.04,0.3]
 
     #plot_2d_everthing(rf_root, tr_root, ns_root, ps_root)
@@ -563,12 +754,13 @@ if __name__=='__main__':
     #plot_2d_transfer_function(rf_root, tr_root, filename, truncate_range)
     #plot_2d_weight(rf_root, tr_root, ns_root, filename, truncate_range)
     #plot_2d_power_spectrum(rf_root, tr_root, ps_root, filename, truncate_range)
+    #plot_2d_power_spectrum(rf_root, tr_root, ps_root, filename)
 
     #plot_1d_power_spectrum_gbt(rf_root, tr_root, ns_root, ps_root, rf_root, filename)
     #plot_1d_power_spectrum_gbt(rf_root, tr_root, ns_root, ps_root, tr_root, filename)
-    plot_1d_power_spectrum_gbt(rf_root, tr_root, ns_root, ps_root, si_root, filename)
-    plot_1d_power_spectrum_gbt(rf_root, tr_root, ns_root, ps_root, si_root, 
-                               filename, truncate_range=truncate_range)
+    #plot_1d_power_spectrum_gbt(rf_root, tr_root, ns_root, ps_root, si_root, filename)
+    #plot_1d_power_spectrum_gbt(rf_root, tr_root, ns_root, ps_root, si_root, 
+    #                           filename, truncate_range=truncate_range)
 
     #si_root = result_root + 'sim_raw_x_beammeansub/auto_si_%dmode_2dpow'%mode
     #si_root = result_root + 'sim_beammeansub_x_beammeansub/auto_si_%dmode_2dpow'%mode
@@ -579,5 +771,23 @@ if __name__=='__main__':
     #si_root = result_root + 'sim_raw_x_beammeansub/auto_si_%dmode_1draw'%mode
     #si_root = result_root + 'sim_beammeansub_x_beammeansub/auto_si_%dmode_1draw'%mode
     #plot_1d_power_spectrum_raw(si_root, filename + '_1draw')
+
+
+    # -----------------------------------------------------------------------
+
+    mode = 0
+    filename = 'PKS_1pt1_cov_auto_ps_%02dmode'%mode
+    result_root = '/Users/ycli/DATA/ps_result/' + filename + '/'
+
+    ne_root = result_root + 'auto_ne_%dmode_'%mode + '2dpow_%s'
+    ns_root = result_root + 'auto_ns_%dmode_'%mode + '2dpow_%s'
+
+    #plot_2d_noise_error(ne_root, filename, sec=['A', 'B', 'C'])
+
+    plot_2d_gauss_error(ns_root, filename, sec=['A', 'B', 'C'])
+
+
+
+
 
 
