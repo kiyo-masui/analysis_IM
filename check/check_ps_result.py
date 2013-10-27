@@ -78,6 +78,7 @@ def plot_1d_power_spectrum_opt_multi(file_root, file_name, ps_type,
     plt.plot(power_th_k, power_th, 'k-', linewidth=2)
 
     offsets = np.arange(len(file_name)) - 0.5*float(len(file_name) - 1.)
+
     for name in file_name:
         if ps_type=='cros':
             result_root = file_root + name

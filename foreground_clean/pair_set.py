@@ -60,6 +60,7 @@ params_init = {
                'freq_list2': (),
                'tack_on': None,
                'convolve': True,
+               'calibrate':True,
                'clip_weight_percent': None,
                'degrade_factor': 1.1,
                'weighted_SVD' : False,
@@ -117,7 +118,8 @@ def find_weight_re_diagnal(filename):
     serializeable). Return the info separately.
     """
     print "loading noise: " + filename
-    noise_inv = algebra.make_mat(algebra.open_memmap(filename, mode='r'))
+    #noise_inv = algebra.make_mat(algebra.open_memmap(filename, mode='r'))
+    noise_inv = algebra.make_mat(algebra.load(filename))
     noise_inv_diag = noise_inv.mat_diag()
 
     return noise_inv_diag, noise_inv_diag.info
@@ -703,6 +705,9 @@ class PairSet():
         """
         if self.params["convolve"]:
             self.call_pairs("degrade_resolution")
+
+        if self.params['calibrate']
+            self.call_pairs('calibrate_map')
 
         if self.params["factorizable_noise"]:
             self.call_pairs("make_noise_factorizable")

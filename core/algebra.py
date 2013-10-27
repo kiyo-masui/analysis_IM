@@ -342,7 +342,8 @@ class info_memmap(sp.memmap) :
 
     def __del__(self) :
         self._info_flush()
-        sp.memmap.__del__(self)
+        sp.memmap.flush(self)
+        #sp.memmap.__del__(self)
 
     def __deepcopy__(self, copy) :
         """Not implemented, raises an exception."""
@@ -1009,7 +1010,7 @@ def make_vect(array, axis_names=None) :
     axis_names : tuple of strings, optional
         The sequence contains the name of each axis.  This sequence will be
         stored in the `axes` attribute.  This parameter is ignored if
-        `input_array`'s info attribute already contains the axis names.
+        `input_array``s info attribute already contains the axis names.
 
     Returns
     -------
@@ -1035,7 +1036,7 @@ class mat(alg_object) :
     """Multidimentional array interpreted as a matrix.
     
     This class gets most of its functionality from the numpy ndarray class.
-    In addition it provides support for organizing it's data as a vector.
+    In addition it provides support for organizing it`s data as a vector.
     This class comes in two flavours: `mat_array` and `mat_memmap`
     depending on whether the array is stored in memory or on disk.  The raw
     `mat` class is not a valid class by itself.
@@ -1064,26 +1065,26 @@ class mat(alg_object) :
         Sequence contains the axis numbers of the array to identify as
         varying over the matrix rows. This sequence is stored in the
         `rows` attribute.  This parameter is ignored if
-        `input_array`'s info attribute already contains the rows.
+        `input_array``s info attribute already contains the rows.
     col_axis : tuple of ints
         Sequence contains the axis numbers of the array to identify as
         varying over the matrix columns. This sequence is stored in the
         `cols` attribute.  This parameter is ignored if
-        `input_array`'s info attribute already contains the cols.
+        `input_array``s info attribute already contains the cols.
     axis_names : tuple of strings, optional
         The sequence contains the name of each axis.  This sequence will be
         stored in the `axes` attribute.  This parameter is ignored if
-        `input_array`'s info attribute already contains the axis names.
+        `input_array``s info attribute already contains the axis names.
 
     Attributes
     ----------
     axes : tuple of strings
         The names of each of the axes of the array.
     rows : tuple of ints
-        Which of the array's axes to identify as varying over the matrix
+        Which of the array`s axes to identify as varying over the matrix
         rows.
     cols : tuple of ints
-        Which of the array's axes to identify as varying over the matrix
+        Which of the array`s axes to identify as varying over the matrix
         columns.
 
     Notes
@@ -1094,7 +1095,7 @@ class mat(alg_object) :
     explicit assignment to mat.shape).
 
     The `axes`, `rows` and `cols` attributes are actually stored in the 
-    `info_array`'s info dictionary.  This is just an implementation detail.
+    `info_array``s info dictionary.  This is just an implementation detail.
 
     See Also
     --------

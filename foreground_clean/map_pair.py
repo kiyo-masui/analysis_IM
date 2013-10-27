@@ -16,6 +16,7 @@ from quadratic_products import corr_estimation
 #from quadratic_products import pwrspec_estimator as pe
 from utils import data_paths
 from utils import batch_handler as bh
+from parkes import cal_map
 # TODO: move single map operations to a separate class
 
 params_init = {
@@ -27,6 +28,7 @@ params_init = {
                'noise_inv2': "noise_inv2.npy",
                'freq_list': (),
                'degrade_factor': 1.1,
+               'telescope' : 'Parkes'
                # Angular lags at which to calculate the correlation.  Upper
                # edge bins in degrees.
                'lags': tuple(sp.arange(0.002, 0.2, 0.12))
@@ -220,26 +222,57 @@ class MapPair(object):
 
         return
 
+    def degrade_function(self, telescope='Parkes'):
+
+        degrade_factor = self.params['degrade_factor']
+        print "degrading the resolution to a %2.1f common beam"%degrade_factor
+
+        if telescope=='GBT'
+            # Get the beam data.
+            beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792,
+                     0.281176247549, 0.270856788455, 0.26745856078,
+                     0.258910010848, 0.249188429031])
+            freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
+                                 dtype=float)
+        elif telescope=='Parkes':
+            freq_data = sp.array([1250, 1275, 1300, 1325, 1350], dtype=float)
+            beam_data = sp.array([14.4, 14.4, 14.4, 14.4, 14.4])/60. # in unit of dgree
+            beam_data = beam_data*1420/freq_data
+            freq_data *= 1.0e6
+
+        beam_diff = sp.sqrt(max(degrade_factor*beam_data)**2-(beam_data)**2)
+        common_resolution = beam.GaussianBeam(beam_diff, freq_data)
+        return common_resolution
+
+    def calibrate_map(self):
+        '''
+            This calibration should use the degraded map. 
+            If not, set degrade_map=False
+            Neet the set the system environment variable:
+            NVSS_PATH and HIPASS_PATH
+        '''
+
+        calibrator1 = cal_map.CalibrateMap(self.map1, self.freq1,
+                degrade_map=True, degrade_function=self.degrade_function)
+        calibrator1.cal_by_point_sources(flux_limit=[0.5, 100])
+        self.map1 = calibrator1.re_scale * self.map1 + calibrator1.re_zerop
+
+        calibrator2 = cal_map.CalibrateMap(self.map2, self.freq2, 
+                degrade_map=True, degrade_function=self.degrade_function)
+        calibrator2.cal_by_point_sources(flux_limit=[0.5, 100])
+        self.map2 = calibrator2.re_scale * self.map2 + calibrator2.re_zerop
+
     def degrade_resolution(self, mode='constant'):
         r"""Convolves the maps down to the lowest resolution.
 
         Also convolves the noise, making sure to deweight pixels near the edge
         as well.  Converts noise to factorizable form by averaging.
         """
-        degrade_factor = self.params['degrade_factor']
-        print "degrading the resolution to a %2.1f common beam"%degrade_factor
         noise1 = self.noise_inv1
         noise2 = self.noise_inv2
 
-        # Get the beam data.
-        beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792,
-                 0.281176247549, 0.270856788455, 0.26745856078,
-                 0.258910010848, 0.249188429031])
-        freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
-                             dtype=float)
-        freq_data *= 1.0e6
-        beam_diff = sp.sqrt(max(degrade_factor*beam_data)**2-(beam_data)**2)
-        common_resolution = beam.GaussianBeam(beam_diff, freq_data)
+        common_resolution = self.degrade_function(telescope = self.params['telescope'])
+
 
         def degrade_resolution_for_noise(noise, common_resolution):
             noise[noise < 1.e-30] = 1.e-30

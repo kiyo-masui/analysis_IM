@@ -156,10 +156,10 @@ def flag_data(Data, sigma_thres, badness_thres, time_cut,
     # Flag data on a [deep]copy of Data. If too much destroyed,
     # check if localized in time. If that sucks too, then just hide freq.
 
-    if time_flag_first:
-        destroy_time_with_mean_arrays(Data, flag_size=4)
-    if len(tsys_thres)==2:
-        destroy_time_tsys(Data, tsys_thres)
+    #if time_flag_first:
+    #    destroy_time_with_mean_arrays(Data, flag_size=4)
+    #if len(tsys_thres)==2:
+    #    destroy_time_tsys(Data, tsys_thres)
 
     Data1 = copy.deepcopy(Data)
     itr = 0            # For recursion
@@ -308,6 +308,8 @@ def destroy_with_variance(Data, sigma_thres=6, bad_freq_list=[]):
         # Get the normalized variance array for each polarization.
         a = ma.var(Data.data[:,ii,0,0,:],0)/(ma.mean(Data.data[:,ii,0,0,:],0)**2)#XX
         b = ma.var(Data.data[:,ii,1,0,:],0)/(ma.mean(Data.data[:,ii,1,0,:],0)**2)#YY
+        #a = ma.var(Data.data[:,ii,0,0,:],0)#XX
+        #b = ma.var(Data.data[:,ii,1,0,:],0)#YY
         # Get the mean and standard deviation [sigma].
         means = sp.array([ma.mean(a), ma.mean(b)]) 
         sig   = sp.array([ma.std(a), ma.std(b)])

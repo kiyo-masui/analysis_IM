@@ -9,6 +9,11 @@ import mpl_toolkits.axisartist.angle_helper as angle_helper
 from matplotlib.projections import PolarAxes
 from map import physical_gridding as gridding
 
+import matplotlib.pyplot as plt
+from core import algebra
+from utils import binning
+import os
+
 def setup_axes_ra_dec(fig, ra0, ra1, dec0, dec1, label0=r'$\alpha[2000]$', 
                       label1=r'$\delta$'):
     if dec0 < 0:
@@ -341,10 +346,6 @@ def plot_sky(cat_root, map_root_list, save_name='./png/real_real_cat.png'):
 
 if __name__=="__main__":    
     
-    import matplotlib.pyplot as plt
-    from core import algebra
-    from utils import binning
-    import os
     
     
     root_cat = '/mnt/scratch-gl/ycli/2df_catalog/catalog/'

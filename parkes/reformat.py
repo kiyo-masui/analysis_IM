@@ -4,6 +4,7 @@ import pyfits
 import numpy as np
 import numpy.ma as ma
 import gc
+import os
 import scipy as sp
 from math import *
 from utils import batch_handler
@@ -37,6 +38,9 @@ class ReformatParkes(object):
 
         self.parkes_fieldlabel = []
         self.parkes_data = None
+
+        if not os.path.exists(self.params['outputroot']):
+            os.makedirs(self.params['outputroot'])
 
     def execute(self, nprocesses=1):
         self.readparkesdata()
@@ -185,12 +189,13 @@ class ReformatParkes(object):
         #scanlist = np.array([0,])
 
         # flag by tsys
-        flag_times = 20
-        for i in range(flag_times):
-            data, tsys = self.flag_by_tsys(data, tsys)
+        #flag_times = 20
+        #for i in range(flag_times):
+        #    data, tsys = self.flag_by_tsys(data, tsys)
 
         # bandpass remove
-        #data = self.bandpass_rm(data, tsys, scannum)
+        #data, tsys = self.bandpass_rm(data, freq_cut = range(200))
+        #data = self.bandpass_rm_notgood(data, tsys, scannum)
         #data = self.bandpass_rm_slow(data, tsys, scannum)
 
         band_cf = np.array([band_cf[:,::13].flatten()[0]]) 
@@ -316,7 +321,29 @@ class ReformatParkes(object):
             first_parkesfile = False
 
     @batch_handler.log_timing
-    def bandpass_rm(self, spec, tsys, scan_n, time_n=40):
+    def bandpass_rm(self, spec, freq_cut = [], time_n = 4):
+
+        spec[np.isnan(spec)] = ma.masked
+        freq_list = tuple([ind for ind in range(spec.shape[-1]) 
+                               if ind not in freq_cut])
+        tsys = np.ma.mean(spec[...,freq_list], axis=-1)
+
+        import scipy.ndimage.filters as filters
+
+        size = np.ones(spec.ndim)
+        size[0] = time_n
+        spec_median = filters.median_filter(spec, size=size)
+        size = np.ones(tsys.ndim)
+        size[0] = time_n
+        tsys_median = filters.median_filter(tsys, size=size)
+
+        spec /= spec_median
+        spec -= 1.
+        spec *= tsys_median[...,None]
+
+        return spec, tsys
+
+    def bandpass_rm_notgood(self, spec, tsys, scan_n, time_n=40):
 
         def median(array, n, axis=-1):
             if n & 1:

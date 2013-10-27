@@ -10,37 +10,46 @@ data_dir = os.getenv('PARKES_DATA')
 
 ''' >> Data Direction << '''
 ''' 2012-10-24 '''
-#parkes_session = 'CALDATA_SDF_beamcal/1024/'
+#parkes_session = '/RAWDATA_SDF/20121024/'
 #parkesfiles = [] 
-#for file in os.listdir(data_dir + parkes_session):
+#listfile = os.listdir(data_dir+parkes_session)
+#listfile.sort(key=lambda x:int(x[11:15]))
+#for file in listfile:
 #    if file.split('.')[-1] == 'sdfits':
 #        parkesfiles.append(file)
+#        print file
 #outputname = 'parkes_2012_10_24_P641'
 #file_middles = tuple(['parkes_2012_10_24_P641',])
-#prefix = 'nobpcal_beamcal_'
+#prefix = ''
 
 ''' 2012-10-25 '''
-#parkes_session = 'CALDATA_SDF_beamcal/1025/'
+#parkes_session = '/RAWDATA_SDF/20121025/'
 #parkesfiles = [] 
-#for file in os.listdir(data_dir + parkes_session):
+#listfile = os.listdir(data_dir+parkes_session)
+#listfile.sort(key=lambda x:int(x[11:15]))
+#for file in listfile:
 #    if file.split('.')[-1] == 'sdfits':
 #        parkesfiles.append(file)
+#        print file
 #outputname = 'parkes_2012_10_25_P641'
 #file_middles = tuple(['parkes_2012_10_25_P641',])
-#prefix = 'nobpcal_beamcal_'
+#prefix = ''
 
 ''' 2012-10-26 '''
-#parkes_session = 'CALDATA_SDF_beamcal/1026/'
+#parkes_session = '/RAWDATA_SDF/20121026/'
 #parkesfiles = [] 
-#for file in os.listdir(data_dir + parkes_session):
+#listfile = os.listdir(data_dir+parkes_session)
+#listfile.sort(key=lambda x:int(x[11:15]))
+#for file in listfile:
 #    if file.split('.')[-1] == 'sdfits':
 #        parkesfiles.append(file)
+#        print file
 #outputname = 'parkes_2012_10_26_P641'
 #file_middles = tuple(['parkes_2012_10_26_P641',])
-#prefix = 'nobpcal_beamcal_'
+#prefix = ''
 
 ''' 2012-10-27 '''
-#parkes_session = 'RAWDATA_SDF/20121027/'
+#parkes_session = '/RAWDATA_SDF/20121027/'
 #parkesfiles = [] 
 #listfile = os.listdir(data_dir+parkes_session)
 #listfile.sort(key=lambda x:int(x[11:15]))
@@ -50,18 +59,20 @@ data_dir = os.getenv('PARKES_DATA')
 #        print file
 #outputname = 'parkes_2012_10_27_P641'
 #file_middles = tuple(['parkes_2012_10_27_P641',])
-##prefix = 'average_beamcal_'
 #prefix = ''
 
 ''' 2012-10-28 '''
 parkes_session = '/RAWDATA_SDF/20121028/'
 parkesfiles = [] 
-for file in os.listdir(data_dir + parkes_session):
+listfile = os.listdir(data_dir+parkes_session)
+listfile.sort(key=lambda x:int(x[11:15]))
+for file in listfile:
     if file.split('.')[-1] == 'sdfits':
         parkesfiles.append(file)
+        #print file
 outputname = 'parkes_2012_10_28_P641'
 file_middles = tuple(['parkes_2012_10_28_P641',])
-prefix = 'nobpcal_nobmcal_'
+prefix = ''
 
 # Maximum number of processes to use.
 pipe_processes = 12
@@ -78,11 +89,11 @@ pipe_modules.append(reformat.ReformatParkes)
 #from parkes import bandpass_remove
 #pipe_modules.append(bandpass_remove.BandpassRemove)
 
-#from parkes import flag_data
-#pipe_modules.append(flag_data.FlagData)
+from parkes import flag_data
+pipe_modules.append(flag_data.FlagData)
 
-#from parkes import rebin
-#pipe_modules.append(rebin.Rebin)
+from parkes import rebin
+pipe_modules.append(rebin.Rebin)
 
 #from time_stream import band_stop
 #pipe_modules.append(band_stop.BandStop)
@@ -97,8 +108,8 @@ pipe_modules.append(reformat.ReformatParkes)
 #from time_stream import calibrate
 #pipe_modules.append(calibrate.Calibrate)
 
-#from parkes import rotate_pol
-#pipe_modules.append(rotate_pol.RotatePol)
+from parkes import rotate_pol
+pipe_modules.append(rotate_pol.RotatePol)
 
 #### Parameters for the various modules. ####
 

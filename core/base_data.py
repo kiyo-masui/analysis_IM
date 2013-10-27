@@ -133,9 +133,10 @@ class BaseData(object) :
             # Check the format string.
             # TODO: This should do something better than just check that there
             # is a string.
-            if not type(self.field_formats[field_name]) is str :
-                raise ce.DataError("The field_format must be type str. field: "
-                                   + field_name )
+            #print field_name, type(self.field_formats[field_name]) 
+            #if not (type(self.field_formats[field_name]) == str) :
+            #    raise ce.DataError("The field_format must be type str. field: "
+            #                       + field_name )
         # The opposite of the first check in the loop.
         if len(axes_keys) or len(format_keys) :
             raise ce.DataError("Dictionaries 'field', 'field_axes' and "
