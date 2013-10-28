@@ -527,14 +527,18 @@ class DirtyMapMaker(object):
                 # total matrix a process has.
                 f_ra_start_ind = start_list[self.rank]
                 # Allocate hdf5 file
-                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename[0:-4] + '_mpi_corr_proc_pickle' + '.npy', 'inv_cov', (self.n_chan*self.n_ra, self.n_dec,                                                                self.n_chan, self.n_ra, self.n_dec), dtype)
+                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename[0:-4] + '_mpi_corr_proc_pickle' + '.npy', 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_chan, self.n_ra, self.n_dec), dtype)
             # Wait for file to be written before continuing.
             comm.Barrier()
             print '\n' + 'Process ' + str(self.rank) + ' Passed first barrier.' + '\n'
             # Since the DataSets are split evenly over the processes,
             # have to put in the pointing/noise at each index for
             # each DataSet list that the processes hold.
+            
             #for run in range(self.nproc):
+            # The commented loop above is for passing subsections of the data
+            # between nodes.  It currently doesn't work due to pickling issues.
+            # I replaced it with a loop of just one pass to avoid re-indenting.
             for run in range(1):
                 print '\n' + 'Process' + ' ' + str(self.rank) + ' ' +  ',run' + ' ' + str(run) + '\n'
                 # Each DataSet has to be applied to the dirty map, too.
@@ -610,6 +614,10 @@ class DirtyMapMaker(object):
                                                       dtype=float)
                         thread_f_ind = index_list[ii][0]
                         thread_ra_ind = index_list[ii][1]
+                        if run == 0 and start_file_ind == 0:
+                            thread_cov_inv_row_adder = thread_cov_inv_row[:, thread_f_ind, thread_ra_ind, :]
+                            thread_cov_inv_row_adder.flat[:: self.n_dec + 1] += \
+                                                1.0 / T_large**2
                         for thread_D in data_set_list:
                             thread_D.Pointing.noise_to_map_domain(
                                              thread_D.Noise, thread_f_ind,
@@ -2582,11 +2590,10 @@ def lock_and_write_buffer(obj, fname, offset, size):
     #fd = open(fname, 'rw')
     #fd = h5py.File(fname, 'r+')
 
-    #fcntl.lockf(fd, fcntl.LOCK_EX, size, offset, os.SEEK_SET)
-    #blah=fd.id
-    #blah2=fcntl.LOCK_EX
-
-    #fcntl.lockf(blah, blah2, size, offset, 0,)
+    try:
+        fcntl.lockf(fd, fcntl.LOCK_EX, size, offset, os.SEEK_SET)
+    except:
+        print "Could not obtain lock"
 
     os.lseek(fd, offset, 0)
 
@@ -2595,7 +2602,10 @@ def lock_and_write_buffer(obj, fname, offset, size):
     if nb != len(buf):
         raise Exception("Something funny happened with the reading.")
 
-    #fcntl.lockf(fd, fcntl.LOCK_UN)
+    try:
+        fcntl.lockf(fd, fcntl.LOCK_UN)
+    except:
+        print "Could not unlock"
 
     os.close(fd)
 
