@@ -127,10 +127,10 @@ class DirtyMapMaker(object):
                 raise ValueError(msg)
         
         
-    def execute(self, n_processes=1):
+    def execute(self, n_processes):
         """Driver method."""
         
-        # n_processes do not matter when using mpirun from MPI.COMM_WORLD
+        # n_processes matters when using mpirun from MPI.COMM_WORLD and threading
         self.n_processes = n_processes
         params = self.params
         kiyopy.utils.mkparents(params['output_root'])
@@ -555,7 +555,68 @@ class DirtyMapMaker(object):
                         P = data_set_list[ii].Pointing
                         w_time_stream = N.weight_time_stream(time_stream)
                         map += P.apply_to_time_axis(w_time_stream)
-                if self.uncorrelated_channels:
+
+                #If first pass, prepare thread_cov_inv_chunk to be worked on by threads
+                if run == 0 and start_file_ind == 0:
+                    if self.uncorrelated_channels:
+                        thread_cov_inv_chunk = sp.zeros((len(index_list),                                                                                                                                self.n_ra, self.n_dec,                                                                                                                            self.n_ra, self.n_dec),                                                                                                                            dtype=float)
+                    else:
+                       thread_cov_inv_chunk = sp.zeros((len(index_list),                                                                                                                             self.n_dec, self.n_chan,                                                                                                                          self.n_ra, self.n_dec),                                                                                                                           dtype=float)
+                index_queue = Queue()
+                def thread_work():
+                    while True:
+                        thread_inds = index_queue.get()
+                        # None will be the flag that there is no more work to do.
+                        if thread_inds is None:
+                            return
+                        if self.uncorrelated_channels:
+                            thread_f_ind = thread_inds
+                            thread_cov_inv_block = sp.zeros((self.n_ra,                                                                                                                          self.n_dec, self.n_ra, self.n_dec), dtype=float)
+                            for thread_D in data_set_list:
+                                thread_D.Pointing.noise_channel_to_map(thread_D.Noise,                                                                                                                 thread_f_ind + index_list[0], thread_cov_inv_block)
+                            if run == 0 and start_file_ind == 0:
+                                #Adding prior to the diagonal.
+                                thread_cov_inv_block.flat[::self.n_ra * self.n_dec + 1] += \
+                                                         1.0 / T_large**2
+                            #No lock below currently.  I don't think it is necessary without the memmap.
+                            thread_cov_inv_chunk[thread_f_ind,...] += thread_cov_inv_block
+                        else:
+                            ii = thread_inds
+                            thread_cov_inv_row = sp.zeros((self.n_dec,                                                                                                                                       self.n_chan, self.n_ra,                                                                                                                           self.n_dec),dtype=float)
+                            thread_f_ind = index_list[ii][0]
+                            thread_ra_ind = index_list[ii][1]
+                            for thread_D in data_set_list:
+                                thread_D.Pointing.noise_to_map_domain(thread_D.Noise,                                                                                                                                   thread_f_ind,                                                                                                                                     thread_ra_ind, thread_cov_inv_row)
+                            if run == 0 and start_file_ind == 0:
+                                #Adding prior to the diagonal.
+                                thread_cov_inv_row_adder = thread_cov_inv_row[:, thread_f_ind, thread_ra_ind, :]
+                                thread_cov_inv_row_adder.flat[:: self.n_dec + 1] += \
+                                                           1.0 / T_large**2
+                            if (self.feedback > 1 and thread_ra_ind == self.n_ra - 1):
+                                print thread_f_ind,
+                                sys.stdout.flush()
+                            thread_cov_inv_chunk[ii,...] += \
+                                                  thread_cov_inv_row
+                #Now start the worker threads.
+                thread_list = []
+                for ii in range(self.n_processes):
+                    T = threading.Thread(target=thread_work)
+                    T.start()
+                    thread_list.append(T)
+                    print '\n' + 'Process ' + str(self.rank) + ' is using ' + str(self.n_processes) + 'threads.' + '\n'
+                #Now put work on the queue for the threads to do.
+                for ii in xrange(len(index_list)):
+                    index_queue.put(ii)
+                for ii in range(self.n_processes):
+                    index_queue.put(None)
+                for T in thread_list:
+                    T.join()
+                if not index_queue.empty():
+                    msg = "A thread had an error while building map covariance."
+                    raise RuntimeError(msg)
+                                
+                # Commented section below is without threading.
+                '''if self.uncorrelated_channels:
                     # No actual threading going on.
                     if run == 0 and start_file_ind == 0:
                         thread_cov_inv_chunk = sp.zeros((len(index_list),
@@ -602,7 +663,7 @@ class DirtyMapMaker(object):
                 else:
                     # Keep all of a process' rows in memory, then use
                     # MPI and file views to write it out fast.
-                    if run ==0:
+                    if run == 0 and start_file_ind == 0:
                         thread_cov_inv_chunk = sp.zeros((len(index_list),
                                                      self.n_dec, self.n_chan,
                                                      self.n_ra, self.n_dec),
@@ -639,7 +700,10 @@ class DirtyMapMaker(object):
                 # Note: No need to pass anything the last time since
                 #       that data was the process' original data and
                 #       has already been processed.
+                '''
                 #if (run != (self.nproc - 1)):
+
+                #Replace if statement below with if statement above to pass data between nodes.
                 if run == 1:
                     # Send out the DataSet list I have to next guy.
                     print '\n' + 'Process ' + str(self.rank) + ' is passing data_set_list to process ' + str(self.next_guy) + ', at the end of run ' + str(run) + '\n'
