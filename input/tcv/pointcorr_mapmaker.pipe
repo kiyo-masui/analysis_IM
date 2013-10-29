@@ -7,7 +7,7 @@ import scipy as sp
 
 # What data to process and how to split it up.
 #field = '11hr'
-field = '1hr'
+field = '15hr'
 
 #sessions = range(41, 90)
 # According to Tabitha, cal unstable in sessions 52 to 58.
@@ -25,11 +25,31 @@ field = '1hr'
 #                                             project="GBT10B_036", 
 #											 type='ralongmap'))
 #file_middles = tuple(dir_data.get_data_files(range(01,19),field='11hr',project='GBT12A_418',type='ralongmap'))
-file_middles = tuple(dir_data.get_data_files(range(80,91), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(0,14), field='1hr', project='GBT11B_055',type='ralongmap')+dir_data.get_data_files(range(15,19), field='1hr', project='GBT11B_055', type='ralongmap'))
+#file_middles = tuple(dir_data.get_data_files(range(80,91), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(0,14), field='1hr', project='GBT11B_055',type='ralongmap')+dir_data.get_data_files(range(15,19), field='1hr', project='GBT11B_055', type='ralongmap'))
 #file_middles = tuple(dir_data.get_data_files(range(17,19),field='1hr',project='GBT11B_055', type='ralongmap'))
-#file_middles = tuple(dir_data.get_data_files(range(41,57),field='15hr',project='GBT10B_036',type='ralongmap')+dir_data.get_data_files(range(58,80),field='15hr',project='GBT10B_036',type='ralongmap'))
+file_middles = tuple(dir_data.get_data_files(range(41,57),field='15hr',project='GBT10B_036',type='ralongmap')+dir_data.get_data_files(range(58,80),field='15hr',project='GBT10B_036',type='ralongmap'))
+#bad_ind = sp.where(file_middles=='GBT10B_036/44_wigglez15hr_ralongmap_169-176')[0]
+#print bad_ind
+#file_middles[bad_ind] = ''
 
 n_files = len(file_middles)
+new_file_middles = []
+for i in range(0,n_files):
+#    if file_middles[i]=='GBT10B_036/44_wigglez15hrst_ralongmap_169-176':
+#        print file_middles[i]
+#    elif file_middles[i]=='GBT10B_036/47_wigglez15hrst_ralongmap_230-237':
+#        print file_middles[i]
+#    elif file_middles[i]=='GBT10B_036/47_wigglez15hrst_ralongmap_58-65':
+#        print file_middles[i]
+#    elif file_middles[i]=='GBT10B_036/47_wigglez15hrst_ralongmap_10-17':
+#        print file_middles[i]
+#    elif file_middles[i]=='GBT10B_036/47_wigglez15hrst_ralongmap_110-117':
+#        print file_middles[i]
+#    else : 
+    new_file_middles.append(file_middles[i])
+new_file_middles = tuple(new_file_middles)
+n_files = len(new_file_middles)
+
 middles_a = file_middles[:n_files//4]
 middles_b = file_middles[n_files//4:2*n_files//4]
 middles_c = file_middles[2*n_files//4:3*n_files//4]
@@ -83,11 +103,11 @@ pipe_modules = []
 
 #### Calibration ####
 
-from time_stream import flag_data
-pipe_modules.append(flag_data.FlagData)
+#from time_stream import flag_data
+#pipe_modules.append(flag_data.FlagData)
 
-from time_stream import rebin
-pipe_modules.append(rebin.Rebin)
+#from time_stream import rebin
+#pipe_modules.append(rebin.Rebin)
 
 #from time_stream import band_stop
 #pipe_modules.append(band_stop.BandStop)
@@ -104,11 +124,11 @@ pipe_modules.append(rebin.Rebin)
 #pipe_modules.append(calibrate.Calibrate)
 
 #new calibration module
-from time_stream import flux_diff_gain_cal
-pipe_modules.append(flux_diff_gain_cal.Calibrate)
+#from time_stream import flux_diff_gain_cal
+#pipe_modules.append(flux_diff_gain_cal.Calibrate)
 
-from time_stream import rotate_pol
-pipe_modules.append(rotate_pol.RotatePol)
+#from time_stream import rotate_pol
+#pipe_modules.append(rotate_pol.RotatePol)
 
 #from time_stream import rebin_time
 #pipe_modules.append(rebin_time.RebinTime)
@@ -123,17 +143,17 @@ pipe_modules.append(rotate_pol.RotatePol)
 
 #### Second Map making iteration ####
 
-#from cal import correlate_map
-#pipe_modules.append((correlate_map.Measure, ('mc2_', 'mc_')))
+from cal import correlate_map
+pipe_modules.append((correlate_map.Measure, ('mc2_', 'mc_')))
 
-#from time_stream import subtract_map_data
-#pipe_modules.append((subtract_map_data.Subtract, ('sm2_', 'sm_')))
+from time_stream import subtract_map_data
+pipe_modules.append((subtract_map_data.Subtract, ('sm2_', 'sm_')))
 
-#from time_stream import reflag
-#pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
+from time_stream import reflag
+pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
 
-#from noise import measure_noise
-#pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
+from noise import measure_noise
+pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
 #from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
@@ -263,7 +283,7 @@ fgc_scans = ()
 fgc_IFs = ()
 
 #fgc_mueler_file = base_dir + 'diff_gain_params/'
-fgc_mueler_file = base_dir_main + 'diff_gain_params/1hr_fdg_calc_avg_new.txt'
+fgc_mueler_file = base_dir_main + 'diff_gain_params/15hr_fdg_calc_avg_new.txt'
 #fgc_mueler_file = ''
 fgc_RM_file = base_dir +'RM_tables/'
 fgc_R_to_sky = True
@@ -322,8 +342,8 @@ dm_interpolation = 'cubic'
 # clean_map
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
-cm_polarizations = ('V',)
-#cm_polarizations = ('I','Q','U','V')
+#cm_polarizations = ('V',)
+cm_polarizations = ('I','Q','U','V')
 cm_bands = (800,)
 cm_save_noise_diag = True
 
@@ -333,7 +353,7 @@ cm_save_noise_diag = True
 #mc2_input_root = base_dir_main + 'rotated_to_I_Q_avg_fdgp/' + prefix
 mc2_input_root = rp_output_root
 #mc2_file_middles = middles_temp
-mc2_file_middles = file_middles
+mc2_file_middles = new_file_middles
 mc2_input_end = '.fits'
 mc2_output_root = base_dir + 'map_correlation_sec/'
 mc2_output_filename = "correlations.shelve"
@@ -355,7 +375,7 @@ mc2_filter_type = 'edge'
 # subtract_map_data
 #sm2_input_root = base_dir_main + 'rotated_to_I_Q_avg_fdgp_new/'+prefix
 sm2_input_root = mc2_output_root
-sm2_file_middles = file_middles
+sm2_file_middles = new_file_middles
 sm2_input_end = '.fits'
 sm2_output_root = base_dir + 'map_subtracted_sec/'
 sm2_output_end = '.fits'
@@ -374,7 +394,7 @@ sm2_gain_output_end = '_gain.pickle'
 # second_flag
 sf2_input_root = sm2_input_root
 #sf2_input_root = mc2_output_root
-sf2_file_middles = file_middles
+sf2_file_middles = new_file_middles
 sf2_input_end = '.fits'
 sf2_output_root = base_dir + 'reflagged_sec/'
 sf2_output_end = '.fits'
@@ -390,7 +410,7 @@ sf2_subtracted_output_root = base_dir + 'reflagged_sub_sec/'
 
 # measure_noise
 mn2_input_root = sf2_subtracted_output_root
-mn2_file_middles = file_middles
+mn2_file_middles = new_file_middles
 mn2_input_end = '.fits'
 mn2_output_root = base_dir + 'noise_measurments_sec/'
 mn2_output_filename = "noise_parameters.shelve"
