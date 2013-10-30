@@ -89,11 +89,11 @@ pipe_modules = []
 #from time_stream import rebin
 #pipe_modules.append(rebin.Rebin)
 
-from time_stream import band_stop
-pipe_modules.append(band_stop.BandStop)
+#from time_stream import band_stop
+#pipe_modules.append(band_stop.BandStop)
 
-from time_stream import split_bands
-pipe_modules.append(split_bands.SplitBands)
+#from time_stream import split_bands
+#pipe_modules.append(split_bands.SplitBands)
 
 # Not used.
 ##from time_stream import cal_filter
@@ -104,18 +104,18 @@ pipe_modules.append(split_bands.SplitBands)
 #pipe_modules.append(calibrate.Calibrate)
 
 #new calibration module
-from time_stream import flux_diff_gain_cal
-pipe_modules.append(flux_diff_gain_cal.Calibrate)
+#from time_stream import flux_diff_gain_cal
+#pipe_modules.append(flux_diff_gain_cal.Calibrate)
 
-from time_stream import rotate_pol
-pipe_modules.append(rotate_pol.RotatePol)
+#from time_stream import rotate_pol
+#pipe_modules.append(rotate_pol.RotatePol)
 
 #from time_stream import rebin_time
 #pipe_modules.append(rebin_time.RebinTime)
 #### First Map making interation ####
 
-#from map import dirty_map
-#pipe_modules.append(dirty_map.DirtyMapMaker)
+from map import dirty_map
+pipe_modules.append(dirty_map.DirtyMapMaker)
 
 #from map import clean_map
 #pipe_modules.append(clean_map.CleanMapMaker)
@@ -306,7 +306,7 @@ dm_scans = ()
 dm_IFs = ()
 
 #dm_polarizations = ('I','Q','U','V')
-dm_polarizations = ('V',)
+dm_polarizations = ('I',)
 dm_field_centre = map_centre
 dm_pixel_spacing = map0_spacing
 dm_map_shape = map0_shape
@@ -322,7 +322,7 @@ dm_interpolation = 'cubic'
 # clean_map
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
-cm_polarizations = ('V',)
+cm_polarizations = ('I',)
 #cm_polarizations = ('I','Q','U','V')
 cm_bands = (800,)
 cm_save_noise_diag = True
