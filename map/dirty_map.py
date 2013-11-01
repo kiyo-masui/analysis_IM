@@ -6,6 +6,9 @@ the pointing operator (`Pointing`) and the time domain noise operator
 (`Noise`).
 """
 
+import sys
+sys.path.append('/opt/sage/5.3/local/lib/python2.7/site-packages/mpi4py')
+
 from mpi4py import MPI
 
 import math
