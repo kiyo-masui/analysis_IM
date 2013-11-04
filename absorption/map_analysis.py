@@ -21,7 +21,7 @@ directory = sys.argv[1]
 fitting = True
 plotting = False
 filtered = True
-hit_plot = False
+hit_plot = True
 candidate_plot = True
 
 #filename1 = sys.argv[1]
@@ -34,11 +34,11 @@ full_data = []
 full_freqs = []
 for i in range(0,len(file_sets)):
     array = al.load(directory+file_base+file_sets[i]+'.npy')
-    array = al.make_vect(array)
+    vect_array = al.make_vect(array)
     #  creates a 3D array with indices (freq, ra, dec)
-    ras = array.get_axis('ra')
-    decs = array.get_axis('dec')
-    freqs = array.get_axis('freq')
+    ras = vect_array.get_axis('ra')
+    decs = vect_array.get_axis('dec')
+    freqs = vect_array.get_axis('freq')
     freqs = freqs/1e6
     full_data.append(array)
     full_freqs.append(freqs)
@@ -47,34 +47,54 @@ for i in range(0,len(file_sets)):
 print shape(full_data)
 print shape(full_freqs)
 
-list_freq = zeros((len(full_data),len(full_data[0])))
-list_array = zeros((len(full_data),len(full_data[0]),16,10))
+old_freq = zeros((len(full_data)*len(full_data[0])))
+old_array = zeros((len(full_data)*len(full_data[0]),16,10))
 for i in range(0,len(full_data)):
     for j in range(0,len(full_data[0])):
-        list_freq[i,j] = full_freqs[i][399-j]
-        list_array[i,j,:,:] = full_data[i][399-j]
+        old_freq[400*i+j] = full_freqs[i][399-j]
+        old_array[400*i+j,:,:] = full_data[i][399-j]
+#        list_freq[i,j] = full_freqs[i][399-j]
+#        list_array[i,j,:,:] = full_data[i][399-j]
+
+freqsort = argsort(old_freq)
+list_freq = zeros((len(old_freq)))
+list_array = zeros((len(old_freq),16,10))
+for i in range(0,len(freqsort)):
+    list_freq[i] = old_freq[freqsort[i]]
+    list_array[i,:,:] = old_array[freqsort[i]]
+   
 
 if fitting:
-    fits = zeros((len(list_freq),2,16,10))
+#   fits = zeros((len(list_freq),2,16,10))
+    fits = zeros((2,16,10))
     for i in range(0,16):
         for j in range(0,10):
-	    for k in range(0,len(list_freq)):
-                data = list_array[k,:,i,j]
-                params0 = [-0.5,2.5]
-                plsq = opt.leastsq(residuals,params0,args=(list_freq[k],data),full_output=0,maxfev=5000)
+            data = list_array[:,i,j]
+            params0 = [-0.5,2.5]
+            plsq = opt.leastsq(residuals,params0,args=(list_freq,data),full_output=0,maxfev=5000)
+            fits[0,i,j] = plsq[0][0]
+            fits[1,i,j] = plsq[0][1]
+#	    for k in range(0,len(list_freq)):
+#                data = list_array[k,:,i,j]
+#                params0 = [-0.5,2.5]
+#                plsq = opt.leastsq(residuals,params0,args=(list_freq[k],data),full_output=0,maxfev=5000)
 #        print plsq
-                fits[k,0,i,j] = plsq[0][0]
-                fits[k,1,i,j] = plsq[0][1]
+#                fits[k,0,i,j] = plsq[0][0]
+#                fits[k,1,i,j] = plsq[0][1]
 
-    fit_data = zeros((len(list_array),len(list_array[0]),16,10))
+#    fit_data = zeros((len(list_array),len(list_array[0]),16,10))
+    fit_data = zeros((len(list_array),16,10))
     for i in range(0,16):
         for j in range(0,10):
-            for k in range(0,len(list_array)):
-                fit_data[k,:,i,j] = function(list_freq[k],fits[k,:,i,j])
+            fit_data[:,i,j] = function(list_freq,fits[:,i,j])
+#            for k in range(0,len(list_array)):
+#                fit_data[k,:,i,j] = function(list_freq[k],fits[k,:,i,j])
 
 if plotting:
-    for i in range(0,len(list_freq)):
-        plt.plot(list_freq[i],list_array[i,:,8,5])
+    plt.plot(list_freq,list_array[:,8,5])
+    plt.plot(list_freq,fit_data[:,8,5])
+#    for i in range(0,len(list_freq)):
+#        plt.plot(list_freq[i],list_array[i,:,8,5])
     #plt.show()
 
 #plt.subplot(121)
@@ -89,8 +109,8 @@ if plotting:
 #print fits
 #plt.clf()
 
-    for i in range(0,len(list_freq)):
-        plt.plot(list_freq[i],fit_data[i,:,8,5])
+#    for i in range(0,len(list_freq)):
+#        plt.plot(list_freq[i],fit_data[i,:,8,5])
     #plt.show()
 
     plt.clf()
@@ -101,8 +121,9 @@ if plotting:
 #            index = (k-1)*12+(j-2)
 #            index = (j-2)*8+(k-1)
             plt.subplot(16,10,index)
-            for i in range(0,len(list_freq)):
-                plt.plot(list_freq[i],list_array[i,:,j,k]-fit_data[i,:,j,k])
+            plt.plot(list_freq,list_array[:,j,k]-fit_data[:,j,k])
+#            for i in range(0,len(list_freq)):
+#                plt.plot(list_freq[i],list_array[i,:,j,k]-fit_data[i,:,j,k])
             plt.xlim(700,780)
             plt.ylim(-0.05,0.05)
             plt.grid()
@@ -114,8 +135,9 @@ if plotting:
 
     for j in range(0,16):
         for k in range(0,10):
-            for i in range(0,len(list_freq)):
-                plt.plot(list_freq[i],list_array[i,:,j,k]-fit_data[i,:,j,k])
+#            for i in range(0,len(list_freq)):
+#                plt.plot(list_freq[i],list_array[i,:,j,k]-fit_data[i,:,j,k])
+            plt.plot(list_freq,list_array[:,j,k]-fit_data[:,j,k])
             plt.xlabel('Frequency (MHz)')
             plt.ylabel('Single Spatial Pixel Spectrum Residuals (Kelvin)')
             plt.ylim(-0.1,0.1)
@@ -128,80 +150,97 @@ if plotting:
 if filtered:
     #Start with a single frequency band and 11 pixel filter
 #    for i in range(5,len(list_freq[0])-5):
-    full_filter = zeros((len(list_array),len(list_array[0]),16,10))
-    for f in range(0,len(list_array)):
-        for j in range(0,16):
-            for k in range(0,10):
-                for i in range(5,len(list_freq[0])-5):
-                    filter = list_array[f,i,j,k]-0.1*(list_array[f,i-5,j,k]+list_array[f,i-4,j,k]+list_array[f,i-3,j,k]+list_array[f,i-2,j,k]+list_array[f,i-1,j,k]+list_array[f,i+1,j,k]+list_array[f,i+2,j,k]+list_array[f,i+3,j,k]+list_array[f,i+4,j,k]+list_array[f,i+5,j,k])
-                    full_filter[f,i,j,k] = filter
-    mean_filter = ma.mean(full_filter, axis=1)
-    std_filter = ma.std(full_filter,axis=1)
+#   full_filter = zeros((len(list_array),len(list_array[0]),16,10))
+    full_filter = zeros((len(list_array),16,10))
+#    for f in range(0,len(list_array)):
+    for j in range(0,16):
+        for k in range(0,10):
+            for i in range(5,len(list_freq)-5):
+                filter = list_array[i,j,k]-0.1*(list_array[i-5,j,k]+list_array[i-4,j,k]+list_array[i-3,j,k]+list_array[i-2,j,k]+list_array[i-1,j,k]+list_array[i+1,j,k]+list_array[i+2,j,k]+list_array[i+3,j,k]+list_array[i+4,j,k]+list_array[i+5,j,k])
+                full_filter[i,j,k] = filter
+    mean_filter = ma.mean(full_filter, axis=0)
+    std_filter = ma.std(full_filter,axis=0)
 #    print mean_filter[0]
 #    print std_filter[0]
-    outliers = zeros((len(list_array),len(list_array[0]),16,10))
-    outliers2 = zeros((len(list_array),len(list_array[0]),16,10))
-    outliers3 = zeros((len(list_array),len(list_array[0]),16,10))
-    for f in range(0,len(list_array)):
-        for j in range(0,16):
-            for k in range(0,10):
-                for i in range(0,len(list_freq[0])):
-                    if full_filter[f,i,j,k]<(mean_filter[f,j,k]-std_filter[f,j,k]):
-                        outliers[f,i,j,k] = 1.0
-                    if full_filter[f,i,j,k]<(mean_filter[f,j,k]-2.*std_filter[f,j,k]):
-                        outliers2[f,i,j,k] = 1.0
-                    if full_filter[f,i,j,k]<(mean_filter[f,j,k]-3.*std_filter[f,j,k]):
-                        outliers3[f,i,j,k] = 1.0
+    outliers = zeros((len(list_array),16,10))
+    outliers2 = zeros((len(list_array),16,10))
+    outliers3 = zeros((len(list_array),16,10))
+    posout = zeros((len(list_array),16,10))
+    posout2 = zeros((len(list_array),16,10))
+    posout3 = zeros((len(list_array),16,10))
+#    for f in range(0,len(list_array)):
+    for j in range(0,16):
+        for k in range(0,10):
+            for i in range(0,len(list_freq)):
+                if full_filter[i,j,k]<(mean_filter[j,k]-std_filter[j,k]):
+                    outliers[i,j,k] = 1.0
+                if full_filter[i,j,k]<(mean_filter[j,k]-2.*std_filter[j,k]):
+                    outliers2[i,j,k] = 1.0
+                if full_filter[i,j,k]<(mean_filter[j,k]-3.*std_filter[j,k]):
+                    outliers3[i,j,k] = 1.0
+                if full_filter[i,j,k]>(mean_filter[j,k]+std_filter[j,k]):
+                    posout[i,j,k] = 1.0
+                if full_filter[i,j,k]>(mean_filter[j,k]+2.*std_filter[j,k]):
+                    posout2[i,j,k] = 1.0
+                if full_filter[i,j,k]>(mean_filter[j,k]+3.*std_filter[j,k]):
+                    posout3[i,j,k] = 1.0
+#            print 'Number of neg 3sig outliers for pixel ', j,k,' is:', ma.sum(outliers3[:,j,k]) 
+#            print 'Number of pos 3sig outliers for pixel ', j,k,' is:', ma.sum(posout3[:,j,k])
+#            print 'Number of neg 2sig outliers for pixel ', j,k,' is:', ma.sum(outliers2[:,j,k])
+#            print 'Number of pos 2sig outliers for pixel ', j,k,' is:', ma.sum(posout2[:,j,k])
 
     if hit_plot:
-        for i in range(0,len(list_freq[0])):
-            for f in range(0,len(list_freq)):
-                plt.imshow(outliers[f,i])
-                plt.title('One Sigma Outliers for an 11 pixel filter')
-                plt.savefig('one_sigma_outliers_'+str(int(list_freq[f,i]*1000))+'kHz',dpi=300)
+#        for i in range(0,len(list_freq[0])):
+        for f in range(0,len(list_freq)):
+            if ma.sum(ma.sum(outliers3[f,:,:],axis=0))>=1.0:
+                print list_freq[f]*1000
+                plt.imshow(outliers3[f])
+                plt.title('Three Sigma Outliers for an 11 pixel filter')
+                plt.savefig('three_sigma_outliers_'+str(int(list_freq[f]*1000))+'kHz',dpi=300)
                 plt.clf()
     
-    candidate_maps = []
     candidate_freqs = []
     candidate_ra = []
     candidate_dec = []
     for f in range(0,len(list_array)):
-        for i in range(0,len(list_freq[0])):
-            med_sum2 = ma.sum(outliers2[f,i,:,:],axis=0)
-            sum2 = ma.sum(med_sum2)
-            med_sum3 = ma.sum(outliers3[f,i,:,:],axis=0)
-            sum3 = ma.sum(med_sum3)
-            if sum3>=1.0:
-                if sum2<=2.0:
-                    candidate_maps.append(f)
-                    candidate_freqs.append(i)
-                    print where(outliers3[f,i]==1.0)
-                    candidate_ra.append(where(outliers3[f,i]==1.0)[0][0])
-                    candidate_dec.append(where(outliers3[f,i]==1.0)[1][0])
-                    if sum3==2.0:
-                        candidate_maps.append(f)
-                        candidate_freqs.append(i)
-                        candidate_ra.append(where(outliers3[f,i]==1.0)[0][1])
-                        candidate_dec.append(where(outliers3[f,i]==1.0)[1][1])
-                        
-    print len(candidate_maps)
+#        for i in range(0,len(list_freq[0])):
+        med_sum2 = ma.sum(outliers2[f,:,:],axis=0)
+        sum2 = ma.sum(med_sum2)
+        med_sum3 = ma.sum(outliers3[f,:,:],axis=0)
+        sum3 = ma.sum(med_sum3)
+        if sum3>=1.0:
+            if sum2<=2.0:
+#                candidate_maps.append(f)
+                candidate_freqs.append(f)
+                print where(outliers3[f]==1.0)
+                candidate_ra.append(where(outliers3[f]==1.0)[0][0])
+                candidate_dec.append(where(outliers3[f]==1.0)[1][0])
+                if sum3==2.0:
+#                    candidate_maps.append(f)
+                    candidate_freqs.append(f)
+                    candidate_ra.append(where(outliers3[f]==1.0)[0][1])
+                    candidate_dec.append(where(outliers3[f]==1.0)[1][1])
+                print 'Num of Neg outliers at ',int(list_freq[f]*1000),' kHz is:',sum2
+                print 'Num of Pos outliers at ',int(list_freq[f]*1000),' kHz is:',ma.sum(posout2[f,:,:])
+    
+    print len(candidate_freqs)
 
     if candidate_plot:
-        for g in range(0,len(candidate_maps)):
+        for g in range(0,len(candidate_freqs)):
             min_freq = candidate_freqs[g]-30
             max_freq = candidate_freqs[g]+30
             if candidate_freqs[g]<30:
                 min_freq = 0
-            elif candidate_freqs[g]>378:
+            elif candidate_freqs[g]>(len(list_freq)-30):
                 max_freq = -1
-            mean_signal = ma.mean(list_array[candidate_maps[g],min_freq:max_freq,candidate_ra[g],candidate_dec[g]])
-            plt.plot(1000*list_freq[candidate_maps[g],min_freq:max_freq],list_array[candidate_maps[g],min_freq:max_freq,candidate_ra[g],candidate_dec[g]]-mean_signal)
+            mean_signal = ma.mean(list_array[min_freq:max_freq,candidate_ra[g],candidate_dec[g]])
+            plt.plot(1000*list_freq[min_freq:max_freq],list_array[min_freq:max_freq,candidate_ra[g],candidate_dec[g]]-mean_signal)
             plt.xlabel('Frequency (kHz)')
-            plt.axvline(1000*list_freq[candidate_maps[g],candidate_freqs[g]],c='r',ls='--')
+            plt.axvline(1000*list_freq[candidate_freqs[g]],c='r',ls='--')
             plt.ylabel('Temperature (Kelvin)')
             plt.grid()
             plt.title('Mean Subtracted Absorber Candidate Spectra at RA %0.1f, DEC %0.1f' %(ras[candidate_ra[g]],decs[candidate_dec[g]]))
-            plt.savefig('absorber_candidate_at_'+str(int(list_freq[candidate_maps[g],candidate_freqs[g]]*1000))+'kHz',dpi=300)
+            plt.savefig('absorber_candidate_at_'+str(int(list_freq[candidate_freqs[g]]*1000))+'kHz',dpi=300)
             plt.clf()
 
 #plt.subplot(121)
