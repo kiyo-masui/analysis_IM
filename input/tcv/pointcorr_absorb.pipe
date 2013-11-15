@@ -92,8 +92,8 @@ pipe_modules = []
 #from time_stream import band_stop
 #pipe_modules.append(band_stop.BandStop)
 
-#from time_stream import split_bands
-#pipe_modules.append(split_bands.SplitBands)
+from time_stream import split_bands
+pipe_modules.append(split_bands.SplitBands)
 
 # Not used.
 ##from time_stream import cal_filter
@@ -104,11 +104,11 @@ pipe_modules = []
 #pipe_modules.append(calibrate.Calibrate)
 
 #new calibration module
-#from time_stream import flux_diff_gain_cal
-#pipe_modules.append(flux_diff_gain_cal.Calibrate)
+from time_stream import flux_diff_gain_cal
+pipe_modules.append(flux_diff_gain_cal.Calibrate)
 
-#from time_stream import rotate_pol
-#pipe_modules.append(rotate_pol.RotatePol)
+from time_stream import rotate_pol
+pipe_modules.append(rotate_pol.RotatePol)
 
 #from time_stream import rebin_time
 #pipe_modules.append(rebin_time.RebinTime)
@@ -197,7 +197,7 @@ bs_band_stops = [(690e6, 702e6), (796e6, 800e6), (815e6, 820e6),
                  (898e6, 910e6)]
 
 # split_bands
-sb_input_root = bs_output_root
+sb_input_root = fd_output_root
 sb_file_middles = file_middles
 sb_input_end = '.fits'
 sb_output_root = base_dir + 'band_split_ptcorr_absorb/' + prefix
@@ -212,7 +212,7 @@ sb_IFs = ()
 #sb_offset = 4
 # For now deal with a single lowish noise band that misses resonances, rfi,
 # etc. Band chosen such the upper end is ~5MHz from resonance.
-sb_n_bands = 9
+sb_n_bands = 10
 sb_n_bins_band = 400
 sb_offset = 50
 
@@ -324,7 +324,8 @@ cm_input_root = dm_output_root
 cm_output_root = cm_input_root
 cm_polarizations = ('I',)
 #cm_polarizations = ('I','Q','U','V')
-cm_bands = (800,)
+cm_bands = (732,751,771,790,810,829,849)
+#cm_bands = (800,)
 cm_save_noise_diag = True
 
 #### Second round of map making #####

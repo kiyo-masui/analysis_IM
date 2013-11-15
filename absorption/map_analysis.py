@@ -26,9 +26,14 @@ candidate_plot = True
 
 #filename1 = sys.argv[1]
 
-file_base = 'fir_15hr_absorb_clean_map_I_'
+#0ld data
+#file_base = 'fir_15hr_absorb_clean_map_I_'
+#file_sets = ('712','732','749','751','768','771','788','790','807','810','827')
 
-file_sets = ('712','732','749','751','768','771','788','790','807','810','827')
+#new data
+file_base = 'fir_15hr_41-80_ptcorr_absorb_clean_map_I_'
+#file_sets = ('732','751','771','790','810') #A few frequency pixels are messed up so screwing with the std of the data.  
+file_sets = ('732','751','771','790','810','829','849')
 
 full_data = []
 full_freqs = []
@@ -130,7 +135,7 @@ if plotting:
     plt.subplot(16,10,6)
     plt.title('High Resolution Power Law Subtracted (15 arcmin)^2 Spectra')
     plt.savefig('absorber_power_law_sub_maps',dpi=300)
-#    plt.show()
+    plt.show()
     plt.clf()
 
     for j in range(0,16):
@@ -172,13 +177,13 @@ if filtered:
     for j in range(0,16):
         for k in range(0,10):
             for i in range(0,len(list_freq)):
-                if full_filter[i,j,k]<(mean_filter[j,k]-std_filter[j,k]):
+                if full_filter[i,j,k]<(mean_filter[j,k]-1.5*std_filter[j,k]):
                     outliers[i,j,k] = 1.0
                 if full_filter[i,j,k]<(mean_filter[j,k]-2.*std_filter[j,k]):
                     outliers2[i,j,k] = 1.0
                 if full_filter[i,j,k]<(mean_filter[j,k]-3.*std_filter[j,k]):
                     outliers3[i,j,k] = 1.0
-                if full_filter[i,j,k]>(mean_filter[j,k]+std_filter[j,k]):
+                if full_filter[i,j,k]>(mean_filter[j,k]+1.5*std_filter[j,k]):
                     posout[i,j,k] = 1.0
                 if full_filter[i,j,k]>(mean_filter[j,k]+2.*std_filter[j,k]):
                     posout2[i,j,k] = 1.0
@@ -204,22 +209,24 @@ if filtered:
     candidate_dec = []
     for f in range(0,len(list_array)):
 #        for i in range(0,len(list_freq[0])):
+        med_sum1 = ma.sum(outliers[f,:,:],axis=0)
+        sum1 = ma.sum(med_sum1)
         med_sum2 = ma.sum(outliers2[f,:,:],axis=0)
         sum2 = ma.sum(med_sum2)
         med_sum3 = ma.sum(outliers3[f,:,:],axis=0)
         sum3 = ma.sum(med_sum3)
-        if sum3>=1.0:
-            if sum2<=2.0:
+        if sum1>=1.0:
+            if sum1<=2.0:
 #                candidate_maps.append(f)
                 candidate_freqs.append(f)
-                print where(outliers3[f]==1.0)
-                candidate_ra.append(where(outliers3[f]==1.0)[0][0])
-                candidate_dec.append(where(outliers3[f]==1.0)[1][0])
-                if sum3==2.0:
+                print where(outliers[f]==1.0)
+                candidate_ra.append(where(outliers[f]==1.0)[0][0])
+                candidate_dec.append(where(outliers[f]==1.0)[1][0])
+#                if sum2==2.0:
 #                    candidate_maps.append(f)
-                    candidate_freqs.append(f)
-                    candidate_ra.append(where(outliers3[f]==1.0)[0][1])
-                    candidate_dec.append(where(outliers3[f]==1.0)[1][1])
+#                    candidate_freqs.append(f)
+#                    candidate_ra.append(where(outliers2[f]==1.0)[0][1])
+#                    candidate_dec.append(where(outliers2[f]==1.0)[1][1])
                 print 'Num of Neg outliers at ',int(list_freq[f]*1000),' kHz is:',sum2
                 print 'Num of Pos outliers at ',int(list_freq[f]*1000),' kHz is:',ma.sum(posout2[f,:,:])
     
