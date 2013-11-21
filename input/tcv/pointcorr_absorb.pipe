@@ -27,7 +27,8 @@ field = '15hr'
 #file_middles = tuple(dir_data.get_data_files(range(01,19),field='11hr',project='GBT12A_418',type='ralongmap'))
 #file_middles = tuple(dir_data.get_data_files(range(80,91), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(0,14), field='1hr', project='GBT11B_055',type='ralongmap')+dir_data.get_data_files(range(15,19), field='1hr', project='GBT11B_055', type='ralongmap'))
 #file_middles = tuple(dir_data.get_data_files(range(17,19),field='1hr',project='GBT11B_055', type='ralongmap'))
-file_middles = tuple(dir_data.get_data_files(range(41,57),field='15hr',project='GBT10B_036',type='ralongmap')+dir_data.get_data_files(range(58,80),field='15hr',project='GBT10B_036',type='ralongmap'))
+file_middles = tuple(dir_data.get_data_files(range(51,57),field='15hr',project='GBT10B_036',type='ralongmap')+dir_data.get_data_files(range(58,61),field='15hr',project='GBT10B_036',type='ralongmap'))
+#file_middles = tuple(dir_data.get_data_files(range(51,61),field='15hr',project='GBT10B_036',type='ralongmap'))
 
 n_files = len(file_middles)
 middles_a = file_middles[:n_files//4]
@@ -92,8 +93,8 @@ pipe_modules = []
 #from time_stream import band_stop
 #pipe_modules.append(band_stop.BandStop)
 
-from time_stream import split_bands
-pipe_modules.append(split_bands.SplitBands)
+#from time_stream import split_bands
+#pipe_modules.append(split_bands.SplitBands)
 
 # Not used.
 ##from time_stream import cal_filter
@@ -107,15 +108,15 @@ pipe_modules.append(split_bands.SplitBands)
 from time_stream import flux_diff_gain_cal
 pipe_modules.append(flux_diff_gain_cal.Calibrate)
 
-from time_stream import rotate_pol
-pipe_modules.append(rotate_pol.RotatePol)
+#from time_stream import rotate_pol
+#pipe_modules.append(rotate_pol.RotatePol)
 
 #from time_stream import rebin_time
 #pipe_modules.append(rebin_time.RebinTime)
 #### First Map making interation ####
 
-from map import dirty_map
-pipe_modules.append(dirty_map.DirtyMapMaker)
+#from map import dirty_map
+#pipe_modules.append(dirty_map.DirtyMapMaker)
 
 #from map import clean_map
 #pipe_modules.append(clean_map.CleanMapMaker)
@@ -303,7 +304,7 @@ dm_file_middles = file_middles
 dm_input_end = '.fits'
 dm_output_root = map_base + 'fir_' + map_prefix
 dm_scans = ()
-dm_IFs = ()
+dm_IFs = (7,)
 
 #dm_polarizations = ('I','Q','U','V')
 dm_polarizations = ('I',)
