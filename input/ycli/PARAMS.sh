@@ -44,6 +44,10 @@ export MAPGBT_MY="/mnt/scratch-3week/ycli/"
 export NOISEWEIGHT="sim_15hr_oldmap_str_beam_plus_fg"
 export SIM_FACTOR=1
 export YICHAO_WORK_PS="/home/ycli/data/ps_result/"
+export GBTFIELD=""
+
+export NVSS_PATH="/home/ycli/data/nvss/nvss_catlog.dat"
+export HIPASS_PATH="/home/ycli/data/hipass/CHIPASS_0040-30_WGTMED1.continuum.fits"
 
 # -----------------------------------------------------------
 # For Parkes

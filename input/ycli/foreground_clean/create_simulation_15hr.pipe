@@ -37,12 +37,9 @@ if do_simulation:
 
     sg1_output_root = simroot
     
-    sg1_template_file = basemap + 'secA_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
-    sg1_weightfile = basemap + 'secA_15hr_41-80_avg_fdgp_new_noise_inv_diag_I_800.npy'
-    
-    #sg1_template_file = basemap + 'secA_1hr_41-18_avg_fdgp_clean_map_I_800.npy'
-    #sg1_weightfile = basemap + 'secA_1hr_41-18_avg_fdgp_noise_inv_diag_I_800.npy'
-    
+    sg1_template_file = basemap + 'secA_15hr_41-80_pointcorr_clean_map_I_800.npy'
+    sg1_weightfile = basemap + 'secA_15hr_41-80_pointcorr_noise_weight_I_800.npy'
+
     #sg1_seed = instance_seed
     sg1_seed_file = '/home/ycli/workspace/script/random_seeds'
     sg1_refinement = 2
@@ -55,4 +52,3 @@ if do_simulation:
     sg1_simnum = simnum
 
     #sg1_scenario = 'ideal'
-

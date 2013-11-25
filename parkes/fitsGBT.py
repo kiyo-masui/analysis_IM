@@ -59,7 +59,10 @@ fields_and_axes = {
                    'CRVAL4' : ('pol', ),
                    'CAL' : ('cal', ),
                    'BEAM' : ('beam', ),
-                   'TSYS' : ('time', 'beam', 'pol', 'cal')
+                   'TSYS' : ('time', 'beam', 'pol', 'cal'),
+                   'RA' : ('time', 'beam'), # the ra and dec read from fits
+                   'DEC' : ('time', 'beam'),
+
                    }
 
 # These globals are the cards for (our custom) history entries in a fits header

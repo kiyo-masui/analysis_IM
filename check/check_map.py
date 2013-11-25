@@ -1,240 +1,184 @@
-#! /usr/bin/env python
-import sys
-import numpy as np
-from core import algebra
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import ImageGrid
-from mkpower import functions
-import math
+#! /usr/bin/env python 
 
-maproot = "/Users/ycli/DATA/2df/map_2929.5/"
-mapname = "real_map_2df"
-boxroot = "/Users/ycli/DATA/2df/map_2929.5/"
-#boxname = "fftbox_real_map_2df"
-boxname = "kiyo_fftbox_real_map_2df"
+from parkes import plotmap
 
-#maproot = "/Users/ycli/DATA/maps/"
-#mapname = "secA_15hr_41-80_avg_fdgp_new_clean_map_I_800"
-#boxroot = "/Users/ycli/DATA/maps/"
-#boxname = "fftbox_secA_15hr_41-80_avg_fdgp_new_clean_map_I_800"
+plot_opt = False
+plot_raw = True
+plot_cln = False
 
-mapidex = 50
+if plot_opt:
 
-map = algebra.make_vect(algebra.load(maproot + mapname + '.npy'))
+    prefix = 'pks'
+    field = 'p3500n3000_parkes_2010_10_24-28'
+    degrade_factor = 1.1
+    degrade_map = True
+    map_root = '/home/ycli/data/2df/map/%s_%s/'%(prefix, field)
+    mapdict = {}
+    mapdict['imap'] = map_root + 'real_map_2df.npy'
+    mapdict['nmap'] = map_root + 'sele_map_2df.npy'
+    mapdict['name'] = '%s_%s_opt_real_map'%(prefix, field)
+    mapdict['noise_name'] = '%s_%s_opt_sele_map'%(prefix, field)
+    a = plotmap.PlotMap(mapdict, 
+                        freq_cut = [0,1,2,3,4,5,59,60,61,62,63], 
+                        degrade_factor=degrade_factor, 
+                        degrade_map=degrade_map,
+                        plot_size=(15, 6))
+    a.plot_map(with_nvss=True)
 
-if mapidex>=map.shape[0]:
-    print 'index out of the maps!!'
-    exit()
-
-if len(sys.argv) == 1:
-    freq = map.get_axis('freq') - 0.5*map.info['freq_delta']
-    ra = map.get_axis('ra') - 0.5*map.info['ra_delta']
-    dec= map.get_axis('dec') - 0.5*map.info['dec_delta']
-
-    freq = np.resize(freq, freq.shape[0]+1)
-    ra = np.resize(ra, ra.shape[0]+1)
-    dec = np.resize(dec, dec.shape[0]+1)
-
-    freq[-1] = freq[-2] + map.info['freq_delta']
-    ra[-1] = ra[-2] + map.info['ra_delta']
-    dec[-1] = dec[-2] + map.info['dec_delta']
-
-    badfreq = []
-    #badfreq = [0, 9, 10, 15, 16, 17, 18, 19, 20, 21, 22, 23,]
-    badfreq = range(10)
-    if len(badfreq) != 0:
-        mask = np.zeros(map.shape)
-        mask[badfreq,:,:] = 1.
-        map = np.ma.masked_array(map, mask=mask)
-
-    #vmax = map[mapidex].flatten().max()
-    #vmin = map[mapidex].flatten().min()
-    #vmax = map.flatten().max()
-    #vmin = map.flatten().min()
-    #vmax = 0.5
-    #vmin = -0.5
-
-    vmax = 2
-    vmin = -2
-    #vmax = 0.001
-    #vmin = -0.001
-    #vmax = 0.0003
-    #vmin = -0.0003
-
-    #vmax = 50
-    #vmin = -50
-
-    #if vmax<np.fabs(vmin):
-    #    vmax = np.fabs(vmin)
-    #else:
-    #    vmin = -np.fabs(vmax)
-
-    #map = np.ma.masked_equal(map, 0)
-    map = np.ma.array(map)
-    map[map==0] = np.ma.masked
-    #vmax = 1.
-    #vmin = -1.
-
-    #plt.figure(figsize=(34, 8))
-    #plt.figure(figsize=(9,8))
-    #f = plt.figure(figsize=(16,9))
-    #f = plt.figure(figsize=(10,16))
-    f = plt.figure(figsize=(8,7))
-    ax = ImageGrid(f, 111,
-                   nrows_ncols = (1, 1),
-                   direction = "row",
-                   axes_pad = 0.05,
-                   add_all = True,
-                   label_mode = "L",
-                   share_all = True,
-                   cbar_location = "right",
-                   cbar_mode = "single",
-                   cbar_size = 0.2,
-                   cbar_pad = 0.05,
-                   )
-    im = ax[0].pcolormesh(ra, dec, np.ma.mean(map, 0).swapaxes(0,1))
-    #im = ax[0].pcolormesh(ra, dec, map[mapidex].swapaxes(0,1))
-    im.set_clim(vmin, vmax)
-    ax[0].set_xlim(ra.min(), ra.max())
-    ax[0].set_ylim(dec.min(), dec.max())
-    ax[0].set_xlabel('RA [deg]')
-    ax[0].set_ylabel('DEC[deg]')
-    ax[0].set_title(mapname)
-
-    ax[0].cax.colorbar(im)
-
-    plt.tick_params(length=6, width=1.)
-    plt.tick_params(which='minor', length=3, width=1.)
-
-    #plt.pcolor(ra, dec, map[mapidex].swapaxes(0,1), vmax=vmax, vmin=vmin)
-    #plt.pcolor(ra, dec, np.mean(map, 0).swapaxes(0,1), vmax=vmax, vmin=vmin)
-
-elif len(sys.argv) == 2 and sys.argv[1]=='freq':
-    mapname += '_freq'
-
-    freq = map.get_axis('freq') - 0.5*map.info['freq_delta']
-    ra = map.get_axis('ra') - 0.5*map.info['ra_delta']
-    dec= map.get_axis('dec') - 0.5*map.info['dec_delta']
-
-    freq = np.resize(freq, freq.shape[0]+1)
-    ra = np.resize(ra, ra.shape[0]+1)
-    dec = np.resize(dec, dec.shape[0]+1)
-
-    freq[-1] = freq[-2] + map.info['freq_delta']
-    ra[-1] = ra[-2] + map.info['ra_delta']
-    dec[-1] = dec[-2] + map.info['dec_delta']
-
-    badfreq = []
-    #badfreq = [0, 9, 10, 15, 16, 17, 18, 19, 20, 21, 22, 23,]
-    badfreq = range(10)
-    if len(badfreq) != 0:
-        mask = np.zeros(map.shape)
-        mask[badfreq,:,:] = 1.
-        map = np.ma.masked_array(map, mask=mask)
-
-    #vmax = map.flatten().max()
-    #vmin = map.flatten().min()
-    vmax = 0.5
-    vmin = -0.5
-
-    #map = np.ma.masked_equal(map, 0)
-
-    freq /= 1.e9
-    print freq
-
-    f, (ax1, ax2, ax3) = plt.subplots(3, 1, sharex=True, figsize=(10,10))
-    f.subplots_adjust(hspace=0)
-
-    #pc1 = ax1.pcolor(freq, ra,  map.swapaxes(0,1).mean(axis=2))
-    #ax1.set_ylim(ra.min(), ra.max())
-    #ax1.set_ylabel('RA [deg]')
-    #pc2 = ax2.pcolor(freq, dec, map.swapaxes(0,2).mean(axis=1))
-    #ax2.set_ylim(dec.min(), dec.max())
-    #ax2.set_ylabel('DEC[deg]')
-    for i in range(ra.shape[0]-1):
-        for j in range(dec.shape[0]-1):
-            ax3.plot(freq[:-1]+0.5*map.info['freq_delta']/1.e9, map[:,i,j])
+if plot_raw:
+    #prefix = 'test_allbeams'
+    #suffix = '1315'
+    #field = '27n30_10by7'
+    #degrade_factor = 1.1
+    #degrade_map = False
+    #map_root = '/home/ycli/data/parkes/maps_by_chris/pks_%s/'%field
     
-    pc1 = ax1.pcolor(freq, ra,  map.swapaxes(0,1)[:,:,30], vmin=vmin, vmax=vmax)
-    ax1.set_ylim(ra.min(), ra.max())
-    ax1.set_ylabel('RA [deg]')
-    pc2 = ax2.pcolor(freq, dec, map.swapaxes(0,2)[:,30,:], vmin=vmin, vmax=vmax)
-    ax2.set_ylim(dec.min(), dec.max())
-    ax2.set_ylabel('DEC[deg]')
-    #for i in range(ra.shape[0]-1):
-    #    ax3.plot(freq[:-1]+0.5*map.info['freq_delta']/1.e9, map[:,i,30])
-    #for i in range(dec.shape[0]-1):
-    #    ax3.plot(freq[:-1]+0.5*map.info['freq_delta']/1.e9, map[:,30,i])
-        
-    ax3.set_ylabel('Flux [Jy]')
-    ax3.set_xlabel('Freqency [GHz]')
-    ax3.set_xlim(freq.min(), freq.max())
-
-    #f.colorbar(pc1, ax1, orientation='horizontal')
-
-
-elif len(sys.argv) == 2:
-    freq = map.get_axis('freq')
-    z = 1.42e9/freq - 1.
-    r = functions.fq2r(freq)
-    boxidex = int((r[mapidex]-83.7065)/0.597)
-    #boxidex = int((r[mapidex]-1507.03)/1.768)
+    #prefix = 'fir'
+    #suffix = '1316'
+    #field = 'p3500n3000_parkes_2010_10_24-28'
+    #degrade_factor = 1.1
+    #degrade_map = False
+    #map_root = '/home/ycli/data/parkes/maps/pks_%s/'%field
     
-    box = algebra.make_vect(algebra.load(boxroot + boxname + '.npy'))
-    r_box = box.get_axis('freq')
-    print r_box
-    print r[mapidex]
-    boxidex = np.digitize([r[mapidex],], r_box)[0]
-    #box = np.load(boxroot + boxname + '.npy')
+    #prefix = 'fir'
+    #suffix = '1316'
+    ##field = 'testflagging_p3500n3000_parkes_2010_10_24'
+    ##field = 'testflagging_old_p3500n3000_parkes_2010_10_24'
+    #field = 'testflagging_p3500n3000_parkes_2010_10_24'
+    #degrade_factor = 1.1
+    #degrade_map = False
+    ##map_root = '/home/ycli/data/parkes/maps/parkes_testflagging/'
+    #map_root = '/home/ycli/data/parkes/maps/parkes_testflagging/threshold_3pt5/'
+    ##map_root = '/home/ycli/data/parkes/maps/parkes_testpointing/threshold_3pt5/'
+
+    suffix = '800'
+    field = '15hr_41-80_pointcorr'
+    #field = '15hr_41-80_avg_fdgp_new'
+    degrade_factor = 1.4
+    degrade_map = True
+    map_root = '/home/ycli/data/gbt/gbt_%s/'%field
+
+    mapdict = {}
+    mapdict['imap'] = map_root + 'secA_%s_clean_map_I_%s.npy'%(field, suffix)
+    mapdict['nmap'] = map_root + 'secA_%s_noise_weight_I_%s.npy'%(field, suffix)
+    #mapdict['nmap'] = map_root + 'secA_%s_noise_inv_diag_I_%s.npy'%(field, suffix)
+    mapdict['name'] = '%s_clean_map_I'%(field)
+    mapdict['noise_name'] = '%s_noise_map_I'%(field)
+    #mapdict['imap_sec'] = [
+    #        map_root + '%s_%s_A_clean_map_I_%s.npy'%(prefix, field, suffix),
+    #        map_root + '%s_%s_B_clean_map_I_%s.npy'%(prefix, field, suffix), 
+    #        map_root + '%s_%s_C_clean_map_I_%s.npy'%(prefix, field, suffix), 
+    #        map_root + '%s_%s_D_clean_map_I_%s.npy'%(prefix, field, suffix), 
+    #        map_root + '%s_%s_E_clean_map_I_%s.npy'%(prefix, field, suffix), 
+    #                      ]
+    #mapdict['nmap_sec'] = [
+    #        map_root + '%s_%s_A_noise_weight_I_%s.npy'%(prefix, field, suffix),
+    #        map_root + '%s_%s_B_noise_weight_I_%s.npy'%(prefix, field, suffix), 
+    #        map_root + '%s_%s_C_noise_weight_I_%s.npy'%(prefix, field, suffix), 
+    #        map_root + '%s_%s_D_noise_weight_I_%s.npy'%(prefix, field, suffix), 
+    #        map_root + '%s_%s_E_noise_weight_I_%s.npy'%(prefix, field, suffix), 
+    #                      ]
+    #mapdict['name'] += '_1pt1_cov'
+    #mapdict['noise_name'] += '_1pt1_cov'
     
-    if sys.argv[1]=='1':
-        plt.figure(figsize=(8, 7))
-        plt.subplot(211)
-        plt.imshow(map[mapidex].swapaxes(0,1), interpolation='nearest')
-        plt.colorbar()
-        plt.subplot(212)
-        plt.imshow(box[boxidex].swapaxes(0,1), interpolation='nearest')
-        plt.colorbar()
-        print map[mapidex].flatten().max()
-        print map[mapidex].flatten().min()
-        print box[boxidex].flatten().max()
-        print box[boxidex].flatten().min()
-    
-    elif sys.argv[1]=='2':
-        plt.figure(figsize=(8, 10))
-        plt.subplot(211)
-        plt.imshow(map.swapaxes(0,1)[64].swapaxes(0,1), interpolation='nearest')
-        plt.colorbar()
-        plt.subplot(212)
-        plt.imshow(box.swapaxes(0,1)[64].swapaxes(0,1), interpolation='nearest')
-        plt.colorbar()
-    elif sys.argv[1]=='3':
-        #maphist = np.histogram(map.flatten(), bins=50)
-        #boxhist = np.histogram(box.flatten(), bins=50)
-        plt.figure(figsize=(8,8))
-        #plt.hist(map.flatten(), range=(1.e-5, 0.003), bins=100, color='b',
-        #         normed=True, alpha=0.5, label='map')
-        #plt.hist(map.flatten(), range=(-0.003, -1.e-5), bins=100, color='b',
-        #         normed=True, alpha=0.5)
-        #plt.hist(box.flatten(), range=(1.e-5, 0.003), bins=100, color='g',
-        #         normed=True, alpha=0.5, label='box')
-        #plt.hist(box.flatten(), range=(-0.003, -1.e-5), bins=100, color='g',
-        #         normed=True, alpha=0.5)
-        #plt.ylim(ymax=5000)
-    
-        plt.hist(map.flatten(), bins=100, color='b', 
-                 normed=True, alpha=0.5, label='map')
-        plt.hist(box.flatten(), bins=100, color='g', 
-                 normed=True, alpha=0.5, label='box')
-        plt.ylim(ymax=1000)
-        #plt.ylim(ymax=100000)
-        plt.legend()
+    a = plotmap.PlotMap(mapdict, 
+                        #freq_cut = [0,1,2,3,4,5,59,60,61,62,63], 
+                        degrade_factor=degrade_factor, 
+                        degrade_map=degrade_map,
+                        plot_size=(10, 8))
+                        #plot_size=(15, 6))
+    #a.mapping_coord(plot=True)
+    a.plot_map(with_nvss=True, num=200)
+    #a.plot_map(with_nvss=True, diff=True)
+    #a.check_nvss(flux_limit=[0.5, 100], rescale=False)
+    #a.check_nvss(flux_limit=[0.5, 100])
+    #a.plot_map(with_nvss=True)
+    #a.plot_map(with_nvss=True, diff=True)
 
+if plot_cln:
+    #mode = 2 
+    #prefix = 'test_allbeams'
+    #field = '27n30_10by7'
+    #clean = 'ABCD_freq_cut_1pt1_cov_bgcal'
+    #degrade_factor = 1.1
+    #degrade_map = True
+    #map_root = '/home/ycli/data/cln_result/PKS_%s_%s/'%(field, clean)
+    #map_root = map_root + 'Emap_clean_themselves_noise_prior2En1/'
 
+    mode = 2
+    prefix = 'fir'
+    field = 'p3500n3000_parkes_2010_10_24-28'
+    #clean = 'ABCD_freq_cut_1pt1_cov_cal'
+    clean = 'ABCDE_freq_cut_1pt1_cov_bgcal'
+    degrade_factor = 1.1
+    degrade_map = True
+    map_root = '/home/ycli/data/cln_result/PKS_%s_%s/'%(field, clean)
+    map_root = map_root + 'Emap_clean_themselves/'
 
-pngname = './png/'+mapname+'%03d.png'%mapidex
-plt.savefig(pngname, format='png')
-plt.show()
+    mapdict = {}
+    mapdict['imap'] = map_root + 'combined_clean_map_%dmodes.npy'%mode
+    mapdict['nmap'] = map_root + 'combined_clean_weight_%dmodes.npy'%mode
+    mapdict['name'] = '%s_%s_clean_map_I_%dmode_1pt1_cov_cal'%(prefix, field, mode)
+    mapdict['noise_name'] = '%s_%s_noise_map_I_%dmode_1pt1_cov'%(prefix, field, mode)
+    #mapdict['name'] = '%s_%s_clean_map_I_%dmode_1pt1_cov_cal_noise_prior2En1'%(prefix, field, mode)
+    #mapdict['noise_name'] = '%s_%s_noise_map_I_%dmode_1pt1_cov_cal_noise_prior2En1'%(prefix, field, mode)
+    mapdict['imap_sec'] = [
+            map_root + 'sec_A_cleaned_clean_map_I_with_B_%dmodes.npy'%mode,
+            map_root + 'sec_A_cleaned_clean_map_I_with_C_%dmodes.npy'%mode, 
+            map_root + 'sec_B_cleaned_clean_map_I_with_A_%dmodes.npy'%mode, 
+            map_root + 'sec_B_cleaned_clean_map_I_with_C_%dmodes.npy'%mode, 
+            map_root + 'sec_C_cleaned_clean_map_I_with_A_%dmodes.npy'%mode, 
+            map_root + 'sec_C_cleaned_clean_map_I_with_B_%dmodes.npy'%mode, 
 
+            map_root + 'sec_A_cleaned_clean_map_I_with_D_%dmodes.npy'%mode, 
+            map_root + 'sec_B_cleaned_clean_map_I_with_D_%dmodes.npy'%mode, 
+            map_root + 'sec_C_cleaned_clean_map_I_with_D_%dmodes.npy'%mode, 
+            map_root + 'sec_D_cleaned_clean_map_I_with_A_%dmodes.npy'%mode, 
+            map_root + 'sec_D_cleaned_clean_map_I_with_B_%dmodes.npy'%mode, 
+            map_root + 'sec_D_cleaned_clean_map_I_with_C_%dmodes.npy'%mode, 
+
+            map_root + 'sec_A_cleaned_clean_map_I_with_E_%dmodes.npy'%mode, 
+            map_root + 'sec_B_cleaned_clean_map_I_with_E_%dmodes.npy'%mode, 
+            map_root + 'sec_C_cleaned_clean_map_I_with_E_%dmodes.npy'%mode, 
+            map_root + 'sec_D_cleaned_clean_map_I_with_E_%dmodes.npy'%mode, 
+            map_root + 'sec_E_cleaned_clean_map_I_with_A_%dmodes.npy'%mode, 
+            map_root + 'sec_E_cleaned_clean_map_I_with_B_%dmodes.npy'%mode, 
+            map_root + 'sec_E_cleaned_clean_map_I_with_C_%dmodes.npy'%mode, 
+            map_root + 'sec_E_cleaned_clean_map_I_with_D_%dmodes.npy'%mode, 
+            ]
+    mapdict['nmap_sec'] = [
+            map_root + 'sec_A_cleaned_noise_inv_I_with_B_%dmodes.npy'%mode,
+            map_root + 'sec_A_cleaned_noise_inv_I_with_C_%dmodes.npy'%mode, 
+            map_root + 'sec_B_cleaned_noise_inv_I_with_A_%dmodes.npy'%mode, 
+            map_root + 'sec_B_cleaned_noise_inv_I_with_C_%dmodes.npy'%mode, 
+            map_root + 'sec_C_cleaned_noise_inv_I_with_A_%dmodes.npy'%mode, 
+            map_root + 'sec_C_cleaned_noise_inv_I_with_B_%dmodes.npy'%mode, 
+
+            map_root + 'sec_A_cleaned_noise_inv_I_with_D_%dmodes.npy'%mode, 
+            map_root + 'sec_B_cleaned_noise_inv_I_with_D_%dmodes.npy'%mode, 
+            map_root + 'sec_C_cleaned_noise_inv_I_with_D_%dmodes.npy'%mode, 
+            map_root + 'sec_D_cleaned_noise_inv_I_with_A_%dmodes.npy'%mode, 
+            map_root + 'sec_D_cleaned_noise_inv_I_with_B_%dmodes.npy'%mode, 
+            map_root + 'sec_D_cleaned_noise_inv_I_with_C_%dmodes.npy'%mode, 
+
+            map_root + 'sec_A_cleaned_noise_inv_I_with_E_%dmodes.npy'%mode, 
+            map_root + 'sec_B_cleaned_noise_inv_I_with_E_%dmodes.npy'%mode, 
+            map_root + 'sec_C_cleaned_noise_inv_I_with_E_%dmodes.npy'%mode, 
+            map_root + 'sec_D_cleaned_noise_inv_I_with_E_%dmodes.npy'%mode, 
+            map_root + 'sec_E_cleaned_noise_inv_I_with_A_%dmodes.npy'%mode, 
+            map_root + 'sec_E_cleaned_noise_inv_I_with_B_%dmodes.npy'%mode, 
+            map_root + 'sec_E_cleaned_noise_inv_I_with_C_%dmodes.npy'%mode, 
+            map_root + 'sec_E_cleaned_noise_inv_I_with_D_%dmodes.npy'%mode, 
+            ]
+    a = plotmap.PlotMap(mapdict, 
+                        freq_cut = [0,1,2,3,4,5,59,60,61,62,63], 
+                        degrade_factor=degrade_factor, 
+                        degrade_map=degrade_map,
+                        #plot_size=(12, 6))
+                        plot_size=(15, 6))
+    a.mapping_coord(plot=True)
+    a.plot_map(with_nvss=True)
+    a.plot_map(with_nvss=True, diff=True)
+    a.check_nvss(flux_limit=[0.5, 100], rescale=False)
 
 

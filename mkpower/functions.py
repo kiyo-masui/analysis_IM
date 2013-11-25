@@ -38,12 +38,13 @@ class BOX(object):
         #self.ibox2, self.nbox2 = get_box(self.box_bin, self.imap2, self.weight2)
 
         self.flag_nan(target="map")
-        gridding_method = gridding.physical_grid_largeangle
+        #gridding_method = gridding.physical_grid_largeangle
+        gridding_method = gridding.physical_grid
 
-        self.ibox1, ibox1_info = gridding_method(self.imap1, refinement=1)
-        self.ibox2, ibox2_info = gridding_method(self.imap2, refinement=1)
-        self.nbox1, nbox1_info = gridding_method(self.weight1, refinement=1)
-        self.nbox2, nbox2_info = gridding_method(self.weight2, refinement=1)
+        self.ibox1, ibox1_info = gridding_method(self.imap1, refinement=2)
+        self.ibox2, ibox2_info = gridding_method(self.imap2, refinement=2)
+        self.nbox1, nbox1_info = gridding_method(self.weight1, refinement=2)
+        self.nbox2, nbox2_info = gridding_method(self.weight2, refinement=2)
 
         self.ibox1 = algebra.make_vect(self.ibox1, ibox1_info['axes'])
         self.ibox2 = algebra.make_vect(self.ibox2, ibox2_info['axes'])
@@ -105,6 +106,7 @@ class BOX(object):
         mean1_weight = np.sum(np.sum(self.nbox1, -1), -1)
         mean1_weight[mean1_weight==0] = np.inf
         mean1 /= mean1_weight
+        #print "Max and Min of weighted mean1 : ", mean1.max(), mean1.min()
         self.ibox1 -= mean1[:, None, None]
 
         mean2 = np.sum(np.sum(self.ibox2, -1), -1)
@@ -112,21 +114,23 @@ class BOX(object):
         mean2_weight[mean2_weight==0] = np.inf
         mean2 /= mean2_weight
         self.ibox2 -= mean2[:, None, None]
+        #print "Max and Min of weighted mean2 : ", mean1.max(), mean2.min()
 
     def estimate_ps_3d(self, window="blackman"):
 
         self.flag_nan(target="box")
 
-        window_function = fftutil.window_nd(self.nbox1.shape, name=window)
-        self.nbox1 *= window_function
-        self.nbox2 *= window_function
+        #window_function = fftutil.window_nd(self.nbox1.shape, name=window)
+        window_function = fftutil.window_nd((self.nbox1.shape[0],), name=window)
+        self.nbox1 *= window_function[:, None, None]
+        self.nbox2 *= window_function[:, None, None]
 
         self.ibox1 *= self.nbox1
         self.ibox2 *= self.nbox2
 
 
         #self.subtract_mean()
-        self.subtract_weighted_mean()
+        #self.subtract_weighted_mean()
 
         normal = np.sum(self.nbox1 * self.nbox2)
         delta_v = np.prod(self.boxunit)

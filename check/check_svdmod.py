@@ -48,10 +48,12 @@ class SVD(object):
         for i in range(len(self.svdlist)):
             bias = int(self.biaslist[i])
             x = range( mod_start+bias, mod_stop+bias )
-            plt.plot(x, self.svdlist[i][0][mod_start:mod_stop], '-', marker='.',
+            #plt.plot(x, self.svdlist[i][0][mod_start:mod_stop]/self.svdlist[i][0][0], '-', 
+            #        marker='.', label=self.lprelist[i]+'eigenvalue %s'%self.labellist[i],)
+            plt.plot(x, self.svdlist[i][0][mod_start:mod_stop], '-', marker='.', 
                     label=self.lprelist[i]+'eigenvalue %s'%self.labellist[i],)
         plt.semilogy()
-        #plt.ylim(ymax=3.e3, ymin=1.e-1)
+        #plt.ylim(ymax=3.e0) 
         plt.xlim(xmin=-2)
         plt.xlabel('Mode Number')
         plt.ylabel('Eigenvalue')
@@ -168,15 +170,19 @@ class SVD(object):
         if svd_rvect_raw is None:
             svd_rvect_raw = self.svd_rvect
 
+        nfreq = 256
+        cutlist = [0,15,16,17,18,19,20,21,22,23,103,104,105,106,107,108,
+                   130,131,132,133,134]
+        freq_list = tuple([ind for ind in range(nfreq) if ind not in cutlist])
+
         #cutlist = [6,  7,  8,  15, 16, 18, 19, 20, 21, 22, 37, 80, 103,104,105,\
         #           106,107,108,130,131,132,133,134,171,175,177,179,182,183,187,\
         #           189,192,193,194,195,196,197,198,201,204,208,209,212,213,218,\
         #           219, 229, 233, 237, 244, 254, 255]
 
-        nfreq = 64
-        #cutlist = [0,1,2,3,4,59,60,61,62,63]
-        cutlist = [0,1,2,3,4,5,6,7,8,9,10,11,12,59,60,61,62,63]
-        freq_list = tuple([ind for ind in range(nfreq) if ind not in cutlist])
+        #nfreq = 64
+        #cutlist = [0,1,2,3,4,5,6,7,8,9,10,11,12,59,60,61,62,63]
+        #freq_list = tuple([ind for ind in range(nfreq) if ind not in cutlist])
 
         #nfreq = 215
         #freq_list = ( 0  ,1  ,8  ,9  ,10 ,12 ,13 ,14 ,16 ,17 ,20 ,21 ,22 ,23 ,
@@ -270,7 +276,7 @@ if __name__=="__main__":
 
 
 
-    do_plot_svd = True
+    do_plot_svd = False
     do_calc_eig = False
     do_plot_val = True
     do_plot_map = False
@@ -286,15 +292,16 @@ if __name__=="__main__":
     #fg_file = 'PKS_AA_allbeams_10by7_freq_cut/Emap_clean_themselves/'
     #fg_file = 'PKS_ABC_allbeams_10by7_freq_cut_1pt1_cov/Emap_clean_themselves/'
     #fg_file = 'PKS_n03n30_10by7_0627pixel_AA_freq_cut_1pt1_cov/Emap_clean_themselves/'
-    fg_file = 'PKS_p3500n3000_parkes_2010_10_24-28_AA_freq_cut_1pt1_cov/Emap_clean_themselves/'
+    #fg_file = 'PKS_p3500n3000_parkes_2010_10_24-28_ABC_freq_cut_1pt1_cov_cal/Emap_clean_themselves/'
     #fg_file = 'PKS_07n30_10by7_0627pixel_AA_freq_cut_1pt1_cov/Emap_clean_themselves/'
     #fg_file = 'PKS_17n30_10by7_0627pixel_AA_freq_cut_1pt1_cov/Emap_clean_themselves/'
     #fg_file = 'DRACO_AA_dirty_map/Emap_clean_themselves/'
     #fg_file = 'DRACO_AA_dirty_map_centre_4000pix_flagged/Emap_clean_themselves/'
     #fg_file = '3C286/Emap_clean_themselves/'
     #fg_file = '/15hr_AA_fine_freq_11conv/Emap_clean_themselves/'
+    fg_file = 'GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov_wsvd/Emap_clean_themselves/'
 
-    svdfile = 'SVD_pair_A_with_A.pkl'
+    svdfile = 'SVD_pair_A_with_B.pkl'
 
     #combined= 3
     r'''I_BxI_{ACD}QUV'''
@@ -349,15 +356,25 @@ if __name__=="__main__":
         #[0, fg_root+'PKS_n03n30_10by7_0627pixel_AA_freq_cut_1pt1_cov/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'parkes n03n30 10by7 1.1 conv '],
         #[0, fg_root+'PKS_07n30_10by7_0627pixel_AA_freq_cut_1pt1_cov/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'parkes 07n30 10by7 1.1 conv '],
         #[0, fg_root+'PKS_17n30_10by7_0627pixel_AA_freq_cut_1pt1_cov/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'parkes 17n30 10by7 1.1 conv '],
-        [0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_AA_freq_cut_1pt1_cov/Emap_clean_themselves_fewfreqcut/SVD_pair_A_with_A.pkl', 'parkes 35n30 1.1 conv few freq cut'],
-        [0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_AA_freq_cut_1pt1_cov/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'parkes 35n30 1.1 conv '],
-        [0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_AA_freq_cut_1pt1_cov/Emap_clean_themselves_badconv/SVD_pair_A_with_A.pkl', 'parkes 35n30 1.1 conv bad conv'],
+        #[0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_AA_freq_cut_1pt1_cov/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'parkes 35n30 1.1 conv '],
+        #[0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_AA_freq_cut_1pt1_cov_cal/Emap_clean_themselves/SVD_pair_A_with_A.pkl', '35n30 1.1 conv cal '],
+        #[0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_ABC_freq_cut_1pt1_cov_cal/Emap_clean_themselves/SVD_pair_A_with_B.pkl', '35n30 1.1 conv cal secs background fitting '],
+        #[0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_ABC_freq_cut_1pt1_cov_cal/Emap_clean_themselves/SVD_pair_A_with_C.pkl', '35n30 1.1 conv cal secs background fitting '],
+        #[0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_ABC_freq_cut_1pt1_cov_cal/Emap_clean_themselves/SVD_pair_B_with_C.pkl', '35n30 1.1 conv cal secs background fitting '],
+        #[0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_ABC_freq_cut_1pt1_cov_cal/Emap_clean_themselves_rescaled/SVD_pair_A_with_B.pkl', '35n30 1.1 conv cal secs rescaled '],
+        #[0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_ABC_freq_cut_1pt1_cov_cal/Emap_clean_themselves_rescaled/SVD_pair_A_with_C.pkl', '35n30 1.1 conv cal secs rescaled '],
+        #[0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_ABC_freq_cut_1pt1_cov_cal/Emap_clean_themselves_rescaled/SVD_pair_B_with_C.pkl', '35n30 1.1 conv cal secs rescaled '],
+        [0, fg_root+'GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov_wsvd/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr ptcorr wsvd 1.4 conv '],
+        [0, fg_root+'GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov_wsvd/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr wsvd 1.4 conv '],
+        [0, fg_root+'GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr ptcorr 1.4 conv '],
+        [0, fg_root+'GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr 1.4 conv '],
         #[0, fg_root+'DRACO_AA_dirty_map/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'DRACO '],
         #[0, fg_root+'DRACO_AA_dirty_map_centre_4000pix_flagged/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'DRACO flagged'],
         #[0, fg_root+'/15hr_AA_fine_freq_11conv/Emap_clean_themselves/SVD_pair_A_with_A.pkl', '15hr_AA_fine_freq_11conv'],
         #[0, fg_root+'3C286/Emap_clean_themselves/SVD_pair_A_with_A.pkl', '3C286 '],
         ]
-    svd_savename = 'SVD_pair_PKS_eigenvalue'
+    #svd_savename = 'SVD_pair_PKS_eigenvalue'
+    svd_savename = 'SVD_pair_GBT15hr_ptcorr_eigenvalue'
     #svd_savename = 'SVD_pair_DRACO_AA_eigenvalue'
     #svd_savename = 'SVD_pair_3C286_AA_eigenvalue'
     #svd_savename = 'SVD_pair_15hr_AA_fine_freq_11conv_AA'

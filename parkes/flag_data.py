@@ -79,7 +79,10 @@ class FlagData(base_single.BaseSingle) :
             cal_scale.scale_by_cal(Data, True, False, False)
             Data.add_history('Converted to units of noise cal temperture.')
         # Flag the data.
-        Data.data /= Data.field['TSYS'][:,:,:,:,None]
+
+        # divid tsys may cause flagging bad
+        #Data.data /= Data.field['TSYS'][:,:,:,:,None]
+
         apply_cuts(Data, sigma_thres=params['sigma_thres'], 
                     badness_thres=params['badness_thres'],
                     time_cut=params['time_cut'],
@@ -96,7 +99,7 @@ class FlagData(base_single.BaseSingle) :
 
         # time tsys, make data in unit of Jy
         print "Flag data shape: ", Data.data.shape
-        Data.data *= Data.field['TSYS'][:,:,:,:,None]
+        #Data.data *= Data.field['TSYS'][:,:,:,:,None]
         return Data
 
 def apply_cuts(Data, sigma_thres=6, badness_thres=0.1, time_cut=40,
@@ -156,10 +159,13 @@ def flag_data(Data, sigma_thres, badness_thres, time_cut,
     # Flag data on a [deep]copy of Data. If too much destroyed,
     # check if localized in time. If that sucks too, then just hide freq.
 
-    #if time_flag_first:
-    #    destroy_time_with_mean_arrays(Data, flag_size=4)
+    if time_flag_first:
+        destroy_time_with_mean_arrays(Data, flag_size=4)
     #if len(tsys_thres)==2:
     #    destroy_time_tsys(Data, tsys_thres)
+
+    # mask the negative values
+    Data.data[Data.data<0] = ma.masked
 
     Data1 = copy.deepcopy(Data)
     itr = 0            # For recursion
@@ -316,9 +322,12 @@ def destroy_with_variance(Data, sigma_thres=6, bad_freq_list=[]):
         # Get the max accepted value [sigma_thres*sigma, sigma_thres=6 works really well].
         max_sig = sigma_thres*sig
         max_accepted = means + max_sig
+        # Get the min accepted value, added for Parkes.
+        min_accepted = means - max_sig
         amount_masked = 0
         for freq in range(0, len(a)):
-            if ((a[freq] > max_accepted[0]) or (b[freq] > max_accepted[1])):
+            if ((a[freq] > max_accepted[0]) or (b[freq] > max_accepted[1]) 
+                    or a[freq] < min_accepted[0] or b[freq] < min_accepted[1]):
                 # mask
                 amount_masked += 1
                 bad_freq_list.append(freq)

@@ -61,6 +61,7 @@ params_init = {
                'tack_on': None,
                'convolve': True,
                'calibrate':True,
+               'telescope':'Parkes',
                'clip_weight_percent': None,
                'degrade_factor': 1.1,
                'weighted_SVD' : False,
@@ -706,7 +707,7 @@ class PairSet():
         if self.params["convolve"]:
             self.call_pairs("degrade_resolution")
 
-        if self.params['calibrate']
+        if self.params['calibrate']:
             self.call_pairs('calibrate_map')
 
         if self.params["factorizable_noise"]:

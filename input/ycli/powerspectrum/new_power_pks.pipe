@@ -17,11 +17,11 @@ mode = int(os.getenv('MODE'))
 pks_root = os.getenv('MAP_PKS')
 IIdf_root = os.getenv('MAP_2DF')
 
-cut_list = []
+cut_list = [0,1,2,3,4,5,59,60,61,62,63]
 
 kbin_min = 0.1
-kbin_max = 1.5
-kbin_num = 10 
+kbin_max = 2.
+kbin_num = 15
 
 from mkpower import ps_estimator
 pipe_modules.append(ps_estimator.PowerSpectrumEstimator)

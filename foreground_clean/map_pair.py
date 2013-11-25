@@ -28,7 +28,7 @@ params_init = {
                'noise_inv2': "noise_inv2.npy",
                'freq_list': (),
                'degrade_factor': 1.1,
-               'telescope' : 'Parkes'
+               'telescope' : 'Parkes',
                # Angular lags at which to calculate the correlation.  Upper
                # edge bins in degrees.
                'lags': tuple(sp.arange(0.002, 0.2, 0.12))
@@ -227,16 +227,19 @@ class MapPair(object):
         degrade_factor = self.params['degrade_factor']
         print "degrading the resolution to a %2.1f common beam"%degrade_factor
 
-        if telescope=='GBT'
+        if telescope=='GBT':
             # Get the beam data.
             beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792,
                      0.281176247549, 0.270856788455, 0.26745856078,
                      0.258910010848, 0.249188429031])
             freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905],
                                  dtype=float)
+            freq_data *= 1.0e6
+
         elif telescope=='Parkes':
-            freq_data = sp.array([1250, 1275, 1300, 1325, 1350], dtype=float)
-            beam_data = sp.array([14.4, 14.4, 14.4, 14.4, 14.4])/60. # in unit of dgree
+            freq_data = sp.array([1250, 1275, 1300, 1325, 1350, 1430], dtype=float)
+            # beam_data in unit of dgree
+            beam_data = sp.array([14.4, 14.4, 14.4, 14.4, 14.4, 14.4])/60. 
             beam_data = beam_data*1420/freq_data
             freq_data *= 1.0e6
 
@@ -253,12 +256,12 @@ class MapPair(object):
         '''
 
         calibrator1 = cal_map.CalibrateMap(self.map1, self.freq1,
-                degrade_map=True, degrade_function=self.degrade_function)
+                degrade_map=True, degrade_function=self.degrade_function())
         calibrator1.cal_by_point_sources(flux_limit=[0.5, 100])
         self.map1 = calibrator1.re_scale * self.map1 + calibrator1.re_zerop
 
         calibrator2 = cal_map.CalibrateMap(self.map2, self.freq2, 
-                degrade_map=True, degrade_function=self.degrade_function)
+                degrade_map=True, degrade_function=self.degrade_function())
         calibrator2.cal_by_point_sources(flux_limit=[0.5, 100])
         self.map2 = calibrator2.re_scale * self.map2 + calibrator2.re_zerop
 
@@ -271,7 +274,7 @@ class MapPair(object):
         noise1 = self.noise_inv1
         noise2 = self.noise_inv2
 
-        common_resolution = self.degrade_function(telescope = self.params['telescope'])
+        common_resolution = self.degrade_function(telescope=self.params['telescope'])
 
 
         def degrade_resolution_for_noise(noise, common_resolution):
@@ -331,12 +334,13 @@ class MapPair(object):
             print 'Error: map pair do not have reasonable shape'
             exit()
 
-    def make_noise_factorizable(self, weight_prior=2):
+    def make_noise_factorizable(self, weight_prior=2.):
         r"""Convert noise weights such that the factor into a function a
         frequency times a function of pixel by taking means over the original
         weights.
 
         weight_prior used to be 10^-30 before prior applied
+        for GBT, we set it to 2; for parkes we set it to 2.e-1
         """
         print "making the noise factorizable"
 

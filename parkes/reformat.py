@@ -53,7 +53,7 @@ class ReformatParkes(object):
         self.datablock = data_block.DataBlock()
         
         data_array, scanlist, band_cf, band_wd, chan_cf, chan_wd, object,\
-        exposure, date_obs, elevation, azimuth, beam, pol, cal, tsys\
+        exposure, date_obs, elevation, azimuth, beam, pol, cal, tsys, ra, dec\
             = self.readoutinfo(self.parkes_data)
 
         if self.feedback>2:
@@ -90,6 +90,8 @@ class ReformatParkes(object):
         self.datablock.set_field('CAL',     tuple(cal),      ('cal', ), '1A')
         self.datablock.set_field('TSYS',    tuple(tsys),     ('time', 'beam', 'pol',
                                                               'cal'), '1D')
+        self.datablock.set_field('RA',      tuple(ra),       ('time','beam',),'1D')
+        self.datablock.set_field('DEC',     tuple(dec),      ('time','beam',),'1D')
 
         self.datablock.verify()
 
@@ -114,6 +116,8 @@ class ReformatParkes(object):
         azimuth = []
         pol = [1,2]
         cal = ['F',]
+        ra = []
+        dec = []
         for i in range(len(parkes_data)):
             #flag cycles
             flag_index = parkes_data[i].field('FLAGGED')
@@ -133,6 +137,9 @@ class ReformatParkes(object):
             time.append(parkes_data[i].field('TIME').compress(flag_index, axis=0))
             elevation.append(parkes_data[i].field('ELEVATIO').compress(flag_index,axis=0))
             azimuth.append(parkes_data[i].field('AZIMUTH').compress(flag_index, axis=0))
+            ra.append(parkes_data[i].field('CRVAL3').compress(flag_index, axis=0))
+            dec.append(parkes_data[i].field('CRVAL4').compress(flag_index, axis=0))
+
             print parkes_data[i].field('DATA').compress(flag_index, axis=0).shape
 
 
@@ -148,12 +155,14 @@ class ReformatParkes(object):
         time = np.array(time)
         elevation = np.array(elevation)
         azimuth = np.array(azimuth)
+        ra = np.array(ra)
+        dec = np.array(dec)
 
         if data.ndim != 6:
             print 'error: data dim : %d' %data.ndim
             print 'data shape is :', data.shape
             exit()
-        #data = data[:,beam-1::13,:,:,:,:]
+        # data = data[:,beam-1::13,:,:,:,:]
         # Note:  The raw Parkes data have 5 dims. We
         #        combined several files, so 6 dims:
         #        they are:
@@ -209,11 +218,13 @@ class ReformatParkes(object):
         elevation = elevation[:,::13].flatten()
         azimuth = azimuth[:,::13].flatten()
         elevation, azimuth = self.elaz_multibeam(elevation, azimuth)
+        ra = ra.reshape(azimuth.shape)
+        dec = dec.reshape(azimuth.shape)
         pol = np.array(pol)
         cal = np.array(cal)
         beam= np.array(range(13))
         return data, scanlist, band_cf, band_wd, chan_cf, chan_wd, object, exposure,\
-               date_obs, elevation, azimuth, beam, pol, cal, tsys
+               date_obs, elevation, azimuth, beam, pol, cal, tsys, ra, dec
 
     def flag_by_tsys(self, data, tsys, sig=3):
         tsys = ma.array(tsys)

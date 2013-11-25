@@ -24,15 +24,25 @@ map_base = '/home_local/ycli/data/map_result/maps/parkes/'
 #map_spacing = 0.08
 #map_centre = (27.5, -29.5)
 
-# my maps
-map_shape = (256, 96)
+# small field for checking flagging
+map_shape = (64, 64)
 map_spacing = .08
 map_centre = (35.0, -30.0)
+
+# my maps
+#map_shape = (256, 96)
+#map_spacing = .08
+#map_centre = (35.0, -30.0)
 
 ra_centre = 'W' # if ra_cente = 'W', it will connect 360 and 0; or ra_centre = 'E'
 #map_prefix = 'p3500n3000_' + 'parkes_2010_10_24-28_'
 #map_prefix = 'p3500n3000_' + 'parkes_2010_10_24_'
-map_prefix = 'p3500n3000_' + 'parkes_2010_10_25_'
+#map_prefix = 'p3500n3000_' + 'parkes_2010_10_25_'
+#map_prefix = 'p3500n3000_' + 'parkes_2010_10_26_'
+#map_prefix = 'p3500n3000_' + 'parkes_2010_10_27_'
+#map_prefix = 'p3500n3000_' + 'parkes_2010_10_28_'
+
+map_prefix = 'testflagging_p3500n3000_' + 'parkes_2010_10_24_'
 
 if os.getenv('BEAMS') != 'None':
     beams = int(os.getenv('BEAMS'))
@@ -43,8 +53,8 @@ else:
     dm_beams = (0, 1, 2, 5, 6, 7, 8, 10, 11, 12) # beam 3 ,4 and 9 have problem
 
 file_middles = tuple([
-                      #"parkes_2012_10_24_P641",
-                      "parkes_2012_10_25_P641",
+                      "parkes_2012_10_24_P641",
+                      #"parkes_2012_10_25_P641",
                       #"parkes_2012_10_26_P641",
                       #"parkes_2012_10_27_P641",
                       #"parkes_2012_10_28_P641",

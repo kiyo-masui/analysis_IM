@@ -270,8 +270,8 @@ class PowerSpectrumEstimator(object):
 
         if map_set == 'rf' or (map_set == 'si' and params['ps_type'] == 'cros'):
             print 'prepare maps for reference calculation'
-            imaps_a = functions.get_mapdict(params['sim_root'], selection='raw')
-            #imaps_a = functions.get_mapdict(params['sim_root'], selection='beammeansub')
+            #imaps_a = functions.get_mapdict(params['sim_root'], selection='raw')
+            imaps_a = functions.get_mapdict(params['sim_root'], selection='beammeansub')
             nmaps_a = functions.get_mapdict(params['gbt_root'])
 
             imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
@@ -326,8 +326,9 @@ class PowerSpectrumEstimator(object):
         elif map_set == 'ps' and params['ps_type'] == 'auto':
             print 'prepare maps for power spectrum calculation'
             imaps = functions.get_mapdict(params['gbt_root'])
-            #section = ['A', 'B', 'C', 'D']
-            section = ['A', 'B', 'C']
+            #section = ['A', 'B', 'C', 'D', 'E']
+            section = ['A', 'B', 'C', 'D']
+            #section = ['A', 'B', 'C']
             for i in range(len(section)):
                 for j in range(i+1, len(section)):
                     s1 = '%s_with_%s'%(section[i], section[j])
@@ -340,8 +341,9 @@ class PowerSpectrumEstimator(object):
                                                   section[j], section[i]))
         elif map_set == 'ns' and params['ps_type'] == 'auto':
             imaps = functions.get_mapdict(params['gbt_root'])
-            #section = ['A', 'B', 'C', 'D']
-            section = ['A', 'B', 'C']
+            section = ['A', 'B', 'C', 'D']
+            #section = ['A', 'B', 'C']
+            #section = ['A', 'B', 'C', 'D', 'E']
             for i in range(len(section)):
                 for j in range(len(section)):
                     if i == j:
@@ -372,15 +374,16 @@ class PowerSpectrumEstimator(object):
         elif map_set == 'ne' and params['ps_type'] == 'auto':
             print 'prepare maps for noise error calculation'
             imaps = functions.get_mapdict(params['gbt_root'])
-            #section = ['A', 'B', 'C', 'D']
-            section = ['A', 'B', 'C']
+            #section = ['A', 'B', 'C', 'D', 'E']
+            section = ['A', 'B', 'C', 'D']
+            #section = ['A', 'B', 'C']
             for i in range(len(section)):
                 for j in range(len(section)):
                     if i == j:
                         continue
                     s = '%s_with_%s'%(section[i], section[j])
-                    imap_list.append([imaps[1]['%s;noise_diag;%dmodes'%(s, ps_mode)],
-                                      imaps[1]['%s;noise_diag;%dmodes'%(s, ps_mode)]])
+                    imap_list.append([imaps[1]['%s;noise_inv;%dmodes'%(s, ps_mode)],
+                                      imaps[1]['%s;noise_inv;%dmodes'%(s, ps_mode)]])
                     nmap_list.append([None, None])
                     tabs_list.append('%s%s'%(section[i], section[j]))
 

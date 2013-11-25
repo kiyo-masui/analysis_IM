@@ -35,7 +35,7 @@ class DataBlock(base_data.BaseData) :
     # fields exist.  They should be valid if the DataBlock was read from a GBT
     # fits file.
     
-    def calc_pointing(self, ra_centre='E') :
+    def calc_pointing(self, ra_centre='E', check_pointing=True) :
         """Calculates the telescope pointing.
         
         Should only be used if in alt/az mode. 
@@ -54,6 +54,18 @@ class DataBlock(base_data.BaseData) :
                                                     self.field['CRVAL3'][ii][jj],
                                                     self.field['CRVAL2'][ii][jj],
                                                     self.field['DATE-OBS'][ii])
+                #self.ra[ii][jj] = self.field['RA'][ii][jj]
+                #self.dec[ii][jj] = self.field['DEC'][ii][jj]
+                if check_pointing:
+                    print '  %10.7f - %10.7f [%10.7f] |'%(
+                            self.ra[ii][jj], 
+                            self.field['RA'][ii][jj], 
+                            self.ra[ii][jj]-self.field['RA'][ii][jj]),
+                    print '  %10.7f - %10.7f [%10.7f] |'%(
+                            self.dec[ii][jj], 
+                            self.field['DEC'][ii][jj], 
+                            self.dec[ii][jj]-self.field['DEC'][ii][jj])
+
         if ra_centre=='W':
             self.ra[self.ra>180] -= 360.
 

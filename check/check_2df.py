@@ -235,7 +235,7 @@ def project_to_2d(map_root_list, integrate_axis=2, get_box=False):
         real_box, real_box_info = gridding.physical_grid_largeangle(real_map, 
                                                                     refinement=1)
     
-    real_map_2d = np.ma.array(np.sum(real_map, axis=integrate_axis))
+    real_map_2d = np.ma.array(np.ma.sum(real_map, axis=integrate_axis))
     real_map_2d[real_map_2d==0] = np.ma.masked
     coor = np.zeros((2, real_map_2d.shape[0]+1, real_map_2d.shape[1]+1))
     coor_index = 0
@@ -348,24 +348,24 @@ if __name__=="__main__":
     
     
     
-    root_cat = '/mnt/scratch-gl/ycli/2df_catalog/catalog/'
+    root_cat = '/home/ycli/data/2df/catalog/'
 
-    root_map = '/mnt/raid-project/gmrt/anderson/first_parkes_pipe/maps/'
+    root_map = '/home/ycli/data/2df/map/pks_p3500n3000_parkes_2010_10_24-28/'
 
     #---------------------------------------------------------------------
 
     name_cat = 'real_catalogue_2df'
-    name_map = 'test_allbeams_27n30_10by7_clean_map_I_1315'
+    name_map = 'real_map_2df'
 
-    #plot_sky_ra_dec(root_cat + name_cat + '.out',
-    #                [root_map + name_map + '.npy',], 
-    #                save_name='./png/parkes_cat_ra_dec.png')
+    plot_sky_ra_dec(root_cat + name_cat + '.out',
+                    [root_map + name_map + '.npy',], 
+                    save_name='./png/parkes_cat_ra_dec.png')
 
-    #plot_sky(root_cat + name_cat + '.out', 
-    #         [root_map + name_map + '.npy', ], 
-    #         save_name='./png/parkes_cat_ra_z.png')
+    plot_sky(root_cat + name_cat + '.out', 
+             [root_map + name_map + '.npy', ], 
+             save_name='./png/parkes_cat_ra_z.png')
 
-    #exit()
+    exit()
     #---------------------------------------------------------------------
 
     root_map = '/mnt/scratch-gl/ycli/2df_catalog/map/map_2929.5_full_selection_1000mock/'
