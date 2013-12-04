@@ -1,0 +1,326 @@
+# goal: main driver ini for the autopower calculation
+pipe_modules = []
+pipe_processes = 1
+
+from foreground_clean import pair_set
+from foreground_clean import pair_set_extended
+from quadratic_products import pwrspec_combinations
+from quadratic_products import auto_pwrspec_compile
+from quadratic_products import auto_pwrspec_analyze
+from quadratic_products import aggregate_bulksim
+import struct
+import os
+
+#-----------------------------------------------------------------------------
+# main parameters that define the run
+#-----------------------------------------------------------------------------
+do_cleaning = False
+do_power = False
+do_power_compile = True
+do_noisemodel_compile = False
+do_analysis = False
+
+#basemap = 'GBT_15hr_map_oldcalpolstack'
+#basemap = 'GBT_15hr_map_autopaper'
+basemap = 'GBT_15hr_avg_fdgp_new'
+# order1, conv, refine1, omega0p5, weighted, onesided, IQU
+output_tag = "onesided_ixi_conv1p4_clipnoise_bfwindow_svdweighted"
+
+# these point to the thermal noise simulations
+#basemap_noisemodel = 'GBT_15hr_map_autopaper'
+basemap_noisemodel = 'GBT_15hr_avg_fdgp_new'
+fix_weight_treatment = "10modes"
+
+# cleaning options
+nfreq = 256
+#cutlist = [0,103,104,105,106,107, 108, 130,131,132,133,134]
+cutlist = [0,15,16,17,18,19,20,21,22,23,103,104,105,106,107,108,130,131,132,133,134]
+#cutlist = [6, 7, 8, 15, 16, 18, 19, 20, 21, 22, 37, 80, 103, 104, 105, 106, \
+#               107, 108, 130, 131, 132, 133, 134, 171, 175, 177, 179, 182, 183, \
+#               187, 189, 192, 193, 194, 195, 196, 197, 198, 201, 204, 208, 209, \
+#               212, 213, 218, 219, 229, 233, 237, 244, 254, 255]
+freq_list = tuple([ind for ind in range(nfreq) if ind not in cutlist])
+clean_IQU = False
+clean_mode_list = range(0, 105, 5)
+clean_conv_factor = 1.4
+clean_common_res_convolution = True
+clean_sub_weighted_mean = True
+clean_factorizable = True
+clean_weighted_svd = True
+clean_clip_weight = 50.
+
+# power spectrum settings
+pwr_bins = [0.003, 2.5, 45]
+pwr_order = 1
+pwr_pad = 5
+pwr_refinement = 2
+pwr_window = "blackman"
+#pwr_window = None
+pwr_return_3d = False
+pwr_unitless = True
+pwr_truncate = False
+pwr_degrade_resolution = False
+pwr_factorizable_noise = False
+pwr_meansub = False
+ncpu_pwrspec = 10
+
+#kperp_range = [0.08, 0.25]
+#kpar_range = [0.04, 1.]
+kperp_range = [0.08, 0.3]
+kpar_range = [0.035, 1.]
+
+#----------------------------------------------------------------------------
+# the rest is fairly automated and should not need to change
+#----------------------------------------------------------------------------
+baseauto = basemap + "_x_" + basemap
+baseauto_with_tag = baseauto + "_" + output_tag
+
+# settings for the Gaussian errors
+base_noisemodel_with_tag = basemap_noisemodel + "_noise_simulations"
+
+# if the transfer function has a different tag
+trans_output_tag = output_tag
+trans_output_name = baseauto + "_" + trans_output_tag + "_transfer_function"
+
+#outplotdir = "/cita/h/home-2/eswitzer/code/analysis_IM/pwrspec_plots/"
+#pwrout_root = '/mnt/raid-project/gmrt/eswitzer/GBT/pwrspec/'
+outplotdir = "/home/ycli/data/ps_result_eswitzer/gbt_pwrspec_plots/"
+pwrout_root = '/home/ycli/data/ps_result_eswitzer/gbt_pwrspec/'
+
+#pwrout_base = pwrout_root + baseauto_with_tag + "_measured/"
+pwrout_base = pwrout_root + baseauto_with_tag + "_measured_test/"
+pwrout_plots_self = outplotdir + baseauto_with_tag + "_self/"
+pwrout_plots_self_notrans = outplotdir + baseauto_with_tag + "_self_notrans/"
+pwrout_noiseweight = pwrout_base + "noiseweight.hd5"
+
+pwrout_plots_notrans = outplotdir + baseauto_with_tag + "_noiseweight_notrans/"
+pwrout_plots_noweight = outplotdir + baseauto_with_tag + "_notrans/"
+pwrout_plots = outplotdir + baseauto_with_tag + "_noiseweight/"
+
+pwrout_analysis_plots = outplotdir + baseauto_with_tag + "_analysis/"
+
+trans_beam = "%s/%s_beamtransfer.hd5" % (pwrout_root, trans_output_name)
+trans_mode = "%s/%s_modetransfer.hd5" % (pwrout_root, trans_output_name)
+
+#-----------------------------------------------------------------------------
+# use the base map parameters above to make a few map cleaning cases
+#-----------------------------------------------------------------------------
+# clean_{map} (map)
+if do_cleaning:
+    pipe_modules.append((pair_set_extended.PairSetExtended, ('fse1_', 'fse_')))
+fse1_map2 = basemap
+fse1_map1 = basemap
+fse1_noise_inv1 = basemap
+fse1_noise_inv2 = basemap
+if clean_IQU:
+    fse1_map2_ext = [basemap + "_Q", basemap + "_U"]
+    fse1_map1_ext = [basemap + "_Q", basemap + "_U"]
+    fse1_noise_inv1_ext = [basemap + "_Q", basemap + "_U"]
+    fse1_noise_inv2_ext = [basemap + "_Q", basemap + "_U"]
+    fse1_index_ext = ["stokesQ", "stokesU"]
+#fse1_output_root = basemap + "_cleaned_path_Eric"
+fse1_output_root = basemap + "_cleaned_path_Yichao"
+fse1_freq_list = freq_list
+fse1_modes = clean_mode_list
+fse1_factorizable_noise = clean_factorizable
+fse1_conv_factor = clean_conv_factor
+fse1_convolve = clean_common_res_convolution
+fse1_weighted_SVD = clean_weighted_svd
+fse1_sub_weighted_mean = clean_sub_weighted_mean
+fse1_clip_weight_percent = clean_clip_weight
+
+#-----------------------------------------------------------------------------
+# now run the power spectra
+#-----------------------------------------------------------------------------
+if not os.path.isdir(pwrout_base):
+    os.mkdir(pwrout_base)
+
+if do_power:
+    pipe_modules.append((pwrspec_combinations.GbtDataAutopower, ('xs1_', 'xs_')))
+xs1_degrade_resolution = pwr_degrade_resolution
+xs1_factorizable_noise = pwr_factorizable_noise
+xs1_meansub = pwr_meansub
+xs1_unitless = pwr_unitless
+xs1_return_3d = pwr_return_3d
+xs1_truncate = pwr_truncate
+xs1_window = pwr_window
+xs1_refinement = pwr_refinement
+xs1_pad = pwr_pad
+xs1_order = pwr_order
+xs1_bins = pwr_bins
+xs1_freq_list = freq_list
+xs1_map_key = basemap + "_cleaned"
+xs1_ncpu = ncpu_pwrspec
+xs1_outfile = pwrout_base + "measured_xspec.shelve"
+xs1_treatments = ('20modes',)
+
+if do_power:
+    pipe_modules.append((pwrspec_combinations.GbtDataNoisePower, ('ns1_', 'ns_')))
+ns1_degrade_resolution = pwr_degrade_resolution
+ns1_factorizable_noise = pwr_factorizable_noise
+ns1_meansub = pwr_meansub
+ns1_unitless = pwr_unitless
+ns1_return_3d = pwr_return_3d
+ns1_truncate = pwr_truncate
+ns1_window = pwr_window
+ns1_refinement = pwr_refinement
+ns1_pad = pwr_pad
+ns1_order = pwr_order
+ns1_bins = pwr_bins
+ns1_freq_list = freq_list
+ns1_map_key = basemap + "_cleaned"
+ns1_ncpu = ncpu_pwrspec
+ns1_outfile = pwrout_base + "measured_AxA.shelve"
+ns1_treatments = ('20modes',)
+
+#-----------------------------------------------------------------------------
+# Find the noise weight and plot the AxA power
+#-----------------------------------------------------------------------------
+if do_power_compile:
+    pipe_modules.append(auto_pwrspec_compile.CompileAutoNoiseweight)
+autonoiseweight_p_noise = pwrout_base + "measured_AxA.shelve"
+autonoiseweight_apply_2d_beamtransfer = None
+autonoiseweight_apply_2d_modetransfer = None
+#autonoiseweight_apply_2d_beamtransfer = trans_beam
+#autonoiseweight_apply_2d_modetransfer = trans_mode
+autonoiseweight_outfile = pwrout_noiseweight
+
+#if not os.path.isdir(pwrout_plots_self):
+#    os.mkdir(pwrout_plots_self)
+#
+#if do_power_compile:
+#    pipe_modules.append((auto_pwrspec_compile.CompileAutopower, ('autopower1_', 'autopower_')))
+#autopower1_p_map = pwrout_base + "measured_AxA.shelve"
+#autopower1_summaryfile = pwrout_base + "measured_AxA.hd5"
+#autopower1_apply_2d_beamtransfer = trans_beam
+#autopower1_apply_2d_modetransfer = trans_mode
+#autopower1_noiseweights_2dto1d = pwrout_noiseweight
+#autopower1_outdir = pwrout_plots_self
+#autopower1_kperp_range = kperp_range
+#autopower1_kpar_range = kpar_range
+
+if not os.path.isdir(pwrout_plots_self_notrans):
+    os.mkdir(pwrout_plots_self_notrans)
+
+if do_power_compile:
+    pipe_modules.append((auto_pwrspec_compile.CompileAutopower, ('autopower2_', 'autopower_')))
+autopower2_p_map = pwrout_base + "measured_AxA.shelve"
+autopower2_summaryfile = pwrout_base + "measured_AxA_notrans.hd5"
+autopower2_apply_2d_beamtransfer = None
+autopower2_apply_2d_modetransfer = None
+autopower2_noiseweights_2dto1d = pwrout_noiseweight
+autopower2_outdir = pwrout_plots_self_notrans
+autopower2_kperp_range = kperp_range
+autopower2_kpar_range = kpar_range
+
+#-----------------------------------------------------------------------------
+# Find the power spectral summaries
+#-----------------------------------------------------------------------------
+#if not os.path.isdir(pwrout_plots):
+#    os.mkdir(pwrout_plots)
+#
+#if do_power_compile:
+#    pipe_modules.append((auto_pwrspec_compile.CompileAutopower, ('autopower3_', 'autopower_')))
+#autopower3_p_map = pwrout_base + "measured_xspec.shelve"
+#autopower3_summaryfile = pwrout_base + "measured_xspec.hd5"
+#autopower3_apply_2d_beamtransfer = trans_beam
+#autopower3_apply_2d_modetransfer = trans_mode
+#autopower3_noiseweights_2dto1d = pwrout_noiseweight
+#autopower3_outdir = pwrout_plots
+#autopower3_kperp_range = kperp_range
+#autopower3_kpar_range = kpar_range
+
+if not os.path.isdir(pwrout_plots_notrans):
+    os.mkdir(pwrout_plots_notrans)
+
+if do_power_compile:
+    pipe_modules.append((auto_pwrspec_compile.CompileAutopower, ('autopower4_', 'autopower_')))
+autopower4_p_map = pwrout_base + "measured_xspec.shelve"
+autopower4_summaryfile = pwrout_base + "measured_xspec_notrans.hd5"
+#autopower4_apply_2d_beamtransfer = trans_beam
+# ----------------------------------------------------------------------
+# In order to test the output without any transfer function, set it None
+autopower4_apply_2d_beamtransfer = None
+# ----------------------------------------------------------------------
+autopower4_apply_2d_modetransfer = None
+autopower4_noiseweights_2dto1d = pwrout_noiseweight
+autopower4_outdir = pwrout_plots_notrans
+autopower4_kperp_range = kperp_range
+autopower4_kpar_range = kpar_range
+
+if not os.path.isdir(pwrout_plots_noweight):
+    os.mkdir(pwrout_plots_noweight)
+
+if do_power_compile:
+    pipe_modules.append((auto_pwrspec_compile.CompileAutopower, ('autopower5_', 'autopower_')))
+autopower5_p_map = pwrout_base + "measured_xspec.shelve"
+autopower5_summaryfile = pwrout_base + "measured_xspec_notrans.hd5"
+#autopower5_apply_2d_beamtransfer = trans_beam
+# ----------------------------------------------------------------------
+# In order to test the output without any transfer function, set it None
+autopower5_apply_2d_beamtransfer = None
+# ----------------------------------------------------------------------
+autopower5_apply_2d_modetransfer = None
+autopower5_noiseweights_2dto1d = None
+autopower5_outdir = pwrout_plots_noweight
+autopower5_kperp_range = kperp_range
+autopower5_kpar_range = kpar_range
+
+#-----------------------------------------------------------------------------
+# Run the noise simulations through the same set of cuts
+#-----------------------------------------------------------------------------
+if do_noisemodel_compile:
+    pipe_modules.append((aggregate_bulksim.AggregateSummary, ('as1_', 'as_')))
+as1_apply_2d_beamtransfer = trans_beam
+as1_apply_2d_modetransfer = trans_mode
+#as1_apply_2d_beamtransfer = None
+#as1_apply_2d_modetransfer = None
+as1_noiseweights_2dto1d = pwrout_noiseweight
+as1_fix_weight_treatment = fix_weight_treatment
+as1_directory = "%s/%s_xspec/" % (pwrout_root, base_noisemodel_with_tag)
+as1_basefile = "%s_sim_" % base_noisemodel_with_tag
+as1_outfile = "%s/%s_noise_xspec.hd5" % (pwrout_root, baseauto_with_tag)
+as1_kperp_range = kperp_range
+as1_kpar_range = kpar_range
+
+if do_noisemodel_compile:
+    pipe_modules.append((aggregate_bulksim.AggregateSummary, ('as2_', 'as_')))
+as2_apply_2d_beamtransfer = trans_beam
+as2_apply_2d_modetransfer = trans_mode
+#as2_apply_2d_beamtransfer = None
+#as2_apply_2d_modetransfer = None
+as2_noiseweights_2dto1d = pwrout_noiseweight
+as2_fix_weight_treatment = fix_weight_treatment
+as2_directory = "%s/%s_auto/" % (pwrout_root, base_noisemodel_with_tag)
+as2_basefile = "%s_sim_" % base_noisemodel_with_tag
+as2_outfile = "%s/%s_noise_auto.hd5" % (pwrout_root, baseauto_with_tag)
+as2_kperp_range = kperp_range
+as2_kpar_range = kpar_range
+
+if do_noisemodel_compile:
+    pipe_modules.append((aggregate_bulksim.AggregateStatistics, ('ast1_', 'ast_')))
+ast1_aggfile_in = as1_outfile
+ast1_statfile_out = "%s/%s_stat_noise_xspec.hd5" % (pwrout_root, baseauto_with_tag)
+ast1_outplotdir = "%s/%s_noise_xspec/" % (outplotdir, baseauto_with_tag)
+
+if do_noisemodel_compile:
+    pipe_modules.append((aggregate_bulksim.AggregateStatistics, ('ast2_', 'ast_')))
+ast2_aggfile_in = as2_outfile
+ast2_statfile_out = "%s/%s_stat_noise_auto.hd5" % (pwrout_root, baseauto_with_tag)
+ast2_outplotdir = "%s/%s_noise_auto/" % (outplotdir, baseauto_with_tag)
+
+#-----------------------------------------------------------------------------
+# Perform an analysis of the final spectra
+#-----------------------------------------------------------------------------
+# TODO: update these directories
+if not os.path.isdir(pwrout_plots):
+    os.mkdir(pwrout_analysis_plots)
+
+if do_analysis:
+    pipe_modules.append(auto_pwrspec_analyze.AnalyzeAutopower)
+analyzeautopower_sim_xspec_summary = ast1_statfile_out
+analyzeautopower_sim_auto_summary = ast2_statfile_out
+analyzeautopower_data_xspec_summary = pwrout_base + "measured_xspec.hd5"
+analyzeautopower_data_auto_summary = pwrout_base + "measured_AxA.hd5"
+analyzeautopower_outdir = pwrout_analysis_plots
+

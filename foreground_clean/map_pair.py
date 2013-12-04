@@ -410,11 +410,15 @@ class MapPair(object):
         r"""Subtracts the weighted mean from each frequency slice."""
         print "subtracting the weighted mean from each slice"
         means1 = sp.sum(sp.sum(self.noise_inv1 * self.map1, -1), -1)
-        means1 /= sp.sum(sp.sum(self.noise_inv1, -1), -1)
+        normal = sp.sum(sp.sum(self.noise_inv1, -1), -1)
+        normal[normal==0] = np.inf
+        means1 /= normal
         means1.shape += (1, 1)
         self.map1 -= means1
         means2 = sp.sum(sp.sum(self.noise_inv2 * self.map2, -1), -1)
-        means2 /= sp.sum(sp.sum(self.noise_inv2, -1), -1)
+        normal = sp.sum(sp.sum(self.noise_inv2, -1), -1)
+        normal[normal==0] = np.inf
+        means2 /= normal
         means2.shape += (1, 1)
         self.map2 -= means2
 

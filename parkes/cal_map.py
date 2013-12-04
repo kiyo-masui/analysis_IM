@@ -46,10 +46,12 @@ def hipass_cat(hipass_map_path):
     hipass_ra   = (np.arange(hipass_data.shape[1])-hd['CRPIX1'] + 1)*hd['CDELT1']
     hipass_ra  += hd['CRVAL1']
     #hipass_ra  += hd['CDELT1']
-    hipass_ra[hipass_ra>180] = hipass_ra[hipass_ra>180] - 360.
+    #hipass_ra[hipass_ra>180] = hipass_ra[hipass_ra>180] - 360.
     hipass_dec  = (np.arange(hipass_data.shape[0])-hd['CRPIX2'] + 1)*hd['CDELT2']
     hipass_dec += hd['CRVAL2']
     #hipass_dec += hd['CDELT2']
+
+    print hipass_ra.min(), hipass_ra.max()
 
     hipass_delta_ra = hipass_ra[1] - hipass_ra[0]
     hipass_ra_bin_edges = np.append(hipass_ra - 0.5*hipass_delta_ra,

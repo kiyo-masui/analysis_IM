@@ -170,10 +170,10 @@ class SVD(object):
         if svd_rvect_raw is None:
             svd_rvect_raw = self.svd_rvect
 
-        nfreq = 256
-        cutlist = [0,15,16,17,18,19,20,21,22,23,103,104,105,106,107,108,
-                   130,131,132,133,134]
-        freq_list = tuple([ind for ind in range(nfreq) if ind not in cutlist])
+        #nfreq = 256
+        #cutlist = [0,15,16,17,18,19,20,21,22,23,103,104,105,106,107,108,
+        #           130,131,132,133,134]
+        #freq_list = tuple([ind for ind in range(nfreq) if ind not in cutlist])
 
         #cutlist = [6,  7,  8,  15, 16, 18, 19, 20, 21, 22, 37, 80, 103,104,105,\
         #           106,107,108,130,131,132,133,134,171,175,177,179,182,183,187,\
@@ -198,6 +198,13 @@ class SVD(object):
 
         #nfreq =  2745
         #freq_list = tuple(range(nfreq))
+        nfreq = 3600
+        freq_cut = range(400) + [535, 537, 538, 713, 714, 715, 824, 825, 826, 847, 
+                848, 849, 850, 851, 852, 1381, 1382, 1383] + range(1586, 1692) +\
+                range(1997, 2119) + [3149, 3150, 3151, 3169, 3170, 3171] +\
+                range(3598, 3600)
+        freq_list = tuple([ind for ind in range(nfreq) if ind not in freq_cut])
+        
 
         for i in range(1, combined):
             freq_list += tuple([ind + i*nfreq\
@@ -276,7 +283,7 @@ if __name__=="__main__":
 
 
 
-    do_plot_svd = False
+    do_plot_svd = True
     do_calc_eig = False
     do_plot_val = True
     do_plot_map = False
@@ -298,10 +305,10 @@ if __name__=="__main__":
     #fg_file = 'DRACO_AA_dirty_map/Emap_clean_themselves/'
     #fg_file = 'DRACO_AA_dirty_map_centre_4000pix_flagged/Emap_clean_themselves/'
     #fg_file = '3C286/Emap_clean_themselves/'
-    #fg_file = '/15hr_AA_fine_freq_11conv/Emap_clean_themselves/'
-    fg_file = 'GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov_wsvd/Emap_clean_themselves/'
+    fg_file = '/15hr_AA_fine_freq_11conv/Emap_clean_themselves/'
+    #fg_file = 'GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov_wsvd/Emap_clean_themselves/'
 
-    svdfile = 'SVD_pair_A_with_B.pkl'
+    svdfile = 'SVD_pair_A_with_A.pkl'
 
     #combined= 3
     r'''I_BxI_{ACD}QUV'''
@@ -364,10 +371,11 @@ if __name__=="__main__":
         #[0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_ABC_freq_cut_1pt1_cov_cal/Emap_clean_themselves_rescaled/SVD_pair_A_with_B.pkl', '35n30 1.1 conv cal secs rescaled '],
         #[0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_ABC_freq_cut_1pt1_cov_cal/Emap_clean_themselves_rescaled/SVD_pair_A_with_C.pkl', '35n30 1.1 conv cal secs rescaled '],
         #[0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_ABC_freq_cut_1pt1_cov_cal/Emap_clean_themselves_rescaled/SVD_pair_B_with_C.pkl', '35n30 1.1 conv cal secs rescaled '],
-        [0, fg_root+'GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov_wsvd/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr ptcorr wsvd 1.4 conv '],
-        [0, fg_root+'GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov_wsvd/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr wsvd 1.4 conv '],
-        [0, fg_root+'GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr ptcorr 1.4 conv '],
-        [0, fg_root+'GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr 1.4 conv '],
+        #[0, fg_root+'GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov_wsvd/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr ptcorr wsvd 1.4 conv '],
+        #[0, fg_root+'GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov_wsvd/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr wsvd 1.4 conv '],
+        #[0, fg_root+'GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr ptcorr 1.4 conv '],
+        #[0, fg_root+'GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr 1.4 conv '],
+        [0, fg_root+'15hr_AA_fine_freq_11conv/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'GBT 15hr 1.4 conv '],
         #[0, fg_root+'DRACO_AA_dirty_map/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'DRACO '],
         #[0, fg_root+'DRACO_AA_dirty_map_centre_4000pix_flagged/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'DRACO flagged'],
         #[0, fg_root+'/15hr_AA_fine_freq_11conv/Emap_clean_themselves/SVD_pair_A_with_A.pkl', '15hr_AA_fine_freq_11conv'],

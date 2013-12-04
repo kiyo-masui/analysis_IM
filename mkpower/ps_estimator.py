@@ -175,12 +175,23 @@ class PowerSpectrumEstimator(object):
         if comm != None:
             comm.barrier()
 
+    def get_kbin_centr(self, params):
+
+        k_e = np.logspace(np.log10(params['kbin_min']), 
+                          np.log10(params['kbin_max']), 
+                          num=params['kbin_num'] + 1)
+        k_s = k_e[-1]/k_e[-2]
+        k_c = k_e[:-1]*np.sqrt(k_s)
+        return k_c
+
     def get_kbin_edges(self, params):
         k_e = np.logspace(np.log10(params['kbin_min']), 
                           np.log10(params['kbin_max']), 
-                          num=params['kbin_num'])
-        k_s = k_e[-1]/k_e[-2]
-        k_e = np.append( k_e, k_e[-1]*k_s ) / (np.sqrt(k_s))
+                          num=params['kbin_num'] + 1)
+        # using the logspace as the kbin edges, instead of kbin centre, that is
+        # the same treatment as Eric's
+        #k_s = k_e[-1]/k_e[-2]
+        #k_e = np.append( k_e, k_e[-1]*k_s ) / (np.sqrt(k_s))
         return k_e
 
     def apply_cut_list(self, nmap):
@@ -270,8 +281,8 @@ class PowerSpectrumEstimator(object):
 
         if map_set == 'rf' or (map_set == 'si' and params['ps_type'] == 'cros'):
             print 'prepare maps for reference calculation'
-            #imaps_a = functions.get_mapdict(params['sim_root'], selection='raw')
-            imaps_a = functions.get_mapdict(params['sim_root'], selection='beammeansub')
+            imaps_a = functions.get_mapdict(params['sim_root'], selection='raw')
+            #imaps_a = functions.get_mapdict(params['sim_root'], selection='beammeansub')
             nmaps_a = functions.get_mapdict(params['gbt_root'])
 
             imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
@@ -453,9 +464,10 @@ class PowerSpectrumEstimator(object):
         if step == 'ne' and params['ps_type'] == 'auto':
             ps_2d = np.sqrt(ps_2d)
 
-        k_bin = np.logspace(np.log10(params['kbin_min']), 
-                            np.log10(params['kbin_max']), 
-                            num=params['kbin_num'])
+        #k_bin = np.logspace(np.log10(params['kbin_min']), 
+        #                    np.log10(params['kbin_max']), 
+        #                    num=params['kbin_num'])
+        k_bin = self.get_kbin_centr(params)
 
         k_axes_2d = ("k_p", "k_v")
         info_2d = {'axes': k_axes_2d, 'type': 'vect'}
@@ -504,9 +516,10 @@ class PowerSpectrumEstimator(object):
             ps_2d_std = np.sqrt(ps_2d_std)
             ps_2d = np.sqrt(ps_2d)
 
-        k_bin = np.logspace(np.log10(params['kbin_min']), 
-                            np.log10(params['kbin_max']), 
-                            num=params['kbin_num'])
+        #k_bin = np.logspace(np.log10(params['kbin_min']), 
+        #                    np.log10(params['kbin_max']), 
+        #                    num=params['kbin_num'])
+        k_bin = self.get_kbin_centr(params)
 
         k_axes_2d = ("k_p", "k_v")
         info_2d = {'axes': k_axes_2d, 'type': 'vect'}

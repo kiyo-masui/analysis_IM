@@ -3,8 +3,8 @@
 from parkes import plotmap
 
 plot_opt = False
-plot_raw = True
-plot_cln = False
+plot_raw = False
+plot_cln = True
 
 if plot_opt:
 
@@ -105,14 +105,24 @@ if plot_cln:
     #map_root = '/home/ycli/data/cln_result/PKS_%s_%s/'%(field, clean)
     #map_root = map_root + 'Emap_clean_themselves_noise_prior2En1/'
 
-    mode = 2
-    prefix = 'fir'
-    field = 'p3500n3000_parkes_2010_10_24-28'
-    #clean = 'ABCD_freq_cut_1pt1_cov_cal'
-    clean = 'ABCDE_freq_cut_1pt1_cov_bgcal'
-    degrade_factor = 1.1
+    #mode = 2
+    #prefix = 'fir'
+    #field = 'p3500n3000_parkes_2010_10_24-28'
+    ##clean = 'ABCD_freq_cut_1pt1_cov_cal'
+    #clean = 'ABCDE_freq_cut_1pt1_cov_bgcal'
+    #degrade_factor = 1.1
+    #degrade_map = True
+    #map_root = '/home/ycli/data/cln_result/PKS_%s_%s/'%(field, clean)
+    #map_root = map_root + 'Emap_clean_themselves/'
+
+    mode = 5
+    prefix = 'gbt'
+    field = '15hr_ptcorr_finefreq'
+    ##clean = 'ABCD_freq_cut_1pt1_cov_cal'
+    #clean = 'ABCDE_freq_cut_1pt1_cov_bgcal'
+    degrade_factor = 0
     degrade_map = True
-    map_root = '/home/ycli/data/cln_result/PKS_%s_%s/'%(field, clean)
+    map_root = '/home/ycli/data/cln_result/15hr_AA_fine_freq_11conv/'
     map_root = map_root + 'Emap_clean_themselves/'
 
     mapdict = {}
@@ -123,62 +133,66 @@ if plot_cln:
     #mapdict['name'] = '%s_%s_clean_map_I_%dmode_1pt1_cov_cal_noise_prior2En1'%(prefix, field, mode)
     #mapdict['noise_name'] = '%s_%s_noise_map_I_%dmode_1pt1_cov_cal_noise_prior2En1'%(prefix, field, mode)
     mapdict['imap_sec'] = [
-            map_root + 'sec_A_cleaned_clean_map_I_with_B_%dmodes.npy'%mode,
-            map_root + 'sec_A_cleaned_clean_map_I_with_C_%dmodes.npy'%mode, 
-            map_root + 'sec_B_cleaned_clean_map_I_with_A_%dmodes.npy'%mode, 
-            map_root + 'sec_B_cleaned_clean_map_I_with_C_%dmodes.npy'%mode, 
-            map_root + 'sec_C_cleaned_clean_map_I_with_A_%dmodes.npy'%mode, 
-            map_root + 'sec_C_cleaned_clean_map_I_with_B_%dmodes.npy'%mode, 
+            map_root + 'sec_A_cleaned_clean_map_I_with_A_%dmodes.npy'%mode,
 
-            map_root + 'sec_A_cleaned_clean_map_I_with_D_%dmodes.npy'%mode, 
-            map_root + 'sec_B_cleaned_clean_map_I_with_D_%dmodes.npy'%mode, 
-            map_root + 'sec_C_cleaned_clean_map_I_with_D_%dmodes.npy'%mode, 
-            map_root + 'sec_D_cleaned_clean_map_I_with_A_%dmodes.npy'%mode, 
-            map_root + 'sec_D_cleaned_clean_map_I_with_B_%dmodes.npy'%mode, 
-            map_root + 'sec_D_cleaned_clean_map_I_with_C_%dmodes.npy'%mode, 
+            #map_root + 'sec_A_cleaned_clean_map_I_with_B_%dmodes.npy'%mode,
+            #map_root + 'sec_A_cleaned_clean_map_I_with_C_%dmodes.npy'%mode, 
+            #map_root + 'sec_B_cleaned_clean_map_I_with_A_%dmodes.npy'%mode, 
+            #map_root + 'sec_B_cleaned_clean_map_I_with_C_%dmodes.npy'%mode, 
+            #map_root + 'sec_C_cleaned_clean_map_I_with_A_%dmodes.npy'%mode, 
+            #map_root + 'sec_C_cleaned_clean_map_I_with_B_%dmodes.npy'%mode, 
 
-            map_root + 'sec_A_cleaned_clean_map_I_with_E_%dmodes.npy'%mode, 
-            map_root + 'sec_B_cleaned_clean_map_I_with_E_%dmodes.npy'%mode, 
-            map_root + 'sec_C_cleaned_clean_map_I_with_E_%dmodes.npy'%mode, 
-            map_root + 'sec_D_cleaned_clean_map_I_with_E_%dmodes.npy'%mode, 
-            map_root + 'sec_E_cleaned_clean_map_I_with_A_%dmodes.npy'%mode, 
-            map_root + 'sec_E_cleaned_clean_map_I_with_B_%dmodes.npy'%mode, 
-            map_root + 'sec_E_cleaned_clean_map_I_with_C_%dmodes.npy'%mode, 
-            map_root + 'sec_E_cleaned_clean_map_I_with_D_%dmodes.npy'%mode, 
+            #map_root + 'sec_A_cleaned_clean_map_I_with_D_%dmodes.npy'%mode, 
+            #map_root + 'sec_B_cleaned_clean_map_I_with_D_%dmodes.npy'%mode, 
+            #map_root + 'sec_C_cleaned_clean_map_I_with_D_%dmodes.npy'%mode, 
+            #map_root + 'sec_D_cleaned_clean_map_I_with_A_%dmodes.npy'%mode, 
+            #map_root + 'sec_D_cleaned_clean_map_I_with_B_%dmodes.npy'%mode, 
+            #map_root + 'sec_D_cleaned_clean_map_I_with_C_%dmodes.npy'%mode, 
+
+            #map_root + 'sec_A_cleaned_clean_map_I_with_E_%dmodes.npy'%mode, 
+            #map_root + 'sec_B_cleaned_clean_map_I_with_E_%dmodes.npy'%mode, 
+            #map_root + 'sec_C_cleaned_clean_map_I_with_E_%dmodes.npy'%mode, 
+            #map_root + 'sec_D_cleaned_clean_map_I_with_E_%dmodes.npy'%mode, 
+            #map_root + 'sec_E_cleaned_clean_map_I_with_A_%dmodes.npy'%mode, 
+            #map_root + 'sec_E_cleaned_clean_map_I_with_B_%dmodes.npy'%mode, 
+            #map_root + 'sec_E_cleaned_clean_map_I_with_C_%dmodes.npy'%mode, 
+            #map_root + 'sec_E_cleaned_clean_map_I_with_D_%dmodes.npy'%mode, 
             ]
     mapdict['nmap_sec'] = [
-            map_root + 'sec_A_cleaned_noise_inv_I_with_B_%dmodes.npy'%mode,
-            map_root + 'sec_A_cleaned_noise_inv_I_with_C_%dmodes.npy'%mode, 
-            map_root + 'sec_B_cleaned_noise_inv_I_with_A_%dmodes.npy'%mode, 
-            map_root + 'sec_B_cleaned_noise_inv_I_with_C_%dmodes.npy'%mode, 
-            map_root + 'sec_C_cleaned_noise_inv_I_with_A_%dmodes.npy'%mode, 
-            map_root + 'sec_C_cleaned_noise_inv_I_with_B_%dmodes.npy'%mode, 
+            map_root + 'sec_A_cleaned_noise_inv_I_with_A_%dmodes.npy'%mode,
 
-            map_root + 'sec_A_cleaned_noise_inv_I_with_D_%dmodes.npy'%mode, 
-            map_root + 'sec_B_cleaned_noise_inv_I_with_D_%dmodes.npy'%mode, 
-            map_root + 'sec_C_cleaned_noise_inv_I_with_D_%dmodes.npy'%mode, 
-            map_root + 'sec_D_cleaned_noise_inv_I_with_A_%dmodes.npy'%mode, 
-            map_root + 'sec_D_cleaned_noise_inv_I_with_B_%dmodes.npy'%mode, 
-            map_root + 'sec_D_cleaned_noise_inv_I_with_C_%dmodes.npy'%mode, 
+            #map_root + 'sec_A_cleaned_noise_inv_I_with_B_%dmodes.npy'%mode,
+            #map_root + 'sec_A_cleaned_noise_inv_I_with_C_%dmodes.npy'%mode, 
+            #map_root + 'sec_B_cleaned_noise_inv_I_with_A_%dmodes.npy'%mode, 
+            #map_root + 'sec_B_cleaned_noise_inv_I_with_C_%dmodes.npy'%mode, 
+            #map_root + 'sec_C_cleaned_noise_inv_I_with_A_%dmodes.npy'%mode, 
+            #map_root + 'sec_C_cleaned_noise_inv_I_with_B_%dmodes.npy'%mode, 
 
-            map_root + 'sec_A_cleaned_noise_inv_I_with_E_%dmodes.npy'%mode, 
-            map_root + 'sec_B_cleaned_noise_inv_I_with_E_%dmodes.npy'%mode, 
-            map_root + 'sec_C_cleaned_noise_inv_I_with_E_%dmodes.npy'%mode, 
-            map_root + 'sec_D_cleaned_noise_inv_I_with_E_%dmodes.npy'%mode, 
-            map_root + 'sec_E_cleaned_noise_inv_I_with_A_%dmodes.npy'%mode, 
-            map_root + 'sec_E_cleaned_noise_inv_I_with_B_%dmodes.npy'%mode, 
-            map_root + 'sec_E_cleaned_noise_inv_I_with_C_%dmodes.npy'%mode, 
-            map_root + 'sec_E_cleaned_noise_inv_I_with_D_%dmodes.npy'%mode, 
+            #map_root + 'sec_A_cleaned_noise_inv_I_with_D_%dmodes.npy'%mode, 
+            #map_root + 'sec_B_cleaned_noise_inv_I_with_D_%dmodes.npy'%mode, 
+            #map_root + 'sec_C_cleaned_noise_inv_I_with_D_%dmodes.npy'%mode, 
+            #map_root + 'sec_D_cleaned_noise_inv_I_with_A_%dmodes.npy'%mode, 
+            #map_root + 'sec_D_cleaned_noise_inv_I_with_B_%dmodes.npy'%mode, 
+            #map_root + 'sec_D_cleaned_noise_inv_I_with_C_%dmodes.npy'%mode, 
+
+            #map_root + 'sec_A_cleaned_noise_inv_I_with_E_%dmodes.npy'%mode, 
+            #map_root + 'sec_B_cleaned_noise_inv_I_with_E_%dmodes.npy'%mode, 
+            #map_root + 'sec_C_cleaned_noise_inv_I_with_E_%dmodes.npy'%mode, 
+            #map_root + 'sec_D_cleaned_noise_inv_I_with_E_%dmodes.npy'%mode, 
+            #map_root + 'sec_E_cleaned_noise_inv_I_with_A_%dmodes.npy'%mode, 
+            #map_root + 'sec_E_cleaned_noise_inv_I_with_B_%dmodes.npy'%mode, 
+            #map_root + 'sec_E_cleaned_noise_inv_I_with_C_%dmodes.npy'%mode, 
+            #map_root + 'sec_E_cleaned_noise_inv_I_with_D_%dmodes.npy'%mode, 
             ]
     a = plotmap.PlotMap(mapdict, 
                         freq_cut = [0,1,2,3,4,5,59,60,61,62,63], 
                         degrade_factor=degrade_factor, 
                         degrade_map=degrade_map,
-                        #plot_size=(12, 6))
-                        plot_size=(15, 6))
-    a.mapping_coord(plot=True)
-    a.plot_map(with_nvss=True)
-    a.plot_map(with_nvss=True, diff=True)
-    a.check_nvss(flux_limit=[0.5, 100], rescale=False)
+                        plot_size=(12, 6))
+                        #plot_size=(15, 6))
+    #a.mapping_coord(plot=True)
+    a.plot_map(with_nvss=False)
+    #a.plot_map(with_nvss=True, diff=True)
+    #a.check_nvss(flux_limit=[0.5, 100], rescale=False)
 
 
