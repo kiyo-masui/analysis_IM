@@ -12,7 +12,7 @@ from foreground_clean import find_modes
 from kiyopy import parse_ini
 import kiyopy.utils
 from core import algebra
-from foreground_clean import map_pair
+from foreground_clean import map_pair_eswitzer as map_pair
 from multiprocessing import Process, current_process
 from utils import batch_handler
 import h5py
@@ -77,7 +77,8 @@ class PairSetExtended():
         print "foreground cleaning writing to output root", self.output_root
 
         if not os.path.isdir(self.output_root):
-            os.mkdir(self.output_root)
+            #os.mkdir(self.output_root)
+            os.makedirs(self.output_root)
 
         if self.params['svd_filename'] is not None:
             self.svd_filename = self.params['svd_filename']

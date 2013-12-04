@@ -175,12 +175,23 @@ class PowerSpectrumEstimator(object):
         if comm != None:
             comm.barrier()
 
+    def get_kbin_centr(self, params):
+
+        k_e = np.logspace(np.log10(params['kbin_min']), 
+                          np.log10(params['kbin_max']), 
+                          num=params['kbin_num'] + 1)
+        k_s = k_e[-1]/k_e[-2]
+        k_c = k_e[:-1]*np.sqrt(k_s)
+        return k_c
+
     def get_kbin_edges(self, params):
         k_e = np.logspace(np.log10(params['kbin_min']), 
                           np.log10(params['kbin_max']), 
-                          num=params['kbin_num'])
-        k_s = k_e[-1]/k_e[-2]
-        k_e = np.append( k_e, k_e[-1]*k_s ) / (np.sqrt(k_s))
+                          num=params['kbin_num'] + 1)
+        # using the logspace as the kbin edges, instead of kbin centre, that is
+        # the same treatment as Eric's
+        #k_s = k_e[-1]/k_e[-2]
+        #k_e = np.append( k_e, k_e[-1]*k_s ) / (np.sqrt(k_s))
         return k_e
 
     def apply_cut_list(self, nmap):
@@ -326,8 +337,9 @@ class PowerSpectrumEstimator(object):
         elif map_set == 'ps' and params['ps_type'] == 'auto':
             print 'prepare maps for power spectrum calculation'
             imaps = functions.get_mapdict(params['gbt_root'])
-            #section = ['A', 'B', 'C', 'D']
-            section = ['A', 'B', 'C']
+            #section = ['A', 'B', 'C', 'D', 'E']
+            section = ['A', 'B', 'C', 'D']
+            #section = ['A', 'B', 'C']
             for i in range(len(section)):
                 for j in range(i+1, len(section)):
                     s1 = '%s_with_%s'%(section[i], section[j])
@@ -340,8 +352,9 @@ class PowerSpectrumEstimator(object):
                                                   section[j], section[i]))
         elif map_set == 'ns' and params['ps_type'] == 'auto':
             imaps = functions.get_mapdict(params['gbt_root'])
-            #section = ['A', 'B', 'C', 'D']
-            section = ['A', 'B', 'C']
+            section = ['A', 'B', 'C', 'D']
+            #section = ['A', 'B', 'C']
+            #section = ['A', 'B', 'C', 'D', 'E']
             for i in range(len(section)):
                 for j in range(len(section)):
                     if i == j:
@@ -372,15 +385,16 @@ class PowerSpectrumEstimator(object):
         elif map_set == 'ne' and params['ps_type'] == 'auto':
             print 'prepare maps for noise error calculation'
             imaps = functions.get_mapdict(params['gbt_root'])
-            #section = ['A', 'B', 'C', 'D']
-            section = ['A', 'B', 'C']
+            #section = ['A', 'B', 'C', 'D', 'E']
+            section = ['A', 'B', 'C', 'D']
+            #section = ['A', 'B', 'C']
             for i in range(len(section)):
                 for j in range(len(section)):
                     if i == j:
                         continue
                     s = '%s_with_%s'%(section[i], section[j])
-                    imap_list.append([imaps[1]['%s;noise_diag;%dmodes'%(s, ps_mode)],
-                                      imaps[1]['%s;noise_diag;%dmodes'%(s, ps_mode)]])
+                    imap_list.append([imaps[1]['%s;noise_inv;%dmodes'%(s, ps_mode)],
+                                      imaps[1]['%s;noise_inv;%dmodes'%(s, ps_mode)]])
                     nmap_list.append([None, None])
                     tabs_list.append('%s%s'%(section[i], section[j]))
 
@@ -450,9 +464,10 @@ class PowerSpectrumEstimator(object):
         if step == 'ne' and params['ps_type'] == 'auto':
             ps_2d = np.sqrt(ps_2d)
 
-        k_bin = np.logspace(np.log10(params['kbin_min']), 
-                            np.log10(params['kbin_max']), 
-                            num=params['kbin_num'])
+        #k_bin = np.logspace(np.log10(params['kbin_min']), 
+        #                    np.log10(params['kbin_max']), 
+        #                    num=params['kbin_num'])
+        k_bin = self.get_kbin_centr(params)
 
         k_axes_2d = ("k_p", "k_v")
         info_2d = {'axes': k_axes_2d, 'type': 'vect'}
@@ -501,9 +516,10 @@ class PowerSpectrumEstimator(object):
             ps_2d_std = np.sqrt(ps_2d_std)
             ps_2d = np.sqrt(ps_2d)
 
-        k_bin = np.logspace(np.log10(params['kbin_min']), 
-                            np.log10(params['kbin_max']), 
-                            num=params['kbin_num'])
+        #k_bin = np.logspace(np.log10(params['kbin_min']), 
+        #                    np.log10(params['kbin_max']), 
+        #                    num=params['kbin_num'])
+        k_bin = self.get_kbin_centr(params)
 
         k_axes_2d = ("k_p", "k_v")
         info_2d = {'axes': k_axes_2d, 'type': 'vect'}

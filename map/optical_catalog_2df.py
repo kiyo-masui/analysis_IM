@@ -107,23 +107,36 @@ def convert_to_physical_coordinate(freq, ra, dec, ra_fact):
 
     return x, y, z
 
-def convert_B1950_to_J2000(ra, dec, degree_in=False, degree_out=True):
-    if not degree_in:
-        ra = ra*180./np.pi
-        dec = dec*180./np.pi
-    ra /= 15. # in unit of hour
-    coor = ephem.Equatorial("%f"%ra, "%f"%dec, epoch=ephem.B1950)
+def convert_B1950_to_J2000(ra, dec, z, degree_in=False, degree_out=True):
+    #if not degree_in:
+    #    ra = ra*180./np.pi
+    #    dec = dec*180./np.pi
+    #ra /= 15. # in unit of hour
+    if degree_in:
+        ra = ephem.hours(ra*np.pi/180.)
+        dec = ephem.degrees(dec*np.pi/180.)
+    else:
+        ra = ephem.hours(ra)
+        dec = ephem.degrees(dec)
+    coor = ephem.Equatorial(ra, dec, epoch=ephem.B1950)
     coor = ephem.Equatorial(coor, epoch=ephem.J2000)
 
     ra2000 = coor.ra
     dec2000 = coor.dec
 
+    # for test if the 2df have B1950
+    #ra2000 = ra
+    #dec2000 = dec
+
+    print z, 
+    print " | ra: ",ra," --> ",ra2000," [",(ra-ra2000)*180./np.pi,"] | ",
+    print "dec: ",dec," --> ",dec2000," [",(dec-dec2000)*180./np.pi,"]"
+
     if degree_out:
         ra2000 = ra2000*180./np.pi
         dec2000 = dec2000*180./np.pi
 
-    print "ra: %f --> %f | dec: %f --> %f"%(ra, ra2000, dec, dec2000)
-    return ra2000, dec2000
+    return ra2000, dec2000, z
 
 def bin_catalog_file(filename, freq_axis, ra_axis, dec_axis, 
                      physical_cube=False, ra_centre=None, dec_centre=None,
@@ -148,12 +161,12 @@ def bin_catalog_file(filename, freq_axis, ra_axis, dec_axis,
     catalog = np.genfromtxt(filename, dtype=ndtype, skiprows=skip_header)
 
     convert_B1950_to_J2000_vect = np.vectorize(convert_B1950_to_J2000)
-    catalog['RA'], catalog['Dec'] = convert_B1950_to_J2000_vect(catalog['RA'], 
-                                                                catalog['Dec'])
+    catalog['RA'], catalog['Dec'], catalog['z'] =\
+        convert_B1950_to_J2000_vect(catalog['RA'], catalog['Dec'], catalog['z'])
 
     #catalog['RA']  = catalog['RA']*180./np.pi
     #catalog['Dec'] = catalog['Dec']*180./np.pi
-    catalog['z']   = cc.freq_21cm_MHz * 1.e6 / (1 + catalog['z'])
+    catalog['z']   = cc.freq_21cm_MHz * 1.e6 / (1. + catalog['z'])
 
     # change the RA range to -180 ~ 180
     catalog['RA'][catalog['RA']>180.] -= 360.
@@ -175,7 +188,7 @@ def bin_catalog_file(filename, freq_axis, ra_axis, dec_axis,
                                 debug=debug)
     else:
         return bin_catalog_data(catalog, freq_axis, ra_axis, dec_axis, 
-                                debug=debug, get_bias=True)
+                                debug=debug, get_bias=False)
 
 bin2dfparams_init = {
         "infile_data": "/Users/ycli/DATA/2df/catalogue/real_catalogue_2df.out",
@@ -249,16 +262,17 @@ class Bin2dF(object):
         #np.set_printoptions(threshold=np.nan)
         print "finding the binned data"
         self.realmap()
-        #print "finding the binned mock and selection function"
-        self.selection()
-        #print "finding the separable form of the selection"
-        self.separable()
-        #print "finding the optical overdensity"
-        self.delta()
+        ##print "finding the binned mock and selection function"
+        #self.selection()
+        ##print "finding the separable form of the selection"
+        #self.separable()
+        ##print "finding the optical overdensity"
+        #self.delta()
 
     def realmap(self):
         """bin the real WiggleZ catalog"""
-        self.realmap_binning, self.biasmap_binning\
+        #self.realmap_binning, self.biasmap_binning\
+        self.realmap_binning\
             = bin_catalog_file(self.infile_data, self.freq_axis, self.ra_axis,
                                self.dec_axis, skip_header=1, debug=False)
 
@@ -267,10 +281,10 @@ class Bin2dF(object):
         map_2df.copy_axis_info(self.template_map)
         algebra.save(self.outfile_data, map_2df)
 
-        bias_2df = algebra.make_vect(self.biasmap_binning,
-                                        axis_names=('freq', 'ra', 'dec'))
-        bias_2df.copy_axis_info(self.template_map)
-        algebra.save(self.outfile_bias, bias_2df)
+        #bias_2df = algebra.make_vect(self.biasmap_binning,
+        #                                axis_names=('freq', 'ra', 'dec'))
+        #bias_2df.copy_axis_info(self.template_map)
+        #algebra.save(self.outfile_bias, bias_2df)
 
         #old_setting = np.seterr(divide='ignore')
         #bias_x_map = self.realmap_binning / self.biasmap_binning

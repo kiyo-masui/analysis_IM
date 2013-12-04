@@ -78,6 +78,7 @@ def elaz2radecParkes(el, az, ut) :
     Parkes.long = '148:15:44.3591'
     Parkes.lat = '-32:59:59.8657'
     Parkes.pressure = 0 # no refraction correction.
+    Parkes.epoch = ephem.J2000
     Parkes.temp = 0
 
     ut_wholesec, partial_sec = ut.split('.', 1)

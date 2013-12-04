@@ -29,7 +29,8 @@ basemap = os.getenv('MAPFILE')
 basemap_my = os.getenv('MAPGBT_MY')
 simroot = os.getenv('SIMROOT') # simulation file root
 simfile = os.getenv('SIMFILE') # simulation file number
-subreal = bool(os.getenv('SUBREAL'))
+subreal = os.getenv('SUBREAL') == 'True'
+filemid = os.getenv('GBTFIELD')
 
 goodmodes = int(os.getenv('GOODMODES'))
 
@@ -54,7 +55,8 @@ else:
     do_simulation_IQU = False
 
 #output_folder = '15hr_ABCD_legendre_modes_%dgwj_14conv_new/'%goodmodes 
-output_folder = '15hr_ABCD_14conv/'
+#output_folder = 'GBT_' + filemid + '_ABCD_1pt4_cov/'
+output_folder = 'GBT_' + filemid + '_ABCD_1pt4_cov_wsvd/'
 #output_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
 output_root = '/home/ycli/data/cln_result/'
 output_root += output_folder
@@ -66,74 +68,30 @@ output_root += output_folder
 # clean extended IQUV map
 #-----------------------------------------------------------------------------
 
-pairlist = ['A_with_B', 'A_with_C', 'A_with_D', 'B_with_C', 'B_with_D', 'C_with_D']
+#filemid = '15hr_41-80_avg_fdgp_new'
+#filemid = '15hr_41-80_pointcorr'
+
+sections = ['A', 'B', 'C', 'D']
+pairlist = []
 pairdict = {}
-pairdict['A_with_B'] = {}
-pairdict['A_with_B']['map1'] = basemap
-pairdict['A_with_B']['map1']+= 'secA_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
-pairdict['A_with_B']['map2'] = basemap
-pairdict['A_with_B']['map2']+= 'secB_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
-pairdict['A_with_B']['noise_inv1'] = basemap +\
-                          'secA_15hr_41-80_avg_fdgp_new_noise_inv_diag_I_800.npy'
-pairdict['A_with_B']['noise_inv2'] = basemap +\
-                          'secB_15hr_41-80_avg_fdgp_new_noise_inv_diag_I_800.npy'
-pairdict['A_with_B']['tag1'] = 'A'
-pairdict['A_with_B']['tag2'] = 'B'
-pairdict['A_with_C'] = {}
-pairdict['A_with_C']['map1'] = basemap
-pairdict['A_with_C']['map1']+= 'secA_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
-pairdict['A_with_C']['map2'] = basemap
-pairdict['A_with_C']['map2']+= 'secC_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
-pairdict['A_with_C']['noise_inv1'] = basemap +\
-                          'secA_15hr_41-80_avg_fdgp_new_noise_inv_diag_I_800.npy'
-pairdict['A_with_C']['noise_inv2'] = basemap +\
-                          'secC_15hr_41-80_avg_fdgp_new_noise_inv_diag_I_800.npy'
-pairdict['A_with_C']['tag1'] = 'A'
-pairdict['A_with_C']['tag2'] = 'C'
-pairdict['A_with_D'] = {}
-pairdict['A_with_D']['map1'] = basemap
-pairdict['A_with_D']['map1']+= 'secA_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
-pairdict['A_with_D']['map2'] = basemap
-pairdict['A_with_D']['map2']+= 'secD_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
-pairdict['A_with_D']['noise_inv1'] = basemap +\
-                          'secA_15hr_41-80_avg_fdgp_new_noise_inv_diag_I_800.npy'
-pairdict['A_with_D']['noise_inv2'] = basemap +\
-                          'secD_15hr_41-80_avg_fdgp_new_noise_inv_diag_I_800.npy'
-pairdict['A_with_D']['tag1'] = 'A'
-pairdict['A_with_D']['tag2'] = 'D'
-pairdict['B_with_C'] = {}
-pairdict['B_with_C']['map1'] = basemap
-pairdict['B_with_C']['map1']+= 'secB_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
-pairdict['B_with_C']['map2'] = basemap
-pairdict['B_with_C']['map2']+= 'secC_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
-pairdict['B_with_C']['noise_inv1'] = basemap +\
-                          'secB_15hr_41-80_avg_fdgp_new_noise_inv_diag_I_800.npy'
-pairdict['B_with_C']['noise_inv2'] = basemap +\
-                          'secC_15hr_41-80_avg_fdgp_new_noise_inv_diag_I_800.npy'
-pairdict['B_with_C']['tag1'] = 'B'
-pairdict['B_with_C']['tag2'] = 'C'
-pairdict['B_with_D'] = {}
-pairdict['B_with_D']['map1'] = basemap
-pairdict['B_with_D']['map1']+= 'secB_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
-pairdict['B_with_D']['map2'] = basemap
-pairdict['B_with_D']['map2']+= 'secD_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
-pairdict['B_with_D']['noise_inv1'] = basemap +\
-                          'secB_15hr_41-80_avg_fdgp_new_noise_inv_diag_I_800.npy'
-pairdict['B_with_D']['noise_inv2'] = basemap +\
-                          'secD_15hr_41-80_avg_fdgp_new_noise_inv_diag_I_800.npy'
-pairdict['B_with_D']['tag1'] = 'B'
-pairdict['B_with_D']['tag2'] = 'D'
-pairdict['C_with_D'] = {}
-pairdict['C_with_D']['map1'] = basemap
-pairdict['C_with_D']['map1']+= 'secC_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
-pairdict['C_with_D']['map2'] = basemap
-pairdict['C_with_D']['map2']+= 'secD_15hr_41-80_avg_fdgp_new_clean_map_I_800.npy'
-pairdict['C_with_D']['noise_inv1'] = basemap +\
-                          'secC_15hr_41-80_avg_fdgp_new_noise_inv_diag_I_800.npy'
-pairdict['C_with_D']['noise_inv2'] = basemap +\
-                          'secD_15hr_41-80_avg_fdgp_new_noise_inv_diag_I_800.npy'
-pairdict['C_with_D']['tag1'] = 'C'
-pairdict['C_with_D']['tag2'] = 'D'
+for i in range(len(sections) - 1):
+    for j in range(i + 1, len(sections)):
+        pair = '%s_with_%s'%(sections[i], sections[j])
+        pairlist.append(pair)
+        pairdict[pair] = {}
+        pairdict[pair]['map1'] = basemap + 'sec%s_'%sections[i]
+        pairdict[pair]['map1']+= filemid + '_clean_map_I_800.npy'
+        pairdict[pair]['map2'] = basemap + 'sec%s_'%sections[j]
+        pairdict[pair]['map2']+= filemid + '_clean_map_I_800.npy'
+        pairdict[pair]['noise_inv1'] = basemap + 'sec%s_'%sections[i]
+        #pairdict[pair]['noise_inv1']+= filemid + '_noise_weight_I_800.npy'
+        pairdict[pair]['noise_inv1']+= filemid + '_noise_inv_diag_I_800.npy'
+        pairdict[pair]['noise_inv2'] = basemap + 'sec%s_'%sections[j]
+        #pairdict[pair]['noise_inv2']+= filemid + '_noise_weight_I_800.npy'
+        pairdict[pair]['noise_inv2']+= filemid + '_noise_inv_diag_I_800.npy'
+        pairdict[pair]['tag1'] = sections[i]
+        pairdict[pair]['tag2'] = sections[j]
+
 
 if do_IQUclean_themselves:
     pipe_modules.append((pair_set.PairSet, ('fs2_', 'fs_')))
@@ -150,7 +108,10 @@ if do_IQUclean_themselves:
     fs2_degrade_factor = degrade_factor
     fs2_clip_weight_percent = 50
     fs2_weighted_SVD = True
+    #fs2_weighted_SVD = False
     fs2_sub_weighted_mean = sub_weighted_mean
+    fs2_calibrate = False
+    fs2_telescope = 'GBT'
     if goodmodes == 1:
         fs2_good_modes = 0
     else:
@@ -196,8 +157,11 @@ if do_simulation_IQUV:
     fs3_convolve = common_res_convolution
     fs3_clip_weight_percent = 50
     fs3_weighted_SVD = True
+    #fs3_weighted_SVD = False
     fs3_degrade_factor = degrade_factor
     fs3_sub_weighted_mean = sub_weighted_mean
+    fs3_calibrate = False
+    fs3_telescope = 'GBT'
     fs3_good_modes = goodmodes
     fs3_freq_n_all1 = nfreq
     fs3_freq_n_all2 = nfreq

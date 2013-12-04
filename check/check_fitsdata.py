@@ -5,10 +5,12 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
 
 from parkes import fitsGBT
+from parkes import mbcal
 
 #rawdatapath = ('/home/ycli/DATA/parkes/CALDATA_SDF_beamcal/1027_average/2012-10-27_1908-P641_west1_1315_P641.sdfits',)
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/parkes/RAWDATA_RPF/20121027/2012-10-27_1908-P641_west1_1315_P641.rpfits',)
 #rawdatapath = ('/home/ycli/data/map_result/flagged/parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/home_local/ycli/data/map_result/flagged/parkes_2012_10_24_P641.fits',)
 #rawdatapath = ('/home/ycli/data/map_result/flagged/parkes_2012_10_28_P641.fits',)
 
 #rawdatapath = ('/mnt/scratch-gl/ycli/map_result/parkes/parkes_2012_10_27_P641.fits',)
@@ -19,6 +21,12 @@ from parkes import fitsGBT
 #rawdatapath = ('/home/ycli/map_result/flagged/average_beamcal_bandpassrm_parkes_2012_10_27_P641.fits',)
 #rawdatapath = ('/home/ycli/map_result/flagged/average_beamcal_parkes_2012_10_27_P641.fits',)
 #rawdatapath = ('/home/ycli/map_result/parkes/average_beamcal_parkes_2012_10_27_P641.fits',)
+#rawdatapath = ('/home_local/ycli/data/parkes/RAWDATA_SDF/20121028/2012-10-28_0925-P641_east1_1315_P641.sdfits',)
+rawdatapath = ('/home/ycli/data/parkes/DATA_2008/rawdata/sept11/east/2008-09-11_1217_east1_1392_P641.sdfits',)
+#rawdatapath = ('/home/ycli/data/parkes/DATA_2008/rawdata/sept11/west/2008-09-11_1647_west1_1290_drift_P641.sdfits',)
+#rawdatapath = ('/home/ycli/localhome/data/map_result/pol_selected/parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/home/ycli/data/map_result/parkes/parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/home_local/ycli/data/parkes/RAWDATA_SDF/20121024/2012-10-24_0728-P641_east1_1392_P641.sdfits',)
 
 class CheckFitsFile(object):
 
@@ -42,7 +50,8 @@ class CheckFitsFile(object):
         #print self.tbdata.field('DATA').shape
 
     def printhead(self):
-        print self.hdulist[1].header
+        for key in self.hdulist[1].header.keys():
+            print key, self.hdulist[1].header[key]
         
         
     def printlabel(self):
@@ -66,8 +75,8 @@ class CheckFitsFile(object):
         #print self.tbdata.field(fieldlabel[6])[200:1000]
 
     def plottsys(self, in_K=False):
-        tsys_x = self.tbdata.field('TSYS')[0::2]#[:10*90*13]
-        tsys_y = self.tbdata.field('TSYS')[1::2]#[:10*90*13]
+        tsys_x = self.tbdata.field('TSYS')[0::2][:10*90*13]
+        tsys_y = self.tbdata.field('TSYS')[1::2][:10*90*13]
 
         tsys_x = np.ma.array(tsys_x)
         tsys_y = np.ma.array(tsys_y)
@@ -77,14 +86,37 @@ class CheckFitsFile(object):
         tsys_x = tsys_x.reshape(-1, 13)
         tsys_y = tsys_y.reshape(-1, 13)
 
+        mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/cal_data/2012-10-24_0833-P641.log'
+        full_mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/CALDATA_MBC/2012-10-24_0833-P641.mbcal'
+        moving_beam_list = [[1, 5],[7, 6],[11, 6]]
+        calibrator = mbcal.MultibeamCal(mbcal_file, full_mbcal_file=full_mbcal_file, 
+                                        moving_beam_list=moving_beam_list)
+        calibrator.get_cal_factor()
+
         if in_K:
-            to_K = [1.36,1.45,1.45,1.45,1.45,1.45,1.45,1.72,1.72,1.72,1.72,1.72,1.72]
-            to_K = np.array(to_K)
-            tsys_x /= to_K[None,:]
-            tsys_y /= to_K[None,:]
+            #to_K = [1.36,1.45,1.45,1.45,1.45,1.45,1.45,1.72,1.72,1.72,1.72,1.72,1.72]
+            #to_K = np.array(to_K)
+            #tsys_x /= to_K[None,:]
+            #tsys_y /= to_K[None,:]
+
+            tsys_x *= calibrator.Jy2K[0][None, :]
+            tsys_y *= calibrator.Jy2K[1][None, :]
+
+            print calibrator.Jy2K
+            print calibrator.Ginv
+            print calibrator.factor
             unit = 'K'
         else:
             unit = 'Jy'
+
+        tsys_x *= calibrator.Ginv[0][None, :]
+        tsys_y *= calibrator.Ginv[1][None, :]
+        #tsys_x *= calibrator.factor[0][None, :]
+        #tsys_y *= calibrator.factor[1][None, :]
+
+        print np.mean(tsys_x, axis=0)
+        print np.mean(tsys_y, axis=0)
+
 
         x = range(tsys_x.shape[0])
 
@@ -96,21 +128,27 @@ class CheckFitsFile(object):
 
         plt.subplot(211)
         for i in range(13):
+            if i == 3 or i == 4 or i == 9:
+                continue
             plt.plot(x, tsys_x[:,i], label='beam %d'%i, linewidth=0.5, c=cmap(norm(i)))
         plt.legend(ncol=4, frameon=False)
         plt.xlabel('time ')
         plt.ylabel('x pol Tsys [%s]'%unit)
-        plt.ylim(ymin=15, ymax=50)
+        plt.ylim(ymin=20, ymax=35)
+        #plt.ylim(ymin=15, ymax=50)
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
 
         plt.subplot(212)
         for i in range(13):
+            if i == 3 or i == 4 or i == 9:
+                continue
             plt.plot(x, tsys_y[:,i], label='beam %d'%i, linewidth=0.5, c=cmap(norm(i)))
         plt.legend(ncol=4, frameon=False)
         plt.xlabel('time ')
         plt.ylabel('y pol Tsys [%s]'%unit)
-        plt.ylim(ymin=15, ymax=50)
+        plt.ylim(ymin=20, ymax=35)
+        #plt.ylim(ymin=15, ymax=50)
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
 
@@ -236,6 +274,16 @@ class CheckFitsFile(object):
             spectrum_xx = spectrum_xx[:,:scan_n*90*13]
             spectrum_yy = spectrum_yy[:,:scan_n*90*13]
 
+        spectrum_xx = np.ma.array(spectrum_xx)
+        spectrum_yy = np.ma.array(spectrum_yy)
+        spectrum_xx[np.isnan(spectrum_xx)] = np.ma.masked
+        spectrum_yy[np.isnan(spectrum_yy)] = np.ma.masked
+        spectrum_xx[spectrum_xx == 0] = np.ma.masked
+        spectrum_yy[spectrum_yy == 0] = np.ma.masked
+
+        print np.ma.max(spectrum_xx), np.ma.min(spectrum_xx)
+        print np.ma.max(spectrum_yy), np.ma.min(spectrum_yy)
+
 
         # get the shape 
         shape = spectrum_xx.shape
@@ -245,33 +293,47 @@ class CheckFitsFile(object):
         df = self.tbdata.field('CDELT1')[0]/1.e9
         y = (range(shape[0]) - cf_ind) * df + cf
 
+        X, Y = np.meshgrid(x, y)
+
         #cmin = -0.6
         #cmax = 0.6
         cmin = 0.0
-        cmax = 70 
+        cmax = 70.
 
-        plt.figure(figsize=(30, 50))
+        fig, ax = plt.subplots(nrows=13, ncols=2, sharex=True, sharey=True, 
+                figsize=(16,30))
+        plt.subplots_adjust(left=0.06, right=0.95, bottom=0.05, top=0.94,
+                            wspace=0.01, hspace=0.01)
+
+        cax = fig.add_axes([0.2, 0.97, 0.6, 0.01])
 
         for i in range(13):
-            plt.subplot(13,2,2*i+1)
-            im0 = plt.imshow(spectrum_xx[:,i::13], 
+            im = ax[i, 0].imshow(spectrum_xx[:, i::13],
                              interpolation='nearest', 
                              origin='lower',
                              extent=[x[0], x[-1], y[0], y[-1]], 
                              aspect='auto')
-            im0.set_clim(cmin, cmax)
-            plt.ylabel('freq [GHz] [X pol beam %d]'%i)
-            plt.colorbar()
+            im.set_clim(cmin, cmax)
+            ax[i, 0].set_ylabel('freq [GHz] [beam %d]'%i)
 
-            plt.subplot(13,2,2*i+2)
-            im0 = plt.imshow(spectrum_yy[:,i::13], 
+            im = ax[i, 1].imshow(spectrum_yy[:, i::13],
                              interpolation='nearest', 
                              origin='lower',
                              extent=[x[0], x[-1], y[0], y[-1]], 
                              aspect='auto')
-            im0.set_clim(cmin, cmax)
-            plt.ylabel('freq [GHz] [Y pol beam %d]'%i)
-            plt.colorbar()
+            im.set_clim(cmin, cmax)
+
+            #im = ax[i, 0].pcolormesh(X, Y, spectrum_xx[:, i::13].T, vmax=cmax, vmin=cmin)
+            #ax[i, 0].set_xlim(xmin=np.min(x), xmax=np.max(x))
+            #ax[i, 0].set_ylim(ymin=np.min(y), ymax=np.max(y))
+            #im = ax[i, 1].pcolormesh(X, Y, spectrum_yy[:, i::13].T, vmax=cmax, vmin=cmin)
+            #ax[i, 1].set_xlim(xmin=np.min(x), xmax=np.max(x))
+            #ax[i, 1].set_ylim(ymin=np.min(y), ymax=np.max(y))
+
+            if i == 0:
+                ax[i, 0].set_title('XX')
+                ax[i, 1].set_title('YY')
+        fig.colorbar(im, cax=cax, orientation = 'horizontal')
 
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
@@ -569,12 +631,12 @@ class CheckFitsFile(object):
 if __name__=="__main__":
     checkfits = CheckFitsFile(rawdatapath[0])
 
-    #checkfits.printhead()
-    #checkfits.printlabel()
+    checkfits.printhead()
+    checkfits.printlabel()
 
     #checkfits.plotfreq_time()
-    checkfits.plotfreq_time_all()
-    checkfits.plottsys()
+    #checkfits.plotfreq_time_all()
+    #checkfits.plottsys()
     #checkfits.plottsys(in_K=True)
     #checkfits.plotT()
     #checkfits.plotfreq()

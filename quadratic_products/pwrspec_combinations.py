@@ -5,7 +5,7 @@ import shutil
 from utils import aggregate_outputs
 from kiyopy import parse_ini
 from quadratic_products import pwrspec_estimator as pe
-from foreground_clean import map_pair as mp
+from foreground_clean import map_pair_eswitzer as mp
 from utils import data_paths as dp
 
 

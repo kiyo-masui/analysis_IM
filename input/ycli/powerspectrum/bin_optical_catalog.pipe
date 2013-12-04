@@ -34,6 +34,9 @@ pipe_processes = 1
 #map_dir = '/home/ycli/data/2df/map/pks_17n30_10by7/'
 map_dir = '/home/ycli/data/2df/map/pks_p3500n3000/'
 
+#map_dir = '/home/ycli/data/2df/map/pks_27n30_10by7_j2000/'
+#map_dir = '/home/ycli/data/2df/map/pks_p3500n3000_j2000/'
+
 if not os.path.exists(map_dir):
     os.makedirs(map_dir)
 

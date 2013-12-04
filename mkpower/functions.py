@@ -38,12 +38,13 @@ class BOX(object):
         #self.ibox2, self.nbox2 = get_box(self.box_bin, self.imap2, self.weight2)
 
         self.flag_nan(target="map")
-        gridding_method = gridding.physical_grid_largeangle
+        #gridding_method = gridding.physical_grid_largeangle
+        gridding_method = gridding.physical_grid
 
-        self.ibox1, ibox1_info = gridding_method(self.imap1, refinement=1)
-        self.ibox2, ibox2_info = gridding_method(self.imap2, refinement=1)
-        self.nbox1, nbox1_info = gridding_method(self.weight1, refinement=1)
-        self.nbox2, nbox2_info = gridding_method(self.weight2, refinement=1)
+        self.ibox1, ibox1_info = gridding_method(self.imap1, refinement=2, order=1)
+        self.ibox2, ibox2_info = gridding_method(self.imap2, refinement=2, order=1)
+        self.nbox1, nbox1_info = gridding_method(self.weight1, refinement=2, order=1)
+        self.nbox2, nbox2_info = gridding_method(self.weight2, refinement=2, order=1)
 
         self.ibox1 = algebra.make_vect(self.ibox1, ibox1_info['axes'])
         self.ibox2 = algebra.make_vect(self.ibox2, ibox2_info['axes'])
@@ -96,6 +97,9 @@ class BOX(object):
             self.weight2[np.isinf(self.imap2)] = 0.
             self.weight2[np.isinf(self.weight2)] = 0.
 
+            self.weight1[self.weight1 < 1.e-20] = 0.
+            self.weight2[self.weight2 < 1.e-20] = 0.
+
     def subtract_mean(self):
         self.ibox1 = self.ibox1 - self.ibox1.flatten().mean()
         self.ibox2 = self.ibox2 - self.ibox2.flatten().mean()
@@ -105,6 +109,7 @@ class BOX(object):
         mean1_weight = np.sum(np.sum(self.nbox1, -1), -1)
         mean1_weight[mean1_weight==0] = np.inf
         mean1 /= mean1_weight
+        #print "Max and Min of weighted mean1 : ", mean1.max(), mean1.min()
         self.ibox1 -= mean1[:, None, None]
 
         mean2 = np.sum(np.sum(self.ibox2, -1), -1)
@@ -112,50 +117,55 @@ class BOX(object):
         mean2_weight[mean2_weight==0] = np.inf
         mean2 /= mean2_weight
         self.ibox2 -= mean2[:, None, None]
+        #print "Max and Min of weighted mean2 : ", mean1.max(), mean2.min()
 
     def estimate_ps_3d(self, window="blackman"):
 
-        self.flag_nan(target="box")
+        #self.flag_nan(target="box")
 
-        window_function = fftutil.window_nd(self.nbox1.shape, name=window)
-        self.nbox1 *= window_function
-        self.nbox2 *= window_function
+        #window_function = fftutil.window_nd(self.nbox1.shape, name=window)
+        #window_function = fftutil.window_nd((self.nbox1.shape[0],), name=window)
+        window_func = getattr(np, window)
+        window_function = window_func(self.nbox1.shape[0])
+        self.nbox1 *= window_function[:, None, None]
+        self.nbox2 *= window_function[:, None, None]
 
         self.ibox1 *= self.nbox1
         self.ibox2 *= self.nbox2
 
 
         #self.subtract_mean()
-        self.subtract_weighted_mean()
+        #self.subtract_weighted_mean()
 
         normal = np.sum(self.nbox1 * self.nbox2)
         delta_v = np.prod(self.boxunit)
 
-        iput_1 = np.zeros(self.boxshape, dtype=complex)
-        oput_1 = np.zeros(self.boxshape, dtype=complex)
-        iput_1.imag = 0.
-        iput_1.real = self.ibox1
-        #plan_1 = FFTW.Plan(iput_1, oput_1, direction='forward', flags=['measure'])
-        #FFTW.execute(plan_1)
-        oput_1 = np.fft.fftn(iput_1)
+        #  iput_1 = np.zeros(self.boxshape, dtype=complex)
+        #  oput_1 = np.zeros(self.boxshape, dtype=complex)
+        #  iput_1.imag = 0.
+        #  iput_1.real = self.ibox1
+        #  #plan_1 = FFTW.Plan(iput_1, oput_1, direction='forward', flags=['measure'])
+        #  #FFTW.execute(plan_1)
+        #  oput_1 = np.fft.fftn(iput_1)
 
-        iput_2 = np.zeros(self.boxshape, dtype=complex)
-        oput_2 = np.zeros(self.boxshape, dtype=complex)
-        iput_2.imag = 0.
-        iput_2.real = self.ibox2
-        #plan_2 = FFTW.Plan(iput_2, oput_2, direction='forward', flags=['measure'])
-        #FFTW.execute(plan_2)
-        oput_2 = np.fft.fftn(iput_2)
+        #  iput_2 = np.zeros(self.boxshape, dtype=complex)
+        #  oput_2 = np.zeros(self.boxshape, dtype=complex)
+        #  iput_2.imag = 0.
+        #  iput_2.real = self.ibox2
+        #  #plan_2 = FFTW.Plan(iput_2, oput_2, direction='forward', flags=['measure'])
+        #  #FFTW.execute(plan_2)
+        #  oput_2 = np.fft.fftn(iput_2)
 
-        oput_1 = np.fft.fftshift(oput_1)
-        oput_2 = np.fft.fftshift(oput_2)
+        #  oput_1 = np.fft.fftshift(oput_1)
+        #  oput_2 = np.fft.fftshift(oput_2)
+
+        oput_1 = np.fft.fftshift(np.fft.fftn(self.ibox1))
+        oput_2 = np.fft.fftshift(np.fft.fftn(self.ibox2))
 
         self.ps_3d  = (oput_1 * oput_2.conj()).real
         self.ps_3d *= delta_v
         self.ps_3d /= normal
 
-        del iput_1
-        del iput_2
         del oput_1
         del oput_2
         gc.collect()
@@ -179,7 +189,14 @@ class BOX(object):
         k_bin_r = np.sqrt( (k_bin_x**2)[:, None, None] + 
                            (k_bin_y**2)[None, :, None] + 
                            (k_bin_z**2)[None, None, :] )
-        self.ps_3d = self.ps_3d * k_bin_r**3 / 2. / np.pi**2
+
+        import scipy.special
+        ndim = 3.
+        factor = 2. * np.pi ** (ndim / 2.) / scipy.special.gamma(ndim / 2.)
+        factor /= (2. * np.pi) ** ndim
+
+        #self.ps_3d = self.ps_3d * k_bin_r**3 / 2. / np.pi**2
+        self.ps_3d = self.ps_3d * k_bin_r ** ndim * factor
 
     def convert_3dps_to_1dps(self, k_edges):
 
@@ -225,10 +242,16 @@ class BOX(object):
         k_bin_2d = k_bin_2d[:, np.isfinite(ps_3d_flatten)]
         ps_3d_flatten = ps_3d_flatten[np.isfinite(ps_3d_flatten)]
 
-        kn_2d, xedges, yedges = np.histogram2d(k_bin_2d[0], k_bin_2d[1],
+        #kn_2d, xedges, yedges = np.histogram2d(k_bin_2d[0], k_bin_2d[1],
+        #                                       (k_edges_p, k_edges_v),)
+
+        #ps_2d, xedges, yedges = np.histogram2d(k_bin_2d[0], k_bin_2d[1],
+        #                                       (k_edges_p, k_edges_v),
+        #                                       weights=ps_3d_flatten)
+        kn_2d, xedges, yedges = np.histogram2d(k_bin_2d[1], k_bin_2d[0],
                                                (k_edges_p, k_edges_v),)
 
-        ps_2d, xedges, yedges = np.histogram2d(k_bin_2d[0], k_bin_2d[1],
+        ps_2d, xedges, yedges = np.histogram2d(k_bin_2d[1], k_bin_2d[0],
                                                (k_edges_p, k_edges_v),
                                                weights=ps_3d_flatten)
 
