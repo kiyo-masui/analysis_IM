@@ -55,8 +55,8 @@ else:
     do_simulation_IQU = False
 
 #output_folder = '15hr_ABCD_legendre_modes_%dgwj_14conv_new/'%goodmodes 
-#output_folder = 'GBT_' + filemid + '_ABCD_1pt4_cov/'
-output_folder = 'GBT_' + filemid + '_ABCD_1pt4_cov_wsvd/'
+output_folder = 'GBT_' + filemid + '_ABCD_1pt4_cov/'
+#output_folder = 'GBT_' + filemid + '_ABCD_1pt4_cov_wsvd/'
 #output_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
 output_root = '/home/ycli/data/cln_result/'
 output_root += output_folder
@@ -107,8 +107,8 @@ if do_IQUclean_themselves:
     fs2_convolve = common_res_convolution
     fs2_degrade_factor = degrade_factor
     fs2_clip_weight_percent = 50
-    fs2_weighted_SVD = True
-    #fs2_weighted_SVD = False
+    #fs2_weighted_SVD = True
+    fs2_weighted_SVD = False
     fs2_sub_weighted_mean = sub_weighted_mean
     fs2_calibrate = False
     fs2_telescope = 'GBT'
@@ -156,8 +156,8 @@ if do_simulation_IQUV:
     fs3_factorizable_noise = True
     fs3_convolve = common_res_convolution
     fs3_clip_weight_percent = 50
-    fs3_weighted_SVD = True
-    #fs3_weighted_SVD = False
+    #fs3_weighted_SVD = True
+    fs3_weighted_SVD = False
     fs3_degrade_factor = degrade_factor
     fs3_sub_weighted_mean = sub_weighted_mean
     fs3_calibrate = False

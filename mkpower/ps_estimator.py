@@ -285,25 +285,27 @@ class PowerSpectrumEstimator(object):
             #imaps_a = functions.get_mapdict(params['sim_root'], selection='beammeansub')
             nmaps_a = functions.get_mapdict(params['gbt_root'])
 
-            imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
-            #imaps_b = functions.get_mapdict(params['sim_root'], selection='raw')
+            #imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
+            imaps_b = functions.get_mapdict(params['sim_root'], selection='raw')
             #nmaps_b = functions.get_mapdict(params['gbt_root'])
-            nmaps_b = functions.get_mapdict(params['opt_root'], selection='selection')
+            #nmaps_b = functions.get_mapdict(params['opt_root'], selection='selection')
 
             for i in range(params['sim_numb']):
                 #imaps_a = functions.get_mapdict(params['ssm_root']%i)
                 imap_list.append([imaps_a[1]['%d'%i], 
                                   #imaps_a[1]['map;0modes'], 
                                   imaps_b[1]['%d'%i]])
-                nmap_list.append([nmaps_a[1]['weight;%dmodes'%ps_mode], 
+                #nmap_list.append([nmaps_a[1]['weight;%dmodes'%ps_mode], 
+                nmap_list.append([nmaps_a[1]['weight;0modes'], 
                                   #nmaps_b[1]['weight;%dmodes'%ps_mode]])
-                                  nmaps_b])
+                                  None])
+                                  #nmaps_b])
         elif map_set == 'tr':
             print 'prepare maps for transfer function calculation'
             nmaps_a = functions.get_mapdict(params['gbt_root'])
 
-            imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
-            #imaps_b = functions.get_mapdict(params['sim_root'], selection='raw')
+            #imaps_b = functions.get_mapdict(params['sim_root'], selection='delta')
+            imaps_b = functions.get_mapdict(params['sim_root'], selection='raw')
             #imaps_b = functions.get_mapdict(params['sim_root'], selection='beammeansub')
             #nmaps_b = functions.get_mapdict(params['gbt_root'])
             nmaps_b = functions.get_mapdict(params['opt_root'], selection='selection')
@@ -316,7 +318,8 @@ class PowerSpectrumEstimator(object):
                                   #imaps_a[1]['map;%dmodes'%ps_mode]])
                 nmap_list.append([nmaps_a[1]['weight;%dmodes'%ps_mode], 
                                   #nmaps_b[1]['weight;%dmodes'%ps_mode]])
-                                  nmaps_b])
+                                  None])
+                                  #nmaps_b])
         elif map_set == 'ps' and params['ps_type'] == 'cros':
             #imaps_a = '/home/ycli/data/parkes/maps_by_chris/pks_27n30_10by7/'\
             #        + 'test_allbeams_27n30_10by7_clean_map_I_1315.npy'

@@ -14,9 +14,9 @@ import os
 #-----------------------------------------------------------------------------
 # main parameters that define the run
 #-----------------------------------------------------------------------------
-do_cleaning = True
-do_power = False
-do_power_compile = False
+do_cleaning = False
+do_power = True
+do_power_compile = True
 do_noisemodel_compile = False
 do_analysis = False
 
