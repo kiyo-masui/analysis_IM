@@ -18,6 +18,7 @@ import shelve
 import sys
 import time as time_mod
 import cPickle
+import h5py
 
 import scipy as sp
 import numpy.ma as ma
@@ -759,6 +760,14 @@ class DirtyMapMaker(object):
                              #  self.n_dec, self.n_ra, self.n_dec)
                 #start_ind = (index_list[0],0,0,0,0)
             lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename, data_offset + dsize*index_list[0]*self.n_dec*self.n_ra*self.n_dec*self.n_ra, dsize*thread_cov_inv_chunk.size)
+            f = h5py.File(self.cov_filename, 'r+')
+            cov_inv_dset = f['inv_cov']
+            #cov_inv = al.make_mat(cov_inv_dset,                                                                                                                 axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                  row_axes=(0, 1, 2), col_axes=(0, 3, 4))
+            cov_inv_shape = sp.zeros(shape = (self.n_chan, self.n_ra, self.n_dec, self.n_ra, self.n_dec), dtype = dtype)
+            cov_inv_info = al.make_mat(cov_inv_shape,                                                                                                                      axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                       row_axes=(0, 1, 2), col_axes=(0, 3, 4))
+            cov_inv_info.copy_axis_info(map)
+            for key, value in cov_inv_info.info.iteritems():
+                cov_inv_dset.attrs[key] = repr(value)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
@@ -766,8 +775,8 @@ class DirtyMapMaker(object):
                 #np.save(self.cov_filename+'_mpi_uncorr_proc'+str(self.rank),thread_cov_inv_chunk)
                 # Save array.
                 #mpi_writearray(self.cov_filename+'_mpi', thread_cov_inv_chunk,
-                               #comm, total_shape, start_ind, dtype,                                                                                                              #order='C', displacement=0)
-                    
+                               #comm, total_shape, start_ind, dtype,                                                                                                              #order='C', displacement=0)                    
+
 
 
 # Close self.noise_params in each DataSet.
