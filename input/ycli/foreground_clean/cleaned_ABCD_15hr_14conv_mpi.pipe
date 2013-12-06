@@ -84,11 +84,11 @@ for i in range(len(sections) - 1):
         pairdict[pair]['map2'] = basemap + 'sec%s_'%sections[j]
         pairdict[pair]['map2']+= filemid + '_clean_map_I_800.npy'
         pairdict[pair]['noise_inv1'] = basemap + 'sec%s_'%sections[i]
-        #pairdict[pair]['noise_inv1']+= filemid + '_noise_weight_I_800.npy'
-        pairdict[pair]['noise_inv1']+= filemid + '_noise_inv_diag_I_800.npy'
+        pairdict[pair]['noise_inv1']+= filemid + '_noise_weight_I_800.npy'
+        #pairdict[pair]['noise_inv1']+= filemid + '_noise_inv_diag_I_800.npy'
         pairdict[pair]['noise_inv2'] = basemap + 'sec%s_'%sections[j]
-        #pairdict[pair]['noise_inv2']+= filemid + '_noise_weight_I_800.npy'
-        pairdict[pair]['noise_inv2']+= filemid + '_noise_inv_diag_I_800.npy'
+        pairdict[pair]['noise_inv2']+= filemid + '_noise_weight_I_800.npy'
+        #pairdict[pair]['noise_inv2']+= filemid + '_noise_inv_diag_I_800.npy'
         pairdict[pair]['tag1'] = sections[i]
         pairdict[pair]['tag2'] = sections[j]
 
