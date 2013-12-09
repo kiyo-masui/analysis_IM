@@ -75,21 +75,22 @@ def plot_1d_power_spectrum_opt_multi(file_root, file_name, ps_type,
     #    fmt='go', mec='g', capsize=2.5, elinewidth=1, markersize=5,
     #    label='Cole et. al 2005 x 1.26')
 
-    power_eric = np.loadtxt('/Users/ycli/DATA/ps_result_eswitzer/gbt_pwrspec_plots/GBT_15hr_avg_fdgp_new_x_GBT_15hr_avg_fdgp_new_onesided_ixi_conv1p4_clipnoise_bfwindow_svdweighted_noiseweight/pk_20modes.dat')
+    power_eric = np.loadtxt('/Users/ycli/DATA/ps_result_eswitzer/gbt_pwrspec_plots_wsvd/GBT_15hr_avg_fdgp_new_x_GBT_15hr_avg_fdgp_new_onesided_ixi_conv1p4_clipnoise_bfwindow_svdweighted_noiseweight/pk_20modes.dat')
     #power_eric = np.loadtxt('/Users/ycli/DATA/ps_result_eswitzer/gbt_pwrspec_plots/GBT_15hr_avg_fdgp_new_x_GBT_15hr_avg_fdgp_new_onesided_ixi_conv1p4_clipnoise_bfwindow_svdweighted_noiseweight_notrans/pk_20modes.dat')
     #power_eric = np.loadtxt('/Users/ycli/DATA/ps_result_eswitzer/gbt_pwrspec_plots/GBT_15hr_avg_fdgp_new_x_GBT_15hr_avg_fdgp_new_onesided_ixi_conv1p4_clipnoise_bfwindow_svdweighted_self/pk_20modes.dat')
-    power_eric_positive, power_eric_positive_err_2, k_eric_centre_positive,\
-    power_eric_negative, power_eric_negative_err_2, k_eric_centre_negative\
-    = seperate_positive_and_negative_power( power_eric[:,1], 
-                                            power_eric[:,2], 
-                                            power_eric[:,0])
-    plt.errorbar(k_eric_centre_positive, power_eric_positive, 
-            power_eric_positive_err_2, fmt='ks', mec='k', capsize=4.5, 
-            elinewidth=1, label='Eric positive 20 modes notrans')
-    plt.errorbar(k_eric_centre_negative, power_eric_negative, 
-            power_eric_negative_err_2, fmt='ks', mec='k', mfc='none', 
-            capsize=4.5, elinewidth=1,)
-            #label=label + ' negative')
+
+    #power_eric_positive, power_eric_positive_err_2, k_eric_centre_positive,\
+    #power_eric_negative, power_eric_negative_err_2, k_eric_centre_negative\
+    #= seperate_positive_and_negative_power( power_eric[:,1], 
+    #                                        power_eric[:,2], 
+    #                                        power_eric[:,0])
+    #plt.errorbar(k_eric_centre_positive, power_eric_positive, 
+    #        power_eric_positive_err_2, fmt='ks', mec='k', capsize=4.5, 
+    #        elinewidth=1, label='Eric positive 20 modes notrans')
+    #plt.errorbar(k_eric_centre_negative, power_eric_negative, 
+    #        power_eric_negative_err_2, fmt='ks', mec='k', mfc='none', 
+    #        capsize=4.5, elinewidth=1,)
+    #        #label=label + ' negative')
 
     #power_eric = np.loadtxt('/Users/ycli/DATA/ps_result_eswitzer/gbt_pwrspec_plots/GBT_15hr_avg_fdgp_new_x_GBT_15hr_avg_fdgp_new_onesided_ixi_conv1p4_clipnoise_bfwindow_svdweighted_noiseweight_beamtrans/pk_20modes.dat')
     #power_eric_positive, power_eric_positive_err_2, k_eric_centre_positive,\
@@ -826,17 +827,17 @@ if __name__=='__main__':
     # -----------------------------------------------------------------------
 
     #parkes_field = 'n03n30_10by7_0627pixel_'
-    #parkes_field = '07n30_10by7_0627pixel_'
+    parkes_field = '07n30_10by7_0627pixel_'
     #parkes_field = '17n30_10by7_0627pixel_'
     #parkes_field = '27n30_10by7_'
     #parkes_field = 'p3500n3000_parkes_2010_10_24-28_'
-    parkes_field = '15hr_41-80_pointcorr_ABCD_'
-    parkes_field = '15hr_41-80_avg_fdgp_new_ABCD_'
+    #parkes_field = '15hr_41-80_pointcorr_ABCD_'
+    #parkes_field = '15hr_41-80_avg_fdgp_new_ABCD_'
 
     file_root = "/Users/ycli/DATA/ps_result/"
     #file_root = "/Users/ycli/DATA/ps_result/PKS_p3500n3000_parkes_2010_10_24-28_old/"
-    #ps_type = 'cros'
-    ps_type = 'auto'
+    ps_type = 'cros'
+    #ps_type = 'auto'
     file_name_list = [
         #"PKS_cros_ps/%s_%s_2dpow",
 
@@ -897,8 +898,11 @@ if __name__=='__main__':
         #"GBT_%s1pt4_cov_%s_ps_20mode/"%(parkes_field, ps_type) + "%s_%s_20mode_2dpow",
         #"GBT_%s1pt4_cov_wsvd_%s_ps_15mode/"%(parkes_field, ps_type) + "%s_%s_15mode_2dpow",
         #"GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov_wsvd_%s_ps_15mode/"%(ps_type) + "%s_%s_15mode_2dpow",
-        #"GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov_wsvd_%s_ps_20mode/"%(ps_type) + "%s_%s_20mode_2dpow",
-        "GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov_wsvd_%s_ps_20mode/"%(ps_type) + "%s_%s_20mode_2dpow",
+        #"GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov_%s_ps_20mode/"%(ps_type) + "%s_%s_20mode_2dpow",
+        #"GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov_%s_ps_05mode/"%(ps_type) + "%s_%s_5mode_2dpow",
+        #"GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov_%s_ps_10mode/"%(ps_type) + "%s_%s_10mode_2dpow",
+        #"GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov_%s_ps_20mode/"%(ps_type) + "%s_%s_20mode_2dpow",
+        #"GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov_%s_ps_20mode/"%(ps_type) + "%s_%s_20mode_2dpow",
         #"GBT_%s1pt4_cov_wsvd_%s_ps_25mode/"%(parkes_field, ps_type) + "%s_%s_25mode_2dpow",
 
         ]
@@ -908,17 +912,19 @@ if __name__=='__main__':
     #truncate_range = None
 
     plot_1d_power_spectrum_opt_multi(file_root, file_name_list, 
-                                     ps_type = ps_type,
-                                     #save_name ='pks_%s%s_1pt1_cov'%(parkes_field, 
-                                     #                                ps_type), 
-                                     save_name ='gbt_%s%s_1pt1_cov_sec_compensated'%(
-                                         parkes_field, ps_type), 
-                                     positive_only = False,
-                                     plot_error = True, 
-                                     from_sec = True,
-                                     average=False,
-                                     truncate_range = truncate_range,
-                                     sec = ['A', 'B', 'C', 'D'])
+            ps_type = ps_type,
+            save_name ='pks_%s%s_1pt1_cov'%(parkes_field, 
+                                            ps_type), 
+            #save_name ='gbt_%s%s_1pt1_cov_sec_compensated'%(
+                parkes_field, ps_type), 
+            #save_name ='gbt_%s_1pt4_cov_sec_compensated'%(
+            #    ps_type), 
+            positive_only = False,
+            plot_error = True, 
+            from_sec = True,
+            average=False,
+            truncate_range = truncate_range,
+            sec = ['A', 'B', 'C', 'D'])
     exit()
 
 
