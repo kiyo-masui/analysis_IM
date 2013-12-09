@@ -34,14 +34,15 @@ subreal = bool(os.getenv('SUBREAL'))
 goodmodes = int(os.getenv('GOODMODES'))
 
 nfreq = 3600
-freq_cut = range(400) + [535, 537, 538, 539, 540, 541, 542] + range(565, 573) +\
-           [713, 714, 715, 779, 780, 781, 782, 783, 784, 824, 825, 826, 847, 848, 849,
-           850, 851, 852, 1123, 1124, 1125, 1126, 1127, 1270, 1271, 1272, 1273, 1274,
-           1381, 1382, 1383] + range(1586, 1692) + range(1997, 2119) +\
-           [3149, 3150, 3151, 3169, 3170, 3171] + range(3598, 3600)
+#freq_cut = range(400) + [535, 537, 538, 539, 540, 541, 542] + range(565, 573) +\
+#           [713, 714, 715, 779, 780, 781, 782, 783, 784, 824, 825, 826, 847, 848, 849,
+#           850, 851, 852, 1123, 1124, 1125, 1126, 1127, 1270, 1271, 1272, 1273, 1274,
+#           1381, 1382, 1383] + range(1586, 1692) + range(1997, 2119) +\
+#           [3149, 3150, 3151, 3169, 3170, 3171] + range(3598, 3600)
+freq_cut = []
 freq_list = tuple([ind for ind in range(nfreq) if ind not in freq_cut])
 
-mode_list = range(0, 6, 1) + range(10, 51, 5)
+mode_list = range(0, 11, 1) + range(15, 51, 5)
 common_res_convolution = False
 degrade_factor = 1.1
 sub_weighted_mean = True

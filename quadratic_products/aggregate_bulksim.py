@@ -8,7 +8,7 @@ from plotting import plot_slice
 import shelve
 import h5py
 from kiyopy import parse_ini
-from utils import file_tools_eswitzer as file_tools
+from utils import file_tools
 import shutil
 # TODO: better interaction between mask and counts
 # TODO: make object like AggregateSummary that recompiles the physical sims

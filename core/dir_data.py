@@ -4,19 +4,18 @@ import os
 import re
 import glob
 
-_data_dir = os.getenv('GBT10B_DATA')
-_kiyo_data_dir = os.getenv('GBT10B_KM')+'data/'
-# This line is cheating, will break for other people.
-_guppi_data_dir = os.getenv('GBT10B_KM') + 'guppi_data/'
 
 field_name_versions = {
     'wigglez15hr' : ['wigglez15hr', '15hr', 'wigglez15hrst'],
     'wigglez22hr' : ['wigglez22hr', '22hr', 'wigglez22hrst'],
     'wigglez1hr' : ['wigglez1hr', '1hr', 'wigglez1hrst', 'wigglez1hr_centre'],
+    'wigglez11hr' : ['wigglez11hr', '11hr', 'wigglez11hrst', 'wigglez11hr_centre'],
     '3C286' : ['3C286', '3c286'],
     '3C348' : ['3C348', '3c348'],
     '3C48' : ['3C48', '3c48'],
     '3C67' : ['3C67', '3c67'],
+    '3C147' : ['3C147', '3c147'],
+    '3C295' : ['3C295', '3c295'],
 }
 
 data_dir = os.getenv('GBT_DATA')
@@ -83,7 +82,17 @@ def get_data_files(session_list, project='GBT10B_036', field='15hr',
     return out_file_name_list
 
 
+# These variables all old.
 
+_data_dir = os.getenv('GBT10B_DATA')
+_kiyo_data_dir = os.getenv('GBT10B_KM')
+if not _kiyo_data_dir:
+    _kiyo_data_dir = ''
+_kiyo_data_dir = _kiyo_data_dir + 'data/'
+_guppi_data_dir = os.getenv('GBT10B_KM')
+if not _guppi_data_dir:
+    _guppi_data_dir = ''
+_guppi_data_dir = _guppi_data_dir + 'guppi_data/'
 
 #### All depricated. ####
 

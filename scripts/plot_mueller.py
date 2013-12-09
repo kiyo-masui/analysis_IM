@@ -1,3 +1,5 @@
+# Script designed to plot mueller parameters rather than the matrix elements for a single data set. 
+
 import pylab
 from numpy import *
 import scipy as sp

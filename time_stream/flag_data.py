@@ -30,6 +30,7 @@ class FlagData(base_single.BaseSingle) :
                    # once normalized to the time median.
                    'perform_hanning' : False,
                    'cal_scale' : False,
+                   'cal_phase' : False,
                    # Rotate to XX,XY,YX,YY is True.
                    'rotate' : False,
                    # Any frequency with variance > sigma_thres sigmas will be 
@@ -70,8 +71,9 @@ class FlagData(base_single.BaseSingle) :
         if params["perform_hanning"] :
             hanning.hanning_smooth(Data)
             Data.add_history('Hanning smoothed.')
-        if params["cal_scale"] :
-            cal_scale.scale_by_cal(Data, True, False, False)
+        if params["cal_scale"] or params["cal_phase"]:
+            cal_scale.scale_by_cal(Data, params['cal_scale'], False, False,
+                                  False, rotate=params['cal_phase'])
             Data.add_history('Converted to units of noise cal temperture.')
         # Flag the data.
         apply_cuts(Data, sigma_thres=params['sigma_thres'], 
