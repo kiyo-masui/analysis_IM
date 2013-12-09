@@ -182,25 +182,23 @@ def cross_maps(map1key, map2key, noise_inv1key, noise_inv2key,
     retpairs = {}
     retpairslist = []
 
-    if os.path.exists(map1key):
-        (map1keys, map1set) = get_mapdict(map1key)
-        (noise_inv1keys, noise_inv1set) = get_mapdict(noise_inv1key)
-    else:
-        (map1keys, map1set) = db_to_use.fetch(map1key, intend_read=True,
-                                        silent=True)
-        (noise_inv1keys, noise_inv1set) = db_to_use.fetch(noise_inv1key,
-                                        intend_read=True,
-                                        silent=True)
+    (map1keys, map1set) = db_to_use.fetch(map1key, intend_read=False,
+                                          tack_on=tack_on,
+                                          silent=True)
 
-    if os.path.exists(map2key):
-        (map2keys, map2set) = get_mapdict(map2key)
-        (noise_inv2keys, noise_inv2set) = get_mapdict(noise_inv2key)
-    else:
-        (map2keys, map2set) = db_to_use.fetch(map2key, intend_read=True,
-                                        silent=True)
-        (noise_inv2keys, noise_inv2set) = db_to_use.fetch(noise_inv2key,
-                                        intend_read=True,
-                                        silent=True)
+    (map2keys, map2set) = db_to_use.fetch(map2key, intend_read=False,
+                                          tack_on=tack_on,
+                                          silent=True)
+
+    (noise_inv1keys, noise_inv1set) = db_to_use.fetch(noise_inv1key,
+                                                      intend_read=False,
+                                                      tack_on=tack_on,
+                                                      silent=True)
+
+    (noise_inv2keys, noise_inv2set) = db_to_use.fetch(noise_inv2key,
+                                                      intend_read=False,
+                                                      tack_on=tack_on,
+                                                      silent=True)
 
     map1tags = extract_split_tag(map1keys, ignore=ignore)
     map2tags = extract_split_tag(map1keys, ignore=ignore)
@@ -628,7 +626,7 @@ class DataPath(object):
             print "%s has no parent directory field" % db_key
 
     def fetch_multi(self, data_obj, db_token="db:", silent=False,
-                    intend_read=True):
+                    intend_read=False):
         r"""Handle various sorts of file pointers/data
         if `data_obj`
             is an array, return a deep copy of it

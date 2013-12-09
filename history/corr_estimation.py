@@ -6,41 +6,6 @@ import time
 import copy
 
 
-def freq_covariance(map1, map2, weight1, weight2, freq1, freq2):
-    r"""Calculate the weighted nu nu' covariance
-    This should be the same as the zero-lag bin of the full correlation
-    function calculation below.
-    """
-    input_map1 = map1[freq1, :, :]
-    input_map2 = map2[freq2, :, :]
-    input_weight1 = weight1[freq1, :, :]
-    input_weight2 = weight2[freq2, :, :]
-
-    map1shp = input_map1.shape
-    map2shp = input_map2.shape
-
-    map1_flat = np.reshape(input_map1, (map1shp[0], map1shp[1] * map1shp[2]))
-    weight1_flat = np.reshape(input_weight1, (map1shp[0], map1shp[1] * map1shp[2]))
-    map2_flat = np.reshape(input_map2, (map2shp[0], map2shp[1] * map2shp[2]))
-    weight2_flat = np.reshape(input_weight2, (map2shp[0], map2shp[1] * map2shp[2]))
-
-    wprod1 = map1_flat * weight1_flat
-    wprod2 = map2_flat * weight2_flat
-
-    # TODO: or should this be wprod2, wprod1^T?
-    quad_wprod = np.dot(wprod1, np.transpose(wprod2))
-    quad_weight = np.dot(weight1_flat, np.transpose(weight2_flat))
-
-    mask = (quad_weight < 1e-20)
-    quad_weight[mask] = 1.
-    quad_wprod /= quad_weight
-    quad_wprod[mask] = 0
-    quad_weight[mask] = 0
-
-    # downstream code selects the [..., 0] entry for "zero lag"
-    return quad_wprod[..., np.newaxis], quad_weight[..., np.newaxis]
-
-
 def corr_est(map1, map2, noise1, noise2, freq1, freq2,
              lags=(), speedup=False, verbose=False):
     r"""Calculate the cross correlation function of the maps.
@@ -165,6 +130,7 @@ def corr_est(map1, map2, noise1, noise2, freq1, freq2,
 
     return corr, counts
 
+
 def get_corr_and_std_3d(corr_list):
     '''Return the average correlation and its standard deviation.
 
@@ -204,43 +170,6 @@ def get_corr_and_std_3d(corr_list):
                          sp.std(value_list)
 
     return corr_avg, corr_std
-
-
-def get_freq_svd_modes(corr, n_modes):
-    r"""Same as get freq eigenmodes, but treats left and right maps
-    separatly with an SVD.
-
-    Parameters
-    ----------
-    corr: 3D array
-        The correlation. Only the 1st lag is used.
-    n_modes: int
-        The number of modes wanted.
-
-    Returns
-    -------
-    s: 1D array
-        The amplitude of the modes. length = `n_modes`
-    left_vectors, right_vectors: 2D array
-        The first `n_modes` from the svd.
-
-    """
-    u_matrix, singular_values, v_matrix = linalg.svd(corr[:, :, 0])
-    v_matrix = v_matrix.T
-    sorted_singular_values = list(singular_values)
-    sorted_singular_values.sort()
-    left_vectors = []
-    right_vectors = []
-    for mode_index in range(n_modes):
-        ind, = sp.where(abs(singular_values) ==
-                        sorted_singular_values[-mode_index - 1])
-        #if len(ind) > 1:
-        #    raise NotImplementedError('2 eigenvalues bitwise equal.')
-
-        left_vectors.append(u_matrix[:, ind[0]])
-        right_vectors.append(v_matrix[:, ind[0]])
-
-    return singular_values, left_vectors, right_vectors
 
 
 def subtract_modes_corr(corr, n_modes):

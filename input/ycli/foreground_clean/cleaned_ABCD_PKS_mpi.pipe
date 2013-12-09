@@ -5,7 +5,7 @@ pipe_processes = 1
 
 
 #from foreground_clean import pair_set_legendre
-from foreground_clean import pair_set
+from foreground_clean import pair_set_ycli as pair_set
 
 #from quadratic_products import pwrspec_combinations
 #from quadratic_products import pwrspec_compile
@@ -208,7 +208,7 @@ if do_simulation_IQUV:
     fs3_factorizable_noise = True
     fs3_convolve = common_res_convolution
     fs3_clip_weight_percent = 50
-    fs3_weighted_SVD = True
+    fs3_weighted_SVD = False
     fs3_degrade_factor = degrade_factor
     fs3_sub_weighted_mean = sub_weighted_mean
     fs3_good_modes = goodmodes

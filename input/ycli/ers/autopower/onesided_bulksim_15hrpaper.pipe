@@ -3,7 +3,7 @@ pipe_modules = []
 pipe_processes = 1
 
 from map import map_operations
-from map import simulate_gbt_signal_eswitzer as simulate_gbt_signal
+from map import simulate_gbt_signal
 from quadratic_products import pwrspec_combinations
 from foreground_clean import pair_set_extended
 import struct

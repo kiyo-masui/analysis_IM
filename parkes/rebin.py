@@ -9,7 +9,8 @@ import numpy.ma as ma
 
 import base_single
 import kiyopy.custom_exceptions as ce
-import utils.misc as utils
+#import utils.misc as utils
+import misc as utils
 import rebin_time
 import rebin_freq
 

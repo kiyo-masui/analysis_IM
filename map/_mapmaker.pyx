@@ -149,7 +149,7 @@ def get_noise_inv_diag(
     # Counters.
     cdef int ii, jj
     # Working floats.
-    cdef tmp
+    cdef DTYPE_t tmp
     # Output.
     cdef np.ndarray[DTYPE_t, ndim=2, mode='c'] noise_inv_diag
     noise_inv_diag = sp.zeros((n_chan, n_time), dtype=DTYPE)

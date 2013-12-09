@@ -262,12 +262,12 @@ class Bin2dF(object):
         #np.set_printoptions(threshold=np.nan)
         print "finding the binned data"
         self.realmap()
-        ##print "finding the binned mock and selection function"
-        #self.selection()
-        ##print "finding the separable form of the selection"
-        #self.separable()
-        ##print "finding the optical overdensity"
-        #self.delta()
+        #print "finding the binned mock and selection function"
+        self.selection()
+        #print "finding the separable form of the selection"
+        self.separable()
+        #print "finding the optical overdensity"
+        self.delta()
 
     def realmap(self):
         """bin the real WiggleZ catalog"""

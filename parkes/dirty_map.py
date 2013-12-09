@@ -23,7 +23,8 @@ import numpy as np
 
 import core.algebra as al
 from parkes import fitsGBT
-import utils.misc as utils
+#import utils.misc as utils
+import misc as utils
 from map import tools
 from noise import noise_power
 from foreground import ts_measure

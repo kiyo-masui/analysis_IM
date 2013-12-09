@@ -152,22 +152,22 @@ class Measure(object) :
             norm[norm==0] = 1
             gains = corr / norm
             gain_dict[key] = gains
-            # XXX
             #plt.figure()
-            #plt.plot(freq_dict[key][0,:], gains[0,0,0,:], '.')
-            ##plt.plot(freq_dict[key][0,:],
-            ##         (gains[0,0,0,:] + gains[0,0,1,:])/2., '.')
-            ##plt.plot(freq_dict[key][0,:],
-            ##         (gains[0,3,0,:] + gains[0,3,1,:])/2., '.')
+            #if params['diff_gain_cal_only']:
+            #    plt.plot(freq_dict[key][0,:],
+            #             (gains[0,0,0,:] + gains[0,0,1,:])/2., '.')
+            #    plt.plot(freq_dict[key][0,:],
+            #             (gains[0,3,0,:] + gains[0,3,1,:])/2., '.')
+            #else:
+            #    plt.plot(freq_dict[key][0,:], gains[0,0,0,:], '.')
             #plt.title(key)
             #plt.xlabel('Frequency (Hz)')
             #plt.ylabel('Correlation amplitude')
-            # XXX
             out_db[key + '.gains'] = gains
             out_db[key + '.freq'] = freq_dict[key]
+        #if not params['diff_gain_cal_only']:
+        #    plt.show()
         out_db.close()
-        # XXX
-        #plt.show()
         #### Apply the calibration to the data. ####
         for middle in file_middles:
             key = get_key(middle)
@@ -201,7 +201,7 @@ class Measure(object) :
         # Allowcate memory for the outputs.
         corr = np.zeros((n_bands_proc, n_pol, n_cal, n_chan),
                          dtype=float)
-        norm = np.zeros(corr.shape, dtype=int)
+        norm = np.zeros(corr.shape, dtype=float)
         freq = np.empty((n_bands_proc, n_chan))
         for ii in range(n_bands_proc):
             Blocks = Reader.read((), ii)
@@ -240,8 +240,18 @@ class Measure(object) :
                                 interpolation=params['interpolation'],
                                 modes_subtract=params['smooth_modes_subtract'],
                                 filter_type=params['filter_type'])
-                corr[ii,...] += this_corr
-                norm[ii,...] += this_norm
+                # Check that the answer we got is sane, if not, throw away the
+                # this set.
+                tmp_corr = this_corr.copy()
+                tmp_norm = this_norm.copy()
+                tmp_corr[tmp_norm == 0] = 1.
+                tmp_norm[tmp_norm == 0] = 1.
+                tmp_gains = tmp_corr / tmp_norm
+                if np.all(tmp_gains < 2) and np.all(tmp_gains > 0.5):
+                    corr[ii,...] += this_corr
+                    norm[ii,...] += this_norm
+                else:
+                    pass
         if Pipe is None:
             return key, corr, norm, freq
         else:
@@ -439,7 +449,8 @@ def get_correlation(Data, maps, interpolation='nearest', modes_subtract=2,
         # it. Be carefull about the 0 information case (all masked).
         filled_norm = norm.copy()
         # No information.
-        bad_inds = norm == 0
+        bad_inds = np.logical_or(norm == 0, np.sum(un_mask, 0) <
+                                 2 * modes_subtract)
         filled_norm[bad_inds] = 1
         amp = corr / filled_norm
         fit = submap * amp
@@ -452,17 +463,16 @@ def get_correlation(Data, maps, interpolation='nearest', modes_subtract=2,
         # Store results in output arrays
         correlation[ii,:,:] = corr
         normalization[ii,:,:] = norm
-        if False and (ii == 0 or ii == 3):
+        if False and (ii == 0) and int(Data.field['SCAN']) == 86:
             print correlation[ii,:,:]
             print normalization[ii,:,:]
-            print chi_sq
+            print inv_chi_sq
             print correlation[ii,:,:] / normalization[ii,:,:]
             plt.plot(on_map_time, (subdata * un_mask)[:,0,0], '.')
-            plt.plot(on_map_time, (submap * un_mask)[:,0,0], '.')
-            plt.figure()
-            plt.plot((subdata * un_mask)[:,0,0] - (submap * un_mask)[:,0,0],
-                       '.')
-            plt.plot((subdata * un_mask)[:,0,3] - (submap * un_mask)[:,0,3],
-                       '.')
+            plt.plot(on_map_time, (fit * un_mask)[:,0,0], '.')
+            #plt.plot((subdata * un_mask)[:,0,0] - (submap * un_mask)[:,0,0],
+            #           '.')
+            #plt.plot((subdata * un_mask)[:,0,3] - (submap * un_mask)[:,0,3],
+            #           '.')
             plt.show()
     return correlation, normalization
