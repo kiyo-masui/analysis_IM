@@ -51,6 +51,8 @@ fields_and_axes = {
                    'ELEVATIO' : ('time', ),
                    'AZIMUTH' : ('time', ),
                    'OBSFREQ' : ('time', ),
+                   'RA' : ('time',),
+                   'DEC' : ('time',),
                    # These pointings are corrected for pointing calibration
                    # and I think refraction.
                    'CRVAL2' : ('time', ), # Azimuth
