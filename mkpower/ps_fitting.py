@@ -16,7 +16,8 @@ def chisquare_estimation(ps_power_list, ps_error_list, ps_kbins_list,
     noninf = np.logical_and(np.isfinite(power_vector), np.isfinite(noise_vector))
     power_vector = power_vector[np.logical_and(nonzero, noninf)][:,None]
     noise_vector = noise_vector[np.logical_and(nonzero, noninf)][:,None]
-    kbins_vector = kbins_vector[np.logical_and(nonzero, noninf)]
+    kbins_vector = kbins_vector[np.logical_and(nonzero, noninf)\
+            [:kbins_vector.shape[0]]]
 
     ps_th = ps_summary.load_theory_ps(kbins_vector, 
                                       redshift=redshift, 
@@ -41,7 +42,7 @@ def chisquare_estimation(ps_power_list, ps_error_list, ps_kbins_list,
     return bias[0,0], bias_error[0,0]
 
 def chisquare_fitting(ps_power_list, ps_error_list, ps_kbins_list, 
-                      bias=[0.1, 1.5, 100], redshift=0.8, cross=False, plot=False):
+                      bias=[0.01, 1.5, 500], redshift=0.8, cross=False, plot=False):
     '''
         bias : [min, max, number]
     '''
@@ -61,7 +62,7 @@ def chisquare_fitting(ps_power_list, ps_error_list, ps_kbins_list,
         ps_th = ps_summary.load_theory_ps(ps_kbins, redshift=redshift, cross=cross)
 
         ps_error[ps_error==0] = np.inf
-        ps_power = np.fabs(ps_power)
+        #ps_power = np.fabs(ps_power)
 
         data_number += len(ps_error[ps_error!=0])
 

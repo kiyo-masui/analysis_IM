@@ -363,7 +363,7 @@ def convert_2dps_to_1dps_opt(ps_root, sn_root, truncate_range=None):
     power_spectrum_err **= 2
 
     k_p_centre, k_v_centre = get_2d_k_bin_centre(power_spectrum)
-    k_centre = np.sqrt(k_p_centre[:,None]**2 + k_v_centre[None, :]**2)
+    k_centre = np.sqrt(k_v_centre[:,None]**2 + k_p_centre[None, :]**2)
 
     if truncate_range != None:
         k_p_range = [truncate_range[0], truncate_range[1]]
@@ -385,24 +385,25 @@ def convert_2dps_to_1dps_opt(ps_root, sn_root, truncate_range=None):
     shortnoise         = shortnoise.flatten()[power_spectrum_kmn!=0]
     power_spectrum_kmn = power_spectrum_kmn[power_spectrum_kmn!=0]
 
-    power_spectrum *= power_spectrum_kmn
-    power_spectrum_err *= power_spectrum_kmn**2
-    shortnoise *= power_spectrum_kmn
-
+    #power_spectrum *= power_spectrum_kmn
+    #power_spectrum_err *= power_spectrum_kmn**2
+    #shortnoise *= power_spectrum_kmn
 
     k_edges_1d = k_p_edges
 
-    normal, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum_kmn)
-    normal_2, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum_kmn**2)
+    #normal, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum_kmn)
+    #normal_2, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum_kmn**2)
+    normal, k_e = np.histogram(k_centre, k_edges_1d)
     power, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum)
     err, k_e = np.histogram(k_centre, k_edges_1d, weights=power_spectrum_err)
     short, k_e = np.histogram(k_centre, k_edges_1d, weights=shortnoise)
 
     normal = normal.astype(float)
     normal[normal==0] = np.inf
-    normal_2[normal_2==0] = np.inf
+    #normal_2[normal_2==0] = np.inf
     power_1d = power/normal
-    power_1d_err = np.sqrt(err/normal_2)
+    #power_1d_err = np.sqrt(err/normal_2)
+    power_1d_err = np.sqrt(err)/normal
     shortnoise_1d = short/normal
 
     return power_1d, power_1d_err, k_p_centre, shortnoise_1d

@@ -75,7 +75,9 @@ def plot_1d_power_spectrum_opt_multi(file_root, file_name, ps_type,
     #    fmt='go', mec='g', capsize=2.5, elinewidth=1, markersize=5,
     #    label='Cole et. al 2005 x 1.26')
 
-    power_eric = np.loadtxt('/Users/ycli/DATA/ps_result_eswitzer/gbt_pwrspec_plots_wsvd/GBT_15hr_avg_fdgp_new_x_GBT_15hr_avg_fdgp_new_onesided_ixi_conv1p4_clipnoise_bfwindow_svdweighted_noiseweight/pk_20modes.dat')
+    # load eric's result
+    #
+    #power_eric = np.loadtxt('/Users/ycli/DATA/ps_result_eswitzer/gbt_pwrspec_plots_wsvd/GBT_15hr_avg_fdgp_new_x_GBT_15hr_avg_fdgp_new_onesided_ixi_conv1p4_clipnoise_bfwindow_svdweighted_noiseweight/pk_20modes.dat')
     #power_eric = np.loadtxt('/Users/ycli/DATA/ps_result_eswitzer/gbt_pwrspec_plots/GBT_15hr_avg_fdgp_new_x_GBT_15hr_avg_fdgp_new_onesided_ixi_conv1p4_clipnoise_bfwindow_svdweighted_noiseweight_notrans/pk_20modes.dat')
     #power_eric = np.loadtxt('/Users/ycli/DATA/ps_result_eswitzer/gbt_pwrspec_plots/GBT_15hr_avg_fdgp_new_x_GBT_15hr_avg_fdgp_new_onesided_ixi_conv1p4_clipnoise_bfwindow_svdweighted_self/pk_20modes.dat')
 
@@ -206,13 +208,18 @@ def plot_1d_power_spectrum_opt_multi(file_root, file_name, ps_type,
         #plt.plot(power_th_k, bias[1]*power_th, 'k.', linewidth=1)
         #plt.plot(power_th_k, bias[2]*power_th, 'k.', linewidth=1)
 
-        ps_power_list = np.array(ps_power_list)
-        ps_error_list = np.array(ps_error_list)
-        ps_kbins_list = np.array(ps_kbins_list)
+        ps_power_list = np.ma.array(ps_power_list)
+        ps_error_list = np.ma.array(ps_error_list)
+        ps_kbins_list = np.ma.array(ps_kbins_list)
 
-        ps_power_average = np.mean(ps_power_list, axis=0)
-        ps_error_average = np.sqrt(np.mean(ps_error_list**2, axis=0))
-        ps_kbins_average = np.mean(ps_kbins_list, axis=0)
+        #mask = ps_power_list < 0
+        #ps_power_list[mask] = np.ma.masked
+        #ps_error_list[mask] = np.ma.masked
+        #ps_kbins_list[mask] = np.ma.masked
+
+        ps_power_average = np.ma.mean(ps_power_list, axis=0)
+        ps_error_average = np.ma.sqrt(np.ma.mean(ps_error_list**2, axis=0))
+        ps_kbins_average = np.ma.mean(ps_kbins_list, axis=0)
 
         ps_power_positive, ps_power_positive_err_2, ps_kbins_positive,\
         ps_power_negative, ps_power_negative_err_2, ps_kbins_negative\
@@ -220,13 +227,13 @@ def plot_1d_power_spectrum_opt_multi(file_root, file_name, ps_type,
                                                    ps_error_average, 
                                                    ps_kbins_average)
 
-        #plt.errorbar(ps_kbins_positive, ps_power_positive, ps_power_positive_err_2, 
-        #    fmt='ks', mec='k', capsize=4.5, elinewidth=1, label='average positive')
-        #plt.errorbar(ps_kbins_negative, ps_power_negative, ps_power_negative_err_2, 
-        #    fmt='ks', mec='k', mfc='none', capsize=4.5, elinewidth=1,)
+        plt.errorbar(ps_kbins_positive, ps_power_positive, ps_power_positive_err_2, 
+            fmt='ks', mec='k', capsize=4.5, elinewidth=1, label='average positive')
+        plt.errorbar(ps_kbins_negative, ps_power_negative, ps_power_negative_err_2, 
+            fmt='ks', mec='k', mfc='none', capsize=4.5, elinewidth=1,)
     else:
-        #bias = 0.35*100./75. * 0.63
-        bias = 0.43
+        bias = 0.35*100./75. * 0.63
+        #bias = 0.43
         if ps_type == 'auto':
             plt.plot(power_th_k, bias**2*power_th, 'k-', linewidth=2,
                      label=r'$\Omega_{HI}b_{HI} = ' + \
@@ -239,7 +246,7 @@ def plot_1d_power_spectrum_opt_multi(file_root, file_name, ps_type,
 
     plt.loglog()
     if ps_type=='cros':
-        plt.ylim(ymin=1.e-8, ymax=4.e-3)
+        plt.ylim(ymin=1.e-9, ymax=4.e-1)
     elif ps_type=='auto':
         #plt.ylim(ymin=1.e-10, ymax=5.e-5)
         plt.ylim(ymin=1.e-9, ymax=4.e-3) # paper
@@ -556,7 +563,7 @@ def plot_2d_power_spectrum(rf_root, tr_root, ps_root, filename, truncate_range=N
     image_box_2d(x_list, y_list, plot_list, title_list=title_list, n_row=1,
                  xlim=[min(k_v_edges), max(k_v_edges)],
                  ylim=[min(k_p_edges), max(k_p_edges)],
-                 clim=[-8, -5])
+                 clim=[-8, -3])
     plt.savefig('./png/%s_2d_power_spectrum.png'%filename, format='png')
 
 
@@ -827,10 +834,10 @@ if __name__=='__main__':
     # -----------------------------------------------------------------------
 
     #parkes_field = 'n03n30_10by7_0627pixel_'
-    parkes_field = '07n30_10by7_0627pixel_'
+    #parkes_field = '07n30_10by7_0627pixel_'
     #parkes_field = '17n30_10by7_0627pixel_'
     #parkes_field = '27n30_10by7_'
-    #parkes_field = 'p3500n3000_parkes_2010_10_24-28_'
+    parkes_field = 'p3500n3000_parkes_2010_10_24-28_'
     #parkes_field = '15hr_41-80_pointcorr_ABCD_'
     #parkes_field = '15hr_41-80_avg_fdgp_new_ABCD_'
 
@@ -908,35 +915,40 @@ if __name__=='__main__':
         ]
 
     #truncate_range = [0.035,1.,0.04,0.3]
-    truncate_range = [0.035,1.,0.08,0.3]
-    #truncate_range = None
+    #truncate_range = [0.035,1.,0.08,0.3]
+    truncate_range = None
 
-    plot_1d_power_spectrum_opt_multi(file_root, file_name_list, 
-            ps_type = ps_type,
-            save_name ='pks_%s%s_1pt1_cov'%(parkes_field, 
-                                            ps_type), 
-            #save_name ='gbt_%s%s_1pt1_cov_sec_compensated'%(
-                parkes_field, ps_type), 
-            #save_name ='gbt_%s_1pt4_cov_sec_compensated'%(
-            #    ps_type), 
-            positive_only = False,
-            plot_error = True, 
-            from_sec = True,
-            average=False,
-            truncate_range = truncate_range,
-            sec = ['A', 'B', 'C', 'D'])
-    exit()
+    #plot_1d_power_spectrum_opt_multi(file_root, file_name_list, 
+    #        ps_type = ps_type,
+    #        save_name ='pks_%s%s_1pt1_cov'%(parkes_field, 
+    #                                        ps_type), 
+    #        #save_name ='gbt_%s%s_1pt1_cov_sec_compensated'%(
+    #        #    parkes_field, ps_type), 
+    #        #save_name ='gbt_%s_1pt4_cov_sec_compensated'%(
+    #        #    ps_type), 
+    #        positive_only = False,
+    #        plot_error = True, 
+    #        from_sec = True,
+    #        average=False,
+    #        truncate_range = truncate_range,
+    #        sec = ['A', 'B', 'C', 'D'])
+    #exit()
 
 
     file_name_list = [
-            #"PKS_%s1pt1_cov_cal_%s_ps_02mode/"%('07n30_10by7_0627pixel_', ps_type) + "%s_%s_2mode_2dpow",
-            #"PKS_%s1pt1_cov_cal_%s_ps_05mode/"%('17n30_10by7_0627pixel_', ps_type) + "%s_%s_5mode_2dpow",
+            "PKS_%s1pt1_cov_bgcal_%s_ps_05mode/"%('07n30_10by7_0627pixel_', ps_type) + "%s_%s_5mode_2dpow",
+            "shifttest_PKS_%s1pt1_cov_bgcal_%s_ps_05mode/"%('07n30_10by7_0627pixel_', ps_type) + "%s_%s_5mode_2dpow",
+            #"PKS_%s1pt1_cov_bgcal_%s_ps_05mode/"%('17n30_10by7_0627pixel_', ps_type) + "%s_%s_5mode_2dpow",
             #"PKS_%s1pt1_cov_cal_%s_ps_05mode/"%('27n30_10by7_', ps_type) + "%s_%s_5mode_2dpow",
-            #"PKS_%s1pt1_cov_cal_%s_ps_02mode/"%('p3500n3000_parkes_2010_10_24-28_', ps_type) + "%s_%s_2mode_2dpow",
+            #"PKS_%s1pt1_cov_bgcal_%s_ps_05mode/"%('p3500n3000_parkes_2010_10_24-28_', ps_type) + "%s_%s_5mode_2dpow",
+            #"nonetest_PKS_%s1pt1_cov_bgcal_%s_ps_05mode/"%('p3500n3000_parkes_2010_10_24-28_', ps_type) + "%s_%s_5mode_2dpow",
+            #"PKS_%s1pt1_cov_bgcal_%s_ps_03mode/"%('p3500n3000_parkes_2010_10_24-28_', ps_type) + "%s_%s_3mode_2dpow",
+            #"GBT_test/%s_%s_20mode_2dpow",
+            #"PKS_%s1pt1_cov_%s_ps_05mode/"%('p3500n3000_parkes_2010_10_24-28_', ps_type) + "%s_%s_5mode_2dpow",
 
             #"PKS_%s1pt1_cov_bgcal_%s_ps_03mode/"%('p3500n3000_parkes_2010_10_24-28_', ps_type) + "%s_%s_3mode_2dpow",
             #"PKS_%s1pt1_cov_bgcal_%s_ps_01mode/"%('p3500n3000_parkes_2010_10_24-28_', ps_type) + "%s_%s_1mode_2dpow",
-            "PKS_%s1pt1_cov_bgcal_%s_ps_05mode/"%('p3500n3000_parkes_2010_10_24-28_', ps_type) + "%s_%s_5mode_2dpow",
+            #"PKS_%s1pt1_cov_bgcal_%s_ps_05mode/"%('p3500n3000_parkes_2010_10_24-28_', ps_type) + "%s_%s_5mode_2dpow",
 
         #"PKS_%s1pt1_cov_cal_%s_ps_03mode/"%('27n30_10by7_', ps_type) + "%s_%s_3mode_2dpow",
         #"PKS_%s1pt1_cov_cal_j2000test_%s_ps_03mode/"%('27n30_10by7_', ps_type) + "%s_%s_3mode_2dpow",
@@ -950,14 +962,14 @@ if __name__=='__main__':
                                      save_name ='pks_average_%s_1pt1_cov'%(ps_type), 
                                      positive_only = False,
                                      plot_error = False, 
-                                     from_sec = True,
-                                     average=True,
-                                     sec = ['A', 'B', 'C', 'D', 'E'])
+                                     from_sec = False,
+                                     average=False,)
+                                     #sec = ['A', 'B', 'C', 'D', 'E'])
     exit()
 
     # -----------------------------------------------------------------------
 
-    mode = 1 
+    mode = 5
     #mode = 10 
     #filename = '15hr_II_14conv_auto_ps_15hour_%dmode'%mode
     #filename = '15hr_IE_14conv_auto_ps_15hour_%dmode'%mode
@@ -975,11 +987,11 @@ if __name__=='__main__':
     result_root = '/Users/ycli/DATA/ps_result/' + filename + '/'
 
     #result_root = '/Users/ycli/DATA/ps_result/' + filename + '/'
-    rf_root = result_root + 'auto_rf_%dmode_2dpow'%mode
-    tr_root = result_root + 'auto_tr_%dmode_2dpow'%mode
-    ns_root = result_root + 'auto_ns_%dmode_2dpow'%mode
-    ps_root = result_root + 'auto_ps_%dmode_2dpow'%mode
-    si_root = result_root + 'auto_si_%dmode_2dpow'%mode
+    rf_root = result_root + '%s_rf_%dmode_2dpow'%(ps_type, mode)
+    tr_root = result_root + '%s_tr_%dmode_2dpow'%(ps_type, mode)
+    ns_root = result_root + '%s_ns_%dmode_2dpow'%(ps_type, mode)
+    ps_root = result_root + '%s_ps_%dmode_2dpow'%(ps_type, mode)
+    si_root = result_root + '%s_si_%dmode_2dpow'%(ps_type, mode)
     
     #truncate_range = [0.035,1.,0.08,0.3]
     #truncate_range = [0.035,1.,0.04,0.3]
