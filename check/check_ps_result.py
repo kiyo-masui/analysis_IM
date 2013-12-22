@@ -909,7 +909,7 @@ if __name__=='__main__':
         #"GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov_%s_ps_05mode/"%(ps_type) + "%s_%s_5mode_2dpow",
         #"GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov_%s_ps_10mode/"%(ps_type) + "%s_%s_10mode_2dpow",
         #"GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov_%s_ps_20mode/"%(ps_type) + "%s_%s_20mode_2dpow",
-        #"GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov_%s_ps_20mode/"%(ps_type) + "%s_%s_20mode_2dpow",
+        "GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov_%s_ps_20mode/"%(ps_type) + "%s_%s_20mode_2dpow",
         #"GBT_%s1pt4_cov_wsvd_%s_ps_25mode/"%(parkes_field, ps_type) + "%s_%s_25mode_2dpow",
 
         ]
@@ -936,8 +936,9 @@ if __name__=='__main__':
 
 
     file_name_list = [
-            "PKS_%s1pt1_cov_bgcal_%s_ps_05mode/"%('07n30_10by7_0627pixel_', ps_type) + "%s_%s_5mode_2dpow",
-            "shifttest_PKS_%s1pt1_cov_bgcal_%s_ps_05mode/"%('07n30_10by7_0627pixel_', ps_type) + "%s_%s_5mode_2dpow",
+            "GBT_15hr_41-80_avg_fdgp_new_1pt4_cov_%s_ps_20mode/"%(ps_type) + "%s_%s_20mode_2dpow",
+            #"PKS_%s1pt1_cov_bgcal_%s_ps_05mode/"%('07n30_10by7_0627pixel_', ps_type) + "%s_%s_5mode_2dpow",
+            #"shifttest_PKS_%s1pt1_cov_bgcal_%s_ps_05mode/"%('07n30_10by7_0627pixel_', ps_type) + "%s_%s_5mode_2dpow",
             #"PKS_%s1pt1_cov_bgcal_%s_ps_05mode/"%('17n30_10by7_0627pixel_', ps_type) + "%s_%s_5mode_2dpow",
             #"PKS_%s1pt1_cov_cal_%s_ps_05mode/"%('27n30_10by7_', ps_type) + "%s_%s_5mode_2dpow",
             #"PKS_%s1pt1_cov_bgcal_%s_ps_05mode/"%('p3500n3000_parkes_2010_10_24-28_', ps_type) + "%s_%s_5mode_2dpow",
@@ -959,7 +960,8 @@ if __name__=='__main__':
 
     plot_1d_power_spectrum_opt_multi(file_root, file_name_list, 
                                      ps_type = ps_type,
-                                     save_name ='pks_average_%s_1pt1_cov'%(ps_type), 
+                                     #save_name ='pks_average_%s_1pt1_cov'%(ps_type), 
+                                     save_name ='gbt_average_%s_1pt4_cov'%(ps_type), 
                                      positive_only = False,
                                      plot_error = False, 
                                      from_sec = False,
