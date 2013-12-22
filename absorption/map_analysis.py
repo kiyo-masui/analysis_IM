@@ -21,7 +21,7 @@ directory = sys.argv[1]
 fitting = True
 plotting = False
 filtered = True
-hit_plot = True
+hit_plot = False
 candidate_plot = True
 
 #filename1 = sys.argv[1]
@@ -33,7 +33,7 @@ candidate_plot = True
 #new data
 file_base = 'fir_15hr_41-80_ptcorr_absorb_clean_map_I_'
 #file_sets = ('732','751','771','790','810') #A few frequency pixels are messed up so screwing with the std of the data.  
-file_sets = ('732','751','771','790','810','829','849')
+file_sets = ('712','732','751','771','790','810','829','849','868','888')
 
 full_data = []
 full_freqs = []
@@ -177,18 +177,21 @@ if filtered:
     for j in range(0,16):
         for k in range(0,10):
             for i in range(0,len(list_freq)):
-                if full_filter[i,j,k]<(mean_filter[j,k]-1.5*std_filter[j,k]):
+                if full_filter[i,j,k]<(mean_filter[j,k]-1.*std_filter[j,k]):
                     outliers[i,j,k] = 1.0
                 if full_filter[i,j,k]<(mean_filter[j,k]-2.*std_filter[j,k]):
                     outliers2[i,j,k] = 1.0
                 if full_filter[i,j,k]<(mean_filter[j,k]-3.*std_filter[j,k]):
                     outliers3[i,j,k] = 1.0
-                if full_filter[i,j,k]>(mean_filter[j,k]+1.5*std_filter[j,k]):
+                if full_filter[i,j,k]>(mean_filter[j,k]+1.*std_filter[j,k]):
                     posout[i,j,k] = 1.0
                 if full_filter[i,j,k]>(mean_filter[j,k]+2.*std_filter[j,k]):
                     posout2[i,j,k] = 1.0
                 if full_filter[i,j,k]>(mean_filter[j,k]+3.*std_filter[j,k]):
                     posout3[i,j,k] = 1.0
+#            print sum(outliers3[:,j,k])
+#            if sum(outliers3[:,j,k])>50.:
+#                print 'Bad pixel at RA ',ras[j],' and DEC ',decs[k]
 #            print 'Number of neg 3sig outliers for pixel ', j,k,' is:', ma.sum(outliers3[:,j,k]) 
 #            print 'Number of pos 3sig outliers for pixel ', j,k,' is:', ma.sum(posout3[:,j,k])
 #            print 'Number of neg 2sig outliers for pixel ', j,k,' is:', ma.sum(outliers2[:,j,k])
@@ -203,32 +206,148 @@ if filtered:
                 plt.title('Three Sigma Outliers for an 11 pixel filter')
                 plt.savefig('three_sigma_outliers_'+str(int(list_freq[f]*1000))+'kHz',dpi=300)
                 plt.clf()
-    
+
+# Need to cut out very bad frequencies that contaminate the mean/std for many pixels in order to get
+# the proper distribution.
+    bad_freq_mask = zeros((len(list_freq),16,10))
+    for f in range(0,len(list_array)):
+        med_sum3 = ma.sum(outliers3[f,:,:],axis=0)
+        sum3 = ma.sum(med_sum3)
+        if sum3>=3.0:
+            for j in range(0,16):
+                for k in range(0,10):
+                    bad_freq_mask[f,j,k] = 1.0
+    print 'Number of 3 Sigma Bad Frequencies:', sum(bad_freq_mask[:,0,0])
+
+    filter_array = ma.array(full_filter,mask=bad_freq_mask)
+    masked_list_array = ma.array(list_array,mask=bad_freq_mask)
+    freq_array = ma.array(list_freq,mask=bad_freq_mask[:,0,0])
+    comp_filter_array = zeros((len(list_array)-sum(bad_freq_mask[:,0,0]),16,10))
+    comp_list_array = zeros((len(list_array)-sum(bad_freq_mask[:,0,0]),16,10))
+#    comp_freq = zeros(len(list_array)-sum(bad_freq_mask[:,0,0]))
+    for i in range(0,16):
+        for j in range(0,10):
+            comp_filter_array[:,i,j] = ma.compressed(filter_array[:,i,j])
+            comp_list_array[:,i,j] = ma.compressed(masked_list_array[:,i,j])
+    comp_freq = ma.compressed(freq_array)
+    print 'Compressed filtered array size is:', shape(comp_filter_array)
+    mean_comp_filter = ma.mean(comp_filter_array,axis=0)
+    std_comp_filter = ma.std(comp_filter_array,axis=0)
+    comp_outliers = zeros((len(comp_filter_array),16,10))
+    comp_outliers2 = zeros((len(comp_filter_array),16,10))
+    comp_outliers3 = zeros((len(comp_filter_array),16,10))
+    comp_posout = zeros((len(comp_filter_array),16,10))
+    comp_posout2 = zeros((len(comp_filter_array),16,10))
+    comp_posout3 = zeros((len(comp_filter_array),16,10))
+#    for f in range(0,len(list_array)):
+    for j in range(0,16):
+        for k in range(0,10):
+            for i in range(0,len(comp_freq)):
+                if comp_filter_array[i,j,k]<(mean_comp_filter[j,k]-1.*std_comp_filter[j,k]):
+                    comp_outliers[i,j,k] = 1.0
+                if comp_filter_array[i,j,k]<(mean_comp_filter[j,k]-2.*std_comp_filter[j,k]):
+                    comp_outliers2[i,j,k] = 1.0
+                if comp_filter_array[i,j,k]<(mean_comp_filter[j,k]-3.*std_comp_filter[j,k]):
+                    comp_outliers3[i,j,k] = 1.0
+#                    if j==k:
+#                        if j==0:
+#                            print 'Filtered 3 sigma outlier at:',comp_freq[i]*1000.
+                if comp_filter_array[i,j,k]>(mean_comp_filter[j,k]+1.*std_comp_filter[j,k]):
+                    comp_posout[i,j,k] = 1.0
+                if comp_filter_array[i,j,k]>(mean_comp_filter[j,k]+2.*std_comp_filter[j,k]):
+                    comp_posout2[i,j,k] = 1.0
+                if comp_filter_array[i,j,k]>(mean_comp_filter[j,k]+3.*std_comp_filter[j,k]):
+                    comp_posout3[i,j,k] = 1.0
+#            if sum(comp_outliers3[:,j,k])<10.:
+#                print 'Bad pixel at RA ',ras[j],j,' and DEC ',decs[k],k
+#                for i in range(0,len(comp_freq)):
+#                    comp_outliers2[i,j,k] = 0.
+#                    comp_outliers3[i,j,k] = 0.
+
+#           print 'Number of 3 sigma outliers:',sum(comp_outliers3[:,j,k])
+#           print 'Number of 2 sigma outliers:',sum(comp_outliers2[:,j,k])
+#    for f in range(0,len(comp_freq)):
+#        if ma.sum(ma.sum(comp_outliers3[f,:,:],axis=0))>=1.0:
+#            print 'Filtered 3 sigma outlier at:',comp_freq[f]*1000
+
+# Second iteration of bad frequency filtering.    
+    bad_freq_mask = zeros((len(comp_freq),16,10))
+    for f in range(0,len(comp_filter_array)):
+        med_sum3 = ma.sum(comp_outliers3[f,:,:],axis=0)
+        sum3 = ma.sum(med_sum3)
+        if sum3>=3.0:
+            for j in range(0,16):
+                for k in range(0,10):
+                    bad_freq_mask[f,j,k] = 1.0
+    print 'Number of 3 Sigma Bad Frequencies take 2:', sum(bad_freq_mask[:,0,0])
+
+    sec_filter_array = ma.array(comp_filter_array,mask=bad_freq_mask)
+    sec_masked_list_array = ma.array(comp_list_array,mask=bad_freq_mask)
+    sec_freq_array = ma.array(comp_freq,mask=bad_freq_mask[:,0,0])
+    sec_comp_filter_array = zeros((len(comp_filter_array)-sum(bad_freq_mask[:,0,0]),16,10))
+    sec_comp_list_array = zeros((len(comp_filter_array)-sum(bad_freq_mask[:,0,0]),16,10))
+#    comp_freq = zeros(len(list_array)-sum(bad_freq_mask[:,0,0]))
+    for i in range(0,16):
+        for j in range(0,10):
+            sec_comp_filter_array[:,i,j] = ma.compressed(sec_filter_array[:,i,j])
+            sec_comp_list_array[:,i,j] = ma.compressed(sec_masked_list_array[:,i,j])
+    sec_comp_freq = ma.compressed(sec_freq_array)
+    print 'Compressed filtered array size take 2 is:', shape(sec_comp_filter_array)
+    sec_mean_comp_filter = ma.mean(comp_filter_array,axis=0)
+    sec_std_comp_filter = ma.std(comp_filter_array,axis=0)
+    sec_comp_outliers = zeros((len(comp_filter_array),16,10))
+    sec_comp_outliers2 = zeros((len(comp_filter_array),16,10))
+    sec_comp_outliers3 = zeros((len(comp_filter_array),16,10))
+    sec_comp_posout = zeros((len(comp_filter_array),16,10))
+    sec_comp_posout2 = zeros((len(comp_filter_array),16,10))
+    sec_comp_posout3 = zeros((len(comp_filter_array),16,10))
+#    for f in range(0,len(list_array)):
+    for j in range(0,16):
+        for k in range(0,10):
+            for i in range(0,len(sec_comp_freq)):
+                if sec_comp_filter_array[i,j,k]<(sec_mean_comp_filter[j,k]-1.*sec_std_comp_filter[j,k]):
+                    sec_comp_outliers[i,j,k] = 1.0
+                if sec_comp_filter_array[i,j,k]<(sec_mean_comp_filter[j,k]-2.*sec_std_comp_filter[j,k]):
+                    sec_comp_outliers2[i,j,k] = 1.0
+                if sec_comp_filter_array[i,j,k]<(sec_mean_comp_filter[j,k]-3.*sec_std_comp_filter[j,k]):
+                    sec_comp_outliers3[i,j,k] = 1.0
+#                    if j==k:
+#                        if j==0:
+#                            print 'Filtered 3 sigma outlier at:',comp_freq[i]*1000.
+                if sec_comp_filter_array[i,j,k]>(sec_mean_comp_filter[j,k]+1.*sec_std_comp_filter[j,k]):
+                    sec_comp_posout[i,j,k] = 1.0
+                if sec_comp_filter_array[i,j,k]>(sec_mean_comp_filter[j,k]+2.*sec_std_comp_filter[j,k]):
+                    sec_comp_posout2[i,j,k] = 1.0
+                if sec_comp_filter_array[i,j,k]>(sec_mean_comp_filter[j,k]+3.*sec_std_comp_filter[j,k]):
+                    sec_comp_posout3[i,j,k] = 1.0
+
+        
     candidate_freqs = []
     candidate_ra = []
     candidate_dec = []
-    for f in range(0,len(list_array)):
+    for f in range(0,len(sec_comp_filter_array)):
 #        for i in range(0,len(list_freq[0])):
-        med_sum1 = ma.sum(outliers[f,:,:],axis=0)
+        med_sum1 = ma.sum(sec_comp_outliers[f,:,:],axis=0)
         sum1 = ma.sum(med_sum1)
-        med_sum2 = ma.sum(outliers2[f,:,:],axis=0)
+        med_sum2 = ma.sum(sec_comp_outliers2[f,:,:],axis=0)
         sum2 = ma.sum(med_sum2)
-        med_sum3 = ma.sum(outliers3[f,:,:],axis=0)
+        med_sum3 = ma.sum(sec_comp_outliers3[f,:,:],axis=0)
         sum3 = ma.sum(med_sum3)
-        if sum1>=1.0:
-            if sum1<=2.0:
+        if sum3>=1.0:
+            print 'Three Sigma Outlier at ',sec_comp_freq[f]*1000,', with ',sum3,'hits and ',sum2,' two sigma outliers'
+            if sum2<=5.0:
 #                candidate_maps.append(f)
                 candidate_freqs.append(f)
-                print where(outliers[f]==1.0)
-                candidate_ra.append(where(outliers[f]==1.0)[0][0])
-                candidate_dec.append(where(outliers[f]==1.0)[1][0])
+                print where(sec_comp_outliers3[f]==1.0)
+                candidate_ra.append(where(sec_comp_outliers3[f]==1.0)[0][0])
+                candidate_dec.append(where(sec_comp_outliers3[f]==1.0)[1][0])
 #                if sum2==2.0:
 #                    candidate_maps.append(f)
 #                    candidate_freqs.append(f)
 #                    candidate_ra.append(where(outliers2[f]==1.0)[0][1])
 #                    candidate_dec.append(where(outliers2[f]==1.0)[1][1])
-                print 'Num of Neg outliers at ',int(list_freq[f]*1000),' kHz is:',sum2
-                print 'Num of Pos outliers at ',int(list_freq[f]*1000),' kHz is:',ma.sum(posout2[f,:,:])
+#                print 'Num of Neg outliers at ',int(comp_freq[f]*1000),' kHz is:',sum2
+#                print 'Num of Pos outliers at ',int(comp_freq[f]*1000),' kHz is:',ma.sum(comp_posout2[f,:,:])
     
     print len(candidate_freqs)
 
@@ -238,16 +357,16 @@ if filtered:
             max_freq = candidate_freqs[g]+30
             if candidate_freqs[g]<30:
                 min_freq = 0
-            elif candidate_freqs[g]>(len(list_freq)-30):
+            elif candidate_freqs[g]>(len(sec_comp_freq)-30):
                 max_freq = -1
-            mean_signal = ma.mean(list_array[min_freq:max_freq,candidate_ra[g],candidate_dec[g]])
-            plt.plot(1000*list_freq[min_freq:max_freq],list_array[min_freq:max_freq,candidate_ra[g],candidate_dec[g]]-mean_signal)
+            mean_signal = ma.mean(sec_comp_list_array[min_freq:max_freq,candidate_ra[g],candidate_dec[g]])
+            plt.plot(1000*sec_comp_freq[min_freq:max_freq],sec_comp_list_array[min_freq:max_freq,candidate_ra[g],candidate_dec[g]]-mean_signal)
             plt.xlabel('Frequency (kHz)')
-            plt.axvline(1000*list_freq[candidate_freqs[g]],c='r',ls='--')
+            plt.axvline(1000*sec_comp_freq[candidate_freqs[g]],c='r',ls='--')
             plt.ylabel('Temperature (Kelvin)')
             plt.grid()
             plt.title('Mean Subtracted Absorber Candidate Spectra at RA %0.1f, DEC %0.1f' %(ras[candidate_ra[g]],decs[candidate_dec[g]]))
-            plt.savefig('absorber_candidate_at_'+str(int(list_freq[candidate_freqs[g]]*1000))+'kHz',dpi=300)
+            plt.savefig('absorber_candidate_at_'+str(int(sec_comp_freq[candidate_freqs[g]]*1000))+'kHz',dpi=300)
             plt.clf()
 
 #plt.subplot(121)
