@@ -108,10 +108,7 @@ def convert_to_physical_coordinate(freq, ra, dec, ra_fact):
     return x, y, z
 
 def convert_B1950_to_J2000(ra, dec, z, degree_in=False, degree_out=True):
-    #if not degree_in:
-    #    ra = ra*180./np.pi
-    #    dec = dec*180./np.pi
-    #ra /= 15. # in unit of hour
+
     if degree_in:
         ra = ephem.hours(ra*np.pi/180.)
         dec = ephem.degrees(dec*np.pi/180.)
@@ -155,6 +152,7 @@ def bin_catalog_file(filename, freq_axis, ra_axis, dec_axis,
                   ('mag', float), ('wsel', float), ('compl', float),
                   ('selz', float), ('selz_mu', float), ('bjlim', float), 
                   ('serial', int)]
+        #ndtype = [('RA', float), ('Dec', float), ('mag', float), ('z', float)]
 
     # TODO: numpy seems to be an old version that does not have the skip_header
     # argument here! skiprows is identical
@@ -263,9 +261,9 @@ class Bin2dF(object):
         print "finding the binned data"
         self.realmap()
         #print "finding the binned mock and selection function"
-        self.selection()
+        #self.selection()
         #print "finding the separable form of the selection"
-        self.separable()
+        #self.separable()
         #print "finding the optical overdensity"
         self.delta()
 
@@ -386,14 +384,14 @@ class Bin2dF(object):
 
         algebra.save(self.outfile_delta_data, delta_data)
 
-        for mockindex in range(self.params['mock_number']):
-            print "mock delta", mockindex
-            mockinfile = self.outfile_mock%mockindex
-            mockoutfile = self.outfile_delta_mock%mockindex
+        #for mockindex in range(self.params['mock_number']):
+        #    print "mock delta", mockindex
+        #    mockinfile = self.outfile_mock%mockindex
+        #    mockoutfile = self.outfile_delta_mock%mockindex
 
-            delta_mock = self.produce_delta_map(mockinfile, selection_file, mock=True)
+        #    delta_mock = self.produce_delta_map(mockinfile, selection_file, mock=True)
 
-            algebra.save(mockoutfile, delta_mock)
+        #    algebra.save(mockoutfile, delta_mock)
 
 if __name__=="__main__":
     

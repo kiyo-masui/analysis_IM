@@ -307,8 +307,8 @@ if __name__=="__main__":
     #fg_file = '3C286/Emap_clean_themselves/'
     #fg_file = '/15hr_AA_fine_freq_11conv/Emap_clean_themselves/'
     #fg_file = 'GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov_wsvd/Emap_clean_themselves/'
-    fg_file = 'GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov/Emap_clean_themselves/'
-    #fg_file = 'GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov/Emap_clean_themselves/'
+    #fg_file = 'GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov/Emap_clean_themselves/'
+    fg_file = 'GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov/Emap_clean_themselves/'
 
     svdfile = 'SVD_pair_A_with_B.pkl'
 
@@ -373,10 +373,15 @@ if __name__=="__main__":
         #[0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_ABC_freq_cut_1pt1_cov_cal/Emap_clean_themselves_rescaled/SVD_pair_A_with_B.pkl', '35n30 1.1 conv cal secs rescaled '],
         #[0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_ABC_freq_cut_1pt1_cov_cal/Emap_clean_themselves_rescaled/SVD_pair_A_with_C.pkl', '35n30 1.1 conv cal secs rescaled '],
         #[0, fg_root+'PKS_p3500n3000_parkes_2010_10_24-28_ABC_freq_cut_1pt1_cov_cal/Emap_clean_themselves_rescaled/SVD_pair_B_with_C.pkl', '35n30 1.1 conv cal secs rescaled '],
-        [0, fg_root+'GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov_wsvd/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr ptcorr wsvd 1.4 conv '],
-        [0, fg_root+'GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov_wsvd/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr wsvd 1.4 conv '],
-        [0, fg_root+'GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr ptcorr 1.4 conv '],
+        #[0, fg_root+'GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov_wsvd/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr ptcorr wsvd 1.4 conv '],
+        #[0, fg_root+'GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov_wsvd/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr wsvd 1.4 conv '],
+        #[0, fg_root+'GBT_15hr_41-80_pointcorr_ABCD_1pt4_cov/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr ptcorr 1.4 conv '],
         [0, fg_root+'GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov/Emap_clean_themselves/SVD_pair_A_with_B.pkl', 'GBT 15hr 1.4 conv '],
+        [0, fg_root+'GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov/Emap_clean_themselves/SVD_pair_A_with_C.pkl', 'GBT 15hr 1.4 conv '],
+        [0, fg_root+'GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov/Emap_clean_themselves/SVD_pair_A_with_D.pkl', 'GBT 15hr 1.4 conv '],
+        [0, fg_root+'GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov/Emap_clean_themselves/SVD_pair_B_with_C.pkl', 'GBT 15hr 1.4 conv '],
+        [0, fg_root+'GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov/Emap_clean_themselves/SVD_pair_B_with_D.pkl', 'GBT 15hr 1.4 conv '],
+        [0, fg_root+'GBT_15hr_41-80_avg_fdgp_new_ABCD_1pt4_cov/Emap_clean_themselves/SVD_pair_C_with_D.pkl', 'GBT 15hr 1.4 conv '],
         #[0, fg_root+'15hr_AA_fine_freq_11conv/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'GBT 15hr 1.4 conv '],
         #[0, fg_root+'DRACO_AA_dirty_map/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'DRACO '],
         #[0, fg_root+'DRACO_AA_dirty_map_centre_4000pix_flagged/Emap_clean_themselves/SVD_pair_A_with_A.pkl', 'DRACO flagged'],
@@ -384,7 +389,8 @@ if __name__=="__main__":
         #[0, fg_root+'3C286/Emap_clean_themselves/SVD_pair_A_with_A.pkl', '3C286 '],
         ]
     #svd_savename = 'SVD_pair_PKS_eigenvalue'
-    svd_savename = 'SVD_pair_GBT15hr_ptcorr_eigenvalue'
+    #svd_savename = 'SVD_pair_GBT15hr_ptcorr_eigenvalue'
+    svd_savename = 'SVD_pair_GBT15hr_eigenvalue'
     #svd_savename = 'SVD_pair_DRACO_AA_eigenvalue'
     #svd_savename = 'SVD_pair_3C286_AA_eigenvalue'
     #svd_savename = 'SVD_pair_15hr_AA_fine_freq_11conv_AA'

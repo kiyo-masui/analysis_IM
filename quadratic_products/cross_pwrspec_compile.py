@@ -99,9 +99,22 @@ class CompileCrosspower(object):
                                      ["logkx", "logky"], 1., "2d power",
                                      "log(abs(2d power))", logscale=True)
 
-            if (modetransfer_2d is not None) or (beamtransfer_2d is not None):
+            #if (modetransfer_2d is not None) or (beamtransfer_2d is not None):
+            #    plot_slice.simpleplot_2D(outplot_transfer_file,
+            #                             transfer_dict[treatment],
+            #                             logkx, logky,
+            #                             ["logkx", "logky"], 1., "2d trans",
+            #                             "2d trans", logscale=False)
+
+            if transfer_dict is not None:
                 plot_slice.simpleplot_2D(outplot_transfer_file,
                                          transfer_dict[treatment],
+                                         logkx, logky,
+                                         ["logkx", "logky"], 1., "2d trans",
+                                         "2d trans", logscale=False)
+            else:
+                plot_slice.simpleplot_2D(outplot_transfer_file,
+                                         np.ones_like(pwr_data.counts_2d[pwrcase]),
                                          logkx, logky,
                                          ["logkx", "logky"], 1., "2d trans",
                                          "2d trans", logscale=False)

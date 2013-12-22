@@ -18,7 +18,7 @@ from parkes import cal_map
 class PlotMap(object):
     def __init__(self, mapdict, imap=None, qmap=None, umap=None, freq_cut=[], 
                  degrade_factor=1.1, degrade_map=False, plot_size=(10,8),
-                 nvss_catalog_path=None, hipass_map_path=None):
+                 nvss_catalog_path=None, hipass_map_path=None, clip_weight=False):
 
         if nvss_catalog_path == None:
             self.nvss_catalog_path = os.getenv('NVSS_PATH')
@@ -95,6 +95,18 @@ class PlotMap(object):
         self.re_scale = None
         self.re_zerop = None
         self.plot_size = plot_size
+        self.clip_weight = clip_weight
+
+    def saturate_weight(self, weight, percentile=50):
+        weight_2d = np.mean(weight, axis=0)
+        w_at_percentile = np.percentile(weight_2d, percentile)
+        mask = weight_2d <= w_at_percentile
+        for freq_index in range(weight.shape[0]):
+            mweight = np.ma.array(weight[freq_index, ...], mask=mask)
+            meanslice = mweight.mean()
+            weight[freq_index, np.logical_not(mask)] = meanslice
+
+        return weight
 
     def plot_mode_factor(self, num=0):
 
@@ -521,6 +533,8 @@ class PlotMap(object):
             suffix = ''
 
             map = np.copy(map_list[i])
+            if i >= len(self.imap_secs) + 1 and self.clip_weight:
+                map = self.saturate_weight(map)
             map = np.ma.array(map[self.freq_list, ...])
             map[np.isnan(map)] = np.ma.masked
             map[np.isinf(map)] = np.ma.masked
@@ -538,6 +552,9 @@ class PlotMap(object):
 
             suffix += '%s'%sec_list[i]
             print '%s'%sec_list[i].replace('_', ' '),
+
+            if i >= len(self.imap_secs) + 1 and self.clip_weight:
+                suffix += '_clip50'
 
             if self.re_scale != None:
                 if i < len(self.imap_secs) + 1:
@@ -606,8 +623,10 @@ class PlotMap(object):
             plt.xlabel('RA [deg]')
             if i < len(self.imap_secs) + 1:
                 plt.savefig('./png/%s%s.png'%(self.name, suffix), format='png')
+                plt.savefig('./png/%s%s.eps'%(self.name, suffix), format='eps')
             else:
                 plt.savefig('./png/%s%s.png'%(self.noise_name, suffix), format='png')
+                plt.savefig('./png/%s%s.eps'%(self.noise_name, suffix), format='eps')
             plt.close()
             del map
             if with_nvss:

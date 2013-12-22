@@ -328,7 +328,10 @@ class PowerSpectrumEstimator(object):
             imaps_a = functions.get_mapdict(params['gbt_root'])
             nmaps_a = functions.get_mapdict(params['gbt_root'])
             imap = functions.get_mapdict(params['opt_root'], selection='real')
-            nmap = functions.get_mapdict(params['opt_root'], selection='sele')
+            #nmap = functions.get_mapdict(params['opt_root'], selection='sele')
+            nmap = None
+            #imap = '/home/ycli/data/wigglez/15hr/reg15data.npy'
+            #nmap = '/home/ycli/data/wigglez/15hr/reg15separable.npy'
             #imaps_b = '/home/ycli/data/2df/map/'\
             #        + 'test_allbeams_27n30_10by7_clean_map_I_1315/'\
             #        + 'real_map_2df_delta.npy'
@@ -425,7 +428,8 @@ class PowerSpectrumEstimator(object):
             nmaps_a = functions.get_mapdict(params['gbt_root'])
             imap = functions.get_mapdict(params['opt_root'], selection='mock')
             nmap = functions.get_mapdict(params['opt_root'], selection='sele')
-            for i in range(len(imap[0])):
+            #for i in range(len(imap[0])):
+            for i in range(100):
                 imap_list.append([imaps_a[1]['map;%dmodes'%ps_mode], 
                                   imap[1]['%d'%i]])
                 nmap_list.append([nmaps_a[1]['weight;%dmodes'%ps_mode], 

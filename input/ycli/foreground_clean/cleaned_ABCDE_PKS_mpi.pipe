@@ -5,7 +5,7 @@ pipe_processes = 1
 
 
 #from foreground_clean import pair_set_legendre
-from foreground_clean import pair_set
+from foreground_clean import pair_set_ycli as pair_set
 
 #from quadratic_products import pwrspec_combinations
 #from quadratic_products import pwrspec_compile
@@ -43,7 +43,8 @@ freq_list = tuple([ind for ind in range(nfreq) if ind not in cutlist])
 mode_list = range(0, 11, 1) 
 common_res_convolution = True
 calibrate = True
-degrade_factor = 1.1
+#degrade_factor = 1.1
+degrade_factor = 1.4
 sub_weighted_mean = True
 sim_multiplier = 1.
 simnum = 100
@@ -60,7 +61,9 @@ else:
 
 
 #output_folder = '15hr_ABCD_legendre_modes_%dgwj_14conv_new/'%goodmodes 
-output_folder = 'PKS_'+field+'_ABCDE_freq_cut_1pt1_cov_bgcal/'
+#output_folder = 'PKS_'+field+'_ABCDE_freq_cut_1pt1_cov_bgcal_new/'
+output_folder = 'PKS_'+field+'_ABCDE_freq_cut_1pt4_cov_bgcal_new/'
+#output_folder = 'PKS_'+field+'_ABCDE_freq_cut_1pt1_cov/'
 #output_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
 #output_root = '/mnt/scratch-gl/ycli/cln_result/'
 output_root = '/home/ycli/data/cln_result/'
