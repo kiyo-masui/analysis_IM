@@ -38,13 +38,20 @@ class BOX(object):
         #self.ibox2, self.nbox2 = get_box(self.box_bin, self.imap2, self.weight2)
 
         self.flag_nan(target="map")
-        #gridding_method = gridding.physical_grid_largeangle
-        gridding_method = gridding.physical_grid
+        gridding_method = gridding.physical_grid_largeangle
+        #gridding_method = gridding.physical_grid
 
-        self.ibox1, ibox1_info = gridding_method(self.imap1, refinement=2, order=1)
-        self.ibox2, ibox2_info = gridding_method(self.imap2, refinement=2, order=1)
-        self.nbox1, nbox1_info = gridding_method(self.weight1, refinement=2, order=1)
-        self.nbox2, nbox2_info = gridding_method(self.weight2, refinement=2, order=1)
+        # shift test 
+        print "Shift 2 pixels for testing "
+        self.imap2[:, 2:, :] = self.imap2[:, :-2, :]
+        self.imap2[:, :2, :] = 0.
+        self.weight2[:, 2:, :] = self.weight2[:, :-2, :]
+        self.weight2[:, :2, :] = 0.
+
+        self.ibox1, ibox1_info = gridding_method(self.imap1, refinement=1, order=1)
+        self.ibox2, ibox2_info = gridding_method(self.imap2, refinement=1, order=1)
+        self.nbox1, nbox1_info = gridding_method(self.weight1, refinement=1, order=1)
+        self.nbox2, nbox2_info = gridding_method(self.weight2, refinement=1, order=1)
 
         self.ibox1 = algebra.make_vect(self.ibox1, ibox1_info['axes'])
         self.ibox2 = algebra.make_vect(self.ibox2, ibox2_info['axes'])
@@ -119,6 +126,15 @@ class BOX(object):
         self.ibox2 -= mean2[:, None, None]
         #print "Max and Min of weighted mean2 : ", mean1.max(), mean2.min()
 
+    def get_overdensity(self, map, sel):
+
+        sel[sel==0] = np.inf
+        map = map/sel - 1.
+        sel[sel == np.inf] = 0.
+
+        return map
+        
+
     def estimate_ps_3d(self, window="blackman"):
 
         #self.flag_nan(target="box")
@@ -127,8 +143,8 @@ class BOX(object):
         #window_function = fftutil.window_nd((self.nbox1.shape[0],), name=window)
         window_func = getattr(np, window)
         window_function = window_func(self.nbox1.shape[0])
-        self.nbox1 *= window_function[:, None, None]
-        self.nbox2 *= window_function[:, None, None]
+        #self.nbox1 *= window_function[:, None, None]
+        #self.nbox2 *= window_function[:, None, None]
 
         self.ibox1 *= self.nbox1
         self.ibox2 *= self.nbox2
@@ -171,7 +187,7 @@ class BOX(object):
         gc.collect()
 
     def get_k_bin_centre(self):
-        print self.boxunit
+        #print self.boxunit
         k_bin_x = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[0],
                                                               self.boxunit[0]))
         k_bin_y = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[1],
@@ -486,8 +502,14 @@ def get_mapdict(dir, selection=None):
 
             if len(mapsplit)>=3:
                 if mapsplit[2] == '2df' and mapsplit[0] == selection:
-                    if selection == 'sele' and mapsplit[-1] != 'separable':
+                    if selection == 'sele' and mapsplit[-1] == 'separable':
                         return dir + map
+                    #if selection == 'real' and len(mapsplit) == 3:
+                    #    return dir + map
+                    #if selection == 'mock' and len(mapsplit) == 4:
+                    #    key1 = int(mapsplit[3])
+                    #    mapdict['%d'%key1] = dir + map
+                    #
                     if len(mapsplit)>=4 and mapsplit[3] == 'delta':
                         if selection == 'real':
                             return dir + map

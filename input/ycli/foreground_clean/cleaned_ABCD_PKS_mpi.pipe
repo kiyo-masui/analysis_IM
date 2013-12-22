@@ -61,6 +61,7 @@ else:
 
 #output_folder = '15hr_ABCD_legendre_modes_%dgwj_14conv_new/'%goodmodes 
 output_folder = 'PKS_'+field+'_ABCD_freq_cut_1pt1_cov_bgcal/'
+#output_folder = 'PKS_'+field+'_ABCD_freq_cut_1pt4_cov_bgcal/'
 #output_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
 #output_root = '/mnt/scratch-gl/ycli/cln_result/'
 output_root = '/home/ycli/data/cln_result/'

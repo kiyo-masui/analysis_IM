@@ -231,12 +231,14 @@ class MapPair(object):
         calibrator1 = cal_map.CalibrateMap(self.map1, self.freq1,
                 degrade_map=True, degrade_function=self.degrade_function())
         calibrator1.cal_by_point_sources(flux_limit=[0.5, 100])
-        self.map1 = calibrator1.re_scale * self.map1 + calibrator1.re_zerop
+        print "%7.4f x map1 + %7.4f"%(calibrator1.re_scale, calibrator1.re_zerop)
+        self.map1 = calibrator1.re_scale * self.map1 #+ calibrator1.re_zerop
 
         calibrator2 = cal_map.CalibrateMap(self.map2, self.freq2, 
                 degrade_map=True, degrade_function=self.degrade_function())
         calibrator2.cal_by_point_sources(flux_limit=[0.5, 100])
-        self.map2 = calibrator2.re_scale * self.map2 + calibrator2.re_zerop
+        print "%7.4f x map2 + %7.4f"%(calibrator2.re_scale, calibrator2.re_zerop)
+        self.map2 = calibrator2.re_scale * self.map2 #+ calibrator2.re_zerop
 
     def degrade_resolution(self, mode='constant'):
         r"""Convolves the maps down to the lowest resolution.
