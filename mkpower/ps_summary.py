@@ -408,6 +408,68 @@ def convert_2dps_to_1dps_opt(ps_root, sn_root, truncate_range=None):
 
     return power_1d, power_1d_err, k_p_centre, shortnoise_1d
 
+def convert_2dps_to_1dps_each(ps_list, kn_list, weight, truncate_range=None):
+
+    ps_1d_list = []
+    k_centre = None
+    
+    if not isinstance(ps_list, list):
+        ps_list = [ps_list, ]
+        kn_list = [kn_list, ]
+
+    for i in range(len(ps_list)):
+        ps_2d = ps_list[i]
+        kn_2d = kn_list[i]
+        wt_2d = weight
+
+        k_p_edges, k_v_edges = get_2d_k_bin_edges(ps_2d)
+        k_p_centr, k_v_centr = get_2d_k_bin_centre(ps_2d)
+
+        k_edges = k_p_edges
+        k_centre = k_p_centr
+
+        kc_2d = np.sqrt(k_v_centr[:,None]**2 + k_p_centr[None, :]**2)
+
+        if truncate_range != None:
+            k_p_range = [truncate_range[0], truncate_range[1]]
+            k_v_range = [truncate_range[2], truncate_range[3]]
+
+            restrict_v = np.where(np.logical_or(k_v_centr<k_v_range[0], 
+                                                k_v_centr>k_v_range[1]))
+            restrict_p = np.where(np.logical_or(k_p_centr<k_p_range[0], 
+                                                k_p_centr>k_p_range[1]))
+            wt_2d[restrict_v, :] = 0.
+            wt_2d[:, restrict_p] = 0.
+
+        ps_2d *= wt_2d
+        kn_2d *= wt_2d
+
+        ps_2d[kn_2d==0] = 0.
+        wt_2d[kn_2d==0] = 0.
+
+        kc_2d = kc_2d.flatten()
+        ps_2d = ps_2d.flatten()
+        wt_2d = wt_2d.flatten()
+        kn_2d = kn_2d.flatten()
+
+        wt_1d, k_e = np.histogram(kc_2d, k_edges, weights=wt_2d)
+        ps_1d, k_e = np.histogram(kc_2d, k_edges, weights=ps_2d)
+        kn_1d, k_e = np.histogram(kc_2d, k_edges, weights=kn_2d)
+
+        ps_1d /= wt_1d
+
+        ps_1d_list.append(ps_1d)
+
+    ps_1d_list = np.ma.array(ps_1d_list)
+    ps_1d_list[np.isnan(ps_1d_list)] = np.ma.masked
+    ps_1d_list[np.isinf(ps_1d_list)] = np.ma.masked
+
+    ps_1d_mean = np.ma.mean(ps_1d_list, axis=0)
+    ps_1d_std = np.ma.std(ps_1d_list, axis=0)
+
+    return ps_1d_mean, ps_1d_std, k_centre
+
+
 def convert_2dps_to_1dps_sec(ps_root, ns_root, tr_root, rf_root, 
                              sec=['A', 'B', 'C', 'D'], truncate_range=None):
 
@@ -417,6 +479,7 @@ def convert_2dps_to_1dps_sec(ps_root, ns_root, tr_root, rf_root,
     if os.path.exists(rf_root) and os.path.exists(tr_root):
         transfer_function = load_transfer_function(rf_root, tr_root)[0]
     else:
+        print "Note: data for transfer function estimation not exists."
         transfer_function = None
 
     #noise  = algebra.make_vect(algebra.load(ns_root.replace('_%s', '')))
