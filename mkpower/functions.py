@@ -41,12 +41,12 @@ class BOX(object):
         gridding_method = gridding.physical_grid_largeangle
         #gridding_method = gridding.physical_grid
 
-        # shift test 
-        print "Shift 2 pixels for testing "
-        self.imap2[:, 2:, :] = self.imap2[:, :-2, :]
-        self.imap2[:, :2, :] = 0.
-        self.weight2[:, 2:, :] = self.weight2[:, :-2, :]
-        self.weight2[:, :2, :] = 0.
+        ## shift test 
+        #print "Shift 2 pixels for testing "
+        #self.imap2[:, 2:, :] = self.imap2[:, :-2, :]
+        #self.imap2[:, :2, :] = 0.
+        #self.weight2[:, 2:, :] = self.weight2[:, :-2, :]
+        #self.weight2[:, :2, :] = 0.
 
         self.ibox1, ibox1_info = gridding_method(self.imap1, refinement=1, order=1)
         self.ibox2, ibox2_info = gridding_method(self.imap2, refinement=1, order=1)

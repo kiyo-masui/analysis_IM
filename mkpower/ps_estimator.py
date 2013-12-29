@@ -13,7 +13,6 @@ import kiyopy.custom_exceptions as ce
 from scipy import integrate
 from math import *
 from sys import *
-import matplotlib.pyplot as plt
 from mpi4py import MPI
 import os
 
@@ -327,9 +326,11 @@ class PowerSpectrumEstimator(object):
             #        + 'test_allbeams_27n30_10by7_noise_weight_I_1315.npy'
             imaps_a = functions.get_mapdict(params['gbt_root'])
             nmaps_a = functions.get_mapdict(params['gbt_root'])
-            imap = functions.get_mapdict(params['opt_root'], selection='real')
-            #nmap = functions.get_mapdict(params['opt_root'], selection='sele')
-            nmap = None
+            # imap = functions.get_mapdict(params['opt_root'], selection='real')
+            # #nmap = functions.get_mapdict(params['opt_root'], selection='sele')
+            # nmap = None
+            imap = functions.get_mapdict(params['opt_root'], selection='data')
+            nmap = functions.get_mapdict(params['opt_root'], selection='separable')
             #imap = '/home/ycli/data/wigglez/15hr/reg15data.npy'
             #nmap = '/home/ycli/data/wigglez/15hr/reg15separable.npy'
             #imaps_b = '/home/ycli/data/2df/map/'\
@@ -426,8 +427,10 @@ class PowerSpectrumEstimator(object):
             #        + 'test_allbeams_27n30_10by7_noise_weight_I_1315.npy'
             imaps_a = functions.get_mapdict(params['gbt_root'])
             nmaps_a = functions.get_mapdict(params['gbt_root'])
-            imap = functions.get_mapdict(params['opt_root'], selection='mock')
-            nmap = functions.get_mapdict(params['opt_root'], selection='sele')
+            # imap = functions.get_mapdict(params['opt_root'], selection='mock')
+            #nmap = functions.get_mapdict(params['opt_root'], selection='sele')
+            imap = functions.get_mapdict(params['opt_root'])
+            nmap = functions.get_mapdict(params['opt_root'], selection='separable')
             #for i in range(len(imap[0])):
             for i in range(100):
                 imap_list.append([imaps_a[1]['map;%dmodes'%ps_mode], 
@@ -598,6 +601,10 @@ class PowerSpectrumEstimator(object):
         ps_2d_each = algebra.make_vect(ps_2d, axis_names=k_axes_each_2d)
         ps_2d_each.info = info_each_2d
         algebra.save(file_root + file_name + '2draw', ps_2d_each)
+
+        ps_2d_each = algebra.make_vect(kn_2d, axis_names=k_axes_each_2d)
+        ps_2d_each.info = info_each_2d
+        algebra.save(file_root + file_name + '2draw_kmn', ps_2d_each)
 
         ps_1d_each = algebra.make_vect(ps_1d, axis_names=k_axes_each_1d)
         ps_1d_each.info = info_each_1d
