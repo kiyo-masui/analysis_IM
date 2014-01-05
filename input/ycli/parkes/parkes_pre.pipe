@@ -10,17 +10,17 @@ data_dir = os.getenv('PARKES_DATA')
 
 ''' >> Data Direction << '''
 ''' 2012-10-24 '''
-parkes_session = '/RAWDATA_SDF/20121024/'
-parkesfiles = [] 
-listfile = os.listdir(data_dir+parkes_session)
-listfile.sort(key=lambda x:int(x[11:15]))
-for file in listfile:
-    if file.split('.')[-1] == 'sdfits':
-        parkesfiles.append(file)
-        print file
-outputname = 'parkes_2012_10_24_P641'
-file_middles = tuple(['parkes_2012_10_24_P641',])
-prefix = ''
+#parkes_session = '/RAWDATA_SDF/20121024/'
+#parkesfiles = [] 
+#listfile = os.listdir(data_dir+parkes_session)
+#listfile.sort(key=lambda x:int(x[11:15]))
+#for file in listfile:
+#    if file.split('.')[-1] == 'sdfits':
+#        parkesfiles.append(file)
+#        print file
+#outputname = 'parkes_2012_10_24_P641'
+#file_middles = tuple(['parkes_2012_10_24_P641',])
+#prefix = ''
 
 ''' 2012-10-25 '''
 #parkes_session = '/RAWDATA_SDF/20121025/'
@@ -49,17 +49,17 @@ prefix = ''
 #prefix = ''
 
 ''' 2012-10-27 '''
-#parkes_session = '/RAWDATA_SDF/20121027/'
-#parkesfiles = [] 
-#listfile = os.listdir(data_dir+parkes_session)
-#listfile.sort(key=lambda x:int(x[11:15]))
-#for file in listfile:
-#    if file.split('.')[-1] == 'sdfits':
-#        parkesfiles.append(file)
-#        print file
-#outputname = 'parkes_2012_10_27_P641'
-#file_middles = tuple(['parkes_2012_10_27_P641',])
-#prefix = ''
+parkes_session = '/RAWDATA_SDF/20121027/'
+parkesfiles = [] 
+listfile = os.listdir(data_dir+parkes_session)
+listfile.sort(key=lambda x:int(x[11:15]))
+for file in listfile:
+    if file.split('.')[-1] == 'sdfits':
+        parkesfiles.append(file)
+        print file
+outputname = 'parkes_2012_10_27_P641'
+file_middles = tuple(['parkes_2012_10_27_P641',])
+prefix = ''
 
 ''' 2012-10-28 '''
 #parkes_session = '/RAWDATA_SDF/20121028/'
@@ -139,12 +139,14 @@ fd_output_end = '.fits'
 fd_scans = ()
 fd_IFs = ()
 
-fd_time_flag_first = True
+fd_time_flag_first = False
 #fd_tsys_thres = [15.2, 15.7]
 #fd_tsys_thres = [15.0, 15.5]
 #fd_sigma_thres = 10.
 #fd_sigma_thres = 6.
-fd_sigma_thres = 3.5
+#fd_sigma_thres = 4.
+#fd_sigma_thres = 3.5
+fd_sigma_thres = 2.5 
 
 # No Hanning.  Guppi's filters take care of it.
 fd_perform_hanning = False

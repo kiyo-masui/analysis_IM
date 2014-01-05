@@ -36,7 +36,7 @@ class DataBlock(base_data.BaseData) :
     # fields exist.  They should be valid if the DataBlock was read from a GBT
     # fits file.
     
-    def calc_pointing(self, ra_centre='E', check_pointing=True) :
+    def calc_pointing(self, ra_centre='E', check_pointing=False) :
         """Calculates the telescope pointing.
         
         Should only be used if in alt/az mode. 

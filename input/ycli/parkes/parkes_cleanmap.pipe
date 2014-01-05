@@ -8,10 +8,14 @@ pipe_processes = 12
 do_dirty_map = False
 do_clean_map = True
 
-#map_input = os.getenv("YICHAO_WORK_MAP") + 'pol_selected/'
-#map_base = os.getenv("YICHAO_WORK_MAP") + 'maps/parkes/'
-map_input = '/home_local/ycli/data/map_result/pol_selected/'
-map_base = '/home_local/ycli/data/map_result/maps/parkes/'
+#map_input = os.getenv("YICHAO_WORK_PKS") + 'pol_selected/'
+#map_base = os.getenv("YICHAO_WORK_PKS") + 'maps/parkes_parallel/'
+
+map_input = os.getenv("YICHAO_WORK_PKS") + 'map_subtracted/'
+map_base = os.getenv("YICHAO_WORK_PKS") + 'maps/parkes_parallel_eachbeam/'
+
+#map_input = '/home_local/ycli/data/map_result/pol_selected/'
+#map_base = '/home_local/ycli/data/map_result/maps/parkes/'
 
 # chris
 #map_shape = (200, 140)
@@ -41,24 +45,40 @@ ra_centre = 'W' # if ra_cente = 'W', it will connect 360 and 0; or ra_centre = '
 #map_prefix = 'p3500n3000_' + 'parkes_2010_10_27_'
 #map_prefix = 'p3500n3000_' + 'parkes_2010_10_28_'
 
-map_prefix = 'testflagging_p3500n3000_' + 'parkes_2010_10_24_'
+#map_prefix = 'testflagging_p3500n3000_' + 'parkes_2010_10_24-28_'
+#map_prefix = 'testflagging_p3500n3000_' + 'parkes_2010_10_24_'
+#map_prefix = 'testflagging_p3500n3000_' + 'parkes_2010_10_25_'
+#map_prefix = 'testflagging_p3500n3000_' + 'parkes_2010_10_26_'
+#map_prefix = 'testflagging_p3500n3000_' + 'parkes_2010_10_27_'
+#map_prefix = 'testflagging_p3500n3000_' + 'parkes_2010_10_28_'
+
+map_prefix = 'diff_testcoor_p3500n3000_' + 'parkes_2010_10_24-28_'
+
+if os.getenv('BEAMS') != 'None':
+    beams = int(os.getenv('BEAMS'))
+    if beams >=0 and beams<13:
+        dm_beams = (beams,)
+    map_prefix += 'beam_%d_' % beams
+else:
+    dm_beams = (0, 1, 2, 5, 6, 7, 8, 10, 11, 12) # beam 3 ,4 and 9 have problem
 
 file_middles = tuple([
                       "parkes_2012_10_24_P641",
-                      #"parkes_2012_10_25_P641",
-                      #"parkes_2012_10_26_P641",
-                      #"parkes_2012_10_27_P641",
-                      #"parkes_2012_10_28_P641",
+                      "parkes_2012_10_25_P641",
+                      "parkes_2012_10_26_P641",
+                      "parkes_2012_10_27_P641",
+                      "parkes_2012_10_28_P641",
                       ])
-#map_prefix = '' + 'parkes_2008_09_12w-13-14_beam0test'
 
 if do_dirty_map:
     from parkes import dirty_map
     pipe_modules.append(dirty_map.DirtyMapMaker)
 
 if do_clean_map:
-    from map import clean_map
-    pipe_modules.append(clean_map.CleanMapMaker)
+    #from map import clean_map
+    #pipe_modules.append(clean_map.CleanMapMaker)
+    from parkes import clean_map_parallel
+    pipe_modules.append(clean_map_parallel.CleanMapMaker)
 
 #### Parameters for the various modules. ####
 

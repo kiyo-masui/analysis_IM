@@ -591,8 +591,8 @@ class PlotMap(object):
                 print 
             print
 
-            max = np.max(map) * 0.5
-            min = np.min(map) * 0.5
+            max = np.max(map) #* 0.5
+            min = np.min(map) #* 0.5
 
             map = np.ma.array(map)
             map[map == 0] = np.ma.masked
