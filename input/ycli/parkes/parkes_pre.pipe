@@ -89,11 +89,14 @@ pipe_modules.append(reformat.ReformatParkes)
 #from parkes import bandpass_remove
 #pipe_modules.append(bandpass_remove.BandpassRemove)
 
-from parkes import flag_data
-pipe_modules.append(flag_data.FlagData)
-
-from parkes import rebin
-pipe_modules.append(rebin.Rebin)
+# from parkes import flag_data
+# pipe_modules.append(flag_data.FlagData)
+# 
+# from parkes import rebin
+# pipe_modules.append(rebin.Rebin)
+ 
+from parkes import mbcal
+pipe_modules.append(mbcal.CalData)
 
 #from time_stream import band_stop
 #pipe_modules.append(band_stop.BandStop)
@@ -241,8 +244,22 @@ sb_offset = 68
 #
 #cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
 
+
+# mutibeam calibration
+mbcal_input_root = rb_output_root
+mbcal_file_middles = file_middles
+mbcal_input_end = '.fits'
+mbcal_output_root = base_dir + 'mbcal/' + prefix
+mbcal_output_end = '.fits'
+mbcal_scans = ()
+mbcal_IFs = ()
+
+mbcal_table_jy2k = "/home_local/ycli/data/parkes/CALDATA_MBC_info/src/table_jy2k.txt"
+mbcal_table_ginv = "/home_local/ycli/data/parkes/CALDATA_MBC_info/src/table_ginv.txt"
+
 # rotate_pol
-rp_input_root = rb_output_root
+#rp_input_root = rb_output_root
+rp_input_root = mbcal_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
 rp_output_root = base_dir + 'pol_selected/' + prefix
