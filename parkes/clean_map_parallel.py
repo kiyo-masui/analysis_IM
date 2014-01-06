@@ -3,6 +3,7 @@
 import sys
 import glob
 import time
+import gc
 
 import numpy as np
 import scipy as sp
@@ -224,6 +225,7 @@ class CleanMapMaker(object) :
                 #noise_inv_freq.shape = (shape[1], shape[2],
                 #                        shape[1], shape[2])
                 del noise_inv_freq
+                #gc.collect()
                 if self.feedback > 1:
                     print "RANK: %03d"%rank,\
                         "\n      Using dirty map: " + dmap_fname +\

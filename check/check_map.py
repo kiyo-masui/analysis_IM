@@ -59,9 +59,10 @@ if plot_raw:
     #degrade_map = True
     #map_root = '/home/ycli/data/gbt/gbt_%s/'%field
 
-    prefix = 'fir_diff_testcoor'
+    prefix = 'fir'
     suffix = '1316'
 
+    field = 'p3500n3000_parkes_2010_10_24-28'
     #field = 'p3500n3000_parkes_2010_10_24-28_beam_0'
     #field = 'p3500n3000_parkes_2010_10_24-28_beam_1'
     #field = 'p3500n3000_parkes_2010_10_24-28_beam_2'
@@ -69,11 +70,11 @@ if plot_raw:
     #field = 'p3500n3000_parkes_2010_10_24-28_beam_6'
     #field = 'p3500n3000_parkes_2010_10_24-28_beam_7'
     #field = 'p3500n3000_parkes_2010_10_24-28_beam_8'
-    field = 'p3500n3000_parkes_2010_10_24-28_beam_9'
+    #field = 'p3500n3000_parkes_2010_10_24-28_beam_9'
 
     degrade_factor = 1.1
     degrade_map = False
-    map_root = '/home/ycli/data/map_result/maps/parkes_parallel_eachbeam/'
+    map_root = '/scratch/p/pen/ycli/map_result/maps/parkes_parallel/'
     
     mapdict = {}
     mapdict['imap'] = map_root + '%s_%s_clean_map_I_%s.npy'%(prefix, field, suffix)
