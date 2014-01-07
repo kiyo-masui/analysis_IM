@@ -42,9 +42,13 @@ kbin_min = 0.003
 kbin_max = 2.5
 kbin_num = 44
 
-from mkpower import ps_estimator
-pipe_modules.append(ps_estimator.PowerSpectrumEstimator)
-"""  Prepare """
+#from mkpower import ps_estimator
+#pipe_modules.append(ps_estimator.PowerSpectrumEstimator)
+
+from mkpower import ps_analysis
+pipe_modules.append(ps_analysis.GBTAutoPowerSpectrum_Analysis)
+
+"""  parameters for estimation """
 pse_processes = 1
 
 pse_sim_root = sim_root
@@ -72,3 +76,11 @@ pse_est_transfer = True
 pse_est_powerspc = True
 pse_est_gausserr = True
 pse_est_powersim = True
+
+"""  parameters for estimation """
+autops_inputroot = pse_ps_root + pse_ps_name + '/'
+autops_outputroot = autops_inputroot
+autops_sections = ["A", "B", "C", "D"]
+autops_truncate = []
+autops_mode = mode
+

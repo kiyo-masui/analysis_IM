@@ -120,6 +120,8 @@ def load_weight_sec(ns_root, transfer_function=None):
     noise = np.array(noise)
     noise = np.mean(noise, axis=0)
 
+    noise[noise==0] = np.inf
+
     weight = []
     #for sec_pair in sec_pair_list:
     for sec_pair in ['_AB',]:
@@ -412,7 +414,7 @@ def convert_2dps_to_1dps_each(ps_list, kn_list, weight, truncate_range=None):
 
     ps_1d_list = []
     k_centre = None
-    
+
     if not isinstance(ps_list, list):
         ps_list = [ps_list, ]
         kn_list = [kn_list, ]
@@ -420,7 +422,10 @@ def convert_2dps_to_1dps_each(ps_list, kn_list, weight, truncate_range=None):
     for i in range(len(ps_list)):
         ps_2d = ps_list[i]
         kn_2d = kn_list[i]
-        wt_2d = weight
+        if weight != None:
+            wt_2d = weight
+        else:
+            wt_2d = np.ones(ps_2d.shape)
 
         k_p_edges, k_v_edges = get_2d_k_bin_edges(ps_2d)
         k_p_centr, k_v_centr = get_2d_k_bin_centre(ps_2d)

@@ -8,74 +8,91 @@ import scipy as sp
 base_dir = os.getenv('YICHAO_WORK_PKS')
 data_dir = os.getenv('PARKES_DATA')
 
+pksdate=os.getenv('PKSPREFIX')
+
 ''' >> Data Direction << '''
-''' 2012-10-24 '''
-parkes_session = '/RAWDATA_SDF/20121024/'
-parkesfiles = [] 
-listfile = os.listdir(data_dir+parkes_session)
-listfile.sort(key=lambda x:int(x[11:15]))
-for file in listfile:
-    if file.split('.')[-1] == 'sdfits':
-        parkesfiles.append(file)
-        print file
-outputname = 'parkes_2012_10_24_P641'
-file_middles = tuple(['parkes_2012_10_24_P641',])
-prefix = ''
 
-''' 2012-10-25 '''
-#parkes_session = '/RAWDATA_SDF/20121025/'
-#parkesfiles = [] 
-#listfile = os.listdir(data_dir+parkes_session)
-#listfile.sort(key=lambda x:int(x[11:15]))
-#for file in listfile:
-#    if file.split('.')[-1] == 'sdfits':
-#        parkesfiles.append(file)
-#        print file
-#outputname = 'parkes_2012_10_25_P641'
-#file_middles = tuple(['parkes_2012_10_25_P641',])
-#prefix = ''
+if pksdate == '2012-10-24':
+    ''' 2012-10-24 '''
+    print "Analysing Data on" + pksdate
+    parkes_session = '/RAWDATA_SDF/20121024/'
+    parkesfiles = [] 
+    listfile = os.listdir(data_dir+parkes_session)
+    listfile.sort(key=lambda x:int(x[11:15]))
+    for file in listfile:
+        if file.split('.')[-1] == 'sdfits':
+            parkesfiles.append(file)
+            print file
+    outputname = 'parkes_2012_10_24_P641'
+    file_middles = tuple(['parkes_2012_10_24_P641',])
+    prefix = ''
 
-''' 2012-10-26 '''
-#parkes_session = '/RAWDATA_SDF/20121026/'
-#parkesfiles = [] 
-#listfile = os.listdir(data_dir+parkes_session)
-#listfile.sort(key=lambda x:int(x[11:15]))
-#for file in listfile:
-#    if file.split('.')[-1] == 'sdfits':
-#        parkesfiles.append(file)
-#        print file
-#outputname = 'parkes_2012_10_26_P641'
-#file_middles = tuple(['parkes_2012_10_26_P641',])
-#prefix = ''
+elif pksdate == '2012-10-25':
+    ''' 2012-10-25 '''
+    print "Analysing Data on" + pksdate
+    parkes_session = '/RAWDATA_SDF/20121025/'
+    parkesfiles = [] 
+    listfile = os.listdir(data_dir+parkes_session)
+    listfile.sort(key=lambda x:int(x[11:15]))
+    for file in listfile:
+        if file.split('.')[-1] == 'sdfits':
+            parkesfiles.append(file)
+            print file
+    outputname = 'parkes_2012_10_25_P641'
+    file_middles = tuple(['parkes_2012_10_25_P641',])
+    prefix = ''
 
-''' 2012-10-27 '''
-#parkes_session = '/RAWDATA_SDF/20121027/'
-#parkesfiles = [] 
-#listfile = os.listdir(data_dir+parkes_session)
-#listfile.sort(key=lambda x:int(x[11:15]))
-#for file in listfile:
-#    if file.split('.')[-1] == 'sdfits':
-#        parkesfiles.append(file)
-#        print file
-#outputname = 'parkes_2012_10_27_P641'
-#file_middles = tuple(['parkes_2012_10_27_P641',])
-#prefix = ''
+elif pksdate == '2012-10-26':
+    ''' 2012-10-26 '''
+    print "Analysing Data on" + pksdate
+    parkes_session = '/RAWDATA_SDF/20121026/'
+    parkesfiles = [] 
+    listfile = os.listdir(data_dir+parkes_session)
+    listfile.sort(key=lambda x:int(x[11:15]))
+    for file in listfile:
+        if file.split('.')[-1] == 'sdfits':
+            parkesfiles.append(file)
+            print file
+    outputname = 'parkes_2012_10_26_P641'
+    file_middles = tuple(['parkes_2012_10_26_P641',])
+    prefix = ''
 
-''' 2012-10-28 '''
-#parkes_session = '/RAWDATA_SDF/20121028/'
-#parkesfiles = [] 
-#listfile = os.listdir(data_dir+parkes_session)
-#listfile.sort(key=lambda x:int(x[11:15]))
-#for file in listfile:
-#    if file.split('.')[-1] == 'sdfits':
-#        parkesfiles.append(file)
-#        #print file
-#outputname = 'parkes_2012_10_28_P641'
-#file_middles = tuple(['parkes_2012_10_28_P641',])
-#prefix = ''
+elif pksdate == '2012-10-27':
+    ''' 2012-10-27 '''
+    print "Analysing Data on" + pksdate
+    parkes_session = '/RAWDATA_SDF/20121027/'
+    parkesfiles = [] 
+    listfile = os.listdir(data_dir+parkes_session)
+    listfile.sort(key=lambda x:int(x[11:15]))
+    for file in listfile:
+        if file.split('.')[-1] == 'sdfits':
+            parkesfiles.append(file)
+            print file
+    outputname = 'parkes_2012_10_27_P641'
+    file_middles = tuple(['parkes_2012_10_27_P641',])
+    prefix = ''
+
+elif pksdate == '2012-10-28':
+    ''' 2012-10-28 '''
+    print "Analysing Data on" + pksdate
+    parkes_session = '/RAWDATA_SDF/20121028/'
+    parkesfiles = [] 
+    listfile = os.listdir(data_dir+parkes_session)
+    listfile.sort(key=lambda x:int(x[11:15]))
+    for file in listfile:
+        if file.split('.')[-1] == 'sdfits':
+            parkesfiles.append(file)
+            #print file
+    outputname = 'parkes_2012_10_28_P641'
+    file_middles = tuple(['parkes_2012_10_28_P641',])
+    prefix = ''
+else:
+    print "Observation date error " + pksdate
+    exit()
+
 
 # Maximum number of processes to use.
-pipe_processes = 12
+pipe_processes = 8
 
 ####  List of modules to execute.  ####
 pipe_modules = []
@@ -94,6 +111,9 @@ pipe_modules.append(flag_data.FlagData)
 
 from parkes import rebin
 pipe_modules.append(rebin.Rebin)
+ 
+from parkes import mbcal
+pipe_modules.append(mbcal.CalData)
 
 #from time_stream import band_stop
 #pipe_modules.append(band_stop.BandStop)
@@ -139,12 +159,14 @@ fd_output_end = '.fits'
 fd_scans = ()
 fd_IFs = ()
 
-fd_time_flag_first = True
+fd_time_flag_first = False
 #fd_tsys_thres = [15.2, 15.7]
 #fd_tsys_thres = [15.0, 15.5]
 #fd_sigma_thres = 10.
 #fd_sigma_thres = 6.
-fd_sigma_thres = 3.5
+#fd_sigma_thres = 4.
+#fd_sigma_thres = 3.5
+fd_sigma_thres = 2.5 
 
 # No Hanning.  Guppi's filters take care of it.
 fd_perform_hanning = False
@@ -239,8 +261,22 @@ sb_offset = 68
 #
 #cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
 
+
+# mutibeam calibration
+mbcal_input_root = rb_output_root
+mbcal_file_middles = file_middles
+mbcal_input_end = '.fits'
+mbcal_output_root = base_dir + 'mbcal/' + prefix
+mbcal_output_end = '.fits'
+mbcal_scans = ()
+mbcal_IFs = ()
+
+mbcal_table_jy2k = "/scratch/p/pen/ycli/data/pks/2012/MBCAL/table_jy2k.txt"
+mbcal_table_ginv = "/scratch/p/pen/ycli/data/pks/2012/MBCAL/table_ginv.txt"
+
 # rotate_pol
-rp_input_root = rb_output_root
+#rp_input_root = rb_output_root
+rp_input_root = mbcal_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
 rp_output_root = base_dir + 'pol_selected/' + prefix

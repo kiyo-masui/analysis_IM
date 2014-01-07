@@ -13,7 +13,7 @@ from core import algebra, hist
 from kiyopy import parse_ini
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
-import constants
+from map import constants
 
 
 params_init = {'input_root' : './',

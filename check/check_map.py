@@ -3,8 +3,8 @@
 from parkes import plotmap
 
 plot_opt = False
-plot_raw = False
-plot_cln = True
+plot_raw = True
+plot_cln = False
 
 if plot_opt:
 
@@ -34,12 +34,12 @@ if plot_raw:
     #degrade_map = False
     #map_root = '/home/ycli/data/parkes/maps_by_chris/pks_%s/'%field
     
-    prefix = 'fir'
-    suffix = '1316'
-    field = 'p3500n3000_parkes_2010_10_24-28'
-    degrade_factor = 1.1
-    degrade_map = False
-    map_root = '/home/ycli/data/parkes/maps/pks_%s/'%field
+    #prefix = 'fir'
+    #suffix = '1316'
+    #field = 'p3500n3000_parkes_2010_10_24-28'
+    #degrade_factor = 1.1
+    #degrade_map = False
+    #map_root = '/home/ycli/data/parkes/maps/pks_%s/'%field
     
     #prefix = 'fir'
     #suffix = '1316'
@@ -59,10 +59,26 @@ if plot_raw:
     #degrade_map = True
     #map_root = '/home/ycli/data/gbt/gbt_%s/'%field
 
-    mapdict = {}
+    prefix = 'fir'
+    suffix = '1316'
 
+    field = 'p3500n3000_parkes_2010_10_24-28'
+    #field = 'p3500n3000_parkes_2010_10_24-28_beam_0'
+    #field = 'p3500n3000_parkes_2010_10_24-28_beam_1'
+    #field = 'p3500n3000_parkes_2010_10_24-28_beam_2'
+    #field = 'p3500n3000_parkes_2010_10_24-28_beam_5'
+    #field = 'p3500n3000_parkes_2010_10_24-28_beam_6'
+    #field = 'p3500n3000_parkes_2010_10_24-28_beam_7'
+    #field = 'p3500n3000_parkes_2010_10_24-28_beam_8'
+    #field = 'p3500n3000_parkes_2010_10_24-28_beam_9'
+
+    degrade_factor = 1.1
+    degrade_map = False
+    map_root = '/scratch/p/pen/ycli/map_result/maps/parkes_parallel/'
+    
+    mapdict = {}
     mapdict['imap'] = map_root + '%s_%s_clean_map_I_%s.npy'%(prefix, field, suffix)
-    mapdict['nmap'] = map_root + '%s_%s_noise_weight_I_%s.npy'%(prefix, field, suffix)
+    mapdict['nmap'] = map_root + '%s_%s_noise_diag_I_%s.npy'%(prefix, field, suffix)
     mapdict['name'] = '%s_clean_map_I'%(field)
     mapdict['noise_name'] = '%s_noise_map_I'%(field)
 
@@ -93,9 +109,9 @@ if plot_raw:
                         #freq_cut = [0,1,2,3,4,5,59,60,61,62,63], 
                         degrade_factor=degrade_factor, 
                         degrade_map=degrade_map,
-                        #plot_size=(10, 8))
+                        plot_size=(10, 8))
                         #plot_size=(12, 6))
-                        plot_size=(12, 4))
+                        #plot_size=(12, 4))
     #a.mapping_coord(plot=True)
     a.plot_map(with_nvss=True)
     #a.plot_map(with_nvss=True, diff=True)

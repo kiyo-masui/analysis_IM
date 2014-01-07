@@ -11,7 +11,12 @@ from parkes import mbcal
 #rawdatapath = ('/mnt/raid-project/gmrt/ycli/parkes/RAWDATA_RPF/20121027/2012-10-27_1908-P641_west1_1315_P641.rpfits',)
 #rawdatapath = ('/home/ycli/data/map_result/flagged/parkes_2012_10_24_P641.fits',)
 #rawdatapath = ('/home_local/ycli/data/map_result/flagged/parkes_2012_10_24_P641.fits',)
-#rawdatapath = ('/home/ycli/data/map_result/flagged/parkes_2012_10_28_P641.fits',)
+#rawdatapath = ('/home/ycli/localhome/data/map_result/flagged/parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/home/ycli/localhome/data/map_result/flagged/parkes_2012_10_25_P641.fits',)
+#rawdatapath = ('/home/ycli/localhome/data/map_result/flagged/parkes_2012_10_26_P641.fits',)
+#rawdatapath = ('/home/ycli/localhome/data/map_result/flagged/parkes_2012_10_27_P641.fits',)
+#rawdatapath = ('/home/ycli/localhome/data/map_result/flagged/parkes_2012_10_28_P641.fits',)
+rawdatapath = ('/home/ycli/data/map_result/mbcal/parkes_2012_10_27_P641.fits',)
 
 #rawdatapath = ('/mnt/scratch-gl/ycli/map_result/parkes/parkes_2012_10_27_P641.fits',)
 #rawdatapath = ('/mnt/scratch-gl/ycli/map_result/flagged/parkes_2012_10_27_P641.fits',)
@@ -22,7 +27,7 @@ from parkes import mbcal
 #rawdatapath = ('/home/ycli/map_result/flagged/average_beamcal_parkes_2012_10_27_P641.fits',)
 #rawdatapath = ('/home/ycli/map_result/parkes/average_beamcal_parkes_2012_10_27_P641.fits',)
 #rawdatapath = ('/home_local/ycli/data/parkes/RAWDATA_SDF/20121028/2012-10-28_0925-P641_east1_1315_P641.sdfits',)
-rawdatapath = ('/home/ycli/data/parkes/DATA_2008/rawdata/sept11/east/2008-09-11_1217_east1_1392_P641.sdfits',)
+#rawdatapath = ('/home/ycli/data/parkes/DATA_2008/rawdata/sept11/east/2008-09-11_1217_east1_1392_P641.sdfits',)
 #rawdatapath = ('/home/ycli/data/parkes/DATA_2008/rawdata/sept11/west/2008-09-11_1647_west1_1290_drift_P641.sdfits',)
 #rawdatapath = ('/home/ycli/localhome/data/map_result/pol_selected/parkes_2012_10_24_P641.fits',)
 #rawdatapath = ('/home/ycli/data/map_result/parkes/parkes_2012_10_24_P641.fits',)
@@ -75,47 +80,76 @@ class CheckFitsFile(object):
         #print self.tbdata.field(fieldlabel[6])[200:1000]
 
     def plottsys(self, in_K=False):
-        tsys_x = self.tbdata.field('TSYS')[0::2][:10*90*13]
-        tsys_y = self.tbdata.field('TSYS')[1::2][:10*90*13]
+
+        #tsys_x = self.tbdata.field('TSYS')[0::2][:10*90*13]
+        #tsys_y = self.tbdata.field('TSYS')[1::2][:10*90*13]
+
+        tsys_x = self.tbdata.field('DATA')[0::2,:][:10*90*13,:]
+        tsys_y = self.tbdata.field('DATA')[1::2,:][:10*90*13,:]
 
         tsys_x = np.ma.array(tsys_x)
         tsys_y = np.ma.array(tsys_y)
         tsys_x[tsys_x==0] = np.ma.masked
         tsys_y[tsys_y==0] = np.ma.masked
 
+        tsys_x = np.ma.mean(tsys_x, axis=-1)
+        tsys_y = np.ma.mean(tsys_y, axis=-1)
+        print tsys_x.max()
+        print tsys_x.min()
+        print tsys_y.max()
+        print tsys_y.min()
+
         tsys_x = tsys_x.reshape(-1, 13)
         tsys_y = tsys_y.reshape(-1, 13)
 
-        mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/cal_data/2012-10-24_0833-P641.log'
-        full_mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/CALDATA_MBC/2012-10-24_0833-P641.mbcal'
-        moving_beam_list = [[1, 5],[7, 6],[11, 6]]
-        calibrator = mbcal.MultibeamCal(mbcal_file, full_mbcal_file=full_mbcal_file, 
-                                        moving_beam_list=moving_beam_list)
-        calibrator.get_cal_factor()
+        #mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/cal_data/2012-10-24_0833-P641.log'
+        #full_mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/CALDATA_MBC/2012-10-24_0833-P641.mbcal'
+        #moving_beam_list = [[1, 5],[7, 6],[11, 6]]
 
-        if in_K:
-            #to_K = [1.36,1.45,1.45,1.45,1.45,1.45,1.45,1.72,1.72,1.72,1.72,1.72,1.72]
-            #to_K = np.array(to_K)
-            #tsys_x /= to_K[None,:]
-            #tsys_y /= to_K[None,:]
+        #mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/cal_data/2012-10-25_1011-P641.log'
+        #full_mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/CALDATA_MBC/2012-10-25_1011-P641.mbcal'
+        #moving_beam_list = [[5, 5],[7, 5],[10, 7]]
 
-            tsys_x *= calibrator.Jy2K[0][None, :]
-            tsys_y *= calibrator.Jy2K[1][None, :]
+        #mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/cal_data/2012-10-26_1013-P641.log'
+        #full_mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/CALDATA_MBC/2012-10-26_1013-P641.mbcal'
+        #moving_beam_list = [[1, 5],[2, 5],[4, 5],[6, 5],[9, 6],[12, 6]]
 
-            print calibrator.Jy2K
-            print calibrator.Ginv
-            print calibrator.factor
-            unit = 'K'
-        else:
-            unit = 'Jy'
+        #mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/cal_data/2012-10-27_0945-P641.log'
+        #full_mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/CALDATA_MBC/2012-10-27_0945-P641.mbcal'
+        #moving_beam_list = [[8, 6],[12, 6]]
 
-        tsys_x *= calibrator.Ginv[0][None, :]
-        tsys_y *= calibrator.Ginv[1][None, :]
-        #tsys_x *= calibrator.factor[0][None, :]
-        #tsys_y *= calibrator.factor[1][None, :]
+        #mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/cal_data/2012-10-28_0911-P641.log'
+        #full_mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/CALDATA_MBC/2012-10-28_0911-P641.mbcal'
+        #moving_beam_list = [[4, 5],[10, 7],[12, 6]]
+        #calibrator = mbcal.MultibeamCal(mbcal_file, full_mbcal_file=full_mbcal_file, 
+        #                                moving_beam_list=moving_beam_list)
+        #calibrator.get_cal_factor()
 
-        print np.mean(tsys_x, axis=0)
-        print np.mean(tsys_y, axis=0)
+        #  if in_K:
+        #      #to_K = [1.36,1.45,1.45,1.45,1.45,1.45,1.45,1.72,1.72,1.72,1.72,1.72,1.72]
+        #      #to_K = np.array(to_K)
+        #      #tsys_x /= to_K[None,:]
+        #      #tsys_y /= to_K[None,:]
+
+        #      tsys_x *= calibrator.Jy2K[0][None, :]#*calibrator.Ginv[0][None, :]
+        #      tsys_y *= calibrator.Jy2K[1][None, :]#*calibrator.Ginv[1][None, :]
+
+        #      print calibrator.Jy2K
+        #      print calibrator.Ginv
+        #      print calibrator.factor
+        #      unit = 'K'
+        #  else:
+        #      unit = 'Jy'
+        unit = 'K'
+
+        #  #tsys_x *= calibrator.Ginv[0][None, :]
+        #  #tsys_y *= calibrator.Ginv[1][None, :]
+
+        #  #tsys_x *= calibrator.factor[0][None, :]
+        #  #tsys_y *= calibrator.factor[1][None, :]
+
+        #  print np.mean(tsys_x, axis=0)
+        #  print np.mean(tsys_y, axis=0)
 
 
         x = range(tsys_x.shape[0])
@@ -131,11 +165,12 @@ class CheckFitsFile(object):
             if i == 3 or i == 4 or i == 9:
                 continue
             plt.plot(x, tsys_x[:,i], label='beam %d'%i, linewidth=0.5, c=cmap(norm(i)))
+            #plt.text(x[10+5*i], tsys_x[10+5*i,i], "%02d "%i)
         plt.legend(ncol=4, frameon=False)
         plt.xlabel('time ')
         plt.ylabel('x pol Tsys [%s]'%unit)
-        plt.ylim(ymin=20, ymax=35)
-        #plt.ylim(ymin=15, ymax=50)
+        #plt.ylim(ymin=20, ymax=35)
+        plt.ylim(ymin=15, ymax=50)
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
 
@@ -144,15 +179,17 @@ class CheckFitsFile(object):
             if i == 3 or i == 4 or i == 9:
                 continue
             plt.plot(x, tsys_y[:,i], label='beam %d'%i, linewidth=0.5, c=cmap(norm(i)))
+            #plt.text(x[10+5*i], tsys_y[10+5*i,i], "%02d "%i)
         plt.legend(ncol=4, frameon=False)
         plt.xlabel('time ')
         plt.ylabel('y pol Tsys [%s]'%unit)
-        plt.ylim(ymin=20, ymax=35)
-        #plt.ylim(ymin=15, ymax=50)
+        #plt.ylim(ymin=20, ymax=35)
+        plt.ylim(ymin=15, ymax=50)
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
 
         plt.savefig('./png/parkes_tsys_time_%s.png'%unit, format='png')
+        plt.show()
 
     def plotT(self):
         spectrum_xx = self.tbdata.field('DATA')[0::2,:]#[:10*90*13,:]
@@ -631,13 +668,13 @@ class CheckFitsFile(object):
 if __name__=="__main__":
     checkfits = CheckFitsFile(rawdatapath[0])
 
-    checkfits.printhead()
-    checkfits.printlabel()
+    #checkfits.printhead()
+    #checkfits.printlabel()
 
     #checkfits.plotfreq_time()
     #checkfits.plotfreq_time_all()
     #checkfits.plottsys()
-    #checkfits.plottsys(in_K=True)
+    checkfits.plottsys(in_K=True)
     #checkfits.plotT()
     #checkfits.plotfreq()
     #checkfits.plotfreq_all()

@@ -160,7 +160,7 @@ def flag_data(Data, sigma_thres, badness_thres, time_cut,
     # check if localized in time. If that sucks too, then just hide freq.
 
     if time_flag_first:
-        destroy_time_with_mean_arrays(Data, flag_size=4)
+        destroy_time_with_mean_arrays_avgbeam(Data, flag_size=4)
     #if len(tsys_thres)==2:
     #    destroy_time_tsys(Data, tsys_thres)
 
@@ -173,7 +173,7 @@ def flag_data(Data, sigma_thres, badness_thres, time_cut,
     bad_freqs = []
     amount_masked = -1 # For recursion
     while not (amount_masked == 0) and itr < max_itr:
-        amount_masked = destroy_with_variance(Data1, sigma_thres, bad_freqs) 
+        amount_masked = destroy_with_variance_avgbeam(Data1, sigma_thres, bad_freqs) 
         itr += 1
     bad_freqs.sort()
     # Remember the flagged data.
@@ -186,14 +186,14 @@ def flag_data(Data, sigma_thres, badness_thres, time_cut,
     if badness:
         Data2 = copy.deepcopy(Data)
         # Mask the bad times.
-        destroy_time_with_mean_arrays(Data2, flag_size=time_cut)
+        destroy_time_with_mean_arrays_avgbeam(Data2, flag_size=time_cut)
         # Then try to flag again with bad times masked.
         # Bad style for repeating as above, sorry.
         itr = 0
         bad_freqs = []
         amount_masked = -1
         while not (amount_masked == 0) and itr < max_itr:
-            amount_masked = destroy_with_variance(Data2, bad_freq_list=bad_freqs) 
+            amount_masked = destroy_with_variance_avgbeam(Data2, bad_freq_list=bad_freqs) 
             itr += 1
         bad_freqs.sort()
         percent_masked2 = (float(len(bad_freqs)) / Data2.dims[-1])
@@ -205,7 +205,7 @@ def flag_data(Data, sigma_thres, badness_thres, time_cut,
         if not badness:
             itr = 0
             while not (amount_masked == 0) and itr < max_itr:
-                amount_masked = destroy_with_variance(Data2, sigma_thres,
+                amount_masked = destroy_with_variance_avgbeam(Data2, sigma_thres,
                                                       bad_freqs) 
                 itr += 1
             Data1 = Data2
@@ -216,7 +216,7 @@ def flag_data(Data, sigma_thres, badness_thres, time_cut,
     filter_foregrounds(Data1, n_bands=40, time_bins_smooth=10)
     itr = 0 
     while not (amount_masked == 0) and itr < max_itr:
-        amount_masked = destroy_with_variance(Data1, sigma_thres, bad_freqs) 
+        amount_masked = destroy_with_variance_avgbeam(Data1, sigma_thres, bad_freqs) 
         itr += 1
     mask = Data1.data.mask
     # Finally copy the mask to origional data block.
@@ -271,6 +271,74 @@ def destroy_time_tsys(Data, tsys_thres, flag_size=10):
                 #Data.field['TSYS'][time_0:time_1,ii,0,0] = ma.masked
                 #Data.field['TSYS'][time_0:time_1,ii,1,0] = ma.masked 
     return
+
+def destroy_with_variance_avgbeam(Data, sigma_thres=6, bad_freq_list=[]):
+    '''Mask frequencies with high variance.
+
+    Since the signal we are looking for is much weaker than what is in `Data`,
+    any frequency that is 'too spiky' is not signal and is RFI instead. Using
+    variance as a test really makes this 'spikyness' stand out.
+
+    Parameters
+    ----------
+    Data : DataBlock
+        Contains information in a usable format direct from GBT. Bad
+        frequencies will be flagged in all polarizations and cal states.
+    sigma_thres : int or float
+        Any frequency with variance > `sigma_thres` sigmas will be 
+        flagged (recursively).
+    bad_freq_list : list of int
+        A list of bad frequencies. Since this method is called over and over,
+        this list keeps track of what has been flagged. Bad frequencies that
+        are found will be appended to this list.
+
+    Returns
+    -------
+    amount_masked : int
+        The amount of frequencies masked.
+    amount_masked_max : int
+        The lagest amount of frequences masked in different beams
+
+    Notes
+    -----
+    Data must have 5 dim: [time beam pol cal freq]
+    Polarizations must be in XX,YY format.
+    Calibration must be off
+    Operate on each beam seperated
+
+    '''
+    shape = Data.data.shape
+    amount_masked_max = 0
+    # To find the RFI, looking for large signal in all beams at the same time.
+    # So instead of looping each beams, I average over beams. 
+
+    # Get the normalized variance array for each polarization.
+    a = ma.var(ma.mean(Data.data[:,:,0,0,:], 1), 0)/(ma.mean(\
+            ma.mean(Data.data[:,:,0,0,:], 1), 0)**2)#XX
+    b = ma.var(ma.mean(Data.data[:,:,1,0,:], 1), 0)/(ma.mean(\
+            ma.mean(Data.data[:,:,1,0,:], 1), 0)**2)#YY
+    #a = ma.var(Data.data[:,ii,0,0,:],0)#XX
+    #b = ma.var(Data.data[:,ii,1,0,:],0)#YY
+    # Get the mean and standard deviation [sigma].
+    means = sp.array([ma.mean(a), ma.mean(b)]) 
+    sig   = sp.array([ma.std(a), ma.std(b)])
+    # Get the max accepted value [sigma_thres*sigma, sigma_thres=6 works really well].
+    max_sig = sigma_thres*sig
+    max_accepted = means + max_sig
+    # Get the min accepted value, added for Parkes.
+    min_accepted = means - max_sig
+    amount_masked = 0
+    for freq in range(0, len(a)):
+        if ((a[freq] > max_accepted[0]) or (b[freq] > max_accepted[1]) 
+                or a[freq] < min_accepted[0] or b[freq] < min_accepted[1]):
+            # mask
+            amount_masked += 1
+            bad_freq_list.append(freq)
+            Data.data[:,:,:,:,freq].mask = True
+    if amount_masked > amount_masked_max:
+        amount_masked_max = amount_masked 
+    return amount_masked_max
+
 
 def destroy_with_variance(Data, sigma_thres=6, bad_freq_list=[]):
     '''Mask frequencies with high variance.
@@ -403,6 +471,47 @@ def destroy_with_variance_4pol2cal(Data, sigma_thres=6, bad_freq_list=[]):
             bad_freq_list.append(freq)
             Data.data[:,:,:,freq].mask = True
     return amount_masked
+
+def destroy_time_with_mean_arrays_avgbeam(Data, flag_size=40):
+    '''Mask times with high means.
+    
+    If there is a problem in time, the mean over all frequencies
+    will stand out greatly [>10 sigma has been seen]. Flag these bad
+    times and +- `flag_size` times around it. Will only be called if `Data`
+    has 'badness'.
+
+    Parameters
+    ----------
+    Data : DataBlock
+        Contains information in a usable format direct from GBT. Bad
+        times will be flagged in all polarizations and cal states.
+    time_cut : int
+        How many frequency bins (as an absolute number) to flag in time.
+    '''
+    # Get the means over all frequencies. (for all pols. and cals.)
+    a = ma.mean(ma.mean(Data.data[:, :, 0, 0, :], 1), -1)
+    b = ma.mean(ma.mean(Data.data[:, :, 1, 0, :], 1), -1)
+    # Get means and std for all arrays.
+    means = sp.array([ma.mean(a), ma.mean(b)])
+    sig = sp.array([ma.std(a), ma.std(b)])
+    # Get max accepted values.
+    max_accepted = means + 3*sig
+    # Get min accepted values.
+    min_accepted = means - 3*sig
+    # Find bad times.
+    bad_times = []
+    for time in range(0,len(a)):
+        if ((a[time] > max_accepted[0]) or (b[time] > max_accepted[1]) or
+            (a[time] < min_accepted[0]) or (b[time] < min_accepted[1])):
+            bad_times.append(time)
+    # Mask bad times and those +- flag_size around.
+    for time in bad_times:
+        if time-flag_size < 0:
+            Data.data[0:(time+flag_size),:,:,:,:].mask = True
+        else:
+            Data.data[(time-flag_size):(time+flag_size),:,:,:,:].mask = True
+    return
+
 
 def destroy_time_with_mean_arrays(Data, flag_size=40):
     '''Mask times with high means.

@@ -4,6 +4,39 @@ import numpy as np
 import numpy.ma as ma
 import copy
 import matplotlib.pyplot as plt
+import os
+
+import fitsGBT
+import base_single
+
+class CalData(base_single.BaseSingle):
+
+    prefix = 'mbcal_'
+    params_init = {
+            'table_jy2k' : "", 
+            'table_ginv' : ""}
+
+    def action(self, Data):
+        params = self.params
+
+        if os.path.exists(params['table_jy2k']):
+            jy2k = np.loadtxt(params['table_jy2k']).T
+            Data.data *= jy2k[None, :, :, None, None]
+            Data.field['TSYS'] *= jy2k[None, :, :, None]
+        else:
+            print "no jy to k table"
+            raise
+        if os.path.exists(params['table_ginv']):
+            ginv = np.loadtxt(params['table_ginv']).T
+            Data.data *= ginv[None, :, :, None, None]
+            Data.field['TSYS'] *= ginv[None, :, :, None]
+        else:
+            ginv = 1.
+            print "no gian, set to 1"
+
+        print "finish on block"
+
+        return Data
 
 class MultibeamCal(object):
     '''

@@ -8,14 +8,11 @@ pipe_processes = 12
 do_dirty_map = False
 do_clean_map = True
 
-#map_input = os.getenv("YICHAO_WORK_PKS") + 'pol_selected/'
-#map_base = os.getenv("YICHAO_WORK_PKS") + 'maps/parkes_parallel/'
+map_input = os.getenv("YICHAO_WORK_PKS") + 'pol_selected/'
+map_base = os.getenv("YICHAO_WORK_PKS") + 'maps/parkes_parallel/'
 
-map_input = os.getenv("YICHAO_WORK_PKS") + 'map_subtracted/'
-map_base = os.getenv("YICHAO_WORK_PKS") + 'maps/parkes_parallel_eachbeam/'
-
-#map_input = '/home_local/ycli/data/map_result/pol_selected/'
-#map_base = '/home_local/ycli/data/map_result/maps/parkes/'
+#map_input = os.getenv("YICHAO_WORK_PKS") + 'map_subtracted/'
+#map_base = os.getenv("YICHAO_WORK_PKS") + 'maps/parkes_parallel_eachbeam/'
 
 # chris
 #map_shape = (200, 140)
@@ -28,14 +25,14 @@ map_base = os.getenv("YICHAO_WORK_PKS") + 'maps/parkes_parallel_eachbeam/'
 #map_centre = (27.5, -29.5)
 
 # small field for checking flagging
-map_shape = (64, 64)
-map_spacing = .08
-map_centre = (35.0, -30.0)
-
-# my maps
-#map_shape = (256, 96)
+#map_shape = (64, 64)
 #map_spacing = .08
 #map_centre = (35.0, -30.0)
+
+# my maps
+map_shape = (256, 96)
+map_spacing = .08
+map_centre = (35.0, -30.0)
 
 ra_centre = 'W' # if ra_cente = 'W', it will connect 360 and 0; or ra_centre = 'E'
 #map_prefix = 'p3500n3000_' + 'parkes_2010_10_24-28_'
@@ -52,7 +49,7 @@ ra_centre = 'W' # if ra_cente = 'W', it will connect 360 and 0; or ra_centre = '
 #map_prefix = 'testflagging_p3500n3000_' + 'parkes_2010_10_27_'
 #map_prefix = 'testflagging_p3500n3000_' + 'parkes_2010_10_28_'
 
-map_prefix = 'diff_testcoor_p3500n3000_' + 'parkes_2010_10_24-28_'
+map_prefix = 'p3500n3000_' + 'parkes_2010_10_24-28_'
 
 if os.getenv('BEAMS') != 'None':
     beams = int(os.getenv('BEAMS'))
@@ -71,8 +68,10 @@ file_middles = tuple([
                       ])
 
 if do_dirty_map:
-    from parkes import dirty_map
-    pipe_modules.append(dirty_map.DirtyMapMaker)
+    #from parkes import dirty_map
+    #pipe_modules.append(dirty_map.DirtyMapMaker)
+    from parkes import dirty_map_parallel
+    pipe_modules.append(dirty_map_parallel.DirtyMapMaker)
 
 if do_clean_map:
     #from map import clean_map
