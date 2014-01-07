@@ -222,10 +222,10 @@ class CleanMapMaker(object) :
                     temp_noise_diag.shape = (shape[1], shape[2])
                     noise_diag[ii, ...] = temp_noise_diag
                 # Return workspace memory to origional shape.
-                #noise_inv_freq.shape = (shape[1], shape[2],
-                #                        shape[1], shape[2])
+                noise_inv_freq.shape = (shape[1], shape[2],
+                                        shape[1], shape[2])
                 del noise_inv_freq
-                #gc.collect()
+                gc.collect()
                 if self.feedback > 1:
                     print "RANK: %03d"%rank,\
                         "\n      Using dirty map: " + dmap_fname +\
