@@ -4,6 +4,7 @@ import sys
 import glob
 import time
 import gc
+import copy
 
 import numpy as np
 import scipy as sp
@@ -204,11 +205,21 @@ class CleanMapMaker(object) :
                 map.shape = (shape[1], shape[2])
                 clean_map[ii, ...] = map
                 if save_noise_diag :
-                    noise_idiag[ii, ...] = noise_inv_diag.reshape(shape[1], 
-                                                                  shape[2])
+                    temp_noise_idiag = copy.deepcopy(noise_inv_diag) 
+                    temp_noise_idiag[bad_modes] = 0
+                    temp_mat_i = Rot*temp_noise_idiag
+                    for jj in range(shape[1]*shape[2]) :
+                        temp_noise_idiag[jj] = sp.dot(
+                            temp_mat_i[jj,:], Rot[jj,:])
+                    noise_idiag[ii, ...] = temp_noise_idiag.reshape(shape[1], 
+                                                                    shape[2])
+                    del temp_noise_idiag
+                    del temp_mat_i
+                    gc.collect()
+
                     # Using C = R Lambda R^T 
                     # where Lambda = diag(1/noise_inv_diag).
-                    temp_noise_diag = 1/noise_inv_diag
+                    temp_noise_diag = 1./noise_inv_diag
                     temp_noise_diag[bad_modes] = 0
                     # Multiply R by the diagonal eigenvalue matrix.
                     # Broadcasting does equivalent of mult by diag
@@ -221,6 +232,9 @@ class CleanMapMaker(object) :
                             temp_mat[jj,:], Rot[jj,:])
                     temp_noise_diag.shape = (shape[1], shape[2])
                     noise_diag[ii, ...] = temp_noise_diag
+                    del temp_noise_diag
+                    del temp_mat
+                    gc.collect()
                 # Return workspace memory to origional shape.
                 noise_inv_freq.shape = (shape[1], shape[2],
                                         shape[1], shape[2])
