@@ -14,6 +14,7 @@ from kiyopy import parse_ini
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
 import constants
+import h5py
 
 
 params_init = {'input_root' : './',
@@ -115,7 +116,13 @@ class CleanMapMaker(object) :
                         print "Using noise inverse: " + noise_fname
                     all_in_fname_list.append(
                         kiyopy.utils.abbreviate_file_path(noise_fname))
-                    noise_inv = algebra.open_memmap(noise_fname, 'r')
+
+                    #noise_inv = algebra.open_memmap(noise_fname, 'r')
+                    #noise_inv = algebra.make_mat(noise_inv)
+
+                    #Assuming below that the noise inv is an hdf5 file
+                    noise_h5 = h5py.File(noise_fname, 'r')
+                    noise_inv = algebra.load_h5(noise_h5, 'inv_cov')
                     noise_inv = algebra.make_mat(noise_inv)
                     # Two cases for the noise.  If its the same shape as the map
                     # then the noise is diagonal.  Otherwise, it should be
@@ -532,3 +539,10 @@ def up_tri_copy_from_file(filename):
     f.close()
     return loaded_arr
 
+# If this file is run from the command line, execute the main function.
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) == 2:
+        par_file = sys.argv[1]
+        nproc = 1
+        CleanMapMaker(par_file).execute(nproc)

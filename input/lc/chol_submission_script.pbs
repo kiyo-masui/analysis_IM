@@ -1,0 +1,10 @@
+#!/bin/bash
+# MOAB/Torque submission script for SciNet GPC (hybrid job)
+#
+#PBS -l nodes=100:ppn=8,walltime=01:00:00
+#PBS -N calinliv_chol_big_clean_map_D_862_100
+#
+cd $PBS_O_WORKDIR
+export OMP_NUM_THREADS=8
+time mpirun --bynode -np 100 python map/chol_clean_map.py input/lc/chol_big_clean_map_D_862.ini
+

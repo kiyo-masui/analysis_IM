@@ -15,7 +15,7 @@ import kiyopy.custom_exceptions as ce
 import core.fitsGBT
 
 # XXX
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 
 params_init = {

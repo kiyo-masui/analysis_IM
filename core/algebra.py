@@ -212,6 +212,12 @@ class info_array(sp.ndarray) :
             out.info = self.info
         return out
 
+    def __getstate__(self):
+        return self.info
+
+    def __setstate__(self, val):
+        self.info=val
+
 class info_memmap(sp.memmap) :
     """A standard numpy memmap object with a dictionary for holding extra info.
 

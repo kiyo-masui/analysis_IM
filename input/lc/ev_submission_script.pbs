@@ -1,0 +1,10 @@
+#!/bin/bash
+# MOAB/Torque submission script for SciNet GPC (hybrid job)
+#
+#PBS -l nodes=4:ppn=8,walltime=0:10:00
+#PBS -N calinliv_noise_inv_eig_test
+#
+cd $PBS_O_WORKDIR
+export OMP_NUM_THREADS=8
+time mpirun --bynode -np 4 python map/eig_noise_inv.py input/lc/eig_fake_noise_test.ini
+
