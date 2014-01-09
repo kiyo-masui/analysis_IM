@@ -187,13 +187,15 @@ class TestWriter(unittest.TestCase) :
 
     def test_add_data(self) :
         for field_name in fitsGBT.fields_and_axes.iterkeys() :
-            self.assertEqual(len(self.Writer.field[field_name]),
-                             ntimes_scan*npol*ncal)
+            if field_name not in ['RA', 'DEC']:
+                self.assertEqual(len(self.Writer.field[field_name]),
+                                 ntimes_scan*npol*ncal)
         Block = self.Reader.read(1, 0)
         self.Writer.add_data(Block)
         for field_name in fitsGBT.fields_and_axes.iterkeys() :
-            self.assertEqual(len(self.Writer.field[field_name]),
-                             2*ntimes_scan*npol*ncal)
+            if field_name not in ['RA', 'DEC']:
+                self.assertEqual(len(self.Writer.field[field_name]),
+                                 2*ntimes_scan*npol*ncal)
 
     def test_error_on_bad_format(self) :
         Block = self.Reader.read(1, 0)
@@ -215,6 +217,14 @@ class TestCircle(unittest.TestCase) :
     def setUp(self) :
         self.Reader = fitsGBT.Reader(fits_test_file_name, 0)
         self.Blocks = list(self.Reader.read([], []))
+        # Manually add in RA and DEC fields as test data was created before
+        # these were standard.
+        for Data in self.Blocks:
+            ntime = Data.dims[0]
+            Data.set_field('RA', sp.arange(ntime, dtype=sp.float64),
+                    axis_names=('time',))
+            Data.set_field('DEC', sp.arange(ntime, 0, -1, dtype=sp.float64),
+                    axis_names=('time',))
 
     def circle(self) :
         self.BlocksToWrite = copy.deepcopy(self.Blocks)
@@ -238,7 +248,7 @@ class TestCircle(unittest.TestCase) :
                 self.assertEqual(OldDB.field[field], NewDB.field[field])
             for field in ['CRVAL1', 'BANDWID', 'RESTFREQ', 'DURATION'] :
                 self.assertAlmostEqual(OldDB.field[field], NewDB.field[field])
-            for field in ['LST', 'ELEVATIO', 'AZIMUTH', 
+            for field in ['LST', 'ELEVATIO', 'AZIMUTH', 'RA', 'DEC',
                           'OBSFREQ', 'CRVAL2', 'CRVAL3', 'EXPOSURE'] :
                 self.assertTrue(sp.allclose(OldDB.field[field], 
                                             NewDB.field[field]))
