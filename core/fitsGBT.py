@@ -57,6 +57,9 @@ fields_and_axes = {
                    # and I think refraction.
                    'CRVAL2' : ('time', ), # Azimuth
                    'CRVAL3' : ('time', ), # Elevation
+                   # RA and DEC as extracted from the antenna fits files.
+                   'RA' : ('time', ),
+                   'DEC' : ('time', ),
                    # Polarization indicies
                    'CRVAL4' : ('pol', ),
                    'CAL' : ('cal', )
@@ -263,7 +266,7 @@ class Reader(object) :
                 # Choose the appropriate records from the file, get that data.
                 inds_sif = self.get_scan_IF_inds(scan_ind, IF_ind)
                 Data_sif = db.DataBlock(self.fitsdata.field('DATA')[inds_sif])
-                # Masked data is stored in FITS files as float('nan')
+                # Masked data is stored in FITS files as NaN.
                 Data_sif.data[sp.logical_not(sp.isfinite(
                                    Data_sif.data))] = ma.masked
                 # Now iterate over the fields and add them
@@ -385,7 +388,7 @@ class Writer() :
                                ' length for all DataBlocks added to Wirter.')
 
         # Copy the reshaped data from the DataBlock
-        data = sp.array(ma.filled(Block.data, float('nan')))
+        data = Block.data.filled(sp.nan)
         if self.first_block_added :
             self.data = data.reshape((n_records, dims[3]))
         else :

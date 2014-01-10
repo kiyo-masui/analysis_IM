@@ -51,9 +51,10 @@ class EigNoise(object):
         npy = npx
         pscore.initmpi(gridsize=[npx, npy], blocksize=blocksize)
         # Make parent directory and write parameter file.
-        kiyopy.utils.mkparents(params['output_root'])
-        parse_ini.write_params(params, params['output_root'] + 'params.ini',
-                               prefix=prefix)
+        if rank == 0:
+            kiyopy.utils.mkparents(params['output_root'])
+            parse_ini.write_params(params, params['output_root'] + 'params.ini',
+                                   prefix=prefix)
         in_root = params['input_root']
         out_root = params['output_root']
         # Figure out what the band names are.
@@ -80,9 +81,9 @@ class EigNoise(object):
                 Mat = pscore.DistributedMatrix.from_npy(noise_fname,
                         blocksize=blocksize, shape_override=mat_shape)
                 # Replace with a Scalapack call.
-                evals, evects = psroutine.pdsyevd(Mat, destroy=True)
                 #evals = np.zeros(n)
                 #evects = Mat
+                evals, evects = psroutine.pdsyevd(Mat, destroy=True)
                 # Now construct meta data for these objects.
                 evals = algebra.make_mat(evals, axis_names=('mode',),
                                          row_axes=(0,), col_axes=(0,))
