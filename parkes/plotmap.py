@@ -271,8 +271,8 @@ class PlotMap(object):
             RA, DEC = np.meshgrid(hipass_ra, hipass_dec)
             plt.figure(figsize=self.plot_size)
 
-            max = np.ma.max(hipass_data) * 0.5
-            min = np.ma.min(hipass_data) * 0.5
+            max = np.ma.max(hipass_data) #* 0.5
+            min = np.ma.min(hipass_data) #* 0.5
 
             plt.pcolormesh(RA, DEC, hipass_data, vmax=max, vmin=min)
             plt.colorbar()
@@ -455,6 +455,14 @@ class PlotMap(object):
         self.re_scale = scale_hipass/scale_map
         self.re_zerop = np.max(hipass_data) - np.max(map*self.re_scale)
 
+    def get_edges(self, x):
+
+        dx = x[1] - x[0]
+        x = x - 0.5 * dx
+        x = np.append(x, x[-1] + dx)
+
+        return x
+
     def mapping_coord(self, plot=False):
 
         hipass_data_new = cal_map.mapping_coord(self.imap, self.hipass_map_path, 
@@ -466,7 +474,7 @@ class PlotMap(object):
             min = 0.5*np.min(hipass_data_new)
             ra = self.imap.get_axis('ra')
             dec= self.imap.get_axis('dec')
-            RA, DEC = np.meshgrid(ra, dec)
+            RA, DEC = np.meshgrid( self.get_edges(ra),  self.get_edges(dec))
             plt.pcolormesh(RA, DEC, hipass_data_new.T, vmax=max, vmin=min)
             plt.colorbar()
 
@@ -496,7 +504,7 @@ class PlotMap(object):
 
         ra = self.imap.get_axis('ra')
         dec= self.imap.get_axis('dec')
-        RA, DEC = np.meshgrid(ra, dec)
+        RA, DEC = np.meshgrid( self.get_edges(ra),  self.get_edges(dec))
 
         map_list = [self.imap, ]  + self.imap_secs
         sec_list = ['',]
@@ -591,8 +599,8 @@ class PlotMap(object):
                 print 
             print
 
-            max = np.max(map) #* 0.5
-            min = np.min(map) #* 0.5
+            max = np.max(map) * 0.5
+            min = np.min(map) * 0.5
 
             map = np.ma.array(map)
             map[map == 0] = np.ma.masked
@@ -603,7 +611,7 @@ class PlotMap(object):
             if with_nvss:
                 nvss = cal_map.nvss_cat(self.nvss_catalog_path)
                 nvss['flux'] *= 1.e-3
-                selected = nvss['flux'] > .5
+                selected = nvss['flux'] > .3
                 ra  = nvss['ra'][selected]
                 dec = nvss['dec'][selected]
                 flux= nvss['flux'][selected]
