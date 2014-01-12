@@ -5,7 +5,7 @@ import scipy as sp
 pipe_modules = []
 pipe_processes = 12
 
-do_dirty_map = False
+do_dirty_map = True
 do_clean_map = True
 
 map_input = os.getenv("YICHAO_WORK_PKS") + 'pol_selected/'
@@ -25,14 +25,14 @@ map_base = os.getenv("YICHAO_WORK_PKS") + 'maps/parkes_parallel/'
 #map_centre = (27.5, -29.5)
 
 # small field for checking flagging
-#map_shape = (64, 64)
-#map_spacing = .08
-#map_centre = (35.0, -30.0)
-
-# my maps
-map_shape = (256, 96)
+map_shape = (64, 64)
 map_spacing = .08
 map_centre = (35.0, -30.0)
+
+# my maps
+#map_shape = (256, 96)
+#map_spacing = .08
+#map_centre = (35.0, -30.0)
 
 ra_centre = 'W' # if ra_cente = 'W', it will connect 360 and 0; or ra_centre = 'E'
 #map_prefix = 'p3500n3000_' + 'parkes_2010_10_24-28_'

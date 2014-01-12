@@ -271,8 +271,8 @@ mbcal_output_end = '.fits'
 mbcal_scans = ()
 mbcal_IFs = ()
 
-mbcal_table_jy2k = "/scratch/p/pen/ycli/data/pks/2012/MBCAL/table_jy2k.txt"
-mbcal_table_ginv = "/scratch/p/pen/ycli/data/pks/2012/MBCAL/table_ginv.txt"
+mbcal_table_jy2k = "/home_local/ycli/data/parkes/CALDATA_MBC_info/src/table_jy2k.txt"
+mbcal_table_ginv = "/home_local/ycli/data/parkes/CALDATA_MBC_info/src/table_ginv.txt"
 
 # rotate_pol
 #rp_input_root = rb_output_root
