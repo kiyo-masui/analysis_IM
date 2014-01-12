@@ -38,6 +38,7 @@ base_params = {
                # What data to process within each file.
                'scans' : (),
                'IFs' : (),
+               'beams' : (),
                }
 
 class BaseSingle(object) :

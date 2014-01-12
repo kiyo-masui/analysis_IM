@@ -16,7 +16,14 @@ from parkes import mbcal
 #rawdatapath = ('/home/ycli/localhome/data/map_result/flagged/parkes_2012_10_26_P641.fits',)
 #rawdatapath = ('/home/ycli/localhome/data/map_result/flagged/parkes_2012_10_27_P641.fits',)
 #rawdatapath = ('/home/ycli/localhome/data/map_result/flagged/parkes_2012_10_28_P641.fits',)
-rawdatapath = ('/home/ycli/data/map_result/mbcal/parkes_2012_10_27_P641.fits',)
+#rawdatapath = ('/home/ycli/data/map_result/mbcal/parkes_2012_10_27_P641.fits',)
+
+#rawdatapath = ('/home/ycli/data/map_result/parkes/parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/home/ycli/data/map_result/flagged/parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/home/ycli/data/map_result/flagged/parkes_2012_10_25_P641.fits',)
+#rawdatapath = ('/home/ycli/data/map_result/flagged/parkes_2012_10_26_P641.fits',)
+#rawdatapath = ('/home/ycli/data/map_result/flagged/parkes_2012_10_27_P641.fits',)
+rawdatapath = ('/home/ycli/data/map_result/flagged/parkes_2012_10_28_P641.fits',)
 
 #rawdatapath = ('/mnt/scratch-gl/ycli/map_result/parkes/parkes_2012_10_27_P641.fits',)
 #rawdatapath = ('/mnt/scratch-gl/ycli/map_result/flagged/parkes_2012_10_27_P641.fits',)
@@ -672,9 +679,9 @@ if __name__=="__main__":
     #checkfits.printlabel()
 
     #checkfits.plotfreq_time()
-    #checkfits.plotfreq_time_all()
+    checkfits.plotfreq_time_all()
     #checkfits.plottsys()
-    checkfits.plottsys(in_K=True)
+    #checkfits.plottsys(in_K=True)
     #checkfits.plotT()
     #checkfits.plotfreq()
     #checkfits.plotfreq_all()

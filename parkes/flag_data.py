@@ -83,6 +83,11 @@ class FlagData(base_single.BaseSingle) :
         # divid tsys may cause flagging bad
         #Data.data /= Data.field['TSYS'][:,:,:,:,None]
 
+        # flag the bad beams
+        if params['beams'] != ():
+            badbeams = [i for i in range(Data.data.shape[1]) if i not in params['beams']]
+            Data.data[:,badbeams,...] = ma.masked
+
         apply_cuts(Data, sigma_thres=params['sigma_thres'], 
                     badness_thres=params['badness_thres'],
                     time_cut=params['time_cut'],

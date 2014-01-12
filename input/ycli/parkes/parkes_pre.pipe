@@ -158,6 +158,7 @@ fd_output_root = base_dir + 'flagged/' + prefix
 fd_output_end = '.fits'
 fd_scans = ()
 fd_IFs = ()
+fd_beams = (0, 1, 2, 5, 6, 7, 8, 10, 11, 12)
 
 fd_time_flag_first = False
 #fd_tsys_thres = [15.2, 15.7]

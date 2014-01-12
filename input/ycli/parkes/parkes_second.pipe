@@ -2,82 +2,96 @@
 
 import os
 
-#from core import dir_data
 import scipy as sp
 
 base_dir = os.getenv('YICHAO_WORK_PKS')
 data_dir = os.getenv('PARKES_DATA')
 
-map_base = os.getenv("YICHAO_WORK_PKS") + 'maps/parkes_parallel_recorded_radec/'
+map_base = os.getenv("YICHAO_WORK_PKS") + 'maps/parkes_parallel/'
 
-map_prefix = 'testflagging_p3500n3000_' + 'parkes_2010_10_24-28_'
+map_prefix = 'p3500n3000_parkes_2010_10_24-28_'
+
+pksdate=os.getenv('PKSPREFIX')
 
 ''' >> Data Direction << '''
-''' 2012-10-24 '''
-#parkes_session = '/RAWDATA_SDF/20121024/'
-#parkesfiles = [] 
-#listfile = os.listdir(data_dir+parkes_session)
-#listfile.sort(key=lambda x:int(x[11:15]))
-#for file in listfile:
-#    if file.split('.')[-1] == 'sdfits':
-#        parkesfiles.append(file)
-#        print file
-#outputname = 'parkes_2012_10_24_P641'
-#file_middles = tuple(['parkes_2012_10_24_P641',])
-#prefix = ''
 
+if pksdate == '2012-10-24':
+    ''' 2012-10-24 '''
+    print "Analysing Data on" + pksdate
+    parkes_session = '/RAWDATA_SDF/20121024/'
+    parkesfiles = [] 
+    listfile = os.listdir(data_dir+parkes_session)
+    listfile.sort(key=lambda x:int(x[11:15]))
+    for file in listfile:
+        if file.split('.')[-1] == 'sdfits':
+            parkesfiles.append(file)
+            print file
+    outputname = 'parkes_2012_10_24_P641'
+    file_middles = tuple(['parkes_2012_10_24_P641',])
+    prefix = ''
 
-''' 2012-10-25 '''
-#parkes_session = '/RAWDATA_SDF/20121025/'
-#parkesfiles = [] 
-#listfile = os.listdir(data_dir+parkes_session)
-#listfile.sort(key=lambda x:int(x[11:15]))
-#for file in listfile:
-#    if file.split('.')[-1] == 'sdfits':
-#        parkesfiles.append(file)
-#        print file
-#outputname = 'parkes_2012_10_25_P641'
-#file_middles = tuple(['parkes_2012_10_25_P641',])
-#prefix = ''
+elif pksdate == '2012-10-25':
+    ''' 2012-10-25 '''
+    print "Analysing Data on" + pksdate
+    parkes_session = '/RAWDATA_SDF/20121025/'
+    parkesfiles = [] 
+    listfile = os.listdir(data_dir+parkes_session)
+    listfile.sort(key=lambda x:int(x[11:15]))
+    for file in listfile:
+        if file.split('.')[-1] == 'sdfits':
+            parkesfiles.append(file)
+            print file
+    outputname = 'parkes_2012_10_25_P641'
+    file_middles = tuple(['parkes_2012_10_25_P641',])
+    prefix = ''
 
-''' 2012-10-26 '''
-#parkes_session = '/RAWDATA_SDF/20121026/'
-#parkesfiles = [] 
-#listfile = os.listdir(data_dir+parkes_session)
-#listfile.sort(key=lambda x:int(x[11:15]))
-#for file in listfile:
-#    if file.split('.')[-1] == 'sdfits':
-#        parkesfiles.append(file)
-#        print file
-#outputname = 'parkes_2012_10_26_P641'
-#file_middles = tuple(['parkes_2012_10_26_P641',])
-#prefix = ''
+elif pksdate == '2012-10-26':
+    ''' 2012-10-26 '''
+    print "Analysing Data on" + pksdate
+    parkes_session = '/RAWDATA_SDF/20121026/'
+    parkesfiles = [] 
+    listfile = os.listdir(data_dir+parkes_session)
+    listfile.sort(key=lambda x:int(x[11:15]))
+    for file in listfile:
+        if file.split('.')[-1] == 'sdfits':
+            parkesfiles.append(file)
+            print file
+    outputname = 'parkes_2012_10_26_P641'
+    file_middles = tuple(['parkes_2012_10_26_P641',])
+    prefix = ''
 
-''' 2012-10-27 '''
-#parkes_session = '/RAWDATA_SDF/20121027/'
-#parkesfiles = [] 
-#listfile = os.listdir(data_dir+parkes_session)
-#listfile.sort(key=lambda x:int(x[11:15]))
-#for file in listfile:
-#    if file.split('.')[-1] == 'sdfits':
-#        parkesfiles.append(file)
-#        print file
-#outputname = 'parkes_2012_10_27_P641'
-#file_middles = tuple(['parkes_2012_10_27_P641',])
-#prefix = ''
+elif pksdate == '2012-10-27':
+    ''' 2012-10-27 '''
+    print "Analysing Data on" + pksdate
+    parkes_session = '/RAWDATA_SDF/20121027/'
+    parkesfiles = [] 
+    listfile = os.listdir(data_dir+parkes_session)
+    listfile.sort(key=lambda x:int(x[11:15]))
+    for file in listfile:
+        if file.split('.')[-1] == 'sdfits':
+            parkesfiles.append(file)
+            print file
+    outputname = 'parkes_2012_10_27_P641'
+    file_middles = tuple(['parkes_2012_10_27_P641',])
+    prefix = ''
 
-''' 2012-10-28 '''
-parkes_session = '/RAWDATA_SDF/20121028/'
-parkesfiles = [] 
-listfile = os.listdir(data_dir+parkes_session)
-listfile.sort(key=lambda x:int(x[11:15]))
-for file in listfile:
-    if file.split('.')[-1] == 'sdfits':
-        parkesfiles.append(file)
-        #print file
-outputname = 'parkes_2012_10_28_P641'
-file_middles = tuple(['parkes_2012_10_28_P641',])
-prefix = ''
+elif pksdate == '2012-10-28':
+    ''' 2012-10-28 '''
+    print "Analysing Data on" + pksdate
+    parkes_session = '/RAWDATA_SDF/20121028/'
+    parkesfiles = [] 
+    listfile = os.listdir(data_dir+parkes_session)
+    listfile.sort(key=lambda x:int(x[11:15]))
+    for file in listfile:
+        if file.split('.')[-1] == 'sdfits':
+            parkesfiles.append(file)
+            #print file
+    outputname = 'parkes_2012_10_28_P641'
+    file_middles = tuple(['parkes_2012_10_28_P641',])
+    prefix = ''
+else:
+    print "Observation date error " + pksdate
+    exit()
 
 # Maximum number of processes to use.
 pipe_processes = 12

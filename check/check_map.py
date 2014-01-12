@@ -104,7 +104,8 @@ if plot_raw:
     #map_root = '/Users/ycli/DATA/parkes/maps/pks_p3500n3000_parkes_2010_10_24-28/'
     #map_root = '/Users/ycli/DATA/parkes/maps/small_pks_p3500n3000_parkes_2010_10_24-28/'
     #map_root = '/Users/ycli/DATA/parkes/maps/pks_p3500n3000_parkes_2010_10_24-28/'
-    map_root = '/Users/ycli/DATA/parkes/maps/pks_p3500n3000_parkes_2010_10_24-28_in_J/'
+    #map_root = '/Users/ycli/DATA/parkes/maps/pks_p3500n3000_parkes_2010_10_24-28_in_J/'
+    map_root = '/Users/ycli/DATA/parkes/maps/pks_p3500n3000_parkes_2010_10_24-28/'
     
     mapdict = {}
     mapdict['imap'] = map_root + '%s_%s_clean_map_I_%s.npy'%(prefix, field, suffix)
