@@ -24,7 +24,7 @@ def nvss_cat(nvss_catalog_path):
               + ra_raw[:,2].astype('float32')/60./60.)
     ra_degree *= 15.
     
-    ra_degree[ra_degree>180] = ra_degree[ra_degree>180] - 360.
+    #ra_degree[ra_degree>180] = ra_degree[ra_degree>180] - 360.
 
     dec_symbol= np.array([-1. if x < 0 else 1. for x in dec_raw[:,0].astype('float32')])
     dec_degree= dec_symbol\

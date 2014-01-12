@@ -4,7 +4,32 @@ from parkes import plotmap
 
 plot_opt = False
 plot_raw = True
+plot_gbt = False
 plot_cln = False
+
+if plot_gbt:
+
+    prefix = 'secA'
+    suffix = '800'
+    field = '15hr_41-80_avg_fdgp_new'
+
+    degrade_factor = 1.4
+    degrade_map = True
+    map_root = '/Users/ycli/DATA/gbt_raw_map/15hr/'
+    mapdict = {}
+    mapdict['imap'] = map_root + "%s_%s_clean_map_I_%s.npy"%(prefix, field, suffix)
+    mapdict['nmap'] = map_root + "%s_%s_noise_inv_diag_I_%s.npy"%(prefix, field, suffix)
+    mapdict['name'] = "%s_%s_clean_map"%(prefix, field)
+    mapdict['noise_name'] = "%s_%s_noise_map"%(prefix, field)
+    a = plotmap.PlotMap(mapdict, 
+            freq_cut = [0,15,16,17,18,19,20,21,22,23,103,104,105,106,107,
+                        108,130,131,132,133,134],
+            degrade_factor = degrade_factor,
+            degrade_map = degrade_map,
+            plot_size=(8,6),
+            nvss_catalog_path = "/Users/ycli/DATA/nvss/nvss_catlog_15hr.dat")
+    a.plot_map(with_nvss=True)
+    a.check_nvss(flux_limit=[0.3, 100], rescale=False)
 
 if plot_opt:
 
@@ -25,6 +50,7 @@ if plot_opt:
                         degrade_map=degrade_map,
                         plot_size=(15, 6))
     a.plot_map(with_nvss=False)
+    a.check_nvss(flux_limit=[0.5, 100], rescale=False)
 
 if plot_raw:
     #prefix = 'test_allbeams'
@@ -74,13 +100,17 @@ if plot_raw:
 
     degrade_factor = 1.1
     degrade_map = False
-    map_root = '/scratch/p/pen/ycli/map_result/maps/parkes_parallel/'
+    #map_root = '/scratch/p/pen/ycli/map_result/maps/parkes_parallel/'
+    #map_root = '/Users/ycli/DATA/parkes/maps/pks_p3500n3000_parkes_2010_10_24-28/'
+    #map_root = '/Users/ycli/DATA/parkes/maps/small_pks_p3500n3000_parkes_2010_10_24-28/'
+    #map_root = '/Users/ycli/DATA/parkes/maps/pks_p3500n3000_parkes_2010_10_24-28/'
+    map_root = '/Users/ycli/DATA/parkes/maps/pks_p3500n3000_parkes_2010_10_24-28_in_J/'
     
     mapdict = {}
     mapdict['imap'] = map_root + '%s_%s_clean_map_I_%s.npy'%(prefix, field, suffix)
-    mapdict['nmap'] = map_root + '%s_%s_noise_diag_I_%s.npy'%(prefix, field, suffix)
-    mapdict['name'] = '%s_clean_map_I'%(field)
-    mapdict['noise_name'] = '%s_noise_map_I'%(field)
+    mapdict['nmap'] = map_root + '%s_%s_noise_inv_diag_I_%s.npy'%(prefix, field, suffix)
+    mapdict['name'] = '%s_clean_map_I_in_J'%(field)
+    mapdict['noise_name'] = '%s_noise_map_I_in_J'%(field)
 
     #mapdict['imap'] = map_root + 'secA_%s_clean_map_I_%s.npy'%(field, suffix)
     ##mapdict['nmap'] = map_root + 'secA_%s_noise_weight_I_%s.npy'%(field, suffix)
@@ -109,9 +139,9 @@ if plot_raw:
                         #freq_cut = [0,1,2,3,4,5,59,60,61,62,63], 
                         degrade_factor=degrade_factor, 
                         degrade_map=degrade_map,
-                        plot_size=(10, 8))
+                        #plot_size=(10, 8))
                         #plot_size=(12, 6))
-                        #plot_size=(12, 4))
+                        plot_size=(12, 4))
     #a.mapping_coord(plot=True)
     a.plot_map(with_nvss=True)
     #a.plot_map(with_nvss=True, diff=True)
