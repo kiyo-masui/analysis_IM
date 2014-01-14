@@ -89,6 +89,15 @@ elif pksdate == '2012-10-28':
     outputname = 'parkes_2012_10_28_P641'
     file_middles = tuple(['parkes_2012_10_28_P641',])
     prefix = ''
+elif pksdate == 'all':
+    file_middles = tuple(['parkes_2012_10_24_P641',
+                          'parkes_2012_10_25_P641',
+                          'parkes_2012_10_26_P641',
+                          'parkes_2012_10_27_P641',
+                          'parkes_2012_10_28_P641',
+                          ])
+    prefix = ''
+    
 else:
     print "Observation date error " + pksdate
     exit()
@@ -99,8 +108,14 @@ pipe_processes = 12
 ####  List of modules to execute.  ####
 pipe_modules = []
 
-from parkes import subtract_map_data
-pipe_modules.append(subtract_map_data.Subtract)
+#from parkes import subtract_map_data
+#pipe_modules.append(subtract_map_data.Subtract)
+
+#from parkes import reflag
+#pipe_modules.append(reflag.ReFlag)
+
+from parkes import measure_noise
+pipe_modules.append(measure_noise.Measure)
 
 # subtract signal
 #sm_input_root = mc2_output_root
@@ -121,7 +136,40 @@ sm_map_bands = (1316,)
 sm_solve_for_gain = False
 sm_gain_output_end = '_gain.pickle'
 
+# second_flag
+sf_input_root = base_dir + 'pol_selected/' + prefix
+sf_file_middles = file_middles
+sf_input_end = '.fits'
+sf_output_root = base_dir + 'reflagged_sec/'
+sf_output_end = '.fits'
+sf_scans = ()
+sf_IFs = ()
+
+sf_thres = 4.0
+sf_max_noise_factor = 3.0
+sf_smooth_modes_subtract = 5
+sf_filter_type = 'gaussian/edge'
+sf_subtracted_input_root = sm_output_root
+sf_subtracted_output_root = base_dir + 'reflagged_sub_sec/'
   
+# measure_noise
+mn_input_root = sf_subtracted_output_root
+mn_file_middles = file_middles
+mn_input_end = '.fits'
+mn_output_root = base_dir + 'noise_measurments_sec/'
+mn_output_filename = "noise_parameters.shelve"
+mn_save_spectra_plots = True
+mn_time_block = 'scan'
+mn_scans = ()
+mn_IFs = ()
+
+mn_parameters = ["channel_var",]
+                # "freq_modes_over_f_0",
+                # "freq_modes_over_f_1", "freq_modes_over_f_2",
+                # "freq_modes_over_f_3", "freq_modes_over_f_4",
+                # "freq_modes_over_f_5", "freq_modes_over_f_6",
+                # "freq_modes_over_f_7", "freq_modes_over_f_8"]
+
 #  #### Parameters for the various modules. ####
 #  
 #  # reformat 

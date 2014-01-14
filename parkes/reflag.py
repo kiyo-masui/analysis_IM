@@ -5,7 +5,7 @@ Right now just reflags data but will eventually do a fine calibration maybe?"""
 import scipy as sp
 import numpy.ma as ma
 
-from utils import misc
+import misc
 from kiyopy import utils
 
 import fitsGBT
