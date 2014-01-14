@@ -5,11 +5,25 @@ import scipy as sp
 pipe_modules = []
 pipe_processes = 12
 
-do_dirty_map = True
-do_clean_map = True
+pksprefix = os.getenv('PKSPREFIX')
 
-map_input = os.getenv("YICHAO_WORK_PKS") + 'pol_selected/'
-map_base = os.getenv("YICHAO_WORK_PKS") + 'maps/parkes_parallel/'
+do_fir_mapmaking = False
+do_sec_mapmaking = False
+
+if pksprefix == 'fir':
+    do_fir_mapmaking = True
+
+    map_input = os.getenv("YICHAO_WORK_PKS") + 'pol_selected/'
+    map_base = os.getenv("YICHAO_WORK_PKS") + 'maps/parkes_parallel/'
+
+if pksprefix == 'sec':
+    do_sec_mapmaking = True
+
+    map_input = os.getenv("YICHAO_WORK_PKS") + 'reflagged_sec/'
+    map_base = os.getenv("YICHAO_WORK_PKS") + 'maps/parkes_parallel/'
+
+#do_dirty_map = True
+#do_clean_map = True
 
 #map_input = os.getenv("YICHAO_WORK_PKS") + 'map_subtracted/'
 #map_base = os.getenv("YICHAO_WORK_PKS") + 'maps/parkes_parallel_eachbeam/'
@@ -67,17 +81,23 @@ file_middles = tuple([
                       "parkes_2012_10_28_P641",
                       ])
 
-if do_dirty_map:
+if do_fir_mapmaking == True:
     #from parkes import dirty_map
     #pipe_modules.append(dirty_map.DirtyMapMaker)
     from parkes import dirty_map_parallel
     pipe_modules.append(dirty_map_parallel.DirtyMapMaker)
 
-if do_clean_map:
     #from map import clean_map
     #pipe_modules.append(clean_map.CleanMapMaker)
     from parkes import clean_map_parallel
     pipe_modules.append(clean_map_parallel.CleanMapMaker)
+
+if do_sec_mapmaking == True:
+    from parkes import dirty_map_parallel
+    pipe_modules.append((dirty_map_parallel.DirtyMapMaker, ('dm2_', 'dm_')))
+
+    from parkes import clean_map_parallel
+    pipe_modules.append((clean_map_parallel.CleanMapMaker, ('cm2_', 'cm_')))
 
 #### Parameters for the various modules. ####
 
@@ -112,4 +132,44 @@ cm_polarizations = ('I',)
 cm_bands = (1316,)
 cm_save_noise_diag = True
 cm_save_noise_inv_diag = True
+
+
+# second dirty map making
+dm2_input_root = map_input
+dm2_file_middles = file_middles
+dm2_input_end = '.fits'
+dm2_output_root = map_base + 'sec_' + map_prefix
+dm2_scans = ()
+dm2_IFs = ()
+
+dm2_polarizations = ('I',)
+dm2_field_centre = map_centre
+dm2_pixel_spacing = map_spacing
+dm2_map_shape = map_shape
+dm2_time_block = 'scan'
+#dm2_n_files_group = 420  # prawn
+#dm2_n_files_group = 280  # tpb nodes.
+#dm2_n_files_group = 120
+dm2_n_files_group = 0
+#dm2_frequency_correlations = 'measured'
+dm2_frequency_correlations = 'None' # for quickly test
+#dm2_number_frequency_modes = 3
+dm2_number_frequency_modes = 3  # Probably most appropriate.
+dm2_number_frequency_modes_discard = 1
+#dm2_noise_parameter_file = mn2_output_root + mn2_output_filename
+dm2_noise_parameter_file = ''
+#dm2_noise_parameter_file = os.getenv("YICHAO_WORK_PKS") + 'noise_measurments_sec/noise_parameters.shelve'
+dm2_deweight_time_mean = True
+dm2_deweight_time_slope = True
+dm2_interpolation = 'cubic'
+dm2_ts_foreground_mode_file = ''
+dm2_n_ts_foreground_modes = 0
+
+# second clean map making
+cm2_input_root = dm2_output_root
+cm2_output_root = cm2_input_root
+cm2_polarizations = ('I',)
+cm2_bands = (1316,)
+cm2_save_noise_diag = True
+cm2_save_noise_inv_diag = True
 
