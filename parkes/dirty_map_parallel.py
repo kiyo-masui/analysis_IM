@@ -228,7 +228,7 @@ class DirtyMapMaker(object):
                 new_mask_inds[1].append(new_time_ind)
         mask_inds = (sp.asarray(new_mask_inds[0], dtype=int),
                      sp.asarray(new_mask_inds[1], dtype=int))
-        return time_stream, ra, dec, az, el, time, mask_inds
+        return time_stream, ra, dec, az, el, time, mask_inds, beam
 
     def get_noise_parameter(self, parameter_name):
         """Reads a desired noise parameter for the current data."""
@@ -552,7 +552,7 @@ class DirtyMapMaker(object):
             # all talk to each other through class attributes.
             for this_data in self.iterate_data(this_file_middles):
                 # Unpack all the input data.
-                time_stream, ra, dec, az, el, time, mask_inds = this_data
+                time_stream, ra, dec, az, el, time, mask_inds, beam = this_data
                 n_time = time_stream.shape[1]
                 if n_time < 5:
                     continue
@@ -564,7 +564,7 @@ class DirtyMapMaker(object):
                 # The thermal part.
                 thermal_noise = self.get_noise_parameter("thermal")
                 try:
-                    N.add_thermal(thermal_noise)
+                    N.add_thermal(thermal_noise, beam)
                 except NoiseError:
                     continue
                 # Frequency correlations.
@@ -1082,7 +1082,7 @@ class Noise(object):
 
     # ---- Methods that build up the noise matrix. ----
 
-    def add_thermal(self, thermal_levels):
+    def add_thermal(self, thermal_levels, beam=0):
         """Add a thermal component to the noise.
         
         This modifies the diagonal part of the noise matrix.
@@ -1099,6 +1099,7 @@ class Noise(object):
             or sp.any(thermal_levels < T_small**2)):
             raise ValueError("Non finite thermal noise.")
         if isinstance(thermal_levels, sp.ndarray):
+            #thermal_levels = thermal_levels[beam,:]
             self.diagonal += thermal_levels[:, None]
         else:
             self.diagonal += thermal_levels
@@ -1113,7 +1114,7 @@ class Noise(object):
         mask_inds : 2 element tuple of integer arrays.
             The locations of data points to be masked.
         """
-        
+
         self.initialize_diagonal()
         self.diagonal[mask_inds] = T_infinity**2
 
