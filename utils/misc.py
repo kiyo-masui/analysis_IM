@@ -343,7 +343,10 @@ def polint2str(pol_int) :
         raise ValueError("Polarization integer must be in range(-8, 5) and "
                          "nonzero")
 
+#<<<<<<< HEAD
+#=======
 
+#>>>>>>> master
 def ampfit(data, covariance, theory, rank_thresh=1e-12, diag_only=False):
     """Fits the amplitude of the theory curve to the data.
 
@@ -596,6 +599,8 @@ def ortho_poly_2D(x, y, n, window=1):
 
 
 
+#<<<<<<< HEAD
+#=======
 if __name__ == "__main__":
     import doctest
 
@@ -604,3 +609,4 @@ if __name__ == "__main__":
                    doctest.NORMALIZE_WHITESPACE)
     doctest.testmod(optionflags=OPTIONFLAGS)
 
+#>>>>>>> master

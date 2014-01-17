@@ -68,7 +68,10 @@ class Calibrate(base_single.BaseSingle) :
             sess_num = '0'+str(sess_num)
         project = file_middle.split('/')[0]
 #        print sess_num
-        mueler_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_mueller_matrix_from_inverted_params.txt'
+# If using directory of fpc parameters from point source generation
+#        mueler_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_mueller_matrix_from_inverted_params.txt'
+# If using single mueller matrix from victor 
+        mueler_file_name = self.params['mueler_file']+'Mueller_61_pulsar.txt'
         self.flux_status = self.params['flux_cal_only']
         self.mueler = mueller(mueler_file_name)
         calibrate_pol(Data, self.mueler, self.flux_status)
@@ -216,7 +219,7 @@ def calibrate_pol(Data, m_total,flux_status) :
                
                if flux_status == 'False' : 
                    stokesmod = np.dot(MUELLER,stokesmod)
-               stokesmod = np.dot(M_sky,stokesmod)
+#              stokesmod = np.dot(M_sky,stokesmod)
 
 # You always want to include the M_sky matrix transformation, but you if you just want the flux cal, coment out the MUELLER, STOKES dot product above and include the flux multiplication below instead. 
                if flux_status == 'True' :

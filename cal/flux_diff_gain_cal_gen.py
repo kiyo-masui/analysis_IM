@@ -16,8 +16,8 @@ import numpy as np
 from kiyopy import parse_ini
 import kiyopy.utils
 import core.fitsGBT
-from core import utils
-
+#from core import utils
+import utils.misc as utils
 
 # Define a dictionary with keys the names of parameters to be read from
 # file and values the defaults.
@@ -65,9 +65,8 @@ class MuellerGen(object) :
         theta = self.theta
 #        print theta
         RM = self.RM
-        wavelength = 300.0/freq_val[f]
-        Phi = RM*wavelength*wavelength
-#        Phi[:] = 0
+	wavelength = 300.0/freq_val[f]
+	Phi = RM*wavelength*wavelength
 #        print Phi
 #        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*2 
 #        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*(2.28315426-0.000484307905*freq_val[f]) # Added linear fit for Jansky to Kelvin conversion.
@@ -75,7 +74,11 @@ class MuellerGen(object) :
 #        Isrc = 25.15445092*pow((750.0/freq_val[f]),0.75578842)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for  3C48
 #        Isrc = 4.56303633*pow((750.0/freq_val[f]),0.59237327)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C67
 #        Isrc = 31.32846821*pow((750.0/freq_val[f]),0.52113534)*(2.28315426-0.000484307905*freq_val[f]) #My fit solution for 3C147
+#<<<<<<< HEAD
+# 	Isrc = 34.11187767*pow((750.0/freq_val[f]),0.62009421)*(2.28315426-0.000484307905*freq_val[f]) #My fit solution for 3C295
+#=======
         Isrc = 34.11187767*pow((750.0/freq_val[f]),0.62009421)*(2.28315426-0.000484307905*freq_val[f]) #My fit solution for 3C295
+#>>>>>>> master
         PAsrc = 33.0*sp.pi/180.0 # for 3C286, doesn't matter for unpolarized. 
 #        Psrc = 0.07 #for 3C286 
         Psrc = 0 #for #3C48,3C67, 3C147, 3C295
@@ -104,7 +107,7 @@ class MuellerGen(object) :
         guppi_result = params['Guppi_test']
         output_root = params['output_root']
         output_end = params['output_end']
-        RM_dir = params['RM_dir']
+#        RM_dir = params['RM_dir']
         file_name = params['file_middles'][0].split('/')[1]
 #        print file_name
         sess = file_name.split('_')[0]
@@ -185,9 +188,20 @@ class MuellerGen(object) :
                 freq_val = freq_val/1000000       
                 Data.calc_PA()
                 PA[m] = ma.mean(Data.PA)  
+		print PA[m]
 #Include RM stuff in the code:
+#<<<<<<< HEAD
+                Full_date = Data.field['DATE-OBS'][Data.dims[0]/2]
+                print Full_date
+		AZ_mean = Data.field['CRVAL2'][Data.dims[0]/2]
+		EL_mean = Data.field['CRVAL3'][Data.dims[0]/2]
+		PA[m] = utils.azel2pGBT(AZ_mean,EL_mean,Full_date)
+		PA[m] = PA[m]*sp.pi/180.0
+		print PA[m]
+#=======
 #                Full_date = Data.field['DATE-OBS'][Data.dims[0]/2]
 #                print Full_date
+#>>>>>>> master
 #                Date = Full_date.split('T')[0]
 #                Year = Date.split('-')[0]
 #                Month = Date.split('-')[1]
@@ -242,7 +256,11 @@ class MuellerGen(object) :
 #                            print RA_RM[i], DEC_RM[i]
 #                            if abs(DEC-DEC_RM[i])<10.0:
 #                                print RA_RM[i], DEC_RM[i]
+#<<<<<<< HEAD
+#                                RM[m]=RM_data[i,3]
+#=======
 ##                                RM[m]=RM_data[i,3]
+#>>>>>>> master
 #                                valid.append(i)
 #                print valid
 #                RA_M=10.0
@@ -258,7 +276,7 @@ class MuellerGen(object) :
 #            print time_len
 #            print freq_len
 #            print m
-            print RM
+#            print RM
 #Building the measured data into arrays (guppi version)         
             if guppi_result == True : 
                 if n_scans == 2 : 
@@ -279,14 +297,15 @@ class MuellerGen(object) :
                     S_med_caloff = sp.zeros((freq_len,4))
 
 #arrays built without taking median
-                    for Data in OnBlocks: 
-                        S_src = Data.data
+#                    for Data in OnBlocks: 
+#                        S_src = Data.data
 #                    print len(S_src)
 
-                    for Data in OffBlocks:
-                        S_offsrc = Data.data
+#                    for Data in OffBlocks:
+#                        S_offsrc = Data.data
 #                    print len(S_offsrc)
  
+
 #arrays built taking median
                     for Data in OnBlocks:
                         S_med_caloff_src[:,0] = ma.median(Data.data[:,XX_ind,off_ind,:],axis=0)
@@ -349,7 +368,12 @@ class MuellerGen(object) :
 #        sess_num = int(session_nums[0])
 #        print sess_num
 #        np.savetxt(output_root+str(sess_num)+'_flux_mueller_matrix_calc'+output_end, p_val_out, delimiter = ' ')
-        out_path = output_root+sess+'_diff_gain_calc'+output_end
+#<<<<<<< HEAD
+#        out_path = output_root+sess+'_diff_gain_calc_new'+output_end
+        out_path = output_root+'15hr_avg_diff_gain_calc_high_res'+output_end
+#=======
+#        out_path = output_root+sess+'_diff_gain_calc'+output_end
+#>>>>>>> master
         np.savetxt(out_path,p_val_out,delimiter = ' ')
 #        np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')
 
