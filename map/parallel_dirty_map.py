@@ -129,7 +129,7 @@ class DirtyMapMaker(object):
                 yield Blocks, middle
             else:
                 msg = "time_block parameter must be 'scan' or 'file'."
-                raise ValueError(msg)
+                raise dm.ValueError(msg)
         
         
     def execute(self, n_processes):
@@ -333,7 +333,7 @@ class DirtyMapMaker(object):
                                        self.n_chan, self.delta_freq, self.pols,
                                        self.pol_ind, self.band_centres,
                                        self.band_ind, middle)
-                except DataSetError:
+                except dm.DataSetError:
                     continue
                 # Check that the polarization for this data is the correct
                 # one.
@@ -346,7 +346,7 @@ class DirtyMapMaker(object):
                 thermal_noise = this_DataSet.get_noise_parameter("thermal")
                 try:
                     this_DataSet.Noise.add_thermal(thermal_noise)
-                except NoiseError:
+                except dm.NoiseError:
                     continue
                 # Get the noise parameter database for this data.
                 if params['noise_parameter_file']:
@@ -391,7 +391,7 @@ class DirtyMapMaker(object):
                         # In some cases the corner frequncy will be so high that
                         # this scan will contain no information.
                         this_DataSet.Noise.add_all_chan_low(*all_chan_noise_params)
-                    except NoiseError:
+                    except dm.NoiseError:
                         if self.feedback > 1:
                             print ("Noise parameters risk numerical"
                                    " instability. Data skipped.")
@@ -399,7 +399,7 @@ class DirtyMapMaker(object):
                 elif params['frequency_correlations'] == 'None':
                     pass
                 else:
-                    raise ValueError("Invalid frequency correlations.")
+                    raise dm.ValueError("Invalid frequency correlations.")
 
 
 #                # From input parameters decide what the noise model should be.
@@ -745,6 +745,13 @@ class DirtyMapMaker(object):
                              #  self.n_chan, self.n_ra, self.n_dec)
                 #start_ind = (f_ra_start_ind,0,0,0,0)
             lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename, data_offset + dsize*f_ra_start_ind*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
+            f = h5py.File(self.cov_filename, 'r+')
+            cov_inv_dset = f['inv_cov']
+            cov_inv_shape = sp.zeros(shape = (self.n_chan, self.n_ra, self.n_dec, self,n_chan, self.n_ra, self.n_dec), dtype = dtype)
+            cov_inv_info = al.make_mat(cov_inv_shape, axis_names=('freq', 'ra', 'dec','freq', 'ra', 'dec'),                                                                                                           row_axes=(0, 1, 2), col_axes=(3, 4, 5))
+            cov_inv_info.copy_axis_info(map)
+            for key, value in cov_inv_info.info.iteritems():
+                cov_inv_dset.attrs[key] = repr(value)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
@@ -786,21 +793,7 @@ class DirtyMapMaker(object):
         #    if not a_data.noise_params is None:
         #        a_data.noise_params.close()
         #    if not a_data.foreground_modes is None:
-        #        a_data.foreground_modes.close()
-
-
-
-#### Classes ####
-
-class DataSetError(Exception):
-    pass
-
-
-class NoiseError(Exception):
-    """Exception to raise if the there is something wrong with the noise and
-    this peice of data should be ignored.
-    """
-    pass
+        #        a_data.foreground_modes.close(
 
 
 
