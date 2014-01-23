@@ -225,7 +225,7 @@ class DirtyMapMaker(object):
                 cov_filename = (params["output_root"] + "noise_inv_"
                                 + utils.polint2str(pol)
                                 + "_" + str(int(round((band_centre/1e6))))
-                                + '.npy')
+                                + '.hdf5')
                 self.map_filename = map_filename
                 self.cov_filename = cov_filename
                 # Initialization of the outputs.
