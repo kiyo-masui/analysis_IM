@@ -6,9 +6,6 @@ the pointing operator (`Pointing`) and the time domain noise operator
 (`Noise`).
 """
 
-import sys
-sys.path.append('/opt/sage/5.3/local/lib/python2.7/site-packages/mpi4py')
-
 from mpi4py import MPI
 
 import math
@@ -17,8 +14,6 @@ from Queue import Queue
 import shelve
 import sys
 import time as time_mod
-import cPickle
-import h5py
 
 import scipy as sp
 import numpy.ma as ma
@@ -26,8 +21,6 @@ import scipy.fftpack as fft
 from scipy import linalg
 from scipy import interpolate
 import numpy as np
-#import kiyopy.pickle_method
-import warnings
 #import matplotlib.pyplot as plt
 
 import core.algebra as al
@@ -131,10 +124,10 @@ class DirtyMapMaker(object):
                 raise ValueError(msg)
         
         
-    def execute(self, n_processes):
+    def execute(self, n_processes=1):
         """Driver method."""
         
-        # n_processes matters when using mpirun from MPI.COMM_WORLD and threading
+        # n_processes do not matter when using mpirun from MPI.COMM_WORLD
         self.n_processes = n_processes
         params = self.params
         kiyopy.utils.mkparents(params['output_root'])
@@ -234,7 +227,7 @@ class DirtyMapMaker(object):
                 map.set_axis_info('ra', params['field_centre'][0], ra_spacing)
                 map.set_axis_info('dec', params['field_centre'][1], 
                                    params['pixel_spacing'])
-                '''if self.uncorrelated_channels:
+                if self.uncorrelated_channels:
                     cov_inv = al.open_memmap(cov_filename, mode='w+',
                                              shape=map_shape + map_shape[1:],
                                              dtype=float)
@@ -249,13 +242,13 @@ class DirtyMapMaker(object):
                                       axis_names=('freq', 'ra', 'dec',
                                                   'freq', 'ra', 'dec'),
                                       row_axes=(0, 1, 2), col_axes=(3, 4, 5))
-                cov_inv.copy_axis_info(map)'''
+                cov_inv.copy_axis_info(map)
                 # The zeroing takes too long. Do it in memory, not hard disk.
                 #print 'zeroing cov_inv'
                 #cov_inv[...] = 0
                 #print 'zeroed'
                 self.map = map
-                #self.cov_inv = cov_inv
+                self.cov_inv = cov_inv
                 # Do work.
                 try:
                     print "self.make_map() now"
@@ -264,12 +257,12 @@ class DirtyMapMaker(object):
                     # I think yo need to do this to get a sensible error
                     # message, otherwise it will print cov_inv and fill the
                     # screen.
-                    #del self.cov_inv, cov_inv
+                    del self.cov_inv, cov_inv
                     raise
                 # IO.
                 # To write the noise_inverse, all we have to do is delete the
                 # memeory map object.
-                #del self.cov_inv, cov_inv
+                del self.cov_inv, cov_inv
                 al.save(map_filename, map)
         if not self.noise_params is None:
             self.noise_params.close()
@@ -282,7 +275,7 @@ class DirtyMapMaker(object):
         
         params = self.params
         map = self.map
-        #cov_inv = self.cov_inv
+        cov_inv = self.cov_inv
         # The current polarization index and value.
         pol_ind = self.pol_ind
         pol_val = self.pols[pol_ind]
@@ -304,13 +297,9 @@ class DirtyMapMaker(object):
             # possible). This way is most efficient in memory and efficiency.
             # This also allows a smaller number of mpi calls when passing
             # DataSets around later to fill cov_inv.
-
-            #this_file_middles,junk = split_elems(all_this_file_middles,
-                                             #self.nproc)
-            #this_file_middles = this_file_middles[self.rank]
-
-            this_file_middles = all_this_file_middles
-
+            this_file_middles,junk = split_elems(all_this_file_middles,
+                                             self.nproc)
+            this_file_middles = this_file_middles[self.rank]
             # Don't need the 'junk' from above right now. That was added
             # at a later point for something else.
             if self.feedback > 1:
@@ -412,10 +401,6 @@ class DirtyMapMaker(object):
 #                this_DataSet.setup_noise_from_model(model,
 #                        params['deweight_time_mean'],
 #                        params['deweight_time_slope'], noise_entry)
-                if params['deweight_time_mean']:
-                    this_DataSet.Noise.deweight_time_mean(T_huge**2)
-                if params['deweight_time_slope']:
-                    this_DataSet.Noise.deweight_time_slope(T_huge**2)
                 # Set the time stream foregrounds for this data.
                 if (params['ts_foreground_mode_file']
                     and params['n_ts_foreground_modes']) :
@@ -431,58 +416,20 @@ class DirtyMapMaker(object):
                 # No need for time_stream_list since data in DataSet. 
                 #time_stream_list.append(this_DataSet.time_stream)
                 data_set_list.append(this_DataSet)
+            # Finalize the noises. Each process has a subset of the total
+            # noises, so no threading, just a loop.
             if self.feedback > 1:
                 print "Finalizing %d noise blocks: " % len(data_set_list)
-            noise_queue = Queue()
-            def thread_work():
-                while True:
-                    thread_N = noise_queue.get()
-                    #None will be the flag that there is no more work to do.
-                    if thread_N is None:
-                        return
-                    else:
-                        thread_N.Noise.finalize(frequency_correlations=(
-                                     not self.uncorrelated_channels),
-                                               preserve_matrices=False)
-                        if self.feedback > 1:
-                            sys.stdout.write('.')
-                            sys.stdout.flush()
-            #Start the worker threads.
-            thread_list = []
-            for ii in range(self.n_processes):
-                T = threading.Thread(target=thread_work)
-                T.start()
-                thread_list.append(T)
-            #Now put work on the queue for the threads to do.
-            for a_DataSet in data_set_list:
-                noise_queue.put(a_DataSet)
-            #At the end of the queue, tell the threads that they are done.
-            for ii in range(self.n_processes):
-                noise_queue.put(None)
-            #Wait for the threads.
-            for T in thread_list:
-                T.join()
-            if not noise_queue.empty():
-                msg = "A thread had an error in Noise finalization."
-                raise RuntimeError(msg)
-
-            '''# Finalize the noises. Each process has a subset of the total
-            # noises, so no threading, just a loop.
             for a_DataSet in data_set_list:
                 a_DataSet.Noise.finalize(frequency_correlations=
-                                       (not self.uncorrelated_channels),
+                                       not self.uncorrelated_channels,
                                    preserve_matrices=False)
                 if self.feedback > 1:
                     sys.stdout.write('.')
-                    sys.stdout.flush()'''
-
+                    sys.stdout.flush()
             if self.feedback > 1:
                 print
                 print "Noise finalized."
-
-            #temporary code to be sure all noise has time_mode_update attribute
-            for data in data_set_list:
-                time_mode=data.Noise.time_mode_update
 
             # Each process holds a subset of the DataSets. They will be
             # passed around "in a circle" with mpi so that each process
@@ -505,20 +452,12 @@ class DirtyMapMaker(object):
             # This does not have to be rediscovered for every DataSet list
             # passed in, so get the indices first.
             chan_index_list = range(self.n_chan)
-            dtype=np.float64
-            dsize=MPI.DOUBLE.Get_size()
             if self.uncorrelated_channels:
                 # Using self.rank after gets the info for
                 # the approproate process.
                 # 'junk' for now.
                 index_list,junk = split_elems(chan_index_list,self.nproc)
                 index_list = index_list[self.rank]
-                # Allocate hdf5 file
-                if self.rank == 0:
-                    print self.n_chan
-                    print self.n_ra
-                    print self.n_dec
-                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename, 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_ra, self.n_dec), dtype)
             else:
                 ra_index_list = range(self.n_ra)
                 # cross product = A x B = (a,b) for all a in A, for all b in B
@@ -530,145 +469,52 @@ class DirtyMapMaker(object):
                 # is at. This is needed for knowing which part of the
                 # total matrix a process has.
                 f_ra_start_ind = start_list[self.rank]
-                # Allocate hdf5 file
-                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename, 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_chan, self.n_ra, self.n_dec), dtype)
-            # Wait for file to be written before continuing.
-            comm.Barrier()
-            print '\n' + 'Process ' + str(self.rank) + ' Passed first barrier.' + '\n'
             # Since the DataSets are split evenly over the processes,
             # have to put in the pointing/noise at each index for
             # each DataSet list that the processes hold.
-            
-            #for run in range(self.nproc):
-            # The commented loop above is for passing subsections of the data
-            # between nodes.  It currently doesn't work due to pickling issues.
-            # I replaced it with a loop of just one pass to avoid re-indenting.
-            for run in range(1):
-                print '\n' + 'Process' + ' ' + str(self.rank) + ' ' +  ',run' + ' ' + str(run) + '\n'
+            for run in range(self.nproc):
                 # Each DataSet has to be applied to the dirty map, too.
-                # Since the '_mpi'dirty map is much smaller than the noise,
+                # Since the dirty map is much smaller than the noise,
                 # We will just let processor 0 do all the work
                 # for the dirty map.
                 # Must be done here to not pass the DataSets around twice.
                 if self.rank == 0:
                     for ii in xrange(len(data_set_list)):
-                        print '\n' + 'Process ' + str(self.rank) + ' adding to map data piece' + ' ' + str(ii) + ' of ' + str(len(data_set_list)) +' during run ' + str(run) + '\n'
                         #time_stream = time_stream_list[ii]
                         time_stream = data_set_list[ii].time_stream
                         N = data_set_list[ii].Noise
                         P = data_set_list[ii].Pointing
                         w_time_stream = N.weight_time_stream(time_stream)
                         map += P.apply_to_time_axis(w_time_stream)
-
-                #If first pass, prepare thread_cov_inv_chunk to be worked on by threads
-                if run == 0 and start_file_ind == 0:
-                    if self.uncorrelated_channels:
-                        thread_cov_inv_chunk = sp.zeros((len(index_list),                                                                                                                                self.n_ra, self.n_dec,                                                                                                                            self.n_ra, self.n_dec),                                                                                                                            dtype=float)
-                    else:
-                       thread_cov_inv_chunk = sp.zeros((len(index_list),                                                                                                                             self.n_dec, self.n_chan,                                                                                                                          self.n_ra, self.n_dec),                                                                                                                           dtype=float)
-                index_queue = Queue()
-                def thread_work():
-                    while True:
-                        thread_inds = index_queue.get()
-                        # None will be the flag that there is no more work to do.
-                        if thread_inds is None:
-                            return
-                        if self.uncorrelated_channels:
-                            thread_f_ind = thread_inds
-                            thread_cov_inv_block = sp.zeros((self.n_ra,                                                                                                                          self.n_dec, self.n_ra, self.n_dec), dtype=float)
-                            for thread_D in data_set_list:
-                                thread_D.Pointing.noise_channel_to_map(thread_D.Noise,                                                                                                                 thread_f_ind + index_list[0], thread_cov_inv_block)
-                            if run == 0 and start_file_ind == 0:
-                                #Adding prior to the diagonal.
-                                thread_cov_inv_block.flat[::self.n_ra * self.n_dec + 1] += \
-                                                         1.0 / T_large**2
-                            #No lock below currently.  I don't think it is necessary without the memmap.
-                            thread_cov_inv_chunk[thread_f_ind,...] += thread_cov_inv_block
-                        else:
-                            ii = thread_inds
-                            thread_cov_inv_row = sp.zeros((self.n_dec,                                                                                                                                       self.n_chan, self.n_ra,                                                                                                                           self.n_dec),dtype=float)
-                            thread_f_ind = index_list[ii][0]
-                            thread_ra_ind = index_list[ii][1]
-                            for thread_D in data_set_list:
-                                thread_D.Pointing.noise_to_map_domain(thread_D.Noise,                                                                                                                                   thread_f_ind,                                                                                                                                     thread_ra_ind, thread_cov_inv_row)
-                            if run == 0 and start_file_ind == 0:
-                                #Adding prior to the diagonal.
-                                thread_cov_inv_row_adder = thread_cov_inv_row[:, thread_f_ind, thread_ra_ind, :]
-                                thread_cov_inv_row_adder.flat[:: self.n_dec + 1] += \
-                                                           1.0 / T_large**2
-                            if (self.feedback > 1 and thread_ra_ind == self.n_ra - 1):
-                                print thread_f_ind,
-                                sys.stdout.flush()
-                            thread_cov_inv_chunk[ii,...] += \
-                                                  thread_cov_inv_row
-                #Now start the worker threads.
-                thread_list = []
-                for ii in range(self.n_processes):
-                    T = threading.Thread(target=thread_work)
-                    T.start()
-                    thread_list.append(T)
-                    print '\n' + 'Process ' + str(self.rank) + ' is using ' + str(self.n_processes) + 'threads.' + '\n'
-                #Now put work on the queue for the threads to do.
-                for ii in xrange(len(index_list)):
-                    index_queue.put(ii)
-                for ii in range(self.n_processes):
-                    index_queue.put(None)
-                for T in thread_list:
-                    T.join()
-                if not index_queue.empty():
-                    msg = "A thread had an error while building map covariance."
-                    raise RuntimeError(msg)
-                                
-                # Commented section below is without threading.
-                '''if self.uncorrelated_channels:
+                if self.uncorrelated_channels:
                     # No actual threading going on.
-                    if run == 0 and start_file_ind == 0:
-                        thread_cov_inv_chunk = sp.zeros((len(index_list),
-                                                        self.n_ra, self.n_dec,
-                                                        self.n_ra, self.n_dec),                                                                                                                             dtype=float)
-                        #for thread_f_ind in index_list:
-                        print '\n' + 'Process ' + str(self.rank) + ' just created inv_chunk' + ' during run ' + str(run) + '\n'
                     for thread_f_ind in index_list:
-                    #for ii in xrange(len(index_list)):
                         thread_cov_inv_block = sp.zeros((self.n_ra, self.n_dec,
                                     self.n_ra, self.n_dec), dtype=float)
-                        #if run == 0 and start_file_ind == 0:
-                        #    thread_cov_inv_block.flat[::self.n_ra * self.n_dec + 1] += \
-                        #                              1.0 / T_large**2
-
-                        for thread_D in data_set_list: 
+                        for thread_D in data_set_list:
                             thread_D.Pointing.noise_channel_to_map(
-                                  thread_D.Noise, thread_f_ind, thread_cov_inv_block)
-                        
-                        if run == 0 and start_file_ind == 0:
-                            thread_cov_inv_block.flat[::self.n_ra * self.n_dec + 1] += \
-                                                      1.0 / T_large**2
-
-                        #if start_file_ind == 0:
+                                  thread_D.Noise, f_ind, thread_cov_inv_block)
+                        if start_file_ind == 0:
                             # The first time through the matrix. We 'zero'
                             # everything by just assigning a value instead of
                             # setting to zero then += value.
                             # TODO: writing to same place might hiccup.
-                            #cov_inv[thread_f_ind,...] = thread_cov_inv_block
+                            cov_inv[thread_f_ind,...] = thread_cov_ind_block
                             # Add stuff to diagonal now since it's not
                             # very fun later.
-                            #thread_cov_inv_block.flat \
-                            #        [::self.n_ra * self.n_dec + 1] += \
-                            #        1.0 / T_large**2
-                        #else:
+                            thread_cov_inv_block.flat \
+                                    [::self.n_ra * self.n_dec + 1] += \
+                                    1.0 / T_large**2
+                        else:
                             # Not the first time through. Just add in vals.
-                            #cov_inv[thread_f_ind,...] += thread_cov_inv_block
-                        #thread_cov_inv_chunk[thread_f_ind,...] += thread_cov_inv_block
-                        thread_cov_inv_chunk[thread_f_ind-index_list[0],...] += thread_cov_inv_block
-                        print '\n' + 'Process ' + str(self.rank) + ' added to cov_inv block at freq ' + str(thread_f_ind) + ' , using data from pass ' + str(run) + ' of ' + str(self.nproc) + '\n'  
+                            cov_inv[thread_f_ind,...] += thread_cov_inv_block
                         if self.feedback > 1:
                             print thread_f_ind,
                             sys.stdout.flush()
                 else:
                     # Keep all of a process' rows in memory, then use
                     # MPI and file views to write it out fast.
-                    if run == 0 and start_file_ind == 0:
-                        thread_cov_inv_chunk = sp.zeros((len(index_list),
+                    thread_cov_inv_chunk = sp.zeros((len(index_list),
                                                      self.n_dec, self.n_chan,
                                                      self.n_ra, self.n_dec),
                                                      dtype=float)
@@ -679,14 +525,21 @@ class DirtyMapMaker(object):
                                                       dtype=float)
                         thread_f_ind = index_list[ii][0]
                         thread_ra_ind = index_list[ii][1]
-                        if run == 0 and start_file_ind == 0:
-                            thread_cov_inv_row_adder = thread_cov_inv_row[:, thread_f_ind, thread_ra_ind, :]
-                            thread_cov_inv_row_adder.flat[:: self.n_dec + 1] += \
-                                                1.0 / T_large**2
                         for thread_D in data_set_list:
                             thread_D.Pointing.noise_to_map_domain(
                                              thread_D.Noise, thread_f_ind,
                                              thread_ra_ind, thread_cov_inv_row)
+                        if start_file_ind == 0:
+                            #cov_inv[thread_f_ind,thread_ra_ind,...] = \
+                            #                          thread_cov_inv_row
+                            thread_cov_inv_chunk[ii,...] = \
+                                                      thread_cov_inv_row
+                            # Add the diagonal stuff.
+                        else:
+                            #cov_inv[thread_f_ind,thread_ra_ind,...] += \
+                            #                          thread_cov_inv_row
+                            thread_cov_inv_chunk[ii,...] += \
+                                                      thread_cov_inv_row
 
 
                         #writeout_filename = self.cov_filename \
@@ -698,36 +551,15 @@ class DirtyMapMaker(object):
                             and thread_ra_ind == self.n_ra - 1):
                             print thread_f_ind,
                             sys.stdout.flush()
-                        thread_cov_inv_chunk[ii,...] += \
-                                                 thread_cov_inv_row
                 # Once done with one list of DataSets, do next.
                 # Note: No need to pass anything the last time since
                 #       that data was the process' original data and
                 #       has already been processed.
-                '''
-                #if (run != (self.nproc - 1)):
-
-                #Replace if statement below with if statement above to pass data between nodes.
-                if run == 1:
+                if (run != (self.nproc - 1)):
                     # Send out the DataSet list I have to next guy.
-                    print '\n' + 'Process ' + str(self.rank) + ' is passing data_set_list to process ' + str(self.next_guy) + ', at the end of run ' + str(run) + '\n'
-                    #Pickling DataSet objects in data_set_list 
-                    def pickle_list(list):
-                        pickled_list = []
-                        for item in list:
-                            pickled_list.append(cPickle.dumps(item))
-                        return pickled_list
-                    data_set_list_pickled = pickle_list(data_set_list)
-                    comm.send(data_set_list_pickled,dest=self.next_guy)
+                    comm.send(data_set_list,dest=self.next_guy)
                     # Receive the DataSet list being sent to me by prev guy.
-                    data_set_list_pickled = comm.recv(source=self.prev_guy)
-                    #Unpickling DataSet objects
-                    def unpickle_list(list):
-                        unpickled_list = []
-                        for item in list:
-                            unpickled_list.append(cPickle.loads(item))
-                        return unpickled_list
-                    data_set_list=unpickle_list(data_set_list_pickled)
+                    data_set_list = comm.recv(source=self.prev_guy)
                     ## Same for time_stream_list.
                     #comm.send(time_stream_list,dest=self.next_guy)
                     #time_stream_list = comm.recv(source=self.prev_guy)
@@ -739,44 +571,20 @@ class DirtyMapMaker(object):
             # Now that thread_cov_inv_chunk is all filled with
             # data from all DataSets, write it out.
             # Only dealing with correlated channels now.
-        if not self.uncorrelated_channels:
-                #total_shape = (self.n_chan*self.n_ra, self.n_dec,
-                             #  self.n_chan, self.n_ra, self.n_dec)
-                #start_ind = (f_ra_start_ind,0,0,0,0)
-            lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename, data_offset + dsize*f_ra_start_ind*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
+            if not self.uncorrelated_channels:
+                total_shape = (self.n_chan*self.n_ra, self.n_dec,
+                               self.n_chan, self.n_ra, self.n_dec)
+                start_ind = (f_ra_start_ind,0,0,0,0)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
-                #dtype = np.float64 # default for now
-                #np.save(self.cov_filename+'_mpi_corr_proc'+str(self.rank),thread_cov_inv_chunk)
+                dtype = np.float64 # default for now
                 # Save array.
-                #mpi_writearray(self.cov_filename+'_mpi', thread_cov_inv_chunk,
-                               #comm, total_shape, start_ind, dtype,
-                               #order='C', displacement=0)
-   
-
-        if self.uncorrelated_channels:
-                #total_shape = (self.n_chan, self.n_ra,
-                             #  self.n_dec, self.n_ra, self.n_dec)
-                #start_ind = (index_list[0],0,0,0,0)
-            lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename, data_offset + dsize*index_list[0]*self.n_dec*self.n_ra*self.n_dec*self.n_ra, dsize*thread_cov_inv_chunk.size)
-            f = h5py.File(self.cov_filename, 'r+')
-            cov_inv_dset = f['inv_cov']
-            #cov_inv = al.make_mat(cov_inv_dset,                                                                                                                 axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                  row_axes=(0, 1, 2), col_axes=(0, 3, 4))
-            cov_inv_shape = sp.zeros(shape = (self.n_chan, self.n_ra, self.n_dec, self.n_ra, self.n_dec), dtype = dtype)
-            cov_inv_info = al.make_mat(cov_inv_shape,                                                                                                                      axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                       row_axes=(0, 1, 2), col_axes=(0, 3, 4))
-            cov_inv_info.copy_axis_info(map)
-            for key, value in cov_inv_info.info.iteritems():
-                cov_inv_dset.attrs[key] = repr(value)
-                # NOTE: using 'float' is not supprted in the saving because
-                # it has to know if it is 32 or 64 bits.
-                #dtype = thread_cov_inv_chunk.dtype
-                #dtype = np.float64 # default for now
-                #np.save(self.cov_filename+'_mpi_uncorr_proc'+str(self.rank),thread_cov_inv_chunk)
-                # Save array.
-                #mpi_writearray(self.cov_filename+'_mpi', thread_cov_inv_chunk,
-                               #comm, total_shape, start_ind, dtype,                                                                                                              #order='C', displacement=0)                    
-
+                mpi_writearray('mpi_'+self.cov_filename, thread_cov_inv_chunk,
+                               comm, total_shape, start_ind, dtype,
+                               order='C', displacement=0)
+    
+                    
 
 
 # Close self.noise_params in each DataSet.
@@ -1077,9 +885,6 @@ class DataSet(object):
 
     def __init__(self, params, Blocks, map, n_chan, delta_freq, pols, pol_ind,
                        band_centres, band_ind, file_middle):
-        #self.Blocks = Blocks
-        #self.map = map
-        #above this line are added instances to try __getinitargs__() pickle technique
         self.params = params
         self.freq = map.get_axis('freq')
         self.delta_freq = delta_freq
@@ -1326,26 +1131,6 @@ class DataSet(object):
         vector /= sp.sum(vector**2)
         return vector
 
-    #def __getnewargs__(self):
-        #return (self.params, self.Blocks, self.map, self.n_chan, self.delta_freq, self.pols, self.pol_ind, self.band_centres, self.band_ind, self.file_middle)
-
-    def __getstate__(self):
-        return (self.params, self.freq, self.delta_freq, self.n_chan,                      self.pols, self.pol_ind, self.band_centres, self.band_ind,                 self.file_middle, self.Pointing, self.Noise,                               self.time_stream)
-
-    def __setstate__(self,val):
-        self.params=val[0]
-        self.freq=val[1]
-        self.delta_freq=val[2]
-        self.n_chan=val[3]
-        self.pols=val[4]
-        self.pol_ind=val[5]
-        self.band_centres=val[6]
-        self.band_ind=val[7]
-        self.file_middle=val[8]
-        self.Pointing=val[9]
-        self.Noise=val[10]
-        #self.time_stream, ra, dec, az, el, time, mask_inds = val[11]
-        self.time_stream=val[11]
 
 
 class Pointing(object):
@@ -1559,19 +1344,6 @@ class Pointing(object):
             msg = ("Noise object has frequency correlations.  Use "
                    " `noise_to_map_domain` instead.")
             raise RuntimeError(msg)
-
-    def __getstate__(self):
-        return (self._axis_names, self._coords, self._scheme, self._map_axes, self._map_shape, self.dtype, self._pixel_inds, self._weights)
-
-    def __setstate__(self, val):
-        self._axis_names = val[0]
-        self._coords = val[1]
-        self._scheme = val[2]
-        self._map_axes = val[3]
-        self._map_shape = val[4]
-        self.dtype = val[5]
-        self._pixel_inds = val[6]
-        self._weights = val[7]
 
 
 class NoiseError(Exception):
@@ -2411,91 +2183,6 @@ class Noise(object):
         out = diag_weighted - update_term
         return out 
 
-    def __getstate__(self):
-        print '\n' + 'Running Noise getstate method' + '\n'
-        attr_list=[]
-        attr_list.append(self.n_chan)
-        attr_list.append(self.n_time)
-        attr_list.append(self.info)
-        attr_list.append(self._finalized)
-        attr_list.append(self.time)
-        try:
-            attr_list.append(self.diagonal)
-        except:
-            attr_list.append(1)
-        try:
-            attr_list.append(self.time_modes)
-        except:
-            attr_list.append(1)
-        try:
-            attr_list.append(self.time_mode_noise)
-        except:
-            attr_list.append(1)
-        try:
-            attr_list.append(self.freq_modes)
-        except:
-            attr_list.append(1)
-        try:
-            attr_list.append(self.freq_mode_noise)
-        except:
-            attr_list.append(1)
-        try:
-            attr_list.append(self.debug)
-        except:
-            attr_list.append(1)
-        try:
-            attr_list.append(self.diagonal_inv)
-        except:
-            attr_list.append(1)
-        try:
-            attr_list.append(self._frequency_correlations)
-        except:
-            attr_list.append(1)
-        try:
-            attr_list.append(self.freq_mode_update)
-        except:
-            attr_list.append(1)
-        try:
-            attr_list.append(self.time_mode_update)
-        except:
-            attr_list.append(1)
-        try:
-            attr_list.append(self.cross_update)
-        except:
-            attr_list.append(1)
-        return tuple(attr_list)
-
-    def __setstate__(self, val):
-        print '\n' + 'Running Noise setstate method' + '\n'
-        self.n_chan=val[0]
-        self.n_time=val[1]
-        self.info=val[2]
-        self._finalized=val[3]
-        self.time=val[4]
-        if (val[5]!=1):
-            self.diagonal=val[5]
-        if (val[6]!=1):
-            self.time_modes=val[6]
-        if (val[7]!=1):
-            self.time_mode_noise=val[7]
-        if (val[8]!=1):
-            self.freq_modes=val[8]
-        if (val[9]!=1):
-            self.freq_mode_noise=val[9]
-        if (val[10]!=1):
-            self.debug=val[10]
-        if (val[11]!=1):
-            self.diagonal_inv=val[11]
-        if (val[12]!=1):
-            self._frequency_correlations=val[12]
-        if (val[13]!=1):
-            self.freq_mode_update=val[13]
-        if (val[14]!=1):
-            self.time_modes_update=val[14]
-        if (val[15]!=1):
-            self.cross_update=val[15]
-
-
 
 #### Utilities ####
 
@@ -2572,6 +2259,7 @@ def scaled_inv(mat):
     out_mat = scal[:,None] * out_mat * scal[None,:]
     return out_mat
 
+
 def split_elems(points, num_splits):
     '''Split a list of arbitrary type elements, points, into num_splits sets.
     Also, returns a list of the index that each set starts at.
@@ -2637,237 +2325,6 @@ def cross(set_list):
                 return cross(remaining)
 
 
-def lock_and_write_buffer(obj, fname, offset, size):
-    """Write the contents of a buffer to disk at a given offset, and explicitly
-    lock the region of the file whilst doing so.
-
-    Parameters
-    ----------
-    obj : buffer
-        Data to write to disk.
-    fname : string
-        Filename to write.
-    offset : integer
-        Offset into the file to start writing at.
-    size : integer
-        Size of the region to write to (and lock).
-    """
-    import os
-    #import os.fcntl as fcntl
-    import fcntl
-    import h5py
-
-    buf = buffer(obj)
-
-    if len(buf) > size:
-        raise Exception("Size doesn't match array length.")
-
-    fd = os.open(fname, os.O_RDWR | os.O_CREAT)
-    #fd = open(fname, 'rw')
-    #fd = h5py.File(fname, 'r+')
-
-    try:
-        fcntl.lockf(fd, fcntl.LOCK_EX, size, offset, os.SEEK_SET)
-    except:
-        print "Could not obtain lock"
-
-    os.lseek(fd, offset, 0)
-
-    nb = os.write(fd, buf)
-
-    if nb != len(buf):
-        raise Exception("Something funny happened with the reading.")
-
-    try:
-        fcntl.lockf(fd, fcntl.LOCK_UN)
-    except:
-        print "Could not unlock"
-
-    os.close(fd)
-
-
-def allocate_hdf5_dataset(fname, dsetname, shape, dtype, comm=MPI.COMM_WORLD):
-    """Create a hdf5 dataset and return its offset and size.
-
-    The dataset will be created contiguously and immediately allocated,
-    however it will not be filled.
-
-    Parameters
-    ----------
-    fname : string
-        Name of the file to write.
-    dsetname : string
-        Name of the dataset to write (must be at root level).
-    shape : tuple
-        Shape of the dataset.
-    dtype : numpy datatype
-        Type of the dataset.
-    comm : MPI communicator
-        Communicator over which to broadcast results.
-
-    Returns
-    -------
-    offset : integer
-        Offset into the file at which the dataset starts (in bytes).
-    size : integer
-        Size of the dataset in bytes.
-
-    """
-
-    import h5py
-
-    state = None
-
-    if comm.rank == 0:
-
-        # Create/open file
-        f = h5py.File(fname, 'a')
-
-        # Create dataspace and HDF5 datatype
-        sp = h5py.h5s.create_simple(shape, shape)
-        tp = h5py.h5t.py_create(dtype)
-
-        # Create a new plist and tell it to allocate the space for dataset
-        # immediately, but don't fill the file with zeros.
-        plist = h5py.h5p.create(h5py.h5p.DATASET_CREATE)
-        plist.set_alloc_time(h5py.h5d.ALLOC_TIME_EARLY)
-        plist.set_fill_time(h5py.h5d.FILL_TIME_NEVER)
-
-        # Create the dataset
-        dset = h5py.h5d.create(f.id, dsetname, tp, sp, plist)
-
-        # Get the offset of the dataset into the file.
-        state = dset.get_offset(), dset.get_storage_size()
-
-        f.close()
-
-    state = comm.bcast(state, root=0)
-
-    return state
-
-
-def prepare_file(fname, dsetname, comm, shape, dtype):
-    import h5py
-
-    state = None
-
-    if comm.rank == 0:
-        # Create/open file
-        f = h5py.File(fname, 'a')
-
-        # Create dataspace and HDF5 datatype
-        sp = h5py.h5s.create_simple(shape, shape)
-        tp = h5py.h5t.py_create(dtype)
-
-        # Create a new plist and tell it to allocate the space for dataset
-        # immediately, but don't fill the file with zeros.
-        plist = h5py.h5p.create(h5py.h5p.DATASET_CREATE)
-        plist.set_alloc_time(h5py.h5d.ALLOC_TIME_EARLY)
-        plist.set_fill_time(h5py.h5d.FILL_TIME_NEVER)
-
-        # Create the dataset
-        dset = h5py.h5d.create(f.id, dsetname, tp, sp, plist)
-
-        # Get the offset of the dataset into the file.
-        state = dset.get_offset(), dset.get_storage_size()
-
-        f.close()
-
-    state = comm.bcast(state, root=0)
-
-    return state
-
-def allocate_portion(fname, offset, size, dtype):
-    import ctypes
-    import ctyppes.util
-    import os
-    import fcntl
-
-    _typemap = { np.float32 : MPI.FLOAT,
-                 np.float64 : MPI.DOUBLE,
-                 np.complex128 : MPI.COMPLEX16 }
-
-    if dtype not in _typemap:
-        raise Exception("Unsupported type.")
-
-    mpitype = _typemap[dtype]
-    data_size = mpitype.Get_size()
-
-    libc_name = ctypes.util.find_library('c')
-    libc = ctypes.CDLL(libc_name)
-
-    # Define off_t type
-    c_off_t = ctypes.c_int64
-
-    # Set up function
-    pf = libc.posix_fallocate
-    pf.restype = ctypes.c_int
-    pf.argtypes = [ctypes.c_int, c_off_t, c_off_t]
-
-    fd = open(fname, 'w+')
-
-    fcntl.lockf(fd, fcntl.LOCK_EX, size, offset, os.SEEK_SET)
-
-'''def allocate_portion(fname, local_shape, comm, total_shape, start_ind, dtype, order='F', displacement=0):
-
-    import ctypes
-    import ctyppes.util
-    import os
-    import fcntl
-
-    _typemap = { np.float32 : MPI.FLOAT,
-                 np.float64 : MPI.DOUBLE,
-                 np.complex128 : MPI.COMPLEX16 }
-
-    if dtype not in _typemap:
-        raise Exception("Unsupported type.")
-
-    mpitype = _typemap[dtype]
-    data_size = mpitype.Get_size()
-
-    nproc = comm.Get_size()
-    rank = comm.Get_rank()
-
-    libc_name = ctypes.util.find_library('c')
-    libc = ctypes.CDLL(libc_name)
-
-    # Define off_t type
-    c_off_t = ctypes.c_int64
-
-    # Set up function
-    pf = libc.posix_fallocate
-    pf.restype = ctypes.c_int
-    pf.argtypes = [ctypes.c_int, c_off_t, c_off_t]
-
-    f = open(filename, 'w+')
-
-        # Calculate file size needed
-        #file_size = data_size
-        #for el in total_shape
-        #     file_size = file_size*el
-
-        #Allocate appropriate space for file
-        #pf(f.fileno(), 0, file_size)
-
-    #All processes wait for file space to be allocated
-    #comm.Barrier()
-
-    #Calculate offset in file bytes needed for each node.  
-    offset = start_ind[0]*data_size
-    for el in total_shape[1:5]
-        offset = offset*el
-
-    #Size to be allocated for this process' portion of file.
-    size = local_array.size*data_size
-
-    #Now, lock each node to correct portion of file.
-    for i in range(nproc)
-        if i == rank
-            fd = open(filename, "wb")
-            fcntl.lock(fd, fcntl.LOCK_EX, size, offset, os.SEEK_SET)
-        #Barrier ensures file is opened and specific place is locked by only one process at a time
-        comm.Barrier()'''
-
 def mpi_writearray(fname, local_array, comm, total_shape, start_ind, dtype,
                    order='F', displacement=0):
     '''Write a block of an array to file. Each process should be
@@ -2921,12 +2378,12 @@ def mpi_writearray(fname, local_array, comm, total_shape, start_ind, dtype,
     sub_arr.Commit()
 
     # Check to see if the type has the same shape.
-    #if local_array.size != sub_arr.Get_size() / mpitype.Get_size():
-    #    raise Exception("Local array size is not consistent with array description.")
+    if local_array.size != sub_arr.Get_size() / mpitype.Get_size():
+        raise Exception("Local array size is not consistent with array description.")
 
     # Open the file, and read out the segments. MODE_RDWR - read/write.
-    f = MPI.File.Open(comm, fname, MPI.MODE_WRONLY | MPI.MODE_CREATE)
-    #f = MPI.File.Open(comm, fname, MPI.MODE_CREATE)
+    #f = MPI.File.Open(comm, fname, MPI.MODE_WRONLY | MPI.MODE_CREATE)
+    f = MPI.File.Open(comm, fname, MPI.MODE_CREATE)
     f.Close()
     f = MPI.File.Open(comm, fname, MPI.MODE_WRONLY)
     # Set view and write out.
@@ -2940,14 +2397,5 @@ def mpi_writearray(fname, local_array, comm, total_shape, start_ind, dtype,
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":
     import sys
-    if len(sys.argv) == 2:
-        par_file = sys.argv[1]
-        nproc = 1
-        DirtyMapMaker(par_file).execute(nproc)
-    elif len(sys.argv) == 3:
-        par_file = sys.argv[1]
-        nproc = int(sys.argv[2])
-        DirtyMapMaker(par_file).execute(nproc)
-    else:
-        print "Usage: `python map/dirty_map.py parameter_file [num_threads]"
+    DirtyMapMaker(str(sys.argv[1])).execute()
 
