@@ -109,10 +109,14 @@ class CleanMapMaker(object) :
                     del evects
                 else:
                     # Solving from the noise.
-                    noise_fname = (in_root + 'noise_inv_' + pol_str +
-                                   band_str + '.')
-                    noise_fnames = glob.glob(noise_fname)
-                    if len(noise_fnames>1)
+                    noise_fname1 = (in_root + 'noise_inv_' + pol_str +
+                                   band_str + '.npy')
+                    noise_fname2 = (in_root + 'noise_inv_' + pol_str +
+                                   band_str + '.hdf5')
+                    noise_fnames = glob.glob(noise_fname1)+glob.glob(noise_fname2)
+                    if len(noise_fnames) == 0:
+                        raise ValueError("Couldn't find noise_inv file.")
+                    if len(noise_fnames) > 1:
                         raise ValueError("Multiple files have naming pattern of noise_inv")
                     noise_fname = noise_fnames[0]
                     if self.feedback > 1:
@@ -124,7 +128,7 @@ class CleanMapMaker(object) :
                     if noise_fname.split('.')[-1] == 'npy':
                         noise_inv = algebra.open_memmap(noise_fname, 'r')
                         noise_inv = algebra.make_mat(noise_inv)
-                    else if noise_fname.split('.')[-1] == 'hdf5':
+                    elif noise_fname.split('.')[-1] == 'hdf5':
                         noise_h5 = h5py.File(noise_fname, 'r')
                         noise_inv = algebra.load_h5(noise_h5, 'inv_cov')
                         noise_inv = algebra.make_mat(noise_inv)
