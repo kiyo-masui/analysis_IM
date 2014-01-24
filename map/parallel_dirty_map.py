@@ -7,7 +7,6 @@ the pointing operator (`Pointing`) and the time domain noise operator
 """
 
 import sys
-sys.path.append('/opt/sage/5.3/local/lib/python2.7/site-packages/mpi4py')
 
 from mpi4py import MPI
 
@@ -512,7 +511,7 @@ class DirtyMapMaker(object):
                 # Using self.rank after gets the info for
                 # the approproate process.
                 # 'junk' for now.
-                index_list,junk = dm.split_elems(chan_index_list,self.nproc)
+                index_list,junk = split_elems(chan_index_list,self.nproc)
                 index_list = index_list[self.rank]
                 # Allocate hdf5 file
                 if self.rank == 0:
@@ -523,8 +522,8 @@ class DirtyMapMaker(object):
             else:
                 ra_index_list = range(self.n_ra)
                 # cross product = A x B = (a,b) for all a in A, for all b in B
-                chan_ra_index_list = dm.cross([chan_index_list,ra_index_list])
-                index_list,start_list = dm.split_elems(chan_ra_index_list,
+                chan_ra_index_list = clacross([chan_index_list,ra_index_list])
+                index_list,start_list = split_elems(chan_ra_index_list,
                                                              self.nproc)
                 index_list = index_list[self.rank]
                 # This is the point in n_chan x n_ra that the first index
@@ -798,7 +797,74 @@ class DirtyMapMaker(object):
 
 
 
+ 
+
+
 #### Utilities ####
+
+def split_elems(points, num_splits):
+    '''Split a list of arbitrary type elements, points, into num_splits sets.
+    Also, returns a list of the index that each set starts at.
+    Only tested with 'points' being:
+    list of str
+    list of int
+    list of (tuple of int)'''
+
+    size = len(points)
+    start_list = []
+    big_list = []
+    for i in range(num_splits):
+        big_list.append([])
+    # Number of elements per split/process.
+    divdiv = size / num_splits
+    # Number of processes that get one extra element.
+    modmod = size % num_splits
+    # Put in the right number of elements for each process. The 'extra'
+    # elements from mod get put into the first processes, so the difference
+    # in the number of elements per process is either 1 or 0.
+    start = 0
+    end = divdiv
+    for i in range(num_splits):
+        if i < modmod:
+            end += 1
+        for j in range(start,end):
+            if type(points[j]) == str:
+                big_list[i].append(points[j])
+            else:
+                try:
+                    big_list[i].append(tuple(points[j]))
+                except TypeError:
+                    big_list[i].append(points[j])
+        start_list.append(start)
+        start = end
+        end += divdiv
+    return big_list, start_list
+
+
+def cross(set_list):
+        '''Given a list of sets, return the cross product.'''
+        # By associativity of cross product, cross the first two sets together
+        # then cross that with the rest. The big conditional in the list
+        # comprehension is just to make sure that there are no nested lists
+        # in the final answer.
+        if len(set_list) == 1:
+                ans = []
+                for elem in set_list[0]:
+                        # In the 1D case, these elements are not lists.
+                        if type(elem) == list:
+                                ans.append(np.array(elem))
+                        else:
+                                ans.append(np.array([elem]))
+                return ans
+        else:
+                A = set_list[0]
+                B = set_list[1]
+                cross_2 = [a+b if ((type(a) == list) and (type(b) == list)) else \
+                (a+[b] if type(a) == list else ([a]+b if type(b) == list else \
+                [a]+[b])) for a in A for b in B]
+                remaining = set_list[2:]
+                remaining.insert(0,cross_2)
+                return cross(remaining)
 
 def lock_and_write_buffer(obj, fname, offset, size):
     """Write the contents of a buffer to disk at a given offset, and explicitly
