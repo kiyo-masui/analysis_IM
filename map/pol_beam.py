@@ -327,7 +327,8 @@ class LinearBeam(object):
         return out
                     
 
-def plot_beam_map(beam_map, color_map=1):
+def plot_beam_map(beam_map, color_map=1, side=None, normalize=None,
+                  rotate=None):
 
     import matplotlib.pyplot as plt
 
@@ -336,6 +337,57 @@ def plot_beam_map(beam_map, color_map=1):
     # Assume square.
     if beam_map.shape[2] != n_side:
         raise ValueError("maps should be square.")
+    if side is None:
+        side = n_side
+    side = float(side)
+    beam_map = beam_map.copy()
+
+    if normalize:
+        if normalize == 'max03':
+            if n_pol != 4:
+                raise ValueError("`normalize='max03'` requires 4 polarization"
+                                 " beam.")
+            XX_amp = np.amax(beam_map[0])
+            YY_amp = np.amax(beam_map[3])
+            XY_amp = np.sqrt(XX_amp * YY_amp)
+            normalize = [XX_amp, XY_amp, XY_amp, YY_amp]
+        elif len(normalize) == n_pol:
+            pass
+        elif len(normalize) == 1:
+            normalize = normalize * n_pol
+        else:
+            raise ValueError("`normalize` must be a list of scalar factors"
+                             " with length `n_pol` or 1; or the option"
+                             " 'max03'.")
+        for ii in range(n_pol):
+            beam_map[ii] /= normalize[ii]
+    if rotate:
+        if rotate == "XXYYtoIQ":
+            if n_pol != 4:
+                raise ValueError("`rotate='XXYYtoIQ'` requires 4 polarization"
+                                 " beam.")
+            rotate = np.zeros((4, 4))
+            rotate[0,0] = 0.5
+            rotate[0,3] = 0.5
+            rotate[1,0] = 0.5
+            rotate[1,3] = -0.5
+            rotate[2,1] = 1
+            rotate[3,2] = 1
+        else:
+            msg = ("`rotate` must be 'XXYYtoIQ' or a 2D array with second"
+                   " dimension of length `n_pol`")
+            try:
+                if rotate.ndim != 2:
+                    raise ValueError()
+                if rotate.shape[1] != n_pol:
+                    raise ValueError()
+            except ValueError:
+                raise ValueError(msg)
+            except AttributeError:
+                raise TypeError(msg)
+        broadcast = ((slice(None), slice(None))
+                     + (None,) * (beam_map.ndim - 1))
+        beam_map = np.sum(rotate[broadcast] * beam_map, axis=1)
 
     # Put though the colormap.
     neg = beam_map < 0
@@ -344,8 +396,8 @@ def plot_beam_map(beam_map, color_map=1):
 
     beam_map.shape = (n_pol * n_side, n_side)
     plt.figure()
-    plt.imshow(beam_map.T)
-    plt.colorbar()
+    plt.imshow(beam_map.T, extent=[0, n_pol * side, 0, side])
+    #plt.colorbar()
 
 def compare_beam_maps(map1, map2, color_map=1):
 
