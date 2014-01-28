@@ -7,31 +7,18 @@ from core import dir_data
 import scipy as sp
 
 # Here you choose which files to process.
-<<<<<<< HEAD
-field = '11hr'
-#field = '15hr'
-=======
+
 #field = '1hr'
-field = '15hr'
->>>>>>> master
+field = '11hr'
 #dm_field_centre = (218.25, 2.0) 
 #Here I'm grabbing the guppi data
 #file_middles = tuple(dir_data.get_data_files(range(17,19),field='1hr',project='GBT11B_055', type='ralongmap'))
 #file_middles = ('GBT12A_418/02_wigglez11hr_centre_ralongmap_101',)
-<<<<<<< HEAD
 file_middles = tuple(dir_data.get_data_files(range(01,23), field='11hr', project='GBT12A_418', type = 'ralongmap'))
 #file_middles = tuple(dir_data.get_data_files(range(41,57), field='15hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(58,90), field='15hr', project='GBT10B_036', type='ralongmap')) # some kind of corruption in session 57. - overall uncertainty 52-58 
 #file_middles = tuple(dir_data.get_data_files(range(41,90), field='22hr', project='GBT10B_036', type='ralongmap')) 
 #file_middles = tuple(dir_data.get_data_files(range(15,17), field='1hr', project='GBT11B_055', type='ralongmap'))
 #file_middles = tuple(dir_data.get_data_files(range(41,90), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(0,14), field='1hr', project='GBT11B_055',type='ralongmap')+dir_data.get_data_files(range(15,19), field='1hr', project='GBT11B_055', type='ralongmap'))
-=======
-#file_middles = tuple(dir_data.get_data_files(range(01,03), field='11hr', project='GBT12A_418', type = 'ralongmap'))
-file_middles = tuple(dir_data.get_data_files(range(41,57), field='15hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(58,90), field='15hr', project='GBT10B_036', type='ralongmap')) # some kind of corruption in session 57. - overall uncertainty 52-58 
-#file_middles = tuple(dir_data.get_data_files(range(41,90), field='22hr', project='GBT10B_036', type='ralongmap')) 
-#file_middles = tuple(dir_data.get_data_files(range(15,17), field='1hr', project='GBT11B_055', type='ralongmap'))
-#file_middles = tuple(dir_data.get_data_files(range(41,90), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(0,14), field='1hr', project='GBT11B_055',type='ralongmap')+dir_data.get_data_files(range(15,17), field='1hr', project='GBT11B_055', type='ralongmap'))
->>>>>>> master
-
 #file_middles = tuple(dir_data.get_data_files(range(8,9), field='1hr', project='GBT11B_055', type='ralongmap'))
 
 n_files = len(file_middles)
@@ -44,11 +31,7 @@ pipe_modules = []
 # Chime has 8 cores, but you should save a few for other people.  Use 6 max.
 # Prawn has 12 cores.
 # Sunnyvale must have more 12*2
-<<<<<<< HEAD
-pipe_processes =8 
-=======
 pipe_processes = 8
->>>>>>> master
 
 base_dir = os.getenv('GBT_OUT')
 
@@ -56,11 +39,7 @@ data_dir = os.getenv('GBT_DATA')
 #raw_data_dir = os.getenv('GBT10B_DATA')
 kiyo_dir = os.getenv('GBT10B_KM')
 prefix = ''
-<<<<<<< HEAD
 map_prefix = '' + field +'_41-18_fdgp_'
-=======
-map_prefix = '' + field +'_41-90_fdgp_'
->>>>>>> master
 IFs = ()
 
 
@@ -92,11 +71,7 @@ fd_IFs = ()
 
 fd_rotate = True
 fd_perform_hanning = False
-<<<<<<< HEAD
-fd_cal_scale = True
-=======
 fd_cal_scale = False
->>>>>>> master
 fd_sigma_thres = 6.
 fd_badness_thres = 0.1
 fd_time_cut = 40
@@ -116,7 +91,6 @@ rf_channel_width = 0.
 rf_n_bins_combined = 16
 rf_mean_instead_median = False
 
-<<<<<<< HEAD
 from time_stream import flux_diff_gain_cal
 pipe_modules.append(flux_diff_gain_cal.Calibrate)
 #fgc_input_root = base_dir+'rebinned/'
@@ -126,16 +100,6 @@ fgc_input_end = '.fits'
 #fgc_output_root = base_dir + 'fdgp_with_RM_cal/'
 #fgc_output_root = base_dir + 'fdgp_cal/'
 fgc_output_root = base_dir + 'avg_fdgp_cal_new/'
-=======
-#from time_stream import flux_diff_gain_cal
-#pipe_modules.append(flux_diff_gain_cal.Calibrate)
-fgc_input_root = base_dir+'rebinned/'
-#fgc_input_root = rf_output_root
-fgc_file_middles = file_middles
-fgc_input_end = '.fits'
-#fgc_output_root = base_dir + 'fdgp_with_RM_cal/'
-fgc_output_root = base_dir + 'fdgp_cal/'
->>>>>>> master
 fgc_output_end = '.fits'
 fgc_scans = ()
 fgc_IFs = ()
@@ -147,11 +111,7 @@ fgc_RM_file = base_dir +'RM_tables/'
 fgc_R_to_sky = True
 fgc_DP_correct = True
 fgc_RM_correct = False
-<<<<<<< HEAD
-fgc_Flux_special = True
-=======
 fgc_Flux_special = False
->>>>>>> master
 # set Flux special to True when using something like an average and set mueler file to the filename
 
 from time_stream import rotate_pol
@@ -160,12 +120,7 @@ pipe_modules.append(rotate_pol.RotatePol)
 rp_input_root = fgc_output_root
 rp_file_middles = file_middles
 rp_input_end = '.fits'
-<<<<<<< HEAD
-#rp_output_root = base_dir + 'rotated_to_I_Q_fdgp/'
-rp_output_root = base_dir + 'rotated_to_I_Q_avg_fdgp_new/'
-=======
 rp_output_root = base_dir + 'rotated_to_I_Q_fdgp/'
->>>>>>> master
 #rp_output_root = base_dir + 'rotated_to_I_Q_fdgp_RM/'
 rp_output_end = '.fits'
 rp_scans = ()
