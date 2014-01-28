@@ -7,7 +7,7 @@ import scipy as sp
 
 # What data to process and how to split it up.
 #field = '11hr'
-field = '1hr'
+field = '15hr'
 
 #sessions = range(41, 90)
 # According to Tabitha, cal unstable in sessions 52 to 58.
@@ -25,9 +25,9 @@ field = '1hr'
 #                                             project="GBT10B_036", 
 #											 type='ralongmap'))
 #file_middles = tuple(dir_data.get_data_files(range(01,19),field='11hr',project='GBT12A_418',type='ralongmap'))
-file_middles = tuple(dir_data.get_data_files(range(80,91), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(0,14), field='1hr', project='GBT11B_055',type='ralongmap')+dir_data.get_data_files(range(15,19), field='1hr', project='GBT11B_055', type='ralongmap'))
+#file_middles = tuple(dir_data.get_data_files(range(80,91), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(0,14), field='1hr', project='GBT11B_055',type='ralongmap')+dir_data.get_data_files(range(15,19), field='1hr', project='GBT11B_055', type='ralongmap'))
 #file_middles = tuple(dir_data.get_data_files(range(17,19),field='1hr',project='GBT11B_055', type='ralongmap'))
-#file_middles = tuple(dir_data.get_data_files(range(41,57),field='15hr',project='GBT10B_036',type='ralongmap')+dir_data.get_data_files(range(58,80),field='15hr',project='GBT10B_036',type='ralongmap'))
+file_middles = tuple(dir_data.get_data_files(range(41,57),field='15hr',project='GBT10B_036',type='ralongmap')+dir_data.get_data_files(range(58,80),field='15hr',project='GBT10B_036',type='ralongmap'))
 #bad_ind = sp.where(file_middles=='GBT10B_036/44_wigglez15hr_ralongmap_169-176')[0]
 #print bad_ind
 #file_middles[bad_ind] = ''
@@ -67,16 +67,16 @@ middles_temp = tuple(dir_data.get_data_files([47], field='15hr',
 #      adjusted to (140,81) due to memory limits.
 # 11hr: RA center = 162.5, DEC center = 3.25 (Total is 18.5,9.5). Try pixel spacing = 0.25, map shape =(74,38)
 
-map_centre = (13.0,1.85)
+map_centre = (217.8688,2.0)
 # For maps where performace isn't important.
 #map0_shape = (100, 60)
 #map0_spacing = .040
-map0_shape = (161, 83)
+map0_shape = (78, 43)
 map0_spacing = .0627
 #map0_shape = (78, 43)
 #map0_spacing = .0627
 # Performance limited maps.
-map_shape = (161, 83)
+map_shape = (78, 43)
 map_spacing = .0627
 
 base_dir_main = os.getenv('GBT_OUT')
@@ -88,11 +88,11 @@ base_dir = base_dir_main
 #base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
 #map_base = base_dir + 'maps/'
-map_base = base_dir_main + 'maps/'+'1hr_80-18_pointcorr/'
+map_base = base_dir_main + 'maps/'+'15hr_41-80_pointcorr/'
 
 # IO directory and file prefixes.
 prefix = ''
-map_prefix = '' + field + '_' + '80-18_pointcorr' + '_'
+map_prefix = '' + field + '_' + '41-80_pointcorr' + '_'
 
 # Maximum number of processes to use.
 pipe_processes = 1
@@ -134,8 +134,8 @@ pipe_modules = []
 #pipe_modules.append(rebin_time.RebinTime)
 #### First Map making interation ####
 
-from map import dirty_map
-pipe_modules.append(dirty_map.DirtyMapMaker)
+#from map import dirty_map
+#pipe_modules.append(dirty_map.DirtyMapMaker)
 
 #from map import clean_map
 #pipe_modules.append(clean_map.CleanMapMaker)
@@ -152,11 +152,11 @@ pipe_modules.append(dirty_map.DirtyMapMaker)
 #from time_stream import reflag
 #pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
 
-#from noise import measure_noise
-#pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
+from noise import measure_noise
+pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
-#from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
@@ -449,8 +449,8 @@ dmA_frequency_correlations = 'None'
 #dmA_number_frequency_modes = 3
 dmA_number_frequency_modes = 3  # Probably most appropriate.
 dmA_number_frequency_modes_discard = 1
-dmA_noise_parameter_file = ''
-#dmA_noise_parameter_file = mn2_output_root + mn2_output_filename
+#dmA_noise_parameter_file = ''
+dmA_noise_parameter_file = mn2_output_root + mn2_output_filename
 dmA_deweight_time_mean = True
 dmA_deweight_time_slope = True
 dmA_interpolation = 'cubic'
