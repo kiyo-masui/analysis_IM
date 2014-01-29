@@ -31,6 +31,7 @@ params_init = {
                # Select data to process.
                "scans" : (),
                "IFs" : (),
+               "ptsource" : '3C286',
                "Guppi_test" : False,
                "RM_dir" : "./",
                }
@@ -66,18 +67,18 @@ class MuellerGen(object) :
         RM = self.RM
 	wavelength = 300.0/freq_val[f]
 	Phi = RM*wavelength*wavelength
-        if source=='3C286':
+        if ptsource=='3C286':
             Isrc = 19.74748409*pow((750.0/freq_val[f]),0.49899785)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C286
-        elif source=='3C48':
+        elif ptsource=='3C48':
             Isrc = 25.15445092*pow((750.0/freq_val[f]),0.75578842)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for  3C48
-        elif source=='3C67':
+        elif ptsource=='3C67':
             Isrc = 4.56303633*pow((750.0/freq_val[f]),0.59237327)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C67
-        elif source=='3C147':
+        elif ptsource=='3C147':
             Isrc = 31.32846821*pow((750.0/freq_val[f]),0.52113534)*(2.28315426-0.000484307905*freq_val[f]) #My fit solution for 3C147
-        elif source=='3C295':
+        elif ptsource=='3C295':
             Isrc = 34.11187767*pow((750.0/freq_val[f]),0.62009421)*(2.28315426-0.000484307905*freq_val[f]) #My fit solution for 3C295
         PAsrc = 33.0*sp.pi/180.0 # for 3C286, doesn't matter for unpolarized. 
-        if source=='3C286':
+        if ptsource=='3C286':
             Psrc = 0.07 #for 3C286 
         else:
             Psrc = 0 #for #3C48,3C67, 3C147, 3C295
