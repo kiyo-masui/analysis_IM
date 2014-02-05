@@ -713,6 +713,287 @@ class DirtyMapMaker(object):
 
 #### Classes ####
 
+class DataSetError(Exception):
+    pass
+
+class DataSet(object):
+    """Contains all the information about a data set, including noise, pointing
+    and data."""
+
+    def __init__(self, params, Blocks, map, n_chan, delta_freq, pols, pol_ind,
+                       band_centres, band_ind, file_middle):
+        #self.Blocks = Blocks
+        #self.map = map
+        #above this line are added instances to try __getinitargs__() pickle technique
+        self.params = params
+        self.freq = map.get_axis('freq')
+        self.delta_freq = delta_freq
+        self.n_chan = n_chan
+        self.pols = pols
+        self.pol_ind = pol_ind
+        self.band_centres = band_centres
+        self.band_ind = band_ind
+        self.file_middle = file_middle
+        data = self.preprocess_data(Blocks, map)
+        self.time_stream, ra, dec, az, el, time, mask_inds = data
+        n_time = self.time_stream.shape[1]
+        if n_time < 5:
+            raise DataSetError("Not enough data on map.")
+        self.Pointing = Pointing(("ra", "dec"), (ra, dec), map,
+                     params['interpolation'])
+        # Now build up our noise model for this piece of data.
+        self.Noise = Noise(self.time_stream, time)
+        self.Noise.add_mask(mask_inds)
+
+    def preprocess_data(self, Blocks, map):
+        """The method converts data to a mapmaker friendly format."""
+        
+        pol_ind = self.pol_ind
+        # On the first pass just get dimensions and do some checks.
+        nt = 0
+        first_block = True
+        map_freq = map.get_axis('freq')
+        for Data in Blocks:
+            nt += Data.dims[0]
+            Data.calc_freq()
+            if not np.allclose(Data.freq, map_freq):
+                raise ValueError("Frequency axis of Data Block does not"
+                                 " match.")
+            if first_block:
+                self.pol_val = Data.field['CRVAL4'][pol_ind]
+                first_block = False
+            elif self.pol_val != Data.field['CRVAL4'][pol_ind]:
+                raise ValueError("Polarization of Data Block inconsistant.")
+        # Allocate memory for the outputs.
+        time_stream = sp.empty((self.n_chan, nt), dtype=float)
+        time_stream = al.make_vect(time_stream, axis_names=('freq', 'time'))
+        # This mask is inverted, i.e. False = masked.
+        mask = sp.empty((self.n_chan, nt), dtype=bool)
+        ra = sp.empty(nt, dtype=float)
+        dec = sp.empty(nt, dtype=float)
+        az = sp.empty(nt, dtype=float)
+        el = sp.empty(nt, dtype=float)
+        time = sp.empty(nt, dtype=float)
+        # Now loop through and copy the data.
+        tmp_time_ind = 0
+        tmp_dt = []
+        for Data in Blocks:
+            # First deal with the data.
+            this_nt = Data.dims[0]
+            this_data = Data.data[:,pol_ind,0,:]
+            time_stream[:,tmp_time_ind:tmp_time_ind + this_nt] = \
+                    this_data.filled(0).transpose()
+            # Now figure out if any of the data is masked.
+            this_mask = sp.logical_not(ma.getmaskarray(
+                Data.data[:,pol_ind,0,:]).transpose())
+            mask[:,tmp_time_ind:tmp_time_ind + this_nt] = this_mask
+            # Copy the other fields.
+            Data.calc_pointing()
+            ra[tmp_time_ind:tmp_time_ind + this_nt] = Data.ra
+            dec[tmp_time_ind:tmp_time_ind + this_nt] = Data.dec
+            Data.calc_time()
+            time[tmp_time_ind:tmp_time_ind + this_nt] = Data.time
+            tmp_dt.append(abs(sp.mean(sp.diff(Data.time))))
+            az[tmp_time_ind:tmp_time_ind + this_nt] = Data.field['CRVAL2']
+            el[tmp_time_ind:tmp_time_ind + this_nt] = Data.field['CRVAL3']
+            tmp_time_ind += this_nt
+        # Make sure the bandwidths are the same for all Data Blocks.
+        dt = sp.mean(tmp_dt)
+        if not sp.allclose(tmp_dt, dt, rtol=1e-2):
+            print tmp_dt, dt
+            raise RuntimeError("Samplings not uniform.")
+        self.BW = 1./2./dt
+        # Now that we have all the data in one place, subtract mean, slope.
+        # XXX
+        if self.params['deweight_time_slope']:
+            n_poly = 2
+        else:
+            n_poly = 1
+        polys = misc.ortho_poly(time[None,:], n_poly, mask, -1)
+        amps = sp.sum(polys * time_stream, -1)
+        time_stream -= sp.sum(amps[:,:,None] * polys, 0)
+        time_stream *= mask
+        # Calculate variances.
+        channel_vars = sp.sum(time_stream**2, -1)
+        channel_counts = sp.sum(mask, -1)
+        channel_counts[channel_counts==0] = 1.
+        channel_vars /= channel_counts
+        # Get rid of any wierd channels.
+        bad_channels =  (channel_vars < 1.e-4 
+                        * sp.median(channel_vars[channel_counts > 5]))
+        bad_channels = sp.logical_or(channel_counts < 5, bad_channels)
+        channel_vars[bad_channels] = T_infinity**2
+        # Store the variances in case they are needed as noise weights.
+        self.channel_vars = channel_vars
+        # Trim this down to exculd all data points that are outside the map
+        # bounds.
+        time_stream, inds = trim_time_stream(time_stream, (ra, dec),
+                (min(map.get_axis('ra')), min(map.get_axis('dec'))),
+                (max(map.get_axis('ra')), max(map.get_axis('dec'))))
+        mask = mask[:,inds]
+        ra = ra[inds]
+        dec = dec[inds]
+        time = time[inds]
+        az = az[inds]
+        el = el[inds]
+        # Change the format of the mask.
+        mask_inds = sp.where(sp.logical_not(mask))
+        return time_stream, ra, dec, az, el, time, mask_inds
+    
+    def setup_noise_from_model(self, model, deweight_time_mean,
+                             deweight_time_slope,noise_entry):
+        pass
+
+    def setup_ts_foregrounds(self, n_modes, foregrounds_entry):
+        pass
+    
+    # XXX These cut and pasted from DirtyMap.  Must be rewritten.
+    def get_noise_parameter(self, parameter_name):
+        """Reads a desired noise parameter for the current data."""
+
+        params = self.params        
+        if not params['noise_parameter_file']:
+            # If there is no data base file we can use the measured variance as
+            # thermal.
+            if parameter_name == "thermal":
+                return self.channel_vars
+            else :
+                raise ValueError('Only thermal parameter can be measured '
+                                 'with no noise parameter database.')
+        else :
+            if params['noise_parameter_file']:
+                self.noise_params = shelve.open(params['noise_parameter_file'], 'r')
+            else:
+                self.noise_params = None
+            # Get the data base entry that corresponds to the current file.
+            noise_entry = (self.noise_params[self.file_middle]
+                           [int(round(self.band_centres[self.band_ind]/1e6))]
+                           [self.pols[self.pol_ind]])
+            # In many cases the thermal noise is measured in units K**2/Hz.  To
+            # get a variance we need to multiply by twice the bandwidth (factor
+            # of 2 deals with negitive frequencies).
+            BW = self.BW
+            # Choose the noise model and get the corresponding parameters.
+            noise_model = params["frequency_correlations"]
+            if noise_model == "None":
+                if parameter_name == "thermal":
+                    if noise_entry.has_key("channel_var"):
+                        return noise_entry["channel_var"]
+                    else:
+                        return self.channel_vars
+            elif noise_model == "mean":
+                noise_entry = noise_entry["mean_over_f"]
+                if parameter_name == "thermal":
+                    return noise_entry["thermal"] * BW * 2
+                elif parameter_name == "mean_over_f":
+                    over_f_params = (noise_entry["amplitude"],
+                                     noise_entry["index"], noise_entry["f_0"])
+                    return over_f_params
+            elif noise_model == "measured":
+                noise_entry = noise_entry["freq_modes_over_f_"
+                                + repr(params['number_frequency_modes'])]
+                if parameter_name == "thermal":
+                    thermal = noise_entry["thermal"] * BW * 2
+                    # Min is factor of 2 smaller than theoredical (since some
+                    # noise will be in the frequency modes).
+                    thermal_min = abs(T_sys**2 * 2. * BW / self.delta_freq / 2.)
+                    thermal[thermal < thermal_min] = thermal_min
+                    return thermal
+                elif parameter_name[:12] == "over_f_mode_":
+                    p = noise_entry[parameter_name]
+                    # Factors of the band width applied in Noise object.
+                    orthog = params['deweight_time_slope']
+                    return (p["amplitude"], p['index'], p['f_0'], p['thermal'],
+                            p['mode'], orthog)
+                elif parameter_name == "all_channel":
+                    # When specifying as a cross over, thermal is the
+                    # amplitude.
+                    thermal = sp.copy(noise_entry["thermal"])
+                    thermal_min = abs(T_sys**2 / self.delta_freq / 2.)
+                    thermal[thermal < thermal_min] = thermal_min
+                    p = (thermal,)
+                    p += (noise_entry["all_channel_index"],)
+                    p += (noise_entry["all_channel_corner_f"],)
+                    return p
+        # If we got to this point, we didn't find a model-parameter match.
+        msg = ("Invalid noise parameter name: " + parameter_name
+               + " for noise model: " + noise_model)
+        raise ValueError(msg)
+
+    def get_ts_foreground_mode(self, mode_number):
+        # Collect the variables we need from the class.
+#        foreground_modes_db = self.foreground_modes
+        if params['ts_foreground_mode_file']:
+            self.foreground_modes = shelve.open(
+                params['ts_foreground_mode_file'], 'r')
+        else:
+            self.foreground_modes = None
+        foreground_modes_db = self.foreground_modes
+        pol_ind = self.pol_ind
+        cal_ind = 0
+        file_middle = self.file_middle
+        # freq saved in constructor of DataSet.
+        #freq = self.map.get_axis('freq')
+        freq = self.freq
+        # Get the data base key.
+        key = ts_measure.get_key(file_middle)
+        # From the database, read the data for this file.
+        db_freq = foreground_modes_db[key + '.freq']
+        db_vects = foreground_modes_db[key + '.vects']
+        # Loop through the IF's in the data base and figure out which on is the
+        # right one.
+        n_bands_db = db_freq.shape[0]
+        db_band = -1
+        epsilon = 1e-8
+        for ii in range(n_bands_db):
+            if ((min(db_freq[ii,:]) <= min(freq) * (1 + epsilon))
+                and (max(db_freq[ii,:]) >= max(freq) * (1 - epsilon))):
+                db_band = ii
+        if db_band == -1:
+            raise RuntimeError("Did not find an overlapping band in foreground"
+                               " data.")
+        # Throw away the data we don't need.
+        db_freq = db_freq[db_band,:]
+        db_vects = db_vects[db_band,pol_ind,cal_ind,:,-1 - mode_number]
+        # Now just need to find what range of frequencies correspond to the
+        # band we are dealing with.
+        n_chan_db = len(db_freq)
+        n_chan = len(freq)
+        chan_start_ind = -1
+        for ii in range(n_chan_db - n_chan + 1):
+            if sp.allclose(freq, db_freq[ii:ii + n_chan]):
+                chan_start_ind = ii
+        if chan_start_ind == -1:
+            raise RuntimeError("Could not find frequency range in foreground"
+                               " data.")
+        # Get that piece of the vector and normalize.
+        vector = sp.copy(db_vects[chan_start_ind:chan_start_ind + n_chan])
+        vector /= sp.sum(vector**2)
+        return vector
+
+    #def __getnewargs__(self):
+        #return (self.params, self.Blocks, self.map, self.n_chan, self.delta_freq, self.pols, self.pol_ind, self.band_centres, self.band_ind, self.file_middle)
+
+    def __getstate__(self):
+        return (self.params, self.freq, self.delta_freq, self.n_chan,                      self.pols, self.pol_ind, self.band_centres, self.band_ind,                 self.file_middle, self.Pointing, self.Noise,                               self.time_stream)
+
+    def __setstate__(self,val):
+        self.params=val[0]
+        self.freq=val[1]
+        self.delta_freq=val[2]
+        self.n_chan=val[3]
+        self.pols=val[4]
+        self.pol_ind=val[5]
+        self.band_centres=val[6]
+        self.band_ind=val[7]
+        self.file_middle=val[8]
+        self.Pointing=val[9]
+        self.Noise=val[10]
+        #self.time_stream, ra, dec, az, el, time, mask_inds = val[11]
+        self.time_stream=val[11]
+
+
+
 class Pointing(object):
     """Class represents the pointing operator.
 

@@ -3,7 +3,13 @@ both the cross power and the auto power."""
 
 import numpy as np
 from scipy import stats, interpolate, integrate, optimize
+import matplotlib
 import matplotlib.pyplot as plt
+
+# Need this got get rid of 'Type 3 fonts' that MNRAS didn't like.
+matplotlib.rcParams['ps.useafm'] = True
+matplotlib.rcParams['pdf.use14corefonts'] = True
+matplotlib.rcParams['text.usetex'] = True
 
 #### Parameters ####
 
@@ -19,6 +25,9 @@ KLOW = 0.12
 KHIGH = 0.30
 GAUSS_ERROR = True
 DECORR = True
+# Flags for which prior to use.
+FORE_FLAT =  False
+OMEGA_FLAT = False
 
 data_file_root = '/cita/h/home-2/eswitzer/code/analysis_IM/'
 
@@ -115,8 +124,10 @@ def get_likelihood_omega(fname1, fname2, fname_sim1, fname_sim2=None):
     # Calculate cross power pdf.
     p_cross_int_r = p_cross_given_auto_int_r(omega_sq, 1.)
     # Calculate prior.
-    prior = omega  # Flat prior on power.
-    #prior = np.ones(len(omega))  # Flat prior on Omega, 1/sqrt on power.
+    if OMEGA_FLAT:
+        prior = np.ones(len(omega))  # Flat prior on Omega, 1/sqrt on power.
+    else:
+        prior = omega  # Flat prior on power.
     # Construct total likelihood.
     likelihood = p_auto_int_f_1 * p_auto_int_f_2 * p_cross_int_r * prior
     likelihood_auto_1 = p_auto_int_f_1 * prior
@@ -155,8 +166,10 @@ def signal_likelihood_k_bin(sim_pow, auto_pow1, auto_err1, auto_pow2,
     p_auto_int_f_1 = p_auto_given_signal_int_f(signal_pow, auto_pow1, auto_err1)
     p_auto_int_f_2 = p_auto_given_signal_int_f(signal_pow, auto_pow2, auto_err2)
     # Calculate prior.
-    prior = np.ones(len(signal_pow))  # Flat prior on power, favors high Omega.
-    #prior = 1. /  np.sqrt(signal_pow)  # Flat prior on Omega.
+    if OMEGA_FLAT:
+        prior = 1. /  np.sqrt(signal_pow)  # Flat prior on Omega.
+    else:
+        prior = np.ones(len(signal_pow))  # Flat prior on power.
     # Combine.
     likelihood = p_cross_int_r * p_auto_int_f_1 * p_auto_int_f_2 * prior
     likelihood = normalize_pdf(signal_pow, likelihood)
@@ -249,11 +262,39 @@ def p_auto_given_signal_int_f(signal_pow, auto_mean, auto_err):
 
     Function is unnormalized but has the right dependance on `signal_pow`.
     """
-    # See Feb 26, 2013 of Kiyo's notes for derivation.
-    if GAUSS_ERROR:
-        p_auto = stats.norm.sf((signal_pow - auto_mean) / auto_err)
+
+    if not FORE_FLAT:
+        # See Apr 29 of Kiyo's notes.
+        # This prior doesn't work since the integral diverges at f->0.
+        # Get the integration domain.
+        min_f = auto_err / 10.
+        max_f = auto_mean + 4 * auto_err
+        forground_pow = np.arange(min_f, max_f, min_f)
+        # Simpson's rule integration requires an even number of samples.
+        if not (len(forground_pow) % 2):
+            foreground_pow = forground_pow[:-1]
+        # Data pdf depends on s + f, so start with this sum (for every signal
+        # input).
+        integrand = signal_pow[...,None] + forground_pow
+        # Now form the data pdf.
+        if GAUSS_ERROR:
+            integrand = stats.norm.pdf((integrand - auto_mean) / auto_err)
+        else:
+            integrand = stats.t.pdf((integrand - auto_mean) / auto_err, NDEF)
+        # Add the prior.
+        print auto_mean, auto_err
+        #integrand[forground_pow > 10] = 0
+        integrand *= 1. / (1 + (forground_pow / auto_err / 2)**2)
+        #integrand *= 1. / (forground_pow)**0.9
+        #integrand[forground_pow < CMEAN**2 /50] =0
+        # Integrate.
+        p_auto = integrate.simps(integrand, dx=min_f, axis=-1)
     else:
-        p_auto = stats.t.sf((signal_pow - auto_mean) / auto_err, NDEF)
+        # See Feb 26, 2013 of Kiyo's notes for derivation.
+        if GAUSS_ERROR:
+            p_auto = stats.norm.sf((signal_pow - auto_mean) / auto_err)
+        else:
+            p_auto = stats.t.sf((signal_pow - auto_mean) / auto_err, NDEF)
     return p_auto
 
 def normalize_pdf(lam, pdf):
@@ -478,6 +519,8 @@ interval = get_conf_interval(omega, likelihood, .68)
 print "68% confidence interval:", interval
 print "or:", (interval[0] + interval[1])/2, "\pm", (interval[1] - interval[0])/2
 print "or:", median, "+", interval[1] - median, "-", median - interval[0]
+interval = get_conf_interval(omega, likelihood, .95)
+print "95% confidence interval:", interval
 # Log scale.
 m = omega
 lomega = np.log(omega)

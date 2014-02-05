@@ -14,7 +14,7 @@ import scipy as sp
 import numpy.ma as ma
 from numpy import linalg
 from numpy import random
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 # TODO: this seemed to be necessary on the Sunnyvale compute nodes because it
 # was clobbing the python path?
