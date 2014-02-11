@@ -1,5 +1,6 @@
 import numpy as np
-    
+#import matplotlib.pyplot as plt
+
 
 def cross(set_list):
     '''Given a list of sets, return the cross product.'''

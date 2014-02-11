@@ -14,13 +14,17 @@ suffix = '_mueller_matrix_from_inverted_params.txt'
 #May want to rebuild depending what sessions you want to grab.
 directory = 'GBT10B_036'
 directory2 = 'GBT11B_055'
+#directory3 = 'GBT12A_418'
 min_sess = 41
 min_sess2 = 01
+#min_sess3 = 01
 max_sess = 89
 max_sess2 = 18
+#max_sess3 = 02
 #Number of sessions used
 len = max_sess - min_sess
 len2 = max_sess2-min_sess2
+#len3 = max_sess3-min_sess3
 sessions = []
 filenames = []
 for i in range(0,len):
@@ -39,6 +43,14 @@ for i in range(0,len2):
       label = str(label)
    filenames.append(filedir+directory2+'/'+label+suffix)
    sessions.append(label)
+#for i in range(0,len3):
+#   label=min_sess3+i
+#   if label<10:
+#      label ='0'+str(label)
+#   else:
+#      label = str(label)
+#   filenames.append(filedir+directory3+'/'+label+suffix)
+#   sessions.append(label)
 
 #print filenames
 
@@ -50,6 +62,7 @@ scale = shape(test_dir)
 
 #Database of mueller files
 tot_len = len+len2
+#tot_len = len+len2+len3
 for j in range(0,tot_len):
    source = filenames[j]
    data = loadtxt(source)
@@ -102,118 +115,121 @@ for i in range(0,tot_len):
 
 #print m_II
 
+pylab.suptitle('Gain Correction Factor (From flux and pol cal generation)')
 #M_II
 #pylab.subplot(441)
 #pylab.imshow(m_II/m_II,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1.,vmax=1.,extent=(freqs.min(),freqs.max(),min_sess,max_sess))
-pylab.imshow(m_II,interpolation='gaussian', cmap='hot', origin='lower',vmin=0.5,vmax=2.5,extent=(freqs.max(),freqs.min(),0,tot_len))
+pylab.imshow(m_II,interpolation='gaussian', cmap='hot', origin='lower',vmin=0.75,vmax=3.25,extent=(freqs.max(),freqs.min(),0,tot_len))
 pylab.colorbar(orientation='horizontal')
-pylab.savefig('m_II_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
+pylab.xlabel('Frequency (MHz)')
+pylab.ylabel('Session')
+pylab.savefig('Flux_'+str(min_sess)+'-'+str(max_sess)+'_and_'+str(min_sess2)+'-'+str(max_sess2)+'_compare.png')
 pylab.clf()
 
 #M_IQ
 #pylab.subplot(442)
-pylab.imshow(m_IQ,interpolation='gaussian', cmap='hot', origin='lower',vmin=-0.5,vmax=0.5,extent=(freqs.max(),freqs.min(),0,tot_len))
-pylab.colorbar(orientation='horizontal')
-pylab.savefig('m_IQ_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
-pylab.clf()
+#pylab.imshow(m_IQ,interpolation='gaussian', cmap='hot', origin='lower',vmin=-0.5,vmax=0.5,extent=(freqs.max(),freqs.min(),0,tot_len))
+#pylab.colorbar(orientation='horizontal')
+#pylab.savefig('m_IQ_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
+#pylab.clf()
 
 #M_IU 
 #pylab.subplot(443)
-pylab.imshow(m_IU,interpolation='gaussian', cmap='hot', origin='lower',vmin=-0.06,vmax=0.06,extent=(freqs.max(),freqs.min(),0,tot_len))
-pylab.colorbar(orientation='horizontal') 
-pylab.savefig('m_IU_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
-pylab.clf() 
+#pylab.imshow(m_IU,interpolation='gaussian', cmap='hot', origin='lower',vmin=-0.06,vmax=0.06,extent=(freqs.max(),freqs.min(),0,tot_len))
+#pylab.colorbar(orientation='horizontal') 
+#pylab.savefig('m_IU_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
+#pylab.clf() 
 
 #M_IV 
 #pylab.subplot(444)
-pylab.imshow(m_IV,interpolation='gaussian', cmap='hot', origin='lower',vmin=-0.1,vmax=0.1,extent=(freqs.max(),freqs.min(),0,tot_len))
-pylab.colorbar(orientation='horizontal') 
-pylab.savefig('m_IV_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
-pylab.clf() 
+#pylab.imshow(m_IV,interpolation='gaussian', cmap='hot', origin='lower',vmin=-0.1,vmax=0.1,extent=(freqs.max(),freqs.min(),0,tot_len))
+#pylab.colorbar(orientation='horizontal') 
+#pylab.savefig('m_IV_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
+#pylab.clf() 
 
 #M_QI 
 #pylab.subplot(445)
-pylab.imshow(m_QI,interpolation='gaussian', cmap='hot', origin='lower',vmin=-0.5,vmax=0.5,extent=(freqs.max(),freqs.min(),0,tot_len))
-pylab.colorbar(orientation='horizontal') 
-pylab.savefig('m_QI_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
-pylab.clf() 
+#pylab.imshow(m_QI,interpolation='gaussian', cmap='hot', origin='lower',vmin=-0.5,vmax=0.5,extent=(freqs.max(),freqs.min(),0,tot_len))
+#pylab.colorbar(orientation='horizontal') 
+#pylab.savefig('m_QI_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
+#pylab.clf() 
 
 #M_QQ
 #pylab.subplot(446)
-pylab.imshow(m_QQ,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1.5,vmax=1.5,extent=(freqs.max(),freqs.min(),0,tot_len))
-pylab.colorbar(orientation='horizontal') 
-pylab.savefig('m_QQ_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
-pylab.clf() 
+#pylab.imshow(m_QQ,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1.5,vmax=1.5,extent=(freqs.max(),freqs.min(),0,tot_len))
+#pylab.colorbar(orientation='horizontal') 
+#pylab.savefig('m_QQ_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
+#pylab.clf() 
 
 #M_QU
 #pylab.subplot(447)
-pylab.imshow(m_QU,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1.5,vmax=1.5,extent=(freqs.max(),freqs.min(),0,tot_len))
-pylab.colorbar(orientation='horizontal') 
-pylab.savefig('m_QU_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
-pylab.clf() 
+#pylab.imshow(m_QU,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1.5,vmax=1.5,extent=(freqs.max(),freqs.min(),0,tot_len))
+#pylab.colorbar(orientation='horizontal') 
+#pylab.savefig('m_QU_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
+#pylab.clf() 
 
 #M_QV
 #pylab.subplot(448)
-pylab.imshow(m_QV,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1.5,vmax=1.5,extent=(freqs.max(),freqs.min(),0,tot_len))
-pylab.colorbar(orientation='horizontal') 
-pylab.savefig('m_QV_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
-pylab.clf() 
+#pylab.imshow(m_QV,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1.5,vmax=1.5,extent=(freqs.max(),freqs.min(),0,tot_len))
+#pylab.colorbar(orientation='horizontal') 
+#pylab.savefig('m_QV_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
+#pylab.clf() 
 
 #M_UI 
 #pylab.subplot(449)
-pylab.imshow(m_UI,interpolation='gaussian', cmap='hot', origin='lower',vmin=-0.5,vmax=0.5,extent=(freqs.max(),freqs.min(),0,tot_len))
-pylab.colorbar(orientation='horizontal') 
-pylab.savefig('m_UI_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
-pylab.clf() 
+#pylab.imshow(m_UI,interpolation='gaussian', cmap='hot', origin='lower',vmin=-0.5,vmax=0.5,extent=(freqs.max(),freqs.min(),0,tot_len))
+#pylab.colorbar(orientation='horizontal') 
+#pylab.savefig('m_UI_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
+#pylab.clf() 
 
 #M_UQ
 #pylab.subplot(4,4,10)
-pylab.imshow(m_UQ,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1.25,vmax=1.25,extent=(freqs.max(),freqs.min(),0,tot_len))
-pylab.colorbar(orientation='horizontal') 
-pylab.savefig('m_UQ_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
-pylab.clf() 
+#pylab.imshow(m_UQ,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1.25,vmax=1.25,extent=(freqs.max(),freqs.min(),0,tot_len))
+#pylab.colorbar(orientation='horizontal') 
+#pylab.savefig('m_UQ_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
+#pylab.clf() 
 
 #M_UU 
 #pylab.subplot(4,4,11)
-pylab.imshow(m_UU,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1.25,vmax=1.25,extent=(freqs.max(),freqs.min(),0,tot_len))
-pylab.colorbar(orientation='horizontal') 
-pylab.savefig('m_UU_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
-pylab.clf() 
+#pylab.imshow(m_UU,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1.25,vmax=1.25,extent=(freqs.max(),freqs.min(),0,tot_len))
+#pylab.colorbar(orientation='horizontal') 
+#pylab.savefig('m_UU_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
+#pylab.clf() 
 
 #M_UV
 #pylab.subplot(4,4,12)
-pylab.imshow(m_UV,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1.25,vmax=1.25,extent=(freqs.max(),freqs.min(),0,tot_len))
-pylab.colorbar(orientation='horizontal') 
-pylab.savefig('m_UV_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
-pylab.clf() 
+#pylab.imshow(m_UV,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1.25,vmax=1.25,extent=(freqs.max(),freqs.min(),0,tot_len))
+#pylab.colorbar(orientation='horizontal') 
+#pylab.savefig('m_UV_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
+#pylab.clf() 
 
 #M_VI
 #pylab.subplot(4,4,13)
-pylab.imshow(m_VI,interpolation='gaussian', cmap='hot', origin='lower',vmin=-0.25,vmax=0.25,extent=(freqs.max(),freqs.min(),0,tot_len))
-pylab.colorbar(orientation='horizontal') 
-pylab.savefig('m_VI_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
-pylab.clf() 
+#pylab.imshow(m_VI,interpolation='gaussian', cmap='hot', origin='lower',vmin=-0.25,vmax=0.25,extent=(freqs.max(),freqs.min(),0,tot_len))
+#pylab.colorbar(orientation='horizontal') 
+#pylab.savefig('m_VI_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
+#pylab.clf() 
 
 #M_VQ 
 #pylab.subplot(4,4,14)
-pylab.imshow(m_VQ,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1,vmax=1,extent=(freqs.max(),freqs.min(),0,tot_len))
-pylab.colorbar(orientation='horizontal') 
-pylab.savefig('m_VQ_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
-pylab.clf() 
+#pylab.imshow(m_VQ,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1,vmax=1,extent=(freqs.max(),freqs.min(),0,tot_len))
+#pylab.colorbar(orientation='horizontal') 
+#pylab.savefig('m_VQ_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
+#pylab.clf() 
 
 #M_VU 
 #pylab.subplot(4,4,15)
-pylab.imshow(m_VU,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1.25,vmax=1.25,extent=(freqs.max(),freqs.min(),0,tot_len))
-pylab.colorbar(orientation='horizontal') 
-pylab.savefig('m_VU_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
-pylab.clf() 
+#pylab.imshow(m_VU,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1.25,vmax=1.25,extent=(freqs.max(),freqs.min(),0,tot_len))
+#pylab.colorbar(orientation='horizontal') 
+#pylab.savefig('m_VU_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
+#pylab.clf() 
 
 #M_VV
 #pylab.subplot(4,4,16)
-pylab.imshow(m_VV,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1.25,vmax=1.25,extent=(freqs.max(),freqs.min(),0,tot_len))
-pylab.colorbar(orientation='horizontal') 
-pylab.savefig('m_VV_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
-pylab.clf() 
+#pylab.imshow(m_VV,interpolation='gaussian', cmap='hot', origin='lower',vmin=-1.25,vmax=1.25,extent=(freqs.max(),freqs.min(),0,tot_len))
+#pylab.colorbar(orientation='horizontal') 
+#pylab.savefig('m_VV_'+str(min_sess)+'-'+str(max_sess2)+'_compare.png')
+#pylab.clf() 
 
 #pylab.savefig('mueller_'+directory+'_'+str(min_sess)+'-'+str(max_sess)+'_compare.png')
 #pylab.clf()

@@ -343,7 +343,6 @@ def polint2str(pol_int) :
         raise ValueError("Polarization integer must be in range(-8, 5) and "
                          "nonzero")
 
-
 def ampfit(data, covariance, theory, rank_thresh=1e-12, diag_only=False):
     """Fits the amplitude of the theory curve to the data.
 
@@ -603,4 +602,5 @@ if __name__ == "__main__":
     OPTIONFLAGS = (doctest.ELLIPSIS |
                    doctest.NORMALIZE_WHITESPACE)
     doctest.testmod(optionflags=OPTIONFLAGS)
+
 

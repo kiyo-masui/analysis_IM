@@ -6,7 +6,8 @@ from core import dir_data
 
 import scipy as sp
 
-file_middles = tuple(dir_data.get_data_files(range(01,18),project='GBT12A_418',field='3C295',type='onoff'))
+file_middles = tuple(dir_data.get_data_files(range(01,30),project='GBT13B_352',field='3C295',type='onoff'))
+
 #file_middles = tuple(dir_data.get_cal_files(range(66,69),'48',type='guppi'))
 
 #file_middles = ('41_3C286_onoff_6-7','41_3C286_onoff_8-9','41_3C286_onoff_124-125','41_3C286_onoff_126-127','42_3C286_onoff_10-11','42_3C286_onoff_12-13','42_3C286_onoff_328-329','42_3C286_onoff_330-331', '43_3C286_onoff_156-157', '43_3C286_onoff_158-159', '43_3C286_onoff_6-7', '43_3C286_onoff_8-9', '44_3C286_onoff_13-14', '44_3C286_onoff_15-16', '44_3C286_onoff_363-364', '44_3C286_onoff_365-366', '44_3C286_onoff_367-368', '44_3C286_onoff_369-370', '45_3C286_onoff_138-139', '45_3C286_onoff_140-141', '45_3C286_onoff_6-7', '45_3C286_onoff_8-9')
@@ -35,9 +36,9 @@ fd_IFs = ()
 fd_rotate = True
 fd_perform_hanning = False
 fd_cal_scale = True
-fd_sigma_thres = 6
+fd_sigma_thres = 3.5
 fd_badness_thres = 0.1
-fd_time_cut = 40
+fd_time_cut = 10
 #fd_pol_thres = 5
 #fd_pol_width = 2
 #fd_flatten_pol = True
@@ -55,9 +56,10 @@ rf_output_end = '.fits'
 rf_scans = ()
 rf_IFs = ()
 
-rf_channel_width = 0.
-rf_n_bins_combined = 16
-rf_mean_instead_median = False
+#rf_channel_width = 0.
+rf_n_bins_combined_freq = 16
+rf_n_bins_combined_time = 1
+#rf_mean_instead_median = False
 
  
 #from time_stream import rotate_pol 
