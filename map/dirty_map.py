@@ -1189,7 +1189,7 @@ class Pointing(object):
                    " `noise_channel_to_map` instead.")
             raise RuntimeError(msg)
 
-    def noise_channel_to_map(self, Noise, f_ind, map_noise_inv):
+    def noise_channel_to_map(self, Noise, f_ind, map_noise_inv, ra0_range=None, dec0_range=None):
         """Convert noise to map space.
         
         Use this function over `noise_to_map_domain` if the noise has no
@@ -1200,7 +1200,7 @@ class Pointing(object):
         if not Noise._frequency_correlations:
             _mapmaker_c.update_map_noise_independant_chan(Noise.diagonal_inv,
                     Noise.time_modes, Noise.time_mode_update, self._pixel_inds,
-                    self._weights, f_ind, map_noise_inv)
+                    self._weights, f_ind, map_noise_inv, ra0_range, dec0_range)
         else:
             msg = ("Noise object has frequency correlations.  Use "
                    " `noise_to_map_domain` instead.")
