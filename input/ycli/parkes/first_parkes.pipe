@@ -8,17 +8,19 @@ import os
 # script to get theses.  Similar to dir_data for GBT.  Perhapse write a
 # dir_data_parkes.py?
 
-#file_middles = (
-#                'sept12/west/2008-09-12_1530_west1_1315_P641',
-#                'sept12/west/2008-09-12_1534_west2_1315_P641',
-#                )
-#
-#data_root = ('/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA'
-#             '/p641/sdfits/rawdata/')
+file_middles = (
+                'sept12/west/2008-09-12_1530_west1_1315_P641',
+                'sept12/west/2008-09-12_1534_west2_1315_P641',
+                )
+
+data_root = ('/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA'
+             '/p641/sdfits/rawdata/')
 
 
-data_root = ('/mnt/raid-project/gmrt/ycli/parkes/RAWDATA_SDF/20121027/')
-file_middles = ['2012-10-27_1000-P641_east1_1315_P641',]
+#data_root = ('/mnt/raid-project/gmrt/raid-pen/pen/Parkes/2dF/DATA/p641/sdfits/rawdata/sept12/east/')
+#file_middles = ['2008-09-12_1348_east2_1315_P641.sdfits']
+#data_root = ('/mnt/raid-project/gmrt/ycli/parkes/RAWDATA_SDF/20121027/')
+#file_middles = ['2012-10-27_1000-P641_east1_1315_P641']
 #listfile = os.listdir(data_root)
 #listfile.sort(key=lambda x:int(x[11:15]))
 #for file in listfile:
@@ -27,8 +29,8 @@ file_middles = ['2012-10-27_1000-P641_east1_1315_P641',]
 #        print file
 
 # Where to put all the data products.
-base_dir = '/mnt/raid-project/gmrt/ycli/map_result_parkes/'
-
+#base_dir = '/mnt/raid-project/gmrt/ycli/map_result_parkes/'
+base_dir = '/mnt/raid-project/gmrt/anderson/test_yichao_pipe/'
 
 # Maximum number of processes to use. On most machines can use 24+ if no
 # one else is using the machine.
@@ -38,8 +40,8 @@ pipe_processes = 3
 # Just comment out any modules you don't want to run.
 pipe_modules = []
 
-#from parkes import parkes_to_GBTfits
-#pipe_modules.append(parkes_to_GBTfits.Converter)
+from parkes import parkes_to_GBTfits
+pipe_modules.append(parkes_to_GBTfits.Converter)
 
 #from time_stream import bandpass_remove
 #pipe_modules.append(bandpass_remove.BandpassRemove)

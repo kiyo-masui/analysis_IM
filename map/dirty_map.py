@@ -144,6 +144,7 @@ class DirtyMapMaker(object):
         # Now loop through and copy the data.
         tmp_time_ind = 0
         tmp_dt = []
+        map = self.map
         for Data in Blocks:
             # First deal with the data.
             this_nt = Data.dims[0]
@@ -156,8 +157,9 @@ class DirtyMapMaker(object):
             mask[:,tmp_time_ind:tmp_time_ind + this_nt] = this_mask
             # Copy the other fields.
             Data.calc_pointing()
-            ra[tmp_time_ind:tmp_time_ind + this_nt] = Data.ra
             dec[tmp_time_ind:tmp_time_ind + this_nt] = Data.dec
+            map_centre_ra = np.mean(map.get_axis('ra'))
+            ra[tmp_time_ind:tmp_time_ind + this_nt] = ((Data.ra - map_centre_ra + 180) % 360) + map_centre_ra - 180
             Data.calc_time()
             time[tmp_time_ind:tmp_time_ind + this_nt] = Data.time
             tmp_dt.append(abs(sp.mean(sp.diff(Data.time))))
@@ -197,7 +199,7 @@ class DirtyMapMaker(object):
         self.channel_vars = channel_vars
         # Trim this down to exculd all data points that are outside the map
         # bounds.
-        map = self.map
+        # map = self.map
         time_stream, inds = trim_time_stream(time_stream, (ra, dec),
                 (min(map.get_axis('ra')), min(map.get_axis('dec'))),
                 (max(map.get_axis('ra')), max(map.get_axis('dec'))))

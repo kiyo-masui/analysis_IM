@@ -76,7 +76,12 @@ def dec_min(list):
     min_dec = min(dec_min_list)
     return min_dec
 
-def mapper(x, y, matches, index):
+ran=ra_min(matches)
+rax=ra_max(matches)
+decn=dec_min(matches)
+decx=dec_max(matches)
+
+def mapper(x, y, matches, index,which_beam):
     hitmap = np.zeros((y, x))
     weight_map = hitmap
     ran=ra_min(matches)
@@ -85,7 +90,8 @@ def mapper(x, y, matches, index):
     decx=dec_max(matches)
     #i=1
     for file in matches:
-        for beam in range(1,14):
+        #for beam in range(1,14):
+        for beam in range(which_beam,which_beam+1):
     #for beam in range(1,14):
         #hitmap = np.zeros((90,630))
         #weight_map = hitmap
@@ -118,8 +124,8 @@ def mapper(x, y, matches, index):
     hitrap = (hitmap < 1)
     hitmap[hitrap] = hitmap[hitrap]+1
     map=weight_map/hitmap
-    extent=[ra_edge[0], ra_edge[-1], dec_edge[0], dec_edge[-1]]
-    extent2=[40, 55, dec_edge[0], dec_edge[-1]]
+    extent=[ra_edge[0], ra_edge[-1], dec_edge[-1], dec_edge[0]]
+    extent2=[22, 32, dec_edge[-1], dec_edge[0]]
     return {'extent':extent, 'map':map, 'extent2':extent2} 
     #extent2=[40, 55, dec_edge[0], dec_edge[-1]]
 #mapper(630, 90, matches, 900)
@@ -128,10 +134,14 @@ def mapper(x, y, matches, index):
 #saveplot(mapper(630, 90, matches2, 900)['map'], mapper(630, 90, matches2, 900)['extent'], 1,
                 #'/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/',
                 #'fullsky_2012' )
-mapout = mapper(630, 90, matches2, 700)
-saveplot(mapout['map'], mapout['extent2'], 2,
-                '/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/',
-                'partialsky_2012' )
+for ii in range(1,14):
+    mapout = mapper(630, 90, matches2, 800, ii)
+    saveplot(mapout['map'],mapout['extent'], ii,
+'/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/',
+'fullsky_2012_ind_beams_27ra_beam')
+    #saveplot(mapout['map'][0:90,((22-ran)/(rax-ran))*630-1:((32-ran)/(rax-ran))*630-1],mapout['extent2'], ii,
+    #            '/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_roughmaps/',
+     #           'partialsky_2012_ind_beams_27ra_beam' )
 #saveplot(map,extent, 2)
 #saveplot(map, extent , 4)
 #start_ind = int(map.shape[1] * (40 - ra_edge[0]) / (ra_edge[-1] - ra_edge[0]))

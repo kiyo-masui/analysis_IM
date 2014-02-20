@@ -427,6 +427,7 @@ def filter_foregrounds(Data, n_bands=20, time_bins_smooth=10.):
                                     mode='same')
         foregrounds /= fore_weights
         # Subtract out the foregrounds.
+        #print data.shape
         data[...] -= foregrounds[:,:,:,None]
 
 

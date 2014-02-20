@@ -69,23 +69,27 @@ def dec_min(list):
     return min_dec
 
 def saveplot(hist, extent, j):
-    currentplot=plt.imshow(hist, vmax=10, vmin=0, extent=extent, interpolation='nearest')
+    currentplot=plt.imshow(hist, vmax=35, vmin=0, extent=extent, aspect=1, interpolation='nearest')
     plt.colorbar()
     #plt.savefig('/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_2012_movie_yc/' + '{0:03}'.format(j), bbox_inches=0)
-    plt.savefig('/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_nodriftcal_movie/smallpatch/' + '{0:03}'.format(j), bbox_inches=0)
+    plt.savefig('/cita/h/home-2/anderson/anderson/parkes_analysis_IM/parkes_nodriftcal_movie/center_patch/' + '{0:03}'.format(j), bbox_inches=0)
     plt.close()
 
 #hitmap = np.zeros((50,200))
-hitmap = np.zeros((60,60))
-#ran=ra_min(matches)
-#rax=ra_max(matches)
-#decn=dec_min(matches)
-#decx=dec_max(matches)
+hitmap = np.zeros((200,600))
+ran=ra_min(matches)
+rax=ra_max(matches)
+decn=dec_min(matches)
+decx=dec_max(matches)
 
-ran=38.5
-rax=41.5
-decn=-31.5
-decx=-28.5
+#print ran
+#print rax
+#print decn
+#print decx
+#ran=38.5
+#rax=41.5
+#decn=-31.5
+#decx=-28.5
 
 #ran=24.5
 #rax=27.5
@@ -104,10 +108,24 @@ for file in matches:
     (skycov, dec_edge, ra_edge) = np.histogram2d(dec_vec, ra_vec,
                                                  range=[[decn,decx],[ran,rax]],                                                  bins=hitmap.shape)
     hitmap += skycov
-    extent=[ra_edge[0], ra_edge[-1], dec_edge[0], dec_edge[-1]]
-    #saveplot(hitmap, extent, i)
+    #extent=[ra_edge[0], ra_edge[-1], dec_edge[0], dec_edge[-1]]
+    extent=[22,32,-26.5,-33.5]
+    saveplot(hitmap[17:183,(3*125):(3*144)], extent, i)
     i += 1
-saveplot(hitmap, extent, 100)
+
+'''for j in np.arange(0,200):
+    if j+1>=67 and j+1<=183:
+        hitmap[18,j]=1000
+        hitmap[184,j]=1000
+    if j+1>=18 and j+1<= 184:
+        hitmap[j,67]=1000
+        hitmap[j,86]=1000
+        hitmap[j,105]=1000
+        hitmap[j,125]=1000
+        hitmap[j,144]=1000
+        hitmap[j,164]=1000
+        hitmap[j,183]=1000
+saveplot(hitmap, extent, 1)'''
 
 #extent=[ra_edge[0], ra_edge[-1], dec_edge[0], dec_edge[-1]]
 #plt.imshow(hitmap, vmax=50, vmin=0, extent=extent, interpolation='nearest')

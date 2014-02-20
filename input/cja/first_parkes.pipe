@@ -5,6 +5,7 @@ Execute using the below the command from the analysis_IM directory.
 """
 
 import os
+import sys
 
 # What files to process.  Instead of listing them, probably better to write a 
 # script to get theses.  Similar to dir_data for GBT.  Perhapse write a
@@ -16,6 +17,26 @@ import os
 #file_names = open('scripts/sorted_datalist_2012_ycf.txt', 'r').read().splitlines()[:5]
 
 file_names = open('scripts/datalist_2008_center.txt', 'r').read().splitlines()
+
+#file_names = file_names[:90]
+#file_names = file_names[90:180]
+#file_names = file_names[:110]
+#file_names = file_names[110:179]
+#file_names = file_names[179:242]
+#file_names = file_names[242:]
+#file_names = file_names[:105]
+#file_names = file_names[105:172]
+#file_names = file_names[172:233]
+#file_names = file_names[233:]
+#file_names = file_names[:86]
+#file_names = file_names[86:161]
+#file_names = file_names[161:317]
+#file_names = file_names[317:]
+#file_names = file_names[:123]
+#file_names = file_names[123:189]
+#file_names = file_names[189:249]
+#file_names = file_names[249:]
+#file_names = file_names[:10]
 
 #file_middles = []
 #for file in file_names:
@@ -38,40 +59,67 @@ base_dir = '/mnt/raid-project/gmrt/anderson/first_parkes_pipe/'
 
 # Maximum number of processes to use. On most machines can use 24+ if no
 # one else is using the machine.
-pipe_processes = 14
+pipe_processes = 24
 
 ####  List of modules to execute.  ####
 # Just comment out any modules you don't want to run.
 pipe_modules = []
 
-from scripts import parkes_to_GBTfits
-pipe_modules.append(parkes_to_GBTfits.Converter)
+#from scripts import parkes_to_GBTfits
+#pipe_modules.append(parkes_to_GBTfits.Converter)
 
 # Need to generalize to 2 polarizations.
-from time_stream import flag_data
-pipe_modules.append(flag_data.FlagData)
+#from time_stream import flag_data
+#pipe_modules.append(flag_data.FlagData)
 
 # This should work out of the box.
-from time_stream import rebin
-pipe_modules.append(rebin.Rebin)
+#from time_stream import rebin
+#pipe_modules.append(rebin.Rebin)
 
 # Need calibration tables to run this and to generalize to 2 polarizations.
 #from time_stream import calibrate
 #pipe_modules.append(calibrate.Calibrate)
 
 # Need to generalize to 2 polarizations.
-from time_stream import rotate_pol
-pipe_modules.append(rotate_pol.RotatePol)
+#from time_stream import rotate_pol
+#pipe_modules.append(rotate_pol.RotatePol)
 
+'''
+import sys, os, inspect
+print sys.path
+cmd_subfolder = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"map")))
+if cmd_subfolder not in sys.path:
+    sys.path.insert(0, cmd_subfolder)
+'''
+
+sys.path.append('/cita/h/home-2/anderson/anderson/parkes_analysis_IM/')
 from map import dirty_map
+#import map.dirty_map as dirty_map
 pipe_modules.append(dirty_map.DirtyMapMaker)
 
 from map import clean_map
+#import map.clean_map as map
 pipe_modules.append(clean_map.CleanMapMaker)
 
 #### Parameters for the modules to be executed. ####
 
-map_prefix = 'test_allbeams_2630_rfiflag_'
+#map_prefix = 'test_allbeams_27n30_10by7_D_'
+#map_prefix = 'test_allbeams_07n30_10by7_0627pixel_'
+map_prefix = 'test_allbeams_n03n30_10by7_0627pixel_'
+#map_prefix = 'test_allbeams_37n30_10by7_0627pixel_'
+#map_prefix = 'test_allbeams_17n30_10by7_0627pixel_A_'
+#map_prefix = 'test_allbeams_17n30_10by7_0627pixel_B_'
+#map_prefix = 'test_allbeams_17n30_10by7_0627pixel_C_'
+#map_prefix = 'test_allbeams_17n30_10by7_0627pixel_D_'
+#map_prefix = 'test_allbeams_07n30_10by7_0627pixel_A_'
+#map_prefix = 'test_allbeams_07n30_10by7_0627pixel_B_'
+#map_prefix = 'test_allbeams_07n30_10by7_0627pixel_C_'
+#map_prefix = 'test_allbeams_07n30_10by7_0627pixel_D_'
+#map_prefix = 'test_allbeams_37n30_10by7_0627pixel_A_'
+#map_prefix = 'test_allbeams_37n30_10by7_0627pixel_B_'
+#map_prefix = 'test_allbeams_37n30_10by7_0627pixel_C_'
+#map_prefix = 'test_allbeams_37n30_10by7_0627pixel_D_'
+map_prefix ='test_allbeams_0n30_8by4_20pixel_'
 
 p2g_input_root = data_root
 p2g_file_middles = file_middles
@@ -137,12 +185,17 @@ dm_scans = ()
 dm_IFs = (0,)
 dm_beams = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
 
-dm_field_centre = (26, -30)
-dm_map_shape = (60, 60)
-dm_pixel_spacing = .05
+#dm_field_centre = (27, -30)
+dm_field_centre = (0, -30)
+#dm_map_shape = (200, 140)
+dm_map_shape = (40, 20)
+#dm_pixel_spacing = .05
+#dm_pixel_spacing = .0627
+dm_pixel_spacing = .20
 dm_noise_parameters_input_root = 'None'
 dm_polarizations = ('I',)
 dm_time_block = 'scan'
+#dm_time_block = 'file'
 dm_n_files_group = 0
 dm_frequency_correlations = 'None'
 dm_number_frequency_modes = 0
