@@ -61,40 +61,32 @@ base_dir = '/mnt/raid-project/gmrt/anderson/first_parkes_pipe/'
 # one else is using the machine.
 pipe_processes = 24
 
+sys.path.append('/cita/h/home-2/anderson/anderson/parkes_analysis_IM/')
+
 ####  List of modules to execute.  ####
 # Just comment out any modules you don't want to run.
 pipe_modules = []
 
-#from scripts import parkes_to_GBTfits
-#pipe_modules.append(parkes_to_GBTfits.Converter)
+from scripts import parkes_to_GBTfits
+pipe_modules.append(parkes_to_GBTfits.Converter)
 
 # Need to generalize to 2 polarizations.
-#from time_stream import flag_data
-#pipe_modules.append(flag_data.FlagData)
+from time_stream import flag_data
+pipe_modules.append(flag_data.FlagData)
 
 # This should work out of the box.
-#from time_stream import rebin
-#pipe_modules.append(rebin.Rebin)
+from time_stream import rebin
+pipe_modules.append(rebin.Rebin)
 
 # Need calibration tables to run this and to generalize to 2 polarizations.
 #from time_stream import calibrate
 #pipe_modules.append(calibrate.Calibrate)
 
 # Need to generalize to 2 polarizations.
-#from time_stream import rotate_pol
-#pipe_modules.append(rotate_pol.RotatePol)
+from time_stream import rotate_pol
+pipe_modules.append(rotate_pol.RotatePol)
 
-'''
-import sys, os, inspect
-print sys.path
-cmd_subfolder = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"map")))
-if cmd_subfolder not in sys.path:
-    sys.path.insert(0, cmd_subfolder)
-'''
-
-sys.path.append('/cita/h/home-2/anderson/anderson/parkes_analysis_IM/')
 from map import dirty_map
-#import map.dirty_map as dirty_map
 pipe_modules.append(dirty_map.DirtyMapMaker)
 
 from map import clean_map

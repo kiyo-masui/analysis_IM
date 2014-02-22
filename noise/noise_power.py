@@ -12,7 +12,7 @@ import scipy.special
 import numpy.random as rand
 import numpy.ma as ma
 # XXX for testing, but needs to be commented for production.
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 from kiyopy import parse_ini
 import kiyopy.utils
@@ -100,7 +100,6 @@ class NoisePower(object) :
         low_f_mat = sp.mean(self.power_mat[1:4 * n_chan + 1,:,:], 0).real
         # Factorize it into preinciple components.
         e, v = linalg.eigh(low_f_mat)
-        e_sorted = sp.sort(e)
         self.low_f_mode_values = e
         # Make sure the eigenvalues are sorted.
         if sp.any(sp.diff(e) < 0):
@@ -387,14 +386,15 @@ def make_masked_time_stream(Blocks, ntime=None, window=None,
         this_nt = Data.dims[0]
         si = start_ind[ii]
         # Subtract the mean calculated above.
-        Data.data -= polys[0,si:si + this_nt,...]
+        this_data = Data.data.copy()
+        this_data -= polys[0,si:si + this_nt,...]
         # If desired, subtract of the linear function of time.
         if subtract_slope:
-            #Data.data -= (total_slope 
+            #this_data -= (total_slope 
             #              * (Data.time[:,None,None,None] - mean_time))
-            Data.data -= polys[1,si:si + this_nt,...]
+            this_data -= polys[1,si:si + this_nt,...]
         # Find the first and last unmasked times.
-        time_unmask = sp.alltrue(ma.getmaskarray(Data.data), -1)
+        time_unmask = sp.alltrue(ma.getmaskarray(this_data), -1)
         time_unmask = sp.alltrue(time_unmask, -1)
         time_unmask = sp.alltrue(time_unmask, -1)
         if sp.alltrue(time_unmask):
@@ -432,9 +432,9 @@ def make_masked_time_stream(Blocks, ntime=None, window=None,
                 else :
                     window_value = 1.0
                 time_stream[ind, ...] = (window_value 
-                                         * Data.data[ii, ...].filled(0.0))
+                                         * this_data[ii, ...].filled(0.0))
                 mask[ind, ...] = window_value * sp.logical_not(ma.getmaskarray(
-                                     Data.data)[ii, ...])
+                                     this_data)[ii, ...])
     if return_means:
         return time_stream, mask, dt, polys[0,0,...]
     else :
@@ -667,7 +667,7 @@ def calculate_full_power_mat(full_data, mask, deconvolve=True, normalize=True):
             if normalize:
                 p /= window_norms
             power_mat[:,:,:,[ii],:] = p
-        if normalize:
+        if normalize and not deconvolve:
             w /= window_norms
         window_function[:,:,:,[ii],:] = w
     return power_mat, window_function
@@ -677,7 +677,7 @@ def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True,
     """Calculate the full power spectrum of a data set with channel
     correlations.
     
-    Only one cal state and pol state assumed.
+    Only one cal state and pol state assumed... Don't think this is true -KM.
     """
     
     if split_scans:

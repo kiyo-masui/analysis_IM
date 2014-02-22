@@ -154,8 +154,8 @@ class Converter(object):
             # These fields are functions of time.
             t_sys = np.array(this_fdata['TSYS'], dtype=np.float64)
             this_Data.set_field('TSYS', t_sys, ('time', 'pol'), '1D') 
-            copy_time_field_float(this_fdata, this_Data, 'CRVAL3', 'RA-OBS')
-            copy_time_field_float(this_fdata, this_Data, 'CRVAL4', 'DEC-OBS')
+            copy_time_field_float(this_fdata, this_Data, 'CRVAL3', 'RA')
+            copy_time_field_float(this_fdata, this_Data, 'CRVAL4', 'DEC')
             copy_time_field_float(this_fdata, this_Data, 'AZIMUTH', 'AZIMUTH')
             copy_time_field_float(this_fdata, this_Data, 'ELEVATIO', 'ELEVATIO')
             copy_time_field_float(this_fdata, this_Data, 'PARANGLE', 'PARANGLE')

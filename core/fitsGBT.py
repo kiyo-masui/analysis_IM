@@ -56,6 +56,8 @@ fields_and_axes = {
                    'AZIMUTH' : ('time', ),
                    'PARANGLE' : ('time', ),
                    'OBSFREQ' : ('time', ),
+                   'RA' : ('time',),
+                   'DEC' : ('time',),
                    # These pointings are corrected for pointing calibration
                    # and I think refraction.
                    'CRVAL2' : ('time', ), # Azimuth or RA
@@ -414,7 +416,7 @@ class Writer() :
                                ' length for all DataBlocks added to Wirter.')
 
         # Copy the reshaped data from the DataBlock
-        data = sp.array(ma.filled(Block.data, float('nan')))
+        data = Block.data.filled(sp.nan)
         if self.first_block_added :
             self.data = data.reshape((n_records, dims[3]))
         else :

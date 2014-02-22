@@ -1,7 +1,8 @@
 """This module contains the class that holds an IF and scan of GBT data"""
 
-import scipy as sp
+import warnings
 
+import scipy as sp
 import numpy.ma as ma
 
 import utils.misc as utils
@@ -42,10 +43,14 @@ class DataBlock(base_data.BaseData) :
         These are stored as attributes (not fields) named ra and dec.  This
         requires the fields 'CRVAL3', 'CRVAL2' and 'DATE-OBS' to be set.
         """
-        if 'DEC-OBS' in self.field.keys() :
-                self.ra = self.field['RA-OBS']
-                self.dec = self.field['DEC-OBS']
-        else:
+
+        try:
+            self.ra = self.field['RA'].copy()
+            self.dec = self.field['DEC'].copy()
+        except KeyError:
+            msg = ("WARNING: Calculating pointing from Az and El.  This is"
+                   " known to have arcminute level errors.")
+            warnings.warn(msg)
             self.ra = sp.zeros(self.dims[0])
             self.dec = sp.zeros(self.dims[0])
             for ii in range(self.dims[0]) :

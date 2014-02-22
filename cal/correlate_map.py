@@ -226,9 +226,9 @@ class Measure(object) :
             if len(band_maps) == 1:
                 maps_to_correlate = band_maps * len(data_pols)
             else:
-                for ii in range(len(data_pols)):
-                    if (misc.polint2str(data_pols[ii])
-                        != self.params['map_polarizations'][ii]):
+                for jj in range(len(data_pols)):
+                    if (misc.polint2str(data_pols[jj])
+                        != self.params['map_polarizations'][jj]):
                         msg = ('Map polarizations not in same order'
                                ' as data polarizations.')
                         raise NotImplementedError(map)
@@ -315,9 +315,9 @@ class Measure(object) :
             if len(band_maps) == 1:
                 maps_to_correlate = band_maps * len(data_pols)
             else:
-                for ii in range(len(data_pols)):
-                    if (misc.polint2str(data_pols[ii])
-                        != self.params['map_polarizations'][ii]):
+                for jj in range(len(data_pols)):
+                    if (misc.polint2str(data_pols[jj])
+                        != self.params['map_polarizations'][jj]):
                         msg = ('Map polarizations not in same order'
                                ' as data polarizations.')
                         raise NotImplementedError(map)

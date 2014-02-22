@@ -1,14 +1,4 @@
 r"""perform operations on sets of map pairs
-
-Some improvements to consider:
-    tag the outputs with the same 15hr_session etc as the data; right now these
-    are fully specified by the directory
-    pro to change: what if files move to a differently-named dir?
-    con: what if tags grow sec_A_15hr_test1_4waysplit_etc.etc_etc._etc._with_B
-    currently prefer more verbose directory names registered in the file db
-
-    have the cleaning act on the weights -- this is probably only relevant when
-    the full N^-1 rather than its diagonal is considered
 """
 import os
 import sys
@@ -16,27 +6,17 @@ import copy
 import time
 import scipy as sp
 import numpy as np
-from utils import file_tools as ft
 from utils import data_paths as dp
-from quadratic_products import corr_estimation as ce
+from foreground_clean import find_modes
 from kiyopy import parse_ini
 import kiyopy.utils
 from core import algebra
 from foreground_clean import map_pair
 from multiprocessing import Process, current_process
 from utils import batch_handler
-# TODO: make map cleaning multiprocess; could also use previous cleaning, e.g.
-# 5 modes to clean 10 modes = modes 5 to 10 (but no need to do this)
-# TODO: move all magic strings to __init__ or params
-# TODO: replace print with logging
-# Special parameters that rarely need to get used
-# no_weights: do not weight before finding nu-nu' covariance (False by default)
-# SVD_root: use the SVD from another cleaning run on this run (None by default)
-# regenerate_noise_inv: do not use memoize to save previous diag(N^-1) calc
-
+import h5py
 
 params_init = {
-               'SVD_root': None,
                'output_root': "local_test",
                'map1': 'GBT_15hr_map',
                'map2': 'GBT_15hr_map',
@@ -47,45 +27,15 @@ params_init = {
                'subtract_inputmap_from_sim': False,
                'subtract_sim_from_inputmap': False,
                'freq_list': (),
-               'tack_on': None,
+               'tack_on_input': None,
+               'tack_on_output': None,
                'convolve': True,
                'factorizable_noise': True,
                'sub_weighted_mean': True,
-               'regenerate_noise_inv': True,
-               'modes': [10, 15],
-               'no_weights': False
+               'svd_filename': None,
+               'modes': [10, 15]
                }
 prefix = 'fs_'
-
-
-def wrap_find_weight(filename, regenerate=False):
-    if regenerate:
-        retval = find_weight(filename)
-    else:
-        retval = memoize_find_weight(filename)
-
-    return batch_handler.repackage_kiyo(retval)
-
-
-@batch_handler.memoize_persistent
-def memoize_find_weight(filename):
-    return find_weight(filename)
-
-
-def find_weight(filename):
-    r"""rather than read the full noise_inv and find its diagonal, cache the
-    diagonal values.
-
-    Note that the .info does not get shelved (class needs to be made
-    serializeable). Return the info separately.
-    """
-    #print "loading noise: " + filename
-    #noise_inv = algebra.make_mat(algebra.open_memmap(filename, mode='r'))
-    #noise_inv_diag = noise_inv.mat_diag()
-    # if optimal map:
-    noise_inv_diag = algebra.make_vect(algebra.load(filename))
-
-    return noise_inv_diag, noise_inv_diag.info
 
 
 class PairSet():
@@ -106,18 +56,21 @@ class PairSet():
                                           prefix=prefix)
 
         self.freq_list = sp.array(self.params['freq_list'], dtype=int)
+        self.tack_on_input = self.params['tack_on_input']
         self.output_root = self.datapath_db.fetch(self.params['output_root'],
-                                                  tack_on=self.params['tack_on'])
+                                            tack_on=self.params['tack_on_output'])
+
         #self.output_root = self.params['output_root']
+        print "foreground cleaning writing to output root", self.output_root
+
         if not os.path.isdir(self.output_root):
             os.mkdir(self.output_root)
 
-        if self.params['SVD_root']:
-            self.SVD_root = self.datapath_db.fetch(self.params['SVD_root'],
-                                                   intend_write=True)
-            print "WARNING: using %s to clean (intended?)" % self.SVD_root
+        if self.params['svd_filename'] is not None:
+            self.svd_filename = self.params['svd_filename']
+            print "WARNING: using %s to clean (intended?)" % self.svd_filename
         else:
-            self.SVD_root = self.output_root
+            self.svd_filename = self.output_root + "/" + "SVD.hd5"
 
         # Write parameter file.
         parse_ini.write_params(self.params, self.output_root + 'params.ini',
@@ -128,8 +81,11 @@ class PairSet():
         r"""main call to execute the various steps in foreground removal"""
         self.load_pairs()
         self.preprocess_pairs()
-        self.calculate_correlation()
-        self.calculate_svd()
+
+        if self.params['svd_filename'] is not None:
+            print "WARNING: skipping correlation/SVD and using existing"
+        else:
+            self.calculate_correlation()
 
         mode_list_stop = self.params['modes']
         mode_list_start = copy.deepcopy(self.params['modes'])
@@ -156,6 +112,7 @@ class PairSet():
                                              par['noise_inv2'],
                                              noise_inv_suffix=";noise_weight",
                                              verbose=False,
+                                             tack_on=self.tack_on_input,
                                              db_to_use=self.datapath_db)
 
         for pairitem in self.pairlist:
@@ -177,15 +134,8 @@ class PairSet():
             else:
                 sim = algebra.zeros_like(map1)
 
-            if not par['no_weights']:
-                noise_inv1 = wrap_find_weight(pdict['noise_inv1'],
-                                regenerate=par['regenerate_noise_inv'])
-
-                noise_inv2 = wrap_find_weight(pdict['noise_inv2'],
-                                regenerate=par['regenerate_noise_inv'])
-            else:
-                noise_inv1 = algebra.ones_like(map1)
-                noise_inv2 = algebra.ones_like(map2)
+            noise_inv1 = algebra.make_vect(algebra.load(pdict['noise_inv1']))
+            noise_inv2 = algebra.make_vect(algebra.load(pdict['noise_inv2']))
 
             pair = map_pair.MapPair(map1 + sim, map2 + sim,
                                     noise_inv1, noise_inv2,
@@ -231,63 +181,55 @@ class PairSet():
 
     @batch_handler.log_timing
     def calculate_correlation(self):
-        r"""Note that multiprocessing's map() is more elegant than Process,
-        but fails for handing in complex map_pair objects
-        """
-        process_list = []
+        r"""find the covariance in frequency space, take SVD"""
+        svd_data_out = h5py.File(self.svd_filename, "w")
+
+        cov_out = svd_data_out.create_group("cov")
+        counts_out = svd_data_out.create_group("cov_counts")
+        svd_vals_out = svd_data_out.create_group("svd_vals")
+        svd_modes1_out = svd_data_out.create_group("svd_modes1")
+        svd_modes2_out = svd_data_out.create_group("svd_modes2")
+
+        nfreq = len(self.freq_list)
+
         for pairitem in self.pairlist:
-            filename = self.output_root
-            filename += "foreground_corr_pair_%s.pkl" % pairitem
-            multi = Process(target=wrap_corr, args=([self.pairs[pairitem],
-                            filename]), name=pairitem)
+            (freq_cov, counts) = self.pairs[pairitem].freq_covariance()
+            cov_out[pairitem] = freq_cov
+            counts_out[pairitem] = counts
 
-            process_list.append(multi)
+            # (vals, modes1, modes2)
+            svd_info = find_modes.get_freq_svd_modes(freq_cov, nfreq)
+            svd_vals_out[pairitem] = svd_info[0]
+            svd_modes1_out[pairitem] = svd_info[1]
+            svd_modes2_out[pairitem] = svd_info[2]
 
-            multi.start()
-
-        for process in process_list:
-            process.join()
-
-    @batch_handler.log_timing
-    def calculate_svd(self):
-        r"""calculate the SVD of all pairs"""
-        for pairitem in self.pairlist:
-            filename = self.output_root
-            filename_corr = filename + "foreground_corr_pair_%s.pkl" % pairitem
-            filename_svd = filename + "SVD_pair_%s.pkl" % pairitem
-            print filename_corr
-            if os.access(filename_corr, os.F_OK):
-                print "SVD loading corr. functions: " + filename
-                (freq_cov, counts) = ft.load_pickle(filename_corr)
-
-                # (vals, modes1, modes2)
-                svd_info = ce.get_freq_svd_modes(freq_cov, len(self.freq_list))
-                ft.save_pickle(svd_info, filename_svd)
-            else:
-                print "ERROR: in SVD, correlation functions not loaded"
-                sys.exit()
+        svd_data_out.close()
 
     @batch_handler.log_timing
     def subtract_foregrounds(self, n_modes_start, n_modes_stop):
+        r"""take the SVD modes from above and clean each LOS with them"""
+        svd_data = h5py.File(self.svd_filename, "r")
+        svd_modes1 = svd_data["svd_modes1"]
+        svd_modes2 = svd_data["svd_modes2"]
+
         for pairitem in self.pairlist:
-            filename_svd = "%s/SVD_pair_%s.pkl" % (self.SVD_root, pairitem)
-            print "subtracting %d to %d modes from %s using %s" % (n_modes_start, \
-                                                                n_modes_stop, \
-                                                                pairitem, \
-                                                                filename_svd)
+            print "subtracting %d to %d modes from %s using %s" % \
+                    (n_modes_start, n_modes_stop, pairitem, self.svd_filename)
 
-            # svd_info: 0 is vals, 1 is modes1 (left), 2 is modes2 (right)
-            svd_info = ft.load_pickle(filename_svd)
+            svd_modes1_pair = svd_modes1[pairitem].value
+            svd_modes2_pair = svd_modes2[pairitem].value
+            svd_modes1_use = svd_modes1_pair[n_modes_start: n_modes_stop]
+            svd_modes2_use = svd_modes2_pair[n_modes_start: n_modes_stop]
 
-            self.pairs[pairitem].subtract_frequency_modes(
-                                    svd_info[1][n_modes_start:n_modes_stop],
-                                    svd_info[2][n_modes_start:n_modes_stop])
+            self.pairs[pairitem].subtract_frequency_modes(svd_modes1_use,
+                                                          svd_modes2_use)
 
             if self.params['subtract_inputmap_from_sim'] or \
                self.params['subtract_sim_from_inputmap']:
                 self.pairs_parallel_track[pairitem].subtract_frequency_modes(
-                                        svd_info[1][n_modes_start:n_modes_stop],
-                                        svd_info[2][n_modes_start:n_modes_stop])
+                                        svd_modes1_use, svd_modes2_use)
+
+        svd_data.close()
 
     @batch_handler.log_timing
     def save_data(self, n_modes):
@@ -375,7 +317,6 @@ class PairSet():
         algebra.save(combined_weight_file, cumulative_weight)
         algebra.save(combined_ones_file, algebra.ones_like(newmap))
 
-    # Service functions ------------------------------------------------------
     def call_pairs(self, call):
         r"""call some operation on the map pairs"""
         for pairitem in self.pairlist:
@@ -401,15 +342,6 @@ class PairSet():
 
                 print "calling %s() on pair %s" % (call, pairitem)
                 method_to_call_parallel_track()
-
-
-def wrap_corr(pair, filename):
-    r"""Do the correlation for a map_pair `pair`.
-    Correlations in the `pair` (map_pair type) are saved to `filename`
-    """
-    name = current_process().name
-    (freq_cov, counts) = pair.freq_covariance()
-    ft.save_pickle((freq_cov, counts), filename)
 
 
 if __name__ == '__main__':

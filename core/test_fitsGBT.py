@@ -31,7 +31,7 @@ ncal = len(cal_set)
 nfreq = 2048
 
 # Fields that should be copied if present but are not in the test data.
-missing_fields = ['BEAM', 'RA-OBS', 'DEC-OBS', 'PARANGLE']
+missing_fields = ['BEAM', 'RA-OBS', 'DEC-OBS', 'PARANGLE', 'RA', 'DEC']
 
 # The name FileProcessor was inherited from an earlier version of this class.
 # It is now not a processor but simple a Reader.
@@ -221,6 +221,14 @@ class TestCircle(unittest.TestCase) :
     def setUp(self) :
         self.Reader = fitsGBT.Reader(fits_test_file_name, 0)
         self.Blocks = list(self.Reader.read([], []))
+        # Manually add in RA and DEC fields as test data was created before
+        # these were standard.
+        for Data in self.Blocks:
+            ntime = Data.dims[0]
+            Data.set_field('RA', sp.arange(ntime, dtype=sp.float64),
+                    axis_names=('time',))
+            Data.set_field('DEC', sp.arange(ntime, 0, -1, dtype=sp.float64),
+                    axis_names=('time',))
 
     def circle(self) :
         self.BlocksToWrite = copy.deepcopy(self.Blocks)
@@ -245,7 +253,7 @@ class TestCircle(unittest.TestCase) :
                 self.assertEqual(OldDB.field[field], NewDB.field[field])
             for field in ['CRVAL1', 'BANDWID', 'RESTFREQ', 'DURATION'] :
                 self.assertAlmostEqual(OldDB.field[field], NewDB.field[field])
-            for field in ['LST', 'ELEVATIO', 'AZIMUTH', 
+            for field in ['LST', 'ELEVATIO', 'AZIMUTH', 'RA', 'DEC',
                           'OBSFREQ', 'CRVAL2', 'CRVAL3', 'EXPOSURE'] :
                 self.assertTrue(sp.allclose(OldDB.field[field], 
                                             NewDB.field[field]))
