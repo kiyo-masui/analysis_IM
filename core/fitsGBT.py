@@ -6,7 +6,7 @@ GBT spectrometer data.
 
 import scipy as sp
 import numpy.ma as ma
-import pyfits
+from astropy.io import fits as pyfits
 
 import kiyopy.custom_exceptions as ce
 import kiyopy.utils as ku
