@@ -515,10 +515,12 @@ class DirtyMapMaker(object):
                 index_list = index_list[self.rank]
                 # Allocate hdf5 file
                 if self.rank == 0:
+                    print 'rank zero' + '\n'
                     print self.n_chan
                     print self.n_ra
                     print self.n_dec
-                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename, 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_ra, self.n_dec), dtype)
+                if start_file_ind == 0:
+                    data_offset, file_size = allocate_hdf5_dataset(self.cov_filename, 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_ra, self.n_dec), dtype)
             else:
                 ra_index_list = range(self.n_ra)
                 # cross product = A x B = (a,b) for all a in A, for all b in B
@@ -531,7 +533,8 @@ class DirtyMapMaker(object):
                 # total matrix a process has.
                 f_ra_start_ind = start_list[self.rank]
                 # Allocate hdf5 file
-                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename, 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_chan, self.n_ra, self.n_dec), dtype)
+                if start_file_ind == 0:
+                    data_offset, file_size = allocate_hdf5_dataset(self.cov_filename, 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_chan, self.n_ra, self.n_dec), dtype)
             # Wait for file to be written before continuing.
             comm.Barrier()
             print '\n' + 'Process ' + str(self.rank) + ' Passed first barrier.' + '\n'

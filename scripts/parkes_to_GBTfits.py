@@ -156,8 +156,8 @@ class Converter(object):
             this_Data.set_field('TSYS', t_sys, ('time', 'pol'), '1D') 
             copy_time_field_float(this_fdata, this_Data, 'CRVAL3', 'RA')
             copy_time_field_float(this_fdata, this_Data, 'CRVAL4', 'DEC')
-            copy_time_field_float(this_fdata, this_Data, 'AZIMUTH', 'AZIMUTH')
-            copy_time_field_float(this_fdata, this_Data, 'ELEVATIO', 'ELEVATIO')
+            copy_time_field_float(this_fdata, this_Data, 'AZIMUTH', 'CRVAL2')
+            copy_time_field_float(this_fdata, this_Data, 'ELEVATIO', 'CRVAL3')
             copy_time_field_float(this_fdata, this_Data, 'PARANGLE', 'PARANGLE')
             # These fields are constants.
             this_Data.set_field('CRVAL4', pol_codes, ('pol',), '1I')
