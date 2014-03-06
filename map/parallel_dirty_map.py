@@ -86,7 +86,8 @@ params_init = {# IO:
                # If there where any foregrounds subtracted in the time stream,
                # let the noise know about it.
                'n_ts_foreground_modes' : 0,
-               'ts_foreground_mode_file' : ''
+               'ts_foreground_mode_file' : '',
+               'thread_divide' : False
                }
 
 comm = MPI.COMM_WORLD
@@ -515,10 +516,12 @@ class DirtyMapMaker(object):
                 index_list = index_list[self.rank]
                 # Allocate hdf5 file
                 if self.rank == 0:
+                    print 'rank zero' + '\n'
                     print self.n_chan
                     print self.n_ra
                     print self.n_dec
-                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename, 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_ra, self.n_dec), dtype)
+                if start_file_ind == 0:
+                    data_offset, file_size = allocate_hdf5_dataset(self.cov_filename, 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_ra, self.n_dec), dtype)
             else:
                 ra_index_list = range(self.n_ra)
                 # cross product = A x B = (a,b) for all a in A, for all b in B
@@ -531,7 +534,8 @@ class DirtyMapMaker(object):
                 # total matrix a process has.
                 f_ra_start_ind = start_list[self.rank]
                 # Allocate hdf5 file
-                data_offset, file_size = allocate_hdf5_dataset(self.cov_filename, 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_chan, self.n_ra, self.n_dec), dtype)
+                if start_file_ind == 0:
+                    data_offset, file_size = allocate_hdf5_dataset(self.cov_filename, 'inv_cov', (self.n_chan, self.n_ra, self.n_dec,                                                                self.n_chan, self.n_ra, self.n_dec), dtype)
             # Wait for file to be written before continuing.
             comm.Barrier()
             print '\n' + 'Process ' + str(self.rank) + ' Passed first barrier.' + '\n'
@@ -563,9 +567,13 @@ class DirtyMapMaker(object):
                 #If first pass, prepare thread_cov_inv_chunk to be worked on by threads
                 if run == 0 and start_file_ind == 0:
                     if self.uncorrelated_channels:
-                        thread_cov_inv_chunk = sp.zeros((len(index_list),                                                                                                                                self.n_ra, self.n_dec,                                                                                                                            self.n_ra, self.n_dec),                                                                                                                            dtype=float)
+                        thread_cov_inv_chunk = sp.zeros((len(index_list),                                                                                                                                self.n_ra, self.n_dec,                                                                                                                            self.n_ra, self.n_dec),                                                                                                                            dtype=dtype)
+                        #Adding prior to the diagonal.
+                        for ii in xrange(len(index_list)):
+                            thread_cov_inv_chunk[ii,...].flat[::self.n_ra * self.n_dec + 1] += \
+                                                            1.0 / T_large**2
                     else:
-                       thread_cov_inv_chunk = sp.zeros((len(index_list),                                                                                                                             self.n_dec, self.n_chan,                                                                                                                          self.n_ra, self.n_dec),                                                                                                                           dtype=float)
+                       thread_cov_inv_chunk = sp.zeros((len(index_list),                                                                                                                             self.n_dec, self.n_chan,                                                                                                                          self.n_ra, self.n_dec),                                                                                                                           dtype=dtype)
                 index_queue = Queue()
                 def thread_work():
                     while True:
@@ -574,33 +582,41 @@ class DirtyMapMaker(object):
                         if thread_inds is None:
                             return
                         if self.uncorrelated_channels:
-                            thread_f_ind = thread_inds
-                            thread_cov_inv_block = sp.zeros((self.n_ra,                                                                                                                          self.n_dec, self.n_ra, self.n_dec), dtype=float)
-                            for thread_D in data_set_list:
-                                thread_D.Pointing.noise_channel_to_map(thread_D.Noise,                                                                                                                 thread_f_ind + index_list[0], thread_cov_inv_block)
-                            if run == 0 and start_file_ind == 0:
-                                #Adding prior to the diagonal.
-                                thread_cov_inv_block.flat[::self.n_ra * self.n_dec + 1] += \
-                                                         1.0 / T_large**2
-                            #No lock below currently.  I don't think it is necessary without the memmap.
-                            thread_cov_inv_chunk[thread_f_ind,...] += thread_cov_inv_block
+                            if params['thread_divide'] == False:
+                                thread_f_ind = thread_inds
+                                #thread_cov_inv_block = sp.zeros((self.n_ra,                                                                                                                          self.n_dec, self.n_ra, self.n_dec), dtype=dtype)
+                                for thread_D in data_set_list:
+                                    thread_D.Pointing.noise_channel_to_map(thread_D.Noise,                                                                                                                 thread_f_ind + index_list[0], thread_cov_inv_chunk[thread_f_ind,...])
+                                #No lock below currently.  I don't think it is necessary without the memmap.
+                                #thread_cov_inv_chunk[thread_f_ind,...] += thread_cov_inv_block
+                            else:
+                                thread_f_ind = thread_inds[0]
+                                ra_vals = thread_inds[1]
+                                ra_min = ra_vals[0]
+                                ra_cap = ra_vals[-1]+1
+                                ra_size = ra_cap - ra_min
+                                #thread_cov_inv_block = sp.zeros((ra_size,                                                                                                                          self.n_dec, self.n_ra, self.n_dec), dtype=float)
+                                for thread_D in data_set_list:
+                                   thread_D.Pointing.noise_channel_to_map(thread_D.Noise,                                                                                                                   thread_f_ind + index_list[0], thread_cov_inv_chunk[thread_f_ind,ra_min:ra_cap,...], ra0_range = [ra_min, ra_cap])
+                                   #No lock below currently. I don't think it is necessary without the memmap.
+                                #thread_cov_inv_chunk[thread_f_ind,ra_min:ra_cap,...] += thread_cov_inv_block
                         else:
                             ii = thread_inds
-                            thread_cov_inv_row = sp.zeros((self.n_dec,                                                                                                                                       self.n_chan, self.n_ra,                                                                                                                           self.n_dec),dtype=float)
+                            #thread_cov_inv_row = sp.zeros((self.n_dec,                                                                                                                                       self.n_chan, self.n_ra,                                                                                                                           self.n_dec),dtype=dtype)
                             thread_f_ind = index_list[ii][0]
                             thread_ra_ind = index_list[ii][1]
                             for thread_D in data_set_list:
-                                thread_D.Pointing.noise_to_map_domain(thread_D.Noise,                                                                                                                                   thread_f_ind,                                                                                                                                     thread_ra_ind, thread_cov_inv_row)
+                                thread_D.Pointing.noise_to_map_domain(thread_D.Noise,                                                                                                                                   thread_f_ind,                                                                                                                                     thread_ra_ind, thread_cov_inv_chunk[ii,...])
                             if run == 0 and start_file_ind == 0:
                                 #Adding prior to the diagonal.
-                                thread_cov_inv_row_adder = thread_cov_inv_row[:, thread_f_ind, thread_ra_ind, :]
-                                thread_cov_inv_row_adder.flat[:: self.n_dec + 1] += \
+                                #thread_cov_inv_row_adder = thread_cov_inv_row[:, thread_f_ind, thread_ra_ind, :]
+                                thread_cov_inv_row_chunk[ii,:, thread_f_ind, thread_ra_ind,:].flat[:: self.n_dec + 1] += \
                                                            1.0 / T_large**2
                             if (self.feedback > 1 and thread_ra_ind == self.n_ra - 1):
                                 print thread_f_ind,
                                 sys.stdout.flush()
-                            thread_cov_inv_chunk[ii,...] += \
-                                                  thread_cov_inv_row
+                            #thread_cov_inv_chunk[ii,...] += \
+                            #                      thread_cov_inv_row
                 #Now start the worker threads.
                 thread_list = []
                 for ii in range(self.n_processes):
@@ -610,7 +626,15 @@ class DirtyMapMaker(object):
                     print '\n' + 'Process ' + str(self.rank) + ' is using ' + str(self.n_processes) + 'threads.' + '\n'
                 #Now put work on the queue for the threads to do.
                 for ii in xrange(len(index_list)):
-                    index_queue.put(ii)
+                    if params['thread_divide'] == False:
+                        index_queue.put(ii)
+                    else:
+                        if self.uncorrelated_channels: 
+                            split_ra = split_elems(xrange(self.n_ra),self.n_processes)[0]
+                            for split in split_ra:
+                                index_queue.put((ii, split))
+                        else:
+                            index_queue.put(ii)
                 for ii in range(self.n_processes):
                     index_queue.put(None)
                 for T in thread_list:
