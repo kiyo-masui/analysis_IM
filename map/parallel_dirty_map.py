@@ -566,9 +566,9 @@ class DirtyMapMaker(object):
                 #If first pass, prepare thread_cov_inv_chunk to be worked on by threads
                 if run == 0 and start_file_ind == 0:
                     if self.uncorrelated_channels:
-                        thread_cov_inv_chunk = sp.zeros((len(index_list),                                                                                                                                self.n_ra, self.n_dec,                                                                                                                            self.n_ra, self.n_dec),                                                                                                                            dtype=float)
+                        thread_cov_inv_chunk = sp.zeros((len(index_list),                                                                                                                                self.n_ra, self.n_dec,                                                                                                                            self.n_ra, self.n_dec),                                                                                                                            dtype=dtype)
                     else:
-                       thread_cov_inv_chunk = sp.zeros((len(index_list),                                                                                                                             self.n_dec, self.n_chan,                                                                                                                          self.n_ra, self.n_dec),                                                                                                                           dtype=float)
+                       thread_cov_inv_chunk = sp.zeros((len(index_list),                                                                                                                             self.n_dec, self.n_chan,                                                                                                                          self.n_ra, self.n_dec),                                                                                                                           dtype=dtype)
                 index_queue = Queue()
                 def thread_work():
                     while True:
@@ -578,7 +578,7 @@ class DirtyMapMaker(object):
                             return
                         if self.uncorrelated_channels:
                             thread_f_ind = thread_inds
-                            thread_cov_inv_block = sp.zeros((self.n_ra,                                                                                                                          self.n_dec, self.n_ra, self.n_dec), dtype=float)
+                            thread_cov_inv_block = sp.zeros((self.n_ra,                                                                                                                          self.n_dec, self.n_ra, self.n_dec), dtype=dtype)
                             for thread_D in data_set_list:
                                 thread_D.Pointing.noise_channel_to_map(thread_D.Noise,                                                                                                                 thread_f_ind + index_list[0], thread_cov_inv_block)
                             if run == 0 and start_file_ind == 0:
@@ -587,9 +587,10 @@ class DirtyMapMaker(object):
                                                          1.0 / T_large**2
                             #No lock below currently.  I don't think it is necessary without the memmap.
                             thread_cov_inv_chunk[thread_f_ind,...] += thread_cov_inv_block
+                            del thread_cov_inv_block
                         else:
                             ii = thread_inds
-                            thread_cov_inv_row = sp.zeros((self.n_dec,                                                                                                                                       self.n_chan, self.n_ra,                                                                                                                           self.n_dec),dtype=float)
+                            thread_cov_inv_row = sp.zeros((self.n_dec,                                                                                                                                       self.n_chan, self.n_ra,                                                                                                                           self.n_dec),dtype=dtype)
                             thread_f_ind = index_list[ii][0]
                             thread_ra_ind = index_list[ii][1]
                             for thread_D in data_set_list:
@@ -604,6 +605,7 @@ class DirtyMapMaker(object):
                                 sys.stdout.flush()
                             thread_cov_inv_chunk[ii,...] += \
                                                   thread_cov_inv_row
+                            del thread_cov_inv_row
                 #Now start the worker threads.
                 thread_list = []
                 for ii in range(self.n_processes):
