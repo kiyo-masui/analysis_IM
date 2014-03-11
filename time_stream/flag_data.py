@@ -5,6 +5,7 @@
 import os
 import copy
 
+import numpy as np
 import numpy.ma as ma
 import scipy as sp
 import scipy.signal as sig
@@ -143,6 +144,11 @@ def flag_data(Data, sigma_thres, badness_thres, time_cut):
     # Flag data on a [deep]copy of Data. If too much destroyed,
     # check if localized in time. If that sucks too, then just hide freq.
 
+    # check the pol number of data
+    if Data.dims[1] == 2:
+        destroy_with_variance = destroy_with_variance_2pol
+        destroy_time_with_mean_arrays = destroy_time_with_mean_arrays_2pol 
+
     Data1 = copy.deepcopy(Data)
     itr = 0            # For recursion
     max_itr = 20       # For recursion
@@ -169,7 +175,7 @@ def flag_data(Data, sigma_thres, badness_thres, time_cut):
         bad_freqs = []
         amount_masked = -1
         while not (amount_masked == 0) and itr < max_itr:
-            amount_masked = destroy_with_variance(Data2, bad_freq_list=bad_freqs) 
+            amount_masked = destroy_with_variance(Data2, sigma_thres, bad_freqs) 
             itr += 1
         bad_freqs.sort()
         percent_masked2 = (float(len(bad_freqs)) / Data2.dims[-1])
@@ -181,8 +187,7 @@ def flag_data(Data, sigma_thres, badness_thres, time_cut):
         if not badness:
             itr = 0
             while not (amount_masked == 0) and itr < max_itr:
-                amount_masked = destroy_with_variance(Data2, sigma_thres,
-                                                      bad_freqs) 
+                amount_masked = destroy_with_variance(Data2, sigma_thres, bad_freqs) 
                 itr += 1
             Data1 = Data2
     # We've flagged the RFI down to the foreground limit.  Filter out the
@@ -265,6 +270,34 @@ def destroy_with_variance(Data, sigma_thres=6, bad_freq_list=[]):
             Data.data[:,:,:,freq].mask = True
     return amount_masked
 
+def destroy_with_variance_2pol(Data, sigma_thres=6, bad_freq_list=[]):
+    '''Mask frequencies with high variance.
+    This is the same as last function, but for Parkes 2 pol data.
+
+    '''
+    # Get the normalized variance array for each polarization.
+    #Data.data[Data.data>3] = ma.masked
+    #Data.data[Data.data<3] = ma.masked
+    Data.data[np.isnan(Data.data)] = ma.masked
+    a = ma.var(Data.data[:,0,0,:],0)/(ma.mean(Data.data[:,0,0,:],0)**2)#XX
+    b = ma.var(Data.data[:,1,0,:],0)/(ma.mean(Data.data[:,1,0,:],0)**2)#YY
+    # Get the mean and standard deviation [sigma].
+    means = sp.array([ma.mean(a), ma.mean(b)]) 
+    sig   = sp.array([ma.std(a), ma.std(b)])
+    # Get the max accepted value [sigma_thres*sigma, sigma_thres=6 works really well].
+    max_sig = sigma_thres*sig
+    max_accepted = means + max_sig
+    min_accepted = means - max_sig
+    amount_masked = 0
+    for freq in range(0, len(a)):
+        if ((a[freq] > max_accepted[0]) or (b[freq] > max_accepted[1]) or
+            (a[freq] < min_accepted[0]) or (b[freq] < min_accepted[1])):
+            # mask
+            amount_masked += 1
+            bad_freq_list.append(freq)
+            Data.data[:,:,:,freq].mask = True
+    return amount_masked
+
 def destroy_time_with_mean_arrays(Data, flag_size=40):
     '''Mask times with high means.
     
@@ -312,6 +345,35 @@ def destroy_time_with_mean_arrays(Data, flag_size=40):
     # Mask bad times and those +- flag_size around.
     for time in bad_times:
         Data.data[(time-flag_size):(time+flag_size),:,:,:].mask = True
+    return
+
+def destroy_time_with_mean_arrays_2pol(Data, flag_size=40):
+    '''Mask times with high means.
+    This is the same as last function, but for Parkes 2 pol data.
+    
+    '''
+    # Get the means over all frequencies. (for all pols. and cals.)
+    a = ma.mean(Data.data[:, 0, 0, :], -1)
+    b = ma.mean(Data.data[:, 1, 0, :], -1)
+    # Get means and std for all arrays.
+    means = sp.array([ma.mean(a), ma.mean(b)])
+    sig = sp.array([ma.std(a), ma.std(b)])
+    # Get max accepted values.
+    max_accepted = means + 3*sig
+    # Get min accepted values.
+    min_accepted = means - 3*sig
+    # Find bad times.
+    bad_times = []
+    for time in range(0,len(a)):
+        if ((a[time] > max_accepted[0]) or (b[time] > max_accepted[1]) or
+            (a[time] < min_accepted[0]) or (b[time] < min_accepted[1])):
+            bad_times.append(time)
+    # Mask bad times and those +- flag_size around.
+    for time in bad_times:
+        if time-flag_size < 0:
+            Data.data[0:(time+flag_size),:,:,:].mask = True
+        else:
+            Data.data[(time-flag_size):(time+flag_size),:,:,:].mask = True
     return
 
 def filter_foregrounds(Data, n_bands=20, time_bins_smooth=10.):
@@ -365,6 +427,7 @@ def filter_foregrounds(Data, n_bands=20, time_bins_smooth=10.):
                                     mode='same')
         foregrounds /= fore_weights
         # Subtract out the foregrounds.
+        #print data.shape
         data[...] -= foregrounds[:,:,:,None]
 
 

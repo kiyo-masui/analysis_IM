@@ -8,7 +8,7 @@ overlap to reduce code redundancy as best I can.
 
 import scipy as sp
 import numpy.ma as ma
-import pyfits
+from astropy.io import fits as pyfits
 
 import kiyopy.custom_exceptions as ce
 import base_data as bd
