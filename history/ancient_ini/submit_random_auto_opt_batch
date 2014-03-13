@@ -1,8 +1,0 @@
-#!/bin/bash
-for a in $(seq 0 99); do
-    b=$(printf %03d ${a})
-    echo $b
-    sed -e "s/RANDINDEX/$b/g" wigglez_auto_correlate.template > wigglez_auto_correlate_rand$b.ini
-    sed -e "s/RANDINDEX/$b/g" wigglez_auto_correlate_pbs.template > wigglez_auto_correlate_rand$b.pbs
-    qsub wigglez_auto_correlate_rand$b.pbs
-done

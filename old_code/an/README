@@ -1,8 +1,0 @@
-This is Aravind's code for flagging rfi.  It is written in C and given a python
-numpy interface using swig.  This needs to be compiled to use the module 
-python_km/time_stream/falg_data.py.  To compile this module, run the following
-commands from this directory:
-
-swig -python rfi.i
-python setup.py build_ext --inplace
-

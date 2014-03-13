@@ -1,8 +1,0 @@
-#!/bin/bash
-for a in $(seq 0 5 50); do
-    b=$(printf %d ${a})
-    echo $b
-    sed -e "s/MODEINDEX/$b/g" wigglez_correlate_modes.template > wigglez_correlate_mode$b.ini
-    #sed -e "s/MODEINDEX/$b/g" wigglez_correlate_modes_pbs.template > wigglez_correlate_mode$b.pbs
-    #qsub wigglez_correlate_mode$b.pbs
-done

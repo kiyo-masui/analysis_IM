@@ -1,8 +1,0 @@
-#!/bin/bash
-for a in $(seq 1 100); do
-    b=$(printf %d ${a})
-    echo $b
-    sed -e "s/RANDINDEX/$b/g" sim_auto_correlate.template > sim_auto_correlate_rand$b.ini
-    sed -e "s/RANDINDEX/$b/g" sim_auto_correlate_pbs.template > sim_auto_correlate_rand$b.pbs
-    qsub sim_auto_correlate_rand$b.pbs
-done

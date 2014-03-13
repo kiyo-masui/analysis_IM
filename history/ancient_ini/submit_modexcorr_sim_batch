@@ -1,8 +1,0 @@
-#!/bin/bash
-for a in $(seq 0 5 50); do
-    b=$(printf %d ${a})
-    echo $b
-    sed -e "s/MODEINDEX/$b/g" sim_xloss_correlate.template > sim_xloss_correlate_mode$b.ini
-    #sed -e "s/MODEINDEX/$b/g" sim_xloss_correlate_pbs.template > sim_xloss_correlate_mode$b.pbs
-    #qsub sim_xloss_correlate_mode$b.pbs
-done
