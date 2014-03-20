@@ -169,8 +169,30 @@ def measure_noise_parameters(Blocks, parameters, split_scans=False,
     Measurement done for all polarizations but only the first cal state.
     """
     
+    cal_ind = 0
     # Initialize the output.
     out_parameters = {}
+    if list(parameters) == ["channel_var"]:
+        # Do something fast and special so we don't have to do wastefull
+        # calculations
+        full_data, mask, dt, channel_means = npow.make_masked_time_stream(
+            Blocks, ntime=-1.05, window="hanning", return_means=True,
+            subtract_slope=True)
+        n_pols = full_data.shape[1]
+        n_time = full_data.shape[0]
+        n_chan = full_data.shape[-1]
+        for ii in range(n_pols):
+            this_pol = Blocks[0].field['CRVAL4'][ii]
+            this_pol_data = full_data[:,ii,cal_ind,:]
+            this_pol_mask = mask[:,ii,cal_ind,:]
+            channel_var = sp.var(this_pol_data, 0)
+            norms = sp.mean(this_pol_mask**2, 0)
+            bad_inds = norms < 10./n_time
+            norms[bad_inds] = 1.
+            channel_var /= norms
+            channel_var[bad_inds] = T_infinity**2
+            out_parameters[this_pol] = {"channel_var" : channel_var}
+        return out_parameters
     # Calculate the full correlated power spectrum.
     power_mat, window_function, dt, channel_means = npow.full_power_mat(
             Blocks, window="hanning", deconvolve=False, n_time=-1.05,
@@ -192,7 +214,6 @@ def measure_noise_parameters(Blocks, parameters, split_scans=False,
     power_mat = power_mat[1:,...]
     n_f = len(frequency)
     # Loop over polarizations.
-    cal_ind = 0
     n_pols = power_mat.shape[1]
     for ii in range(n_pols):
         this_pol_power = power_mat[:,ii,cal_ind,:,:]
@@ -482,7 +503,7 @@ def fit_overf_const(power, window, freq):
         new_weights = abs(model(params))
         weights = old_weights + new_weights
         old_weights = new_weights
-        print params,
+        #print params,
         # XXX
         #plt.figure()
         #plt.loglog(freq, power)
@@ -494,7 +515,7 @@ def fit_overf_const(power, window, freq):
         params, cov_x, info, mesg, ier = sp.optimize.leastsq(residuals, 
                     params, Dfun=jacobian, col_deriv=True, xtol=0.001,
                     full_output=True)
-    print
+    #print
     #plt.figure()
     #plt.loglog(freq, power)
     #plt.loglog(freq, model(params))
