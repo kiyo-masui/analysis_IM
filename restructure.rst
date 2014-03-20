@@ -46,6 +46,11 @@ In What Order
 The Plan
 --------
 
+New documentation page
+----------------------
+
+Set this up first on CITA servers.
+
 SD data tools
 -------------
 
