@@ -152,17 +152,17 @@ pipe_modules = []
 #from time_stream import reflag
 #pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
 
-from noise import measure_noise
-pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
+#from noise import measure_noise
+#pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
-from map import dirty_map
-pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
+#from map import dirty_map
+#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
-#from map import clean_map
-#pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+from map import clean_map
+pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
@@ -413,7 +413,7 @@ mn2_input_root = sf2_subtracted_output_root
 mn2_file_middles = new_file_middles
 mn2_input_end = '.fits'
 mn2_output_root = base_dir + 'noise_measurments_sec/'
-mn2_output_filename = "noise_parameters.shelve"
+mn2_output_filename = "noise_parameters_take2.shelve"
 #mn2_save_spectra_plots = True
 mn2_save_spectra_plots = False
 mn2_time_block = 'scan'
