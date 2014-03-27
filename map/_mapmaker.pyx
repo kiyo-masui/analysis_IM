@@ -194,18 +194,49 @@ def update_map_noise_independant_chan(
     np.ndarray[np.int_t, ndim=3, mode='c'] pointing_inds not None, 
     np.ndarray[DTYPE_t, ndim=2, mode='c'] pointing_weights not None, 
     f_ind_in,
-    np.ndarray[DTYPE_t, ndim=4, mode='c'] map_noise_inv not None):
+    np.ndarray[DTYPE_t, ndim=4, mode='c'] map_noise_inv not None,
+    ra0_ind_range=None,
+    dec0_ind_range=None,
+    ):
     """Convert noise to map space.
     
     This function is only used when ignoring frequency correlations.  The noise
     matrix is update one frequency slice at a time for performance.
-    """
     
+    The total noise covariance matrix is 5D (freq, ra0, dec0, ra1, dec1).  This 
+    function caculates at a since frequency, a range of r0, a range of dec1,
+    all ra1 and all dec1.
+
+    Note that ``map_noise_inv.shape[0]`` should equal 
+    ``ra0_ind_range[1] - ra0_ind_range[0]`` and likewise for 
+    ``map_noise_inv.shape[1]`` and the dec range.
+
+    """
+
+    # TODO: Change the order of the arguments to a more sane scheme, and make 
+    # corresponding change in dirty_map.py.
+    # XXX: Currently the arguments/function is backward compatible with before
+    # the ra0, dec0 range subdivision.
+
     # Shapes.
     cdef int n_chan = diagonal_inv.shape[0]
     cdef int n_time = diagonal_inv.shape[1]
     cdef int n_pix_per_pointing = pointing_inds.shape[2]
     cdef int q = time_modes.shape[0]
+    cdef int ra_ind_start, ra_ind_end
+    cdef int dec_ind_start, dec_ind_end
+    if not ra0_ind_range:
+        ra_ind_start = 0
+        ra_ind_end = map_noise_inv.shape[0]
+    else:
+        ra_ind_start = ra0_ind_range[0]
+        ra_ind_end = ra0_ind_range[1]
+    if not dec0_ind_range:
+        dec_ind_start = 0
+        dec_ind_end = map_noise_inv.shape[1]
+    else:
+        dec_ind_start = dec0_ind_range[0]
+        dec_ind_end = dec0_ind_range[1]
     # Indecies.
     cdef int time_ind
     cdef int f_ind = f_ind_in
@@ -227,6 +258,17 @@ def update_map_noise_independant_chan(
     # Now loop over the pointings.
     with nogil:
         for time_ind in xrange(n_time):
+            # Check if this time touches the ra and dec range we are
+            # updating.
+            for jj in xrange(n_pix_per_pointing):
+                if (pointing_inds_transpose[time_ind,jj,0] >= ra_ind_start
+                    and pointing_inds_transpose[time_ind,jj,0] < ra_ind_end
+                    and pointing_inds_transpose[time_ind,jj,1] >= dec_ind_start
+                    and pointing_inds_transpose[time_ind,jj,1] < dec_ind_end
+                    ):
+                    break
+            else:
+                continue
             # Reset the time noise row to zero.
             for jj in xrange(n_time):
                 update_term[jj] = 0
@@ -246,6 +288,14 @@ def update_map_noise_independant_chan(
             for ii in xrange(n_pix_per_pointing):
                 ra_ind = pointing_inds[time_ind,0,ii]
                 dec_ind = pointing_inds[time_ind,1,ii]
+                if not (ra_ind >= ra_ind_start
+                        and ra_ind < ra_ind_end
+                        and dec_ind >= dec_ind_start
+                        and dec_ind < dec_ind_end
+                        ):
+                    continue
+                ra_ind = ra_ind - ra_ind_start
+                dec_ind = dec_ind - dec_ind_start
                 weight = pointing_weights[time_ind,ii]
                 # Loop over the time axes to convert to pixel and accumulate in
                 # the output matrix.

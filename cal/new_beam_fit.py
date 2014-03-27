@@ -22,15 +22,15 @@ from cal import beam_fit
 data_root = os.getenv('GBT_DATA') + 'GBT12A_418/'
 end = '.fits'
 
-#source = '3C147'
+source = '3C147'
 #source = '3C295'
-source = '3C286'
+#source = '3C286'
 
 # These files we will use to calibrate.
 # Slow scans.
-#cal_files = ['22_3C147_track_' + str(ii) for ii in range(27, 35)]
+cal_files = ['22_3C147_track_' + str(ii) for ii in range(27, 35)]
 #cal_files = ['22_3C295_track_' + str(ii) for ii in range(59, 67)]
-cal_files = ['21_3C286_track_' + str(ii) for ii in range(18, 26)]
+#cal_files = ['21_3C286_track_' + str(ii) for ii in range(18, 26)]
 
 # The following two loops is a standard set of things we do to our raw data
 # when it comes from the telescope.  Our data format is roughly SDfits.
@@ -86,10 +86,15 @@ this_data, this_weight = BeamData.get_data_weight_chan(35)
 plt.plot(this_data[0,:])
 plt.plot(model_data[35,0,:])
 
-pol_beam.plot_beam_map(beam_map[35,...])
-
+pol_beam.plot_beam_map(beam_map[128,...], color_map=0.5, side=1.,
+                       normalize='max03', rotate='XXYYtoIQ')
+cbar = plt.colorbar()
+#cbar.set_label(r"Square root intensity, $ \sgn(I) \sqrt(|I|) $")
+cbar.set_label(r"Square root intensity, (${\rm{sgn}}(I)\,\sqrt{|I|}$)")
+plt.xlabel(r"IQUV, Azimuth (degrees)")
+plt.ylabel(r"Elevation (degrees)")
 
 
 
 # Other usefull plots, if you have two beam fits you want to compare.
-pol_beam.compare_beam_maps(beam_map_295[35], beam_map_147[35], 1)
+pol_beam.compare_beam_maps(beam_map_295[35], beam_map_147[35], 1.)

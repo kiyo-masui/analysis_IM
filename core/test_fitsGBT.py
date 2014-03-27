@@ -241,8 +241,9 @@ class TestCircle(unittest.TestCase) :
                 self.assertEqual(OldDB.dims[ii], NewDB.dims[ii])
             self.assertTrue(ma.allclose(OldDB.data, NewDB.data))
             for field, axis in fitsGBT.fields_and_axes.iteritems() :
-                self.assertEqual(axis, OldDB.field_axes[field])
-                self.assertEqual(axis, NewDB.field_axes[field])
+                if field in OldDB.field.keys():
+                    self.assertEqual(axis, OldDB.field_axes[field])
+                    self.assertEqual(axis, NewDB.field_axes[field])
             for field in ['SCAN', 'OBJECT', 'TIMESTAMP',
                           'OBSERVER', 'CRPIX1', 'CDELT1'] :
                 self.assertEqual(OldDB.field[field], NewDB.field[field])

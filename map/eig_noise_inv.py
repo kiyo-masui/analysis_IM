@@ -51,9 +51,10 @@ class EigNoise(object):
         npy = npx
         pscore.initmpi(gridsize=[npx, npy], blocksize=blocksize)
         # Make parent directory and write parameter file.
-        kiyopy.utils.mkparents(params['output_root'])
-        parse_ini.write_params(params, params['output_root'] + 'params.ini',
-                               prefix=prefix)
+        if rank == 0:
+            kiyopy.utils.mkparents(params['output_root'])
+            parse_ini.write_params(params, params['output_root'] + 'params.ini',
+                                   prefix=prefix)
         in_root = params['input_root']
         out_root = params['output_root']
         # Figure out what the band names are.
@@ -68,6 +69,7 @@ class EigNoise(object):
                 # need.
                 shape, fortran_order, dtype, header_length = \
                         npyutils.read_header_data(noise_fname)
+                print "shape: %s || fortran_order: %s || dtype: %s" % (repr(shape),repr(fortran_order),repr(dtype))
                 if len(shape) != 6 or fortran_order or dtype != '<f8':
                     msg = "Noise matrix header not as expected."
                     raise ce.DataError(msg)
@@ -77,12 +79,16 @@ class EigNoise(object):
                     raise ce.DataError(msg)
                 n = shape[0] * shape[1] * shape[2]
                 mat_shape = (n, n)
+                print "Making Distributed Matrix."
                 Mat = pscore.DistributedMatrix.from_npy(noise_fname,
                         blocksize=blocksize, shape_override=mat_shape)
                 # Replace with a Scalapack call.
+                print "Eval decomposition."
                 evals, evects = psroutine.pdsyevd(Mat, destroy=True)
+                print "Done decomposition."
                 #evals = np.zeros(n)
                 #evects = Mat
+                evals, evects = psroutine.pdsyevd(Mat, destroy=True)
                 # Now construct meta data for these objects.
                 evals = algebra.make_mat(evals, axis_names=('mode',),
                                          row_axes=(0,), col_axes=(0,))

@@ -49,7 +49,7 @@ base_dir = os.getenv('GBT_OUT')
 data_dir = os.getenv('GBT_DATA')
 base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
-map_base = base_dir + 'maps/july16/'
+map_base = base_dir + 'maps/july19/'
 #map_base = '/mnt/scratch-pen/kiyo/gbt_out/' + 'maps/june8/'
 
 
@@ -58,7 +58,7 @@ prefix = ''
 map_prefix = '' + field + '_' + '41-90' + '_'
 
 # Maximum number of processes to use.
-pipe_processes = 12
+pipe_processes = 64
 
 
 ####  List of modules to execute.  ####
@@ -113,17 +113,17 @@ pipe_modules = []
 #from noise import measure_noise
 #pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
-#from map import dirty_map
-#pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
+from map import dirty_map
+pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmB_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
-from map import clean_map
-pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
-pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
-pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
-pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
+#from map import clean_map
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
 
 
 #### Parameters for the various modules. ####
@@ -255,8 +255,6 @@ cm_save_noise_diag = True
 # measure gain relative to map (stokes I).
 mc2_input_root = rp_output_root
 mc2_file_middles = file_middles
-# XXX
-#mc2_file_middles = middles_temp
 mc2_input_end = '.fits'
 mc2_output_root = base_dir + 'map_correlation_sec/'
 mc2_output_filename = "correlations.shelve"
@@ -336,12 +334,13 @@ sb2s_n_bins_band = 80
 sb2s_offset = 0
 
 # measure_noise
+mn2_input_root = sb2s_output_root
 # XXX
-#mn2_input_root = sb2s_output_root
-mn2_input_root = sf2_subtracted_output_root
+#mn2_input_root = sf2_subtracted_output_root
 mn2_file_middles = file_middles
 mn2_input_end = '.fits'
 mn2_output_root = base_dir + 'noise_measurments_sec/'
+# XXX
 mn2_output_filename = "noise_parameters_1hr.shelve"
 mn2_save_spectra_plots = True
 mn2_time_block = 'scan'
@@ -350,17 +349,17 @@ mn2_IFs = ()
 
 # XXX
 mn2_parameters = ["channel_var", "freq_modes_over_f_0",
-#                 "freq_modes_over_f_1", "freq_modes_over_f_2",
-#                 "freq_modes_over_f_3", "freq_modes_over_f_4",
-#                 "freq_modes_over_f_5", "freq_modes_over_f_6",
-#                 "freq_modes_over_f_7", "freq_modes_over_f_8",
+                 "freq_modes_over_f_1", "freq_modes_over_f_2",
+                 "freq_modes_over_f_3", "freq_modes_over_f_4",
+                 "freq_modes_over_f_5", "freq_modes_over_f_6",
+                 "freq_modes_over_f_7", "freq_modes_over_f_8",
                  ]
 
 # dirty_map
 # Map A
+dmA_input_root = sb2_output_root
 # XXX
-#dmA_input_root = sb2_output_root
-dmA_input_root = sf2_output_root
+#dmA_input_root = sf2_output_root
 dmA_file_middles = middles_a
 dmA_input_end = '.fits'
 dmA_output_root = map_base + 'secA_' + map_prefix
@@ -375,9 +374,9 @@ dmA_time_block = 'scan'
 #dmA_n_files_group = 420  # prawn
 dmA_n_files_group = 280  # tpb nodes.
 #dmA_n_files_group = 120
-#dmA_frequency_correlations = 'measured'
+dmA_frequency_correlations = 'measured'
 # XXX
-dmA_frequency_correlations = 'None'
+#dmA_frequency_correlations = 'None'
 dmA_number_frequency_modes = 3  # Probably most appropriate.
 dmA_number_frequency_modes_discard = 1
 dmA_noise_parameter_file = mn2_output_root + mn2_output_filename
