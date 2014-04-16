@@ -767,7 +767,8 @@ class DirtyMapMaker(object):
                 #total_shape = (self.n_chan*self.n_ra, self.n_dec,
                              #  self.n_chan, self.n_ra, self.n_dec)
                 #start_ind = (f_ra_start_ind,0,0,0,0)
-            lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename, data_offset + dsize*f_ra_start_ind*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
+            lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename, data_offset + dsize*f_ra_start_ind*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size, self.rank)
+            del thread_cov_inv_chunk
             f = h5py.File(self.cov_filename, 'r+')
             cov_inv_dset = f['inv_cov']
             cov_inv_shape = sp.zeros(shape = (self.n_chan, self.n_ra, self.n_dec, self,n_chan, self.n_ra, self.n_dec), dtype = dtype)
@@ -790,11 +791,13 @@ class DirtyMapMaker(object):
                 #total_shape = (self.n_chan, self.n_ra,
                              #  self.n_dec, self.n_ra, self.n_dec)
                 #start_ind = (index_list[0],0,0,0,0)
-            lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename, data_offset + dsize*index_list[0]*self.n_dec*self.n_ra*self.n_dec*self.n_ra, dsize*thread_cov_inv_chunk.size)
+            lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename, data_offset + dsize*index_list[0]*self.n_dec*self.n_ra*self.n_dec*self.n_ra, dsize*thread_cov_inv_chunk.size, self.rank)
+            #del thread_cov_inv_chunk
             f = h5py.File(self.cov_filename, 'r+')
             cov_inv_dset = f['inv_cov']
             #cov_inv = al.make_mat(cov_inv_dset,                                                                                                                 axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                  row_axes=(0, 1, 2), col_axes=(0, 3, 4))
-            cov_inv_shape = sp.zeros(shape = (self.n_chan, self.n_ra, self.n_dec, self.n_ra, self.n_dec), dtype = dtype)
+            #cov_inv_shape = sp.zeros(shape = (self.n_chan, self.n_ra, self.n_dec, self.n_ra, self.n_dec), dtype = dtype)
+            #cov_inv_info = al.make_mat(cov_inv_shape,                                                                                                                      axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                       row_axes=(0, 1, 2), col_axes=(0, 3, 4))
             cov_inv_info = al.make_mat(cov_inv_shape,                                                                                                                      axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                       row_axes=(0, 1, 2), col_axes=(0, 3, 4))
             cov_inv_info.copy_axis_info(map)
             for key, value in cov_inv_info.info.iteritems():
@@ -890,7 +893,7 @@ def cross(set_list):
                 remaining.insert(0,cross_2)
                 return cross(remaining)
 
-def lock_and_write_buffer(obj, fname, offset, size):
+def lock_and_write_buffer(obj, fname, offset, size, proc):
     """Write the contents of a buffer to disk at a given offset, and explicitly
     lock the region of the file whilst doing so.
 
@@ -925,12 +928,28 @@ def lock_and_write_buffer(obj, fname, offset, size):
         print "Could not obtain lock"
 
     os.lseek(fd, offset, 0)
+    
+    a=0
+    while(True):
+    #while(len(buf)>0):
+        #nb = os.write(fd,buf)
+        nb = os.write(fd, buf[a:])
+        print "The buffer save started at byte " + str(a) + " for process " + str(proc)
+        if nb < 0:
+            raise Exception("Failed write")
 
+        if nb == len(buf[a:]):
+            break
+        else:
+            a += nb
+        #buf = buf[nb:]
+
+    '''
     nb = os.write(fd, buf)
 
     if nb != len(buf):
-        raise Exception("Something funny happened with the reading.")
-
+        #raise Exception("Something funny happened with the reading.")
+        raise Exception("Something funny happened with the reading." + "  The buffer is length " + str(len(buf)) + " but the number of bytes written was " + str(nb) + " for process " + str(proc) + "." ) '''
     try:
         fcntl.lockf(fd, fcntl.LOCK_UN)
     except:
