@@ -169,6 +169,7 @@ class DirtyMapMaker(object):
         spacing = params["pixel_spacing"]
         # Negative sign because RA increases from right to left.
         ra_spacing = -spacing/sp.cos(params['field_centre'][1]*sp.pi/180.)
+        self.ra_spacing = ra_spacing
         # To set some parameters, we have to read the first data file.
         first_file_name = (params["input_root"] + params["file_middles"][0]
                            + params["input_end"])
@@ -795,12 +796,23 @@ class DirtyMapMaker(object):
             if self.rank == 0:
                 f = h5py.File(self.cov_filename, 'r+')
                 cov_inv_dset = f['inv_cov']
+                attrs = con_inv_dset.attrs
+                attrs.__setitem__('rows', (0, 1, 2))
+                attrs.__setitem__('cols', (0, 3, 4))
+                attrs.__setitem__('dec_centre', self.params['field_centre'][1])
+                attrs.__setitem__('ra_centre', self.params['field_centre'][0])
+                attrs.__setitem__('type', "'mat'")
+                attrs.__setitem__('axes', "('freq', 'ra', 'dec', 'ra', 'dec')")
+                attrs.__setitem__('freq_centre', band_centre)
+                attrs.__setitem__('freq_delta', self.delta_freq)
+                attrs.__setitem__('ra_delta', self.ra_spacing)
+                attrs.__setitem__('dec_delta', self.params['pixel_spacing'])
                 #cov_inv = al.make_mat(cov_inv_dset,                                                                                                                 axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                  row_axes=(0, 1, 2), col_axes=(0, 3, 4))
                 #cov_inv_shape = sp.zeros(shape = (self.n_chan, self.n_ra, self.n_dec, self.n_ra, self.n_dec), dtype = dtype)
-                cov_inv_shape = _mapmaker_c.large_empty((self.n_chan, self.n_ra, self.n_dec, self.n_ra, self.n_dec))
-                cov_inv_info = al.make_mat(cov_inv_shape,                                                                                                                      axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                       row_axes=(0, 1, 2), col_axes=(0, 3, 4))
-                cov_inv_info.copy_axis_info(map)
-                for key, value in cov_inv_info.info.iteritems():
+                #cov_inv_shape = _mapmaker_c.large_empty((self.n_chan, self.n_ra, self.n_dec, self.n_ra, self.n_dec))
+                #cov_inv_info = al.make_mat(cov_inv_shape,                                                                                                                      axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                       row_axes=(0, 1, 2), col_axes=(0, 3, 4))
+                #cov_inv_info.copy_axis_info(map)
+                #for key, value in cov_inv_info.info.iteritems():
                     cov_inv_dset.attrs[key] = repr(value)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
