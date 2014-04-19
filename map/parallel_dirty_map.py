@@ -272,7 +272,8 @@ class DirtyMapMaker(object):
                 # To write the noise_inverse, all we have to do is delete the
                 # memeory map object.
                 #del self.cov_inv, cov_inv
-                al.save(map_filename, map)
+                if self.rank == 0:
+                    al.save(map_filename, map)
         if not self.noise_params is None:
             self.noise_params.close()
     
@@ -796,7 +797,7 @@ class DirtyMapMaker(object):
             if self.rank == 0:
                 f = h5py.File(self.cov_filename, 'r+')
                 cov_inv_dset = f['inv_cov']
-                attrs = con_inv_dset.attrs
+                attrs = cov_inv_dset.attrs
                 attrs.__setitem__('rows', (0, 1, 2))
                 attrs.__setitem__('cols', (0, 3, 4))
                 attrs.__setitem__('dec_centre', self.params['field_centre'][1])
@@ -813,7 +814,7 @@ class DirtyMapMaker(object):
                 #cov_inv_info = al.make_mat(cov_inv_shape,                                                                                                                      axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                       row_axes=(0, 1, 2), col_axes=(0, 3, 4))
                 #cov_inv_info.copy_axis_info(map)
                 #for key, value in cov_inv_info.info.iteritems():
-                    cov_inv_dset.attrs[key] = repr(value)
+                #    cov_inv_dset.attrs[key] = repr(value)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
