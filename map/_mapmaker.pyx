@@ -9,7 +9,12 @@ cimport cython
 
 # We will do everything in double precision.
 DTYPE = np.float
+DTYPE_num = np.NPY_FLOAT64
 ctypedef np.float_t DTYPE_t
+
+cdef extern from "stdlib.h":
+    void free(void* ptr)
+    void* malloc(size_t size)
 
 
 @cython.boundscheck(False)
@@ -130,6 +135,52 @@ def update_map_noise_chan_ra_row(
                             this_dec = pointing_inds_transpose[kk,pp,1]
                             tmp2 = tmp1 * pointing_weights[kk,pp]
                             map_noise_inv[dec_ind,jj,this_ra,this_dec] += tmp2
+
+cdef class memory_container:
+    """Creates and holds a memory buffer.
+Deallocates the memory when instance goes out of scope, even if other
+objects are using the buffer.
+"""
+
+    cdef void * buffer
+
+    def __cinit__(self, size):
+        self.buffer = <DTYPE_t *> malloc(size)
+        if not buffer:
+            raise MemoryError()
+
+    cdef void * get_buffer(self):
+        return self.buffer
+
+    def __dealloc__(self):
+        free(self.buffer)
+
+class buffer_array(np.ndarray):
+    _memory_handler = None
+
+def large_empty(shape):
+    
+    # Get all the dimensions in the right format.
+    cdef int nd = len(shape)
+    # Very important to use this type.
+    cdef np.npy_intp * dims = <np.npy_intp *> malloc(nd * sizeof(np.npy_intp))
+    cdef long size = 1
+    for ii, dim in enumerate(shape):
+        dims[ii] = dim
+        size *= dim
+    # Allocate all the memory we need in a buffer.
+    cdef memory_container mem
+    mem = memory_container(size * sizeof(DTYPE_t))
+    # Get the buffer and convert it to a numpy array.
+    cdef void * buf = mem.get_buffer()
+    arr = np.PyArray_SimpleNewFromData(nd, dims, DTYPE_num, buf)
+    # Store the only living reference (once this function returns) to the
+    # memory container on the array.
+    arr = arr.view(buffer_array)
+    arr._memory_handler = mem
+    
+    free(dims)
+    return arr
 
 def get_noise_inv_diag(
     np.ndarray[DTYPE_t, ndim=2, mode='c'] diagonal_inv not None, 

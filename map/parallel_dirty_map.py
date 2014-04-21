@@ -169,6 +169,7 @@ class DirtyMapMaker(object):
         spacing = params["pixel_spacing"]
         # Negative sign because RA increases from right to left.
         ra_spacing = -spacing/sp.cos(params['field_centre'][1]*sp.pi/180.)
+        self.ra_spacing = ra_spacing
         # To set some parameters, we have to read the first data file.
         first_file_name = (params["input_root"] + params["file_middles"][0]
                            + params["input_end"])
@@ -271,7 +272,8 @@ class DirtyMapMaker(object):
                 # To write the noise_inverse, all we have to do is delete the
                 # memeory map object.
                 #del self.cov_inv, cov_inv
-                al.save(map_filename, map)
+                if self.rank == 0:
+                    al.save(map_filename, map)
         if not self.noise_params is None:
             self.noise_params.close()
     
@@ -767,14 +769,15 @@ class DirtyMapMaker(object):
                 #total_shape = (self.n_chan*self.n_ra, self.n_dec,
                              #  self.n_chan, self.n_ra, self.n_dec)
                 #start_ind = (f_ra_start_ind,0,0,0,0)
-            lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename, data_offset + dsize*f_ra_start_ind*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
-            f = h5py.File(self.cov_filename, 'r+')
-            cov_inv_dset = f['inv_cov']
-            cov_inv_shape = sp.zeros(shape = (self.n_chan, self.n_ra, self.n_dec, self,n_chan, self.n_ra, self.n_dec), dtype = dtype)
-            cov_inv_info = al.make_mat(cov_inv_shape, axis_names=('freq', 'ra', 'dec','freq', 'ra', 'dec'),                                                                                                           row_axes=(0, 1, 2), col_axes=(3, 4, 5))
-            cov_inv_info.copy_axis_info(map)
-            for key, value in cov_inv_info.info.iteritems():
-                cov_inv_dset.attrs[key] = repr(value)
+            lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename, data_offset + dsize*f_ra_start_ind*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size, self.rank)
+            if self.rank == 0:
+                f = h5py.File(self.cov_filename, 'r+')
+                cov_inv_dset = f['inv_cov']
+                cov_inv_shape = sp.zeros(shape = (self.n_chan, self.n_ra, self.n_dec, self,n_chan, self.n_ra, self.n_dec), dtype = dtype)
+                cov_inv_info = al.make_mat(cov_inv_shape, axis_names=('freq', 'ra', 'dec','freq', 'ra', 'dec'),                                                                                                           row_axes=(0, 1, 2), col_axes=(3, 4, 5))
+                cov_inv_info.copy_axis_info(map)
+                for key, value in cov_inv_info.info.iteritems():
+                    cov_inv_dset.attrs[key] = repr(value)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
@@ -790,15 +793,28 @@ class DirtyMapMaker(object):
                 #total_shape = (self.n_chan, self.n_ra,
                              #  self.n_dec, self.n_ra, self.n_dec)
                 #start_ind = (index_list[0],0,0,0,0)
-            lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename, data_offset + dsize*index_list[0]*self.n_dec*self.n_ra*self.n_dec*self.n_ra, dsize*thread_cov_inv_chunk.size)
-            f = h5py.File(self.cov_filename, 'r+')
-            cov_inv_dset = f['inv_cov']
-            #cov_inv = al.make_mat(cov_inv_dset,                                                                                                                 axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                  row_axes=(0, 1, 2), col_axes=(0, 3, 4))
-            cov_inv_shape = sp.zeros(shape = (self.n_chan, self.n_ra, self.n_dec, self.n_ra, self.n_dec), dtype = dtype)
-            cov_inv_info = al.make_mat(cov_inv_shape,                                                                                                                      axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                       row_axes=(0, 1, 2), col_axes=(0, 3, 4))
-            cov_inv_info.copy_axis_info(map)
-            for key, value in cov_inv_info.info.iteritems():
-                cov_inv_dset.attrs[key] = repr(value)
+            lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename, data_offset + dsize*index_list[0]*self.n_dec*self.n_ra*self.n_dec*self.n_ra, dsize*thread_cov_inv_chunk.size, self.rank)
+            if self.rank == 0:
+                f = h5py.File(self.cov_filename, 'r+')
+                cov_inv_dset = f['inv_cov']
+                attrs = cov_inv_dset.attrs
+                attrs.__setitem__('rows', (0, 1, 2))
+                attrs.__setitem__('cols', (0, 3, 4))
+                attrs.__setitem__('dec_centre', self.params['field_centre'][1])
+                attrs.__setitem__('ra_centre', self.params['field_centre'][0])
+                attrs.__setitem__('type', "'mat'")
+                attrs.__setitem__('axes', "('freq', 'ra', 'dec', 'ra', 'dec')")
+                attrs.__setitem__('freq_centre', band_centre)
+                attrs.__setitem__('freq_delta', self.delta_freq)
+                attrs.__setitem__('ra_delta', self.ra_spacing)
+                attrs.__setitem__('dec_delta', self.params['pixel_spacing'])
+                #cov_inv = al.make_mat(cov_inv_dset,                                                                                                                 axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                  row_axes=(0, 1, 2), col_axes=(0, 3, 4))
+                #cov_inv_shape = sp.zeros(shape = (self.n_chan, self.n_ra, self.n_dec, self.n_ra, self.n_dec), dtype = dtype)
+                #cov_inv_shape = _mapmaker_c.large_empty((self.n_chan, self.n_ra, self.n_dec, self.n_ra, self.n_dec))
+                #cov_inv_info = al.make_mat(cov_inv_shape,                                                                                                                      axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                       row_axes=(0, 1, 2), col_axes=(0, 3, 4))
+                #cov_inv_info.copy_axis_info(map)
+                #for key, value in cov_inv_info.info.iteritems():
+                #    cov_inv_dset.attrs[key] = repr(value)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
@@ -890,7 +906,7 @@ def cross(set_list):
                 remaining.insert(0,cross_2)
                 return cross(remaining)
 
-def lock_and_write_buffer(obj, fname, offset, size):
+def lock_and_write_buffer(obj, fname, offset, size, proc):
     """Write the contents of a buffer to disk at a given offset, and explicitly
     lock the region of the file whilst doing so.
 
@@ -925,12 +941,28 @@ def lock_and_write_buffer(obj, fname, offset, size):
         print "Could not obtain lock"
 
     os.lseek(fd, offset, 0)
+    
+    a=0
+    while(True):
+    #while(len(buf)>0):
+        #nb = os.write(fd,buf)
+        nb = os.write(fd, buf[a:])
+        print "The buffer save started at byte " + str(a) + " for process " + str(proc)
+        if nb < 0:
+            raise Exception("Failed write")
 
+        if nb == len(buf[a:]):
+            break
+        else:
+            a += nb
+        #buf = buf[nb:]
+
+    '''
     nb = os.write(fd, buf)
 
     if nb != len(buf):
-        raise Exception("Something funny happened with the reading.")
-
+        #raise Exception("Something funny happened with the reading.")
+        raise Exception("Something funny happened with the reading." + "  The buffer is length " + str(len(buf)) + " but the number of bytes written was " + str(nb) + " for process " + str(proc) + "." ) '''
     try:
         fcntl.lockf(fd, fcntl.LOCK_UN)
     except:
