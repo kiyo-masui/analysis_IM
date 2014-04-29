@@ -25,6 +25,7 @@ params_init = {'input_root' : './',
                'save_cholesky' : False,
                'from_eig' : False,
                'bands' : ()
+               'mem_lim' : ()
                }
 prefix = 'cm_'
 
@@ -130,7 +131,7 @@ class CleanMapMaker(object) :
                         noise_inv = algebra.make_mat(noise_inv)
                     elif noise_fname.split('.')[-1] == 'hdf5':
                         noise_h5 = h5py.File(noise_fname, 'r')
-                        noise_inv = algebra.load_h5(noise_h5, 'inv_cov')
+                        noise_inv = algebra.load_h5_memmap(noise_h5, 'inv_cov', noisefname + ".npy" , params["mem_lim"])
                         noise_inv = algebra.make_mat(noise_inv)
                     else:
                         raise ValueError("Noise file is of unsupported type, neither .npy or .hdf5.")

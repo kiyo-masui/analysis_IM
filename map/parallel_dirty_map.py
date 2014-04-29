@@ -10,6 +10,8 @@ import sys
 
 from mpi4py import MPI
 
+#from memory_profiler import profile
+
 import math
 import threading
 from Queue import Queue
@@ -906,6 +908,7 @@ def cross(set_list):
                 remaining.insert(0,cross_2)
                 return cross(remaining)
 
+#@profile
 def lock_and_write_buffer(obj, fname, offset, size, proc):
     """Write the contents of a buffer to disk at a given offset, and explicitly
     lock the region of the file whilst doing so.
