@@ -7,7 +7,8 @@ import scipy as sp
 
 # What data to process and how to split it up.
 #field = '11hr'
-field = '15hr'
+#field = '15hr'
+field = '1hr'
 
 #sessions = range(41, 90)
 # According to Tabitha, cal unstable in sessions 52 to 58.
@@ -67,11 +68,11 @@ middles_temp = tuple(dir_data.get_data_files([47], field='15hr',
 #      adjusted to (140,81) due to memory limits.
 # 11hr: RA center = 162.5, DEC center = 3.25 (Total is 18.5,9.5). Try pixel spacing = 0.25, map shape =(74,38)
 
-map_centre = (217.8688,2.0)
+map_centre = (13.0,1.85)
 # For maps where performace isn't important.
 #map0_shape = (100, 60)
 #map0_spacing = .040
-map0_shape = (78, 43)
+map0_shape = (161, 83)
 map0_spacing = .0627
 #map0_shape = (78, 43)
 #map0_spacing = .0627
@@ -88,11 +89,11 @@ base_dir = base_dir_main
 #base_tcv = os.getenv('GBT_TCV')
 # Which set of maps we are working on.
 #map_base = base_dir + 'maps/'
-map_base = base_dir_main + 'maps/'+'15hr_41-80_pointcorr/'
+map_base = base_dir_main + 'maps/'+'1hr_parallel_test/'
 
 # IO directory and file prefixes.
 prefix = ''
-map_prefix = '' + field + '_' + '41-80_pointcorr' + '_'
+map_prefix = '' + field + '_' + '80-18_ptcorr' + '_'
 
 # Maximum number of processes to use.
 pipe_processes = 1
@@ -137,8 +138,8 @@ pipe_modules = []
 #from map import dirty_map
 #pipe_modules.append(dirty_map.DirtyMapMaker)
 
-#from map import clean_map
-#pipe_modules.append(clean_map.CleanMapMaker)
+from map import clean_map
+pipe_modules.append(clean_map.CleanMapMaker)
 
 
 #### Second Map making iteration ####
@@ -161,8 +162,8 @@ pipe_modules = []
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmC_', 'dm_')))
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmD_', 'dm_')))
 
-from map import clean_map
-pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
+#from map import clean_map
+#pipe_modules.append((clean_map.CleanMapMaker, ('cmA_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmB_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmC_', 'cm_')))
 #pipe_modules.append((clean_map.CleanMapMaker, ('cmD_', 'cm_')))
@@ -321,7 +322,8 @@ dm_input_root = rp_output_root
 dm_file_middles = file_middles
 #dm_file_middles = middles_firs
 dm_input_end = '.fits'
-dm_output_root = map_base + 'fir_' + map_prefix
+dm_output_root = map_base + map_prefix
+#dm_output_root = map_base + 'fir_' + map_prefix
 dm_scans = ()
 dm_IFs = ()
 
@@ -342,10 +344,11 @@ dm_interpolation = 'cubic'
 # clean_map
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
-#cm_polarizations = ('V',)
-cm_polarizations = ('I','Q','U','V')
+cm_polarizations = ('I',)
+#cm_polarizations = ('I','Q','U','V')
 cm_bands = (800,)
 cm_save_noise_diag = True
+cm_mem_lim = (2)
 
 #### Second round of map making #####
 
