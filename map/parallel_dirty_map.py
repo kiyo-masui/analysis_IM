@@ -10,7 +10,7 @@ import sys
 
 from mpi4py import MPI
 
-#from memory_profiler import profile
+from memory_profiler import profile
 
 import math
 import threading
@@ -800,16 +800,16 @@ class DirtyMapMaker(object):
                 f = h5py.File(self.cov_filename, 'r+')
                 cov_inv_dset = f['inv_cov']
                 attrs = cov_inv_dset.attrs
-                attrs.__setitem__('rows', (0, 1, 2))
-                attrs.__setitem__('cols', (0, 3, 4))
-                attrs.__setitem__('dec_centre', self.params['field_centre'][1])
-                attrs.__setitem__('ra_centre', self.params['field_centre'][0])
+                attrs.__setitem__('rows', str((0, 1, 2)))
+                attrs.__setitem__('cols', str((0, 3, 4)))
+                attrs.__setitem__('dec_centre', str(self.params['field_centre'][1]))
+                attrs.__setitem__('ra_centre', str(self.params['field_centre'][0]))
                 attrs.__setitem__('type', "'mat'")
                 attrs.__setitem__('axes', "('freq', 'ra', 'dec', 'ra', 'dec')")
-                attrs.__setitem__('freq_centre', band_centre)
-                attrs.__setitem__('freq_delta', self.delta_freq)
-                attrs.__setitem__('ra_delta', self.ra_spacing)
-                attrs.__setitem__('dec_delta', self.params['pixel_spacing'])
+                attrs.__setitem__('freq_centre', str(band_centre))
+                attrs.__setitem__('freq_delta', str(self.delta_freq))
+                attrs.__setitem__('ra_delta', str(self.ra_spacing))
+                attrs.__setitem__('dec_delta', str(self.params['pixel_spacing']))
                 #cov_inv = al.make_mat(cov_inv_dset,                                                                                                                 axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                  row_axes=(0, 1, 2), col_axes=(0, 3, 4))
                 #cov_inv_shape = sp.zeros(shape = (self.n_chan, self.n_ra, self.n_dec, self.n_ra, self.n_dec), dtype = dtype)
                 #cov_inv_shape = _mapmaker_c.large_empty((self.n_chan, self.n_ra, self.n_dec, self.n_ra, self.n_dec))
@@ -908,7 +908,7 @@ def cross(set_list):
                 remaining.insert(0,cross_2)
                 return cross(remaining)
 
-#@profile
+@profile
 def lock_and_write_buffer(obj, fname, offset, size, proc):
     """Write the contents of a buffer to disk at a given offset, and explicitly
     lock the region of the file whilst doing so.
