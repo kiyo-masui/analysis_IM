@@ -131,14 +131,15 @@ class CleanMapMaker(object) :
                         noise_inv = algebra.make_mat(noise_inv)
                     elif noise_fname.split('.')[-1] == 'hdf5':
                         noise_h5 = h5py.File(noise_fname, 'r')
-                        noise_inv = algebra.load_h5_memmap(noise_h5, 'inv_cov', noise_fname + ".npy" , params["mem_lim"])
-                        noise_inv = algebra.make_mat(noise_inv)
+                        #noise_inv = algebra.load_h5_memmap(noise_h5, 'inv_cov', noise_fname + ".npy" , params["mem_lim"])
+                        #noise_inv = algebra.make_mat(noise_inv)
+                        noise_inv = noise_h5['inv_cov']
                     else:
                         raise ValueError("Noise file is of unsupported type, neither .npy or .hdf5.")
                     # Two cases for the noise.  If its the same shape as the map
                     # then the noise is diagonal.  Otherwise, it should be
                     # block diagonal in frequency.
-                    if noise_inv.ndim == 3 :
+                    if len(noise_inv.shape) == 3 :
                         if noise_inv.axes != ('freq', 'ra', 'dec') :
                             msg = ("Expeced noise matrix to have axes "
                                     "('freq', 'ra', 'dec'), but it has: "
@@ -155,12 +156,16 @@ class CleanMapMaker(object) :
                         if save_noise_diag :
                             noise_diag[good_data] = \
                                     1/noise_inv_memory[good_data]
-                    elif noise_inv.ndim == 5 :
-                        if noise_inv.axes != ('freq', 'ra', 'dec', 'ra',
+                    elif len(noise_inv.shape) == 5 :
+                        try:
+                            axis_labels = noise_inv.axes
+                        except:
+                            axis_labels = eval(noise_inv.attrs['axes'])
+                        if axis_labels != ('freq', 'ra', 'dec', 'ra',
                                               'dec'):
                             msg = ("Expeced noise matrix to have axes "
                                    "('freq', 'ra', 'dec', 'ra', 'dec'), "
-                                   "but it has: " + str(noise_inv.axes))
+                                   "but it has: " + str(axis_labels))
                             raise ce.DataError(msg)
                         # Arrange the dirty map as a vector.
                         dirty_map_vect = sp.array(dirty_map) # A view.
@@ -234,7 +239,7 @@ class CleanMapMaker(object) :
                             if self.feedback > 1:
                                 print ""
                                 sys.stdout.flush()
-                    elif noise_inv.ndim == 6 :
+                    elif len(noise_inv.shape) == 6 :
                         if save_noise_diag:
                             # OLD WAY.
                             #clean_map, noise_diag, chol = solve(noise_inv,
