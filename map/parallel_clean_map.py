@@ -184,8 +184,8 @@ class CleanMapMaker(object) :
                         if self.feedback > 1 :
                             print "Inverting noise matrix."
                         chan_index_list = range(noise_inv.shape[0])
-                        index_list, junk = pdm.split_elems(chan_index_list, self.nproc)  
-                        index_list = index_list(self.rank)
+                        index_list_full, junk = pdm.split_elems(chan_index_list, self.nproc)  
+                        index_list = index_list_full(self.rank)
                         # Block diagonal in frequency so loop over frequencies.
                         for ii in index_list:
                             if self.feedback > 1:
@@ -249,6 +249,10 @@ class CleanMapMaker(object) :
                             if self.feedback > 1:
                                 print ""
                                 sys.stdout.flush()
+                        for process_n in self.nproc:
+                            for ii in index_list_full[process_n]:
+                                clean_map[ii, ...] = comm.bcast(clean_map[ii, ...], root = process_n)
+                                noise_diag[ii, ...] = comm.bcast(noise_diag[ii, ...], root = process_n)
                     elif len(noise_inv.shape) == 6 :
                         if save_noise_diag:
                             # OLD WAY.
@@ -284,24 +288,25 @@ class CleanMapMaker(object) :
                 # Write the clean map to file.
                 out_fname = (params['output_root'] + 'clean_map_'
                              + pol_str + band_str + '.npy')
-                if self.feedback > 1:
-                    print "Writing clean map to: " + out_fname
-                algebra.save(out_fname, clean_map)
-                all_out_fname_list.append(
-                    kiyopy.utils.abbreviate_file_path(out_fname))
-                if save_noise_diag :
-                    noise_diag_fname = (params['output_root'] + 'noise_diag_'
-                                        + pol_str + band_str + '.npy')
-                    algebra.save(noise_diag_fname, noise_diag)
+                if self.rank == 0:
+                    if self.feedback > 1:
+                        print "Writing clean map to: " + out_fname
+                    algebra.save(out_fname, clean_map)
                     all_out_fname_list.append(
-                        kiyopy.utils.abbreviate_file_path(noise_diag_fname))
-                # Check the clean map for faileur.
-                if not sp.alltrue(sp.isfinite(clean_map)):
-                    n_bad = sp.sum(sp.logical_not(sp.isfinite(clean_map)))
-                    msg = ("Non finite entries found in clean map. Solve"
+                        kiyopy.utils.abbreviate_file_path(out_fname))
+                    if save_noise_diag :
+                        noise_diag_fname = (params['output_root'] + 'noise_diag_'
+                                        + pol_str + band_str + '.npy')
+                        algebra.save(noise_diag_fname, noise_diag)
+                        all_out_fname_list.append(
+                            kiyopy.utils.abbreviate_file_path(noise_diag_fname))
+                    # Check the clean map for faileur.
+                    if not sp.alltrue(sp.isfinite(clean_map)):
+                        n_bad = sp.sum(sp.logical_not(sp.isfinite(clean_map)))
+                        msg = ("Non finite entries found in clean map. Solve"
                            " failed. %d out of %d entries bad" 
                            % (n_bad, clean_map.size)) 
-                    raise RuntimeError(msg)
+                        raise RuntimeError(msg)
             # This needs to be added to the new dirty map maker before I can
             # add it here.
             # Finally update the history object.
