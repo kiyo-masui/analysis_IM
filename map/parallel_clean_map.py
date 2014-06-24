@@ -185,7 +185,7 @@ class CleanMapMaker(object) :
                             print "Inverting noise matrix."
                         chan_index_list = range(noise_inv.shape[0])
                         index_list_full, junk = pdm.split_elems(chan_index_list, self.nproc)  
-                        index_list = index_list_full(self.rank)
+                        index_list = index_list_full[self.rank]
                         # Block diagonal in frequency so loop over frequencies.
                         for ii in index_list:
                             if self.feedback > 1:
@@ -249,10 +249,21 @@ class CleanMapMaker(object) :
                             if self.feedback > 1:
                                 print ""
                                 sys.stdout.flush()
-                        for process_n in self.nproc:
+                        for process_n in range(self.nproc):
                             for ii in index_list_full[process_n]:
-                                clean_map[ii, ...] = comm.bcast(clean_map[ii, ...], root = process_n)
-                                noise_diag[ii, ...] = comm.bcast(noise_diag[ii, ...], root = process_n)
+                                print clean_map[ii, ...].shape
+                                if self.rank == process_n:
+                                    comm.Send(clean_map[ii, ...], dest=0, tag=13)
+                                if self.rank == 0:
+                                    comm.Recv(clean_map[ii, ...], source=process_n, tag=13)
+                                comm.Barrier()
+                                if self.rank == process_n:
+                                    comm.Send(noise_diag[ii, ...], dest=0, tag=13)
+                                if self.rank == 0:
+                                    comm.Recv(noise_diag[ii, ...], source=process_n, tag=13)
+                                comm.Barrier() 
+                                #clean_map[ii, ...] = comm.bcast(clean_map[ii, ...], root = process_n)
+                                #noise_diag[ii, ...] = comm.bcast(noise_diag[ii, ...], root = process_n)
                     elif len(noise_inv.shape) == 6 :
                         if save_noise_diag:
                             # OLD WAY.
