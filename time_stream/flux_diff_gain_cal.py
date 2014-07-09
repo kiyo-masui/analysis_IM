@@ -223,35 +223,60 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
   
 
 # This starts the actual data processing for the given scan
-         
+    RM_set = []     
     for time_index in range(0,Data.dims[0]):
         AZ = Data.field['CRVAL2'][time_index]
         EL = Data.field['CRVAL3'][time_index]
 	UT = Data.field['DATE-OBS'][time_index]
 	PA = utils.azel2pGBT(AZ,EL,UT)
 #Extra data needed for RM Correction
-	if RM_correct==True:
-	    RA = AZ
-	    DEC = EL
+#	if RM_correct==True:
+#	    RA = AZ
+#	    DEC = EL
 
 # Extra data needed for Rotation Measure Correction
         if RM_correct==True:
-            RA = Data.field['CRVAL2'][time_index]
-            DEC = Data.field['CRVAL3'][time_index]
+#            RA = Data.field['CRVAL2'][time_index]
+#            DEC = Data.field['CRVAL3'][time_index]
+            RA, DEC = utils.azel2radecGBT(AZ,EL,UT)
+#            print RA, DEC
             RM = 0
-            valid = []
+            dtheta0 = sp.pi
+            RA_comp = RA
+            DEC_comp = DEC
             for i in range(0,len(RA_RM)):
-                if RA_RM[i] != 0:
-                    if abs(RA-RA_RM[i])<10.0:
-                        if abs(DEC-DEC_RM[i])<10.0:
-                            RM = RM_data[i,3]     
-                            valid.append(i)
-            RA_M = 10.0
-            DEC_M = 10.0
-            for j in range(0,len(valid)):
-                if abs(RA-RA_RM[valid[j]])<RA_M:
-                    if abs(DEC-DEC_RM[valid[j]])<DEC_M:
-                        RM = RM_data[valid[j],3]  
+                dtheta = ma.arccos(ma.sin(DEC*sp.pi/180.)*ma.sin(DEC_RM[i]*sp.pi/180.)+ma.cos(DEC*sp.pi/180)*ma.cos(DEC_RM[i]*sp.pi/180.)*ma.cos(abs(RA-RA_RM[i])*sp.pi/180))
+                if dtheta<dtheta0:
+                    dtheta0 = dtheta
+                    RM = RM_data[i,3]
+                    RA_comp = RA_RM[i]
+                    DEC_comp = DEC_RM[i]
+            
+            RM_set.append(RM)
+#            if RM==0:
+#                print 'Scan RM match not found'
+#                print 'Scan RA and DEC:',RA, DEC
+#            else:
+#                print 'Scan RA and DEC:',RA,DEC
+#                print 'RMtable RA and DEC:',RA_comp,DEC_comp
+#                print 'RM Correction',RM
+#                print '-------------------------------'
+
+
+#            valid = []
+#            for i in range(0,len(RA_RM)):
+#                if RA_RM[i] != 0:
+#                    if abs(RA-RA_RM[i])<10.0:
+#                        if abs(DEC-DEC_RM[i])<10.0:
+#                            RM = RM_data[i,3]     
+#                            valid.append(i)
+#            RA_M = 10.0
+#            DEC_M = 10.0
+#            for j in range(0,len(valid)):
+#                if abs(RA-RA_RM[valid[j]])<RA_M:
+#                    if abs(DEC-DEC_RM[valid[j]])<DEC_M:
+#                        RM = RM_data[valid[j],3]  
+#            print RM
                          
  
 #Generate a sky matrix for this time index (assumes a XY basis):
@@ -320,6 +345,10 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
 #Write corrected data to the new file. 
                for i in range(0,Data.dims[1]):
                     Data.data[time_index,i,cal_index,freq] = XY_params[i]	
+
+    if RM_correct==True:
+        print 'Number of time_steps in this scan is: ', len(RM_set)
+        print 'Average RM correction for this scan is: ', ma.mean(RM_set)
 
 
 # If this file is run from the command line, execute the main function.
