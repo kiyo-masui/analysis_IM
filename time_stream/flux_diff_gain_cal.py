@@ -174,6 +174,9 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
                 EL_RM = RM_data[i,2]
                 AZ_RM = RM_data[i,1]
                 RA_RM[i], DEC_RM[i] = utils.elaz2radecGBT(EL_RM,AZ_RM,UT_RM)
+
+        sin_DEC_RM = ma.sin(DEC_RM*sp.pi/180.)
+        cos_DEC_RM = ma.cos(DEC_RM*sp.pi/180.)
     #Now have tables of RA/DEC to compare to actual RA/DEC
         RM = 0
 
@@ -241,24 +244,31 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
             RA, DEC = utils.azel2radecGBT(AZ,EL,UT)
 #            print RA, DEC
             RM = 0
-            dtheta0 = sp.pi
-            RA_comp = RA
-            DEC_comp = DEC
-            for i in range(0,len(RA_RM)):
-                dtheta = ma.arccos(ma.sin(DEC*sp.pi/180.)*ma.sin(DEC_RM[i]*sp.pi/180.)+ma.cos(DEC*sp.pi/180)*ma.cos(DEC_RM[i]*sp.pi/180.)*ma.cos(abs(RA-RA_RM[i])*sp.pi/180))
-                if dtheta<dtheta0:
-                    dtheta0 = dtheta
-                    RM = RM_data[i,3]
-                    RA_comp = RA_RM[i]
-                    DEC_comp = DEC_RM[i]
-            
+#            dtheta0 = sp.pi
+#            RA_comp = RA
+#            DEC_comp = DEC
+            sin_DEC = ma.sin(DEC*sp.pi/180.)
+            cos_DEC = ma.cos(DEC*sp.pi/180.)
+            cos_RA_diff = ma.cos(abs((RA*sp.ones(len(RA_RM))-RA_RM)*sp.pi/180.))
+            dtheta = ma.arccos(sin_DEC*sin_DEC_RM+cos_DEC*cos_DEC_RM*cos_RA_diff)
+            indx = dtheta.argmin()
+            RM = RM_data[indx,3]
             RM_set.append(RM)
-#            if RM==0:
-#                print 'Scan RM match not found'
-#                print 'Scan RA and DEC:',RA, DEC
+#            for i in range(0,len(RA_RM)):
+#                dtheta = ma.arccos(ma.sin(DEC*sp.pi/180.)*ma.sin(DEC_RM[i]*sp.pi/180.)+ma.cos(DEC*sp.pi/180)*ma.cos(DEC_RM[i]*sp.pi/180.)*ma.cos(abs(RA-RA_RM[i])*sp.pi/180))
+#                if dtheta<dtheta0:
+#                    dtheta0 = dtheta
+#                    RM = RM_data[i,3]
+#                    RA_comp = RA_RM[i]
+#                    DEC_comp = DEC_RM[i]
+            
+#            RM_set.append(RM)
+            if RM==0:
+                print 'Scan RM match not found'
+                print 'Scan RA and DEC:',RA, DEC
 #            else:
 #                print 'Scan RA and DEC:',RA,DEC
-#                print 'RMtable RA and DEC:',RA_comp,DEC_comp
+#                print 'RMtable RA and DEC:',RA_RM[indx],DEC_RM[indx]
 #                print 'RM Correction',RM
 #                print '-------------------------------'
 
