@@ -15,8 +15,8 @@ from utils import units
 import sys
 
 #cube_frame_dir = "/scratch/eswitzer/cube_frames/"
-cube_frame_dir = "/mnt/raid-project/gmrt/eswitzer/GBT/cube_frames/"
-
+#cube_frame_dir = "/mnt/raid-project/gmrt/eswitzer/GBT/cube_frames/"
+cube_frame_dir = '/mnt/raid-project/gmrt/tcv/cube_frames/'
 
 # TODO make a more general kwargs wrapper
 def gnuplot_single_slice(plotitem):

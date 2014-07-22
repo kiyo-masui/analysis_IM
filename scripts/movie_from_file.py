@@ -68,9 +68,9 @@ from plotting import plot_cube as pc
 #multiplier = 1000.
 #sigmarange = 3.
 
-full_list = ['/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/3903866168_simulation/gaussian_signal_simulation.npy',
-             '/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/3903866168_simulation/sec_A_15hr_41-90_clean_map_I.npy',
-             '/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/3903866168_simulation/sec_A_15hr_41-90_clean_map_I_thermal.npy']
+#full_list = ['/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/3903866168_simulation/gaussian_signal_simulation.npy',
+#             '/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/3903866168_simulation/sec_A_15hr_41-90_clean_map_I.npy',
+#             '/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/3903866168_simulation/sec_A_15hr_41-90_clean_map_I_thermal.npy']
 
 #full_list = ["/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned_delta/15hr_v2/reg15data.npy",
 #             "/mnt/raid-project/gmrt/eswitzer/wiggleZ/binned/15hr_v2/reg15separable.npy",
@@ -96,13 +96,16 @@ full_list = ['/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_oldcal/3903866168_si
 #             "/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_optimal_july11/secC_15hr_41-90_noise_inv_diag_I_all.npy",
 #             "/mnt/raid-project/gmrt/eswitzer/GBT/maps/15hr_optimal_july11/secD_15hr_41-90_noise_inv_diag_I_all.npy"]
 
+full_list = ['/mnt/raid-project/gmrt/tcv/maps/1hr_parallel_test/1hr_80-28_ptcorr_clean_map_I_800.npy',
+             '/mnt/raid-project/gmrt/tcv/maps/1hr_parallel_test/1hr_80-18_ptcorr_clean_map_I_800.npy']
+
 cbtitle = ""
 multiplier = 1.
 #sigmarange = -1.
 sigmarange = 4.
 
 for filename in full_list:
-    outputdir = "/cita/d/www/home/eswitzer/movies/"
+    outputdir = "/home/tcv/movies/"
     tag = ".".join(filename.split(".")[:-1])  # extract root name
     tag = tag.split("/")[-1]
     pc.make_cube_movie(filename, cbtitle, pc.cube_frame_dir,

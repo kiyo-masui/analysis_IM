@@ -10,6 +10,15 @@ import scipy as sp
 #field = '15hr'
 field = '1hr'
 
+first_set = dir_data.get_data_files(range(80,91),field='1hr',project='GBT10B_036', type='ralongmap')
+second_set = dir_data.get_data_files(range(0,14),field='1hr',project='GBT11B_055', type='ralongmap')
+third_set = dir_data.get_data_files(range(15,19),field='1hr',project='GBT11B_055',type='ralongmap')
+fourth_set = dir_data.get_data_files(range(1,28),field='1hr',project='GBT13B_352',type='ralongmap')
+fourth_set = fourth_set[1:]
+file_middles = tuple(first_set+second_set+third_set+fourth_set)
+file_middles = file_middles[:-3]
+print len(file_middles)
+
 #sessions = range(41, 90)
 # According to Tabitha, cal unstable in sessions 52 to 58.
 #sessions = range(41, 52) + range(59, 90)
@@ -29,11 +38,11 @@ field = '1hr'
 #file_middles = tuple(dir_data.get_data_files(range(80,91), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(0,14), field='1hr', project='GBT11B_055',type='ralongmap')+dir_data.get_data_files(range(15,19), field='1hr', project='GBT11B_055', type='ralongmap'))
 #file_middles = tuple(dir_data.get_data_files(range(17,19),field='1hr',project='GBT11B_055', type='ralongmap'))
 #file_middles = tuple(dir_data.get_data_files(range(41,57),field='15hr',project='GBT10B_036',type='ralongmap')+dir_data.get_data_files(range(58,80),field='15hr',project='GBT10B_036',type='ralongmap'))
-file_middles = tuple(dir_data.get_data_files(range(1,29),field='1hr',project='GBT13B_352',type='ralongmap'))
+#file_middles = tuple(dir_data.get_data_files(range(1,29),field='1hr',project='GBT13B_352',type='ralongmap'))
 #bad_ind = sp.where(file_middles=='GBT10B_036/44_wigglez15hr_ralongmap_169-176')[0]
 #print bad_ind
 #file_middles[bad_ind] = ''
-file_middles = file_middles[1:-1]
+#file_middles = file_middles[1:-1]
 #
 n_files = len(file_middles)
 new_file_middles = []
@@ -95,10 +104,10 @@ map_base = base_dir_main + 'maps/'+'1hr_parallel_test/'
 
 # IO directory and file prefixes.
 prefix = ''
-map_prefix = '' + field + '_80-18_ptcorr_'
+map_prefix = '' + field + '_80-28_ptcorr_'
 
 # Maximum number of processes to use.
-pipe_processes = 6
+pipe_processes = 1
 
 
 ####  List of modules to execute.  ####
@@ -127,11 +136,11 @@ pipe_modules = []
 #pipe_modules.append(calibrate.Calibrate)
 
 #new calibration module
-from time_stream import flux_diff_gain_cal
-pipe_modules.append(flux_diff_gain_cal.Calibrate)
+#from time_stream import flux_diff_gain_cal
+#pipe_modules.append(flux_diff_gain_cal.Calibrate)
 
-from time_stream import rotate_pol
-pipe_modules.append(rotate_pol.RotatePol)
+#from time_stream import rotate_pol
+#pipe_modules.append(rotate_pol.RotatePol)
 
 #from time_stream import rebin_time
 #pipe_modules.append(rebin_time.RebinTime)
@@ -155,8 +164,8 @@ pipe_modules.append(rotate_pol.RotatePol)
 #from time_stream import reflag
 #pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
 
-#from noise import measure_noise
-#pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
+from noise import measure_noise
+pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
 #from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
@@ -366,7 +375,8 @@ mc2_scans = ()
 mc2_IFs = ()
 
 mc2_interpolation = 'cubic'
-mc2_map_polarizations = ('I','Q','U','V')
+mc2_map_polarizations = ('I',)
+#mc2_map_polarizations = ('I','Q','U','V')
 mc2_map_bands = cm_bands
 mc2_map_input_root = cm_output_root
 mc2_map_type = 'clean_map_'
@@ -378,7 +388,8 @@ mc2_filter_type = 'edge'
 
 # subtract_map_data
 #sm2_input_root = base_dir_main + 'rotated_to_I_Q_avg_fdgp_new/'+prefix
-sm2_input_root = mc2_output_root
+sm2_input_root = rp_output_root
+#sm2_input_root = mc2_output_root
 sm2_file_middles = new_file_middles
 sm2_input_end = '.fits'
 sm2_output_root = base_dir + 'map_subtracted_sec/'
@@ -387,7 +398,8 @@ sm2_scans = ()
 sm2_IFs = ()
 
 sm2_interpolation = 'cubic'
-sm2_map_polarizations = ('I','Q','U','V')
+sm2_map_polarizations = ('I',)
+#sm2_map_polarizations = ('I','Q','U','V')
 sm2_map_nbands = cm_bands
 sm2_map_input_root = cm_output_root
 sm2_map_type = 'clean_map_'
@@ -396,8 +408,9 @@ sm2_solve_for_gain = False
 sm2_gain_output_end = '_gain.pickle'
 
 # second_flag
-sf2_input_root = sm2_input_root
+#sf2_input_root = sm2_input_root
 #sf2_input_root = mc2_output_root
+sf2_input_root = rp_output_root
 sf2_file_middles = new_file_middles
 sf2_input_end = '.fits'
 sf2_output_root = base_dir + 'reflagged_sec/'
@@ -413,7 +426,8 @@ sf2_subtracted_input_root = sm2_output_root
 sf2_subtracted_output_root = base_dir + 'reflagged_sub_sec/'
 
 # measure_noise
-mn2_input_root = sf2_subtracted_output_root
+#mn2_input_root = sf2_subtracted_output_root
+mn2_input_root = rp_output_root
 mn2_file_middles = new_file_middles
 mn2_input_end = '.fits'
 mn2_output_root = base_dir + 'noise_measurments_sec/'
@@ -438,16 +452,16 @@ dmA_file_middles = middles_a
 dmA_input_end = '.fits'
 dmA_output_root = map_base + 'secA_' + map_prefix
 dmA_scans = ()
-dmA_IFs = ()
+dmA_IFs = (0,)
 
-dmA_polarizations = ('I','Q','U','V')
-#dmA_polarizations = ('U',)
+#dmA_polarizations = ('I','Q','U','V')
+dmA_polarizations = ('I',)
 dmA_field_centre = map_centre
 dmA_pixel_spacing = map_spacing
 dmA_map_shape = map_shape
 dmA_time_block = 'scan'
 #dmA_n_files_group = 420  # prawn
-dmA_n_files_group = 280  # tpb nodes.
+dmA_n_files_group = 10  # tpb nodes.
 #dmA_n_files_group = 120
 dmA_frequency_correlations = 'None'
 #dmA_number_frequency_modes = 3
@@ -476,8 +490,8 @@ dmD_output_root = map_base + 'secD_' + map_prefix
 cmA_input_root = dmA_output_root
 cmA_output_root = cmA_input_root
 
-#cmA_polarizations = ('U',)
-cmA_polarizations = ('I','Q','U','V')
+cmA_polarizations = ('I',)
+#cmA_polarizations = ('I','Q','U','V')
 cmA_bands = (800,)
 cmA_save_noise_diag = True
 cmA_save_cholesky = False
