@@ -17,6 +17,7 @@ Check out the unit tests for examples.
 """
 
 import math
+import os
 import multiprocessing as mp
 
 from kiyopy import parse_ini, utils
@@ -36,7 +37,8 @@ base_params = {
                'output_end' : ".testout.fits",
                # What data to process within each file.
                'scans' : (),
-               'IFs' : ()
+               'IFs' : (),
+               'beams' : ()
                }
 
 class BaseSingle(object) :
@@ -135,7 +137,12 @@ class BaseSingle(object) :
         Writer = fitsGBT.Writer(feedback=self.feedback)
         
         # Read in the data, and loop over data blocks.
-        Reader = fitsGBT.Reader(input_fname, feedback=self.feedback)
+        if os.path.isfile(input_fname):
+            Reader = fitsGBT.Reader(input_fname, feedback=self.feedback)
+        else:
+            print "\t\tFile missed: %s"%file_middle
+            return
+
         if hasattr(self, 'feedback_title') and self.feedback > 1:
             print self.feedback_title,
         # Get the number of scans if asked for all of them.
@@ -144,7 +151,8 @@ class BaseSingle(object) :
             scan_inds = range(len(Reader.scan_set))
         # Loop over scans.
         for thisscan in scan_inds :
-            Blocks = Reader.read(thisscan, params['IFs'], force_tuple=True)
+            Blocks = Reader.read(thisscan, params['IFs'], params['beams'],
+                                 force_tuple=True)
             
             # Function that loops over DataBlocks within a scan.
             NewBlocks = self.scan_action(Blocks)

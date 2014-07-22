@@ -1,0 +1,169 @@
+"""Preliminary Parkes analysis pipeline.
+
+Execute using the below the command from the analysis_IM directory.
+`python pipeline/manager.py this_file_name.pipe`
+"""
+
+import os
+import sys
+from core import dir_data_parkes as ddp
+
+# What files to process.  Instead of listing them, probably better to write a 
+# script to get theses.  Similar to dir_data for GBT.  Perhapse write a
+# dir_data_parkes.py?
+
+data_root = '/mnt/raid-project/gmrt/anderson/parkes_2014/P641_2014/MBCORR/'
+
+#file_middles = ddp.get_data_files(data_root, '2df1')
+file_middles = ddp.get_data_files(data_root, '2df2')
+
+# Where to put all the data products.
+
+base_dir = '/mnt/raid-project/gmrt/anderson/second_parkes_pipe/'
+
+# Maximum number of processes to use. On most machines can use 24+ if no
+# one else is using the machine.
+pipe_processes = 24
+
+#sys.path.append('/cita/h/home-2/anderson/anderson/parkes_analysis_IM/')
+
+####  List of modules to execute.  ####
+# Just comment out any modules you don't want to run.
+pipe_modules = []
+
+from scripts import parkes_to_GBTfits
+pipe_modules.append(parkes_to_GBTfits.Converter)
+
+# Need to generalize to 2 polarizations.
+from time_stream import flag_data
+pipe_modules.append(flag_data.FlagData)
+
+# This should work out of the box.
+from time_stream import rebin
+pipe_modules.append(rebin.Rebin)
+
+# Need calibration tables to run this and to generalize to 2 polarizations.
+#from time_stream import calibrate
+#pipe_modules.append(calibrate.Calibrate)
+
+# Need to generalize to 2 polarizations.  This should not be run until after bandpass correction.
+# from time_stream import rotate_pol
+# pipe_modules.append(rotate_pol.RotatePol)
+
+#from map import dirty_map
+#pipe_modules.append(dirty_map.DirtyMapMaker)
+
+#from map import clean_map
+#import map.clean_map as map
+#pipe_modules.append(clean_map.CleanMapMaker)
+
+#### Parameters for the modules to be executed. ####
+
+#map_prefix = 'test_allbeams_27n30_10by7_D_'
+#map_prefix = 'test_allbeams_07n30_10by7_0627pixel_'
+#map_prefix = 'test_allbeams_n03n30_10by7_0627pixel_'
+#map_prefix = 'test_allbeams_37n30_10by7_0627pixel_'
+#map_prefix = 'test_allbeams_17n30_10by7_0627pixel_A_'
+#map_prefix = 'test_allbeams_17n30_10by7_0627pixel_B_'
+#map_prefix = 'test_allbeams_17n30_10by7_0627pixel_C_'
+#map_prefix = 'test_allbeams_17n30_10by7_0627pixel_D_'
+#map_prefix = 'test_allbeams_07n30_10by7_0627pixel_A_'
+#map_prefix = 'test_allbeams_07n30_10by7_0627pixel_B_'
+#map_prefix = 'test_allbeams_07n30_10by7_0627pixel_C_'
+#map_prefix = 'test_allbeams_07n30_10by7_0627pixel_D_'
+#map_prefix = 'test_allbeams_37n30_10by7_0627pixel_A_'
+#map_prefix = 'test_allbeams_37n30_10by7_0627pixel_B_'
+#map_prefix = 'test_allbeams_37n30_10by7_0627pixel_C_'
+#map_prefix = 'test_allbeams_37n30_10by7_0627pixel_D_'
+#map_prefix ='test_allbeams_0n30_8by4_20pixel_'
+
+p2g_input_root = data_root
+p2g_file_middles = file_middles
+p2g_input_end = '.sdfits'
+#p2g_input_end = ''
+p2g_output_root = base_dir + 'converted_to_GBT_format/'
+p2g_output_end = '.fits'
+p2g_beams = ()
+
+
+# flag_data, RFI flagger.
+#fd_input_root = bp_output_root
+fd_input_root = p2g_output_root
+fd_file_middles = file_middles
+fd_input_end = '.fits'
+fd_output_root = base_dir + 'flagged/'
+fd_output_end = '.fits'
+fd_scans = ()
+fd_IFs = ()
+fd_bands = ()
+# XXX Not sure about Hanning at Parkes.
+fd_perform_hanning = False
+fd_rotate = False
+fd_cal_scale = False
+fd_cal_phase = False
+fd_sigma_thres = 3.
+fd_badness_thres = 0.1
+fd_time_cut = 10
+
+
+# Rebin the time and frequency axis.
+#rb_input_root = fd_output_root
+rb_input_root = p2g_output_root
+rb_file_middles = file_middles
+rb_input_end = '.fits'
+rb_output_root = base_dir + 'rebinned/'
+rb_output_end = '.fits'
+rb_scans = ()
+rb_IFs = ()
+rb_bands = ()
+rb_beams = ()
+rb_n_bins_combined_freq = 16
+rb_n_bins_combined_time = 1
+
+'''
+# Rotate to Stokes I.
+rp_input_root = rb_output_root
+rp_file_middles = file_middles
+rp_input_end = '.fits'
+rp_output_root = base_dir + 'rotated_to_I/'
+rp_output_end = '.fits'
+rp_scans = ()
+rp_IFs = ()
+rp_bands = ()
+rp_beams = ()
+rp_average_cals = False
+rp_new_pols = (1,)
+
+dm_input_root = rp_output_root
+dm_file_middles = file_middles
+dm_input_end = '.fits'
+dm_output_root = base_dir + 'maps/' + map_prefix
+dm_scans = ()
+dm_IFs = (0,)
+dm_beams = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+
+#dm_field_centre = (27, -30)
+dm_field_centre = (0, -30)
+#dm_map_shape = (200, 140)
+dm_map_shape = (40, 20)
+#dm_pixel_spacing = .05
+#dm_pixel_spacing = .0627
+dm_pixel_spacing = .20
+dm_noise_parameters_input_root = 'None'
+dm_polarizations = ('I',)
+dm_time_block = 'scan'
+#dm_time_block = 'file'
+dm_n_files_group = 0
+dm_frequency_correlations = 'None'
+dm_number_frequency_modes = 0
+dm_noise_parameter_file = ''
+dm_deweight_time_mean = True
+dm_deweight_time_slope = True
+dm_interpolation = 'linear'
+
+cm_input_root = dm_output_root
+cm_output_root = cm_input_root
+cm_polarizations = ('I',)
+cm_bands = (1315,)
+cm_save_noise_diag = True
+'''
