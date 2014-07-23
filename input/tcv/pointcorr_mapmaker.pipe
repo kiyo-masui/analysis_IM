@@ -28,10 +28,20 @@ field = '1hr'
 #file_middles = tuple(dir_data.get_data_files(range(01,19),field='11hr',project='GBT12A_418',type='ralongmap'))
 #file_middles = tuple(dir_data.get_data_files(range(80,91), field='1hr', project='GBT10B_036', type='ralongmap')+dir_data.get_data_files(range(0,14), field='1hr', project='GBT11B_055',type='ralongmap')+dir_data.get_data_files(range(15,19), field='1hr', project='GBT11B_055', type='ralongmap'))
 #file_middles = tuple(dir_data.get_data_files(range(17,19),field='1hr',project='GBT11B_055', type='ralongmap'))
-file_middles = tuple(dir_data.get_data_files(range(41,57),field='15hr',project='GBT10B_036',type='ralongmap')+dir_data.get_data_files(range(58,80),field='15hr',project='GBT10B_036',type='ralongmap'))
+#file_middles = tuple(dir_data.get_data_files(range(41,57),field='15hr',project='GBT10B_036',type='ralongmap')+dir_data.get_data_files(range(58,80),field='15hr',project='GBT10B_036',type='ralongmap'))
 #bad_ind = sp.where(file_middles=='GBT10B_036/44_wigglez15hr_ralongmap_169-176')[0]
 #print bad_ind
 #file_middles[bad_ind] = ''
+
+first_set = dir_data.get_data_files(range(80,91),field='1hr',project='GBT10B_036', type='ralongmap')
+second_set = dir_data.get_data_files(range(0,14),field='1hr',project='GBT11B_055', type='ralongmap')
+third_set = dir_data.get_data_files(range(15,19),field='1hr',project='GBT11B_055',type='ralongmap')
+fourth_set = dir_data.get_data_files(range(1,28),field='1hr',project='GBT13B_352',type='ralongmap')
+fourth_set = fourth_set[1:]
+file_middles = tuple(first_set+second_set+third_set+fourth_set)
+file_middles = file_middles[:-3]
+print len(file_middles)
+
 
 n_files = len(file_middles)
 new_file_middles = []
@@ -93,7 +103,7 @@ map_base = base_dir_main + 'maps/'+'1hr_parallel_test/'
 
 # IO directory and file prefixes.
 prefix = ''
-map_prefix = '' + field + '_' + '80-18_ptcorr' + '_'
+map_prefix = '' + field + '_' + '80-28_ptcorr' + '_'
 
 # Maximum number of processes to use.
 pipe_processes = 1
