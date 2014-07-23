@@ -5,12 +5,11 @@ domain, i.e. it creats the dirty map.  Module also contains many utilities like
 the pointing operator (`Pointing`) and the time domain noise operator
 (`Noise`).
 """
-
+#import os
+#os.environ['PYTHON_EGG_CACHE'] = '/scratch/p/pen/andersoc/.python-eggs'
 import sys
 
 from mpi4py import MPI
-
-#from memory_profiler import profile
 
 import math
 import threading
@@ -89,7 +88,9 @@ params_init = {# IO:
                # let the noise know about it.
                'n_ts_foreground_modes' : 0,
                'ts_foreground_mode_file' : '',
-               'thread_divide' : False
+               'thread_divide' : False,
+               # Which beam to use to make map.  Choose zero to use all beams.
+               'beam' : 0
                }
 
 comm = MPI.COMM_WORLD
@@ -126,9 +127,13 @@ class DirtyMapMaker(object):
                                  force_tuple=True)
             if params['time_block'] == 'scan':
                 for Data in Blocks:
-                    yield (Data,), middle
+                    if params["beam"] == 0 or params["beam"] == Data.field['BEAM']: 
+                        yield (Data,), middle
             elif params['time_block'] == 'file':
-                yield Blocks, middle
+                if params["beam"] == 0:
+                    yield Blocks, middle
+                else:
+                    yield tuple([data for data in Blocks if data.field['BEAM'] == params["beam"]])
             else:
                 msg = "time_block parameter must be 'scan' or 'file'."
                 raise dm.ValueError(msg)

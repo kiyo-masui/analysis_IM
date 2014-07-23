@@ -45,6 +45,7 @@ class CleanMapMaker(object) :
         self.rank = comm.Get_rank()
         self.nproc = comm.Get_size()
 
+    #@profile
     def execute(self, nprocesses=1) :
         """Worker funciton."""
         params = self.params
@@ -141,6 +142,7 @@ class CleanMapMaker(object) :
                         #noise_inv = algebra.load_h5_memmap(noise_h5, 'inv_cov', noise_fname + ".npy" , params["mem_lim"])
                         #noise_inv = algebra.make_mat(noise_inv)
                         noise_inv = noise_h5['inv_cov']
+                        noise_h5.close()
                     else:
                         raise ValueError("Noise file is of unsupported type, neither .npy or .hdf5.")
                     # Two cases for the noise.  If its the same shape as the map
