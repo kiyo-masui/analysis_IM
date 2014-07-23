@@ -5,9 +5,10 @@ domain, i.e. it creats the dirty map.  Module also contains many utilities like
 the pointing operator (`Pointing`) and the time domain noise operator
 (`Noise`).
 """
-#import os
-#os.environ['PYTHON_EGG_CACHE'] = '/scratch/p/pen/andersoc/.python-eggs'
+import os
+os.environ['PYTHON_EGG_CACHE'] = '/scratch/p/pen/andersoc/.python-eggs'
 import sys
+from memory_profiler import profile
 
 from mpi4py import MPI
 
@@ -913,7 +914,7 @@ def cross(set_list):
                 remaining.insert(0,cross_2)
                 return cross(remaining)
 
-#@profile
+@profile
 def lock_and_write_buffer(obj, fname, offset, size, proc):
     """Write the contents of a buffer to disk at a given offset, and explicitly
     lock the region of the file whilst doing so.
