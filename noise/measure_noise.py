@@ -168,69 +168,124 @@ def measure_noise_parameters(Blocks, parameters, split_scans=False,
     
     # Initialize the output.
     out_parameters = {}
-    # Calculate the full correlated power spectrum.
-    power_mat, window_function, dt, channel_means = npow.full_power_mat(
-            Blocks, window="hanning", deconvolve=False, n_time=-1.05,
-            normalize=False, split_scans=split_scans, subtract_slope=True)
-    # This shouldn't be nessisary, since I've tried to keep things finite in
-    # the above function.  However, leave it in for now just in case.
-    if not sp.alltrue(sp.isfinite(power_mat)) :
-        msg = ("Non finite power spectrum calculated.  Offending data in "
-               "file starting with scan %d." % (Blocks[0].field['SCAN']))
-        raise ce.DataError(msg)
-    # Get frequency axis and do unit conversions.
-    n_time = power_mat.shape[0]
-    n_chan = power_mat.shape[-1]
-    frequency = npow.ps_freq_axis(dt, n_time)
-    power_mat = npow.prune_power(power_mat, 0)
-    power_mat = npow.make_power_physical_units(power_mat, dt)
-    # Discard the mean mode.
-    frequency = frequency[1:]
-    power_mat = power_mat[1:,...]
-    n_f = len(frequency)
-    # Loop over polarizations.
-    cal_ind = 0
-    n_pols = power_mat.shape[1]
-    for ii in range(n_pols):
-        this_pol_power = power_mat[:,ii,cal_ind,:,:]
-        this_pol_window = window_function[:,ii,cal_ind,:,:]
-        this_pol = Blocks[0].field['CRVAL4'][ii]
-        this_pol_parameters = {}
-        # If we are plotting, activate the subplot for this polarization and
-        # this band.
-        if plots:
-            h = plt.gcf()
-            # The last subplot should be hidden in the figure object.
-            current_subplot = h.current_subplot
-            current_subplot = current_subplot[:2] + (current_subplot[2] + 1,)
-            h.current_subplot = current_subplot
-        # Now figure out what we want to measure and measure it.
-        if "channel_var" in parameters:
-            power_diag = this_pol_power.view()
-            power_diag.shape = (n_f, n_chan**2)
-            power_diag = power_diag[:,::n_chan + 1].real
-            window_function_diag = this_pol_window.view()
-            window_function_diag.shape = (n_time, n_chan**2)
-            window_function_diag = window_function_diag[:,::n_chan + 1]
-            # Integral of the power spectrum from -BW to BW.
-            channel_var = sp.mean(power_diag, 0) / dt
-            # Normalize for the window.
-            norms = sp.mean(window_function_diag, 0).real
-            bad_inds = norms < 10./n_time
-            norms[bad_inds] = 1
-            channel_var /= norms
-            # If a channel is completly masked Deweight it by giving a high
-            # variance
-            channel_var[bad_inds] = T_infinity**2
-            this_pol_parameters["channel_var"] = channel_var
-        for noise_model in parameters:
-            if noise_model[:18] == "freq_modes_over_f_":
-                n_modes = int(noise_model[18:])
-                this_pol_parameters[noise_model] = \
-                        get_freq_modes_over_f(this_pol_power, this_pol_window,
-                                              frequency, n_modes, plots=plots)
-        out_parameters[this_pol] = this_pol_parameters
-    return out_parameters
+    if set(parameters) == {"channel_var"}:
+        # Calculate the full correlated power spectrum.
+        power_mat, window_function, dt, channel_means = npow.full_power_diag(
+                Blocks, window="hanning", deconvolve=False, n_time=-1.05,
+                normalize=False, split_scans=split_scans, subtract_slope=True)
+        # This shouldn't be nessisary, since I've tried to keep things finite in
+        # the above function.  However, leave it in for now just in case.
+        if not sp.alltrue(sp.isfinite(power_mat)) :
+            msg = ("Non finite power spectrum calculated.  Offending data in "
+                   "file starting with scan %d." % (Blocks[0].field['SCAN']))
+            raise ce.DataError(msg)
+        # Get frequency axis and do unit conversions.
+        n_time = power_mat.shape[0]
+        n_chan = power_mat.shape[-1]
+        frequency = npow.ps_freq_axis(dt, n_time)
+        power_mat = npow.prune_power(power_mat, 0)
+        power_mat = npow.make_power_physical_units(power_mat, dt)
+        # Discard the mean mode.
+        frequency = frequency[1:]
+        power_mat = power_mat[1:,...]
+        n_f = len(frequency)
+        # Loop over polarizations.
+        cal_ind = 0
+        n_pols = power_mat.shape[1]
+        for ii in range(n_pols):
+            this_pol_power = power_mat[:,ii,cal_ind,:]
+            this_pol_window = window_function[:,ii,cal_ind,:]
+            this_pol = Blocks[0].field['CRVAL4'][ii]
+            this_pol_parameters = {}
+            # If we are plotting, activate the subplot for this polarization and
+            # this band.
+            if plots:
+                h = plt.gcf()
+                # The last subplot should be hidden in the figure object.
+                current_subplot = h.current_subplot
+                current_subplot = current_subplot[:2] + (current_subplot[2] + 1,)
+                h.current_subplot = current_subplot
+            # Now figure out what we want to measure and measure it.
+            if "channel_var" in parameters:
+                power_diag = this_pol_power.view()
+                window_function_diag = this_pol_window.view()
+                # Integral of the power spectrum from -BW to BW.
+                channel_var = sp.mean(power_diag, 0) / dt
+                # Normalize for the window.
+                norms = sp.mean(window_function_diag, 0).real
+                bad_inds = norms < 10./n_time
+                norms[bad_inds] = 1
+                channel_var /= norms
+                # If a channel is completly masked Deweight it by giving a high
+                # variance
+                channel_var[bad_inds] = T_infinity**2
+                this_pol_parameters["channel_var"] = channel_var
+            out_parameters[this_pol] = this_pol_parameters
+        return out_parameters
+    else:
+        # Calculate the full correlated power spectrum.
+        power_mat, window_function, dt, channel_means = npow.full_power_mat(
+                Blocks, window="hanning", deconvolve=False, n_time=-1.05,
+                normalize=False, split_scans=split_scans, subtract_slope=True)
+        # This shouldn't be nessisary, since I've tried to keep things finite in
+        # the above function.  However, leave it in for now just in case.
+        if not sp.alltrue(sp.isfinite(power_mat)) :
+            msg = ("Non finite power spectrum calculated.  Offending data in "
+                   "file starting with scan %d." % (Blocks[0].field['SCAN']))
+            raise ce.DataError(msg)
+        # Get frequency axis and do unit conversions.
+        n_time = power_mat.shape[0]
+        n_chan = power_mat.shape[-1]
+        frequency = npow.ps_freq_axis(dt, n_time)
+        power_mat = npow.prune_power(power_mat, 0)
+        power_mat = npow.make_power_physical_units(power_mat, dt)
+        # Discard the mean mode.
+        frequency = frequency[1:]
+        power_mat = power_mat[1:,...]
+        n_f = len(frequency)
+        # Loop over polarizations.
+        cal_ind = 0
+        n_pols = power_mat.shape[1]
+        for ii in range(n_pols):
+            this_pol_power = power_mat[:,ii,cal_ind,:,:]
+            this_pol_window = window_function[:,ii,cal_ind,:,:]
+            this_pol = Blocks[0].field['CRVAL4'][ii]
+            this_pol_parameters = {}
+            # If we are plotting, activate the subplot for this polarization and
+            # this band.
+            if plots:
+                h = plt.gcf()
+                # The last subplot should be hidden in the figure object.
+                current_subplot = h.current_subplot
+                current_subplot = current_subplot[:2] + (current_subplot[2] + 1,)
+                h.current_subplot = current_subplot
+            # Now figure out what we want to measure and measure it.
+            if "channel_var" in parameters:
+                power_diag = this_pol_power.view()
+                power_diag.shape = (n_f, n_chan**2)
+                power_diag = power_diag[:,::n_chan + 1].real
+                window_function_diag = this_pol_window.view()
+                window_function_diag.shape = (n_time, n_chan**2)
+                window_function_diag = window_function_diag[:,::n_chan + 1]
+                # Integral of the power spectrum from -BW to BW.
+                channel_var = sp.mean(power_diag, 0) / dt
+                # Normalize for the window.
+                norms = sp.mean(window_function_diag, 0).real
+                bad_inds = norms < 10./n_time
+                norms[bad_inds] = 1
+                channel_var /= norms
+                # If a channel is completly masked Deweight it by giving a high
+                # variance
+                channel_var[bad_inds] = T_infinity**2
+                this_pol_parameters["channel_var"] = channel_var
+            for noise_model in parameters:
+                if noise_model[:18] == "freq_modes_over_f_":
+                    n_modes = int(noise_model[18:])
+                    this_pol_parameters[noise_model] = \
+                            get_freq_modes_over_f(this_pol_power, this_pol_window,
+                                                  frequency, n_modes, plots=plots)
+            out_parameters[this_pol] = this_pol_parameters
+        return out_parameters
 
 def get_freq_modes_over_f(power_mat, window_function, frequency, n_modes,
                           plots=False):

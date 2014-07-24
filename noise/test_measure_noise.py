@@ -72,11 +72,12 @@ class TestMeasures(unittest.TestCase) :
             Data = data_block.DataBlock(data)
             time_sec = self.time[start_ind:start_ind + nt]
             time_strings = utils.float2time(time_sec)
-            Data.set_field("DATE-OBS", time_strings, axis_names=('time',))
+            Data.set_field("DATE-OBS", time_strings, axis_names=('time',),
+                    format='22A')
             pols = [1, 3,]
-            Data.set_field("CRVAL4", pols, axis_names=('pol',))
+            Data.set_field("CRVAL4", pols, axis_names=('pol',), format='I')
             cals = ['T']
-            Data.set_field("CAL", cals, axis_names=('cal',))
+            Data.set_field("CAL", cals, axis_names=('cal',), format='1A')
             Blocks.append(Data)
         return Blocks
     
