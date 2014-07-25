@@ -133,7 +133,8 @@ class DirtyMapMaker(object):
                 if params["beam"] == 0:
                     yield Blocks, middle
                 else:
-                    yield tuple([data for data in Blocks if data.field['BEAM'] == params["beam"]])
+                    yield tuple([data for data in Blocks if data.field['BEAM']
+== params["beam"]]), middle
             else:
                 msg = "time_block parameter must be 'scan' or 'file'."
                 raise dm.ValueError(msg)
