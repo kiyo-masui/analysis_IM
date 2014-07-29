@@ -535,7 +535,7 @@ class DirtyMapMaker(object):
             else:
                 ra_index_list = range(self.n_ra)
                 # cross product = A x B = (a,b) for all a in A, for all b in B
-                chan_ra_index_list = clacross([chan_index_list,ra_index_list])
+                chan_ra_index_list = cross([chan_index_list,ra_index_list])
                 index_list,start_list = split_elems(chan_ra_index_list,
                                                              self.nproc)
                 index_list = index_list[self.rank]
@@ -620,7 +620,7 @@ class DirtyMapMaker(object):
                             if run == 0 and start_file_ind == 0:
                                 #Adding prior to the diagonal.
                                 #thread_cov_inv_row_adder = thread_cov_inv_row[:, thread_f_ind, thread_ra_ind, :]
-                                thread_cov_inv_row_chunk[ii,:, thread_f_ind, thread_ra_ind,:].flat[:: self.n_dec + 1] += \
+                                thread_cov_inv_chunk[ii,:, thread_f_ind, thread_ra_ind,:].flat[:: self.n_dec + 1] += \
                                                            1.0 / T_large**2
                             if (self.feedback > 1 and thread_ra_ind == self.n_ra - 1):
                                 print thread_f_ind,
@@ -781,11 +781,22 @@ class DirtyMapMaker(object):
             if self.rank == 0:
                 f = h5py.File(self.cov_filename, 'r+')
                 cov_inv_dset = f['inv_cov']
-                cov_inv_shape = sp.zeros(shape = (self.n_chan, self.n_ra, self.n_dec, self,n_chan, self.n_ra, self.n_dec), dtype = dtype)
-                cov_inv_info = al.make_mat(cov_inv_shape, axis_names=('freq', 'ra', 'dec','freq', 'ra', 'dec'),                                                                                                           row_axes=(0, 1, 2), col_axes=(3, 4, 5))
-                cov_inv_info.copy_axis_info(map)
-                for key, value in cov_inv_info.info.iteritems():
-                    cov_inv_dset.attrs[key] = repr(value)
+                attrs = cov_inv_dset.attrs
+                attrs.__setitem__('rows', str((0, 1, 2)))
+                attrs.__setitem__('cols', str((3, 4, 5)))
+                attrs.__setitem__('dec_centre', str(self.params['field_centre'][1]))
+                attrs.__setitem__('ra_centre', str(self.params['field_centre'][0]))
+                attrs.__setitem__('type', "'mat'")
+                attrs.__setitem__('axes', "('freq', 'ra', 'dec', 'freq', 'ra', 'dec')")
+                attrs.__setitem__('freq_centre', str(band_centre))
+                attrs.__setitem__('freq_delta', str(self.delta_freq))
+                attrs.__setitem__('ra_delta', str(self.ra_spacing))
+                attrs.__setitem__('dec_delta', str(self.params['pixel_spacing']))
+                #cov_inv_shape = sp.zeros(shape = (self.n_chan, self.n_ra, self.n_dec, self.n_chan, self.n_ra, self.n_dec), dtype = dtype)
+                #cov_inv_info = al.make_mat(cov_inv_shape, axis_names=('freq', 'ra', 'dec','freq', 'ra', 'dec'),                                                                                                           row_axes=(0, 1, 2), col_axes=(3, 4, 5))
+                #cov_inv_info.copy_axis_info(map)
+                #for key, value in cov_inv_info.info.iteritems():
+                #    cov_inv_dset.attrs[key] = repr(value)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
