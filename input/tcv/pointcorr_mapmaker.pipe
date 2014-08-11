@@ -16,6 +16,7 @@ third_set = dir_data.get_data_files(range(15,19),field='1hr',project='GBT11B_055
 fourth_set = dir_data.get_data_files(range(1,28),field='1hr',project='GBT13B_352',type='ralongmap')
 fourth_set = fourth_set[1:]
 file_middles = tuple(first_set+second_set+third_set+fourth_set)
+#file_middles = tuple(fourth_set)
 file_middles = file_middles[:-3]
 print len(file_middles)
 
