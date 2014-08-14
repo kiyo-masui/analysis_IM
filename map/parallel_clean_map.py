@@ -142,7 +142,6 @@ class CleanMapMaker(object) :
                         #noise_inv = algebra.load_h5_memmap(noise_h5, 'inv_cov', noise_fname + ".npy" , params["mem_lim"])
                         #noise_inv = algebra.make_mat(noise_inv)
                         noise_inv = noise_h5['inv_cov']
-                        noise_h5.close()
                     else:
                         raise ValueError("Noise file is of unsupported type, neither .npy or .hdf5.")
                     # Two cases for the noise.  If its the same shape as the map
@@ -298,6 +297,12 @@ class CleanMapMaker(object) :
                         raise ce.DataError("Noise matrix has bad shape.")
                     # In all cases delete the noise object to recover memeory.
                     del noise_inv
+                    try:
+                        noise_h5
+                    except:
+                        print "Not using hdf5 noise, no need to close."
+                    else:
+                        noise_h5.close()
                 # Write the clean map to file.
                 out_fname = (params['output_root'] + 'clean_map_'
                              + pol_str + band_str + '.npy')
