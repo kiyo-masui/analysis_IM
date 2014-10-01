@@ -318,7 +318,7 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
 # With faraday rotation  sky matrix now frequency dependent
                if RM_correct==True:
                    wavelength = 300000.0/float(frequency) # should be in meters given that frequency is in kHz
-                   Phi = RM*wavelength*wavelength
+                   Phi = 2*RM*wavelength*wavelength
                    m_sky = sp.zeros((4,4)) 
                    m_sky[0,0] = 0.5*(1+ma.cos(2*PA*sp.pi/180+Phi))
                    m_sky[0,1] = -ma.sin(2*PA*sp.pi/180+Phi) 
@@ -345,8 +345,9 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
 
 # Add in correction for differential phase
                if DP_correct==True:
+                   XY_temp = XY_params[1]
                    XY_params[1] = XY_params[1]*sp.cos(R[0]*frequency/1000+R[1])-XY_params[2]*sp.sin(R[0]*frequency/1000+R[1])
-                   XY_params[2] = XY_params[1]*sp.sin(R[0]*frequency/1000+R[1])+XY_params[2]*sp.cos(R[0]*frequency/1000+R[1])
+                   XY_params[2] = XY_temp*sp.sin(R[0]*frequency/1000+R[1])+XY_params[2]*sp.cos(R[0]*frequency/1000+R[1])
 
 #Rotate to sky coordinates (and RM correct if set)
                if R_to_sky==True:

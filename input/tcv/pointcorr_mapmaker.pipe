@@ -15,9 +15,10 @@ second_set = dir_data.get_data_files(range(0,14),field='1hr',project='GBT11B_055
 third_set = dir_data.get_data_files(range(15,19),field='1hr',project='GBT11B_055',type='ralongmap')
 fourth_set = dir_data.get_data_files(range(1,28),field='1hr',project='GBT13B_352',type='ralongmap')
 fourth_set = fourth_set[1:]
-file_middles = tuple(first_set+second_set+third_set+fourth_set)
+file_middles = tuple(fourth_set)
+#file_middles = tuple(first_set+second_set+third_set+fourth_set)
 #file_middles = tuple(fourth_set)
-file_middles = file_middles[:-3]
+#file_middles = file_middles[:-3]
 print len(file_middles)
 
 #sessions = range(41, 90)
@@ -108,7 +109,7 @@ prefix = ''
 map_prefix = '' + field + '_80-28_ptcorr_'
 
 # Maximum number of processes to use.
-pipe_processes = 1
+pipe_processes = 10
 
 
 ####  List of modules to execute.  ####
@@ -137,11 +138,11 @@ pipe_modules = []
 #pipe_modules.append(calibrate.Calibrate)
 
 #new calibration module
-#from time_stream import flux_diff_gain_cal
-#pipe_modules.append(flux_diff_gain_cal.Calibrate)
+from time_stream import flux_diff_gain_cal
+pipe_modules.append(flux_diff_gain_cal.Calibrate)
 
-#from time_stream import rotate_pol
-#pipe_modules.append(rotate_pol.RotatePol)
+from time_stream import rotate_pol
+pipe_modules.append(rotate_pol.RotatePol)
 
 #from time_stream import rebin_time
 #pipe_modules.append(rebin_time.RebinTime)
@@ -165,8 +166,8 @@ pipe_modules = []
 #from time_stream import reflag
 #pipe_modules.append((reflag.ReFlag, ('sf2_', 'sf_')))
 
-from noise import measure_noise
-pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
+#from noise import measure_noise
+#pipe_modules.append((measure_noise.Measure, ('mn2_', 'mn_')))
 
 #from map import dirty_map
 #pipe_modules.append((dirty_map.DirtyMapMaker, ('dmA_', 'dm_')))
@@ -301,7 +302,7 @@ fgc_mueler_file = base_dir_main + 'diff_gain_params/1hr_pt2_fdg_calc_avg.txt'
 fgc_RM_file = base_dir +'RM_tables/'
 fgc_R_to_sky = True
 fgc_DP_correct = True
-fgc_RM_correct = False
+fgc_RM_correct = True
 fgc_Flux_special = True
 # set Flux special to True when using something like an average and set mueler file to the filename
 
@@ -340,7 +341,7 @@ dm_scans = ()
 dm_IFs = ()
 
 #dm_polarizations = ('I','Q','U','V')
-dm_polarizations = ('I',)
+dm_polarizations = ('Q','U')
 dm_field_centre = map_centre
 dm_pixel_spacing = map0_spacing
 dm_map_shape = map0_shape
@@ -356,7 +357,7 @@ dm_interpolation = 'cubic'
 # clean_map
 cm_input_root = dm_output_root
 cm_output_root = cm_input_root
-cm_polarizations = ('I',)
+cm_polarizations = ('Q','U')
 #cm_polarizations = ('I','Q','U','V')
 cm_bands = (800,)
 cm_save_noise_diag = True
