@@ -286,6 +286,7 @@ class DirtyMapMaker(object):
         if not self.noise_params is None:
             self.noise_params.close()
     
+    @profile    
     def make_map(self):
         """Makes map for current polarization and band.
         

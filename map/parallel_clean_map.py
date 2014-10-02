@@ -1,9 +1,14 @@
 """Converter from a dirty map to a clean map."""
 
+import os
+os.environ['PYTHON_EGG_CACHE'] = '/scratch/p/pen/andersoc/.python-eggs'
+from memory_profiler import profile
+import sys
+
 from mpi4py import MPI
 from map import parallel_dirty_map as pdm
 
-import sys
+#import sys
 import glob
 import time
 
@@ -45,7 +50,7 @@ class CleanMapMaker(object) :
         self.rank = comm.Get_rank()
         self.nproc = comm.Get_size()
 
-    #@profile
+    @profile
     def execute(self, nprocesses=1) :
         """Worker funciton."""
         params = self.params
