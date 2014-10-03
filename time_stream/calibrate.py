@@ -3,6 +3,8 @@
 """
 
 import numpy.ma as ma
+import numpy as np
+import string
 import scipy as sp
 from scipy import interpolate
 
@@ -58,6 +60,7 @@ class Calibrate(base_single.BaseSingle) :
 def multiply_by_cal(Data, CalData) :
     """Function scales data by the noise cal temperature.
     """
+    fcalfn="/cita/h/home-2/ywliao/3C286_110524_fluxcal.txt"
 
     # For now we just assume that the cal and polarizations are arranged in a
     # certain way and then check to make sure we are right.
@@ -106,18 +109,40 @@ def multiply_by_cal(Data, CalData) :
             inds, = sp.where(sp.logical_and(CalData.freq >= f - width/2.0,
                                            CalData.freq < f + width/2.0))
             cdata[:,:,:,find] = ma.mean(CalData.data[:,:,:,inds], 3)
-    
-    if calibrate_to_I :
-        Data.data *= (cdata[0,cal_xx_ind,0,:] + cdata[0,cal_yy_ind,0,:])/2.0
-    else :
-        # Loop over times and cal and scale each polarization appropriately.
-        for tind in range(Data.dims[0]) :
-            for cind in range(Data.dims[2]) :
-                Data.data[tind,xx_ind,cind,:] *= cdata[0,cal_xx_ind,0,:]
-                Data.data[tind,yy_ind,cind,:] *= cdata[0,cal_yy_ind,0,:]
-                Data.data[tind,xy_inds,cind,:] *= ma.sqrt(
-                     cdata[0,cal_yy_ind,0,:] * cdata[0,cal_xx_ind,0,:])
 
+#"""    
+#    if calibrate_to_I :
+#        Data.data *= (cdata[0,cal_xx_ind,0,:] + cdata[0,cal_yy_ind,0,:])/2.0
+#    else :
+#        # Loop over times and cal and scale each polarization appropriately.
+#        for tind in range(Data.dims[0]) :
+#            for cind in range(Data.dims[2]) :
+#                Data.data[tind,xx_ind,cind,:] *= cdata[0,cal_xx_ind,0,:]
+#                Data.data[tind,yy_ind,cind,:] *= cdata[0,cal_yy_ind,0,:]
+#                Data.data[tind,xy_inds,cind,:] *= ma.sqrt(
+#                     cdata[0,cal_yy_ind,0,:] * cdata[0,cal_xx_ind,0,:])
+#"""
+    fid=open(fcalfn)
+    k=0
+    fluxcal=np.zeros((2,256))
+    for line in fid.readlines():
+        dumm=string.split(line)
+        fluxcal[0][k]=string.atof(dumm[7])
+        fluxcal[1][k]=string.atof(dumm[3])
+        k=k+1
+
+    fid.close()
+#    print fluxcal
+    print Data.dims
+
+    for tind in range(Data.dims[0]) :
+        for cind in range(Data.dims[2]) :
+            freqc=900-cind/255*200
+            mjy2k=(2.28315426-0.000484307905*freqc)/1000
+            Data.data[tind,xx_ind,cind,:] *= fluxcal[0,:]*mjy2k
+            Data.data[tind,yy_ind,cind,:] *= fluxcal[1,:]*mjy2k
+            Data.data[tind,xy_inds,cind,:] *= ma.sqrt(
+                fluxcal[0,:]*fluxcal[1,:])*mjy2k
 
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":
