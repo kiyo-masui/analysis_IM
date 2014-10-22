@@ -3,7 +3,7 @@ import numpy as np
 import scipy as sp
 import scipy.ndimage.interpolation as ndimage_inter
 import core.algebra as algebra
-import pyfits
+from astropy.io import fits as pyfits
 import os
 import sys
 import copy
