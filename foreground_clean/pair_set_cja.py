@@ -33,7 +33,7 @@ params_init = {
                'factorizable_noise': True,
                'sub_weighted_mean': True,
                'svd_filename': None,
-               'modes': [0, 1, 2],
+               'modes': [0, 1, 2, 5, 10, 15],
                'pairlist': [],
                'pairdict': {},
                'telescope': 'Parkes',
