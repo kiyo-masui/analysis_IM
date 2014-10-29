@@ -30,6 +30,9 @@ npol = len(pol_set)
 ncal = len(cal_set)
 nfreq = 2048
 
+# Fields that should be copied if present but are not in the test data.
+missing_fields = ['BEAM', 'RA-OBS', 'DEC-OBS', 'PARANGLE', 'RA', 'DEC']
+
 # The name FileProcessor was inherited from an earlier version of this class.
 # It is now not a processor but simple a Reader.
 class TestReaderInit(unittest.TestCase) :
@@ -60,7 +63,8 @@ class TestReaderGetIFScanInds(unittest.TestCase) :
     def test_gets_records(self) :
         for scan_ind in range(2) :
             for IF_ind in range(2) :
-                inds = self.FileProcessor.get_scan_IF_inds(scan_ind, IF_ind)
+                inds = self.FileProcessor.get_scan_band_beam_inds(scan_ind,
+                                                                  IF_ind)
                 IFs = self.IFs_all[inds]
                 scans = self.scans_all[inds]
                 # Verify we got all of them.
@@ -77,7 +81,7 @@ class TestReaderGetIFScanInds(unittest.TestCase) :
         """Test reshaping of indicies to time x pol x cal."""
         
         # Get the inds of a scan and IF and use them to get some data.
-        inds = self.FileProcessor.get_scan_IF_inds(1, 1)
+        inds = self.FileProcessor.get_scan_band_beam_inds(1, 1)
         LST = sp.array(self.FileProcessor.fitsdata.field('LST')[inds])
         pol = sp.array(self.FileProcessor.fitsdata.field('CRVAL4')[inds])
         cal = sp.array(self.FileProcessor.fitsdata.field('CAL')[inds])
@@ -96,23 +100,23 @@ class TestReaderGetIFScanInds(unittest.TestCase) :
         """Puts pols out of order and check if exception is raised."""
 
         # Mess up the cals in one of the scans, IFs
-        inds = self.FileProcessor.get_scan_IF_inds(1, 1)
+        inds = self.FileProcessor.get_scan_band_beam_inds(1, 1)
         self.FileProcessor.fitsdata.field('CAL')[inds[1,1,1]] = 'T'
         self.FileProcessor.fitsdata.field('CAL')[inds[1,1,0]] = 'T'
         # See if an error is raised when we try to re-get the inds.
-        self.assertRaises(ce.DataError, self.FileProcessor.get_scan_IF_inds,
+        self.assertRaises(ce.DataError, self.FileProcessor.get_scan_band_beam_inds,
                           1, 1)
         # Mess up the pols in another of the scans, IFs
-        inds = self.FileProcessor.get_scan_IF_inds(0, 0)
+        inds = self.FileProcessor.get_scan_band_beam_inds(0, 0)
         self.FileProcessor.fitsdata.field('CRVAL4')[inds[1,1,1]] = '-8'
         self.FileProcessor.fitsdata.field('CRVAL4')[inds[1,2,1]] = '-8'
-        self.assertRaises(ce.DataError, self.FileProcessor.get_scan_IF_inds,
+        self.assertRaises(ce.DataError, self.FileProcessor.get_scan_band_beam_inds,
                           0, 0)
         # Keep times in order but make one them slightly off.
-        inds = self.FileProcessor.get_scan_IF_inds(0, 1)
+        inds = self.FileProcessor.get_scan_band_beam_inds(0, 1)
         self.FileProcessor.fitsdata.field('LST')[inds[4,0,0]] = \
             self.FileProcessor.fitsdata.field('LST')[inds[4,0,0]] + 0.01
-        self.assertRaises(ce.DataError, self.FileProcessor.get_scan_IF_inds,
+        self.assertRaises(ce.DataError, self.FileProcessor.get_scan_band_beam_inds,
                           0, 1)
 
 
@@ -186,14 +190,14 @@ class TestWriter(unittest.TestCase) :
         self.Writer.add_data(Block)
 
     def test_add_data(self) :
-        for field_name in fitsGBT.fields_and_axes.iterkeys() :
-            if field_name not in ['RA', 'DEC']:
+        for field_name in fitsGBT.fields_and_axes.iterkeys():
+            if not field_name in missing_fields:
                 self.assertEqual(len(self.Writer.field[field_name]),
                                  ntimes_scan*npol*ncal)
         Block = self.Reader.read(1, 0)
         self.Writer.add_data(Block)
         for field_name in fitsGBT.fields_and_axes.iterkeys() :
-            if field_name not in ['RA', 'DEC']:
+            if not field_name in missing_fields:
                 self.assertEqual(len(self.Writer.field[field_name]),
                                  2*ntimes_scan*npol*ncal)
 
@@ -240,9 +244,10 @@ class TestCircle(unittest.TestCase) :
             for jj in range(4) :
                 self.assertEqual(OldDB.dims[ii], NewDB.dims[ii])
             self.assertTrue(ma.allclose(OldDB.data, NewDB.data))
-            for field, axis in fitsGBT.fields_and_axes.iteritems() :
-                self.assertEqual(axis, OldDB.field_axes[field])
-                self.assertEqual(axis, NewDB.field_axes[field])
+            for field, axis in fitsGBT.fields_and_axes.iteritems():
+                if not field in missing_fields:
+                    self.assertEqual(axis, OldDB.field_axes[field])
+                    self.assertEqual(axis, NewDB.field_axes[field])
             for field in ['SCAN', 'OBJECT', 'TIMESTAMP',
                           'OBSERVER', 'CRPIX1', 'CDELT1'] :
                 self.assertEqual(OldDB.field[field], NewDB.field[field])

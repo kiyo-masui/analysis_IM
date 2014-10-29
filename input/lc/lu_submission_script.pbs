@@ -1,0 +1,9 @@
+#!/bin/bash
+# MOAB/Torque submission script for SciNet GPC (hybrid job)
+#
+#PBS -l nodes=81:ppn=8,walltime=00:15:00
+#PBS -N calinliv_testing_the_lu
+#
+cd $PBS_O_WORKDIR
+export OMP_NUM_THREADS=8
+time mpirun --bynode -np 81 python map/lu_clean_map.py input/lc/lu_clean_map_512.ini

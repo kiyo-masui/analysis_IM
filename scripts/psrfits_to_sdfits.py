@@ -26,7 +26,11 @@ import numpy.ma as ma
 import scipy as sp
 import scipy.interpolate as interp
 import scipy.fftpack as fft
+import scipy.signal as sig
 import pyfits
+# The before importing pyplot eliminates the need for a working X-server.
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from time_stream import rotate_pol, cal_scale, rebin_freq
@@ -67,7 +71,11 @@ params_init = {# Inputs.
                # noise cal to change relative phase significantly.  Empirically
                # this seems to be about a minute for guppi samples of 0.001024s
                # and cal period of 64 times this.
-               "cal_fold_time" : 30
+               "cal_fold_time" : 30.,
+               # For short time scale rfi flagging. This is the flagging
+               # threshold in numbers of sigma.  Negitive to deactivate fast
+               # flagging.
+               "fast_flag" : -1.
                }
 prefix = ''
 
@@ -156,13 +164,13 @@ class ScanSet(object):
             self.Scan_objects.append(Scan_object)
 
     def convert_scans(self, time_bins_to_average, partition_cal=False,
-                cal_fold_time=0):
+                      cal_fold_time=0, fast_flag=-1):
         """Converts scans to SDfits."""
         
         self.DataBlocks = []
         for Scan in self.Scan_objects:
             self.DataBlocks.append(Scan.convert(time_bins_to_average,
-                                   partition_cal, cal_fold_time))
+                                   partition_cal, cal_fold_time, fast_flag))
 
     def write_out(self, froot):
         """Writes converted data to disk."""
@@ -214,8 +222,8 @@ class Scan(object):
         # check the headers for the session number.  In addition
         candidate_guppi_files = []
         for input_root in guppi_data_roots:
-            candidate_guppi_files += glob.glob(input_root + '*' + ("_%04d_" % scan_no)
-                                     + '*' + guppi_data_extension)
+            candidate_guppi_files += glob.glob(input_root + '*'
+                    + ("_%04d_" % scan_no) + '*' + guppi_data_extension)
         # Now open the headers of these candidate files to see which acctually
         # belong to this scan.
         guppi_files = []
@@ -303,7 +311,7 @@ class Scan(object):
             ant_times = sp.array(ant_data.field("DMJD"), dtype=float)
             # Times in days since midnight UTC on day of scan start. Time in this
             # array become greater than one if scan spans midnight UTC.
-            ant_times -= (ant_times[0] - ant_times[0]%1.0)
+            ant_times -= (ant_times[0] - ant_times[0] % 1.0)
             # Seconds.
             ant_times *= 24.0 * 3600.0
             # Get the az and el out of the antenna.
@@ -311,19 +319,25 @@ class Scan(object):
             ant_el = ant_data.field("OBSC_EL")
             az_interp = interp.interp1d(ant_times, ant_az)
             el_interp = interp.interp1d(ant_times, ant_el)
-            self.antenna_data =  (az_interp, el_interp, (min(ant_times),
-                                  max(ant_times)))
+            # Get the RA and DEC from the antenna.
+            ant_ra = ant_data.field("RAJ2000")
+            ant_dec = ant_data.field("DECJ2000")
+            ra_interp = interp.interp1d(ant_times, ant_ra)
+            dec_interp = interp.interp1d(ant_times, ant_dec)
+            self.antenna_data =  (az_interp, el_interp, ra_interp, dec_interp,
+                                  (min(ant_times), max(ant_times)))
         return self.antenna_data
 
 
     def convert(self, time_bins_to_average, partition_cal=False,
-                cal_fold_time=0):
+                cal_fold_time=0, fast_flag=-1):
         """Converts guppi scan to SDfits."""
         
         Blocks = []
         for guppi_file in self.guppi_files:
             Data = self.process_guppi_file(guppi_file, time_bins_to_average,
-                                           partition_cal, cal_fold_time)
+                                           partition_cal, cal_fold_time,
+                                           fast_flag)
             Blocks.append(Data)
         Blocks = tuple(Blocks)
         if len(Blocks) == 1:
@@ -411,6 +425,10 @@ class Scan(object):
                        ('time',), '1D')
         Data.set_field('CRVAL3', sp.empty(final_shape[0]),
                        ('time',), '1D')
+        Data.set_field('RA', sp.empty(final_shape[0]),
+                       ('time',), '1D')
+        Data.set_field('DEC', sp.empty(final_shape[0]),
+                       ('time',), '1D')
         Data.set_field('DATE-OBS', sp.empty(final_shape[0], dtype='S23'),
                        ('time',), '23A')
         # Copy all the other fields over.
@@ -433,13 +451,15 @@ class Scan(object):
             Data.data[this_time_slice,...] = ThisData.data
             Data.field['CRVAL2'][this_time_slice] = ThisData.field['CRVAL2']
             Data.field['CRVAL3'][this_time_slice] = ThisData.field['CRVAL3']
+            Data.field['RA'][this_time_slice] = ThisData.field['RA']
+            Data.field['DEC'][this_time_slice] = ThisData.field['DEC']
             Data.field['DATE-OBS'][this_time_slice] = ThisData.field['DATE-OBS']
             this_time_start += this_n_time
         Data.history = data_block.merge_histories(*Blocks)
         return Data
 
     def process_guppi_file(self, guppi_file, time_bins_to_average,
-                           partition_cal=False, cal_fold_time=0):
+                           partition_cal=False, cal_fold_time=0, fast_flag=-1):
         """Converts a guppi_file to DataBlock object."""
 
         # Whethar we will fold the data to look for the cal or not.
@@ -489,7 +509,8 @@ class Scan(object):
         sample_time = psrheader["TBIN"]
         resampled_time = sample_time*n_bins_ave
         # Now get the pointing data from the antenna fits file.
-        az_interp, el_interp, ant_time_range = self.get_antenna_data()
+        az_interp, el_interp, ra_interp, dec_interp, ant_time_range = \
+                self.get_antenna_data()
         
         # Occationally, the guppi integrates longer than the scan and the
         # antenna fits file won't cover the first or last few records.
@@ -514,12 +535,16 @@ class Scan(object):
         # is after rebining and combing the records.
         final_shape = (n_bins*(n_records - start_record), npol, ncal,
                               nfreq)
-        d = ma.empty(final_shape, dtype=float)
+        d = ma.empty(final_shape, dtype=sp.float32)
         Data = data_block.DataBlock(d, copy=False)
         # Allowcate memory for the the fields that are time dependant.
         Data.set_field('CRVAL2', sp.empty(final_shape[0]),
                        ('time',), '1D')
         Data.set_field('CRVAL3', sp.empty(final_shape[0]),
+                       ('time',), '1D')
+        Data.set_field('RA', sp.empty(final_shape[0]),
+                       ('time',), '1D')
+        Data.set_field('DEC', sp.empty(final_shape[0]),
                        ('time',), '1D')
         Data.set_field('DATE-OBS', sp.empty(final_shape[0], dtype='S23'),
                        ('time',), '23A')
@@ -617,18 +642,25 @@ class Scan(object):
             # Convert the Data to the proper shape and type.
             data = format_data(data, ntime, npol, nfreq)
 
-            if partition_cal :
-                data = separate_cal(data, n_bins_cal, cal_phase_info)
+            if partition_cal:
+                data, weights = separate_cal(data, n_bins_cal, cal_phase_info,
+                                             flag=fast_flag)
                 # Down sample from the cal period to the final number of time
                 # bins.
                 data.shape = (n_bins, ntime//n_bins_cal//n_bins, npol,
                               ncal, nfreq)
-                # Use mean not median due to discritization.
+                # Use mean not median due to discritization noise.
                 data = sp.mean(data, 1)
+                # Do the same for the weights.
+                weights.shape = (n_bins, ntime//n_bins_cal//n_bins, npol,
+                              ncal, nfreq)
+                # Use mean not median due to discritization noise.
+                weights = sp.mean(weights, 1)
             else :
                 # Just rebin in time and add a length 1 cal index.
                 data.shape = (n_bins, n_bins_ave, npol, ncal, nfreq)
                 data = sp.mean(data, 1)
+                weights = sp.ones_like(data)
             # Now get the scale and offsets for the data and apply them.
             scls = sp.array(record["DAT_SCL"], dtype=sp.float32)
             scls.shape = (1, npol, 1, nfreq)
@@ -651,10 +683,18 @@ class Scan(object):
             # Get the pointing.
             az = az_interp(time)
             el = el_interp(time)
+            ra = ra_interp(time)
+            dec = dec_interp(time)
             # Put all the data into the DataBlock for writing out.
-            Data.data[jj*n_bins:(jj+1)*n_bins,:,:,:] = data
+            # This will always trigger basic slicing, returning a view.
+            Data_slice = Data.data[jj*n_bins:(jj+1)*n_bins,:,:,:]
+            Data_slice[...] = data
+            Data_slice[weights < 0.7] = ma.masked
+            # Copy over pointing.
             Data.field['CRVAL2'][jj*n_bins:(jj+1)*n_bins] = az
             Data.field['CRVAL3'][jj*n_bins:(jj+1)*n_bins] = el
+            Data.field['RA'][jj*n_bins:(jj+1)*n_bins] = ra
+            Data.field['DEC'][jj*n_bins:(jj+1)*n_bins] = dec
             # Get the time stamp for each bin.
             for mm, kk in enumerate(xrange(jj*n_bins, (jj+1)*n_bins)) :
                 # Format the time and add it to the date.
@@ -705,6 +745,9 @@ class Converter(object):
             n_new = nprocesses
             proc_list = range(n_new)
             n_tasks = len(initial_scans)
+            # Use a Lock for writing files, as this briefly doubles the memory
+            # useage.
+            self.write_lock = mp.Lock()
             for ii in range(n_new + n_tasks):
                 # End the task number ii - n_new.
                 if ii >= n_new:
@@ -725,9 +768,14 @@ class Converter(object):
                       blacklist=params['blacklist'], feedback=self.feedback)
         Set.prepare_scans(params['guppi_input_roots'],
                           params['guppi_input_end'])
+        # Make sure that there is actually data to convert.
+        if not Set.Scan_objects:
+            return
         Set.convert_scans(params['time_bins_to_average'],
-                          params['partition_cal'], params['cal_fold_time'])
-        Set.write_out(params['output_root'])
+                          params['partition_cal'], params['cal_fold_time'],
+                          params['fast_flag'])
+        with self.write_lock:
+            Set.write_out(params['output_root'])
 
 
 # Functions for the most error prone parts of the above script.  Unit testing
@@ -758,8 +806,8 @@ def format_data(data, ntime, npol, nfreq) :
     
     The input data matrix is not preserved in this function.
     """
-    if (not data.dtype == sp.uint8) or (len(data.shape) != 1) :
-        raise TypeError("Expected flat uint8 data.")
+    if (not data.dtype == sp.uint8) or (data.size != ntime * npol * nfreq):
+        raise TypeError("Got data of wronge type of size.")
     out_data = sp.empty((ntime, npol, nfreq), dtype=sp.float32)
     # Reshape the data making the last index the one that is
     # averaged over when we rebin.
@@ -786,12 +834,22 @@ def get_cal_mask(data, n_bins_cal) :
                " of bins in a cal period should be a power of 2).")
         raise ValueError(msg)
     
+    # Will be working with stokes I data.
+    I_data = data[:,0,:].copy()
     # For solving for the cal phase, throw away high varience channels (RFI).
-    I_data = data[:,0,:]
+    # Divide by time mean, makes a good noise weight and normalizes variences.
+    I_mean = sp.mean(I_data, 0)
+    # Some channels might be all zeros, don't want to divide by that.
+    good_chans = I_mean > 0.1 * sp.mean(I_mean)
+    I_mean[sp.logical_not(good_chans)] = 1.
+    I_data *= good_chans
+    I_data /= I_mean
+    # Evaluate the noise in each channel.
     I_vars = sp.var(I_data, 0)
-    mean_var = sp.mean(I_vars)
-    good_chans = I_vars < 5 * mean_var
-    I_data = I_data * good_chans
+    # Only use channels with lowish noise.
+    mean_var = sp.sum(I_vars) / sp.sum(good_chans)
+    good_chans = I_vars < 2 * mean_var
+    I_data *= good_chans
     # Fold the Stokes I data on the cal period to figure out the phase.
     # Sum over the frequencies.
     folded_data = sp.sum(I_data, -1, dtype=float)
@@ -849,7 +907,7 @@ def get_cal_mask(data, n_bins_cal) :
 
     return first_on, n_blank
 
-def separate_cal(data, n_bins_cal, cal_mask=None) :
+def separate_cal(data, n_bins_cal, cal_mask=None, flag=-1) :
     """Function separates data into cal_on and cal off.
     
     No Guarantee that data argument remains unchanged."""
@@ -867,32 +925,33 @@ def separate_cal(data, n_bins_cal, cal_mask=None) :
             first_on, n_blank = cal_mask
     except ce.DataError :
         print "Discarded record due to bad profile. "
-        out_data[:] = float('nan')
+        out_data[:] = sp.nan
+        weights = sp.zeros_like(out_data)
+        return out_data, weights
+    # How many samples for each cal state.
+    n_cal_state = n_bins_cal//2 - n_blank
+    first_off = (first_on + n_bins_cal//2) % n_bins_cal
+
+    # Reshape data to add an index to average over.
+    data.shape = (n_bins_after_cal, n_bins_cal) + data.shape[1:]
+
+    # Get the masks for the on and off data.
+    inds = sp.arange(n_bins_cal)
+    if first_on == min((sp.arange(n_cal_state) +
+                    first_on)% n_bins_cal) :
+        on_mask = sp.logical_and(inds >= first_on, inds < 
+                                 first_on+n_cal_state)
     else :
-        # How many samples for each cal state.
-        n_cal_state = n_bins_cal//2 - n_blank
-        first_off = (first_on + n_bins_cal//2) % n_bins_cal
-
-        # Reshape data to add an index to average over.
-        data.shape = (n_bins_after_cal, n_bins_cal) + data.shape[1:]
-
-        # Get the masks for the on and off data.
-        inds = sp.arange(n_bins_cal)
-        if first_on == min((sp.arange(n_cal_state) +
-                        first_on)% n_bins_cal) :
-            on_mask = sp.logical_and(inds >= first_on, inds < 
-                                     first_on+n_cal_state)
-        else :
-            on_mask = sp.logical_or(inds >= first_on, inds < 
-                                (first_on + n_cal_state) % n_bins_cal)
-        if first_off == min((sp.arange(n_cal_state) +
-                        first_off)% n_bins_cal) :
-            off_mask = sp.logical_and(inds >= first_off, inds < 
-                                  first_off + n_cal_state)
-        else :
-            off_mask = sp.logical_or(inds >= first_off, inds < 
-                                 (first_off + n_cal_state) % n_bins_cal)
-
+        on_mask = sp.logical_or(inds >= first_on, inds < 
+                            (first_on + n_cal_state) % n_bins_cal)
+    if first_off == min((sp.arange(n_cal_state) +
+                    first_off)% n_bins_cal) :
+        off_mask = sp.logical_and(inds >= first_off, inds < 
+                              first_off + n_cal_state)
+    else :
+        off_mask = sp.logical_or(inds >= first_off, inds < 
+                             (first_off + n_cal_state) % n_bins_cal)
+    if flag <= 0:
         # Find cal on and cal off averages.  Always use mean not median due to
         # discretization noise.
         # This loop is much faster than the built in numpy mean() for some
@@ -904,8 +963,71 @@ def separate_cal(data, n_bins_cal, cal_mask=None) :
                 out_data[:,:,1,:] += data[:,ii,:,:]
         out_data[:,:,0,:] /= sp.sum(on_mask)
         out_data[:,:,1,:] /= sp.sum(off_mask)
-
-    return out_data
+        weights = sp.ones_like(out_data)
+    else:
+        # Do short time scale data flagging.
+        # First calculate the mean for each bin.
+        bin_mean = sp.zeros_like(out_data)
+        for ii in range(n_bins_cal):
+            if on_mask[ii]:
+                bin_mean[:,:,0,:] += data[:,ii,:,:]
+            elif off_mask[ii]:
+                bin_mean[:,:,1,:] += data[:,ii,:,:]
+        bin_mean[:,:,0,:] /= sp.sum(on_mask)
+        bin_mean[:,:,1,:] /= sp.sum(off_mask)
+        # Calculate the variance for each channel, subtract off time
+        # dependant mean.
+        bin_var = sp.zeros((npol, 2, nfreq), sp.float32)
+        for ii in range(n_bins_cal):
+            if on_mask[ii]:
+                bin_var[:,0,:] += sp.sum((data[:,ii,:,:]
+                                          - bin_mean[:,:,0,:])**2, 0)
+            elif off_mask[ii]:
+                bin_var[:,1,:] += sp.sum((data[:,ii,:,:]
+                                          - bin_mean[:,:,1,:])**2, 0)
+        # Note the non-standard value for Bessels Correction due to multiple
+        # means calculated from data.
+        bin_var[:,0,:] /= (sp.sum(on_mask) - 1) * n_bins_after_cal
+        bin_var[:,1,:] /= (sp.sum(off_mask) - 1) * n_bins_after_cal
+        bin_std = sp.sqrt(bin_var)
+        # Calculate the upper and lower thresholds for each bin.
+        upper = bin_mean + flag * bin_std
+        lower = bin_mean - flag * bin_std
+        # Need to keep track of how much we've flagged.
+        # All four polarizations are flagged simultaniously, so counts does not
+        # get a polarization axis.
+        counts = sp.empty((n_bins_after_cal, 2, nfreq), dtype=sp.int32)
+        counts[:,0,:] = sp.sum(on_mask)
+        counts[:,1,:] = sp.sum(off_mask)
+        flag_counts = 0    # For reporting number fast flagging.
+        for ii in range(n_bins_cal):
+            if on_mask[ii]:
+                this_flagged = sp.logical_or(data[:,ii,:,:] > upper[:,:,0,:],
+                                             data[:,ii,:,:] < lower[:,:,0,:])
+                this_flagged = sp.any(this_flagged, 1)
+                t_inds, f_inds = sp.nonzero(this_flagged)
+                for jj in range(len(t_inds)):
+                    data[t_inds[jj],ii,:,f_inds[jj]] = 0.
+                    counts[t_inds[jj],0,f_inds[jj]] -= 1
+                    flag_counts += 1
+                out_data[:,:,0,:] += data[:,ii,:,:]
+            elif off_mask[ii]:
+                this_flagged = sp.logical_or(data[:,ii,:,:] > upper[:,:,1,:],
+                                             data[:,ii,:,:] < lower[:,:,1,:])
+                this_flagged = sp.any(this_flagged, 1)
+                t_inds, f_inds = sp.nonzero(this_flagged)
+                for jj in range(len(t_inds)):
+                    data[t_inds[jj],ii,:,f_inds[jj]] = 0.
+                    counts[t_inds[jj],1,f_inds[jj]] -= 1
+                    flag_counts += 1
+                out_data[:,:,1,:] += data[:,ii,:,:]
+        if float(flag_counts) / (nfreq * ntime) > 0.001:
+            percent_flagged = float(flag_counts) / (nfreq * ntime) * 100
+            print "(flagged %4.1f%% of samples)" % percent_flagged,
+        out_data /= counts[:,None,:,:]
+        weights = sp.ones((1, npol, 1, 1), dtype=sp.float64) * n_bins_cal / 2.
+        weights = counts[:,None,:,:] / weights
+    return out_data, weights
 
 
 # -------- Data Checker ---------
@@ -930,6 +1052,7 @@ class DataChecker(object) :
 
     def execute(self, nprocesses=1) :
         params = self.params
+        utils.mkparents(params["output_root"])
         n = len(params["file_middles"])
         np = nprocesses
         procs = [None]*np
@@ -953,19 +1076,8 @@ class DataChecker(object) :
         params = self.params
         # Construct the file name and read in all scans.
         file_name = params["input_root"] + middle + ".fits"
-        Reader = fitsGBT.Reader(file_name, feedback=self.feedback)
-        Blocks = Reader.read((), (), force_tuple=True)
-        del Reader
-        #p_here, p_there = mp.Pipe()
-        #p = mp.Process(target=read_data,
-        #               args=(file_name, p_there, self.feedback))
-        #p.start()
-        #Blocks = p_here.recv()
-        #p.join()
-        #if p.exitcode != 0:
-        #    raise RuntimeError("A process failed with exit code: "
-        #                      + str(procs[ii % np].exitcode))
-        nb = len(Blocks)
+        Reader = fitsGBT.Reader(file_name, memmap=True, feedback=self.feedback)
+        nb = len(Reader.scan_set)
         # Plotting limits need to be adjusted for on-off scans.
         if file_name.find("onoff") != -1 or file_name.find("track") != -1:
             onoff=True
@@ -978,20 +1090,23 @@ class DataChecker(object) :
         cal_time = ma.zeros((0, 4))
         sys_time = ma.zeros((0, 4))
         cal_noise_spec = 0
+        # Get some info from teh first scan.
+        Data = Reader.read(scans=0, bands=0)
         # Get the number of times in the first block and shorten to a
         # number that should be smaller than all blocks.
-        nt = int(Blocks[0].dims[0]*.9)
+        nt = int(Data.dims[0]*.9)
+        #window = sp.ones(nt)
+        window = sig.get_window('hanning', nt)
+        window /= sp.mean(window)
         # Get the frequency axis.  Must be before loop because the data is
         # rebined in the loop.
-        Data = Blocks[0]
         Data.calc_freq()
         f = Data.freq
         # Get time steps and frequency wdith for noise power normalization.
         Data.calc_time()
         dt = abs(sp.mean(sp.diff(Data.time)))
-        # Note that Data was rebined in the loop.
-        dnu = abs(Data.field["CDELT1"])
-        for Data in Blocks :
+        for scan in range(nb):
+            Data = Reader.read(scans=scan, bands=0)
             # Rotate to XX, YY etc.
             rotate_pol.rotate(Data, (-5, -7, -8, -6))
             this_count = ma.count(Data.data[:,:,0,:] 
@@ -1009,24 +1124,40 @@ class DataChecker(object) :
             # Accumulate variouse sums.
             counts += this_count
             cal_sum += ma.sum(Data.data[:,:,0,:] + Data.data[:,:,1,:], 0)
-            # Take power spectrum of on-off/on+off.
+            # Take power spectrum of on-off/((on+off)/2).
             rebin_freq.rebin(Data, 512, mean=True, by_nbins=True)
-            cal_diff = ((Data.data[:,[0,-1],0,:] - Data.data[:,[0,-1],1,:])
-                        / ma.mean(Data.data[:,[0,-1],0,:] 
-                                  + Data.data[:,[0,-1],1,:], 0))
+            
+            cal_diff = Data.data[:,[0,-1],0,:] - Data.data[:,[0,-1],1,:]
+            cal_norm = ma.mean(Data.data[:,[0,-1],0,:] 
+                                + Data.data[:,[0,-1],1,:], 0) / 2
+            cal_diff /= cal_norm
+            # Subtract out the mean, and fill.
             cal_diff -= ma.mean(cal_diff, 0)
-            cal_diff = cal_diff.filled(0)[0:nt,...]
-            power = abs(fft.fft(cal_diff, axis=0)[range(nt//2+1)])
-            del cal_diff
+            cal_diff = cal_diff.filled(0)
+            # If too short, extend the axis with zeros (should be rare).
+            if cal_diff.shape[0] < nt:
+                tmp = sp.zeros((nt,) + cal_diff.shape[1:])
+                tmp[:cal_diff.shape[0],...] = cal_diff
+                cal_diff = tmp
+            # Window.
+            cal_diff = cal_diff[0:nt,...] * window[:,None,None]
+            # Take power soectrum.
+            power = abs(fft.fft(cal_diff, axis=0))
             power = power**2/nt
+            power = power[:nt//2+1,...]
             cal_noise_spec += power
             del power
+        # Note that Data was rebined in the loop.
+        dnu = abs(Data.field["CDELT1"])
         # Recover memory.
-        del Data, Blocks
+        del Data, Reader
         # Normalize.
         cal_sum_unscaled /= 2*counts
         cal_sum /= 2*counts
-        cal_noise_spec *= dt*dnu/nb
+        cal_noise_spec /= nb
+        # Scale power spectrum to expected level.
+        ps_expected = 1./ (dnu * (dt / 2)) * 2.
+        cal_noise_spec /= ps_expected
         # Power spectrum independant axis.
         ps_freqs = sp.arange(nt//2 + 1, dtype=float)
         ps_freqs /= (nt//2 + 1)*dt*2
@@ -1122,7 +1253,8 @@ params_init_manager = {
                       "error_file" : "",
                       "rsync_file" : "",
                       "nprocesses": 1,
-                      "dry_run" : False
+                      "dry_run" : False,
+                      "skip_quality" : False
                       }
 
 class DataManager(object) :
@@ -1180,11 +1312,11 @@ class DataManager(object) :
         fits_root = params["fits_log_root"] + "%02d"%number + "/"
         outroot = params["output_root"]
         print ("Processing sesson " + str(number) + ", in guppi directories "
-                + str(guppi_dirs))
+                + str(guppi_dirs) + " and raw fits directories " + fits_root)
         # Check that all the directories are present.
         for dir in guppi_dirs :
             if (not os.path.isdir(dir) or not os.path.isdir(fits_root)) :
-                print "Skipped do to missing data."
+                print "Skipped due to missing data."
                 return
         # First thing we do is start to rsync to the archive.
         if number in params['sessions_to_archive'] and not params["dry_run"]:
@@ -1239,7 +1371,8 @@ class DataManager(object) :
                                     "combine_map_scans" : True,
                                     "partition_cal" : True,
                                     "time_bins_to_average" : 128,
-                                    "cal_fold_time" : 10
+                                    "cal_fold_time" : 5.,
+                                    "fast_flag" : 10.
                                     }
                 # The parameters that are acctually assigned dynamically.
                 converter_params["scans"] = tuple(scans_to_convert)
@@ -1292,7 +1425,7 @@ class DataManager(object) :
                             checked_out_fname))
                     else :
                         files_to_check.append(file_middle)
-            if len(files_to_check) != 0 :
+            if len(files_to_check) != 0 and not params["skip_quality"]:
                 # Build up input parameters for DataChecker.
                 checker_params = {
                                   "output_end" : ".pdf",
@@ -1301,8 +1434,9 @@ class DataManager(object) :
                                   "output_root" : params["quality_check_root"]
                                   }
                 # Execute the data checker.
-                DC = DataChecker(checker_params, feedback=self.feedback)
-                DC.execute(params["nprocesses"])
+                if not params["dry_run"] :
+                    DC = DataChecker(checker_params, feedback=self.feedback)
+                    DC.execute(params["nprocesses"])
             # Wait for the rsync to terminate:
             if number in params['sessions_to_archive']:
                 SyncProc.wait()

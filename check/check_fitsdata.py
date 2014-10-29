@@ -93,7 +93,6 @@ class CheckFitsFile(object):
 
         tsys_x = self.tbdata.field('DATA')[0::2,:][:10*90*13,:]
         tsys_y = self.tbdata.field('DATA')[1::2,:][:10*90*13,:]
-
         tsys_x = np.ma.array(tsys_x)
         tsys_y = np.ma.array(tsys_y)
         tsys_x[tsys_x==0] = np.ma.masked
@@ -162,12 +161,14 @@ class CheckFitsFile(object):
         x = range(tsys_x.shape[0])
 
 
+
         plt.figure(figsize=(10, 12))
 
         cmap = plt.get_cmap('jet')
         norm = plt.normalize(0.,13.)
 
         plt.subplot(211)
+
         for i in range(13):
             if i == 3 or i == 4 or i == 9:
                 continue
@@ -178,10 +179,12 @@ class CheckFitsFile(object):
         plt.ylabel('x pol Tsys [%s]'%unit)
         #plt.ylim(ymin=20, ymax=35)
         plt.ylim(ymin=15, ymax=50)
+
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
 
         plt.subplot(212)
+
         for i in range(13):
             if i == 3 or i == 4 or i == 9:
                 continue
@@ -192,10 +195,12 @@ class CheckFitsFile(object):
         plt.ylabel('y pol Tsys [%s]'%unit)
         #plt.ylim(ymin=20, ymax=35)
         plt.ylim(ymin=15, ymax=50)
+
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
 
         plt.savefig('./png/parkes_tsys_time_%s.png'%unit, format='png')
+
         plt.show()
 
     def plotT(self):
@@ -318,6 +323,7 @@ class CheckFitsFile(object):
             spectrum_xx = spectrum_xx[:,:scan_n*90*13]
             spectrum_yy = spectrum_yy[:,:scan_n*90*13]
 
+
         spectrum_xx = np.ma.array(spectrum_xx)
         spectrum_yy = np.ma.array(spectrum_yy)
         spectrum_xx[np.isnan(spectrum_xx)] = np.ma.masked
@@ -353,18 +359,22 @@ class CheckFitsFile(object):
 
         for i in range(13):
             im = ax[i, 0].imshow(spectrum_xx[:, i::13],
+
                              interpolation='nearest', 
                              origin='lower',
                              extent=[x[0], x[-1], y[0], y[-1]], 
                              aspect='auto')
+
             im.set_clim(cmin, cmax)
             ax[i, 0].set_ylabel('freq [GHz] [beam %d]'%i)
 
             im = ax[i, 1].imshow(spectrum_yy[:, i::13],
+
                              interpolation='nearest', 
                              origin='lower',
                              extent=[x[0], x[-1], y[0], y[-1]], 
                              aspect='auto')
+
             im.set_clim(cmin, cmax)
 
             #im = ax[i, 0].pcolormesh(X, Y, spectrum_xx[:, i::13].T, vmax=cmax, vmin=cmin)
@@ -378,6 +388,7 @@ class CheckFitsFile(object):
                 ax[i, 0].set_title('XX')
                 ax[i, 1].set_title('YY')
         fig.colorbar(im, cax=cax, orientation = 'horizontal')
+
 
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
@@ -445,13 +456,16 @@ class CheckFitsFile(object):
 
     def plotfreq_all(self):
         
+
         time = 100
+
         ymin = -0.6
         ymax = 0.6
 
         #spectrum_xx, spectrum_yy = self.bandpass_remove(scan_n=10)
         spectrum_xx = self.tbdata.field('DATA')[0::2,:].T #* tsys_x[None,:]
         spectrum_yy = self.tbdata.field('DATA')[1::2,:].T #* tsys_y[None,:]
+
 
         scan_n = 10
         if scan_n != 0:
@@ -462,6 +476,8 @@ class CheckFitsFile(object):
 
         # get the shape 
         shape = spectrum_xx.shape
+
+
         cf = self.tbdata.field('CRVAL1')[0]/1.e9
         cf_ind = self.tbdata.field('CRPIX1')[0]
         df = self.tbdata.field('CDELT1')[0]/1.e9
@@ -471,6 +487,7 @@ class CheckFitsFile(object):
 
         for i in range(13):
             plt.subplot(13,2,2*i+1)
+
             plt.plot(x, spectrum_xx[:, i::13][:, time].T, c='r')
             plt.ylabel('flux [Jy] [X pol beam %d]'%i)
             plt.xlabel('freq [GHz]' )
@@ -484,10 +501,12 @@ class CheckFitsFile(object):
             plt.xlim(x.min(), x.max())
             #plt.ylim(ymin, ymax)
 
+
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
         plt.savefig('./png/parkes_test_freq.png', format='png')
         #plt.show()
+
 
     def plotfreq(self):
         spectrum_xx = self.tbdata.field('DATA')[0::2,:][0::13,:]
@@ -680,6 +699,7 @@ if __name__=="__main__":
 
     #checkfits.plotfreq_time()
     checkfits.plotfreq_time_all()
+
     #checkfits.plottsys()
     #checkfits.plottsys(in_K=True)
     #checkfits.plotT()

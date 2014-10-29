@@ -213,6 +213,12 @@ class info_array(sp.ndarray) :
             out.info = self.info
         return out
 
+    def __getstate__(self):
+        return self.info
+
+    def __setstate__(self, val):
+        self.info=val
+
 class info_memmap(sp.memmap) :
     """A standard numpy memmap object with a dictionary for holding extra info.
 
@@ -558,6 +564,84 @@ def load_h5(h5obj, path):
         info[key] = safe_eval(value)
     iarray = info_array(iarray, info)
     return iarray
+
+def load_h5_memmap(h5obj, path, fname, gb_lim):
+    """Load a info memmap from an hdf5 file.
+
+    Parameters
+    ----------
+    h5obj : h5py File or Group object
+    File from which the info array will be read from.
+    path : string
+    Path within `h5obj` to read the array.
+
+    Returns
+    -------
+    memarray : info_memmap
+    Array loaded from file.
+    """
+    
+    # TODO: Allow `h5obj` to be a string with a path to a file to be opened
+    # and then closed.
+    #data = h5obj[path]
+    dset = h5obj[path]
+    memarray = sp.memmap(fname, shape=dset.shape, dtype=dset.dtype, mode='w+')
+    memarray = fill_memmap( memarray, 1000000000*gb_lim, dset)
+    #memarray = data.value
+    info = {}
+    for key, value in dset.attrs.iteritems():
+        info[key] = safe_eval(value)
+    memarray = info_memmap(memarray, info)
+    return memarray
+
+def fill_memmap(memmap, mem_lim, dset):
+    chunk_size = dset.size*dset.dtype.itemsize
+    for ind in range(len(dset.shape)):
+        if chunk_size <= mem_lim:
+            i = ind
+            print str(i)
+            break
+        else:
+            chunk_size = chunk_size/dset.shape[ind]
+    if i == 0:
+        memmap = dset.value
+    else:
+        index_list = []
+        for num in range(i):
+            index_list.append(range(dset.shape[num]))
+        indexes = cross(index_list)
+        for index in indexes:
+            print index
+            memmap[tuple(index)] = dset[tuple(index)]
+    return memmap
+ 
+
+def cross(set_list):
+        '''Given a list of sets, return the cross product.'''
+        # By associativity of cross product, cross the first two sets together
+        # then cross that with the rest. The big conditional in the list
+        # comprehension is just to make sure that there are no nested lists
+        # in the final answer.
+        if len(set_list) == 1:
+                ans = []
+                for elem in set_list[0]:
+                        # In the 1D case, these elements are not lists.
+                        if type(elem) == list:
+                                ans.append(np.array(elem))
+                        else:
+                                ans.append(np.array([elem]))
+                return ans
+        else:
+                A = set_list[0]
+                B = set_list[1]
+                cross_2 = [a+b if ((type(a) == list) and (type(b) == list)) else \
+                (a+[b] if type(a) == list else ([a]+b if type(b) == list else \
+                [a]+[b])) for a in A for b in B]
+                remaining = set_list[2:]
+                remaining.insert(0,cross_2)
+                return cross(remaining)
+
+
 
 
 # ---- Functions for manipulating above arrays as matrices and vectors. -------

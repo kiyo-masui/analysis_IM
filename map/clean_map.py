@@ -14,6 +14,7 @@ from kiyopy import parse_ini
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
 import constants
+import h5py
 
 
 params_init = {'input_root' : './',
@@ -23,7 +24,8 @@ params_init = {'input_root' : './',
                'save_noise_inv_diag' : False,
                'save_cholesky' : False,
                'from_eig' : False,
-               'bands' : ()
+               'bands' : (),
+               'mem_lim' : ()
                }
 prefix = 'cm_'
 
@@ -108,19 +110,36 @@ class CleanMapMaker(object) :
                     del evects
                 else:
                     # Solving from the noise.
-                    noise_fname = (in_root + 'noise_inv_' + pol_str +
+                    noise_fname1 = (in_root + 'noise_inv_' + pol_str +
                                    band_str + '.npy')
+                    noise_fname2 = (in_root + 'noise_inv_' + pol_str +
+                                   band_str + '.hdf5')
+                    noise_fnames = glob.glob(noise_fname1)+glob.glob(noise_fname2)
+                    if len(noise_fnames) == 0:
+                        raise ValueError("Couldn't find noise_inv file.")
+                    if len(noise_fnames) > 1:
+                        raise ValueError("Multiple files have naming pattern of noise_inv")
+                    noise_fname = noise_fnames[0]
                     if self.feedback > 1:
                         print "Using dirty map: " + dmap_fname
                         print "Using noise inverse: " + noise_fname
                     all_in_fname_list.append(
                         kiyopy.utils.abbreviate_file_path(noise_fname))
-                    noise_inv = algebra.open_memmap(noise_fname, 'r')
-                    noise_inv = algebra.make_mat(noise_inv)
+
+                    if noise_fname.split('.')[-1] == 'npy':
+                        noise_inv = algebra.open_memmap(noise_fname, 'r')
+                        noise_inv = algebra.make_mat(noise_inv)
+                    elif noise_fname.split('.')[-1] == 'hdf5':
+                        noise_h5 = h5py.File(noise_fname, 'r')
+                        #noise_inv = algebra.load_h5_memmap(noise_h5, 'inv_cov', noise_fname + ".npy" , params["mem_lim"])
+                        #noise_inv = algebra.make_mat(noise_inv)
+                        noise_inv = noise_h5['inv_cov']
+                    else:
+                        raise ValueError("Noise file is of unsupported type, neither .npy or .hdf5.")
                     # Two cases for the noise.  If its the same shape as the map
                     # then the noise is diagonal.  Otherwise, it should be
                     # block diagonal in frequency.
-                    if noise_inv.ndim == 3 :
+                    if len(noise_inv.shape) == 3 :
                         if noise_inv.axes != ('freq', 'ra', 'dec') :
                             msg = ("Expeced noise matrix to have axes "
                                     "('freq', 'ra', 'dec'), but it has: "
@@ -137,12 +156,16 @@ class CleanMapMaker(object) :
                         if save_noise_diag :
                             noise_diag[good_data] = \
                                     1/noise_inv_memory[good_data]
-                    elif noise_inv.ndim == 5 :
-                        if noise_inv.axes != ('freq', 'ra', 'dec', 'ra',
+                    elif len(noise_inv.shape) == 5 :
+                        try:
+                            axis_labels = noise_inv.axes
+                        except:
+                            axis_labels = eval(noise_inv.attrs['axes'])
+                        if axis_labels != ('freq', 'ra', 'dec', 'ra',
                                               'dec'):
                             msg = ("Expeced noise matrix to have axes "
                                    "('freq', 'ra', 'dec', 'ra', 'dec'), "
-                                   "but it has: " + str(noise_inv.axes))
+                                   "but it has: " + str(axis_labels))
                             raise ce.DataError(msg)
                         # Arrange the dirty map as a vector.
                         dirty_map_vect = sp.array(dirty_map) # A view.
@@ -216,7 +239,7 @@ class CleanMapMaker(object) :
                             if self.feedback > 1:
                                 print ""
                                 sys.stdout.flush()
-                    elif noise_inv.ndim == 6 :
+                    elif len(noise_inv.shape) == 6 :
                         if save_noise_diag:
                             # OLD WAY.
                             #clean_map, noise_diag, chol = solve(noise_inv,
@@ -532,3 +555,10 @@ def up_tri_copy_from_file(filename):
     f.close()
     return loaded_arr
 
+# If this file is run from the command line, execute the main function.
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) == 2:
+        par_file = sys.argv[1]
+        nproc = 1
+        CleanMapMaker(par_file).execute(nproc)

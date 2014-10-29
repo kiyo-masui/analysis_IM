@@ -1,8 +1,16 @@
 #!/bin/bash
 #MOAB/Torque submission script for SciNet GPC
-#PBS -l nodes=36:ib:ppn=8,walltime=48:00:00
+#PBS -l nodes=49:ppn=8,walltime=16:00:00
 #PBS -N noise_inv_eig
 cd $PBS_O_WORKDIR
 export OMP_NUM_THREADS=8
-time mpirun --bynode -np 36 python map/eig_noise_inv.py input/km/eig_noise.ini
-
+#export I_MPI_PIN_DOMAIN=omp
+# OpenMPI command. IB.
+#time mpirun --mca btl self,sm,openib --bynode -np 36 \
+#    python map/eig_noise_inv.py input/km/eig_noise.ini
+# OpenMPI command. Eth.
+time mpirun --mca btl self,sm,tcp --bynode -np 49 \
+    python map/eig_noise_inv.py input/km/eig_noise.ini
+# intelMPI command.
+#time mpirun -ppn 1 -np 36 \
+#    python map/eig_noise_inv.py input/km/eig_noise.ini

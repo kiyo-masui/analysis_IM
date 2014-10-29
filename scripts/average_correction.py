@@ -1,6 +1,7 @@
 #This script is designed to generate an average calibration correction table (for a flux/differential gain style calibration) using a set of data files such as all files corresponding to a given field.
 #If 1hr field: 10B_036 86-89 and 11B_055 01-18 (sesssion 14 is trash so that calibration file is set to match session 13). 
 #If 15hr field: 10B_036 41-80
+# If 11hr pt 2: GBT13B_352
 
 import pylab
 import sys
@@ -9,12 +10,13 @@ import scipy as sp
 
 prefix = ''
 filedir = sys.argv[1]
-suffix = '_diff_gain_calc.txt'
-directory = 'GBT10B_036'
+suffix = '_diff_gain_calc_new.txt'
+#directory = 'GBT10B_036'
+directory = 'GBT13B_352'
 directory2 = 'GBT11B_055'
-min_sess = 41
+min_sess = 01
 min_sess2 = 0
-max_sess = 80
+max_sess = 30
 max_sess2 = 0
 len = max_sess-min_sess
 len2 = max_sess2-min_sess2
@@ -60,13 +62,20 @@ XG_avg = mean(XG,axis=0)
 YG_avg = mean(YG,axis=0)
 #print YG_avg
 
+
+pylab.imshow(YG,aspect=float(scale[0])/float(tot_len))
+
+pylab.colorbar()
+pylab.savefig('11hr_pt2_fdg_time_series.png')
+pylab.clf()
+
 pylab.plot(freqs,XG_avg,'b-',label='Average XX Gain')
 pylab.plot(freqs,YG_avg,'g-',label='Average YY Gain')
 pylab.xlim(freqs[-1],freqs[0])
 pylab.xlabel('frequency (MHz)')
 pylab.ylabel('Correction Factor')
 pylab.legend()
-pylab.savefig('15hr_avg_fdg_correction.png')
+pylab.savefig('11hr_pt2_avg_fdg_correction.png')
 pylab.clf()
 
 output = sp.zeros((scale[0],3))
@@ -75,4 +84,5 @@ for f in range(0,scale[0]):
     output[f,1] = XG_avg[f]
     output[f,2] = YG_avg[f]
 
-savetxt('15hr_fdg_calc_avg.txt',output,delimiter=' ')
+savetxt('11hr_pt2_fdg_calc_avg.txt',output,delimiter=' ')
+

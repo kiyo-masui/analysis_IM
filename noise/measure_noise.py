@@ -19,7 +19,10 @@ import utils.misc
 from map.constants import T_infinity, T_small
 
 # XXX
+#import matplotlib
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
 
 
 params_init = {
@@ -124,7 +127,7 @@ class Measure(object) :
             band_centres = []
             for ii in range(n_bands):
                 if ii in band_inds:
-                    Blocks = Reader.read(params["scans"], ii)
+                    Blocks = Reader.read(params["scans"], ii, force_tuple=True)
                     Blocks[0].calc_freq()
                     n_chan = Blocks[0].dims[-1]
                     band = (int(round(Blocks[0].freq[n_chan//2]/1e6)))
@@ -479,6 +482,7 @@ def fit_overf_const(power, window, freq):
         new_weights = abs(model(params))
         weights = old_weights + new_weights
         old_weights = new_weights
+        print params,
         # XXX
         #plt.figure()
         #plt.loglog(freq, power)
@@ -490,6 +494,7 @@ def fit_overf_const(power, window, freq):
         params, cov_x, info, mesg, ier = sp.optimize.leastsq(residuals, 
                     params, Dfun=jacobian, col_deriv=True, xtol=0.001,
                     full_output=True)
+    print
     #plt.figure()
     #plt.loglog(freq, power)
     #plt.loglog(freq, model(params))

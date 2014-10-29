@@ -12,7 +12,7 @@ import scipy.special
 import numpy.random as rand
 import numpy.ma as ma
 # XXX for testing, but needs to be commented for production.
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 from kiyopy import parse_ini
 import kiyopy.utils
