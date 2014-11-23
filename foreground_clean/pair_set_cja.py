@@ -30,6 +30,7 @@ params_init = {
                'tack_on_input': None,
                'tack_on_output': None,
                'convolve': True,
+               'clip_weight_percent': None,
                'factorizable_noise': True,
                'sub_weighted_mean': True,
                'svd_filename': None,
@@ -200,6 +201,17 @@ class PairSet():
         nfreq = len(self.freq_list)
 
         for pairitem in self.pairlist:
+            weight1 = copy.deepcopy(np.array(self.pairs[pairitem].noise_inv1))
+            weight2 = copy.deepcopy(np.array(self.pairs[pairitem].noise_inv2))
+            if self.params['clip_weight_percent'] is not None:
+                print "WARNING: you are clipping the weight maps"
+                mask1 = self.define_weightmask(weight1, percentile=self.params['clip_weight_percent'])
+                mask2 = self.define_weightmask(weight2, percentile=self.params['clip_weight_percent'])
+            
+            if self.params['clip_weight_percent'] is not None:
+                weight1 = self.saturate_weight(weight1, mask1)
+                weight2 = self.saturate_weight(weight2, mask2)
+
             (freq_cov, counts) = self.pairs[pairitem].freq_covariance()
             cov_out[pairitem] = freq_cov
             counts_out[pairitem] = counts
@@ -237,6 +249,28 @@ class PairSet():
                                         svd_modes1_use, svd_modes2_use)
 
         svd_data.close()
+
+    @batch_handler.log_timing
+    def define_weightmask(self, input_weight, percentile=50.):
+        # flatten to Ra/Dec
+        weight_2d = np.mean(input_weight, axis=0)
+        print "define_weightmask: shape ", weight_2d.shape
+        w_at_percentile = np.percentile(weight_2d, percentile)
+        # return a boolean mask (here True = masked)
+        return (weight_2d <= w_at_percentile)
+
+    @batch_handler.log_timing
+    def saturate_weight(self, input_weight, weightmask):
+        """replace all weights above a given mask with the average in the
+mask. Note that this clobbers the input array"""
+
+        for freq_index in range(input_weight.shape[0]):
+            mweight = np.ma.array(input_weight[freq_index, ...], mask=weightmask)
+            meanslice = mweight.mean()
+            input_weight[freq_index, np.logical_not(weightmask)] = meanslice
+
+        return input_weight
+
 
     @batch_handler.log_timing
     def save_data(self, n_modes):
