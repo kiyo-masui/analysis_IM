@@ -795,7 +795,8 @@ class DataSet(object):
             mask[:,tmp_time_ind:tmp_time_ind + this_nt] = this_mask
             # Copy the other fields.
             Data.calc_pointing()
-            ra[tmp_time_ind:tmp_time_ind + this_nt] = Data.ra
+            map_centre_ra = np.mean(map.get_axis('ra'))
+            ra[tmp_time_ind:tmp_time_ind + this_nt] = ((Data.ra - map_centre_ra + 180) % 360) + map_centre_ra - 180 
             dec[tmp_time_ind:tmp_time_ind + this_nt] = Data.dec
             Data.calc_time()
             time[tmp_time_ind:tmp_time_ind + this_nt] = Data.time
