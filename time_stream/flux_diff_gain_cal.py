@@ -72,8 +72,8 @@ class Calibrate(base_single.BaseSingle) :
 #        print sess_num
 
         fg_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_diff_gain_calc.txt'
-        if self.params['RM_correct']==True:
-            fg_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_diff_gain_calc_RM.txt'
+#        if self.params['RM_correct']==True:
+#            fg_file_name = self.params['mueler_file']+project+'/'+str(sess_num)+'_diff_gain_calc_RM.txt'
 
 #Alternative for average flux/differential gain calibration.
         if self.params['Flux_special']==True:
@@ -157,7 +157,7 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
     # Data.data 4 dim array 2nd index polarization, 4th index frequency. 
 
     # Need to get parallactic angle:
-    Data.calc_PA()
+    #Data.calc_PA()
     # This gives an array (Data.PA) of PA values of length = time dim.
 #   print Data.dims[0]
 
@@ -295,6 +295,13 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
 # This starts the actual data processing for the given scan
          
     for time_index in range(0,Data.dims[0]):
+        AZ = Data.field['CRVAL2'][time_index]
+        EL = Data.field['CRVAL3'][time_index]
+        UT = Data.field['DATE-OBS'][time_index]
+        PA = utils.azel2pGBT(AZ,EL,UT)
+        if time_index==10:
+            print 'PA=',PA,Data.field['DATE-OBS'][time_index]
+	    print AZ,EL,UT
 
 # Extra data needed for Rotation Measure Correction
         if RM_correct==True:
@@ -320,17 +327,18 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
 #        print RM
  
     #Generate a sky matrix for this time index (assumes a XY basis):
+        PA=-PA
         m_sky = sp.zeros((4,4))
-        m_sky[0,0] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180))
-        m_sky[0,1] = -ma.sin(2*Data.PA[time_index]*sp.pi/180)
-        m_sky[0,3] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180))
-        m_sky[1,0] = 0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180)
-        m_sky[1,1] = ma.cos(2*Data.PA[time_index]*sp.pi/180)
-        m_sky[1,3] = -0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180)
+        m_sky[0,0] = 0.5*(1+ma.cos(2*PA*sp.pi/180))
+        m_sky[0,1] = -ma.sin(2*PA*sp.pi/180)
+        m_sky[0,3] = 0.5*(1-ma.cos(2*PA*sp.pi/180))
+        m_sky[1,0] = 0.5*ma.sin(2*PA*sp.pi/180)
+        m_sky[1,1] = ma.cos(2*PA*sp.pi/180)
+        m_sky[1,3] = -0.5*ma.sin(2*PA*sp.pi/180)
         m_sky[2,2] = 1
-        m_sky[3,0] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180))
-        m_sky[3,1] = ma.sin(2*Data.PA[time_index]*sp.pi/180)
-        m_sky[3,3] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180))
+        m_sky[3,0] = 0.5*(1-ma.cos(2*PA*sp.pi/180))
+        m_sky[3,1] = ma.sin(2*PA*sp.pi/180)
+        m_sky[3,3] = 0.5*(1+ma.cos(2*PA*sp.pi/180))
 
         M_sky = sp.mat(m_sky)
         M_sky = M_sky.I
@@ -361,16 +369,16 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct) :
                    Phi = RM*wavelength*wavelength
 #               print Phi
                    m_sky = sp.zeros((4,4)) 
-                   m_sky[0,0] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
-                   m_sky[0,1] = -ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi) 
-                   m_sky[0,3] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
-                   m_sky[1,0] = 0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi) 
-                   m_sky[1,1] = ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi) 
-                   m_sky[1,3] = -0.5*ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi)
+                   m_sky[0,0] = 0.5*(1+ma.cos(2*PA*sp.pi/180+Phi))
+                   m_sky[0,1] = -ma.sin(2*PA*sp.pi/180+Phi) 
+                   m_sky[0,3] = 0.5*(1-ma.cos(2*PA*sp.pi/180+Phi))
+                   m_sky[1,0] = 0.5*ma.sin(2*PA*sp.pi/180+Phi) 
+                   m_sky[1,1] = ma.cos(2*PA*sp.pi/180+Phi) 
+                   m_sky[1,3] = -0.5*ma.sin(2*PA*sp.pi/180+Phi)
                    m_sky[2,2] = 1
-                   m_sky[3,0] = 0.5*(1-ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
-                   m_sky[3,1] = ma.sin(2*Data.PA[time_index]*sp.pi/180+Phi)
-                   m_sky[3,3] = 0.5*(1+ma.cos(2*Data.PA[time_index]*sp.pi/180+Phi))
+                   m_sky[3,0] = 0.5*(1-ma.cos(2*PA*sp.pi/180+Phi))
+                   m_sky[3,1] = ma.sin(2*PA*sp.pi/180+Phi)
+                   m_sky[3,3] = 0.5*(1+ma.cos(2*PA*sp.pi/180+Phi))
   
                    M_sky = sp.mat(m_sky)
                    M_sky = M_sky.I 
