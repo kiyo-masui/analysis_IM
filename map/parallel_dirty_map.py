@@ -964,20 +964,22 @@ def lock_and_write_buffer(obj, fname, offset, size, proc):
 
     os.lseek(fd, offset, 0)
     
-    a=0
-    while(True):
-    #while(len(buf)>0):
-        #nb = os.write(fd,buf)
-        nb = os.write(fd, buf[a:])
-        print "The buffer save started at byte " + str(a) + " for process " + str(proc)
+    nb = 0
+    #a=0
+    #while(True):
+    while(len(buf)>0):
+        nb += os.write(fd,buf)
+        #nb = os.write(fd, buf[a:])
+        #print "The buffer save started at byte " + str(a) + " for process " + str(proc)
         if nb < 0:
             raise Exception("Failed write")
 
-        if nb == len(buf[a:]):
-            break
-        else:
-            a += nb
+        #if nb == len(buf[a:]):
+        #    break
+        #else:
+        #    a += nb
         #buf = buf[nb:]
+        buf = buffer(obj, nb)
 
     '''
     nb = os.write(fd, buf)
