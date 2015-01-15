@@ -5,8 +5,10 @@ domain, i.e. it creats the dirty map.  Module also contains many utilities like
 the pointing operator (`Pointing`) and the time domain noise operator
 (`Noise`).
 """
-
+import os
+os.environ['PYTHON_EGG_CACHE'] = '/scratch/p/pen/andersoc/.python-eggs'
 import sys
+from memory_profiler import profile
 
 from mpi4py import MPI
 
@@ -86,7 +88,10 @@ params_init = {# IO:
                # If there where any foregrounds subtracted in the time stream,
                # let the noise know about it.
                'n_ts_foreground_modes' : 0,
-               'ts_foreground_mode_file' : ''
+               'ts_foreground_mode_file' : '',
+               'thread_divide' : False,
+               # Which beam to use to make map.  Choose zero to use all beams.
+               'beam' : 0
                }
 
 comm = MPI.COMM_WORLD
@@ -123,9 +128,14 @@ class DirtyMapMaker(object):
                                  force_tuple=True)
             if params['time_block'] == 'scan':
                 for Data in Blocks:
-                    yield (Data,), middle
+                    if params["beam"] == 0 or params["beam"] == Data.field['BEAM']: 
+                        yield (Data,), middle
             elif params['time_block'] == 'file':
-                yield Blocks, middle
+                if params["beam"] == 0:
+                    yield Blocks, middle
+                else:
+                    yield tuple([data for data in Blocks if data.field['BEAM']
+== params["beam"]]), middle
             else:
                 msg = "time_block parameter must be 'scan' or 'file'."
                 raise dm.ValueError(msg)
@@ -168,6 +178,7 @@ class DirtyMapMaker(object):
         spacing = params["pixel_spacing"]
         # Negative sign because RA increases from right to left.
         ra_spacing = -spacing/sp.cos(params['field_centre'][1]*sp.pi/180.)
+        self.ra_spacing = ra_spacing
         # To set some parameters, we have to read the first data file.
         first_file_name = (params["input_root"] + params["file_middles"][0]
                            + params["input_end"])
@@ -270,10 +281,12 @@ class DirtyMapMaker(object):
                 # To write the noise_inverse, all we have to do is delete the
                 # memeory map object.
                 #del self.cov_inv, cov_inv
-                al.save(map_filename, map)
+                if self.rank == 0:
+                    al.save(map_filename, map)
         if not self.noise_params is None:
             self.noise_params.close()
     
+    @profile    
     def make_map(self):
         """Makes map for current polarization and band.
         
@@ -524,7 +537,7 @@ class DirtyMapMaker(object):
             else:
                 ra_index_list = range(self.n_ra)
                 # cross product = A x B = (a,b) for all a in A, for all b in B
-                chan_ra_index_list = clacross([chan_index_list,ra_index_list])
+                chan_ra_index_list = cross([chan_index_list,ra_index_list])
                 index_list,start_list = split_elems(chan_ra_index_list,
                                                              self.nproc)
                 index_list = index_list[self.rank]
@@ -567,6 +580,10 @@ class DirtyMapMaker(object):
                 if run == 0 and start_file_ind == 0:
                     if self.uncorrelated_channels:
                         thread_cov_inv_chunk = sp.zeros((len(index_list),                                                                                                                                self.n_ra, self.n_dec,                                                                                                                            self.n_ra, self.n_dec),                                                                                                                            dtype=dtype)
+                        #Adding prior to the diagonal.
+                        for ii in xrange(len(index_list)):
+                            thread_cov_inv_chunk[ii,...].flat[::self.n_ra * self.n_dec + 1] += \
+                                                            1.0 / T_large**2
                     else:
                        thread_cov_inv_chunk = sp.zeros((len(index_list),                                                                                                                             self.n_dec, self.n_chan,                                                                                                                          self.n_ra, self.n_dec),                                                                                                                           dtype=dtype)
                 index_queue = Queue()
@@ -577,35 +594,41 @@ class DirtyMapMaker(object):
                         if thread_inds is None:
                             return
                         if self.uncorrelated_channels:
-                            thread_f_ind = thread_inds
-                            thread_cov_inv_block = sp.zeros((self.n_ra,                                                                                                                          self.n_dec, self.n_ra, self.n_dec), dtype=dtype)
-                            for thread_D in data_set_list:
-                                thread_D.Pointing.noise_channel_to_map(thread_D.Noise,                                                                                                                 thread_f_ind + index_list[0], thread_cov_inv_block)
-                            if run == 0 and start_file_ind == 0:
-                                #Adding prior to the diagonal.
-                                thread_cov_inv_block.flat[::self.n_ra * self.n_dec + 1] += \
-                                                         1.0 / T_large**2
-                            #No lock below currently.  I don't think it is necessary without the memmap.
-                            thread_cov_inv_chunk[thread_f_ind,...] += thread_cov_inv_block
-                            del thread_cov_inv_block
+                            if params['thread_divide'] == False:
+                                thread_f_ind = thread_inds
+                                #thread_cov_inv_block = sp.zeros((self.n_ra,                                                                                                                          self.n_dec, self.n_ra, self.n_dec), dtype=dtype)
+                                for thread_D in data_set_list:
+                                    thread_D.Pointing.noise_channel_to_map(thread_D.Noise,                                                                                                                 thread_f_ind + index_list[0], thread_cov_inv_chunk[thread_f_ind,...])
+                                #No lock below currently.  I don't think it is necessary without the memmap.
+                                #thread_cov_inv_chunk[thread_f_ind,...] += thread_cov_inv_block
+                            else:
+                                thread_f_ind = thread_inds[0]
+                                ra_vals = thread_inds[1]
+                                ra_min = ra_vals[0]
+                                ra_cap = ra_vals[-1]+1
+                                ra_size = ra_cap - ra_min
+                                #thread_cov_inv_block = sp.zeros((ra_size,                                                                                                                          self.n_dec, self.n_ra, self.n_dec), dtype=float)
+                                for thread_D in data_set_list:
+                                   thread_D.Pointing.noise_channel_to_map(thread_D.Noise,                                                                                                                   thread_f_ind + index_list[0], thread_cov_inv_chunk[thread_f_ind,ra_min:ra_cap,...], ra0_range = [ra_min, ra_cap])
+                                   #No lock below currently. I don't think it is necessary without the memmap.
+                                #thread_cov_inv_chunk[thread_f_ind,ra_min:ra_cap,...] += thread_cov_inv_block
                         else:
                             ii = thread_inds
-                            thread_cov_inv_row = sp.zeros((self.n_dec,                                                                                                                                       self.n_chan, self.n_ra,                                                                                                                           self.n_dec),dtype=dtype)
+                            #thread_cov_inv_row = sp.zeros((self.n_dec,                                                                                                                                       self.n_chan, self.n_ra,                                                                                                                           self.n_dec),dtype=dtype)
                             thread_f_ind = index_list[ii][0]
                             thread_ra_ind = index_list[ii][1]
                             for thread_D in data_set_list:
-                                thread_D.Pointing.noise_to_map_domain(thread_D.Noise,                                                                                                                                   thread_f_ind,                                                                                                                                     thread_ra_ind, thread_cov_inv_row)
+                                thread_D.Pointing.noise_to_map_domain(thread_D.Noise,                                                                                                                                   thread_f_ind,                                                                                                                                     thread_ra_ind, thread_cov_inv_chunk[ii,...])
                             if run == 0 and start_file_ind == 0:
                                 #Adding prior to the diagonal.
-                                thread_cov_inv_row_adder = thread_cov_inv_row[:, thread_f_ind, thread_ra_ind, :]
-                                thread_cov_inv_row_adder.flat[:: self.n_dec + 1] += \
+                                #thread_cov_inv_row_adder = thread_cov_inv_row[:, thread_f_ind, thread_ra_ind, :]
+                                thread_cov_inv_chunk[ii,:, thread_f_ind, thread_ra_ind,:].flat[:: self.n_dec + 1] += \
                                                            1.0 / T_large**2
                             if (self.feedback > 1 and thread_ra_ind == self.n_ra - 1):
                                 print thread_f_ind,
                                 sys.stdout.flush()
-                            thread_cov_inv_chunk[ii,...] += \
-                                                  thread_cov_inv_row
-                            del thread_cov_inv_row
+                            #thread_cov_inv_chunk[ii,...] += \
+                            #                      thread_cov_inv_row
                 #Now start the worker threads.
                 thread_list = []
                 for ii in range(self.n_processes):
@@ -615,7 +638,15 @@ class DirtyMapMaker(object):
                     print '\n' + 'Process ' + str(self.rank) + ' is using ' + str(self.n_processes) + 'threads.' + '\n'
                 #Now put work on the queue for the threads to do.
                 for ii in xrange(len(index_list)):
-                    index_queue.put(ii)
+                    if params['thread_divide'] == False:
+                        index_queue.put(ii)
+                    else:
+                        if self.uncorrelated_channels: 
+                            split_ra = split_elems(xrange(self.n_ra),self.n_processes)[0]
+                            for split in split_ra:
+                                index_queue.put((ii, split))
+                        else:
+                            index_queue.put(ii)
                 for ii in range(self.n_processes):
                     index_queue.put(None)
                 for T in thread_list:
@@ -748,14 +779,26 @@ class DirtyMapMaker(object):
                 #total_shape = (self.n_chan*self.n_ra, self.n_dec,
                              #  self.n_chan, self.n_ra, self.n_dec)
                 #start_ind = (f_ra_start_ind,0,0,0,0)
-            lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename, data_offset + dsize*f_ra_start_ind*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size)
-            f = h5py.File(self.cov_filename, 'r+')
-            cov_inv_dset = f['inv_cov']
-            cov_inv_shape = sp.zeros(shape = (self.n_chan, self.n_ra, self.n_dec, self,n_chan, self.n_ra, self.n_dec), dtype = dtype)
-            cov_inv_info = al.make_mat(cov_inv_shape, axis_names=('freq', 'ra', 'dec','freq', 'ra', 'dec'),                                                                                                           row_axes=(0, 1, 2), col_axes=(3, 4, 5))
-            cov_inv_info.copy_axis_info(map)
-            for key, value in cov_inv_info.info.iteritems():
-                cov_inv_dset.attrs[key] = repr(value)
+            lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename, data_offset + dsize*f_ra_start_ind*self.n_dec*self.n_chan*self.n_ra*self.n_dec, dsize*thread_cov_inv_chunk.size, self.rank)
+            if self.rank == 0:
+                f = h5py.File(self.cov_filename, 'r+')
+                cov_inv_dset = f['inv_cov']
+                attrs = cov_inv_dset.attrs
+                attrs.__setitem__('rows', str((0, 1, 2)))
+                attrs.__setitem__('cols', str((3, 4, 5)))
+                attrs.__setitem__('dec_centre', str(self.params['field_centre'][1]))
+                attrs.__setitem__('ra_centre', str(self.params['field_centre'][0]))
+                attrs.__setitem__('type', "'mat'")
+                attrs.__setitem__('axes', "('freq', 'ra', 'dec', 'freq', 'ra', 'dec')")
+                attrs.__setitem__('freq_centre', str(band_centre))
+                attrs.__setitem__('freq_delta', str(self.delta_freq))
+                attrs.__setitem__('ra_delta', str(self.ra_spacing))
+                attrs.__setitem__('dec_delta', str(self.params['pixel_spacing']))
+                #cov_inv_shape = sp.zeros(shape = (self.n_chan, self.n_ra, self.n_dec, self.n_chan, self.n_ra, self.n_dec), dtype = dtype)
+                #cov_inv_info = al.make_mat(cov_inv_shape, axis_names=('freq', 'ra', 'dec','freq', 'ra', 'dec'),                                                                                                           row_axes=(0, 1, 2), col_axes=(3, 4, 5))
+                #cov_inv_info.copy_axis_info(map)
+                #for key, value in cov_inv_info.info.iteritems():
+                #    cov_inv_dset.attrs[key] = repr(value)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
@@ -771,15 +814,28 @@ class DirtyMapMaker(object):
                 #total_shape = (self.n_chan, self.n_ra,
                              #  self.n_dec, self.n_ra, self.n_dec)
                 #start_ind = (index_list[0],0,0,0,0)
-            lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename, data_offset + dsize*index_list[0]*self.n_dec*self.n_ra*self.n_dec*self.n_ra, dsize*thread_cov_inv_chunk.size)
-            f = h5py.File(self.cov_filename, 'r+')
-            cov_inv_dset = f['inv_cov']
-            #cov_inv = al.make_mat(cov_inv_dset,                                                                                                                 axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                  row_axes=(0, 1, 2), col_axes=(0, 3, 4))
-            cov_inv_shape = sp.zeros(shape = (self.n_chan, self.n_ra, self.n_dec, self.n_ra, self.n_dec), dtype = dtype)
-            cov_inv_info = al.make_mat(cov_inv_shape,                                                                                                                      axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                       row_axes=(0, 1, 2), col_axes=(0, 3, 4))
-            cov_inv_info.copy_axis_info(map)
-            for key, value in cov_inv_info.info.iteritems():
-                cov_inv_dset.attrs[key] = repr(value)
+            lock_and_write_buffer(thread_cov_inv_chunk, self.cov_filename, data_offset + dsize*index_list[0]*self.n_dec*self.n_ra*self.n_dec*self.n_ra, dsize*thread_cov_inv_chunk.size, self.rank)
+            if self.rank == 0:
+                f = h5py.File(self.cov_filename, 'r+')
+                cov_inv_dset = f['inv_cov']
+                attrs = cov_inv_dset.attrs
+                attrs.__setitem__('rows', str((0, 1, 2)))
+                attrs.__setitem__('cols', str((0, 3, 4)))
+                attrs.__setitem__('dec_centre', str(self.params['field_centre'][1]))
+                attrs.__setitem__('ra_centre', str(self.params['field_centre'][0]))
+                attrs.__setitem__('type', "'mat'")
+                attrs.__setitem__('axes', "('freq', 'ra', 'dec', 'ra', 'dec')")
+                attrs.__setitem__('freq_centre', str(band_centre))
+                attrs.__setitem__('freq_delta', str(self.delta_freq))
+                attrs.__setitem__('ra_delta', str(self.ra_spacing))
+                attrs.__setitem__('dec_delta', str(self.params['pixel_spacing']))
+                #cov_inv = al.make_mat(cov_inv_dset,                                                                                                                 axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                  row_axes=(0, 1, 2), col_axes=(0, 3, 4))
+                #cov_inv_shape = sp.zeros(shape = (self.n_chan, self.n_ra, self.n_dec, self.n_ra, self.n_dec), dtype = dtype)
+                #cov_inv_shape = _mapmaker_c.large_empty((self.n_chan, self.n_ra, self.n_dec, self.n_ra, self.n_dec))
+                #cov_inv_info = al.make_mat(cov_inv_shape,                                                                                                                      axis_names=('freq', 'ra', 'dec', 'ra', 'dec'),                                                                                       row_axes=(0, 1, 2), col_axes=(0, 3, 4))
+                #cov_inv_info.copy_axis_info(map)
+                #for key, value in cov_inv_info.info.iteritems():
+                #    cov_inv_dset.attrs[key] = repr(value)
                 # NOTE: using 'float' is not supprted in the saving because
                 # it has to know if it is 32 or 64 bits.
                 #dtype = thread_cov_inv_chunk.dtype
@@ -871,7 +927,8 @@ def cross(set_list):
                 remaining.insert(0,cross_2)
                 return cross(remaining)
 
-def lock_and_write_buffer(obj, fname, offset, size):
+@profile
+def lock_and_write_buffer(obj, fname, offset, size, proc):
     """Write the contents of a buffer to disk at a given offset, and explicitly
     lock the region of the file whilst doing so.
 
@@ -906,12 +963,30 @@ def lock_and_write_buffer(obj, fname, offset, size):
         print "Could not obtain lock"
 
     os.lseek(fd, offset, 0)
+    
+    nb = 0
+    #a=0
+    #while(True):
+    while(len(buf)>0):
+        nb += os.write(fd,buf)
+        #nb = os.write(fd, buf[a:])
+        #print "The buffer save started at byte " + str(a) + " for process " + str(proc)
+        if nb < 0:
+            raise Exception("Failed write")
 
+        #if nb == len(buf[a:]):
+        #    break
+        #else:
+        #    a += nb
+        #buf = buf[nb:]
+        buf = buffer(obj, nb)
+
+    '''
     nb = os.write(fd, buf)
 
     if nb != len(buf):
-        raise Exception("Something funny happened with the reading.")
-
+        #raise Exception("Something funny happened with the reading.")
+        raise Exception("Something funny happened with the reading." + "  The buffer is length " + str(len(buf)) + " but the number of bytes written was " + str(nb) + " for process " + str(proc) + "." ) '''
     try:
         fcntl.lockf(fd, fcntl.LOCK_UN)
     except:
