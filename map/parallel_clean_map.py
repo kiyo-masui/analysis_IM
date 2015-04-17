@@ -2,7 +2,7 @@
 
 import os
 os.environ['PYTHON_EGG_CACHE'] = '/scratch/p/pen/andersoc/.python-eggs'
-from memory_profiler import profile
+#from memory_profiler import profile
 import sys
 
 from mpi4py import MPI
@@ -33,7 +33,8 @@ params_init = {'input_root' : './',
                'save_cholesky' : False,
                'from_eig' : False,
                'bands' : (),
-               'mem_lim' : ()
+               'mem_lim' : (),
+               'lin_solve' : False
                }
 prefix = 'cm_'
 
@@ -50,7 +51,7 @@ class CleanMapMaker(object) :
         self.rank = comm.Get_rank()
         self.nproc = comm.Get_size()
 
-    @profile
+    #@profile
     def execute(self, nprocesses=1) :
         """Worker funciton."""
         params = self.params
@@ -205,69 +206,85 @@ class CleanMapMaker(object) :
                                 sys.stdout.flush()
                             noise_inv_freq.shape = (shape[1]*shape[2],
                                                     shape[1]*shape[2])
-                            # Solve the map making equation by diagonalization.
-                            noise_inv_diag, Rot = sp.linalg.eigh(
-                                noise_inv_freq, overwrite_a=True)
-                            if self.feedback > 2:
-                                print "done",
-                            map_rotated = sp.dot(Rot.T, dirty_map_vect[ii])
-                            # Zero out infinite noise modes.
-                            bad_modes = (noise_inv_diag
+                            if not params["lin_solve"]:
+                                # Solve the map making equation by diagonalization.
+                                noise_inv_diag, Rot = sp.linalg.eigh(
+                                    noise_inv_freq, turbo=False, overwrite_a=True, check_finite=False)
+                                #Rot = noise_inv_freq
+                                #noise_inv_diag = np.ones((shape[1]*shape[2],))
+                                if self.feedback > 2:
+                                    print "done",
+                                map_rotated = sp.dot(Rot.T, dirty_map_vect[ii])
+                                # Zero out infinite noise modes.
+                                bad_modes = (noise_inv_diag
                                          < 1.0e-5 * noise_inv_diag.max())
-                            if self.feedback > 1:
-                                print ", discarded: ",
-                                print "%4.1f" % (100.0 * sp.sum(bad_modes) 
+                                if self.feedback > 1:
+                                    print ", discarded: ",
+                                    print "%4.1f" % (100.0 * sp.sum(bad_modes) 
                                                  / bad_modes.size),
-                                print "% of modes",
-                            if self.feedback > 2:
-                                print ", start rotations:",
-                                sys.stdout.flush()
-                            map_rotated[bad_modes] = 0.
-                            noise_inv_diag[bad_modes] = 1.0
-                            # Solve for the clean map and rotate back.
-                            map_rotated /= noise_inv_diag
-                            map = sp.dot(Rot, map_rotated)
-                            if self.feedback > 2:
-                                print "done",
-                                sys.stdout.flush()
-                            # Fill the clean array.
-                            map.shape = (shape[1], shape[2])
-                            clean_map[ii, ...] = map
-                            if save_noise_diag :
-                                # Using C = R Lambda R^T 
-                                # where Lambda = diag(1/noise_inv_diag).
-                                temp_noise_diag = 1/noise_inv_diag
-                                temp_noise_diag[bad_modes] = 0
-                                # Multiply R by the diagonal eigenvalue matrix.
-                                # Broadcasting does equivalent of mult by diag
-                                # matrix.
-                                temp_mat = Rot*temp_noise_diag
-                                # Multiply by R^T, but only calculate the
-                                # diagonal elements.
-                                for jj in range(shape[1]*shape[2]) :
-                                    temp_noise_diag[jj] = sp.dot(
-                                        temp_mat[jj,:], Rot[jj,:])
-                                temp_noise_diag.shape = (shape[1], shape[2])
-                                noise_diag[ii, ...] = temp_noise_diag
+                                    print "% of modes",
+                                if self.feedback > 2:
+                                    print ", start rotations:",
+                                    sys.stdout.flush()
+                                map_rotated[bad_modes] = 0.
+                                noise_inv_diag[bad_modes] = 1.0
+                                # Solve for the clean map and rotate back.
+                                map_rotated /= noise_inv_diag
+                                map = sp.dot(Rot, map_rotated)
+                                if self.feedback > 2:
+                                    print "done",
+                                    sys.stdout.flush()
+                                # Fill the clean array.
+                                map.shape = (shape[1], shape[2])
+                                clean_map[ii, ...] = map
+                                if save_noise_diag :
+                                    # Using C = R Lambda R^T 
+                                    # where Lambda = diag(1/noise_inv_diag).
+                                    temp_noise_diag = 1/noise_inv_diag
+                                    temp_noise_diag[bad_modes] = 0
+                                    # Multiply R by the diagonal eigenvalue matrix.
+                                    # Broadcasting does equivalent of mult by diag
+                                    # matrix.
+                                    temp_mat = Rot*temp_noise_diag
+                                    # Multiply by R^T, but only calculate the
+                                    # diagonal elements.
+                                    for jj in range(shape[1]*shape[2]) :
+                                        temp_noise_diag[jj] = sp.dot(
+                                            temp_mat[jj,:], Rot[jj,:])
+                                    temp_noise_diag.shape = (shape[1], shape[2])
+                                    noise_diag[ii, ...] = temp_noise_diag
+                            else:
+                                #from scipy.lib import lapack
+                                from fortran_chol_ul import chol
+                                import _cholesky as _c
+                                #noise_inv_freq, info = lapack.clapack.dpotrf(noise_inv_freq)
+                                chol.p_cholesky(noise_inv_freq)
+                                #map = sp.linalg.solve(noise_inv_freq, dirty_map_vect[ii])
+                                map = _c.cho_solve(noise_inv_freq, dirty_map_vect[ii])
+                                map.shape = (shape[1], shape[2])
+                                clean_map[ii, ...] = map
                             # Return workspace memory to origional shape.
                             noise_inv_freq.shape = (shape[1], shape[2],
                                                     shape[1], shape[2])
                             if self.feedback > 1:
                                 print ""
                                 sys.stdout.flush()
-                        for process_n in range(self.nproc):
+                        for process_n in range(self.nproc - 1):
+                            process_n += 1
                             for ii in index_list_full[process_n]:
                                 print clean_map[ii, ...].shape
                                 if self.rank == process_n:
+                                    print "Process # " + str(process_n) + " sending map piece, freq # " + str(ii)
                                     comm.Send(clean_map[ii, ...], dest=0, tag=13)
                                 if self.rank == 0:
                                     comm.Recv(clean_map[ii, ...], source=process_n, tag=13)
                                 comm.Barrier()
-                                if self.rank == process_n:
-                                    comm.Send(noise_diag[ii, ...], dest=0, tag=13)
-                                if self.rank == 0:
-                                    comm.Recv(noise_diag[ii, ...], source=process_n, tag=13)
-                                comm.Barrier() 
+                                if save_noise_diag:
+                                    if self.rank == process_n:
+                                        comm.Send(noise_diag[ii, ...], dest=0, tag=13)
+                                    if self.rank == 0:
+                                        comm.Recv(noise_diag[ii, ...], source=process_n, tag=13)
+                                    comm.Barrier() 
                                 #clean_map[ii, ...] = comm.bcast(clean_map[ii, ...], root = process_n)
                                 #noise_diag[ii, ...] = comm.bcast(noise_diag[ii, ...], root = process_n)
                     elif len(noise_inv.shape) == 6 :
