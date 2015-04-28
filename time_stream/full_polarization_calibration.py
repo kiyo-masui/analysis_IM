@@ -98,13 +98,14 @@ class Calibrate(base_single.BaseSingle) :
 	eps_d=J56[1:nfreq+1,dist]
 	eps_sum=self.J_params[:,4]+self.J_params[:,5]
 	#print self.J_params[:,3].shape, theta_0.shape
+	print self.J_params[100,4:6],eps_sum[100]
 	self.J_params[:,3]=theta_0
-	self.J_params[:,4]=eps_sum-0.5*eps_d
-	self.J_params[:,5]=eps_sum+0.5*eps_d
+	self.J_params[:,4]=eps_sum/2.0-0.5*eps_d
+	self.J_params[:,5]=eps_sum/2.0+0.5*eps_d
 	
-	DPfn=self.params['mueler_file']+project+'/'+'calibrated_UV_111019.txt'
-	self.ncal_phase=np.loadtxt(DPfn)/180.0*np.pi
-	
+	#DPfn=self.params['mueler_file']+project+'/'+'calibrated_UV_111019.txt'
+	DPfn=self.params['mueler_file']+project+'/'+'UV.txt'
+	self.ncal_phase=np.loadtxt(DPfn)/180.0*np.pi*(-1)
 	#print self.params['OD_correct']
 	#print self.J_params
         calibrate_pol(Data, self.flux_diff,RM_dir,self.params['R_to_sky'],self.params['DP_correct'],self.params['RM_correct'],self.params['OD_correct'],self.params['DP_linear'],self.J_params,self.ncal_phase)
@@ -369,6 +370,7 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct,OD_correct
             
             jones=parameters_to_jones(G,gamma,psi,theta_0,theta_1,eps_0,eps_1)
             invm[freq]=jones_to_mueller(jones)
+        #print invm[100], J_params[100]
 
 # This starts the actual data processing for the given scan    
     for time_index in range(0,Data.dims[0]):
@@ -444,6 +446,8 @@ def calibrate_pol(Data, m_total,RM_dir,R_to_sky,DP_correct,RM_correct,OD_correct
                frequency = int(Data.freq[freq]/1000)
 #               print frequency
                bin = int((900000-frequency)*freq_limit/200000)
+               if bin>256:
+                   print freq_limit,frequency
 #               print bin
 #               if freq_limit == 200:
 #                   bin = 900-frequency
