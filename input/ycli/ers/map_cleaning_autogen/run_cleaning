@@ -1,0 +1,17 @@
+python correlate/pair_set.py input/ers/map_cleaning_autogen/GBT_15hr_map_mapcal2_cleaned_path_Eric.ini
+
+#python correlate/pair_set.py input/ers/map_cleaning_autogen/GBT_15hr_map_mapcal_cleaned_path_Eric.ini
+#python correlate/pair_set.py input/ers/map_cleaning_autogen/GBT_15hr_map_mapcal_cleaned_plussim_minusmap_path_Eric.ini &
+#python correlate/pair_set.py input/ers/map_cleaning_autogen/GBT_15hr_map_mapcal_cleaned_plussim_minusmap_simx1p1_path_Eric.ini &
+#python correlate/pair_set.py input/ers/map_cleaning_autogen/GBT_15hr_map_mapcal_cleaned_plussim_minussim_path_Eric.ini &
+#python correlate/pair_set.py input/ers/map_cleaning_autogen/GBT_15hr_map_mapcal_cleaned_plussim_minussim_simx1p1_path_Eric.ini &
+#python correlate/pair_set.py input/ers/map_cleaning_autogen/GBT_15hr_map_mapcal_cleaned_plussim_path_Eric.ini &
+#python correlate/pair_set.py input/ers/map_cleaning_autogen/GBT_15hr_map_mapcal_cleaned_plussim_simx1p1_path_Eric.ini
+
+#python correlate/pair_set.py input/ers/map_cleaning_autogen/GBT_15hr_map_oldcal_cleaned_path_Eric.ini &
+#python correlate/pair_set.py input/ers/map_cleaning_autogen/GBT_15hr_map_oldcal_cleaned_plussim_minusmap_path_Eric.ini &
+#python correlate/pair_set.py input/ers/map_cleaning_autogen/GBT_15hr_map_oldcal_cleaned_plussim_minusmap_simx1p1_path_Eric.ini &
+#python correlate/pair_set.py input/ers/map_cleaning_autogen/GBT_15hr_map_oldcal_cleaned_plussim_minussim_path_Eric.ini &
+#python correlate/pair_set.py input/ers/map_cleaning_autogen/GBT_15hr_map_oldcal_cleaned_plussim_minussim_simx1p1_path_Eric.ini &
+#python correlate/pair_set.py input/ers/map_cleaning_autogen/GBT_15hr_map_oldcal_cleaned_plussim_path_Eric.ini &
+#python correlate/pair_set.py input/ers/map_cleaning_autogen/GBT_15hr_map_oldcal_cleaned_plussim_simx1p1_path_Eric.ini

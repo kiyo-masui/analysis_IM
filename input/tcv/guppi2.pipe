@@ -9,7 +9,7 @@ import scipy as sp
 # Here you choose which files to process.
 #field = '1hr'
 field = '15hr'
-#dm_field_centre = (218.25, 2.0) 
+dm_field_centre = (218.25, 2.0) 
 #Here I'm grabbing the guppi data
 #file_middles = ('GBT12A_418/02_wigglez11hr_centre_ralongmap_101',)
 #file_middles = tuple(dir_data.get_data_files(range(01,03), field='11hr', project='GBT12A_418', type = 'ralongmap'))

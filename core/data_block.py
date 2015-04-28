@@ -55,9 +55,9 @@ class DataBlock(base_data.BaseData) :
             self.dec = sp.zeros(self.dims[0])
             for ii in range(self.dims[0]) :
                 self.ra[ii], self.dec[ii] = utils.elaz2radecGBT(
-                                                self.field['CRVAL3'][ii],
-                                                self.field['CRVAL2'][ii],
-                                                self.field['DATE-OBS'][ii])
+                                            self.field['CRVAL3'][ii],
+                                            self.field['CRVAL2'][ii],
+                                            self.field['DATE-OBS'][ii])
 
     def calc_LST(self) :
         """Calculates the telescope LST for guppi data

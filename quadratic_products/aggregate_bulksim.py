@@ -160,6 +160,7 @@ class AggregateSummary(object):
 
             weightfile.close()
 
+        # allocate the structures that save all the simulations
         result_dict = {}
         for treatment in sim_toread.treatment_cases:
             treatment_dict = {}
@@ -251,7 +252,6 @@ aggregatestatistics_prefix = 'ast_'
 class AggregateStatistics(object):
     """take the summary shelve and find statistics on it
     this extends the shelve object assembled in AggregateSummary
-    TODO: have this write plots out to uniform directories
     """
     def __init__(self, parameter_file=None, params_dict=None, feedback=0,
                  make_plot=True):
@@ -392,6 +392,9 @@ class AggregateStatistics(object):
         return (stat_1d, error_stat_1d, counts_1d)
 
     def calc_stat_2d(self, trial_array, calc_corr=False):
+        """Given as stack of 2D information, find the masked average and std;
+        optionally the covariance and correlation
+        """
         stat_2d = {}
         old_settings = np.seterr(invalid="warn", under="warn")
         mtrial_array = ma.masked_invalid(trial_array)

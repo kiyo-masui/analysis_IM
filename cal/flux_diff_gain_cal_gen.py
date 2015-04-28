@@ -16,8 +16,8 @@ import numpy as np
 from kiyopy import parse_ini
 import kiyopy.utils
 import core.fitsGBT
-from core import utils
-
+#from core import utils
+import utils.misc as utils
 
 # Define a dictionary with keys the names of parameters to be read from
 # file and values the defaults.
@@ -31,6 +31,7 @@ params_init = {
                # Select data to process.
                "scans" : (),
                "IFs" : (),
+               "ptsource" : '3C286',
                "Guppi_test" : False,
                "RM_dir" : "./",
                }
@@ -61,31 +62,31 @@ class MuellerGen(object) :
             t[i+3] =YG*d[i+3,f]
         return t 
 
-    def residuals(self, p,errors, f,freq_val):
+    def residuals(self, p,errors, f,freq_val,ptsource):
         theta = self.theta
-#        print theta
         RM = self.RM
-        wavelength = 300.0/freq_val[f]
-        Phi = RM*wavelength*wavelength
-#        Phi[:] = 0
-#        print Phi
-#        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*2 
-#        Isrc = 19.6*pow((750.0/freq_val[f]),0.495)*(2.28315426-0.000484307905*freq_val[f]) # Added linear fit for Jansky to Kelvin conversion.
-#        Isrc = 19.74748409*pow((750.0/freq_val[f]),0.49899785)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C286
-#        Isrc = 25.15445092*pow((750.0/freq_val[f]),0.75578842)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for  3C48
-#        Isrc = 4.56303633*pow((750.0/freq_val[f]),0.59237327)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C67
-#        Isrc = 31.32846821*pow((750.0/freq_val[f]),0.52113534)*(2.28315426-0.000484307905*freq_val[f]) #My fit solution for 3C147
-        Isrc = 34.11187767*pow((750.0/freq_val[f]),0.62009421)*(2.28315426-0.000484307905*freq_val[f]) #My fit solution for 3C295
+	wavelength = 300.0/freq_val[f]
+	Phi = RM*wavelength*wavelength
+        if ptsource=='3C286':
+            Isrc = 19.74748409*pow((750.0/freq_val[f]),0.49899785)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C286
+        elif ptsource=='3C48':
+            Isrc = 25.15445092*pow((750.0/freq_val[f]),0.75578842)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for  3C48
+        elif ptsource=='3C67':
+            Isrc = 4.56303633*pow((750.0/freq_val[f]),0.59237327)*(2.28315426-0.000484307905*freq_val[f]) # My fit solution for 3C67
+        elif ptsource=='3C147':
+            Isrc = 31.32846821*pow((750.0/freq_val[f]),0.52113534)*(2.28315426-0.000484307905*freq_val[f]) #My fit solution for 3C147
+        elif ptsource=='3C295':
+            Isrc = 34.11187767*pow((750.0/freq_val[f]),0.62009421)*(2.28315426-0.000484307905*freq_val[f]) #My fit solution for 3C295
         PAsrc = 33.0*sp.pi/180.0 # for 3C286, doesn't matter for unpolarized. 
-#        Psrc = 0.07 #for 3C286 
-        Psrc = 0 #for #3C48,3C67, 3C147, 3C295
+        if ptsource=='3C286':
+            Psrc = 0.07 #for 3C286 
+        else:
+            Psrc = 0 #for #3C48,3C67, 3C147, 3C295
         Qsrc = Isrc*Psrc*sp.cos(2*PAsrc) 
         Usrc = Isrc*Psrc*sp.sin(2*PAsrc) 
         Vsrc = 0
         XXsrc0 = Isrc-Qsrc
         YYsrc0 = Isrc+Qsrc
-#        XXsrc = (0.5*(1+sp.cos(2*theta[i]))*XXsrc0-sp.sin(2*theta[i])*Usrc+0.5*(1-sp.cos(2*theta[i]))*YYsrc0)
-#        YYsrc = (0.5*(1-sp.cos(2*theta[i]))*XXsrc0+sp.sin(2*theta[i])*Usrc+0.5*(1+sp.cos(2*theta[i]))*YYsrc0)
         source = sp.zeros(4*self.file_num)
         for i in range(0,len(source),4):
             source[i] = (0.5*(1+sp.cos(2*theta[i]+Phi[i]))*XXsrc0-sp.sin(2*theta[i]+Phi[i])*Usrc+0.5*(1-sp.cos(2*theta[i]+Phi[i]))*YYsrc0)
@@ -104,11 +105,10 @@ class MuellerGen(object) :
         guppi_result = params['Guppi_test']
         output_root = params['output_root']
         output_end = params['output_end']
-        RM_dir = params['RM_dir']
+        ptsource = params['ptsource']
+#        RM_dir = params['RM_dir']
         file_name = params['file_middles'][0].split('/')[1]
-#        print file_name
         sess = file_name.split('_')[0]
-#        print sess
 
         self.file_num = len(params['file_middles']) # getting a variable for number of calibrator files being used
 
@@ -121,8 +121,7 @@ class MuellerGen(object) :
             Reader = core.fitsGBT.Reader(input_fname)
             n_scans = len(Reader.scan_set)
             Len_set = Reader.read(0,0,force_tuple=True)
-#            session_nums[c] = file_middle.split('_')[0]
-#            print session_nums[c]
+
             for Data in Len_set :
                 freq_num = Data.dims[3] # Setting the frequency binning to match whatever it's been set to. 
             if guppi_result == True : 
@@ -176,89 +175,23 @@ class MuellerGen(object) :
             RM = sp.zeros(n_scans)
             m = 0           
             for Data in Blocks:
-#                Comp_Time = 0.0
                 freq_len = Data.dims[3]
                 time_len = Data.dims[0]
-#                print time_len
                 Data.calc_freq()
                 freq_val = Data.freq
                 freq_val = freq_val/1000000       
                 Data.calc_PA()
                 PA[m] = ma.mean(Data.PA)  
-#Include RM stuff in the code:
-#                Full_date = Data.field['DATE-OBS'][Data.dims[0]/2]
-#                print Full_date
-#                Date = Full_date.split('T')[0]
-#                Year = Date.split('-')[0]
-#                Month = Date.split('-')[1]
-#                Day = Date.split('-')[2]
-#                Full_time = Full_date.split('T')[1]
-#                Hour = Full_time.split(':')[0]
-#                print Hour
-#                Min = Full_time.split(':')[1]
-#                Sec = Full_time.split(':')[2]
-#                if int(Min)<=15:
-#                    Comp_Time = float(Hour) +0.0
-#                elif int(Min)<=45:
-#                    Comp_Time = float(Hour) + 0.5
-#                else :
-#                    Comp_Time = float(Hour) + 1
-#                print str(Comp_Time)
-#                print '---'
-#                RM_file_name = RM_dir + Year+Month+Day+'_RM.txt'
-#                RM_data = np.loadtxt(RM_file_name)     
-#                RA_RM = sp.zeros(len(RM_data[:,0]))
-#                DEC_RM = sp.zeros(len(RM_data[:,0]))
-#                for i in range(0, len(RM_data[:,0])):
-#                    RM_Hr = int(RM_data[i,0])
-#                    print RM_Hr
-#                    if RM_data[i,0]%1 == 0 :
-#                        RM_Min = '00'
-#                        minutes = 0.0
-#                    else:
-#                        RM_MIN = '30'
-#                        minutes = 0.5
-#                    Test = float(RM_Hr) + minutes
-#                    print Test
-#                    if str(Comp_Time) == str(Test): 
-#                        UT_RM = Date+'T'+str(RM_Hr)+':'+RM_Min+':00.00'
-#                        EL_RM = RM_data[i,2]
-#                        AZ_RM = RM_data[i,1]
-#                        print EL_RM, AZ_RM
-#                        RA_RM[i], DEC_RM[i] = utils.elaz2radecGBT(EL_RM,AZ_RM,UT_RM)               
-#                        print RA_RM[i], DEC_RM[i]
-#                RA = ma.mean(Data.field['CRVAL2'])
-#                print RA
-#                print ma.mean(RA)
-#                DEC = ma.mean(Data.field['CRVAL3'])
-#                print RA, DEC
-#                print ma.mean(DEC)
-#                print '_____________'
-#                print RA_RM, DEC_RM
-#                valid = []
-#                for i in range(0,len(RA_RM)):
-#                    if RA_RM[i] != 0:
-#                        if abs(RA-RA_RM[i])<=10.0 :
-#                            print RA_RM[i], DEC_RM[i]
-#                            if abs(DEC-DEC_RM[i])<10.0:
-#                                print RA_RM[i], DEC_RM[i]
-##                                RM[m]=RM_data[i,3]
-#                                valid.append(i)
-#                print valid
-#                RA_M=10.0
-#                DEC_M=10.0
-#                for j in range(0,len(valid)):
-#                    if abs(RA-RA_RM[valid[j]])<RA_M:
-#                        if abs(DEC-DEC_RM[valid[j]])<DEC_M:
-#                            RM[m] = RM_data[valid[j],3]
+		print PA[m]
+                Full_date = Data.field['DATE-OBS'][Data.dims[0]/2]
+                print Full_date
+		AZ_mean = Data.field['CRVAL2'][Data.dims[0]/2]
+		EL_mean = Data.field['CRVAL3'][Data.dims[0]/2]
+		PA[m] = utils.azel2pGBT(AZ_mean,EL_mean,Full_date)
+		PA[m] = PA[m]*sp.pi/180.0
+		print PA[m]
                 m+=1 
-# Now have a table of RMs for each scan. 
-                
-            
-#            print time_len
-#            print freq_len
-#            print m
-            print RM
+
 #Building the measured data into arrays (guppi version)         
             if guppi_result == True : 
                 if n_scans == 2 : 
@@ -270,7 +203,6 @@ class MuellerGen(object) :
                     self.RM[k+1] = ma.mean(RM)
                     self.RM[k+2] = ma.mean(RM)
                     self.RM[k+3] = ma.mean(RM)
-#                    print self.RM
 
 #for if I want to do the difference of medians
                     S_med_calon_src = sp.zeros((freq_len,4))
@@ -278,15 +210,6 @@ class MuellerGen(object) :
                     S_med_calon = sp.zeros((freq_len,4))
                     S_med_caloff = sp.zeros((freq_len,4))
 
-#arrays built without taking median
-                    for Data in OnBlocks: 
-                        S_src = Data.data
-#                    print len(S_src)
-
-                    for Data in OffBlocks:
-                        S_offsrc = Data.data
-#                    print len(S_offsrc)
- 
 #arrays built taking median
                     for Data in OnBlocks:
                         S_med_caloff_src[:,0] = ma.median(Data.data[:,XX_ind,off_ind,:],axis=0)
@@ -316,42 +239,32 @@ class MuellerGen(object) :
                     self.d[k+2,:] = 0.5*(S_med_calon_src[:,2]+S_med_caloff_src[:,2]-S_med_calon[:,2]-S_med_caloff[:,2])
                     self.d[k+3,:] = 0.5*(S_med_calon_src[:,3]+S_med_caloff_src[:,3]-S_med_calon[:,3]-S_med_caloff[:,3])
 
-#Final input if we did not yet take median                     
-#                    print 0.5*(S_src[:,XX_ind,1,:]+S_src[:,XX_ind,0,:]-S_offsrc[:,XX_ind,1,:]-S_offsrc[:,XX_ind,0,:])
-#                    self.d[k,:] = ma.mean(0.5*(S_src[:,XX_ind,1,:]+S_src[:,XX_ind,0,:]-S_offsrc[:,XX_ind,1,:]-S_offsrc[:,XX_ind,0,:]),axis=0)
-#                    self.d[k+1,:] = ma.mean(0.5*(S_src[:,XY_ind,1,:]+S_src[:,XY_ind,0,:]-S_offsrc[:,XY_ind,1,:]-S_offsrc[:,XY_ind,0,:]),axis=0)
-#                    self.d[k+2,:] =ma.mean(0.5*(S_src[:,YX_ind,1,:]+S_src[:,YX_ind,0,:]-S_offsrc[:,YX_ind,1,:]-S_offsrc[:,YX_ind,0,:]),axis=0)
-#                    self.d[k+3,:] =ma.mean(0.5*(S_src[:,YY_ind,1,:]+S_src[:,YY_ind,0,:]-S_offsrc[:,YY_ind,1,:]-S_offsrc[:,YY_ind,0,:]),axis=0)             
                     k+=4
 
+#Outlier flagging, shouldn't be necessary.
         for a in range(0,4*self.file_num):
             for b in range(0,freq_num):
-#                print self.d[a,b]
                 if self.d[a,b] > 1000 :
                    self.d[a,b] = 1000
 
-        #There are 2 parameters for this version p[0] is XX gain and p[1] is YY gain. 
+#There are 2 parameters for this version p[0] is XX gain and p[1] is YY gain. 
         p0 = [1,1] # guessed preliminary values
         error = sp.ones(4*self.file_num)
-        #Note that error can be used to weight the equations if not all set to one.
+#Note that error can be used to weight the equations if not all set to one.
 
         p_val_out = sp.zeros((freq_len, 3))
- #       p_err_out = sp.zeros((freq_len, 17))
+#       p_err_out = sp.zeros((freq_len, 17))
      
         for f in range(0,freq_len):   
-            plsq = leastsq(self.residuals,p0,args=(error,f,freq_val),full_output=0, maxfev=5000)
+            plsq = leastsq(self.residuals,p0,args=(error,f,freq_val,ptsource),full_output=0, maxfev=5000)
             pval = plsq[0] # this is the 1-d array of results0
 
             p_val_out[f,0] = freq_val[f]
             p_val_out[f,1] = pval[0]
             p_val_out[f,2] = pval[1]
 
-#        sess_num = int(session_nums[0])
-#        print sess_num
-#        np.savetxt(output_root+str(sess_num)+'_flux_mueller_matrix_calc'+output_end, p_val_out, delimiter = ' ')
-        out_path = output_root+sess+'_diff_gain_calc'+output_end
+        out_path = output_root+sess+'_diff_gain_calc_new'+output_end
         np.savetxt(out_path,p_val_out,delimiter = ' ')
-#        np.savetxt('mueller_params_error.txt', p_err_out, delimiter = ' ')
 
 #If this file is run from the command line, execute the main function.
 if __name__ == "__main__":

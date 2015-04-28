@@ -6,7 +6,7 @@ GBT spectrometer data.
 
 import scipy as sp
 import numpy.ma as ma
-import pyfits
+from astropy.io import fits as pyfits
 
 import kiyopy.custom_exceptions as ce
 import kiyopy.utils as ku
@@ -41,22 +41,27 @@ fields_and_axes = {
                    'OBSERVER' : (),
                    'RESTFREQ' : (),
                    'DURATION' : (),
+                   'BEAM' : (),
                    'EXPOSURE' : ('time', 'cal'),
-                   'CTYPE2' : (), # Type of longetudinal axis (probably AZ)
-                   'CTYPE3' : (),
+                   'CTYPE2' : (),  # Type of longetudinal axis ('AZ' or 'RA')
+                   'CTYPE3' : (),  # Type of longetudinal axis ('EL' of 'DEC')
+                   'RA-OBS' : ('time',),  # Accurate RA.
+                   'DEC-OBS' : ('time',),  # Accurate DEC.
                    'DATE-OBS' : ('time', ),
                    'LST' : ('time', ),
+                   'TSYS' : ('time', 'pol'),
                    # These pointings refer to the structural telescope, not
                    # the beam (slightly different).
                    'ELEVATIO' : ('time', ),
                    'AZIMUTH' : ('time', ),
+                   'PARANGLE' : ('time', ),
                    'OBSFREQ' : ('time', ),
                    'RA' : ('time',),
                    'DEC' : ('time',),
                    # These pointings are corrected for pointing calibration
                    # and I think refraction.
-                   'CRVAL2' : ('time', ), # Azimuth
-                   'CRVAL3' : ('time', ), # Elevation
+                   'CRVAL2' : ('time', ), # Azimuth or RA
+                   'CRVAL3' : ('time', ), # Elevation or DEC
                    # Polarization indicies
                    'CRVAL4' : ('pol', ),
                    'CAL' : ('cal', )
@@ -131,7 +136,21 @@ class Reader(object) :
         self.IF_set = sp.unique(self._IFs_all)
         self.IF_set.sort()
 
-    def get_scan_IF_inds(self, scan_ind, IF_ind) :
+        # Get the beam of all records. Data may not have a beam record, in
+        # which case all the data is the same beam.
+        try:
+            names = self.fitsdata.names
+        except AttributeError:
+            names = self.fitsdata._names
+        if 'BEAM' in names:
+            self._beams_all = self.fitsdata.field('BEAM')
+            self.beam_set = sp.unique(self._beams_all)
+            self.beam_set.sort()
+        else:
+            self._beams_all = sp.ones(len(self._scans_all), dtype=sp.int32)
+            self.beam_set = [1]
+
+    def get_scan_band_beam_inds(self, scan_ind=0, IF_ind=0, beam_ind=0) :
         """Gets the record indices of the fits file that correspond to the
         given scan and IF.
 
@@ -141,12 +160,14 @@ class Reader(object) :
         # TODO: Should check valid scan IF, and raise value errors as apropriate
         thescan = self.scan_set[scan_ind]
         theIF = self.IF_set[IF_ind]
+        thebeam = self.beam_set[beam_ind]
         
         # Find all the records that correspond to this IF and this scan.
         # These indicies *should now be ordered in time, cal (on off)
         # and in polarization, once the IF is isolated.
-        (inds_sif,) = sp.where(sp.logical_and(self._IFs_all==theIF, 
-                                        self._scans_all==thescan))
+        (inds_sif,) = sp.where(sp.logical_and(
+            sp.logical_and(self._IFs_all==theIF, self._scans_all==thescan),
+            self._beams_all==thebeam))
         ncal = len(sp.unique(self.fitsdata.field('CAL')[inds_sif]))
         npol = len(sp.unique(self.fitsdata.field('CRVAL4')[inds_sif]))
         
@@ -206,7 +227,8 @@ class Reader(object) :
             if ii == n_cards or prihdr.ascardlist().keys()[ii] == card_hist :
                 Block.add_history(hist_entry, details)
 
-    def read(self, scans=None, bands=None, force_tuple=False, IFs=None) :
+    def read(self, scans=None, bands=None, beams=None, force_tuple=False,
+             IFs=None) :
         """Read in data from the fits file.
 
         This method reads data from the fits file including the files history
@@ -255,61 +277,70 @@ class Reader(object) :
             IFs = (IFs, )
         elif len(IFs) == 0 :
             IFs = range(len(self.IF_set))
+        if beams is None :
+            beams = range(len(self.beam_set))
+        elif not hasattr(beams, '__iter__') :
+            beams = (beams, )
+        elif len(beams) == 0 :
+            beams = range(len(self.beam_set))
+
         
         # Sequence of output DataBlock objects.
         output = ()
         for scan_ind in scans :
             for IF_ind in IFs :
-                # Choose the appropriate records from the file, get that data.
-                inds_sif = self.get_scan_IF_inds(scan_ind, IF_ind)
-                Data_sif = db.DataBlock(self.fitsdata.field('DATA')[inds_sif])
-                # Masked data is stored in FITS files as float('nan')
-                Data_sif.data[sp.logical_not(sp.isfinite(
-                                   Data_sif.data))] = ma.masked
-                # Now iterate over the fields and add them
-                # to the data block.
-                for field, axis in fields_and_axes.iteritems() :
-                    # See if this fits file has the key we are looking for.
-                    try:
-                        names = self.fitsdata.names
-                    except AttributeError:
-                        names = self.fitsdata._names
-                    if not field in names :
-                        continue
-                    # First get the 'FITS' format string.
-                    field_format = self.hdulist[1].columns.formats[
-                                self.hdulist[1].columns.names.index(field)]
-                    if axis :
-                        # From the indices in inds_sif, we only need a
-                        # subset: which_data will subscript inds_sif.
-                        temp_data = self.fitsdata.field(field)[inds_sif]
-                        # For reshaping at the end.
-                        field_shape = []
-                        for ii, single_axis in enumerate(Data_sif.axes[0:-1]) :
-                            # For each axis, slice out all the data except the
-                            # stuff we need.
-                            which_data = [slice(None)] * 3
-                            if single_axis in axis :
-                                field_shape.append(Data_sif.dims[ii])
-                            else :
-                                which_data[ii] = [0]
-                            temp_data = temp_data[tuple(which_data)]
-                        temp_data.shape = tuple(field_shape)
-                        Data_sif.set_field(field, temp_data, axis, field_format)
+                for beam_ind in beams:
+                    # Choose the appropriate records from the file, get that data.
+                    inds_sif = self.get_scan_band_beam_inds(scan_ind, IF_ind,
+                                                            beam_ind)
+                    Data_sif = db.DataBlock(self.fitsdata.field('DATA')[inds_sif])
+                    # Masked data is stored in FITS files as float('nan')
+                    Data_sif.data[sp.logical_not(sp.isfinite(
+                                       Data_sif.data))] = ma.masked
+                    # Now iterate over the fields and add them
+                    # to the data block.
+                    for field, axis in fields_and_axes.iteritems() :
+                        # See if this fits file has the key we are looking for.
+                        try:
+                            names = self.fitsdata.names
+                        except AttributeError:
+                            names = self.fitsdata._names
+                        if not field in names :
+                            continue
+                        # First get the 'FITS' format string.
+                        field_format = self.hdulist[1].columns.formats[
+                                    self.hdulist[1].columns.names.index(field)]
+                        if axis :
+                            # From the indices in inds_sif, we only need a
+                            # subset: which_data will subscript inds_sif.
+                            temp_data = self.fitsdata.field(field)[inds_sif]
+                            # For reshaping at the end.
+                            field_shape = []
+                            for ii, single_axis in enumerate(Data_sif.axes[0:-1]) :
+                                # For each axis, slice out all the data except the
+                                # stuff we need.
+                                which_data = [slice(None)] * 3
+                                if single_axis in axis :
+                                    field_shape.append(Data_sif.dims[ii])
+                                else :
+                                    which_data[ii] = [0]
+                                temp_data = temp_data[tuple(which_data)]
+                            temp_data.shape = tuple(field_shape)
+                            Data_sif.set_field(field, temp_data, axis, field_format)
+                        else :
+                            Data_sif.set_field(field, self.fitsdata.field(field)
+                                [inds_sif[0,0,0]], axis, field_format)
+                    if hasattr(self, 'history') :
+                        Data_sif.history = db.History(self.history)
                     else :
-                        Data_sif.set_field(field, self.fitsdata.field(field)
-                            [inds_sif[0,0,0]], axis, field_format)
-                if hasattr(self, 'history') :
-                    Data_sif.history = db.History(self.history)
-                else :
-                    self.history =bf.get_history_header(self.hdulist[0].header)
-                    #self.set_history(Data_sif)
-                    fname_abbr = ku.abbreviate_file_path(self.fname)
-                    self.history.add('Read from file.', ('File name: ' + 
-                                         fname_abbr, ))
-                    Data_sif.history = db.History(self.history)
-                Data_sif.verify()
-                output = output + (Data_sif, )
+                        self.history =bf.get_history_header(self.hdulist[0].header)
+                        #self.set_history(Data_sif)
+                        fname_abbr = ku.abbreviate_file_path(self.fname)
+                        self.history.add('Read from file.', ('File name: ' + 
+                                             fname_abbr, ))
+                        Data_sif.history = db.History(self.history)
+                    Data_sif.verify()
+                    output = output + (Data_sif, )
         if self.feedback > 2 :
             print 'Read finished.'
         if len(output) == 1 and not force_tuple :
@@ -385,7 +416,7 @@ class Writer() :
                                ' length for all DataBlocks added to Wirter.')
 
         # Copy the reshaped data from the DataBlock
-        data = sp.array(ma.filled(Block.data, float('nan')))
+        data = Block.data.filled(sp.nan)
         if self.first_block_added :
             self.data = data.reshape((n_records, dims[3]))
         else :

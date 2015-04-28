@@ -66,7 +66,8 @@ import numpy as np
 import numpy.lib.format as npfor
 from numpy.lib.utils import safe_eval
 
-import utils.cubic_conv_interpolation as cci
+#import utils.cubic_conv_interpolation as cci
+#from utils import cubic_conv_interpolation as cci
 
 # TODO:
 # when submitted as batch on Sunnyvale, the PYTHONPATH seems to get clobbered
@@ -212,6 +213,12 @@ class info_array(sp.ndarray) :
             out.info = self.info
         return out
 
+    def __getstate__(self):
+        return self.info
+
+    def __setstate__(self, val):
+        self.info=val
+
 class info_memmap(sp.memmap) :
     """A standard numpy memmap object with a dictionary for holding extra info.
 
@@ -341,7 +348,8 @@ class info_memmap(sp.memmap) :
 
     def __del__(self) :
         self._info_flush()
-        sp.memmap.__del__(self)
+        sp.memmap.flush(self)
+        #sp.memmap.__del__(self)
 
     def __deepcopy__(self, copy) :
         """Not implemented, raises an exception."""
@@ -556,6 +564,84 @@ def load_h5(h5obj, path):
         info[key] = safe_eval(value)
     iarray = info_array(iarray, info)
     return iarray
+
+def load_h5_memmap(h5obj, path, fname, gb_lim):
+    """Load a info memmap from an hdf5 file.
+
+    Parameters
+    ----------
+    h5obj : h5py File or Group object
+    File from which the info array will be read from.
+    path : string
+    Path within `h5obj` to read the array.
+
+    Returns
+    -------
+    memarray : info_memmap
+    Array loaded from file.
+    """
+    
+    # TODO: Allow `h5obj` to be a string with a path to a file to be opened
+    # and then closed.
+    #data = h5obj[path]
+    dset = h5obj[path]
+    memarray = sp.memmap(fname, shape=dset.shape, dtype=dset.dtype, mode='w+')
+    memarray = fill_memmap( memarray, 1000000000*gb_lim, dset)
+    #memarray = data.value
+    info = {}
+    for key, value in dset.attrs.iteritems():
+        info[key] = safe_eval(value)
+    memarray = info_memmap(memarray, info)
+    return memarray
+
+def fill_memmap(memmap, mem_lim, dset):
+    chunk_size = dset.size*dset.dtype.itemsize
+    for ind in range(len(dset.shape)):
+        if chunk_size <= mem_lim:
+            i = ind
+            print str(i)
+            break
+        else:
+            chunk_size = chunk_size/dset.shape[ind]
+    if i == 0:
+        memmap = dset.value
+    else:
+        index_list = []
+        for num in range(i):
+            index_list.append(range(dset.shape[num]))
+        indexes = cross(index_list)
+        for index in indexes:
+            print index
+            memmap[tuple(index)] = dset[tuple(index)]
+    return memmap
+ 
+
+def cross(set_list):
+        '''Given a list of sets, return the cross product.'''
+        # By associativity of cross product, cross the first two sets together
+        # then cross that with the rest. The big conditional in the list
+        # comprehension is just to make sure that there are no nested lists
+        # in the final answer.
+        if len(set_list) == 1:
+                ans = []
+                for elem in set_list[0]:
+                        # In the 1D case, these elements are not lists.
+                        if type(elem) == list:
+                                ans.append(np.array(elem))
+                        else:
+                                ans.append(np.array([elem]))
+                return ans
+        else:
+                A = set_list[0]
+                B = set_list[1]
+                cross_2 = [a+b if ((type(a) == list) and (type(b) == list)) else \
+                (a+[b] if type(a) == list else ([a]+b if type(b) == list else \
+                [a]+[b])) for a in A for b in B]
+                remaining = set_list[2:]
+                remaining.insert(0,cross_2)
+                return cross(remaining)
+
+
 
 
 # ---- Functions for manipulating above arrays as matrices and vectors. -------
@@ -830,6 +916,7 @@ class alg_object(object) :
                     raise ce.DataError(message)
                 points[0, ii] = round(index)
         elif kind == 'cubic':
+            import utils.cubic_conv_interpolation as cci
             # Make sure the given point is an array.
             pnt = sp.array(coord)
             # Get the array containing the first value in each dimension.
@@ -1055,7 +1142,7 @@ def make_vect(array, axis_names=None) :
     axis_names : tuple of strings, optional
         The sequence contains the name of each axis.  This sequence will be
         stored in the `axes` attribute.  This parameter is ignored if
-        `input_array`'s info attribute already contains the axis names.
+        `input_array``s info attribute already contains the axis names.
 
     Returns
     -------
@@ -1081,7 +1168,7 @@ class mat(alg_object) :
     """Multidimentional array interpreted as a matrix.
     
     This class gets most of its functionality from the numpy ndarray class.
-    In addition it provides support for organizing it's data as a vector.
+    In addition it provides support for organizing it`s data as a vector.
     This class comes in two flavours: `mat_array` and `mat_memmap`
     depending on whether the array is stored in memory or on disk.  The raw
     `mat` class is not a valid class by itself.
@@ -1110,26 +1197,26 @@ class mat(alg_object) :
         Sequence contains the axis numbers of the array to identify as
         varying over the matrix rows. This sequence is stored in the
         `rows` attribute.  This parameter is ignored if
-        `input_array`'s info attribute already contains the rows.
+        `input_array``s info attribute already contains the rows.
     col_axis : tuple of ints
         Sequence contains the axis numbers of the array to identify as
         varying over the matrix columns. This sequence is stored in the
         `cols` attribute.  This parameter is ignored if
-        `input_array`'s info attribute already contains the cols.
+        `input_array``s info attribute already contains the cols.
     axis_names : tuple of strings, optional
         The sequence contains the name of each axis.  This sequence will be
         stored in the `axes` attribute.  This parameter is ignored if
-        `input_array`'s info attribute already contains the axis names.
+        `input_array``s info attribute already contains the axis names.
 
     Attributes
     ----------
     axes : tuple of strings
         The names of each of the axes of the array.
     rows : tuple of ints
-        Which of the array's axes to identify as varying over the matrix
+        Which of the array`s axes to identify as varying over the matrix
         rows.
     cols : tuple of ints
-        Which of the array's axes to identify as varying over the matrix
+        Which of the array`s axes to identify as varying over the matrix
         columns.
 
     Notes
@@ -1140,7 +1227,7 @@ class mat(alg_object) :
     explicit assignment to mat.shape).
 
     The `axes`, `rows` and `cols` attributes are actually stored in the 
-    `info_array`'s info dictionary.  This is just an implementation detail.
+    `info_array``s info dictionary.  This is just an implementation detail.
 
     See Also
     --------

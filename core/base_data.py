@@ -4,7 +4,8 @@ import scipy as sp
 import numpy.ma as ma
 
 import kiyopy.custom_exceptions as ce
-import utils.misc as utils
+#import utils.misc as utils
+from utils import misc as utils
 from hist import History, merge_histories
 
 class BaseData(object) :
@@ -150,11 +151,10 @@ class BaseData(object) :
             # Check the format string.
             # TODO: This should do something better than just check that there
             # is a string.
-            if not type(self.field_formats[field_name]) is str :
-                print type(self.field_formats[field_name])
-                print self.field_formats[field_name]
-                raise ce.DataError("The field_format must be type str. field: "
-                                   + field_name)
+            #print field_name, type(self.field_formats[field_name]) 
+            #if not (type(self.field_formats[field_name]) == str) :
+            #    raise ce.DataError("The field_format must be type str. field: "
+            #                       + field_name )
         # The opposite of the first check in the loop.
         if len(axes_keys) or len(format_keys) :
             raise ce.DataError("Dictionaries 'field', 'field_axes' and "

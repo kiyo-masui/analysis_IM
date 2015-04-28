@@ -189,6 +189,30 @@ def sexagesimal_to_radec(ra, dec):
 
     return ra, dec
 
+def LSTatParkes(UT) :
+    """Calculates the LST from the UT of an observer at Parkes 
+
+    All input should be formated to correspond to the data in a Parkes fits file.
+    UT a string like in the Parkes DATE-OBS field.
+
+    Largely copied from Kevin's code.
+    """
+
+    Parkes = ephem.Observer()
+    Parkes.long = '148:15:44.3591'
+    Parkes.lat = '-32:59:59.8657'
+    Parkes.pressure = 0 # no refraction correction.
+    Parkes.temp = 0
+
+    UT_wholesec, partial_sec = UT.split('.', 1)
+    time_obj = time.strptime(UT_wholesec, "%Y-%m-%dT%H:%M:%S")
+    UT_reformated = time.strftime("%Y/%m/%d %H:%M:%S", time_obj)
+    Parkes.date = UT_reformated + "." + partial_sec
+
+    LST = Parkes.sidereal_time() #IN format xx:xx:xx.xx ?
+
+    return LST*180.0/sp.pi
+
 def time2float(UT) :
     """Calculates float seconds from a time string.
 
@@ -342,7 +366,6 @@ def polint2str(pol_int) :
     else :
         raise ValueError("Polarization integer must be in range(-8, 5) and "
                          "nonzero")
-
 
 def ampfit(data, covariance, theory, rank_thresh=1e-12, diag_only=False):
     """Fits the amplitude of the theory curve to the data.
@@ -603,4 +626,5 @@ if __name__ == "__main__":
     OPTIONFLAGS = (doctest.ELLIPSIS |
                    doctest.NORMALIZE_WHITESPACE)
     doctest.testmod(optionflags=OPTIONFLAGS)
+
 

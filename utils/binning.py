@@ -167,7 +167,7 @@ def print_edges(sample, edges, name):
            name, min(sample), max(sample), min(edges), max(edges))
 
 
-def histogram3d(sample, xedges, yedges, zedges):
+def histogram3d(sample, xedges, yedges, zedges, weight=None):
     """Make a 3D histogram from the sample and edge specification
     indices in the sample: 0=x, 1=y, 2=z;
     histogramdd was having problems with the galaxy catalogs
@@ -199,12 +199,15 @@ def histogram3d(sample, xedges, yedges, zedges):
     y_index = y_index[box_in] - 1
     z_index = z_index[box_in] - 1
 
+    if weight != None:
+        weight = weight[box_in]
+
     box_index = x_index + y_index * x_size + z_index * x_size * y_size
 
     # note that bincount will only count up to the largest object in the list,
     # which may be smaller than the dimension of the full count cube
     try:
-        count_array[0:max(box_index) + 1] = np.bincount(box_index)
+        count_array[0:max(box_index) + 1] = np.bincount(box_index, weights=weight)
 
         # make the x y and z axes which index the bincount output
         count_index = np.arange(x_size * y_size * z_size)

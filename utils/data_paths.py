@@ -10,6 +10,7 @@ import ast
 import re
 import os
 import copy
+import shelve
 from utils import file_tools as ft
 from core import algebra
 
@@ -294,7 +295,8 @@ class DataPath(object):
     """
 
     # URL to the default path database
-    _db_root = "http://www.cita.utoronto.ca/~eswitzer/GBT_param/"
+    #_db_root = "http://www.cita.utoronto.ca/~eswitzer/GBT_param/"
+    _db_root = "/home/ycli/workspace/script/build_database/"
     #_db_file = "path_database.py"
     _db_file = "path_database.shelve"
     _db_url_default = _db_root + _db_file
@@ -302,7 +304,7 @@ class DataPath(object):
     _hash_url_default = _db_root + _hash_file
 
     def __init__(self, db_url=_db_url_default, hash_url=_hash_url_default,
-                 skip_gitlog=False, load_via_exec=False):
+                 skip_gitlog=False, load_via_exec=False, load_locally=True):
         r"""Load a file path specification and get basic run info
         """
 
@@ -316,7 +318,9 @@ class DataPath(object):
         self.gitlog = "Empty"     # git SHA and commit info
 
         # load the file database and git version info
-        if load_via_exec:
+        if load_locally:
+            self.load_pathdict_local(db_url)
+        elif load_via_exec:
             self.execload_pathdict(db_url)
         else:
             self.load_pathdict(db_url)
@@ -343,6 +347,27 @@ class DataPath(object):
     def clprint(self, string_in):
         r"""print with class message; could extend to logger"""
         print "DataPath: " + string_in
+
+    def load_pathdict_local(self, path):
+        r"""Load the parameter dictionary as a shelve. Without http
+
+        note that the class instance update()'s its dictionary, so subsequent
+        calls of this function on different files will overwrite or augment
+        dictionaries that have already been loaded.
+        """
+
+        self.clprint("opening file "+ path)
+
+        shelvedict = shelve.open(path, 'r')
+        bounding_box = {}
+        bounding_box.update(shelvedict)
+        shelvedict.close()
+
+        # extract only the useful database information
+        self.version = bounding_box['version_tag']
+        self._pathdict.update(bounding_box['pdb'])
+        self._groups.update(bounding_box['groups'])
+        self._group_order = bounding_box['group_order']
 
     def load_pathdict(self, db_url):
         r"""Load the parameter dictionary as a shelve through http
@@ -427,11 +452,12 @@ class DataPath(object):
     def load_hashdict(self, hash_url):
         r"""Load the file hash library
         """
-        self.clprint("opening URL " + self.hash_url)
+        #self.clprint("opening URL " + self.hash_url)
 
-        resp = urllib2.urlopen(hash_url)
-        if (resp.code != 200):
-            print "ERROR: path database URL invalid (%s)" % resp.code
+        #resp = urllib2.urlopen(hash_url)
+        #if (resp.code != 200):
+        #    print "ERROR: path database URL invalid (%s)" % resp.code
+        resp = open(hash_url)
         hash_spec = resp.read()
         hash_spec = hash_spec.split("\n")
         for entry in hash_spec:
@@ -727,10 +753,11 @@ class DataPath(object):
 
         fileobj.close()
 
-    def generate_path_webpage_by_group(self, suppress_lists=45):
+    def generate_path_webpage_by_group(self, suppress_lists=45, localpath=None):
         r"""Write out a markdown file with the file database
         """
-        localpath = "/cita/d/www/home/eswitzer/GBT_param/"
+        if localpath == None:
+            localpath = "/cita/d/www/home/eswitzer/GBT_param/"
         localdb = localpath + "path_database.py"
         dbwebpage = localpath + "path_database.txt"
 
@@ -776,10 +803,11 @@ class DataPath(object):
         print "-" * 80
         fileobj.close()
 
-    def generate_hashtable(self):
+    def generate_hashtable(self, localpath=None):
         r"""Write out the file hash table
         """
-        localpath = "/cita/d/www/home/eswitzer/GBT_param/"
+        if localpath == None:
+            localpath = "/cita/d/www/home/eswitzer/GBT_param/"
         dbhashpage = localpath + "hashlist.txt"
 
         print "writing file hash list to: " + dbhashpage
@@ -810,6 +838,63 @@ class DataPath(object):
 
         print_dictionary(hashdict, hashobj, key_list=hashlist)
         hashobj.close()
+
+def get_mapdict(dir, selection=None):
+    r"""
+    Generate a map dict according to the map file in a dir
+    """
+    maplist = os.listdir(dir)
+    mapdict = {}
+    for map in maplist:
+        if os.path.isfile(dir+map) and map.split('.')[-1]=='npy':
+            mapsplit = map.split('.')[0].split('_')
+            if mapsplit[0] == 'sec':
+                #print map
+                key1 = mapsplit[1] + '_with_' + mapsplit[7]
+                if mapsplit[2] == 'modes':
+                    key2 = mapsplit[2]
+                else:
+                    key2 = mapsplit[4]
+                if key2 == 'inv':
+                    key2 = mapsplit[3] + '_' + key2
+                key3 = mapsplit[-1]
+
+                mapdict['%s;%s;%s'%(key1, key2, key3)] = dir + map
+            if mapsplit[0] == 'combined':
+                key1 = mapsplit[2]
+                key2 = mapsplit[3]
+
+                mapdict['%s;%s'%(key1, key2)] = dir + map
+
+            if mapsplit[0] == 'secA' or\
+               mapsplit[0] == 'secB' or\
+               mapsplit[0] == 'secC' or\
+               mapsplit[0] == 'secD':
+                key1 = mapsplit[0][-1]
+                key2 = mapsplit[3] + '_' + mapsplit[4]
+                #if key2=='noise_inv' and mapsplit[5] == 'diag':
+                #    key2='noise_weight'
+
+                mapdict['%s;%s'%(key1, key2)] = dir + map
+
+            if  mapsplit[0] == 'sim' and mapsplit[1] == selection:
+                key1 = int(mapsplit[2])
+
+                mapdict['%d'%key1] = dir + map
+
+        if os.path.isfile(dir+map) and map.split('.')[-1]=='pkl':
+            mapsplit = map.split('.')[0].split('_')
+            if mapsplit[0] == 'SVD':
+                #print map
+                key1 = mapsplit[2] + '_with_' + mapsplit[4]
+                key2 = mapsplit[0]
+                #print key1, key2
+
+                mapdict['%s;%s'%(key1, key2)] = dir + map
+    
+    maps = [mapdict.keys(), mapdict]
+    return maps
+
 
 
 if __name__ == "__main__":
