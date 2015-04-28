@@ -1,0 +1,115 @@
+# Preparation pipeline for calibrator files before mueller_gen is run.
+
+import os
+
+from core import dir_data
+
+import scipy as sp
+
+file_middles = tuple(dir_data.get_data_files(range(60, 91), field='wigglez1hr', project='GBT10B_036'))
+#file_middles = tuple(dir_data.get_data_files(range(01, 18), field='wigglez1hr', project='GBT11B_055'))
+#file_middles = tuple(dir_data.get_data_files(range(01, 35), field='wigglez1hr', project='GBT13B_352'))
+
+#print file_middles
+
+#file_middles = ('41_3C286_onoff_6-7','41_3C286_onoff_8-9','41_3C286_onoff_124-125','41_3C286_onoff_126-127','42_3C286_onoff_10-11','42_3C286_onoff_12-13','42_3C286_onoff_328-329','42_3C286_onoff_330-331', '43_3C286_onoff_156-157', '43_3C286_onoff_158-159', '43_3C286_onoff_6-7', '43_3C286_onoff_8-9', '44_3C286_onoff_13-14', '44_3C286_onoff_15-16', '44_3C286_onoff_363-364', '44_3C286_onoff_365-366', '44_3C286_onoff_367-368', '44_3C286_onoff_369-370', '45_3C286_onoff_138-139', '45_3C286_onoff_140-141', '45_3C286_onoff_6-7', '45_3C286_onoff_8-9')
+
+pipe_modules = []
+# Chime has 8 cores, but you should save a few for other people.  Use 6 max.
+pipe_processes = 3
+
+base_dir = os.getenv('GBT_OUT')
+data_dir = os.getenv('GBT_DATA')
+kiyo_dir = os.getenv('GBT_KM')
+prefix = ''
+IFs = ()
+
+from time_stream import flag_data
+# Comment this line to skip this step when running python pipeline/manager
+#pipe_modules.append(flag_data.FlagData)
+fd_input_root = data_dir
+fd_file_middles = file_middles
+fd_input_end = '.fits'
+fd_output_root = base_dir + 'flagged/'
+fd_output_end = '.fits'
+fd_scans = ()
+fd_IFs = ()
+
+fd_rotate = True
+fd_perform_hanning = False
+fd_cal_scale = True
+fd_sigma_thres = 6
+fd_badness_thres = 0.1
+fd_time_cut = 40
+#fd_pol_thres = 5
+#fd_pol_width = 2
+#fd_flatten_pol = True
+#fd_derivative_cuts = 5
+#fd_derivative_width = 1
+
+from time_stream import rebin_freq
+# Comment this line to skip this step when running python pipeline/manager
+#pipe_modules.append(rebin_freq.RebinFreq)
+rf_input_root = fd_output_root
+rf_file_middles = file_middles
+rf_input_end = '.fits'
+rf_output_root = base_dir + 'rebinned/'
+rf_output_end = '.fits'
+rf_scans = ()
+rf_IFs = ()
+
+rf_channel_width = 0.
+rf_n_bins_combined = 16
+rf_mean_instead_median = False
+
+ 
+#from time_stream import rotate_pol 
+# Comment this line to skip this step in pipline.
+#pipe_modules.append(rotate_pol.RotatePol)
+#rp_input_root = rf_output_root
+#rp_file_middles = file_middles
+#rp_input_end = '.fits'
+#rp_output_root = base_dir + 'rotated_to_X_Y/'
+#rp_output_end = '.fits'
+#rp_scans = ()
+#rp_IFs = ()
+
+#rp_new_pols = (-5,-7,-8,-6)
+#rp_average_cals = False
+
+from time_stream import full_polarization_calibration
+pipe_modules.append(full_polarization_calibration.Calibrate) 
+fgc_input_root = rf_output_root
+fgc_file_middles = file_middles
+fgc_input_end = '.fits'
+fgc_output_root = base_dir + 'full_pol_cal/'
+fgc_output_end = '.fits'
+fgc_scans = ()
+fgc_IFs = ()
+
+fgc_mueler_file = base_dir + 'diff_gain_params/'
+#fgc_mueler_file = '/mnt/raid-project/gmrt/tcv/diff_gain_params/'
+#fgc_mueler_file = ''
+fgc_RM_file = base_dir + 'RM_table_new/'
+fgc_R_to_sky = True
+fgc_DP_correct = True
+fgc_RM_correct = True
+fgc_OD_correct = True
+fgc_Flux_special = False
+fgc_DP_linear = False
+
+from time_stream import rotate_pol 
+# Comment this line to skip this step in pipline.
+pipe_modules.append(rotate_pol.RotatePol)
+rp_input_root = fgc_output_root 
+rp_file_middles = file_middles 
+rp_input_end = '.fits' 
+rp_output_root = base_dir + 'rotated_to_I_Q/'
+rp_output_end = '.fits' 
+rp_scans = () 
+rp_IFs = () 
+ 
+rp_new_pols = (1,2,3,4) 
+rp_average_cals = False 
+       
+
