@@ -349,6 +349,19 @@ line15 = plot_log_pos_neg_errorbar(k, imK2 * auto_pow15,
 line1 = plot_log_pos_neg_errorbar(1.02*k, imK2 * auto_pow1, 
                                   error_fact * imK2 * auto_err1,
                                   color='b', linestyle='', marker='s')
+
+import tabulate
+print tabulate.tabulate(
+    np.array([k,
+        imK2 * auto_pow15, error_fact * imK2 *auto_err15,
+        imK2 * auto_pow1, error_fact * imK2 *auto_err1,
+    ]).T,
+    headers=["k (h/Mpc)",
+        "15hr power (mk^2)", "15hr err (mk^2)",
+        "1hr power (mk^2)", "1hr err (mk^2)"
+    ],
+    )
+
 # Plot the cross-power r=1 line.
 k_sim, sim_pow = get_sim(data_file_root + sim_group_1 + sim_case)
 cross_line = plt.plot(k_sim, imK2*CMEAN**2*sim_pow, 'r--', lw=2.)

@@ -340,6 +340,19 @@ class LinearBeam(object):
                     out += (basis_function[:,None,:,:]
                             * self.coefficients[:,:,ii,jj,None,None])
         return out
+
+    def get_skewer(self, x, y):
+
+        out = 0.
+        for ii in range(self.n_modes):
+            for jj in range(self.n_modes):
+                if not np.all(self.coefficients[:,:,ii,jj] == 0):
+                    basis_function = self.Basis.eval_basis((ii, jj), 
+                                                           x, y)
+                    out += (basis_function
+                            * self.coefficients[:,:,ii,jj])
+        return out
+
                     
 
 def plot_beam_map(beam_map, color_map=1, side=None, normalize=None,
