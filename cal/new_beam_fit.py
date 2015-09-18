@@ -15,6 +15,7 @@ from map import pol_beam
 from utils import misc
 import cal.source
 from cal import beam_fit
+import pickle
 
 #np.seterr(all='warn')
 
@@ -23,14 +24,14 @@ data_root = os.getenv('GBT_DATA') + 'GBT12A_418/'
 end = '.fits'
 
 #source = '3C147'
-#source = '3C295'
-source = '3C286'
+source = '3C295'
+#source = '3C286'
 
 # These files we will use to calibrate.
 # Slow scans.
 #cal_files = ['22_3C147_track_' + str(ii) for ii in range(27, 35)]
-#cal_files = ['22_3C295_track_' + str(ii) for ii in range(59, 67)]
-cal_files = ['21_3C286_track_' + str(ii) for ii in range(18, 26)]
+cal_files = ['22_3C295_track_' + str(ii) for ii in range(59, 67)]
+#cal_files = ['21_3C286_track_' + str(ii) for ii in range(18, 26)]
 
 # The following two loops is a standard set of things we do to our raw data
 # when it comes from the telescope.  Our data format is roughly SDfits.
@@ -46,13 +47,26 @@ for fname in cal_files:
 for Data in cal_Blocks:
     # Preprocess.
     rotate_pol.rotate(Data, (-5, -7, -8, -6))
-    cal_scale.scale_by_cal(Data, True, False, False, False, True)
+    cal_scale.scale_by_cal(Data, scale_t_ave=True, scale_f_ave=False,
+                           sub_med=False, scale_f_ave_mod=False, rotate=True)
     flag_data.flag_data(Data, 5, 0.1, 40)
     #rebin_freq.rebin(Data, 16, True, True)
     rebin_freq.rebin(Data, 16, True, True)
+    fgc_mueler_file = '/mnt/raid-project/gmrt/tcv/diff_gain_params/GBT12A_418/22_diff_gain_calc.txt'
+    fgc_RM_file = ' '
+    fgc_R_to_sky = True
+    fgc_DP_correct = False  # this is already handled in scale_by_cal's rotate
+    fgc_RM_correct = False
+
+    #from time_stream import flux_diff_gain_cal as fdg
+    #m_total = fdg.flux_dg(fgc_mueler_file)
+    #fdg.calibrate_pol(Data, m_total, fgc_RM_file,
+    #                  fgc_R_to_sky, fgc_DP_correct, fgc_RM_correct)
+
     #combine_cal.combine(Data, (0.5, 0.5), False, True)
     combine_cal.combine(Data, (0., 1.), False, True)
     #rebin_time.rebin(Data, 4)
+
 
 Data.calc_freq()
 
@@ -66,6 +80,7 @@ S = cal.source.Source(source)
 # Do a preliminary fit to just the XX and YY polarizations.  This is a
 # non-linear fit to the Gaussian and gets things like the centriod and the
 # Gaussian width.  All fits are channel-by-channel (independantly).
+print "finding centers"
 center_offset, width, amps, Tsys = beam_fit.fit_simple_gaussian(BeamData, S)
 
 # Basis basis functions to be used in the fit.
@@ -74,6 +89,11 @@ HermiteBasis = pol_beam.HermiteBasis(Data.freq, center_offset, width)
 # Perform the fit.
 beam_params, scan_params, model_data = beam_fit.linear_fit(BeamData, HermiteBasis,
                                                            S, 3, 2)
+
+outpkl = open('beam_params.pkl', 'wb')
+pickle.dump(beam_params, outpkl, -1)
+outpkl.close()
+
 # Make a beam object from the basis funtions and the fit parameters (basis
 # coefficients).
 Beam = pol_beam.LinearBeam(HermiteBasis, beam_params)
@@ -97,4 +117,4 @@ plt.ylabel(r"Elevation (degrees)")
 
 
 # Other usefull plots, if you have two beam fits you want to compare.
-pol_beam.compare_beam_maps(beam_map_295[35], beam_map_147[35], 1)
+pol_beam.compare_beam_maps(beam_map_295[35], beam_map_147[35], 1.)

@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import h5py
 """This is some quick code analyze moon scan data"""
 
-def load_moonscan(filename, rotate_moon=True):
+def load_moonscan(filename, rotate_moon=False):
     cal_coords = ephem.Equatorial("05:42:36.155", "+49:51:07.28",
                                   epoch=ephem.B1950)
 
@@ -65,11 +65,14 @@ def process_moonscan(moon_dataobj, outfile, avg_width=30):
     moon_dataobj.calc_freq()
     moon_dataobj.calc_pointing()
     moon_dataobj.calc_time()
+
     freq = moon_dataobj.freq
     ra = moon_dataobj.ra
     dec = moon_dataobj.dec
+
     date_time = moon_dataobj.field['DATE-OBS']
     time = moon_dataobj.time
+
     az = moon_dataobj.field['CRVAL2']
     el = moon_dataobj.field['CRVAL3']
 
@@ -78,6 +81,7 @@ def process_moonscan(moon_dataobj, outfile, avg_width=30):
 
     pols = list(moon_dataobj.field['CRVAL4'])
     #print moon_dataobj.field['CRVAL4']
+
     pol_names = {}
     for pol_idx in range(npol):
         pol_names[utils.polint2str(pols[pol_idx])] = pol_idx
@@ -152,6 +156,8 @@ def process_moonscan(moon_dataobj, outfile, avg_width=30):
 
 def process_moon(filename, outfile):
     moon_data = load_moonscan(filename)
+
+    # save and then confirm the input data
     outpkl = open('data.pkl', 'wb')
     pickle.dump(moon_data, outpkl, -1)
     outpkl.close()
@@ -299,7 +305,7 @@ def verify_moon(filename1, filename2, outfile, rot_file, normalize=True):
     fout.close()
 
 
-def batch_moon(generate_fluxes=False):
+def batch_moon(generate_fluxes=True):
     datapath = "/mnt/raid-project/gmrt/kiyo/data/guppi_data/GBT12A_418/"
     filename1 = datapath + "22_MOON_track_54.fits"
     filename2 = datapath + "22_MOON_track_10.fits"
@@ -310,9 +316,9 @@ def batch_moon(generate_fluxes=False):
         process_moon(filename1, fluxfile1)
         process_moon(filename2, fluxfile2)
 
-    file_rot = "/mnt/raid-project/gmrt/eswitzer/GBT/calibration/"
-    file_rot += "moon_rotation_hyb.hd5"
-    verify_moon(fluxfile1, fluxfile2, "recovered_new.dat", file_rot)
+    #file_rot = "/mnt/raid-project/gmrt/eswitzer/GBT/calibration/"
+    #file_rot += "moon_rotation_hyb.hd5"
+    #verify_moon(fluxfile1, fluxfile2, "recovered_new.dat", file_rot)
 
 
 batch_moon()
