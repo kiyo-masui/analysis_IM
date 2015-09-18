@@ -63,11 +63,29 @@ class BaseData(object) :
         and finally a fits format string (like '1E' or '10A', see fits
         documentation).
         """
-
+        
+        field_data = sp.array(field_data)
         if type(axis_names) is str :
             a_names = (axis_names,)
         else :
             a_names = axis_names
+        if not format:
+            if field_data.dtype == sp.float64:
+                format = 'D'
+            elif field_data.dtype == sp.float32:
+                format = 'E'
+            elif field_data.dtype == sp.int16:
+                format = 'I'
+            elif field_data.dtype == sp.int32:
+                format = 'J'
+            elif field_data.dtype == sp.int64:
+                format = 'K'
+            elif field_data.dtype == sp.complex64:
+                format = 'C'
+            elif field_data.dtype == sp.complex128:
+                format = 'M'
+            else:
+                raise ce.DataError("dtype not understood.")
         
         self._verify_single_axis_names(a_names)
         self.field[field_name] = sp.array(field_data)
