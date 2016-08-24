@@ -5,14 +5,28 @@ import core.algebra as al
 import numpy as np
 import h5py
 from itertools import combinations
+import os
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
-input_map_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_to_share/'
+params_init = {'input_map_dir': '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_to_share/',
+               'input_cleaned_root': '/scratch2/p/pen/andersoc/second_parkes_pipe/cleaned_maps_to_share/hitmap_fix/',
+               'output_dir': '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/hitconv_sync07/'}
 
-xx_cleaned_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/cleaned_maps_to_share/only_good_beams/XX/ra216/'
+map_ra = os.getenv('MAP_RA')
+map_dec = os.getenv('MAP_DEC')
+map_size = os.getenv('MAP_SIZE')
 
-yy_cleaned_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/cleaned_maps_to_share/only_good_beams/YY/ra216/'
+plot_root = '/scratch2/p/pen/andersoc/second_parkes_pipe/bp_estimates/svd_estimates/'
 
-output_map_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/beams_removed/'
+#input_map_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_to_share/'
+
+#xx_cleaned_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/cleaned_maps_to_share/only_good_beams/XX/ra216/'
+
+#yy_cleaned_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/cleaned_maps_to_share/only_good_beams/YY/ra216/'
+
+#output_map_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/beams_removed/'
 
 def calculate_bandpass(beam, cleaned_dir, cleaned_with, modes):
     #beam : integer, the beam to calculate the bandpass for
@@ -42,39 +56,95 @@ def calculate_bandpass(beam, cleaned_dir, cleaned_with, modes):
     weight_bp /= weight_sum
     print beam
     print weight_bp
-    return weight_bp
+    scale = 1.0/np.mean(weight_bp)
+    print scale*weight_bp
+    return scale*weight_bp
 
-beam_effic = [1.36, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.72, 1.72, 1.72, 1.72, 1.72, 1.72]
+#beam_effic = [1.36, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.72, 1.72, 1.72, 1.72, 1.72, 1.72]
 
-def normalize_map(bp, map, beam):
+def normalize_map(bp, map, beam, spec_index=0.7):
     #Divides out bandpass from map.  
     #Readjusts scale so that the average map deviation stays the same.
     #Then, divides by efficiency factor to convert from Jansky to Kelvin.
     #Efficiency Factors from http://www.atnf.csiro.au/research/multibeam/instrument/description.html
     map = np.transpose(map)
-    map_dev = map - np.mean(map)
-    scale_orig = np.sum(np.absolute(map_dev))
+    #map_dev = map - np.mean(map)
+    #scale_orig = np.sum(np.absolute(map_dev))
     map /= bp
-    map_dev = map - np.mean(map)
-    factor = scale_orig/np.sum(np.absolute(map_dev))
-    map *= factor
+    sync = np.arange(1315.5-32,1315.5+32)/1315.5
+    sync = sync**-spec_index
+    map *= sync
+    #map_dev = map - np.mean(map)
+    #factor = scale_orig/np.sum(np.absolute(map_dev))
+    #map *= factor
     map = np.transpose(map)
     #Now, divide by efficiency factor
     #map = map/beam_effic[beam]
     return map
 
+def normalize_noise(bp, noise, beam, spec_index=0.7):
+    noise = np.transpose(noise)
+    noise *= bp**2
+    sync = np.arange(1315.5-32,1315.5+32)/1315.5
+    sync = sync**-spec_index
+    noise /= sync**2
+    noise = np.transpose(noise)
+    return noise
+
+def plot_bp_estimates(bp_list, file_name):
+    a = len(bp_list)
+    print a
+    fig, ax = plt.subplots(nrows=a, ncols=1, figsize=(12,18))
+    for num in range(a):
+        print num
+        ax[num].plot(bp_list[num], 'b-')
+    plt.savefig(file_name)
+    plt.clf()
+        
+
 map_list = []
+noise_list = []
 
 x_beams = [1,2,3,4,5,6,7,8,9,11,12,13]
 y_beams = [1,2,3,4,5,6,7,8,9,10,12]
 
 #for num in range(1,13):
-for num in y_beams:
-    map_list.append('parkes_parallel_thread_ra216dec0_p08_440by136_beam%d_clean_map_YY_1316.npy' % num)
 
-i = 0
-for map in map_list:
-    map = al.load(input_map_dir + map)
-    map = normalize_map(calculate_bandpass(y_beams[i], yy_cleaned_dir, y_beams, 15), map, i) 
-    al.save(output_map_dir + 'parkes_parallel_thread_ra216dec0_p08_440by136_beam%d_clean_map_bp_div_YY_1316.npy' % y_beams[i], map)
-    i +=1
+if __name__ == '__main__':
+    bps = []
+    for num in y_beams:
+        map_list.append('parkes_parallel_thread_' + map_ra + map_dec + '_p08_' + map_size + '_beam%d_clean_map_YY_1316.npy' % num)
+        noise_list.append('parkes_parallel_thread_' + map_ra + map_dec + '_p08_' + map_size + '_beam%d_noise_inv_diag_YY_1316.npy' % num)
+    i = 0
+    for maps in zip(map_list, noise_list):
+        map = al.load(params_init['input_map_dir'] + maps[0])
+        noise = al.load(params_init['input_map_dir'] + maps[1])
+        bp = calculate_bandpass(y_beams[i], params_init['input_cleaned_root'] + 'YY/' + map_ra + '/', y_beams, 2)
+        bps.append(bp)
+        #map = normalize_map(bp, map, i)
+        #noise = normalize_noise(bp, noise, i) 
+        #al.save(params_init['output_dir'] + 'parkes_parallel_thread_' + map_ra + map_dec + '_p08_' + map_size + '_beam%d_clean_map_bp_div_YY_1316.npy' % y_beams[i], map)
+        #al.save(params_init['output_dir'] + 'parkes_parallel_thread_' + map_ra + map_dec + '_p08_' + map_size + '_beam%d_noise_inv_diag_bp_div_YY_1316.npy' % y_beams[i], noise)
+        i +=1
+    plot_bp_estimates(bps, plot_root + map_ra + 'YY')
+
+    map_list = []
+    noise_list = []
+    bps = []
+    for num in x_beams:
+        map_list.append('parkes_parallel_thread_' + map_ra + map_dec + '_p08_' + map_size + '_beam%d_clean_map_XX_1316.npy' % num)
+        noise_list.append('parkes_parallel_thread_' + map_ra + map_dec + '_p08_' + map_size + '_beam%d_noise_inv_diag_XX_1316.npy' % num)
+
+    i = 0
+    bps = []
+    for maps in zip(map_list, noise_list):
+        map = al.load(params_init['input_map_dir'] + maps[0])
+        noise = al.load(params_init['input_map_dir'] + maps[1])
+        bp = calculate_bandpass(x_beams[i], params_init['input_cleaned_root'] + 'XX/' + map_ra + '/', x_beams, 2)
+        bps.append(bp)
+        #map = normalize_map(bp, map, i)
+        #noise = normalize_noise(bp, noise, i)
+        #al.save(params_init['output_dir'] + 'parkes_parallel_thread_' + map_ra + map_dec + '_p08_' + map_size + '_beam%d_clean_map_bp_div_XX_1316.npy' % x_beams[i], map)
+        #al.save(params_init['output_dir'] + 'parkes_parallel_thread_' + map_ra + map_dec + '_p08_' + map_size + '_beam%d_noise_inv_diag_bp_div_XX_1316.npy' % x_beams[i], noise)
+        i +=1
+    plot_bp_estimates(bps, plot_root + map_ra + 'XX')

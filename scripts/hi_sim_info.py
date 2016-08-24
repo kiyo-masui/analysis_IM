@@ -86,6 +86,57 @@ def dop_shift(parts, rad_ax):
     #parts[:,pos_ax[rad_ax]] = f0/z
     return f0/z
 
+def halo_radial(parts, center, r200, bins, r_norm='True'):
+    #parts is HI particle data
+    #center is halo center, r200 is radius
+    #bins is number of bins to graph mass density in
+    parts = copy.deepcopy(parts) 
+    dist = dist_sq(center, parts[:,0:3])**0.5
+    rad_data = np.zeros((dist.shape[0],2))
+    #radius of particles in halo
+    rad_data[:,0] = dist
+    #mass of HI particles
+    rad_data[:,1] = parts[:,6]
+    #calculate bin radial width
+    dr = r200/bins
+    #divide by bin volume, so histogram gives radial mass density
+    rmax = -(-dist//dr)*dr
+    vbin = (4./3.)*np.pi*np.abs(rmax**3-(rmax-dr)**3)
+    rad_data[:,1] /= vbin
+    #if r_norm is true, bin as fractions of r200
+    if r_norm:
+        rad_data[:,0] /= r200
+        r200 = 1
+    hist = np.histogram(rad_data[:,0],bins=bins, range=(0,r200), weights=rad_data[:,1])
+    return hist
+
+def radial_hist_avg(bins, m_min = 0, m_max = 10**16):
+    region_list = range(1, 30)
+    halo_count = 0
+    for index in region_list:
+        halo_list = data_region(halo, index)
+        mass_mask = halo_list[:,4] <= m_max
+        halo_list = halo_list[mass_mask]
+        mass_mask = halo_list[:,4] > m_min
+        halo_list = halo_list[mass_mask]
+        hi_list = data_region(hi, index) 
+        if halo_list.shape[0]>0:
+            for num in xrange(halo_list.shape[0]):
+                halo_count += 1
+                center = halo_list[num,0:3]
+                r200 = halo_list[num,3]
+                hist = halo_radial(hi_list, center, r200, bins, r_norm='True')
+                try:
+                    tot
+                except NameError:
+                    tot = hist
+                else:
+                    ref = hist[0]
+                    ref_tot = tot[0]
+                    ref_tot += ref
+    ref_tot /= halo_count
+    return ref_tot
+
 def freq_grid(parts, f_ax, center):
     ax = {'x':0,'y':1, 'z':2}
     #Will regrid f_ax to freq coordinates, assuming 1315.5 MHz at Halo center.
@@ -102,7 +153,7 @@ def hi_hist(parts, p_cen, p_size, rad):
     hi_mass = np.histogramdd(pos, bins = bins, range = range, weights = weights)
     return hi_mass
 
-def hi_freq_hist(part, center, f_ax, r200, p_size, f_p_size, r_factor, f_rad=0, r200_overwrite=0, brightness='True'):
+def hi_freq_hist(part, center, f_ax, r200, p_size, f_p_size, r_factor, f_rad=0, r200_overwrite=0, brightness='True', rescale = 'False', targ_rad = 2.26):
     # parts is HI particles data, cent is halo center in physical coordinates,
     # f_ax is the axis that will become freq, r200 is the halo r200,
     # p_size is the gridding size in real space, f_p_size is same 
@@ -113,6 +164,11 @@ def hi_freq_hist(part, center, f_ax, r200, p_size, f_p_size, r_factor, f_rad=0, 
     
     cent = copy.deepcopy(center)
     parts = copy.deepcopy(part)
+    if rescale:
+        scale_by = float(targ_rad)/float(r200)
+        parts[:,0:3] -= cent
+        parts[:,0:3] *= scale_by
+        parts[:,0:3] += cent
     pos_ax = {'x':0,'y':1, 'z':2}
     #First, find HI particles within r200 of center.
     halo_hi = halo_masked(parts, cent, r200)
@@ -213,12 +269,12 @@ def scatter_halos(halos, filename):
     fig.savefig(filename)
     plt.clf()
 
-def hi_halo_stack(halo_list, hi_list, f_ax, f_rad, pix, pix_f, r_fac, rad, fwhm, sigs):
+def hi_halo_stack(halo_list, hi_list, f_ax, f_rad, pix, pix_f, r_fac, rad, fwhm, sigs, rescale):
     for index in xrange(halo_list.shape[0]):
         center = halo_list[index,0:3]
         #print center
         r200 = halo_list[index,3]
-        hist = hi_freq_hist(hi_list, center, f_ax, r200, pix, pix_f, r_fac, f_rad=f_rad, r200_overwrite = rad)
+        hist = hi_freq_hist(hi_list, center, f_ax, r200, pix, pix_f, r_fac, f_rad=f_rad, r200_overwrite = rad, rescale=rescale)
         hist_conv(hist, fwhm, pix, sigs, 0)
         if index ==0:
             tot = hist
@@ -230,7 +286,7 @@ def hi_halo_stack(halo_list, hi_list, f_ax, f_rad, pix, pix_f, r_fac, rad, fwhm,
     #ref /= halo_list.shape[0]
     return tot
 
-def hi_full_stack(f_ax, f_rad, pix, pix_f, r_fac, rad, fwhm, sigs, m_min=0, m_max=10**16, r_min =0, r_max = 10):
+def hi_full_stack(f_ax, f_rad, pix, pix_f, r_fac, rad, fwhm, sigs, m_min=0, m_max=10**16, r_min =0, r_max = 10, rescale='False'):
     rank = comm.Get_rank()
     size = comm.Get_size()
     per = -(-29//size)
@@ -257,7 +313,7 @@ def hi_full_stack(f_ax, f_rad, pix, pix_f, r_fac, rad, fwhm, sigs, m_min=0, m_ma
         halo_count += halo_list.shape[0]
         hi_list = data_region(hi, index)
         if halo_list.shape[0] > 0: 
-            hist = hi_halo_stack(halo_list, hi_list, f_ax, f_rad, pix, pix_f, r_fac, rad, fwhm, sigs)
+            hist = hi_halo_stack(halo_list, hi_list, f_ax, f_rad, pix, pix_f, r_fac, rad, fwhm, sigs, rescale)
             try:
                 tot
             except NameError:
@@ -313,10 +369,38 @@ def halo_mass_hist(halos, filename):
     plt.savefig(filename)
     return [n,bins,patches]
 
+def density_hist(hist, filename):
+   bins = hist[1]
+   print bins
+   center = (bins[:-1] + bins[1:])/2
+   width = 0.98*(bins[1]-bins[0])
+   print center
+   plt.clf()
+   plt.bar(center, hist[0], align='center', width=width)
+   plt.savefig(filename) 
+
+def nfw_mass_density(rs, p0, rmin, rmax):
+    #returns average nfw mass density in shell from rmin to rmax
+    #rs is a halo radius parameter
+    #p0 is a halo density parameter
+    mass = ((4./3.)*np.pi*p0*rs**3)*(np.log((rs+rmax)/rs)- rmax/(rs+rmax) - np.log((rs+rmin)/rs) +rmin/(rs+rmin))
+    vol = (4./3.)*np.pi*(rmax**3 - rmin**3)
+    mass /= vol
+    return mass
+
+def nfw_hist(r200, rs, p0, bins):
+    bin_edges = np.linspace(0, r200, bins+1)*r200
+    bin_min = bin_edges[0:-1]
+    bin_max = bin_edges[1:]
+    hist = nfw_mass_density(rs, p0, bin_min, bin_max)
+    hist = (hist, bin_edges)
+    return hist
+
 if __name__ == '__main__':
+    beam_rad /= (1.4*4)
     #full_stack = hi_full_stack('z', 10, .1, 1, 1.2, 2.3, beam_rad*c*z0/H, 3, m_min = 10**12.9192, m_max = 10**16)
-    stack = hi_full_stack('z', 10, .1, 1, 1.2, 2.3, beam_rad*c*z0/H, 3, r_min = 1.0)
+    stack = hi_full_stack('z', 10, .1, 1, 1.2, 2.3, beam_rad*c*z0/H, 3, r_min = 1.0, rescale = 'True')
     print 'Next'
     if comm.Get_rank() == 0:
         print 'Making pdf'
-        hi_pdf(stack, '/gss01/scratch2/p/pen/andersoc/workcopy/parkes_analysis_IM/hi_r200above1Mpc_stack_rsd', same_scale='True') 
+        hi_pdf(stack, '/gss01/scratch2/p/pen/andersoc/workcopy/parkes_analysis_IM/hi_r200above1Mpc_stack_rsd_beam' + str(beam_rad*c*z0/H) + 'halo_stretch', same_scale='True') 

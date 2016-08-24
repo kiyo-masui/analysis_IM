@@ -1,5 +1,6 @@
 r"""Program that calculates the correlation function across frequency slices.
 """
+import copy
 import gc
 import scipy as sp
 import numpy as np
@@ -28,7 +29,7 @@ params_init = {
                'telescope' : 'Parkes',
                # Angular lags at which to calculate the correlation.  Upper
                # edge bins in degrees.
-               'lags': tuple(sp.arange(0.002, 0.2, 0.12))
+               'lags': tuple(sp.arange(0.002, 0.2, 0.12))               
                }
 prefix = 'fs_'
 
@@ -257,7 +258,24 @@ class MapPair(object):
         noise1 = self.noise_inv1
         noise2 = self.noise_inv2
 
+        #Hitmap will be used to find empty pixels and deweight them in noise.
+        #It will also be used to upweight non-empty pixels in map convolution.
+        #Only written for the common case.
+        hitmap1 = copy.deepcopy(self.map1)
+        hitmap2 = copy.deepcopy(self.map2)
+        hitmap1[...] = 1.0
+        hitmap2[...] = 1.0
+        hitmap1[self.map1==0.0] = 0.0
+        hitmap2[self.map2==0.0] = 0.0
+
         common_resolution = self.degrade_function(telescope=self.params['telescope'])
+        hitmap1 = common_resolution.apply(hitmap1)
+        hitmap2 = common_resolution.apply(hitmap2)
+
+        def apply_hitmap_weight(weight, hitmap):
+            hitmap = common_resolution.apply(hitmap)
+            weight *= hitmap**2
+            return weight
 
         def degrade_resolution_for_noise(noise, common_resolution):
             noise[noise < 1.e-30] = 1.e-30
@@ -272,13 +290,17 @@ class MapPair(object):
         # Convolve to a common resolution.
         # map1 & noise1
         self.map1 = common_resolution.apply(self.map1)
+        self.map1[hitmap1 != 0.0] /= hitmap1[hitmap1 != 0.0]
         noise1 = degrade_resolution_for_noise(noise1, common_resolution)
+        noise1 = apply_hitmap_weight(noise1, hitmap1)
         self.noise_inv1 = algebra.as_alg_like(noise1, self.noise_inv1)
         # map2 & noise2
         if self.map2.shape[0] == self.map1.shape[0]:
             ''' for common case, map1 and map2 have the same freq bin number '''
             self.map2 = common_resolution.apply(self.map2)
+            self.map2[hitmap2 != 0.0] /= hitmap2[hitmap2 != 0.0]
             noise2 = degrade_resolution_for_noise(noise2, common_resolution)
+            noise2 = apply_hitmap_weight(noise2, hitmap2)
             self.noise_inv2 = algebra.as_alg_like(noise2, self.noise_inv2)
         elif self.map2.shape[0] == 4*self.map1.shape[0]:
             ''' for IxE(IQUV) case'''

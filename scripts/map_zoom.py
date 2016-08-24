@@ -19,6 +19,7 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 f0 = 1420405751.786
 
@@ -87,13 +88,17 @@ def map_pdf(map, z_clust, name):
         data = np.fliplr(data)
         data = np.flipud(data)
         plt.figure(figsize=(2, 2))
-        plt.imshow(data, extent = [ra_range[0], ra_range[1], dec_range[0], dec_range[1]])
+        ax = plt.gca()
+        im = plt.imshow(data, extent = [ra_range[0], ra_range[1], dec_range[0], dec_range[1]])
         freq = f_center + (f - map.shape[0]//2)*df
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        plt.colorbar(im, cax=cax)
         z = f_to_z(freq)
         dz = z - z_clust
         dv = dz*300000
         deg = (np.pi/180)*hubble_d(z)
-        plt.title('z ' + trunc(z, 5) + ', ' + trunc(dv, 2) + ' km/s,' + ' 1 deg is ' + trunc(deg,2) + ' h-1Mpc')
+        #plt.title('z ' + trunc(z, 5) + ', ' + trunc(dv, 2) + ' km/s,' + ' 1 deg is ' + trunc(deg,2) + ' h-1Mpc')
         pdf.savefig()
         plt.close()
     pdf.close()

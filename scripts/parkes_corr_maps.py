@@ -14,22 +14,37 @@ import math
 from kiyopy import parse_ini
 from map import beam
 import core.algebra as al
+import os
 
 #from scripts import parkes_checkscale as pc
+
+map_ra = os.getenv('MAP_RA')
+map_dec = os.getenv('MAP_DEC')
+map_size = os.getenv('MAP_SIZE')
 
 params_init = {
               'x_beams':[1,2,3,4,5,6,7,8,9,11,12,13],
               'y_beams':[1,2,3,4,5,6,7,8,9,10,12],
-              'map_dir': '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/beams_removed/',
-              'output_dir': '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/beams_removed/renormalized/',
-              'noise_dir': '/scratch2/p/pen/andersoc/second_parkes_pipe/maps/',
-              'prefix': 'parkes_parallel_thread_ra33decn30_p08_568by106_beam',
+              'map_dir': '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/hitconv_sync07/',
+              'output_dir': '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/renorm_hitconv_sync07/',
+              'noise_dir': '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/hitconv_sync07/',
+              'prefix': 'parkes_parallel_thread_' + map_ra + map_dec + '_p08_' + map_size + '_beam',
               'map_middle': '_clean_map_bp_div_',
-              'noise_middle': '_noise_inv_diag_',
+              'noise_middle': '_noise_inv_diag_bp_div_',
               'suffix': '_1316.npy',
               'hipass_file': '/scratch2/p/pen/andersoc/workcopy/HIPASS/CHIPASS_Equ.fits'
               }
 prefix = 'pc_'
+
+def spectral_factor(bw=64.0, f=1315.5, index = -0.7):
+    #Assumes CHIPASS as survey 1, which has 64 MHz bandwidth 
+    #centered at 1394.5 MHz.
+    #Our Parkes observations are at 1315.5 MHz center, 64 MHz bandwidth.
+    #Calculates ratio of our survey magnitude to CHIPASS, assuming
+    #an intensity power law with given index
+    i = index + 1.0
+    fact = ((f+bw/2)**i - (f - bw/2)**i)/(1426.5**i - 1362.5**i)
+    return fact
 
 def degrade_hipass_func(factor, ratio):
     #ratio: largest feq beam is this factor times 14.4 arcmin
@@ -42,7 +57,7 @@ def degrade_hipass_func(factor, ratio):
 def degrade_parkes(factor):
     freq_data = sp.array([1250, 1275, 1300, 1325, 1350, 1430], dtype=float)
     beam_data = sp.array([14.4, 14.4, 14.4, 14.4, 14.4, 14.4])/60. 
-    beam_data = beam_data*1420/freq_data
+    beam_data = beam_data*1420./freq_data
     freq_data *= 1.0e6
     beam_diff = sp.sqrt(max(factor*beam_data)**2-(beam_data)**2)
     common_resolution = beam.GaussianBeam(beam_diff, freq_data)
@@ -182,14 +197,14 @@ class MapList():
         #Loading parkes maps and degrading resolution.
         for beam in params['x_beams']:
             map = parkes_res.apply(al.make_vect(al.load(params['map_dir'] + params['prefix'] + str(beam) + params['map_middle'] + 'XX' + params['suffix'])))
-            map = np.sum(map, axis=0)
+            map = np.mean(map, axis=0)
             noise = add_noise_freq(degrade_noise(al.make_vect(al.load(params['noise_dir'] + params['prefix'] + str(beam) + params['noise_middle'] + 'XX' + params['suffix'])), parkes_res))
             map -= w_avg(map, noise)
             self.maps['beam' + str(beam) + 'xx' + 'map'] = map
             self.maps['beam' + str(beam) + 'xx' + 'noise'] = noise
         for beam in params['y_beams']:
             map = parkes_res.apply(al.make_vect(al.load(params['map_dir'] + params['prefix'] + str(beam) + params['map_middle'] + 'YY' + params['suffix'])))
-            map = np.sum(map, axis=0)
+            map = np.mean(map, axis=0)
             noise = add_noise_freq(degrade_noise(al.make_vect(al.load(params['noise_dir'] + params['prefix'] + str(beam) + params['noise_middle'] + 'YY' + params['suffix'])), parkes_res))
             map -= w_avg(map, noise)
             self.maps['beam' + str(beam) + 'yy' + 'map'] = map
@@ -214,8 +229,8 @@ class MapList():
         chi_map = map_regrid(chi_map, [info['ra_centre'], info['dec_centre']], dra, ddec, ra_p, dec_p)
         #Subtract mean to avoid worst of annoying convolution edge effects.
         chi_map -= np.mean(chi_map)
-        #Now, convolve to same resolution as other Parkes maps.
-        hipass_beam = degrade_hipass_func(1.4, 1430./1420.)
+        #Now, convolve to same resolution as other Parkes maps.  Assumes Parkes fmin = 1283.5 MHz
+        hipass_beam = degrade_hipass_func(1.4, 1420./1283.5)
         chi_map = hipass_beam.apply(chi_map)
         self.maps['chipass'] = chi_map[0,:]
         self.calc_chipass_autos()
@@ -226,9 +241,11 @@ class MapList():
 
     def graph_parkes_chipass(self, filename):
         fig, ax = plt.subplots(nrows=3, ncols=1)
-        ax[0].imshow(np.transpose(self.maps['chipass']))
-        ax[1].imshow(np.transpose(self.maps['beam1xxmap']))
-        ax[2].imshow(np.transpose(self.maps['beam7xxmap']))
+        max = np.max(self.maps['chipass'])
+        min = np.min(self.maps['chipass'])
+        ax[0].imshow(np.transpose(self.maps['chipass']), vmin=min, vmax=max)
+        ax[1].imshow(np.transpose(self.auto_cross_ratio['xx']['1']*self.maps['beam1xxmap']),vmin=min,vmax=max)
+        ax[2].imshow(np.transpose(self.auto_cross_ratio['xx']['7']*self.maps['beam7xxmap']),vmin=min,vmax=max)
         plt.savefig(filename)
         plt.clf()
 
@@ -293,16 +310,30 @@ class MapList():
         plt.clf()
 
 
-    def save_calibrated_maps(self):
+    def save_calibrated_maps(self, index_fix = True):
+        #Will save new maps and new noise inv diagonals.
+        #If index_fix is true, it will attempt to account for CHIPASS maps
+        #being at a higher frequency, assuming a synchrotron power law.
+        #It also assumes most power comes from sources that smaller than a beam.
+        if index_fix:
+            c_fact = spectral_factor()
+        else:
+            c_fact = 1.0
         params = self.params
         for beam in params['x_beams']:
             map = al.load(params['map_dir'] + params['prefix'] + str(beam) + params['map_middle'] + 'XX' + params['suffix'])
-            map *= self.auto_cross_ratio['xx'][str(beam)]
+            map *= (c_fact*self.auto_cross_ratio['xx'][str(beam)])/1000.0
             al.save(params['output_dir'] + params['prefix'] + str(beam) + params['map_middle'] + 'XX' + params['suffix'],map)
+            noise = al.load(params['noise_dir'] + params['prefix'] + str(beam) + params['noise_middle'] + 'XX' + params['suffix'])
+            noise /= ((c_fact*self.auto_cross_ratio['xx'][str(beam)])/1000.0)**2
+            al.save(params['output_dir'] + params['prefix'] + str(beam) + params['noise_middle'] + 'XX' + params['suffix'],noise)
         for beam in params['y_beams']:
             map = al.load(params['map_dir'] + params['prefix'] + str(beam) + params['map_middle'] + 'YY' + params['suffix'])
-            map *= self.auto_cross_ratio['yy'][str(beam)]
+            map *= (c_fact*self.auto_cross_ratio['yy'][str(beam)])/1000.0
             al.save(params['output_dir'] + params['prefix'] + str(beam) + params['map_middle'] + 'YY' + params['suffix'],map)
+            noise = al.load(params['noise_dir'] + params['prefix'] + str(beam) + params['noise_middle'] + 'YY' + params['suffix'])
+            noise /= ((c_fact*self.auto_cross_ratio['yy'][str(beam)])/1000.0)**2
+            al.save(params['output_dir'] + params['prefix'] + str(beam) + params['noise_middle'] + 'YY' + params['suffix'],noise)
 
     def calc_chipass_autos(self):
         chipass_auto = {}
@@ -353,4 +384,9 @@ class MapList():
             auto_cross_ratio['yy'][str(beam)] = self.chipass_auto['yy']['noise' + str(beam)]/self.chipass_cross['yy']['noise' + str(beam)]
         self.auto_cross_ratio = auto_cross_ratio
 
+if __name__ == '__main__':
+    maplist = MapList()
+    maplist.save_calibrated_maps()
+    #filename = maplist.params['output_dir'] + 'plot_' + map_ra 
+    #maplist.graph_parkes_chipass(filename)
 
