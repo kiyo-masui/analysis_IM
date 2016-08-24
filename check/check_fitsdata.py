@@ -4,18 +4,41 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
 
-from core import fitsGBT
+from parkes import fitsGBT
+from parkes import mbcal
 
-#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/converted_to_GBT_format/sept12/west/2008-09-12_1530_west1_1315_P641.fits',)
-#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/flagged/sept12/west/2008-09-12_1530_west1_1315_P641.fits',)
-#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/bandpass_removed/sept12/west/2008-09-12_1530_west1_1315_P641.fits',)
+#rawdatapath = ('/home/ycli/DATA/parkes/CALDATA_SDF_beamcal/1027_average/2012-10-27_1908-P641_west1_1315_P641.sdfits',)
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/parkes/RAWDATA_RPF/20121027/2012-10-27_1908-P641_west1_1315_P641.rpfits',)
+#rawdatapath = ('/home/ycli/data/map_result/flagged/parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/home_local/ycli/data/map_result/flagged/parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/home/ycli/localhome/data/map_result/flagged/parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/home/ycli/localhome/data/map_result/flagged/parkes_2012_10_25_P641.fits',)
+#rawdatapath = ('/home/ycli/localhome/data/map_result/flagged/parkes_2012_10_26_P641.fits',)
+#rawdatapath = ('/home/ycli/localhome/data/map_result/flagged/parkes_2012_10_27_P641.fits',)
+#rawdatapath = ('/home/ycli/localhome/data/map_result/flagged/parkes_2012_10_28_P641.fits',)
+#rawdatapath = ('/home/ycli/data/map_result/mbcal/parkes_2012_10_27_P641.fits',)
 
-#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/converted_to_GBT_format/2012-10-27_1003-P641_east2_1315_P641.fits',)
+#rawdatapath = ('/home/ycli/data/map_result/parkes/parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/home/ycli/data/map_result/flagged/parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/home/ycli/data/map_result/flagged/parkes_2012_10_25_P641.fits',)
+#rawdatapath = ('/home/ycli/data/map_result/flagged/parkes_2012_10_26_P641.fits',)
+#rawdatapath = ('/home/ycli/data/map_result/flagged/parkes_2012_10_27_P641.fits',)
+rawdatapath = ('/home/ycli/data/map_result/flagged/parkes_2012_10_28_P641.fits',)
 
-#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/converted_to_GBT_format/2012-10-27_1000-P641_east1_1315_P641.fits',)
-#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/bandpass_removed/2012-10-27_1000-P641_east1_1315_P641.fits',)
-rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/flagged/2012-10-27_1000-P641_east1_1315_P641.fits',)
-#rawdatapath = ('/mnt/raid-project/gmrt/ycli/map_result_parkes/rebinned/2012-10-27_1000-P641_east1_1315_P641.fits',)
+#rawdatapath = ('/mnt/scratch-gl/ycli/map_result/parkes/parkes_2012_10_27_P641.fits',)
+#rawdatapath = ('/mnt/scratch-gl/ycli/map_result/flagged/parkes_2012_10_27_P641.fits',)
+
+#rawdatapath = ('/mnt/raid-project/gmrt/ycli/parkes/RAWDATA_SDF/20121027/2012-10-27_1525-P641_west2_1315_P641.sdfits',)
+#rawdatapath = ('/home/ycli/map_result/parkes/average_beamcal_bandpassrm_parkes_2012_10_27_P641.fits',)
+#rawdatapath = ('/home/ycli/map_result/flagged/average_beamcal_bandpassrm_parkes_2012_10_27_P641.fits',)
+#rawdatapath = ('/home/ycli/map_result/flagged/average_beamcal_parkes_2012_10_27_P641.fits',)
+#rawdatapath = ('/home/ycli/map_result/parkes/average_beamcal_parkes_2012_10_27_P641.fits',)
+#rawdatapath = ('/home_local/ycli/data/parkes/RAWDATA_SDF/20121028/2012-10-28_0925-P641_east1_1315_P641.sdfits',)
+#rawdatapath = ('/home/ycli/data/parkes/DATA_2008/rawdata/sept11/east/2008-09-11_1217_east1_1392_P641.sdfits',)
+#rawdatapath = ('/home/ycli/data/parkes/DATA_2008/rawdata/sept11/west/2008-09-11_1647_west1_1290_drift_P641.sdfits',)
+#rawdatapath = ('/home/ycli/localhome/data/map_result/pol_selected/parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/home/ycli/data/map_result/parkes/parkes_2012_10_24_P641.fits',)
+#rawdatapath = ('/home_local/ycli/data/parkes/RAWDATA_SDF/20121024/2012-10-24_0728-P641_east1_1392_P641.sdfits',)
 
 class CheckFitsFile(object):
 
@@ -39,7 +62,8 @@ class CheckFitsFile(object):
         #print self.tbdata.field('DATA').shape
 
     def printhead(self):
-        print self.hdulist[1].header
+        for key in self.hdulist[1].header.keys():
+            print key, self.hdulist[1].header[key]
         
         
     def printlabel(self):
@@ -62,102 +86,81 @@ class CheckFitsFile(object):
         #print self.tbdata.field(fieldlabel[6])[:200]
         #print self.tbdata.field(fieldlabel[6])[200:1000]
 
-    def plottsys_spec_mean(self, in_K=False):
-        tsys_x = self.tbdata.field('TSYS')[0::2]#[:10*90*13]
-        tsys_y = self.tbdata.field('TSYS')[1::2]#[:10*90*13]
-
-        tsys_x = np.ma.array(tsys_x)
-        tsys_y = np.ma.array(tsys_y)
-        tsys_x[tsys_x==0] = np.ma.masked
-        tsys_y[tsys_y==0] = np.ma.masked
-
-        tsys_x = tsys_x.reshape(13, -1)
-        tsys_y = tsys_y.reshape(13, -1)
-
-        spec_x = self.tbdata.field('DATA')[0::2,:]#[:10*90*13,:]
-        spec_y = self.tbdata.field('DATA')[1::2,:]#[:10*90*13,:]
-
-        spec_x = np.ma.masked_where(np.isnan(spec_x), spec_x)
-        spec_y = np.ma.masked_where(np.isnan(spec_y), spec_y)
-
-        shape = spec_x.shape
-        spec_x = np.ma.mean(spec_x.reshape((13, -1) + shape[1:]), axis=-1)
-        spec_y = np.ma.mean(spec_y.reshape((13, -1) + shape[1:]), axis=-1)
-
-
-        if in_K:
-            to_K = [1.36,1.45,1.45,1.45,1.45,1.45,1.45,1.72,1.72,1.72,1.72,1.72,1.72]
-            to_K = np.array(to_K)
-            tsys_x /= to_K[None,:]
-            tsys_y /= to_K[None,:]
-            unit = 'K'
-        else:
-            unit = 'Jy'
-
-        x = range(tsys_x.shape[1])
-
-        plt.figure(figsize=(20, 30))
-
-        for i in range(13):
-            plt.subplot(13, 2, 2*i+1)
-            plt.plot(x, tsys_x[i,:], label='tsys', linewidth=0.5, c='r')
-            plt.plot(x, spec_x[i,:], label='spec', linewidth=0.5, c='b')
-            #plt.plot(x, spec_x[i,:]/tsys_x[i,:], label='spec', linewidth=0.5, c='b')
-            plt.legend(ncol=4, frameon=False)
-            plt.xlabel('time ')
-            plt.ylabel('beam %d x pol [%s]'%(i, unit))
-            plt.ylim(ymin=20, ymax=60)
-            #plt.ylim(ymin=0, ymax=5)
-            plt.tick_params(length=6, width=1.)
-            plt.tick_params(which='minor', length=3, width=1.)
-
-            plt.subplot(13, 2, 2*i+2)
-            plt.plot(x, tsys_y[i,:], label='tsys', linewidth=0.5, c='r')
-            plt.plot(x, spec_y[i,:], label='spec', linewidth=0.5, c='b')
-            #plt.plot(x, spec_y[i,:]/tsys_y[i,:], label='spec', linewidth=0.5, c='b')
-            plt.legend(ncol=4, frameon=False)
-            plt.xlabel('time ')
-            plt.ylabel('beam %d y pol [%s]'%(i, unit))
-            plt.ylim(ymin=20, ymax=60)
-            #plt.ylim(ymin=0, ymax=5)
-            plt.tick_params(length=6, width=1.)
-            plt.tick_params(which='minor', length=3, width=1.)
-
-        plt.savefig('./png/parkes_tsys_time_%s.png'%unit, format='png')
-
     def plottsys(self, in_K=False):
-        tsys_x = self.tbdata.field('TSYS')[0::2]#[:10*90*13]
-        tsys_y = self.tbdata.field('TSYS')[1::2]#[:10*90*13]
 
+        #tsys_x = self.tbdata.field('TSYS')[0::2][:10*90*13]
+        #tsys_y = self.tbdata.field('TSYS')[1::2][:10*90*13]
+
+        tsys_x = self.tbdata.field('DATA')[0::2,:][:10*90*13,:]
+        tsys_y = self.tbdata.field('DATA')[1::2,:][:10*90*13,:]
         tsys_x = np.ma.array(tsys_x)
         tsys_y = np.ma.array(tsys_y)
         tsys_x[tsys_x==0] = np.ma.masked
         tsys_y[tsys_y==0] = np.ma.masked
+
+        tsys_x = np.ma.mean(tsys_x, axis=-1)
+        tsys_y = np.ma.mean(tsys_y, axis=-1)
+        print tsys_x.max()
+        print tsys_x.min()
+        print tsys_y.max()
+        print tsys_y.min()
 
         tsys_x = tsys_x.reshape(-1, 13)
         tsys_y = tsys_y.reshape(-1, 13)
 
-        spec_x = self.tbdata.field('DATA')[0::2,:]#[:10*90*13,:]
-        spec_y = self.tbdata.field('DATA')[1::2,:]#[:10*90*13,:]
+        #mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/cal_data/2012-10-24_0833-P641.log'
+        #full_mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/CALDATA_MBC/2012-10-24_0833-P641.mbcal'
+        #moving_beam_list = [[1, 5],[7, 6],[11, 6]]
 
-        spec_x = np.ma.masked_where(np.isnan(spec_x), spec_x)
-        spec_y = np.ma.masked_where(np.isnan(spec_y), spec_y)
+        #mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/cal_data/2012-10-25_1011-P641.log'
+        #full_mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/CALDATA_MBC/2012-10-25_1011-P641.mbcal'
+        #moving_beam_list = [[5, 5],[7, 5],[10, 7]]
 
-        shape = spec_x.shape
-        spec_x = np.ma.mean(spec_x.reshape((-1, 13) + shape[1:]), axis=-1)
-        spec_y = np.ma.mean(spec_y.reshape((-1, 13) + shape[1:]), axis=-1)
+        #mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/cal_data/2012-10-26_1013-P641.log'
+        #full_mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/CALDATA_MBC/2012-10-26_1013-P641.mbcal'
+        #moving_beam_list = [[1, 5],[2, 5],[4, 5],[6, 5],[9, 6],[12, 6]]
 
+        #mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/cal_data/2012-10-27_0945-P641.log'
+        #full_mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/CALDATA_MBC/2012-10-27_0945-P641.mbcal'
+        #moving_beam_list = [[8, 6],[12, 6]]
 
-        if in_K:
-            to_K = [1.36,1.45,1.45,1.45,1.45,1.45,1.45,1.72,1.72,1.72,1.72,1.72,1.72]
-            to_K = np.array(to_K)
-            tsys_x /= to_K[None,:]
-            tsys_y /= to_K[None,:]
-            unit = 'K'
-        else:
-            unit = 'Jy'
+        #mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/cal_data/2012-10-28_0911-P641.log'
+        #full_mbcal_file = '/home/ycli/localhome/data/parkes/CALDATA_MBC_info/CALDATA_MBC/2012-10-28_0911-P641.mbcal'
+        #moving_beam_list = [[4, 5],[10, 7],[12, 6]]
+        #calibrator = mbcal.MultibeamCal(mbcal_file, full_mbcal_file=full_mbcal_file, 
+        #                                moving_beam_list=moving_beam_list)
+        #calibrator.get_cal_factor()
+
+        #  if in_K:
+        #      #to_K = [1.36,1.45,1.45,1.45,1.45,1.45,1.45,1.72,1.72,1.72,1.72,1.72,1.72]
+        #      #to_K = np.array(to_K)
+        #      #tsys_x /= to_K[None,:]
+        #      #tsys_y /= to_K[None,:]
+
+        #      tsys_x *= calibrator.Jy2K[0][None, :]#*calibrator.Ginv[0][None, :]
+        #      tsys_y *= calibrator.Jy2K[1][None, :]#*calibrator.Ginv[1][None, :]
+
+        #      print calibrator.Jy2K
+        #      print calibrator.Ginv
+        #      print calibrator.factor
+        #      unit = 'K'
+        #  else:
+        #      unit = 'Jy'
+        unit = 'K'
+
+        #  #tsys_x *= calibrator.Ginv[0][None, :]
+        #  #tsys_y *= calibrator.Ginv[1][None, :]
+
+        #  #tsys_x *= calibrator.factor[0][None, :]
+        #  #tsys_y *= calibrator.factor[1][None, :]
+
+        #  print np.mean(tsys_x, axis=0)
+        #  print np.mean(tsys_y, axis=0)
+
 
         x = range(tsys_x.shape[0])
+
+
 
         plt.figure(figsize=(10, 12))
 
@@ -165,30 +168,40 @@ class CheckFitsFile(object):
         norm = plt.normalize(0.,13.)
 
         plt.subplot(211)
-        for i in range(1):
-            #plt.plot(x, tsys_x[:,i], label='beam %d'%i, linewidth=0.5, c=cmap(norm(i)))
-            plt.plot(x, tsys_x[:,i], label='beam %d tsys'%i, linewidth=0.5, c='r')
-            plt.plot(x, spec_x[:,i], label='beam %d spec'%i, linewidth=0.5, c='b')
+
+        for i in range(13):
+            if i == 3 or i == 4 or i == 9:
+                continue
+            plt.plot(x, tsys_x[:,i], label='beam %d'%i, linewidth=0.5, c=cmap(norm(i)))
+            #plt.text(x[10+5*i], tsys_x[10+5*i,i], "%02d "%i)
         plt.legend(ncol=4, frameon=False)
         plt.xlabel('time ')
         plt.ylabel('x pol Tsys [%s]'%unit)
-        plt.ylim(ymin=20, ymax=60)
+        #plt.ylim(ymin=20, ymax=35)
+        plt.ylim(ymin=15, ymax=50)
+
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
 
         plt.subplot(212)
-        for i in range(1):
-            #plt.plot(x, tsys_y[:,i], label='beam %d'%i, linewidth=0.5, c=cmap(norm(i)))
-            plt.plot(x, tsys_y[:,i], label='beam %d tsys'%i, linewidth=0.5, c='r')
-            plt.plot(x, spec_y[:,i], label='beam %d spec'%i, linewidth=0.5, c='b')
+
+        for i in range(13):
+            if i == 3 or i == 4 or i == 9:
+                continue
+            plt.plot(x, tsys_y[:,i], label='beam %d'%i, linewidth=0.5, c=cmap(norm(i)))
+            #plt.text(x[10+5*i], tsys_y[10+5*i,i], "%02d "%i)
         plt.legend(ncol=4, frameon=False)
         plt.xlabel('time ')
         plt.ylabel('y pol Tsys [%s]'%unit)
-        plt.ylim(ymin=20, ymax=60)
+        #plt.ylim(ymin=20, ymax=35)
+        plt.ylim(ymin=15, ymax=50)
+
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
 
         plt.savefig('./png/parkes_tsys_time_%s.png'%unit, format='png')
+
+        plt.show()
 
     def plotT(self):
         spectrum_xx = self.tbdata.field('DATA')[0::2,:]#[:10*90*13,:]
@@ -310,43 +323,72 @@ class CheckFitsFile(object):
             spectrum_xx = spectrum_xx[:,:scan_n*90*13]
             spectrum_yy = spectrum_yy[:,:scan_n*90*13]
 
+
+        spectrum_xx = np.ma.array(spectrum_xx)
+        spectrum_yy = np.ma.array(spectrum_yy)
+        spectrum_xx[np.isnan(spectrum_xx)] = np.ma.masked
+        spectrum_yy[np.isnan(spectrum_yy)] = np.ma.masked
+        spectrum_xx[spectrum_xx == 0] = np.ma.masked
+        spectrum_yy[spectrum_yy == 0] = np.ma.masked
+
+        print np.ma.max(spectrum_xx), np.ma.min(spectrum_xx)
+        print np.ma.max(spectrum_yy), np.ma.min(spectrum_yy)
+
+
         # get the shape 
         shape = spectrum_xx.shape
-        spectrum_xx = spectrum_xx.reshape(shape[:-1]+(13, -1))
-        spectrum_yy = spectrum_yy.reshape(shape[:-1]+(13, -1))
         x = range(shape[1]/13)
         cf = self.tbdata.field('CRVAL1')[0]/1.e9
         cf_ind = self.tbdata.field('CRPIX1')[0]
-        df = self.tbdata.field('BANDWID')[0]/1.e9/1024.
+        df = self.tbdata.field('CDELT1')[0]/1.e9
         y = (range(shape[0]) - cf_ind) * df + cf
+
+        X, Y = np.meshgrid(x, y)
 
         #cmin = -0.6
         #cmax = 0.6
         cmin = 0.0
-        cmax = 70 
+        cmax = 70.
 
-        plt.figure(figsize=(30, 50))
+        fig, ax = plt.subplots(nrows=13, ncols=2, sharex=True, sharey=True, 
+                figsize=(16,30))
+        plt.subplots_adjust(left=0.06, right=0.95, bottom=0.05, top=0.94,
+                            wspace=0.01, hspace=0.01)
+
+        cax = fig.add_axes([0.2, 0.97, 0.6, 0.01])
 
         for i in range(13):
-            plt.subplot(13,2,2*i+1)
-            im0 = plt.imshow(spectrum_xx[:,i,:], 
-                             interpolation='nearest', 
-                             origin='lower',
-                             extent=[x[0], x[-1], y[0], y[-1]], 
-                             aspect='auto')
-            im0.set_clim(cmin, cmax)
-            plt.ylabel('freq [GHz] [X pol beam %d]'%i)
-            plt.colorbar()
+            im = ax[i, 0].imshow(spectrum_xx[:, i::13],
 
-            plt.subplot(13,2,2*i+2)
-            im0 = plt.imshow(spectrum_yy[:,i,:], 
                              interpolation='nearest', 
                              origin='lower',
                              extent=[x[0], x[-1], y[0], y[-1]], 
                              aspect='auto')
-            im0.set_clim(cmin, cmax)
-            plt.ylabel('freq [GHz] [Y pol beam %d]'%i)
-            plt.colorbar()
+
+            im.set_clim(cmin, cmax)
+            ax[i, 0].set_ylabel('freq [GHz] [beam %d]'%i)
+
+            im = ax[i, 1].imshow(spectrum_yy[:, i::13],
+
+                             interpolation='nearest', 
+                             origin='lower',
+                             extent=[x[0], x[-1], y[0], y[-1]], 
+                             aspect='auto')
+
+            im.set_clim(cmin, cmax)
+
+            #im = ax[i, 0].pcolormesh(X, Y, spectrum_xx[:, i::13].T, vmax=cmax, vmin=cmin)
+            #ax[i, 0].set_xlim(xmin=np.min(x), xmax=np.max(x))
+            #ax[i, 0].set_ylim(ymin=np.min(y), ymax=np.max(y))
+            #im = ax[i, 1].pcolormesh(X, Y, spectrum_yy[:, i::13].T, vmax=cmax, vmin=cmin)
+            #ax[i, 1].set_xlim(xmin=np.min(x), xmax=np.max(x))
+            #ax[i, 1].set_ylim(ymin=np.min(y), ymax=np.max(y))
+
+            if i == 0:
+                ax[i, 0].set_title('XX')
+                ax[i, 1].set_title('YY')
+        fig.colorbar(im, cax=cax, orientation = 'horizontal')
+
 
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
@@ -414,7 +456,9 @@ class CheckFitsFile(object):
 
     def plotfreq_all(self):
         
-        time = 10
+
+        time = 100
+
         ymin = -0.6
         ymax = 0.6
 
@@ -422,7 +466,8 @@ class CheckFitsFile(object):
         spectrum_xx = self.tbdata.field('DATA')[0::2,:].T #* tsys_x[None,:]
         spectrum_yy = self.tbdata.field('DATA')[1::2,:].T #* tsys_y[None,:]
 
-        scan_n = 0
+
+        scan_n = 10
         if scan_n != 0:
             spectrum_xx = spectrum_xx[:,:scan_n*90*13]
             spectrum_yy = spectrum_yy[:,:scan_n*90*13]
@@ -431,8 +476,8 @@ class CheckFitsFile(object):
 
         # get the shape 
         shape = spectrum_xx.shape
-        spectrum_xx = spectrum_xx.reshape(shape[:-1]+(13, -1))
-        spectrum_yy = spectrum_yy.reshape(shape[:-1]+(13, -1))
+
+
         cf = self.tbdata.field('CRVAL1')[0]/1.e9
         cf_ind = self.tbdata.field('CRPIX1')[0]
         df = self.tbdata.field('CDELT1')[0]/1.e9
@@ -442,22 +487,26 @@ class CheckFitsFile(object):
 
         for i in range(13):
             plt.subplot(13,2,2*i+1)
-            plt.plot(x, spectrum_xx[:, i, time].T, c='r')
+
+            plt.plot(x, spectrum_xx[:, i::13][:, time].T, c='r')
             plt.ylabel('flux [Jy] [X pol beam %d]'%i)
             plt.xlabel('freq [GHz]' )
             plt.xlim(x.min(), x.max())
-            plt.ylim(ymin, ymax)
+            #plt.ylim(ymin, ymax)
 
             plt.subplot(13,2,2*i+2)
-            plt.plot(x, spectrum_yy[:, i, time].T, c='r')
+            plt.plot(x, spectrum_yy[:, i::13][:, time].T, c='r')
             plt.ylabel('flux [Jy] [Y pol beam %d]'%i)
             plt.xlabel('freq [GHz]' )
             plt.xlim(x.min(), x.max())
-            plt.ylim(ymin, ymax)
+            #plt.ylim(ymin, ymax)
+
 
         plt.tick_params(length=6, width=1.)
         plt.tick_params(which='minor', length=3, width=1.)
         plt.savefig('./png/parkes_test_freq.png', format='png')
+        #plt.show()
+
 
     def plotfreq(self):
         spectrum_xx = self.tbdata.field('DATA')[0::2,:][0::13,:]
@@ -650,7 +699,7 @@ if __name__=="__main__":
 
     #checkfits.plotfreq_time()
     checkfits.plotfreq_time_all()
-    #checkfits.plottsys_spec_mean()
+
     #checkfits.plottsys()
     #checkfits.plottsys(in_K=True)
     #checkfits.plotT()

@@ -1,5 +1,6 @@
 """Module contains classes representing the beam operator."""
 import scipy as sp
+import numpy as np
 from scipy import interpolate
 from scipy.ndimage.filters import convolve
 
@@ -88,6 +89,7 @@ class Beam(object):
 
             kernel = dra * ddec * self.beam_function(lags_sq, freq,
                                                      squared_delta=True)
+            kernel /= np.sum(kernel)
 
             if isinstance(alg_ob, algebra.vect):
                 if alg_ob.axes != ('freq', 'ra', 'dec'):
@@ -369,7 +371,7 @@ class GaussianBeam(Beam):
         else:
             return lambda lag: norm * sp.exp(-lag ** 2. * factor)
 
-    def kernel_size(self, frequency, taper=2.):
+    def kernel_size(self, frequency, taper=4.):
         """Return the minimum convolution kernel size in degrees.
 
         Gives the width of the box that will adequately represent the whole

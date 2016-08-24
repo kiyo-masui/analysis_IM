@@ -1,0 +1,183 @@
+----------------------------------------------------------------------------------------
+pipeline for foreground cleanning (serial)
+
+===== Foreground Clean 1hr I_ixI_jQUV ======
+export pipeline=foreground_clean/cleaned_AQUV_1hr_extend_conv.pipe
+export pipeline=foreground_clean/cleaned_BQUV_1hr_extend_conv.pipe
+export pipeline=foreground_clean/cleaned_CQUV_1hr_extend_conv.pipe
+export pipeline=foreground_clean/cleaned_DQUV_1hr_extend_conv.pipe
+
+export MAPFILE="/cita/d/data-pen3/ycli/map_gbt/1hr_41-18_fdg/"
+export NOISEWEIGHT="/cita/d/data-pen3/ycli/map_gbt/1hr_41-18_fdg/"
+export GOODMODES="0"
+export SIMROOT="/mnt/raid-project/gmrt/ycli/map_sim/1hr/"
+
+python $PIPELINE_DIR/manager.py $PIPELINE_DIR/$pipeline
+
+for i in `seq -f %03g 0 $MAX`
+do
+    export SIMFILE=$i
+    
+    python $PIPELINE_DIR/manager.py $PIPELINE_DIR/$pipeline
+done
+
+===== Foreground Clean 15hr I_ixI_jQUV ======
+export pipeline=foreground_clean/cleaned_AQUV_extend_conv.pipe
+export pipeline=foreground_clean/cleaned_BQUV_extend_conv.pipe
+export pipeline=foreground_clean/cleaned_CQUV_extend_conv.pipe
+export pipeline=foreground_clean/cleaned_DQUV_extend_conv.pipe
+
+export MAPFILE="/mnt/raid-project/gmrt/tcv/maps/15hr_41-80_avg_fdgp/"
+export NOISEWEIGHT="/mnt/raid-project/gmrt/tcv/maps/15hr_41-80_avg_fdgp/"
+export GOODMODES="0"
+export SIMROOT="/mnt/raid-project/gmrt/ycli/map_sim/15hr/"
+
+python $PIPELINE_DIR/manager.py $PIPELINE_DIR/$pipeline
+
+for i in `seq -f %03g 0 $MAX`
+do
+    export SIMFILE=$i
+    
+    python $PIPELINE_DIR/manager.py $PIPELINE_DIR/$pipeline
+done
+
+
+----------------------------------------------------------------------------------------
+pipeline for foreground cleanning (mpi)
+
+===== Foreground Clean 1hr I_ixI_jQUV ======
+export pipeline=foreground_clean/cleaned_AQUV_1hr_extend_conv_mpi.pipe
+export pipeline=foreground_clean/cleaned_BQUV_1hr_extend_conv_mpi.pipe
+export pipeline=foreground_clean/cleaned_CQUV_1hr_extend_conv_mpi.pipe
+export pipeline=foreground_clean/cleaned_DQUV_1hr_extend_conv_mpi.pipe
+
+export MAPFILE="/cita/d/data-pen3/ycli/map_gbt/1hr_41-18_fdg/"
+export NOISEWEIGHT="/cita/d/data-pen3/ycli/map_gbt/1hr_41-18_fdg/"
+export GOODMODES="0"
+export SIMROOT="/mnt/raid-project/gmrt/ycli/map_sim/1hr/"
+
+python $PIPELINE_DIR/manager.py $PIPELINE_DIR_P/$pipeline
+export SIMFILE=1 # Note: Set SIMFILE!=None, to start simulation loop
+mpirun -np 30 -npernode 3 python $PIPELINE_DIR/mpimanager.py $PIPELINE_DIR_P/$pipeline
+
+
+
+----------------------------------------------------------------------------------------
+pipeline for auto power (mpi)
+#===== Auto  Power ======
+MAP_SIM="/mnt/raid-project/gmrt/ycli/map_sim/1hr/"
+MAP_SSM="/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_IE_legendre_modes_0gwj_conv/"
+MAP_CLN="/mnt/raid-project/gmrt/ycli/foreground_cleand/1hr_IE_legendre_modes_0gwj_conv/"
+MODE="80"
+HOUR="1"
+mpirun -np 30 -pernode python $PIPELINE_DIR/mpimanager.py $PIPELINE_DIR_P/power_noise_auto.pipe
+mpirun -np 30 -pernode python $PIPELINE_DIR/mpimanager.py $PIPELINE_DIR_P/reference_auto.pipe
+mpirun -np 30 -pernode python $PIPELINE_DIR/mpimanager.py $PIPELINE_DIR_P/reference_auto_degradebeam.pipe
+mpirun -np 30 -pernode python $PIPELINE_DIR/mpimanager.py $PIPELINE_DIR_P/transfer_auto.pipe
+mpirun -np 30 -pernode python $PIPELINE_DIR/mpimanager.py $PIPELINE_DIR_P/power_auto.pipe
+
+
+
+----------------------------------------------------------------------------------------
+Usage for old pipeline, backup here. 
+----------------------------------------------------------------------------------------
+
+------------------
+GET_POWER_auto.sh
+
+#! /bin/bash
+
+#PBS -l nodes=1:ppn=8
+#PBS -q workq
+#PBS -r n
+#PBS -l walltime=8:00:00
+#PBS -N get_power_auto
+# EVERYTHING ABOVE THIS COMMENT IS NECESSARY, 
+# SHOULD ONLY CHANGE nodes,ppn,walltime and my_job_name VALUES
+
+cd $PBS_O_WORKDIR
+
+export PIPELINE_DIR="/home/ycli/pipeline"
+cd $PIPELINE_DIR
+source $PIPELINE_DIR/PARAMS.sh
+
+#===== Auto  Power ======
+MAP_SIM="sim_15hr_oldmap_str"
+MAP_SSM="GBT_15hr_map_oldcal_cleaned_sims_noconv"
+MAP_CLN="GBT_15hr_map_oldcal_cleaned_noconv"
+MODE="50"
+HOUR="15"
+$PIPELINE_DIR/manager.py $PIPELINE_DIR/reference_auto.pipe
+$PIPELINE_DIR/manager.py $PIPELINE_DIR/transfer_auto.pipe
+$PIPELINE_DIR/manager.py $PIPELINE_DIR/power_auto.pipe
+$PIPELINE_DIR/manager.py $PIPELINE_DIR/sim_power_auto.pipe
+$PIPELINE_DIR/summary.py auto
+
+
+------------------
+GET_POWER_cros.sh
+
+#! /bin/bash
+
+#PBS -l nodes=1:ppn=8
+#PBS -q workq
+#PBS -r n
+#PBS -l walltime=15:00:00
+#PBS -N get_power_cros
+# EVERYTHING ABOVE THIS COMMENT IS NECESSARY, 
+# SHOULD ONLY CHANGE nodes,ppn,walltime and my_job_name VALUES
+
+cd $PBS_O_WORKDIR
+
+export PIPELINE_DIR="/home/ycli/pipeline"
+cd $PIPELINE_DIR
+source $PIPELINE_DIR/PARAMS.sh
+
+#===== Cross Power ======
+MAP_SIM="sim_15hr_oldmap_str"
+MAP_SSM="GBT_15hr_map_oldcal_cleaned_sims_noconv"
+MAP_CLN="GBT_15hr_map_oldcal_cleaned_noconv"
+MAP_WGZ="WiggleZ_15hr"
+MODE="50"
+HOUR="15"
+$PIPELINE_DIR/manager.py $PIPELINE_DIR/reference_cros.pipe
+$PIPELINE_DIR/manager.py $PIPELINE_DIR/transfer_cros.pipe
+$PIPELINE_DIR/manager.py $PIPELINE_DIR/power_cros.pipe
+$PIPELINE_DIR/manager.py $PIPELINE_DIR/sim_power_cros.pipe
+$PIPELINE_DIR/summary.py cros
+
+
+------------------
+GET_POWER_wigl
+
+#! /bin/bash
+
+#PBS -l nodes=1:ppn=8
+#PBS -q workq
+#PBS -r n
+#PBS -l walltime=08:00:00
+#PBS -N get_power_wigl
+# EVERYTHING ABOVE THIS COMMENT IS NECESSARY, 
+# SHOULD ONLY CHANGE nodes,ppn,walltime and my_job_name VALUES
+
+cd $PBS_O_WORKDIR
+
+export PIPELINE_DIR="/home/ycli/pipeline"
+cd $PIPELINE_DIR
+source $PIPELINE_DIR/PARAMS.sh
+
+#===== wiggle  Power ======
+#MAP_WGZ="WiggleZ_22hr"
+#HOUR="22"
+#$PIPELINE_DIR/manager.py $PIPELINE_DIR/power_wigl.pipe
+#$PIPELINE_DIR/summary.py wigl
+
+MAP_WGZ="WiggleZ_15hr"
+HOUR="15"
+#$PIPELINE_DIR/manager.py $PIPELINE_DIR/power_wigl.pipe
+#$PIPELINE_DIR/summary.py wigl
+
+#MAP_WGZ="WiggleZ_1hr"
+#HOUR="1"
+#$PIPELINE_DIR/manager.py $PIPELINE_DIR/power_wigl.pipe
+#$PIPELINE_DIR/summary.py wigl

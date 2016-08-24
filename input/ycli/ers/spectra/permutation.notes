@@ -1,0 +1,23 @@
+[basemap]_[treatment]_[type]
+basemap: GBT_15hr_map_oldcal, GBT_15hr_map_oldcal_plussim
+treatment: noconv or "" (conv)
+type: auto, combined_xspec
+
+GBT_15hr_map_oldcal_cleaned_auto-nocomp.ini
+GBT_15hr_map_oldcal_cleaned_combined_xspec-1dmodecomp-corrfg.ini
+GBT_15hr_map_oldcal_cleaned_combined_xspec-nocomp.ini
+GBT_15hr_map_oldcal_cleaned_noconv_auto-nocomp.ini
+GBT_15hr_map_oldcal_cleaned_noconv_combined_xspec-1dmodecomp-corrfg.ini
+GBT_15hr_map_oldcal_cleaned_noconv_combined_xspec-nocomp.ini
+GBT_15hr_map_oldcal_plussim_cleaned_combined_corrfg-1strans-nobeam.ini
+GBT_15hr_map_oldcal_plussim_cleaned_combined_corrfg-1strans-withbeam.ini
+GBT_15hr_map_oldcal_plussim_cleaned_combined_corrfg-xtrans-nobeam.ini
+GBT_15hr_map_oldcal_plussim_cleaned_combined_corrfg-xtrans-withbeam.ini
+GBT_15hr_map_oldcal_plussim_cleaned_noconv_combined_corrfg-1strans-nobeam.ini
+GBT_15hr_map_oldcal_plussim_cleaned_noconv_combined_corrfg-1strans-withbeam.ini
+GBT_15hr_map_oldcal_plussim_cleaned_noconv_combined_corrfg-xtrans-nobeam.ini
+GBT_15hr_map_oldcal_plussim_cleaned_noconv_combined_corrfg-xtrans-withbeam.ini
+
+relevant for new power spec:
+GBT_15hr_map_oldcal_cleaned_auto-nocomp.ini
+GBT_15hr_map_oldcal_cleaned_combined_xspec-nocomp.ini

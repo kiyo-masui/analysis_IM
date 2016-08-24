@@ -168,7 +168,7 @@ class Cosmology:
         return _intfz(f, 0.0, z) / self._unit_distance()
 
 
-    def proper_distance(self, z):
+    def proper_distance(self, z, comoving=False):
         r"""The proper distance to an event at redshift z.
 
         The proper distance can be ill defined. In this case we mean
@@ -180,6 +180,7 @@ class Cosmology:
         ----------
         z : array_like
             The redshift(s) to calculate at.
+            if comoving==True, z should be the comoving distance
 
         Returns
         -------
@@ -187,7 +188,10 @@ class Cosmology:
             The proper distance to each redshift.
         """
 
-        x = self.comoving_distance(z)
+        if comoving:
+            x = z
+        else:
+            x = self.comoving_distance(z)
 
         om_k = self.omega_k
 

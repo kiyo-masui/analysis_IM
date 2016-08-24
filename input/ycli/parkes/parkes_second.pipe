@@ -1,0 +1,315 @@
+# Pipeline file for parkes data.
+
+import os
+
+import scipy as sp
+
+base_dir = os.getenv('YICHAO_WORK_PKS')
+data_dir = os.getenv('PARKES_DATA')
+
+map_base = os.getenv("YICHAO_WORK_PKS") + 'maps/parkes_parallel/'
+
+map_prefix = 'p3500n3000_parkes_2010_10_24-28_'
+
+pksdate=os.getenv('PKSPREFIX')
+
+''' >> Data Direction << '''
+
+if pksdate == '2012-10-24':
+    ''' 2012-10-24 '''
+    print "Analysing Data on" + pksdate
+    parkes_session = '/RAWDATA_SDF/20121024/'
+    parkesfiles = [] 
+    listfile = os.listdir(data_dir+parkes_session)
+    listfile.sort(key=lambda x:int(x[11:15]))
+    for file in listfile:
+        if file.split('.')[-1] == 'sdfits':
+            parkesfiles.append(file)
+            print file
+    outputname = 'parkes_2012_10_24_P641'
+    file_middles = tuple(['parkes_2012_10_24_P641',])
+    prefix = ''
+
+elif pksdate == '2012-10-25':
+    ''' 2012-10-25 '''
+    print "Analysing Data on" + pksdate
+    parkes_session = '/RAWDATA_SDF/20121025/'
+    parkesfiles = [] 
+    listfile = os.listdir(data_dir+parkes_session)
+    listfile.sort(key=lambda x:int(x[11:15]))
+    for file in listfile:
+        if file.split('.')[-1] == 'sdfits':
+            parkesfiles.append(file)
+            print file
+    outputname = 'parkes_2012_10_25_P641'
+    file_middles = tuple(['parkes_2012_10_25_P641',])
+    prefix = ''
+
+elif pksdate == '2012-10-26':
+    ''' 2012-10-26 '''
+    print "Analysing Data on" + pksdate
+    parkes_session = '/RAWDATA_SDF/20121026/'
+    parkesfiles = [] 
+    listfile = os.listdir(data_dir+parkes_session)
+    listfile.sort(key=lambda x:int(x[11:15]))
+    for file in listfile:
+        if file.split('.')[-1] == 'sdfits':
+            parkesfiles.append(file)
+            print file
+    outputname = 'parkes_2012_10_26_P641'
+    file_middles = tuple(['parkes_2012_10_26_P641',])
+    prefix = ''
+
+elif pksdate == '2012-10-27':
+    ''' 2012-10-27 '''
+    print "Analysing Data on" + pksdate
+    parkes_session = '/RAWDATA_SDF/20121027/'
+    parkesfiles = [] 
+    listfile = os.listdir(data_dir+parkes_session)
+    listfile.sort(key=lambda x:int(x[11:15]))
+    for file in listfile:
+        if file.split('.')[-1] == 'sdfits':
+            parkesfiles.append(file)
+            print file
+    outputname = 'parkes_2012_10_27_P641'
+    file_middles = tuple(['parkes_2012_10_27_P641',])
+    prefix = ''
+
+elif pksdate == '2012-10-28':
+    ''' 2012-10-28 '''
+    print "Analysing Data on" + pksdate
+    parkes_session = '/RAWDATA_SDF/20121028/'
+    parkesfiles = [] 
+    listfile = os.listdir(data_dir+parkes_session)
+    listfile.sort(key=lambda x:int(x[11:15]))
+    for file in listfile:
+        if file.split('.')[-1] == 'sdfits':
+            parkesfiles.append(file)
+            #print file
+    outputname = 'parkes_2012_10_28_P641'
+    file_middles = tuple(['parkes_2012_10_28_P641',])
+    prefix = ''
+elif pksdate == 'all':
+    file_middles = tuple(['parkes_2012_10_24_P641',
+                          'parkes_2012_10_25_P641',
+                          'parkes_2012_10_26_P641',
+                          'parkes_2012_10_27_P641',
+                          'parkes_2012_10_28_P641',
+                          ])
+    prefix = ''
+    
+else:
+    print "Observation date error " + pksdate
+    exit()
+
+# Maximum number of processes to use.
+pipe_processes = 12
+
+####  List of modules to execute.  ####
+pipe_modules = []
+
+#from parkes import subtract_map_data
+#pipe_modules.append(subtract_map_data.Subtract)
+
+#from parkes import reflag
+#pipe_modules.append(reflag.ReFlag)
+
+from parkes import measure_noise
+pipe_modules.append(measure_noise.Measure)
+
+# subtract signal
+#sm_input_root = mc2_output_root
+sm_input_root = base_dir + 'pol_selected/' + prefix
+sm_file_middles = file_middles
+sm_input_end = '.fits'
+sm_output_root = base_dir + 'map_subtracted/'
+sm_output_end = '.fits'
+sm_scans = ()
+sm_IFs = ()
+
+sm_interpolation = 'cubic'
+sm_map_polarizations = ('I',)
+sm_map_nbands = (1316,)
+sm_map_input_root = map_base + 'fir_' + map_prefix
+sm_map_type = 'clean_map_'
+sm_map_bands = (1316,)
+sm_solve_for_gain = False
+sm_gain_output_end = '_gain.pickle'
+
+# second_flag
+sf_input_root = base_dir + 'pol_selected/' + prefix
+sf_file_middles = file_middles
+sf_input_end = '.fits'
+sf_output_root = base_dir + 'reflagged_sec/'
+sf_output_end = '.fits'
+sf_scans = ()
+sf_IFs = ()
+
+sf_thres = 4.0
+sf_max_noise_factor = 3.0
+sf_smooth_modes_subtract = 5
+sf_filter_type = 'gaussian/edge'
+sf_subtracted_input_root = sm_output_root
+sf_subtracted_output_root = base_dir + 'reflagged_sub_sec/'
+  
+# measure_noise
+mn_input_root = sf_subtracted_output_root
+mn_file_middles = file_middles
+mn_input_end = '.fits'
+mn_output_root = base_dir + 'noise_measurments_sec/'
+mn_output_filename = "noise_parameters.shelve"
+mn_save_spectra_plots = True
+mn_time_block = 'scan'
+mn_scans = ()
+mn_IFs = ()
+
+mn_parameters = ["channel_var",]
+                # "freq_modes_over_f_0",
+                # "freq_modes_over_f_1", "freq_modes_over_f_2",
+                # "freq_modes_over_f_3", "freq_modes_over_f_4",
+                # "freq_modes_over_f_5", "freq_modes_over_f_6",
+                # "freq_modes_over_f_7", "freq_modes_over_f_8"]
+
+#  #### Parameters for the various modules. ####
+#  
+#  # reformat 
+#  rfparkes_parkesroot = data_dir + parkes_session
+#  rfparkes_parkesfile = parkesfiles
+#  rfparkes_outputname = outputname 
+#  rfparkes_outputroot = base_dir + 'parkes/' + prefix
+#  
+#  # bandpass remove
+#  bp_input_root = rfparkes_outputroot
+#  bp_file_middles = file_middles
+#  bp_input_end = '.fits'
+#  bp_output_root = base_dir + 'bandpassrm/' + prefix
+#  bp_output_end = '.fits'
+#  bp_time_cut = 40
+#  bp_scans = ()
+#  bp_IFs = ()
+#  
+#  # flag_data, RFI flagger.
+#  fd_input_root = rfparkes_outputroot
+#  #fd_input_root = bp_output_root
+#  fd_file_middles = file_middles
+#  fd_input_end = '.fits'
+#  fd_output_root = base_dir + 'flagged/' + prefix
+#  fd_output_end = '.fits'
+#  fd_scans = ()
+#  fd_IFs = ()
+#  
+#  fd_time_flag_first = False
+#  #fd_tsys_thres = [15.2, 15.7]
+#  #fd_tsys_thres = [15.0, 15.5]
+#  #fd_sigma_thres = 10.
+#  #fd_sigma_thres = 6.
+#  #fd_sigma_thres = 4.
+#  #fd_sigma_thres = 3.5
+#  fd_sigma_thres = 2.5 
+#  
+#  # No Hanning.  Guppi's filters take care of it.
+#  fd_perform_hanning = False
+#  #fd_rotate = True
+#  fd_rotate = False
+#  #fd_cal_scale = True
+#  fd_cal_scale = False
+#  fd_badness_thres = 0.1
+#  fd_time_cut = 10
+#  
+#  # Rebin the time and frequency axis.
+#  ##### Get input root from the normal data pipeline. #####
+#  #rb_input_root = fd_output_root
+#  rb_input_root = base_dir + 'flagged/' + prefix
+#  rb_file_middles = file_middles
+#  rb_input_end = '.fits'
+#  rb_output_root = base_dir + 'rebinned/' + prefix
+#  rb_output_end = '.fits'
+#  rb_scans = ()
+#  rb_IFs = ()
+#  
+#  rb_n_bins_combined_freq = 16
+#  rb_n_bins_combined_time = 0 
+#  
+#  # band stop
+#  #bs_input_root = rb_output_root
+#  bs_input_root = "/mnt/raid-project/gmrt/kiyo/gbt_out_new/" + 'rebinned/' + prefix
+#  bs_file_middles = file_middles
+#  bs_input_end = '.fits'
+#  bs_output_root = base_dir + 'band_stopped/' + prefix
+#  bs_output_end = '.fits'
+#  bs_scans = ()
+#  bs_IFs = ()
+#  
+#  # The two wings of the band pass and the two resonances.
+#  bs_band_stops = [(690e6, 702e6), (796e6, 800e6), (815e6, 820e6), 
+#                   (898e6, 910e6)]
+#  
+#  # split_bands
+#  sb_input_root = bs_output_root
+#  sb_file_middles = file_middles
+#  sb_input_end = '.fits'
+#  sb_output_root = base_dir + 'band_split_new/' + prefix
+#  sb_output_end = '.fits'
+#  sb_scans = ()
+#  sb_IFs = ()
+#  
+#  # 128 bins -> 3 bands of 40, starting at 4 ending at 124.
+#  #sb_n_bands = 3
+#  #sb_n_bins_band = 40
+#  #sb_offset = 4 + 2 * sb_n_bins_band
+#  #sb_offset = 4
+#  # For now deal with a single lowish noise band that misses resonances, rfi,
+#  # etc. Band chosen such the upper end is ~5MHz from resonance.
+#  sb_n_bands = 1
+#  sb_n_bins_band = 40
+#  sb_offset = 68
+#  
+#  # scale by filtered cal.
+#  #cf_input_root = sb_output_root
+#  #cf_file_middles = file_middles
+#  #cf_input_end = '.fits'
+#  #cf_output_root = base_dir + 'cal_filter_scaled/' + prefix
+#  #cf_output_end = '.fits'
+#  #cf_scans = ()
+#  #cf_IFs = ()
+#  
+#  #cf_filter_type = 'rectangular'
+#  #cf_filter_size = 4.
+#  #cf_filter_size_units = 'seconds'
+#  
+#  # calibrate
+#  # Using older calibration.  These parameters not used.
+#  #fgc_input_root = sb_output_root
+#  #fgc_file_middles = file_middles
+#  #fgc_input_end = '.fits'
+#  #fgc_output_root = base_dir + 'flux_dg_cal/'
+#  #fgc_output_end = '.fits'
+#  #fgc_scans = ()
+#  #fgc_IFs = ()
+#  #
+#  #fgc_mueler_file = base_tcv + 'diff_gain_params/'
+#  
+#  # These parameters used instead.
+#  #cl_input_root = sb_output_root
+#  #cl_file_middles = file_middles
+#  #cl_input_end = '.fits'
+#  #cl_output_root = base_dir + 'calibrated/' + prefix
+#  #cl_output_end = '.fits'
+#  #cl_scans = ()
+#  #cl_IFs = ()
+#  #
+#  #cl_cal_temperature_files = (os.getenv('GBT10B_OUT') + 'kevin_cal/cal_21.fits',)
+#  
+#  # rotate_pol
+#  rp_input_root = rb_output_root
+#  rp_file_middles = file_middles
+#  rp_input_end = '.fits'
+#  rp_output_root = base_dir + 'pol_selected/' + prefix
+#  rp_output_end = '.fits'
+#  rp_scans = ()
+#  rp_IFs = ()
+#  
+#  rp_new_pols = (1,)
+#  rp_average_cals = True
+#  
+#  

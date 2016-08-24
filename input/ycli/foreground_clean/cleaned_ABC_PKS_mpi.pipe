@@ -1,0 +1,182 @@
+# pipeline for  foreground clean
+
+pipe_modules = []
+pipe_processes = 1
+
+
+#from foreground_clean import pair_set_legendre
+from foreground_clean import pair_set
+
+#from quadratic_products import pwrspec_combinations
+#from quadratic_products import pwrspec_compile
+
+from map import simulate_gbt
+import struct
+import os
+
+
+do_diag_noise = False
+do_inv_diag_noise = False
+do_IQUclean_themselves = True
+do_simulation = False
+do_simulation_IQUV = False
+
+#-----------------------------------------------------------------------------
+# main parameters that define the run
+#-----------------------------------------------------------------------------
+
+# This is the database key for the input map
+basemap = os.getenv('MAPFILE')
+basemap_my = os.getenv('MAPGBT_MY')
+simroot = os.getenv('SIMROOT') # simulation file root
+simfile = os.getenv('SIMFILE') # simulation file number
+subreal = bool(os.getenv('SUBREAL'))
+field = os.getenv('PKSFIELD')
+prefix = os.getenv('PKSPREFIX')
+
+goodmodes = int(os.getenv('GOODMODES'))
+
+nfreq = 64
+#cutlist = [0,1,2,3,4,59,60,61,62,63]
+cutlist = [0,1,2,3,4,5,6,7,8,9,10,59,60,61,62,63]
+freq_list = tuple([ind for ind in range(nfreq) if ind not in cutlist])
+mode_list = range(0, 21, 1) 
+common_res_convolution = True
+calibrate = True
+degrade_factor = 1.1
+sub_weighted_mean = True
+sim_multiplier = 1.
+simnum = 100
+
+if simfile != 'None':
+    do_diag_noise = False
+    do_IQUclean_themselves = False
+
+    do_simulation = False
+    do_simulation_IQUV = True
+else:
+    do_simulation = False
+    do_simulation_IQU = False
+
+
+#output_folder = '15hr_ABCD_legendre_modes_%dgwj_14conv_new/'%goodmodes 
+output_folder = 'PKS_'+field+'_ABC_freq_cut_1pt1_cov_cal/'
+#output_root = '/mnt/raid-project/gmrt/ycli/foreground_cleand/'
+#output_root = '/mnt/scratch-gl/ycli/cln_result/'
+output_root = '/home/ycli/data/cln_result/'
+output_root += output_folder
+
+#-----------------------------------------------------------------------------
+# use the base map parameters above to make a few map cleaning cases
+#-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+# clean extended IQUV map
+#-----------------------------------------------------------------------------
+
+pairlist = ['A_with_B','A_with_C','B_with_C']
+pairdict = {}
+pairdict['A_with_B'] = {}
+pairdict['A_with_B']['map1'] = basemap
+pairdict['A_with_B']['map1']+= prefix+'_'+field+'_A_clean_map_I_1316.npy'
+pairdict['A_with_B']['map2'] = basemap
+pairdict['A_with_B']['map2']+= prefix+'_'+field+'_B_clean_map_I_1316.npy'
+pairdict['A_with_B']['noise_inv1'] = basemap +\
+                          prefix+'_'+field+'_A_noise_weight_I_1316.npy'
+pairdict['A_with_B']['noise_inv2'] = basemap +\
+                          prefix+'_'+field+'_B_noise_weight_I_1316.npy'
+pairdict['A_with_B']['tag1'] = 'A'
+pairdict['A_with_B']['tag2'] = 'B'
+
+pairdict['A_with_C'] = {}
+pairdict['A_with_C']['map1'] = basemap
+pairdict['A_with_C']['map1']+= prefix+'_'+field+'_A_clean_map_I_1316.npy'
+pairdict['A_with_C']['map2'] = basemap
+pairdict['A_with_C']['map2']+= prefix+'_'+field+'_C_clean_map_I_1316.npy'
+pairdict['A_with_C']['noise_inv1'] = basemap +\
+                          prefix+'_'+field+'_A_noise_weight_I_1316.npy'
+pairdict['A_with_C']['noise_inv2'] = basemap +\
+                          prefix+'_'+field+'_C_noise_weight_I_1316.npy'
+pairdict['A_with_C']['tag1'] = 'A'
+pairdict['A_with_C']['tag2'] = 'C'
+
+pairdict['B_with_C'] = {}
+pairdict['B_with_C']['map1'] = basemap
+pairdict['B_with_C']['map1']+= prefix+'_'+field+'_B_clean_map_I_1316.npy'
+pairdict['B_with_C']['map2'] = basemap
+pairdict['B_with_C']['map2']+= prefix+'_'+field+'_C_clean_map_I_1316.npy'
+pairdict['B_with_C']['noise_inv1'] = basemap +\
+                          prefix+'_'+field+'_B_noise_weight_I_1316.npy'
+pairdict['B_with_C']['noise_inv2'] = basemap +\
+                          prefix+'_'+field+'_C_noise_weight_I_1316.npy'
+pairdict['B_with_C']['tag1'] = 'B'
+pairdict['B_with_C']['tag2'] = 'C'
+
+if do_IQUclean_themselves:
+    pipe_modules.append((pair_set.PairSet, ('fs2_', 'fs_')))
+
+    fs2_pairlist = pairlist
+    fs2_pairdict = pairdict
+    #fs2_calc_diagnal = True
+    fs2_output_root = output_root + "/Emap_clean_themselves/"
+    fs2_freq_list1 = freq_list
+    fs2_freq_list2 = freq_list
+    fs2_modes = mode_list
+    fs2_factorizable_noise = True
+    fs2_convolve = common_res_convolution
+    fs2_calibrate = calibrate
+    fs2_degrade_factor = degrade_factor
+    fs2_clip_weight_percent = 50
+    fs2_weighted_SVD = False
+    fs2_sub_weighted_mean = sub_weighted_mean
+    if goodmodes == 1:
+        fs2_good_modes = 0
+    else:
+        fs2_good_modes = goodmodes
+    fs2_freq_n_all1 = nfreq
+    fs2_freq_n_all2 = nfreq
+
+#-----------------------------------------------------------------------------
+# generate simulation maps for GBT and WiggleZ
+#-----------------------------------------------------------------------------
+
+if do_simulation_IQUV:
+    sg1_output_root = simroot
+    sg1_outfile_meansub = "sim_beammeansub_%03d.npy"
+    #sg1_outfile_meansub = "sim_degradebeam_%03d.npy"
+
+    pipe_modules.append((pair_set.PairSet, ('fs3_', 'fs_')))
+
+    freq_list_iquv = freq_list
+    freq_list_iquv+= tuple([ind +   nfreq for ind in freq_list])
+    freq_list_iquv+= tuple([ind + 2*nfreq for ind in freq_list])
+    #freq_list_iquv+= tuple([ind + 3*nfreq for ind in freq_list])
+
+    fs3_pairlist = pairlist
+    fs3_pairdict = pairdict
+    #fs3_calc_diagnal = True
+    fs3_output_root = output_root + "/simmapmode_simmap_beam_%03d/"
+    fs3_freq_list1 = freq_list
+    fs3_freq_list2 = freq_list
+    fs3_modes = mode_list
+    fs3_simnum = simnum
+    fs3_simfile1  = sg1_output_root + sg1_outfile_meansub
+    fs3_simfile2  = sg1_output_root + sg1_outfile_meansub
+    #fs3_simfile2 = basemap + sg1_outfile_meansub
+    fs3_sim_multiplier = sim_multiplier
+    fs3_subtract_inputmap_from_sim = False
+    fs3_subtract_sim_from_inputmap = False
+    fs3_subtract_realmap_from_sim = subreal
+    fs3_realmap_dir = output_root + "/Emap_clean_themselves/"
+    if subreal:
+        fs3_output_root = fs3_output_root[:-1] + "_subreal/"
+    fs3_factorizable_noise = True
+    fs3_convolve = common_res_convolution
+    fs3_clip_weight_percent = 50
+    fs3_weighted_SVD = True
+    fs3_degrade_factor = degrade_factor
+    fs3_sub_weighted_mean = sub_weighted_mean
+    fs3_good_modes = goodmodes
+    fs3_freq_n_all1 = nfreq
+    fs3_freq_n_all2 = nfreq
+
+    

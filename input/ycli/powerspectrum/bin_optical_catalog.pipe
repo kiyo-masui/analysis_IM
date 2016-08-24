@@ -1,0 +1,68 @@
+#
+
+import os
+import numpy as np
+from core import algebra
+
+pipe_modules = []
+pipe_processes = 1
+
+#tempfile = algebra.make_vect(np.ones(shape=(256,256,32)), 
+#                             axis_names=('freq', 'ra', 'dec'))
+#tempfile.info['ra_delta']  = -0.35
+#tempfile.info['dec_delta'] = 0.35
+#tempfile.info['ra_centre'] = 7.00
+#tempfile.info['dec_centre'] = -29.5
+#tempfile.info['freq_delta'] = -1000000.0
+#tempfile.info['freq_centre'] = 1221900000.0
+
+#tempfile = algebra.make_vect(np.ones(shape=(256,128,128)), 
+#                             axis_names=('freq', 'ra', 'dec'))
+#tempfile.info['ra_delta']  = -0.079
+#tempfile.info['dec_delta'] = 0.079
+#tempfile.info['ra_centre'] = 29.0
+#tempfile.info['dec_centre'] = -29.5
+#tempfile.info['freq_delta'] = -1000000.0
+#tempfile.info['freq_centre'] = 1221900000.0
+
+#algebra.save('/home/ycli/data/2df/temp/tempfile', tempfile)
+
+#map_dir = '/home/ycli/data/2df/map/map_full_parkes_selection_100mock/'
+#map_dir = '/home/ycli/data/2df/map/pks_27n30_10by7/'
+#map_dir = '/home/ycli/data/2df/map/pks_n03n30_10by7/'
+#map_dir = '/home/ycli/data/2df/map/pks_07n30_10by7_0627pixel/'
+#map_dir = '/home/ycli/data/2df/map/pks_17n30_10by7_0627pixel/'
+#map_dir = '/home/ycli/data/2df/map/pks_p3500n3000/'
+map_dir = '/home/ycli/data/2df/map/pks_p3500n3000_parkes_2010_10_24-28/'
+
+#map_dir = '/home/ycli/data/2df/map/pks_27n30_10by7_j2000/'
+#map_dir = '/home/ycli/data/2df/map/pks_p3500n3000_j2000/'
+
+if not os.path.exists(map_dir):
+    os.makedirs(map_dir)
+
+from map import optical_catalog_2df
+pipe_modules.append(optical_catalog_2df.Bin2dF)
+
+#from map import optical_catalog
+#pipe_modules.append(optical_catalog.Bin2dF)
+
+bin2df_infile_data="/home/ycli/data/2df/catalog/real_catalogue_2df.out"
+#bin2df_infile_data="/home/ycli/2df_j2008.dat"
+bin2df_infile_mock="/home/ycli/data/2df/catalog/mock_catalog_2df_%04d.out"
+
+bin2df_outfile_data=map_dir + "real_map_2df.npy"
+bin2df_outfile_bias=map_dir + "bias_map_2df.npy"
+bin2df_outfile_mock=map_dir + "mock_map_2df_%04d.npy"
+bin2df_outfile_deltadata=map_dir + "real_map_2df_delta.npy"
+bin2df_outfile_deltamock=map_dir + "mock_map_2df_delta_%03d.npy"
+bin2df_outfile_selection=map_dir + "sele_map_2df.npy"
+bin2df_outfile_separable=map_dir + "sele_map_2df_separable.npy"
+#bin2df_template_file="/home/ycli/data/2df/temp/tempfile"
+#bin2df_template_file="/home/ycli/data/parkes/maps_by_chris/pks_27n30_10by7/test_allbeams_27n30_10by7_clean_map_I_1315.npy"
+#bin2df_template_file="/home/ycli/data/parkes/maps_by_chris/pks_n03n30_10by7/test_allbeams_n03n30_10by7_0627pixel_clean_map_I_1315.npy"
+#bin2df_template_file="/home/ycli/data/parkes/maps_by_chris/pks_07n30_10by7_0627pixel/test_allbeams_07n30_10by7_0627pixel_clean_map_I_1315.npy"
+#bin2df_template_file="/home/ycli/data/parkes/maps_by_chris/pks_17n30_10by7_0627pixel/test_allbeams_17n30_10by7_0627pixel_clean_map_I_1315.npy"
+bin2df_template_file="/home/ycli/data/parkes/maps/pks_p3500n3000_parkes_2010_10_24-28/shift_fir_p3500n3000_parkes_2010_10_24-28_clean_map_I_1316.npy"
+bin2df_mock_number=1000
+bin2df_mock_alpha=1.
