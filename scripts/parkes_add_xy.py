@@ -12,10 +12,12 @@ map_ra = os.getenv('MAP_RA')
 map_dec = os.getenv('MAP_DEC')
 map_size = os.getenv('MAP_SIZE')
 
-thebeams = {'XX' :['123','456','789','111213'], 'YY' : ['123','456','789','1012']}
-finalbeams = ['123','456','789','10to13']
+#thebeams = {'XX' :['123','456','789','111213'], 'YY' : ['123','456','789','1012']}
+#finalbeams = ['123','456','789','10to13']
+thebeams = {'XX' :['123456789111213'], 'YY' : ['1234567891012']}
+finalbeams= ['_all_']
 
-basemap = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/renorm_hitconv_sync07/combined/'
+basemap = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/hitconv_sync27/combined/'
 imap = basemap + 'I/'
 
 def add_maps(root_dir, field, modes):

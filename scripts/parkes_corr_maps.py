@@ -10,6 +10,8 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import math
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import copy
 
 from kiyopy import parse_ini
 from map import beam
@@ -196,16 +198,26 @@ class MapList():
         parkes_res = degrade_parkes(1.4)
         #Loading parkes maps and degrading resolution.
         for beam in params['x_beams']:
+            hitmap = al.make_vect(al.load(params['map_dir'] + params['prefix'] + str(beam) + params['map_middle'] + 'XX' + params['suffix']))
+            hitmap[hitmap!=0.0] = 1.0
             map = parkes_res.apply(al.make_vect(al.load(params['map_dir'] + params['prefix'] + str(beam) + params['map_middle'] + 'XX' + params['suffix'])))
             map = np.mean(map, axis=0)
-            noise = add_noise_freq(degrade_noise(al.make_vect(al.load(params['noise_dir'] + params['prefix'] + str(beam) + params['noise_middle'] + 'XX' + params['suffix'])), parkes_res))
+            noise = al.make_vect(al.load(params['noise_dir'] + params['prefix'] + str(beam) + params['noise_middle'] + 'XX' + params['suffix']))
+            #noise[hitmap == 0.0] = 0.0
+            noise = add_noise_freq(degrade_noise(al.make_vect(noise), parkes_res))
+            noise[np.mean(hitmap, axis=0) == 0.0] = 0.0
             map -= w_avg(map, noise)
             self.maps['beam' + str(beam) + 'xx' + 'map'] = map
             self.maps['beam' + str(beam) + 'xx' + 'noise'] = noise
         for beam in params['y_beams']:
+            hitmap = al.make_vect(al.load(params['map_dir'] + params['prefix'] + str(beam) + params['map_middle'] + 'YY' + params['suffix']))
+            hitmap[hitmap!=0.0] = 1.0
             map = parkes_res.apply(al.make_vect(al.load(params['map_dir'] + params['prefix'] + str(beam) + params['map_middle'] + 'YY' + params['suffix'])))
             map = np.mean(map, axis=0)
-            noise = add_noise_freq(degrade_noise(al.make_vect(al.load(params['noise_dir'] + params['prefix'] + str(beam) + params['noise_middle'] + 'YY' + params['suffix'])), parkes_res))
+            noise = al.make_vect(al.load(params['noise_dir'] + params['prefix'] + str(beam) + params['noise_middle'] + 'YY' + params['suffix']))
+            #noise[hitmap == 0.0] = 0.0
+            noise = add_noise_freq(degrade_noise(al.make_vect(noise), parkes_res))
+            noise[np.mean(hitmap, axis=0) == 0.0] = 0.0
             map -= w_avg(map, noise)
             self.maps['beam' + str(beam) + 'yy' + 'map'] = map
             self.maps['beam' + str(beam) + 'yy' + 'noise'] = noise
@@ -239,13 +251,39 @@ class MapList():
         self.tot_noise = np.zeros(self.maps['beam5xxnoise'].shape)
         self.w_map = np.zeros(self.maps['beam5xxmap'].shape)
 
-    def graph_parkes_chipass(self, filename):
-        fig, ax = plt.subplots(nrows=3, ncols=1)
-        max = np.max(self.maps['chipass'])
-        min = np.min(self.maps['chipass'])
-        ax[0].imshow(np.transpose(self.maps['chipass']), vmin=min, vmax=max)
-        ax[1].imshow(np.transpose(self.auto_cross_ratio['xx']['1']*self.maps['beam1xxmap']),vmin=min,vmax=max)
-        ax[2].imshow(np.transpose(self.auto_cross_ratio['xx']['7']*self.maps['beam7xxmap']),vmin=min,vmax=max)
+    def graph_parkes_chipass(self, pol, beams, filename, noise_weight = True):
+        fig, ax = plt.subplots(nrows=3, ncols=len(beams), squeeze=False)
+        #max = np.max(self.maps['chipass'])
+        #min = np.min(self.maps['chipass'])
+        cmap = matplotlib.cm.jet
+        cmap.set_bad('white',1.)
+        ind = 0
+        for beam in beams:
+            chi = self.maps['chipass']
+            noise = self.maps['beam' + beam + pol + 'noise']
+            noise_bool = noise<= 10**-5*np.mean(noise)
+            chi_wmean = w_avg(chi, noise)
+            if noise_weight:
+                chi = np.ma.array(chi, mask=noise_bool)
+            print chi_wmean
+            chi -= chi_wmean
+            im0 = ax[0][ind].imshow(np.transpose(chi))
+            divider0 = make_axes_locatable(ax[0][ind])
+            cax0 = divider0.append_axes("right", size="20%", pad=0.05)
+            cbar0 = plt.colorbar(im0,cax = cax0, orientation="vertical")
+            cal_map = self.auto_cross_ratio[pol][beam]*self.maps['beam' + beam + pol + 'map']
+            diff_map = chi - cal_map
+            if noise_weight:
+                cal_map = np.ma.array(cal_map, mask=noise_bool)
+            im1 = ax[1][ind].imshow(np.transpose(cal_map))
+            divider1 = make_axes_locatable(ax[1][ind])
+            cax1 = divider1.append_axes("right", size="20%", pad=0.05)
+            cbar1 = plt.colorbar(im1,cax = cax1, orientation="vertical")
+            im2 = ax[2][ind].imshow(np.transpose(diff_map))
+            divider2 = make_axes_locatable(ax[2][ind])
+            cax2 = divider2.append_axes("right", size="20%", pad=0.05)
+            cbar2 = plt.colorbar(im2, cax= cax2, orientation="vertical")
+            ind += 1
         plt.savefig(filename)
         plt.clf()
 
@@ -386,7 +424,11 @@ class MapList():
 
 if __name__ == '__main__':
     maplist = MapList()
-    maplist.save_calibrated_maps()
+    plots_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/plots/cal/'
+    maplist.graph_parkes_chipass('xx', ['1'], plots_dir + 'chi_parkes_diff_hitmapweighted' + map_ra)
+    print map_ra
+    print maplist.auto_cross_ratio
+    #maplist.save_calibrated_maps()
     #filename = maplist.params['output_dir'] + 'plot_' + map_ra 
     #maplist.graph_parkes_chipass(filename)
 

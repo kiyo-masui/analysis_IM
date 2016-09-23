@@ -6,15 +6,36 @@ import core.algebra as al
 import os
 import copy
 
-xx_beams = [[1,2,3],[4,5,6],[7,8,9],[11,12,13]]
-yy_beams = [[1,2,3],[4,5,6],[7,8,9],[10,12]]
+#xx_beams = [[1,2,3],[4,5,6],[7,8,9],[11,12,13]]
+#yy_beams = [[1,2,3],[4,5,6],[7,8,9],[10,12]]
+
+xx_beams = [[1,2,3,4,5,6,7,8,9,11,12,13]]
+yy_beams = [[1,2,3,4,5,6,7,8,9,10,12]]
 
 map_ra = os.getenv('MAP_RA')
 map_dec = os.getenv('MAP_DEC')
 map_size = os.getenv('MAP_SIZE')
 
-base_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/renorm_hitconv_sync07/'
+base_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/hitconv_sync27/'
 out_dir = base_dir + 'combined/'
+
+effic = {'1': 1.36,
+         '8': 1.45,
+         '13': 1.72}
+
+def apply_effic_factor(data, beam, type = 'map'):
+    if beam == 1:
+        fact = effic['1']
+    elif beam <= 8:
+        fact = effic['8']
+    else:
+        fact = effic['13']
+    if type == 'map':
+        data /= fact
+    else:
+        #data must be inverse noise weight.
+        data *= fact**2
+    return data
 
 def weighted_av_map(maps, weights):
     #Maps is a list of algebra vector maps.  Weights is a list of their weights.  Must be same size, in correct order.
@@ -59,11 +80,15 @@ def save_final(data, beams, dir, pol):
 if __name__ == '__main__':
    for beams in xx_beams:
        maps = get_maps(beams, base_dir, 'XX')
+       maps = [apply_effic_factor(el[0],el[1]) for el in zip(maps,beams)]
        weights = get_weights(beams, base_dir, 'XX')
+       weights = [apply_effic_factor(el[0],el[1], type ='weight') for el in zip(weights,beams)]
        output = weighted_av_map(maps, weights)
        save_final(output, beams, out_dir, 'XX')
    for beams in yy_beams:
        maps = get_maps(beams, base_dir, 'YY')
+       maps = [apply_effic_factor(el[0],el[1]) for el in zip(maps,beams)]
        weights = get_weights(beams, base_dir, 'YY')
+       weights = [apply_effic_factor(el[0],el[1], type ='weight') for el in zip(weights,beams)]
        output = weighted_av_map(maps, weights)
        save_final(output, beams, out_dir, 'YY')
