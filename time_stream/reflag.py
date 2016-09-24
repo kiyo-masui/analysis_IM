@@ -4,6 +4,7 @@ Right now just reflags data but will eventually do a fine calibration maybe?"""
 
 import scipy as sp
 import numpy.ma as ma
+import numpy as np
 
 from utils import misc
 from kiyopy import utils
@@ -63,30 +64,39 @@ class ReFlag(base_single.BaseSingle) :
             if_inds = range(len(Reader.IF_set))
         if self.feedback > 1 :
             print "New flags each block:",
+        #Adding beam functionality for Parkes
+        beam_inds = params['beams']
+        if len(beam_inds) == 0 or beam_inds is None:
+            beam_inds = [0]
         # Loop over scans and IFs
-        for thisscan in scan_inds :
-            for thisIF in if_inds :
-                Data = Reader.read(thisscan, thisIF)
-                SubData = SubReader.read(thisscan, thisIF)
-                # Make sure they have agreeing masks to start.
-                SubData.data[ma.getmaskarray(Data.data)] = ma.masked
-                Data.data[ma.getmaskarray(SubData.data)] = ma.masked
-                # Get initial number of flags.
-                n_flags = ma.count_masked(Data.data)
-                # Now do the flagging.
-                flag(Data, SubData, params['thres'],
-                     params['max_noise_factor'], 
-                     params['smooth_modes_subtract'],
-                     params['filter_type'])
-                Data.add_history("Reflaged for outliers.", ("Used file: "
-                    + utils.abbreviate_file_path(sub_input_fname),))
-                SubData.add_history("Reflaged for outliers.")
-                Writer.add_data(Data)
-                SubWriter.add_data(SubData)
-                # Report the number of new flags.
-                n_flags = ma.count_masked(Data.data) - n_flags
-                if self.feedback > 1 :
-                    print n_flags,
+        # And beams
+        print str(beam_inds)
+        for thisbeam in beam_inds :
+            for thisscan in scan_inds :
+                for thisIF in if_inds :
+                    #Data = Reader.read(thisscan, thisIF)
+                    #SubData = SubReader.read(thisscan, thisIF)
+                    Data = Reader.read(thisscan, thisIF, thisbeam)
+                    SubData = SubReader.read(thisscan, thisIF, thisbeam)
+                    # Make sure they have agreeing masks to start.
+                    SubData.data[ma.getmaskarray(Data.data)] = ma.masked
+                    Data.data[ma.getmaskarray(SubData.data)] = ma.masked
+                    # Get initial number of flags.
+                    n_flags = ma.count_masked(Data.data)
+                    # Now do the flagging.
+                    flag(Data, SubData, params['thres'],
+                         params['max_noise_factor'], 
+                         params['smooth_modes_subtract'],
+                         params['filter_type'])
+                    Data.add_history("Reflaged for outliers.", ("Used file: "
+                        + utils.abbreviate_file_path(sub_input_fname),))
+                    SubData.add_history("Reflaged for outliers.")
+                    Writer.add_data(Data)
+                    SubWriter.add_data(SubData)
+                    # Report the number of new flags.
+                    n_flags = ma.count_masked(Data.data) - n_flags
+                    if self.feedback > 1 :
+                        print n_flags,
         if self.feedback > 1 :
             print ''
         # Finally write the data back to file.
