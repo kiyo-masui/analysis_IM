@@ -91,7 +91,7 @@ params_init = {# IO:
                'ts_foreground_mode_file' : '',
                'thread_divide' : False,
                # Which beam to use to make map.  Choose zero to use all beams.
-               'beam' : 0
+               'beam' : (0,)
                }
 
 comm = MPI.COMM_WORLD
@@ -128,14 +128,13 @@ class DirtyMapMaker(object):
                                  force_tuple=True)
             if params['time_block'] == 'scan':
                 for Data in Blocks:
-                    if params["beam"] == 0 or params["beam"] == Data.field['BEAM']: 
+                    if 0 in params["beam"] or Data.field['BEAM'] in params["beam"]: 
                         yield (Data,), middle
             elif params['time_block'] == 'file':
-                if params["beam"] == 0:
+                if 0 in params["beam"]:
                     yield Blocks, middle
                 else:
-                    yield tuple([data for data in Blocks if data.field['BEAM']
-== params["beam"]]), middle
+                    yield tuple([data for data in Blocks if data.field['BEAM'] in params["beam"]]), middle
             else:
                 msg = "time_block parameter must be 'scan' or 'file'."
                 raise dm.ValueError(msg)

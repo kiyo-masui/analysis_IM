@@ -6,17 +6,17 @@ import core.algebra as al
 import os
 import copy
 
-#xx_beams = [[1,2,3],[4,5,6],[7,8,9],[11,12,13]]
-#yy_beams = [[1,2,3],[4,5,6],[7,8,9],[10,12]]
+xx_beams = [[1,2,3],[4,5,6],[7,8,9],[11,12,13]]
+yy_beams = [[1,2,3],[4,5,6],[7,8,9],[10,12]]
 
-xx_beams = [[1,2,3,4,5,6,7,8,9,11,12,13]]
-yy_beams = [[1,2,3,4,5,6,7,8,9,10,12]]
+#xx_beams = [[1,2,3,4,5,6,7,8,9,11,12,13]]
+#yy_beams = [[1,2,3,4,5,6,7,8,9,10,12]]
 
 map_ra = os.getenv('MAP_RA')
 map_dec = os.getenv('MAP_DEC')
 map_size = os.getenv('MAP_SIZE')
 
-base_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/hitconv_sync27/'
+base_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/hitconv_sync27_mbcal/'
 out_dir = base_dir + 'combined/'
 
 effic = {'1': 1.36,
@@ -80,15 +80,15 @@ def save_final(data, beams, dir, pol):
 if __name__ == '__main__':
    for beams in xx_beams:
        maps = get_maps(beams, base_dir, 'XX')
-       maps = [apply_effic_factor(el[0],el[1]) for el in zip(maps,beams)]
+       #maps = [apply_effic_factor(el[0],el[1]) for el in zip(maps,beams)]
        weights = get_weights(beams, base_dir, 'XX')
-       weights = [apply_effic_factor(el[0],el[1], type ='weight') for el in zip(weights,beams)]
+       #weights = [apply_effic_factor(el[0],el[1], type ='weight') for el in zip(weights,beams)]
        output = weighted_av_map(maps, weights)
        save_final(output, beams, out_dir, 'XX')
    for beams in yy_beams:
        maps = get_maps(beams, base_dir, 'YY')
-       maps = [apply_effic_factor(el[0],el[1]) for el in zip(maps,beams)]
+       #maps = [apply_effic_factor(el[0],el[1]) for el in zip(maps,beams)]
        weights = get_weights(beams, base_dir, 'YY')
-       weights = [apply_effic_factor(el[0],el[1], type ='weight') for el in zip(weights,beams)]
+       #weights = [apply_effic_factor(el[0],el[1], type ='weight') for el in zip(weights,beams)]
        output = weighted_av_map(maps, weights)
        save_final(output, beams, out_dir, 'YY')

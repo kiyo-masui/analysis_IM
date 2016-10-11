@@ -12,7 +12,7 @@ import scipy.special
 import numpy.random as rand
 import numpy.ma as ma
 # XXX for testing, but needs to be commented for production.
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 from kiyopy import parse_ini
 import kiyopy.utils
@@ -672,6 +672,38 @@ def calculate_full_power_mat(full_data, mask, deconvolve=True, normalize=True):
         window_function[:,:,:,[ii],:] = w
     return power_mat, window_function
 
+def calculate_full_power_diag(full_data, mask, deconvolve=True, normalize=True):
+    n_time = full_data.shape[0]
+    n_pol = full_data.shape[1]
+    n_cal = full_data.shape[2]
+    # Broadcast to shape such that all pairs of channels are calculated.
+    full_data1 = full_data[:,:,:,:]
+    full_data2 = full_data[:,:,:,:]
+    mask1 = mask[:,:,:,:]
+    mask2 = mask[:,:,:,:]
+    n_chan = full_data.shape[-1]
+    w = calculate_power(mask1[:,:,:,:], mask2, axis=0)
+    # Calculate the window normalizations.  This is critical as several
+    # functions that call this one assume this normalization.
+    window_norms = sp.sum(w.real, 0) / float(n_time)
+    # Do nothing to fully masked channels to keep things finite.
+    window_norms[window_norms < 1e-10] = 1
+    if deconvolve:
+        p = windowed_power(full_data1[:,:,:,:],
+                           mask1[:,:,:,:], full_data2, mask2, axis=0)
+        power_mat = p
+    else:
+        p = calculate_power(full_data1[:,:,:,:], full_data2, axis=0)
+        # Normalize from windowing.
+        if normalize:
+            p /= window_norms
+        power_mat = p
+    if normalize and not deconvolve:
+        w /= window_norms
+    window_function = w
+    return power_mat, window_function
+
+
 def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True,
                    subtract_slope=False, normalize=True, split_scans=False) :
     """Calculate the full power spectrum of a data set with channel
@@ -719,6 +751,55 @@ def full_power_mat(Blocks, n_time=None, window=None, deconvolve=True,
         power_mat, window_function = calculate_full_power_mat(full_data, mask, 
                         deconvolve=deconvolve, normalize=normalize)
     return power_mat, window_function, dt, channel_means
+
+def full_power_diag(Blocks, n_time=None, window=None, deconvolve=True,
+                   subtract_slope=False, normalize=True, split_scans=False) :
+    """Calculate the full power spectrum of a data set with channel
+    correlations.
+    
+    Only one cal state and pol state assumed... Don't think this is true -KM.
+    """
+    
+    if split_scans:
+        if n_time < 0:
+            nt = 0
+            for Data in Blocks:
+                nt = max(nt, Data.dims[0])
+            time_min = -n_time * nt
+            n_block = 1
+            while n_block < time_min/20.0:
+                n_block *= 2
+            n_time = (time_min//n_block  + 1) * n_block
+        back_dims = Blocks[0].dims[1:]
+        n_chan = back_dims[-1]
+        power_mat = sp.zeros((n_time,) + back_dims, dtype=complex)
+        window_function = sp.zeros((n_time,) + back_dims,
+                                   dtype=complex)
+        channel_means = sp.zeros(back_dims, dtype=float)
+        for ii, Data in enumerate(Blocks):
+            this_data, this_mask, this_dt, this_means = \
+                    make_masked_time_stream((Data,), n_time, window=window,
+                                            return_means=True, 
+                                            subtract_slope=subtract_slope)
+            channel_means += this_means
+            if ii == 0:
+                dt = this_dt
+            else:
+                if not sp.allclose(dt, this_dt, rtol=0.001):
+                    raise RuntimeError("Time sampling doesn't line up.")
+            this_power, this_window = calculate_full_power_diag(this_data, 
+                        this_mask, deconvolve=deconvolve, normalize=normalize)
+            power_mat += this_power / len(Blocks)
+            window_function += this_window / len(Blocks)
+        channel_means /= len(Blocks)
+    else:
+        full_data, mask, dt, channel_means = make_masked_time_stream(Blocks, 
+            n_time, window=window, return_means=True,
+            subtract_slope=subtract_slope)
+        power_mat, window_function = calculate_full_power_diag(full_data, mask, 
+                        deconvolve=deconvolve, normalize=normalize)
+    return power_mat, window_function, dt, channel_means
+
 
 
 # If this file is run from the command line, execute the main function.
