@@ -44,18 +44,18 @@ class Cosmology:
     units = 'cosmo'
 
     #omega_b = 0.0458
-    omega_b = 0.04482
+    omega_b = 0.04917
     #omega_c = 0.229
-    omega_c = 0.22518
+    omega_c = 0.26473
     #omega_l = 0.7252
-    omega_l = 0.73
+    omega_l = 0.68610
 
     omega_g = 0.0
     omega_n = 0.0
 
     # H_0 given in km/s / Mpc
     #H0 = 70.2
-    H0 = 72.
+    H0 = 67.27
 
     @property
     def omega_m(self):
@@ -71,7 +71,7 @@ class Cosmology:
 
 
     @staticmethod
-    def init_physical(ombh2 = 0.02255, omch2 = 0.1126, H0 = 70.2, omkh2 = 0.0, t0 = 2.726, nnu = 3.046):
+    def init_physical(ombh2 = 0.02225, omch2 = 0.1198, H0 = 67.27, omkh2 = 0.0, t0 = 2.726, nnu = 3.046):
         r"""Initialise a new cosmology from the physical parameters.
 
         This uses the CMB relevant parameterisation that is commonly

@@ -29,11 +29,13 @@ class RandomField(object):
     _n = None
     _w = None
     
-    def __init__(self, npix = None, wsize = None):
+    def __init__(self, npix = None, wsize = None, cluster = False, power = None):
         
         self._n = np.array(npix) if npix != None else npix
         self._w = np.array(wsize) if wsize != None else self._n
         
+        self.cluster = cluster
+        self.power = power
         
     def _check_input(self):
         if self._n == None or self._w == None:
@@ -95,7 +97,7 @@ class RandomField(object):
         spacing = self._w / self._n
         
         kvec = fftutil.rfftfreqn(self._n, spacing / (2*math.pi))
-        
+
         self._kweight = self.powerspectrum(kvec)**0.5 * self._n.prod() / (2.0 * self._w.prod() )**0.5
 
         if not np.isfinite(self._kweight.flat[0]):

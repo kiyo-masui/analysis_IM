@@ -2,6 +2,7 @@ import scipy
 import scipy.ndimage
 import scipy.fftpack
 import scipy.special
+from scipy import interpolate
 import numpy as np
 import math
 
@@ -230,9 +231,9 @@ class RedshiftCorrelation(object):
 
         dfactor = np.mean(Dz * pz * bz)
         vfactor = np.mean(Dz * pz * fz)
-
+        print 'z1 =', z1, 'z2 =', z2
         return self.ps_vv(k_vec) * dfactor * dfactor
-
+        #return self.ps_vv(k_vec)
 
     def redshiftspace_correlation(self, pi, sigma, z1 = None, z2 = None):
         """The correlation function in the flat-sky approximation.
@@ -561,7 +562,7 @@ class RedshiftCorrelation(object):
         return (1.0 + (kpar * self.sigma_v(self.ps_redshift))**2.)**-1.
 
 
-    def _realisation_dv(self, d, n):
+    def _realisation_dv(self, d, n, cluster=False, power=None):
         """Generate the density and line of sight velocity fields in a
         3d cube.
         """
@@ -569,14 +570,17 @@ class RedshiftCorrelation(object):
         if not self._vv_only:
             raise Exception("Doesn't work for independent fields, I need to think a bit more first.")
 
-        def psv(karray):
+        def psv(karray, cluster=False, power=None):
             """Assume k0 is line of sight"""
             k = (karray**2).sum(axis=3)**0.5
+            kflat = k.flatten()
+            #pk = interpolate.interp1d(power[:,0], power[:,1], kind = 'cubic')
+            #return pk(kflat) if cluster else self.ps_vv(k) * self.velocity_damping(karray[..., 0])
             return self.ps_vv(k) * self.velocity_damping(karray[..., 0])
 
         # Generate an underlying random field realisation of the
         # matter distribution.
-        rfv = RandomField(npix = n, wsize = d)
+        rfv = RandomField(npix = n, wsize = d, cluster=cluster, power=power)
         rfv.powerspectrum = psv
 
         vf0 = rfv.getfield()
@@ -601,7 +605,7 @@ class RedshiftCorrelation(object):
     def realisation(self, z1, z2, thetax, thetay, numz, numx, numy,
                     zspace=True, refinement=1, report_physical=False,
                     density_only=False, no_mean=False, no_evolution=False,
-                    pad=5):
+                    pad=5, cluster=False, power=None):
         r"""Simulate a redshift-space volume.
 
         Generates a 3D (angle-angle-redshift) volume from the given
@@ -666,7 +670,7 @@ class RedshiftCorrelation(object):
         print "Generating cube: (%f to %f) x %f x %f (%d, %d, %d) (h^-1 cMpc)^3" % \
               (c1, c2, d[1], d[2], n[0], n[1], n[2])
 
-        cube = self._realisation_dv(d, n)
+        cube = self._realisation_dv(d, n, cluster=cluster, power=power)
         # TODO: this is probably unnecessary now (realisation used to change
         # shape through irfftn)
         n = cube[0].shape
@@ -682,7 +686,7 @@ class RedshiftCorrelation(object):
         fz = self.growth_rate(za)
         Dz = self.growth_factor(za) / self.growth_factor(self.ps_redshift)
         pz = self.prefactor(za)
-
+        print 'prefactor =', np.mean(pz), 'growth =', np.mean(Dz), 'bias =', np.mean(bz), '\n', 'overall =', np.mean(Dz * pz * bz)
         # Construct the observable and velocity fields.
         if not no_evolution:
             df = cube[0] * (Dz * pz * bz)[:,np.newaxis,np.newaxis]

@@ -57,6 +57,10 @@ class MakeCombined():
             target_mapname = 'combined_clean_map_%dmodes.npy'%mode
             target_maproot = params['targetroot'] + params['targetfile']
 
+            if not os.path.exists(target_maproot):
+                print "create path %s"%target_maproot
+                os.makedirs(target_maproot)
+
             self.make_combined(source_maplist, target_maproot, target_mapname)
 
     def find_map_list(self, sourceroot, file):

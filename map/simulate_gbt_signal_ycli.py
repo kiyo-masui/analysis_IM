@@ -10,6 +10,7 @@ Notes on foreground calls for the future (also copy param member func.):
 import os
 import copy
 import numpy as np
+import scipy as sp
 from simulations import corr21cm
 import core.algebra as algebra
 import map.beam as beam
@@ -131,22 +132,27 @@ class SimulateGbtSignal(object):
         self.scenario = self.params['scenario']
         self.template_file = self.params['template_file']
         self.output_root = self.params['output_root']
-        # here we use 300 h km/s from WiggleZ for streaming dispersion
-        self.streaming_dispersion = 300.*0.72
 
         self.template_map = algebra.make_vect( algebra.load(self.template_file))
         #self.datapath_db = data_paths.DataPath()
         #self.template_map = self.datapath_db.fetch_multi(self.template_file)
 
+        # here we use 300 h km/s from WiggleZ for streaming dispersion
+        self.streaming_dispersion = 300.*0.72
         # determine the beam model
         self.beam_data = np.array([0.316148488246, 0.306805630985,
                                    0.293729620792, 0.281176247549,
                                    0.270856788455, 0.26745856078,
                                    0.258910010848, 0.249188429031])
-
         self.freq_data = np.array([695, 725, 755, 785, 815, 845, 875, 905],
                                  dtype=float)
         self.freq_data *= 1.0e6
+
+        #self.freq_data = sp.array([1250, 1275, 1300, 1325, 1350, 1430], dtype=float)
+        ## beam_data in unit of dgree
+        #self.beam_data = sp.array([14.4, 14.4, 14.4, 14.4, 14.4, 14.4])/60. 
+        #self.beam_data = self.beam_data*1420/self.freq_data
+        #self.freq_data *= 1.0e6
 
         # register any maps that need to be produced
         self.sim_map_phys = None
@@ -295,15 +301,17 @@ class SimulateGbtSignal(object):
         r"""this produces self.sim_map_optsim"""
 
         print "making sim of optically-selected galaxies"
-        selection_function = \
-                self.datapath_db.fetch_multi(self.params['selection_file'])
+        #selection_function = \
+        #        self.datapath_db.fetch_multi(self.params['selection_file'])
+        selection_function = np.load(self.params['selection_file'])
 
         poisson_vect = np.vectorize(np.random.poisson)
 
-        print self.sim_map_delta
+        print self.sim_map_delta.min()
 
         mean_num_gal = (self.sim_map_delta + 1.) * selection_function
-        print mean_num_gal
+        print mean_num_gal.min()
+        mean_num_gal[mean_num_gal<0] = 0.
 
         self.sim_map_optsim = poisson_vect(mean_num_gal)
         self.sim_map_optsim = \

@@ -54,7 +54,6 @@ class Beam(object):
         for large matrices that we can only hold in memory one at a time.
         Also this would be pretty easy to implement.
         """
-
         if ((not 'freq' in alg_ob.axes)
             or (not 'ra' in alg_ob.axes)
             or (not 'dec' in alg_ob.axes)):

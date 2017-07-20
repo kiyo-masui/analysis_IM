@@ -1,12 +1,12 @@
 r"""Program that calculates the correlation function across frequency slices.
 """
-import copy
 import gc
 import scipy as sp
 import numpy as np
 import numpy.ma as ma
 from core import algebra
 from map import beam
+import copy
 from map import physical_gridding as pg
 import kiyopy.utils
 #from quadratic_products import corr_estimation
@@ -29,7 +29,7 @@ params_init = {
                'telescope' : 'Parkes',
                # Angular lags at which to calculate the correlation.  Upper
                # edge bins in degrees.
-               'lags': tuple(sp.arange(0.002, 0.2, 0.12))               
+               'lags': tuple(sp.arange(0.002, 0.2, 0.12))
                }
 prefix = 'fs_'
 
@@ -276,6 +276,7 @@ class MapPair(object):
             hitmap = common_resolution.apply(hitmap)
             weight *= hitmap**2
             return weight
+        common_resolution = self.degrade_function(telescope=self.params['telescope'])
 
         def degrade_resolution_for_noise(noise, common_resolution):
             noise[noise < 1.e-30] = 1.e-30

@@ -20,6 +20,8 @@ from scipy import linalg
 from scipy import interpolate
 import numpy as np
 #import matplotlib.pyplot as plt
+import pyximport
+pyximport.install()
 
 import core.algebra as al
 from core import fitsGBT

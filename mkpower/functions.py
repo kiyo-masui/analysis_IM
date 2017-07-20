@@ -11,7 +11,7 @@ import gc
 import string
 from scipy import integrate
 from math import *
-from map import physical_gridding as gridding
+from map import physical_gridding_TEST as gridding
 import copy
 #import fftw3 as FFTW
 #import pyfftw.FFTW as FFTW
@@ -26,20 +26,34 @@ from utils import fftutil
 
 class BOX(object):
     def __init__(self, imap1, imap2, weight1, weight2):
+        if not isinstance(imap1, list):
+            imap1 = [imap1,]
+            imap2 = [imap2,]
+            weight1 = [weight1,]
+            weight2 = [weight2,]
         self.imap1 = imap1
         self.imap2 = imap2
         self.weight1 = weight1
         self.weight2 = weight2
 
-    def mapping_to_xyz(self):
+    def mapping_to_xyz(self, box_path=None, feedback=False, cube_force=None, 
+            largeangle=False):
         #self.box_bin, self.boxunit = get_box_xyz(self.imap1, self.boxshape)
 
         #self.ibox1, self.nbox1 = get_box(self.box_bin, self.imap1, self.weight1)
         #self.ibox2, self.nbox2 = get_box(self.box_bin, self.imap2, self.weight2)
 
         self.flag_nan(target="map")
-        gridding_method = gridding.physical_grid_largeangle
-        #gridding_method = gridding.physical_grid
+        if largeangle:
+            gridding_method = gridding.physical_axes
+            #gridding_method = gridding.physical_grid_largeangle
+        else:
+            gridding_method = gridding.physical_grid
+            self.imap1   = self.imap1[0]
+            self.imap2   = self.imap2[0]
+            self.weight1 = self.weight1[0]
+            self.weight2 = self.weight2[0]
+        self.gridding_method = gridding_method
 
         ## shift test 
         #print "Shift 2 pixels for testing "
@@ -47,11 +61,40 @@ class BOX(object):
         #self.imap2[:, :2, :] = 0.
         #self.weight2[:, 2:, :] = self.weight2[:, :-2, :]
         #self.weight2[:, :2, :] = 0.
+        ## shift frequency test
+        #print "Shift 1 frequency for testing "
+        #self.imap1[1:, :, :] = self.imap1[:-1, :, :]
+        #self.imap1[0, :, :] = 0.
+        #self.weight1[1:, :, :] = self.weight1[:-1, :, :]
+        #self.weight1[0, :, :] = 0.
+        #self.imap1[:-1, :, :] = self.imap1[1:, :, :]
+        #self.imap1[-1, :, :] = 0.
+        #self.weight1[:-1, :, :] = self.weight1[1:, :, :]
+        #self.weight1[-1, :, :] = 0.
 
-        self.ibox1, ibox1_info = gridding_method(self.imap1, refinement=1, order=1)
-        self.ibox2, ibox2_info = gridding_method(self.imap2, refinement=1, order=1)
-        self.nbox1, nbox1_info = gridding_method(self.weight1, refinement=1, order=1)
-        self.nbox2, nbox2_info = gridding_method(self.weight2, refinement=1, order=1)
+
+        #gridding_arg = (refinement, pad, order, info_only, feedback)
+        #gridding_arg = (1, 5, 1, False, feedback)
+        self.ibox1, ibox1_info = gridding_method(self.imap1, refinement=1)
+        self.ibox2, ibox2_info = gridding_method(self.imap2, refinement=1)
+        self.nbox1, nbox1_info = gridding_method(self.weight1, refinement=1)
+        self.nbox2, nbox2_info = gridding_method(self.weight2, refinement=1)        
+        #self.ibox1, ibox1_info = gridding_method(self.imap1, refinement=1, order=2,
+        #        pad=5, info_only=False, feedback=feedback, cube_force=cube_force)
+        #self.ibox2, ibox2_info = gridding_method(self.imap2, refinement=1, order=2,
+        #        pad=5, info_only=False, feedback=feedback, cube_force=cube_force)
+        #self.nbox1, nbox1_info = gridding_method(self.weight1, refinement=1, order=2,
+        #        pad=5, info_only=False, feedback=feedback, cube_force=cube_force)
+        #self.nbox2, nbox2_info = gridding_method(self.weight2, refinement=1, order=2,
+        #        pad=5, info_only=False, feedback=feedback, cube_force=cube_force)
+
+        # THE ABOVE WASN'T COMMENTED
+        print ibox1_info
+        print ibox2_info
+        print nbox1_info
+        print nbox2_info
+
+        # THE BELOW WASN'T EITHER
 
         self.ibox1 = algebra.make_vect(self.ibox1, ibox1_info['axes'])
         self.ibox2 = algebra.make_vect(self.ibox2, ibox2_info['axes'])
@@ -62,6 +105,17 @@ class BOX(object):
         self.ibox2.info = ibox2_info
         self.nbox1.info = nbox1_info
         self.nbox2.info = nbox2_info
+
+        if box_path != None:
+            algebra.save(box_path[0] + 'ibox1', self.ibox1)
+            algebra.save(box_path[1] + 'ibox2', self.ibox2)
+            algebra.save(box_path[0] + 'nbox1', self.nbox1)
+            algebra.save(box_path[1] + 'nbox2', self.nbox2)
+
+        #self.ibox1 = self.imap1
+        #self.ibox2 = self.imap2
+        #self.nbox1 = self.weight1
+        #self.nbox2 = self.weight2
 
         self.boxshape = []
         self.boxunit = []
@@ -90,36 +144,67 @@ class BOX(object):
             self.nbox1[np.isinf(self.nbox1)] = 0.
             self.nbox2[np.isinf(self.ibox2)] = 0.
             self.nbox2[np.isinf(self.nbox2)] = 0.
-        elif target == "map":
-            self.imap1[np.isnan(self.imap1)] = 0.
-            self.imap2[np.isnan(self.imap2)] = 0.
-            self.weight1[np.isnan(self.imap1)] = 0.
-            self.weight1[np.isnan(self.weight1)] = 0.
-            self.weight2[np.isnan(self.imap2)] = 0.
-            self.weight2[np.isnan(self.weight2)] = 0.
-            self.imap1[np.isinf(self.imap1)] = 0.
-            self.imap2[np.isinf(self.imap2)] = 0.
-            self.weight1[np.isinf(self.imap1)] = 0.
-            self.weight1[np.isinf(self.weight1)] = 0.
-            self.weight2[np.isinf(self.imap2)] = 0.
-            self.weight2[np.isinf(self.weight2)] = 0.
 
-            self.weight1[self.weight1 < 1.e-20] = 0.
-            self.weight2[self.weight2 < 1.e-20] = 0.
+            self.nbox1[self.nbox2==0] = 0.
+            self.nbox2[self.nbox1==0] = 0.
+
+
+        elif target == "map":
+
+            for i in range(len(self.imap1)):
+
+                self.imap1[i][np.isnan(self.imap1[i])] = 0.
+                self.imap2[i][np.isnan(self.imap2[i])] = 0.
+                self.weight1[i][np.isnan(self.imap1[i])] = 0.
+                self.weight1[i][np.isnan(self.weight1[i])] = 0.
+                self.weight2[i][np.isnan(self.imap2[i])] = 0.
+                self.weight2[i][np.isnan(self.weight2[i])] = 0.
+
+                self.imap1[i][np.isinf(self.imap1[i])] = 0.
+                self.imap2[i][np.isinf(self.imap2[i])] = 0.
+                self.weight1[i][np.isinf(self.imap1[i])] = 0.
+                self.weight1[i][np.isinf(self.weight1[i])] = 0.
+                self.weight2[i][np.isinf(self.imap2[i])] = 0.
+                self.weight2[i][np.isinf(self.weight2[i])] = 0.
+
+
+                self.weight1[i][self.weight1[i] < 1.e-20] = 0.
+                self.weight2[i][self.weight2[i] < 1.e-20] = 0.
+
+                self.weight1[i][self.imap1[i] == 0] = 0.
+                self.weight2[i][self.imap2[i] == 0] = 0.
+
+                self.weight1[i][self.weight2[i] == 0] = 0.
+                self.weight2[i][self.weight1[i] == 0] = 0.
 
     def subtract_mean(self):
         self.ibox1 = self.ibox1 - self.ibox1.flatten().mean()
         self.ibox2 = self.ibox2 - self.ibox2.flatten().mean()
 
     def subtract_weighted_mean(self):
-        mean1 = np.sum(np.sum(self.ibox1, -1), -1)
+        mean1 = np.sum(np.sum(self.ibox1 * self.nbox1, -1), -1)
         mean1_weight = np.sum(np.sum(self.nbox1, -1), -1)
         mean1_weight[mean1_weight==0] = np.inf
         mean1 /= mean1_weight
         #print "Max and Min of weighted mean1 : ", mean1.max(), mean1.min()
         self.ibox1 -= mean1[:, None, None]
 
-        mean2 = np.sum(np.sum(self.ibox2, -1), -1)
+        mean2 = np.sum(np.sum(self.ibox2 * self.nbox2, -1), -1)
+        mean2_weight = np.sum(np.sum(self.nbox2, -1), -1)
+        mean2_weight[mean2_weight==0] = np.inf
+        mean2 /= mean2_weight
+        #self.ibox2 -= mean2[:, None, None]
+        #print "Max and Min of weighted mean2 : ", mean1.max(), mean2.min()
+
+    def auto_subtract_weighted_mean(self):
+        mean1 = np.sum(np.sum(self.ibox1 * self.nbox1, -1), -1)
+        mean1_weight = np.sum(np.sum(self.nbox1, -1), -1)
+        mean1_weight[mean1_weight==0] = np.inf
+        mean1 /= mean1_weight
+        #print "Max and Min of weighted mean1 : ", mean1.max(), mean1.min()
+        self.ibox1 -= mean1[:, None, None]
+
+        mean2 = np.sum(np.sum(self.ibox2 * self.nbox2, -1), -1)
         mean2_weight = np.sum(np.sum(self.nbox2, -1), -1)
         mean2_weight[mean2_weight==0] = np.inf
         mean2 /= mean2_weight
@@ -134,26 +219,89 @@ class BOX(object):
 
         return map
         
+    def auto_estimate_ps_3d(self, window="blackman"):
 
-    def estimate_ps_3d(self, window="blackman"):
-
-        #self.flag_nan(target="box")
+        self.flag_nan(target="box")
 
         #window_function = fftutil.window_nd(self.nbox1.shape, name=window)
         #window_function = fftutil.window_nd((self.nbox1.shape[0],), name=window)
-        window_func = getattr(np, window)
-        window_function = window_func(self.nbox1.shape[0])
-        #self.nbox1 *= window_function[:, None, None]
-        #self.nbox2 *= window_function[:, None, None]
+        if window != None:
+            window_func = getattr(np, window)
+            window_function = window_func(self.nbox1.shape[0])
+            self.nbox1 *= window_function[:, None, None]
+            self.nbox2 *= window_function[:, None, None]
+
+        #print 'Checking for negatives zero...', (self.ibox1 < 0).sum(), (self.ibox2 < 0).sum()
+        #self.subtract_mean()
+        self.auto_subtract_weighted_mean()
+        #print 'Checking for negatives first...', (self.ibox1 < 0).sum(), (self.ibox2 < 0).sum()
+        self.ibox1 *= self.nbox1
+        self.ibox2 *= self.nbox2
+        #print 'Checking for negatives second...', (self.ibox1 < 0).sum(), (self.ibox2 < 0).sum()
+
+        normal = np.sum(self.nbox1 * self.nbox2)
+        normal[normal == 0] = np.inf
+        delta_v = np.prod(self.boxunit)
+
+        #  iput_1 = np.zeros(self.boxshape, dtype=complex)
+        #  oput_1 = np.zeros(self.boxshape, dtype=complex)
+        #  iput_1.imag = 0.
+        #  iput_1.real = self.ibox1
+        #  #plan_1 = FFTW.Plan(iput_1, oput_1, direction='forward', flags=['measure'])
+        #  #FFTW.execute(plan_1)
+        #  #FFTW.execute(plan_1)
+        #  oput_1 = np.fft.fftn(iput_1)
+
+        #  iput_2 = np.zeros(self.boxshape, dtype=complex)
+        #  oput_2 = np.zeros(self.boxshape, dtype=complex)
+        #  iput_2.imag = 0.
+        #  iput_2.real = self.ibox2
+        #  #plan_2 = FFTW.Plan(iput_2, oput_2, direction='forward', flags=['measure'])
+        #  #FFTW.execute(plan_2)
+        #  oput_2 = np.fft.fftn(iput_2)
+
+        #  oput_1 = np.fft.fftshift(oput_1)
+        #  oput_2 = np.fft.fftshift(oput_2)
+
+        oput_1 = np.fft.fftshift(np.fft.fftn(self.ibox1))
+        oput_2 = np.fft.fftshift(np.fft.fftn(self.ibox2))
+        #print 'Checking for negatives 3rd...', (oput_1 < 0).sum(), (oput_2 < 0).sum()
+      
+        self.ps_3d  = (oput_1 * oput_2.conj()).real
+        self.ps_3d *= delta_v
+        #print 'Checking for negatives 4th...', (self.ps_3d < 0).sum()
+        self.ps_3d /= normal
+        #print 'Checking for negatives 5th...', (self.ps_3d < 0).sum()               
+
+        self.ps_3d_imag  = (oput_1 * oput_2.conj()).imag
+        self.ps_3d_imag *= delta_v
+        self.ps_3d_imag /= normal
+
+        del oput_1
+        del oput_2
+        gc.collect()
+
+
+    def estimate_ps_3d(self, window="blackman"):
+
+        self.flag_nan(target="box")
+
+        #window_function = fftutil.window_nd(self.nbox1.shape, name=window)
+        #window_function = fftutil.window_nd((self.nbox1.shape[0],), name=window)
+        if window != None:
+            window_func = getattr(np, window)
+            window_function = window_func(self.nbox1.shape[0])
+            self.nbox1 *= window_function[:, None, None]
+            self.nbox2 *= window_function[:, None, None]
+
+        #self.subtract_mean()
+        self.subtract_weighted_mean()
 
         self.ibox1 *= self.nbox1
         self.ibox2 *= self.nbox2
 
-
-        #self.subtract_mean()
-        #self.subtract_weighted_mean()
-
         normal = np.sum(self.nbox1 * self.nbox2)
+        normal[normal == 0] = np.inf
         delta_v = np.prod(self.boxunit)
 
         #  iput_1 = np.zeros(self.boxshape, dtype=complex)
@@ -182,6 +330,10 @@ class BOX(object):
         self.ps_3d *= delta_v
         self.ps_3d /= normal
 
+        self.ps_3d_imag  = (oput_1 * oput_2.conj()).imag
+        self.ps_3d_imag *= delta_v
+        self.ps_3d_imag /= normal
+
         del oput_1
         del oput_2
         gc.collect()
@@ -194,12 +346,17 @@ class BOX(object):
                                                               self.boxunit[1]))
         k_bin_z = 2. * np.pi * np.fft.fftshift(np.fft.fftfreq(self.boxshape[2],
                                                               self.boxunit[2]))
+
+        #print "k_bin_x:", k_bin_x
+        #print "k_bin_y:", k_bin_y
+        #print "k_bin_z:", k_bin_z
+
         return k_bin_x, k_bin_y, k_bin_z
 
     def convert_ps_to_unitless(self):
 
-        print "convert power to unitless", 
-        print self.boxshape
+        #print "convert power to unitless", 
+        #print self.boxshape
         k_bin_x, k_bin_y, k_bin_z = self.get_k_bin_centre()
 
         k_bin_r = np.sqrt( (k_bin_x**2)[:, None, None] + 
@@ -213,11 +370,12 @@ class BOX(object):
 
         #self.ps_3d = self.ps_3d * k_bin_r**3 / 2. / np.pi**2
         self.ps_3d = self.ps_3d * k_bin_r ** ndim * factor
+        self.ps_3d_imag = self.ps_3d_imag * k_bin_r ** ndim * factor
 
     def convert_3dps_to_1dps(self, k_edges):
 
-        print "convert 3d power ot 1d power",
-        print self.boxshape
+        #print "convert 3d power ot 1d power",
+        #print self.boxshape
         k_bin_x, k_bin_y, k_bin_z = self.get_k_bin_centre()
 
         k_bin_r = np.sqrt( (k_bin_x**2)[:, None, None] + 
@@ -240,10 +398,113 @@ class BOX(object):
         self.kn_1d = kn_1d
         self.ps_1d = ps_1d
 
+
+    def convert_3dps_to_2dps_dipole(self, k_edges_p, k_edges_v):
+
+        '''
+            get the 2dps with positive and negative k_p separately
+        '''
+        
+        #print "convert 3d power ot 2d power",
+        #print self.boxshape
+
+        # get positive k_p
+
+        k_bin_x, k_bin_y, k_bin_z = self.get_k_bin_centre()
+
+        k_bin_p = k_bin_x
+        #print "k_bin_p_kpp: ", k_bin_p
+        k_bin_v = np.sqrt( (k_bin_y**2)[:,None] + (k_bin_z**2)[None,:] )
+
+        k_bin_2d = np.zeros(shape=(2,)+ k_bin_p.shape + k_bin_v.shape)
+        k_bin_2d[0] = k_bin_p[:, None, None]
+        k_bin_2d[1] = k_bin_v[None, :, :]
+
+        ps_3d_flatten = copy.deepcopy(self.ps_3d_imag.flatten())
+        k_bin_2d = k_bin_2d.reshape(2, -1)
+        k_bin_2d = k_bin_2d[:, np.isfinite(ps_3d_flatten)]
+        ps_3d_flatten = ps_3d_flatten[np.isfinite(ps_3d_flatten)]
+
+        #kn_2d, xedges, yedges = np.histogram2d(k_bin_2d[0], k_bin_2d[1],
+        #                                       (k_edges_p, k_edges_v),)
+
+        #ps_2d, xedges, yedges = np.histogram2d(k_bin_2d[0], k_bin_2d[1],
+        #                                       (k_edges_p, k_edges_v),
+        #                                       weights=ps_3d_flatten)
+        kn_2d, xedges, yedges = np.histogram2d(k_bin_2d[1], k_bin_2d[0],
+                                               (k_edges_v, k_edges_p),)
+
+        ps_2d, xedges, yedges = np.histogram2d(k_bin_2d[1], k_bin_2d[0],
+                                               (k_edges_v, k_edges_p),
+                                               weights=ps_3d_flatten)
+        kn_2d = kn_2d.astype(float)
+        #kn_2d[kn_2d==0] = np.inf
+        ps_2d[kn_2d!=0] /= kn_2d[kn_2d!=0]
+        ps_2d[kn_2d==0] = 0.
+        #kn_2d[kn_2d==np.inf] = 0. 
+        self.kn_2d_kpp = kn_2d
+        self.ps_2d_kpp = ps_2d
+
+        # get 1d dipole against k_p
+        kn_1d, xedges = np.histogram(k_bin_2d[0], k_edges_p,)
+        ps_1d, xedges = np.histogram(k_bin_2d[0], k_edges_p, weights=ps_3d_flatten)
+        kn_1d = kn_1d.astype(float)
+        ps_1d[kn_1d!=0] /= kn_1d[kn_1d!=0]
+        ps_1d[kn_1d==0] = 0
+        self.kn_1d_kpp = kn_1d
+        self.ps_1d_kpp = ps_1d
+
+        # get negative k_p
+
+        k_bin_x, k_bin_y, k_bin_z = self.get_k_bin_centre()
+
+        k_bin_p = -k_bin_x
+        #print "k_bin_p_kpn: ", k_bin_p
+        k_bin_v = np.sqrt( (k_bin_y**2)[:,None] + (k_bin_z**2)[None,:] )
+
+        k_bin_2d = np.zeros(shape=(2,)+ k_bin_p.shape + k_bin_v.shape)
+        k_bin_2d[0] = k_bin_p[:, None, None]
+        k_bin_2d[1] = k_bin_v[None, :, :]
+
+        ps_3d_flatten = copy.deepcopy(self.ps_3d_imag.flatten())
+        k_bin_2d = k_bin_2d.reshape(2, -1)
+        k_bin_2d = k_bin_2d[:, np.isfinite(ps_3d_flatten)]
+        ps_3d_flatten = ps_3d_flatten[np.isfinite(ps_3d_flatten)]
+
+        #kn_2d, xedges, yedges = np.histogram2d(k_bin_2d[0], k_bin_2d[1],
+        #                                       (k_edges_p, k_edges_v),)
+
+        #ps_2d, xedges, yedges = np.histogram2d(k_bin_2d[0], k_bin_2d[1],
+        #                                       (k_edges_p, k_edges_v),
+        #                                       weights=ps_3d_flatten)
+        kn_2d, xedges, yedges = np.histogram2d(k_bin_2d[1], k_bin_2d[0],
+                                               (k_edges_v, k_edges_p),)
+
+        ps_2d, xedges, yedges = np.histogram2d(k_bin_2d[1], k_bin_2d[0],
+                                               (k_edges_v, k_edges_p),
+                                               weights=ps_3d_flatten)
+        kn_2d = kn_2d.astype(float)
+        #kn_2d[kn_2d==0] = np.inf
+        ps_2d[kn_2d!=0] /= kn_2d[kn_2d!=0]
+        ps_2d[kn_2d==0] = 0.
+        #kn_2d[kn_2d==np.inf] = 0. 
+        self.kn_2d_kpn = kn_2d
+        self.ps_2d_kpn = ps_2d
+
+        # get 1d dipole against k_p
+        kn_1d, xedges = np.histogram(k_bin_2d[0], k_edges_p,)
+        ps_1d, xedges = np.histogram(k_bin_2d[0], k_edges_p, weights=ps_3d_flatten)
+        kn_1d = kn_1d.astype(float)
+        ps_1d[kn_1d!=0] /= kn_1d[kn_1d!=0]
+        ps_1d[kn_1d==0] = 0
+        self.kn_1d_kpn = kn_1d
+        self.ps_1d_kpn = ps_1d
+
+
     def convert_3dps_to_2dps(self, k_edges_p, k_edges_v):
         
-        print "convert 3d power ot 2d power",
-        print self.boxshape
+        #print "convert 3d power ot 2d power",
+        #print self.boxshape
         k_bin_x, k_bin_y, k_bin_z = self.get_k_bin_centre()
 
         k_bin_p = np.sqrt( k_bin_x**2)
@@ -265,10 +526,10 @@ class BOX(object):
         #                                       (k_edges_p, k_edges_v),
         #                                       weights=ps_3d_flatten)
         kn_2d, xedges, yedges = np.histogram2d(k_bin_2d[1], k_bin_2d[0],
-                                               (k_edges_p, k_edges_v),)
+                                               (k_edges_v, k_edges_p),)
 
         ps_2d, xedges, yedges = np.histogram2d(k_bin_2d[1], k_bin_2d[0],
-                                               (k_edges_p, k_edges_v),
+                                               (k_edges_v, k_edges_p),
                                                weights=ps_3d_flatten)
 
         kn_2d = kn_2d.astype(float)
@@ -481,19 +742,53 @@ def get_mapdict(dir, selection=None):
             if mapsplit[0] == 'combined':
                 key1 = mapsplit[2]
                 key2 = mapsplit[3]
+                if len(mapsplit)>4:
+                    key3 = (mapsplit[-1])
+                    mapdict['%s;%s;%s'%(key1,key2,key3)] = dir + map
+                else:
+                    mapdict['%s;%s'%(key1, key2)] = dir + map
 
-                mapdict['%s;%s'%(key1, key2)] = dir + map
-
-            if mapsplit[0] == 'secA' or\
-               mapsplit[0] == 'secB' or\
+            if len(mapsplit[1]) == 4:
+                if mapsplit[1][0:4] == 'beam':
+               #mapsplit[1] == 'beam' or\
+               #mapsplit[1] == 'secB' or\
+               #mapsplit[1] == 'secA':
+                    if mapsplit[2] == 'cleaned':
+                        key1 = mapsplit[1].split('m')[-1]
+                        key2 = mapsplit[4]
+                        key3 = mapsplit[7].split('m')[-1]
+                        key4 = mapsplit[8]
+                        mapdict['%s;%s;%s;%s'%(key1, key2, key3, key4)] = dir + map
+ 
+            if mapsplit[0] == 'secD' or\
                mapsplit[0] == 'secC' or\
-               mapsplit[0] == 'secD':
-                key1 = mapsplit[0][-1]
-                key2 = mapsplit[3] + '_' + mapsplit[4]
+               mapsplit[0] == 'secB' or\
+               mapsplit[0] == 'secA':
+                if len(mapsplit)>=7:
+                    key1 = mapsplit[0][-1]
+                    key2 = mapsplit[1]
+                    key3 = mapsplit[3]
+                    key4 = mapsplit[-2]
+                    key5 = int(mapsplit[-1])
+                    mapdict['%s;%s;%s;%s;%d'%(key1, key2, key3, key4, key5)] = dir + map
+                else: 
+                    key1 = mapsplit[0][-1]
+                    key2 = mapsplit[1]
+                    key3 = mapsplit[4]
+                    key4 = mapsplit[-1]
+                    mapdict['%s;%s;%s;%s'%(key1, key2, key3, key4)] = dir + map
+
+            if mapsplit[0] == 'sim123' and mapsplit[2] == selection or\
+               mapsplit[0] == 'sim456' and mapsplit[2] == selection or\
+               mapsplit[0] == 'sim789' and mapsplit[2] == selection or\
+               mapsplit[0] == 'sim10to13' and mapsplit[2] == selection:
+                key1 = mapsplit[0].split('m')[-1]
+                key2 = mapsplit[1]
+                key4 = mapsplit[-2]
+                key3 = int(mapsplit[-1])
                 #if key2=='noise_inv' and mapsplit[5] == 'diag':
                 #    key2='noise_weight'
-
-                mapdict['%s;%s'%(key1, key2)] = dir + map
+                mapdict['%s;%s;%s;%s'%(key1, key2, key4, key3)] = dir + map
 
             if mapsplit[0] == 'sim' and mapsplit[1] == selection:
                 key1 = int(mapsplit[2])
@@ -501,7 +796,8 @@ def get_mapdict(dir, selection=None):
                 mapdict['%d'%key1] = dir + map
 
             if len(mapsplit)>=3:
-                if mapsplit[2] == '2df' and mapsplit[0] == selection:
+                if ( mapsplit[2] == '2df' or mapsplit[2] == 'wigglez' )\
+                        and mapsplit[0] == selection:
                     if selection == 'sele' and mapsplit[-1] == 'separable':
                         return dir + map
                     #if selection == 'real' and len(mapsplit) == 3:
@@ -517,8 +813,14 @@ def get_mapdict(dir, selection=None):
                             key1 = int(mapsplit[4])
                             mapdict['%d'%key1] = dir + map
 
+
             if mapsplit[0][:3] == 'reg':
-                if mapsplit[0].split('.')[0][5:] == selection:
+                #if mapsplit[0].split('.')[0][5:] == selection:
+                if mapsplit[0].split('.')[0][5:] == 'montecarlo' and\
+                        selection == 'sele':
+                    return dir + map
+                elif mapsplit[0].split('.')[0][5:] == 'data' and\
+                     selection == 'real':
                     return dir + map
                 elif len(mapsplit[0].split('.')[0]) == 12 and\
                      mapsplit[0].split('.')[0][5:-3] == 'rand':

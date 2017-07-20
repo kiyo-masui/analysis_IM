@@ -4,6 +4,7 @@ This program sdfits files from the Parkes format to the GBT format.
 This program is pipeline compatible.
 """
 
+import os
 import datetime
 import multiprocessing as mp
 
@@ -17,14 +18,17 @@ from core import fitsGBT
 
 params_init = {
                # IO:
-               'input_root' : './testdata/',
+               'input_root' : '/home/p/pen/ycli/scratch/data/pks/2012/RAWDATA_SDF/20121024/',
                # The unique part of every fname
                'file_middles' : ("testfile_GBTfits",),
-               'input_end' : ".fits",
+               'input_files' : {"testfile_GBTfits":["2012-10-24_1505-P641_west1_1315_P641.sdfits",]},
                'output_root' : "./",
                'output_end' : ".testout.fits",
                # What data to process within each file.
-               'beams' : ()
+               'beams' : (1,2,3,4,5,6,7),
+               'table_jy2k' : "", 
+               'table_ginv' : "",
+               'regular_shape' : (1222, 1, 1, 2, 1024),
                }
 
 prefix = 'p2g_'
@@ -41,9 +45,13 @@ class Converter(object):
     def execute(self, n_processes=1):
         params = self.params
         # Make parent directories if need be.
+        print params['output_root']
         utils.mkparents(params['output_root'])
         parse_ini.write_params(params, params['output_root'] + 'params.ini',
                                prefix=prefix)
+
+        self.get_cal()
+
         n_new = n_processes - 1
         n_files = len(params['file_middles'])
         # Loop over the files to process.
@@ -75,42 +83,44 @@ class Converter(object):
 
         params = self.params
         file_middle = params['file_middles'][file_ind]
-        input_fname = (params['input_root'] + file_middle +
-                       params['input_end'])
         output_fname = (params['output_root']
                         + file_middle + params['output_end'])
-        Writer = fitsGBT.Writer(feedback=self.feedback)
 
-        if self.feedback > 1:
-            print "Reading Parkes fits file: " + input_fname
-        hdulist = pyfits.open(input_fname)
-        # Flag out the redundant cycles
-        if hdulist[1].data['DATA'].shape == (1222, 1, 1, 2, 1024):
-            print 'DATA have redundant cycles! Flag them out'
-            self.flagout_redundant_cycles(hdulist)
-        # Check if the data have the regular shape
-        if hdulist[1].data['DATA'].shape != (1170, 1, 1, 2, 1024):
-            print 'DATA Ignore: %s'%file_middle
-            print '\t\tdo not have the regular data shape'
-            print '\t\t',hdulist[1].data['DATA'].shape
-            return 
-            
-        # Convert to GBT format.
-        Blocks = self.blocks_from_parkes_hdulist(hdulist)
+        input_files = params['input_files'][file_middle]
+        Blocks = []
+        for input_file in input_files:
+            input_fname = (params['input_root'] + input_file)
+
+            if self.feedback > 1:
+                print "Reading Parkes fits file: " + input_fname
+            hdulist = pyfits.open(input_fname)
+            #if hdulist[1].data['DATA'].shape != params['regular_shape']:
+            #    print 'DATA Ignore:\n' +\
+            #          '\tdo not have the regular data shape\n' +\
+            #          '\t',hdulist[1].data['DATA'].shape
+            #    continue
+            # Convert to GBT format.
+            Blocks.append(self.blocks_from_parkes_hdulist(hdulist))
         # Write out.
-        Writer.add_data(Blocks)
-        utils.mkparents(output_fname)        
-        Writer.write(output_fname)
-
-    def flagout_redundant_cycles(self, hdulist):
-        f_i = hdulist[1].data.field('FLAGGED')
-        print f_i.shape
-        if (f_i == 1).any():
-            f_i = (f_i == 0).reshape(f_i.shape[0], -1).all(axis=1)
-        hdulist[1].data = hdulist[1].data[f_i]
+        if Blocks == []:
+            return
+        beams = params['beams']
+        if not beams:
+            beams = range(len(Blocks)//len(input_files))
+        for beam in range(len(beams)):
+            Writer = fitsGBT.Writer(feedback=self.feedback)
+            output_fname = (params['output_root'] + file_middle + 
+                    '_beam_%02d'%beams[beam] + params['output_end'])
+            Blocks_beam = []
+            for Blocks_file in Blocks:
+                Blocks_beam = Blocks_file[beam]
+                print Blocks_beam
+                Writer.add_data(Blocks_beam)
+            utils.mkparents(output_fname)        
+            Writer.write(output_fname)
 
     def blocks_from_parkes_hdulist(self, hdulist):
-        
+
         hdudata = hdulist[1]
         fheader = hdudata.header
         fdata = hdudata.data
@@ -126,12 +136,12 @@ class Converter(object):
         else:
             raise NotImplementedError('polarizations not in expected order.')
         # First figure out the beams, make sure that the cycle regulairily etc.
-        beam_axis = fdata.field('BEAM')
+        beam_axis = fdata.field('BEAM').copy()
         n_beam = 13 # Generalize later.
         n_time = len(fdata) // n_beam
         # Make sure the beam index cycles regularly.
-        beam_axis.shape = (n_time, n_beam)
-        if not np.all(beam_axis == range(1, n_beam + 1)):
+        #beam_axis.shape = (n_time, n_beam)
+        if not np.all(beam_axis.reshape(n_time, n_beam) == range(1, n_beam + 1)):
             raise NotImplementedError("Beams out of order.")
         # Figure out which beams to process.
         beams = self.params['beams']
@@ -144,12 +154,19 @@ class Converter(object):
         for beam_index in beams:
             this_beam_inds = np.arange(n_time) * n_beam + beam_index
             this_fdata = fdata[this_beam_inds]
+            #this_fdata = fdata[:][beam_index]
             if not np.all(this_fdata['BEAM'] == beam_index + 1):
+                print this_fdata['BEAM']
                 raise RuntimeError('Something went horribly wrong.')
             data = this_fdata.field('DATA').copy()
             mask = this_fdata.field('FLAGGED').copy()
             # Reshape to the GBTfits order.
             data.shape = mask.shape = (n_time, n_pol, 1, n_chan)
+            # Cal and convert to K
+            if self.jy2k != None:
+                data *= self.jy2k[beam_index][None, :, None, None]
+            if self.ginv != None:
+                data *= self.ginv[beam_index][None, :, None, None]
             # Create the GBT DataBlock object.
             this_Data = data_block.DataBlock(data)
             # Apply the mask. mask == 1 is nessisary to recast to bool.
@@ -172,8 +189,8 @@ class Converter(object):
             # These fields are functions of time.
             t_sys = np.array(this_fdata['TSYS'], dtype=np.float64)
             this_Data.set_field('TSYS', t_sys, ('time', 'pol'), '1D') 
-            copy_time_field_float(this_fdata, this_Data, 'CRVAL3', 'RA-OBS')
-            copy_time_field_float(this_fdata, this_Data, 'CRVAL4', 'DEC-OBS')
+            copy_time_field_float(this_fdata, this_Data, 'CRVAL3', 'RA')
+            copy_time_field_float(this_fdata, this_Data, 'CRVAL4', 'DEC')
             copy_time_field_float(this_fdata, this_Data, 'AZIMUTH', 'AZIMUTH')
             copy_time_field_float(this_fdata, this_Data, 'ELEVATIO', 'ELEVATIO')
             copy_time_field_float(this_fdata, this_Data, 'PARANGLE', 'PARANGLE')
@@ -184,14 +201,37 @@ class Converter(object):
             crpix1 = round(this_fdata['CRPIX1'][0])
             if not np.allclose(this_fdata['CRPIX1'], crpix1):
                 raise RuntimeError('CRPIX1 issue.')
+            # Set the freq increase
+            if this_fdata['CDELT1'][0] < 0:
+                print "Note: change the delta frequency to positave"
+                this_Data.set_field('CDELT1', -this_fdata['CDELT1'][0], (), '1D')
+                this_Data.set_field('CRVAL1',  this_fdata['CRVAL1'][0], (), '1D')
+                this_Data.data = this_Data.data[:, :, :, ::-1]
+            #if this_fdata['CDELT1'][0] < 0:
+            #    this_Data.set_field('CDELT1', -this_fdata['CDELT1'][0], (), '1D')
+            #    freq = (np.arange(data.shape[-1], dtype=float) + 1.0 -
+            #            this_fdata['CRPIX1'][0]) * (-this_fdata['CDELT1'][0]) + \
+            #            this_fdata['CRVAL1'][0]
+            #    this_Data.data = this_Data.data[:, :, :, ::-1]
+            #    this_Data.data[:, :, :, 1:] = this_Data.data[:, :, :, :-1]
+            #    this_Data.data[:, :, :, 0] = 0.
+            #    this_Data.set_field('CRVAL1', freq[this_fdata['CRPIX1'][0] - 1], 
+            #            (), '1D')
+            #    print "invserse frequency index: centre ", \
+            #            freq[this_fdata['CRPIX1'][0] - 1]
+            else:
+                this_Data.set_field('CDELT1',  this_fdata['CDELT1'][0], (), '1D')
+                this_Data.set_field('CRVAL1',  this_fdata['CRVAL1'][0], (), '1D')
             this_Data.set_field('CRPIX1', crpix1, (), '1I')
+
             copy_constant_field(this_fdata, this_Data, 'BEAM', 'BEAM', '1I')
             copy_constant_field(this_fdata, this_Data, 'SCAN', 'SCAN', '1I')
-            copy_constant_field(this_fdata, this_Data, 'CRVAL1', 'CRVAL1', '1D')
-            copy_constant_field(this_fdata, this_Data, 'CRPIX1', 'CRPIX1', '1D')
-            copy_constant_field(this_fdata, this_Data, 'CDELT1', 'CDELT1', '1D')
-            copy_constant_field(this_fdata, this_Data, 'BANDWID', 'BANDWID', '1D')
-            copy_constant_field(this_fdata, this_Data, 'EXPOSURE', 'EXPOSURE', '1D')
+            #copy_constant_field(this_fdata, this_Data, 'CRVAL1', 'CRVAL1', '1D')
+            #copy_constant_field(this_fdata, this_Data, 'CDELT1', 'CDELT1', '1D')
+            copy_constant_field(this_fdata, this_Data, 'BANDWID', 'BANDWID',
+                                '1D')
+            copy_constant_field(this_fdata, this_Data, 'EXPOSURE', 'EXPOSURE',
+                                '1D')
             # Add a history entry, should make this more descriptive.
             this_Data.add_history('Converted from parkes SDfits data.')
 
@@ -200,8 +240,34 @@ class Converter(object):
 
         return out_Blocks
 
+    def get_cal(self):
+        params = self.params
+
+        if os.path.exists(params['table_jy2k']):
+            self.jy2k = np.loadtxt(params['table_jy2k']).T
+        else:
+            self.jy2k = None
+            print "no jy to k table"
+        if os.path.exists(params['table_ginv']):
+            self.ginv = np.loadtxt(params['table_ginv']).T
+        else:
+            self.ginv = None
+            print "no gian, set to 1"
+
 def copy_time_field_float(fdata, Data, old_key, new_key):
+    '''
     field = np.array(fdata[old_key], dtype=np.float64)
+    Data.set_field(new_key, field, ('time',), '1D')
+    '''
+
+    if old_key == 'CRVAL3':
+        print "convert to [-180, 180]"
+        ra_max = 180
+        field = np.array(fdata[old_key], dtype=np.float64)
+        ra_to_renorm = (field > ra_max)
+        field[ra_to_renorm] = field[ra_to_renorm] -360
+    else:
+        field = np.array(fdata[old_key], dtype=np.float64)
     Data.set_field(new_key, field, ('time',), '1D')
 
 def copy_constant_field(fdata, Data, old_key, new_key, format):
@@ -215,7 +281,7 @@ def copy_constant_field(fdata, Data, old_key, new_key, format):
 # If this file is run from the command line, execute the main function.
 if __name__ == "__main__":
     import sys
-    Converter(str(sys.argv[1])).execute()
+    Converter(None).execute()
 
 
 

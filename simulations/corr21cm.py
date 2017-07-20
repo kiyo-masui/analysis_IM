@@ -21,9 +21,11 @@ class Corr21cm(RedshiftCorrelation, Map3d):
             from os.path import join, dirname
             #psfile = join(dirname(__file__),"data/ps_z1.5.dat")
             #psfile = join(dirname(__file__),"data/wigglez_halofit_z1.5.dat")
-            psfile = join(dirname(__file__),"data/wigglez_halofit_z0.8.dat")
+            #psfile = join(dirname(__file__),"data/wigglez_halofit_z0.8.dat")
+            #psfile = '/home/p/pen/ycli/code/analysis_IM/simulations/data/wigglez_halofit_z0.8.dat'
+            psfile = '/home/p/pen/nluciw/class/class_public-2.5.0/output/nick02_pk_nl.dat'
             print "loading matter power file: " + psfile
-            redshift = 0.8
+            redshift = 0.08
 
             #pk_interp = cs.LogInterpolater.fromfile(psfile)
             pwrspec_data = np.genfromtxt(psfile)
@@ -37,16 +39,17 @@ class Corr21cm(RedshiftCorrelation, Map3d):
 
             pk_interp = lambda k: np.exp(logpk_interp(np.log(k)))
 
-            kstar = 7.0
+            kstar = 40.0
             ps = lambda k: np.exp(-0.5 * k**2 / kstar**2) * pk_interp(k)
-
+            #ps = lambda k: pk_interp(k)          
+ 
         self._sigma_v = sigma_v
 
         RedshiftCorrelation.__init__(self, ps_vv=ps, redshift=redshift)
         #self._load_cache(join(dirname(__file__),"data/corr_z1.5.dat"))
         #self.load_fft_cache(join(dirname(__file__),"data/fftcache.npz"))
 
-    def T_b(self, z):
+    def T_b(self, z, om_HI=None):
         r"""Mean 21cm brightness temperature at a given redshift.
 
         Temperature is in mK.
@@ -65,8 +68,11 @@ class Corr21cm(RedshiftCorrelation, Map3d):
         0.39 mK (agrees with 0.4 mK quoted over phone from Tzu-Ching)
         """
 
+        if om_HI==None:
+            om_HI = self.omega_HI(z)
+
         return (0.39 * ((self.cosmology.omega_m + self.cosmology.omega_l * (1+z)**-3) / 0.29)**-0.5
-                * ((1.0 + z) / 2.5)**0.5 * (self.omega_HI(z) / 1e-3))
+                * ((1.0 + z) / 2.5)**0.5 * (om_HI / 1e-3))
 
     def mean(self, z):
         if self.add_mean:
@@ -75,7 +81,7 @@ class Corr21cm(RedshiftCorrelation, Map3d):
             return np.zeros_like(z)
 
     def omega_HI(self, z):
-        return 1e-3
+        return 3.5e-4
 
     def x_h(self, z):
         r"""Neutral hydrogen fraction at a given redshift.
@@ -166,7 +172,7 @@ class Corr21cm(RedshiftCorrelation, Map3d):
     def bias_z(self, z):
         r"""It's unclear what the bias should be. Using 1 for the moment. """
 
-        return np.ones_like(z) * 1.0
+        return np.ones_like(z) * 0.85
 
 
     def getfield(self):

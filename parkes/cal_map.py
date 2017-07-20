@@ -3,7 +3,7 @@ import numpy as np
 import scipy as sp
 import scipy.ndimage.interpolation as ndimage_inter
 import core.algebra as algebra
-from astropy.io import fits as pyfits
+import pyfits
 import os
 import sys
 import copy
@@ -24,7 +24,7 @@ def nvss_cat(nvss_catalog_path):
               + ra_raw[:,2].astype('float32')/60./60.)
     ra_degree *= 15.
     
-    #ra_degree[ra_degree>180] = ra_degree[ra_degree>180] - 360.
+    ra_degree[ra_degree>180] = ra_degree[ra_degree>180] - 360.
 
     dec_symbol= np.array([-1. if x < 0 else 1. for x in dec_raw[:,0].astype('float32')])
     dec_degree= dec_symbol\
@@ -46,12 +46,12 @@ def hipass_cat(hipass_map_path):
     hipass_ra   = (np.arange(hipass_data.shape[1])-hd['CRPIX1'] + 1)*hd['CDELT1']
     hipass_ra  += hd['CRVAL1']
     #hipass_ra  += hd['CDELT1']
-    #hipass_ra[hipass_ra>180] = hipass_ra[hipass_ra>180] - 360.
+    hipass_ra[hipass_ra>180] = hipass_ra[hipass_ra>180] - 360.
     hipass_dec  = (np.arange(hipass_data.shape[0])-hd['CRPIX2'] + 1)*hd['CDELT2']
     hipass_dec += hd['CRVAL2']
     #hipass_dec += hd['CDELT2']
 
-    print hipass_ra.min(), hipass_ra.max()
+    #print hipass_ra.min(), hipass_ra.max()
 
     hipass_delta_ra = hipass_ra[1] - hipass_ra[0]
     hipass_ra_bin_edges = np.append(hipass_ra - 0.5*hipass_delta_ra,
@@ -62,13 +62,28 @@ def hipass_cat(hipass_map_path):
 
     return hipass_data, hipass_ra_bin_edges, hipass_dec_bin_edges, hipass_ra, hipass_dec
 
-def mapping_coord(imap, hipass_map_path, degrade_function=None):
+def hipass_sub_slope(hipass_map, mask=None):
+
+    ra_slope = np.ma.mean(hipass_map, axis=1)
+    #ra_slope_c = np.polyfit(np.arange(ra_slope.shape[0]), ra_slope, 1)
+    #ra_slope = ra_slope_c[1] + ra_slope_c[0] * np.arange(ra_slope.shape[0])
+    #ra_slope = ra_slope_c[0] * np.arange(ra_slope.shape[0])
+
+    dec_slope = np.ma.mean(hipass_map, axis=0)
+    #dec_slope_c = np.polyfit(np.arange(dec_slope.shape[0]), dec_slope, 1)
+    #dec_slope = dec_slope_c[1] + dec_slope_c[0] * np.arange(dec_slope.shape[0])
+    #dec_slope = dec_slope_c[0] * np.arange(dec_slope.shape[0])
+
+    slope = np.sqrt(ra_slope[:, None] * dec_slope[None, :])
+
+    return hipass_map - slope
+
+def mapping_coord(imap, hipass_map_path, degrade_function=None, subslope=True):
 
     hipass_data, ra_bin_edges, dec_bin_edges, ra, dec = hipass_cat(hipass_map_path)
 
     ra = imap.get_axis('ra')
     dec= imap.get_axis('dec')
-
 
     ra_map_index  = np.digitize(ra,  ra_bin_edges) - 1
     dec_map_index = np.digitize(dec, dec_bin_edges) - 1
@@ -82,7 +97,6 @@ def mapping_coord(imap, hipass_map_path, degrade_function=None):
     dec_map_index = dec_map_index[in_the_map]
 
     DEC, RA = np.meshgrid(dec_map_index, ra_map_index)
-
 
     hipass_data_new = ndimage_inter.map_coordinates(hipass_data, 
                                                     [DEC, RA], 
@@ -98,6 +112,9 @@ def mapping_coord(imap, hipass_map_path, degrade_function=None):
         hipass_data_new = degrade_function.apply(hipass_data_new)
     hipass_data_new = hipass_data_new[0,...]
 
+    if subslope:
+        hipass_data_new = hipass_sub_slope(hipass_data_new)
+
     return hipass_data_new
 
 class CalibrateMap(object):
@@ -110,6 +127,7 @@ class CalibrateMap(object):
         self.freq_list = freq_list
         self.re_scale = None
         self.re_zerop = None
+        self.mask = None
 
         # degrade_function should be a object of beam.GaussianBeam()
         self.degrade_function = degrade_function
@@ -118,7 +136,8 @@ class CalibrateMap(object):
         if not degrade_map:
             self.imap = self.degrade_resolution(self.imap)
 
-    def cal_by_fitting(self, hipass_map_path, point_sources=[], mask_pixels=None):
+    def cal_by_fitting(self, hipass_map_path, point_sources=[], mask_pixels=None, 
+            sub_slope=True):
         hipass = self.mapping_coord(hipass_map_path)
         parkes = copy.deepcopy(self.imap[self.freq_list, ...])
         parkes = np.mean(parkes, axis=0)
@@ -142,6 +161,7 @@ class CalibrateMap(object):
             weight_vector = weight.flatten().take(point_sources)[:, None]
         else:
             mask = self.get_mask(point_sources, parkes.shape, mask_pixels)
+            self.mask = mask
             parkes[mask[0], mask[1]] = 0.
             weight[mask[0], mask[1]] = 0.
             hipass[mask[0], mask[1]] = 0.
@@ -181,10 +201,10 @@ class CalibrateMap(object):
 
         return mask.T
 
-
     def cal_by_point_sources(self, nvss_catalog_path=None, hipass_map_path=None, 
                              flux_limit=None, ra_limit=None, dec_limit=None, 
-                             by_fitting=True, mask_point=True, output=True):
+                             by_fitting=True, mask_point=True, output=True, 
+                             sub_slope=True):
         '''
             calibrate the map using the hipass flux of nvss sources
         '''
@@ -295,13 +315,15 @@ class CalibrateMap(object):
             nmap = np.copy(self.nmap)
             flux_err_in_map = nmap.flatten().take(flat_index) 
 
-        flux_in_hipass = self.mapping_coord(hipass_map_path).flatten().take(flat_index)
+        hipass_map = self.mapping_coord(hipass_map_path)
+        flux_in_hipass = hipass_map.flatten().take(flat_index)
 
         # get rescale and zerop
         if by_fitting:
             self.re_scale, self.re_zerop = self.cal_by_fitting(hipass_map_path,
                                                     point_sources = flat_index,
-                                                    mask_pixels = 5)
+                                                    mask_pixels = 5, 
+                                                    sub_slope = sub_slope)
         else:
             flux_range_hipass = flux_in_hipass[0] - flux_in_hipass[-1]
             flux_range_map = flux_in_map[0] - flux_in_map[-1]

@@ -187,8 +187,12 @@ class CleanMapMaker(object) :
                 #    print "done",
                 map_rotated = sp.dot(Rot.T, dirty_map_vect[ii])
                 # Zero out infinite noise modes.
+                cutoff =  1.0e-5 # original setting
+                #cutoff =  1.0e-3 # try to get rid of the trips
                 bad_modes = (noise_inv_diag
-                             < 1.0e-5 * noise_inv_diag.max())
+                             < cutoff * noise_inv_diag.max())
+                print "ignore %d of noise modes"%(len(bad_modes[bad_modes==True]))\
+                    ,noise_inv_diag.shape
                 #if self.feedback > 1:
                 #if self.feedback > 2:
                 #    print ", start rotations:",
@@ -206,7 +210,7 @@ class CleanMapMaker(object) :
                 clean_map[ii, ...] = map
                 if save_noise_diag :
                     temp_noise_idiag = copy.deepcopy(noise_inv_diag) 
-                    temp_noise_idiag[bad_modes] = 0
+                    temp_noise_idiag[bad_modes] = 0.
                     temp_mat_i = Rot*temp_noise_idiag
                     for jj in range(shape[1]*shape[2]) :
                         temp_noise_idiag[jj] = sp.dot(

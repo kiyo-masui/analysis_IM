@@ -20,7 +20,7 @@ def load_camb():
     return data
     #return data[:,0], data[:,1]
 
-def load_theory_ps(k_bins_centre, redshift=0.8, cross=False, in_Jy=False):
+def load_theory_ps(k_bins_centre, redshift=0.08, cross=False, in_Jy=False):
     c21 = corr21cm.Corr21cm(redshift=redshift, nu_upper=1400., nu_lower=1200.)
     T_b = c21.T_b(redshift) * 1.e-3
     if in_Jy:
@@ -82,12 +82,18 @@ def get_2d_k_bin_edges(ps_2d):
 
     return k_p_edges, k_v_edges
 
-def load_transfer_function(rf_root, tr_root, auto=True):
+def load_transfer_function(rf_root, tr_root, h5obj=None, auto=True):
     
-    ps_rf = algebra.make_vect(algebra.load(rf_root))
-    kn_rf = algebra.make_vect(algebra.load(rf_root.replace('pow', 'kmn')))
-    ps_tr = algebra.make_vect(algebra.load(tr_root))
-    kn_tr = algebra.make_vect(algebra.load(tr_root.replace('pow', 'kmn')))
+    if h5obj==None:
+        ps_rf = algebra.make_vect(algebra.load(rf_root))
+        kn_rf = algebra.make_vect(algebra.load(rf_root.replace('pow', 'kmn')))
+        ps_tr = algebra.make_vect(algebra.load(tr_root))
+        kn_tr = algebra.make_vect(algebra.load(tr_root.replace('pow', 'kmn')))
+    else:
+        ps_rf = algebra.make_vect(algebra.load_h5(h5obj, rf_root))
+        kn_rf = algebra.make_vect(algebra.load_h5(h5obj, rf_root.replace('pow', 'kmn')))
+        ps_tr = algebra.make_vect(algebra.load_h5(h5obj, tr_root))
+        kn_tr = algebra.make_vect(algebra.load_h5(h5obj, tr_root.replace('pow', 'kmn')))
 
     kn = kn_rf * kn_tr
 
@@ -96,7 +102,7 @@ def load_transfer_function(rf_root, tr_root, auto=True):
 
     transfer_function[kn == 0] = 0.
     transfer_function[transfer_function<0.] = 0.
-    transfer_function[transfer_function>1.] = 1.
+    #transfer_function[transfer_function>1.] = 1.
 
     transfer_function[transfer_function == 0.] = np.inf
     #transfer_function[transfer_function > 1.] = 1.
@@ -215,10 +221,14 @@ def load_power_spectrum_opt(ps_root, sn_root):
 
     return ps_2d, ps_2derr, ps_2dkmn, k_p_edges, k_v_edges, sn_2d
 
-def load_power_spectrum(ps_root):
-    
-    ps_2d = algebra.make_vect(algebra.load(ps_root))
-    kn_2d = algebra.make_vect(algebra.load(ps_root.replace('pow', 'kmn')))
+def load_power_spectrum(ps_root, h5obj=None):
+
+    if h5obj == None:
+        ps_2d = algebra.make_vect(algebra.load(ps_root))
+        kn_2d = algebra.make_vect(algebra.load(ps_root.replace('pow', 'kmn')))
+    else:
+        ps_2d = algebra.make_vect(algebra.load_h5(h5obj, ps_root))
+        kn_2d = algebra.make_vect(algebra.load_h5(h5obj, ps_root.replace('pow', 'kmn')))
 
     k_p_edges, k_v_edges = get_2d_k_bin_edges(ps_2d)
 
@@ -410,7 +420,7 @@ def convert_2dps_to_1dps_opt(ps_root, sn_root, truncate_range=None):
 
     return power_1d, power_1d_err, k_p_centre, shortnoise_1d
 
-def convert_2dps_to_1dps_each(ps_list, kn_list, weight, truncate_range=None):
+def convert_2dps_to_1dps_each(ps_list, kn_list, weight, truncate_range=None, order=0):
 
     ps_1d_list = []
     k_centre = None
@@ -426,6 +436,7 @@ def convert_2dps_to_1dps_each(ps_list, kn_list, weight, truncate_range=None):
             wt_2d = weight
         else:
             wt_2d = np.ones(ps_2d.shape)
+            wt_2d[ps_2d==0] = 0.
 
         k_p_edges, k_v_edges = get_2d_k_bin_edges(ps_2d)
         k_p_centr, k_v_centr = get_2d_k_bin_centre(ps_2d)
@@ -434,6 +445,15 @@ def convert_2dps_to_1dps_each(ps_list, kn_list, weight, truncate_range=None):
         k_centre = k_p_centr
 
         kc_2d = np.sqrt(k_v_centr[:,None]**2 + k_p_centr[None, :]**2)
+        mu_2d = k_p_centr[None, :] / kc_2d
+
+        # for dipole
+        coef = [0, 0, 0]
+        coef[order] = 1
+        P = np.polynomial.legendre.Legendre(coef)
+        #ps_2d *= (mu_2d ** order)
+        ps_2d = ps_2d * P(mu_2d)
+        #wt_2d *= P(mu_2d)
 
         if truncate_range != None:
             k_p_range = [truncate_range[0], truncate_range[1]]
@@ -446,8 +466,10 @@ def convert_2dps_to_1dps_each(ps_list, kn_list, weight, truncate_range=None):
             wt_2d[restrict_v, :] = 0.
             wt_2d[:, restrict_p] = 0.
 
-        ps_2d *= wt_2d
-        kn_2d *= wt_2d
+
+        #Commented only for min test
+        ps_2d = ps_2d * wt_2d
+        kn_2d = kn_2d * wt_2d
 
         ps_2d[kn_2d==0] = 0.
         wt_2d[kn_2d==0] = 0.
@@ -460,18 +482,31 @@ def convert_2dps_to_1dps_each(ps_list, kn_list, weight, truncate_range=None):
         wt_1d, k_e = np.histogram(kc_2d, k_edges, weights=wt_2d)
         ps_1d, k_e = np.histogram(kc_2d, k_edges, weights=ps_2d)
         kn_1d, k_e = np.histogram(kc_2d, k_edges, weights=kn_2d)
+        kc_2d = np.array(kc_2d)        
+        #try:
+        #    ps_1d[0] = np.median(ps_2d[np.where((kc_2d <= k_edges[0]) & (kc_2d > 0))])
+        #    print ps_1d[0]
+        #except ValueError:
+        #    pass
+        #for i in range(len(k_edges)-2):
+        #    try:
+        #        ps_1d[i+1] = np.median(ps_2d[np.where((kc_2d <= k_edges[i+1]) & (kc_2d >  k_edges[i]))])
+        #        print ps_1d[i+1]
+        #    except ValueError:
+        #        pass
 
+        wt_1d[wt_1d==0] = np.inf
         ps_1d /= wt_1d
-
+       
         ps_1d_list.append(ps_1d)
 
     ps_1d_list = np.ma.array(ps_1d_list)
     ps_1d_list[np.isnan(ps_1d_list)] = np.ma.masked
     ps_1d_list[np.isinf(ps_1d_list)] = np.ma.masked
 
-    ps_1d_mean = np.ma.mean(ps_1d_list, axis=0)
     ps_1d_std = np.ma.std(ps_1d_list, axis=0)
-
+    ps_1d_mean = np.mean(ps_1d_list, axis=0)
+    #ps_1d_std = 1 / np.sqrt(wt_1d)
     return ps_1d_mean, ps_1d_std, k_centre
 
 
@@ -654,3 +689,77 @@ def convert_2dps_to_1dps(ps_root, ns_root, tr_root, rf_root, ne_root=None,
     #power_1d_err = np.sqrt(err/normal_2)/k_mode
 
     return power_1d, power_1d_err, k_p_centre
+
+def covar_1d (ps_list, kn_list, weight, truncate_range=None, order=0):
+
+    ps_1d_list = []
+    k_centre = None
+
+    if not isinstance(ps_list, list):
+        ps_list = [ps_list, ]
+        kn_list = [kn_list, ]
+
+    for i in range(len(ps_list)):
+        ps_2d = ps_list[i]
+        kn_2d = kn_list[i]
+        if weight != None:
+            wt_2d = weight
+        else:
+            wt_2d = np.ones(ps_2d.shape)
+            wt_2d[ps_2d==0] = 0.
+
+        k_p_edges, k_v_edges = get_2d_k_bin_edges(ps_2d)
+        k_p_centr, k_v_centr = get_2d_k_bin_centre(ps_2d)
+
+        k_edges = k_p_edges
+        k_centre = k_p_centr
+
+        kc_2d = np.sqrt(k_v_centr[:,None]**2 + k_p_centr[None, :]**2)
+        mu_2d = k_p_centr[None, :] / kc_2d
+
+        # for dipole
+        coef = [0, 0, 0]
+        coef[order] = 1
+        P = np.polynomial.legendre.Legendre(coef)
+        #ps_2d *= (mu_2d ** order)
+        ps_2d = ps_2d * P(mu_2d)
+        #wt_2d *= P(mu_2d)
+
+        if truncate_range != None:
+            k_p_range = [truncate_range[0], truncate_range[1]]
+            k_v_range = [truncate_range[2], truncate_range[3]]
+
+            restrict_v = np.where(np.logical_or(k_v_centr<k_v_range[0],
+                                                k_v_centr>k_v_range[1]))
+            restrict_p = np.where(np.logical_or(k_p_centr<k_p_range[0],
+                                                k_p_centr>k_p_range[1]))
+            wt_2d[restrict_v, :] = 0.
+            wt_2d[:, restrict_p] = 0.
+
+        ps_2d = ps_2d * wt_2d
+        kn_2d = kn_2d * wt_2d
+
+        ps_2d[kn_2d==0] = 0.
+        wt_2d[kn_2d==0] = 0.
+
+        kc_2d = kc_2d.flatten()
+        ps_2d = ps_2d.flatten()
+        wt_2d = wt_2d.flatten()
+        kn_2d = kn_2d.flatten()
+
+        wt_1d, k_e = np.histogram(kc_2d, k_edges, weights=wt_2d)
+        ps_1d, k_e = np.histogram(kc_2d, k_edges, weights=ps_2d)
+        kn_1d, k_e = np.histogram(kc_2d, k_edges, weights=kn_2d)
+
+        wt_1d[wt_1d==0] = np.inf
+        ps_1d /= wt_1d
+
+        ps_1d_list.append(ps_1d)
+
+    ps_1d_list = np.ma.array(ps_1d_list)
+    ps_1d_list[np.isnan(ps_1d_list)] = np.ma.masked
+    ps_1d_list[np.isinf(ps_1d_list)] = np.ma.masked
+
+    ps_1d_corr = np.corrcoef(ps_1d_list.T)
+    return ps_1d_corr, k_centre, k_edges
+

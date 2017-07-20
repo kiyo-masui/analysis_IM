@@ -40,6 +40,7 @@ from mpi4py import MPI
 params_init = {
                'SVD_root': None,
                'SVD_file': None,
+               'pre_modes': [],
                'output_root': "local_test",
                'pairlist' : None,
                'pairdict' : None,
@@ -61,6 +62,7 @@ params_init = {
                'tack_on': None,
                'convolve': True,
                'calibrate':True,
+               'mask_point_source':False,
                'telescope':'Parkes',
                'clip_weight_percent': None,
                'degrade_factor': 1.1,
@@ -472,6 +474,7 @@ class PairSet():
         output_root_tmp = params['output_root']
         simfile1_tmp = params['simfile1']
         simfile2_tmp = params['simfile2']
+        svd_root_tmp = self.params['SVD_root']
         comm.barrier()
 
         if rank<n_sim:
@@ -480,6 +483,8 @@ class PairSet():
                 self.params['output_root'] = output_root_tmp%sim
                 self.params['simfile1'] = simfile1_tmp%sim
                 self.params['simfile2'] = simfile2_tmp%sim
+                if self.params['SVD_root'] != None:
+                    self.params['SVD_root'] = svd_root_tmp%sim
                 print "RANK %d : sim%03d output %s"\
                       %(rank, sim, self.params['output_root'])
                 print
@@ -506,7 +511,6 @@ class PairSet():
         #    print "WARNING: using %s to clean (intended?)" % self.SVD_root
         #else:
         #    self.SVD_root = self.output_root
-        self.SVD_root = self.output_root
 
         # Write parameter file.
         parse_ini.write_params(self.params, self.output_root + 'params.ini',
@@ -516,6 +520,35 @@ class PairSet():
         self.load_pairs()
 
         self.preprocess_pairs()
+
+        if len(self.params['pre_modes']) != 0 :
+            if self.params['SVD_root'] == None:
+                print "Error: need SVD file for pre cleanning"
+                exit()
+            self.SVD_root = self.params['SVD_root']
+            self.subtract_foregrounds(0, self.params['pre_modes'][-1])
+
+            #pre_mode_list_stop = self.params['pre_modes']
+            #pre_mode_list_start = copy.deepcopy(self.params['pre_modes'])
+            #pre_mode_list_start[1:] = pre_mode_list_start[:-1]
+
+            #if self.params['output_root'][-1] == '/':
+            #    self.output_root = self.params['output_root'][:-1] + '_pre/'
+            #else:
+            #    self.output_root = self.params['output_root'] + '_pre/'
+            #if not os.path.isdir(self.output_root):
+            #    os.makedirs(self.output_root)
+            #for (n_modes_start, n_modes_stop) in zip(pre_mode_list_start, 
+            #        pre_mode_list_stop):
+            #    self.subtract_foregrounds(n_modes_start, n_modes_stop)
+            #    #self.save_data(n_modes_stop)
+
+            #self.output_root = self.params['output_root']
+
+        # set SVD_root to output_root, and SVD_file to None, in order to
+        # using the SVD re-calculated
+        self.SVD_root = self.output_root
+        self.params['SVD_file'] = None
 
         if self.params['weighted_SVD']:
             self.call_pairs("apply_map_weights")
@@ -550,34 +583,15 @@ class PairSet():
             Q = map1^T noise_inv1 B noise_inv2 map2
         """
         par = self.params
-        #if not par['pairlist']:
-        #    if par['calc_diagnal']:
-        #        noise_inv_suffix = ";noise_inv"
-        #    else:
-        #        noise_inv_suffix = ";noise_weight"
-        #    (self.pairlist, pairdict) = dp.cross_maps(par['map1'], par['map2'],
-        #                                         par['noise_inv1'],
-        #                                         par['noise_inv2'],
-        #                                         noise_inv_suffix=noise_inv_suffix,
-        #                                         verbose=False,
-        #                                         db_to_use=self.datapath_db)
-        #else:
-        #    self.pairlist = par['pairlist']
-        #    pairdict = par['pairdict']
         self.pairlist = par['pairlist']
         pairdict = par['pairdict']
 
         for pairitem in self.pairlist:
             pdict = pairdict[pairitem]
-            #print "=" * 80
-            #dp.print_dictionary(pdict, sys.stdout,
-            #                    key_list=['map1', 'noise_inv1',
-            #                              'map2', 'noise_inv2'])
 
             # map1 & noise_inv1
             map1 = algebra.make_vect(algebra.load(pdict['map1']))
             if par['simfile1'] is not None:
-
                 sim1 = algebra.make_vect(algebra.load(par['simfile1']))
                 sim1 *= par['sim_multiplier']
             else:
@@ -660,21 +674,10 @@ class PairSet():
                       par['sim_multiplier'], pdict['noise_inv2'])\
                     + "="*80 + "\n\n"\
 
-            #if self.params['clip_weight_percent'] is not None:
-            #    print "Note: your are clipping the weight maps"
-            #    mask1 = self.define_weightmask(noise_inv1, 
-            #                percentile=self.params['clip_weight_percent'])
-            #    mask2 = self.define_weightmask(noise_inv2, 
-            #                percentile=self.params['clip_weight_percent'])
-            #    noise_inv1 = self.saturate_weight(noise_inv1, mask1)
-            #    noise_inv2 = self.saturate_weight(noise_inv2, mask2)
-
             pair = map_pair.MapPair(map1 + sim1, map2 + sim2,
                                     noise_inv1, noise_inv2,
                                     self.freq_list1, self.freq_list2)
-                                    #self.freq_list1, 
-                                    #input_filenames = False,
-                                    #conv_factor=self.params['degrade_factor'])
+
             pair.set_names(pdict['tag1'], pdict['tag2'])
 
             pair.params = self.params
@@ -709,6 +712,9 @@ class PairSet():
 
         if self.params['calibrate']:
             self.call_pairs('calibrate_map')
+
+        if self.params['mask_point_source']:
+            self.call_pairs('mask_point_source')
 
         if self.params["factorizable_noise"]:
             self.call_pairs("make_noise_factorizable")
@@ -792,10 +798,19 @@ class PairSet():
     @batch_handler.log_timing
     def subtract_foregrounds(self, n_modes_start, n_modes_stop):
         for pairitem in self.pairlist:
-            if self.params['SVD_file'] != None:
-                filename_svd = "%s/%s" % (self.SVD_root, self.params['SVD_file'])
-            else:
-                filename_svd = "%s/SVD_pair_%s.pkl" % (self.SVD_root, pairitem)
+            #if self.params['SVD_file'] != None:
+            #    filename_svd = "%s/%s" % (self.SVD_root, self.params['SVD_file'])
+            #else:
+            #    filename_svd = "%s/SVD_pair_%s.pkl" % (self.SVD_root, pairitem)
+
+            pair_inverse = False
+            filename_svd = "%s/SVD_pair_%s.pkl" % (self.SVD_root, pairitem)
+            if not os.path.exists(filename_svd):
+                filename_svd = "%s/SVD_pair_%s_with_%s.pkl"%(
+                        self.SVD_root, pairitem[-1], pairitem[0])
+                print "Warning: %s not exists, using %s_with_%s"%(
+                        pairitem, pairitem[-1], pairitem[0])
+                pair_inverse = True
             print "subtracting %d to %d modes from %s using %s" % (n_modes_start, \
                                                                 n_modes_stop, \
                                                                 pairitem, \
@@ -804,13 +819,23 @@ class PairSet():
             # svd_info: 0 is vals, 1 is modes1 (left), 2 is modes2 (right)
             svd_info = ft.load_pickle(filename_svd)
 
-            self.pairs[pairitem].subtract_frequency_modes(
-                                    svd_info[1][n_modes_start:n_modes_stop],
-                                    svd_info[2][n_modes_start:n_modes_stop])
+            if pair_inverse:
+                self.pairs[pairitem].subtract_frequency_modes(
+                                        svd_info[2][n_modes_start:n_modes_stop],
+                                        svd_info[1][n_modes_start:n_modes_stop])
+            else:
+                self.pairs[pairitem].subtract_frequency_modes(
+                                        svd_info[1][n_modes_start:n_modes_stop],
+                                        svd_info[2][n_modes_start:n_modes_stop])
 
             if self.params['subtract_inputmap_from_sim'] or \
                self.params['subtract_sim_from_inputmap']:
-                self.pairs_parallel_track[pairitem].subtract_frequency_modes(
+                if pair_inverse:
+                    self.pairs_parallel_track[pairitem].subtract_frequency_modes(
+                                        svd_info[2][n_modes_start:n_modes_stop],
+                                        svd_info[1][n_modes_start:n_modes_stop])
+                else:
+                    self.pairs_parallel_track[pairitem].subtract_frequency_modes(
                                         svd_info[1][n_modes_start:n_modes_stop],
                                         svd_info[2][n_modes_start:n_modes_stop])
 
@@ -843,31 +868,33 @@ class PairSet():
                self.params['subtract_sim_from_inputmap']:
                 map1 = pair.map1 - self.pairs_parallel_track[pairitem].map1
                 map2 = pair.map2 - self.pairs_parallel_track[pairitem].map2
-            #elif self.params['subtract_realmap_from_sim']:
-            #    if not os.path.exists(self.params['realmap_dir']):
-            #        print "Error: Real map directory does not exists"
-            #        exit()
-            #    else:
-            #        realmap_file = "%s/sec_%s_cleaned_clean_map_I_with_%s_%s.npy"%\
-            #                       (self.params['realmap_dir'], tag1, tag2, n_modes)
-            #        realmap = algebra.make_vect(algebra.load(realmap_file))
-            #        print "Subtract realmap from result"
-            #        map1 = copy.deepcopy(pair.map1) - realmap
-            #        map2 = copy.deepcopy(pair.map2)
-            #        if map2.shape == map1.shape:
-            #            realmap_file = "%s/sec_%s_cleaned_clean_map_I_with_%s_%s.npy"%\
-            #                           (self.params['realmap_dir'], tag2, tag1, n_modes)
-            #            realmap = algebra.make_vect(algebra.load(realmap_file))
-            #            print "Subtract realmap from result"
-            #            map2 -= realmap
+            elif self.params['subtract_realmap_from_sim']:
+                if not os.path.exists(self.params['realmap_dir']):
+                    print "Error: Real map directory does not exists"
+                    exit()
+                else:
+                    realmap_file = "%s/sec_%s_cleaned_clean_map_I_with_%s_%s.npy"%\
+                                   (self.params['realmap_dir'], tag1, tag2, n_modes)
+                    realmap = algebra.make_vect(algebra.load(realmap_file))
+                    print "Subtract realmap from result"
+                    map1 = copy.deepcopy(pair.map1) - realmap
+                    map2 = copy.deepcopy(pair.map2)
+                    if map2.shape == map1.shape:
+                        realmap_file = "%s/sec_%s_cleaned_clean_map_I_with_%s_%s.npy"%\
+                                       (self.params['realmap_dir'], tag2, tag1, n_modes)
+                        realmap = algebra.make_vect(algebra.load(realmap_file))
+                        print "Subtract realmap from result"
+                        map2 -= realmap
             else:
                 map1 = copy.deepcopy(pair.map1)
                 map2 = copy.deepcopy(pair.map2)
 
             prodmap_list.append(map1 * pair.noise_inv1)
-            prodmap_list.append(map2 * pair.noise_inv2)
             weight_list.append(pair.noise_inv1)
-            weight_list.append(pair.noise_inv2)
+            if map2.shape == map1.shape:
+                # ignore the IQU part in combinnig 
+                prodmap_list.append(map2 * pair.noise_inv2)
+                weight_list.append(pair.noise_inv2)
 
             if self.params['save_section']:
                 algebra.save(map1_file, map1)
@@ -879,80 +906,80 @@ class PairSet():
                     algebra.save(noise_inv2_file, pair.noise_inv2)
                     algebra.save(modes2_file, pair.right_modes)
 
-            #if map2.shape[0] == 3*map1.shape[0]:
-            #    #source_dict = {}
-            #    #source_dict['map'] = map2_file
-            #    #source_dict['weight'] = noise_inv2_file
-            #    map_dict = {}
-            #    map_dict['map'] = map2
-            #    map_dict['weight'] = pair.noise_inv2
-            #    target_dict = {}
-            #    target_dict['imap'] = map2_file.replace('_'+tag2, '_'+tag2+'_I')
-            #    target_dict['qmap'] = map2_file.replace('_'+tag2, '_'+tag2+'_Q')
-            #    target_dict['umap'] = map2_file.replace('_'+tag2, '_'+tag2+'_U')
-            #    target_dict['imap_weight'] =\
-            #                    noise_inv2_file.replace('_'+tag2, '_'+tag2+'_I')
-            #    target_dict['qmap_weight'] =\
-            #                    noise_inv2_file.replace('_'+tag2, '_'+tag2+'_Q')
-            #    target_dict['umap_weight'] =\
-            #                    noise_inv2_file.replace('_'+tag2, '_'+tag2+'_U')
-            #    divide_iqu_map(map_dict=map_dict, target_dict=target_dict)
+            if map2.shape[0] == 3*map1.shape[0]:
+                #source_dict = {}
+                #source_dict['map'] = map2_file
+                #source_dict['weight'] = noise_inv2_file
+                map_dict = {}
+                map_dict['map'] = map2
+                map_dict['weight'] = pair.noise_inv2
+                target_dict = {}
+                target_dict['imap'] = map2_file.replace('_'+tag2, '_'+tag2+'_I')
+                target_dict['qmap'] = map2_file.replace('_'+tag2, '_'+tag2+'_Q')
+                target_dict['umap'] = map2_file.replace('_'+tag2, '_'+tag2+'_U')
+                target_dict['imap_weight'] =\
+                                noise_inv2_file.replace('_'+tag2, '_'+tag2+'_I')
+                target_dict['qmap_weight'] =\
+                                noise_inv2_file.replace('_'+tag2, '_'+tag2+'_Q')
+                target_dict['umap_weight'] =\
+                                noise_inv2_file.replace('_'+tag2, '_'+tag2+'_U')
+                divide_iqu_map(map_dict=map_dict, target_dict=target_dict)
 
-        if map1.shape != map2.shape:
-            print "Shape of map1 and map2 are different, can not get combined map."
-        else:
-            cumulative_product = algebra.zeros_like(prodmap_list[0])
-            cumulative_weight = algebra.zeros_like(prodmap_list[0])
-            for mapind in range(0, len(prodmap_list)):
-                cumulative_product += prodmap_list[mapind]
-                cumulative_weight += weight_list[mapind]
+        #if map1.shape != map2.shape:
+        #    print "Shape of map1 and map2 are different, can not get combined map."
+        #else:
+        cumulative_product = algebra.zeros_like(prodmap_list[0])
+        cumulative_weight = algebra.zeros_like(prodmap_list[0])
+        for mapind in range(0, len(prodmap_list)):
+            cumulative_product += prodmap_list[mapind]
+            cumulative_weight += weight_list[mapind]
 
-            algebra.compressed_array_summary(cumulative_weight, "weight map")
-            algebra.compressed_array_summary(cumulative_product, "product map")
+        algebra.compressed_array_summary(cumulative_weight, "weight map")
+        algebra.compressed_array_summary(cumulative_product, "product map")
 
-            cumulative_weight[cumulative_weight < 1.e-20] = 0.
-            cumulative_product[cumulative_weight < 1.e-20] = 0.
+        cumulative_weight[cumulative_weight < 1.e-20] = 0.
+        cumulative_product[cumulative_weight < 1.e-20] = 0.
 
-            newmap = cumulative_product / cumulative_weight
+        newmap = cumulative_product / cumulative_weight
 
-            combined = "combined_clean"
-            if self.params['subtract_realmap_from_sim']:
-                if not os.path.exists(self.params['realmap_dir']):
-                    print "Error: Real map directory does not exists"
-                    exit()
-                else:
-                    realmap_file = "%s/%s_map_%s.npy"%\
-                                   (self.params['realmap_dir'], combined, n_modes)
-                    realmap = algebra.make_vect(algebra.load(realmap_file))
-                    newmap -= realmap
-                    print "Subtract realmap from result"
+        combined = "combined_clean"
+        if self.params['subtract_realmap_from_sim']:
+            if not os.path.exists(self.params['realmap_dir']):
+                print "Error: Real map directory does not exists"
+                exit()
+            else:
+                realmap_file = "%s/%s_map_%s.npy"%\
+                               (self.params['realmap_dir'], combined, n_modes)
+                realmap = algebra.make_vect(algebra.load(realmap_file))
+                newmap -= realmap
+                print "Subtract realmap from result"
 
-            # if the new map is nan or inf, set it and the wieghts to zero
-            nan_array = np.isnan(newmap)
-            newmap[nan_array] = 0.
-            cumulative_product[nan_array] = 0.
-            cumulative_weight[nan_array] = 0.
-            inf_array = np.isinf(newmap)
-            newmap[inf_array] = 0.
-            cumulative_product[inf_array] = 0.
-            cumulative_weight[inf_array] = 0.
-            algebra.compressed_array_summary(newmap, "new map")
-            algebra.compressed_array_summary(cumulative_product,"final map * weight")
-            algebra.compressed_array_summary(cumulative_weight, "final weight map")
+        # if the new map is nan or inf, set it and the wieghts to zero
+        nan_array = np.isnan(newmap)
+        newmap[nan_array] = 0.
+        cumulative_product[nan_array] = 0.
+        cumulative_weight[nan_array] = 0.
+        inf_array = np.isinf(newmap)
+        newmap[inf_array] = 0.
+        cumulative_product[inf_array] = 0.
+        cumulative_weight[inf_array] = 0.
+        algebra.compressed_array_summary(newmap, "new map")
+        algebra.compressed_array_summary(cumulative_product,"final map * weight")
+        algebra.compressed_array_summary(cumulative_weight, "final weight map")
 
-            combined_map_file = "%s/%s_map_%s.npy" % \
-                                (self.output_root, combined, n_modes)
-            combined_weight_file = "%s/%s_weight_%s.npy" % \
-                                (self.output_root, combined, n_modes)
-            combined_product_file = "%s/%s_product_%s.npy" % \
-                                (self.output_root, combined, n_modes)
-            combined_ones_file = "%s/%s_ones_%s.npy" % \
-                                (self.output_root, combined, n_modes)
+        combined_map_file = "%s/%s_map_%s.npy" % \
+                            (self.output_root, combined, n_modes)
+        combined_weight_file = "%s/%s_weight_%s.npy" % \
+                            (self.output_root, combined, n_modes)
+        combined_product_file = "%s/%s_product_%s.npy" % \
+                            (self.output_root, combined, n_modes)
+        combined_ones_file = "%s/%s_ones_%s.npy" % \
+                            (self.output_root, combined, n_modes)
 
-            algebra.save(combined_map_file, newmap)
-            algebra.save(combined_product_file, cumulative_product)
-            algebra.save(combined_weight_file, cumulative_weight)
-            algebra.save(combined_ones_file, algebra.ones_like(newmap))
+        algebra.save(combined_map_file, newmap)
+        algebra.save(combined_product_file, cumulative_product)
+        algebra.save(combined_weight_file, cumulative_weight)
+        algebra.save(combined_ones_file, algebra.ones_like(newmap))
 
 
     # Service functions ------------------------------------------------------

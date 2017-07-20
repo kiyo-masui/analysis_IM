@@ -8,7 +8,7 @@ from core import algebra
 from map import beam
 from map import physical_gridding as pg
 import kiyopy.utils
-from quadratic_products import corr_estimation
+#from quadratic_products import corr_estimation
 #from quadratic_products import pwrspec_estimator as pe
 from utils import data_paths
 from utils import batch_handler as bh
@@ -106,7 +106,9 @@ class MapPair(object):
 
         # Note that "I" would not be a good idea since it represents
         # a polarization and all of the maps have it.
-        sections = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "Q", "U", "V"]
+        sections = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "Q", "U", "V",
+                "beam1", "beam2", "beam3", "beam4", "beam5", "beam6", "beam7", 
+                "beam8", "beam9", "beam10", "beam11", "beam12", "beam13", ]
 
         self.map1_name = name1
         self.map2_name = name2
@@ -220,6 +222,19 @@ class MapPair(object):
         common_resolution = beam.GaussianBeam(beam_diff, freq_data)
         return common_resolution
 
+    def mask_point_source(self):
+        calibrator1 = cal_map.CalibrateMap(self.map1, self.freq1,
+                degrade_map=True, degrade_function=self.degrade_function())
+        calibrator1.cal_by_point_sources(flux_limit=[1., 100])
+        self.map1[:, calibrator1.mask[0], calibrator1.mask[1]] = 0
+        self.noise_inv1[:, calibrator1.mask[0], calibrator1.mask[1]] = 0
+
+        calibrator2 = cal_map.CalibrateMap(self.map2, self.freq2,
+                degrade_map=True, degrade_function=self.degrade_function())
+        calibrator2.cal_by_point_sources(flux_limit=[1., 100])
+        self.map2[:, calibrator2.mask[0], calibrator2.mask[1]] = 0
+        self.noise_inv2[:, calibrator2.mask[0], calibrator2.mask[1]] = 0
+
     def calibrate_map(self):
         '''
             This calibration should use the degraded map. 
@@ -277,7 +292,7 @@ class MapPair(object):
             self.noise_inv2 = algebra.as_alg_like(noise2, self.noise_inv2)
         elif self.map2.shape[0] == 4*self.map1.shape[0]:
             ''' for IxE(IQUV) case'''
-            import pair_set
+            import pair_set_ycli as pair_set
             map_dict = {}
             map_dict['map'] = self.map2
             map_dict['weight'] = noise2
@@ -293,7 +308,7 @@ class MapPair(object):
             self.noise_inv2 = map_dict['weight']
         elif self.map2.shape[0] == 3*self.map1.shape[0]:
             ''' for IxE(IQU) case'''
-            import pair_set
+            import pair_set_ycli as pair_set
             map_dict = {}
             map_dict['map'] = self.map2
             map_dict['weight'] = noise2
@@ -311,7 +326,7 @@ class MapPair(object):
             print 'Error: map pair do not have reasonable shape'
             exit()
 
-    def make_noise_factorizable(self, weight_prior=2.e-1):
+    def make_noise_factorizable(self, weight_prior=2.):
         r"""Convert noise weights such that the factor into a function a
         frequency times a function of pixel by taking means over the original
         weights.
@@ -355,7 +370,7 @@ class MapPair(object):
             self.noise_inv2 = algebra.as_alg_like(noise_inv2, self.noise_inv2)
         elif self.map2.shape[0] == 4*self.map1.shape[0]:
             ''' for IxE(IQUV) case'''
-            import pair_set
+            import pair_set_ycli as pair_set
             map_dict = {}
             map_dict['map'] = self.map2
             map_dict['weight'] = self.noise_inv2
@@ -368,7 +383,7 @@ class MapPair(object):
             self.noise_inv2 = map_dict['weight']
         elif self.map2.shape[0] == 3*self.map1.shape[0]:
             ''' for IxE(IQU) case'''
-            import pair_set
+            import pair_set_ycli as pair_set
             map_dict = {}
             map_dict['map'] = self.map2
             map_dict['weight'] = self.noise_inv2
@@ -464,23 +479,28 @@ class MapPair(object):
             fitted = np.zeros_like(self.map2[self.freq2, :, :])
 
         for mode_index, mode_vector in enumerate(modes2):
-            mode_vector = mode_vector.reshape(self.freq2.shape)
+            freq2 = self.freq2
+            if mode_vector.shape != self.freq2.shape:
+                #mode_vector = np.repeat(mode_vector[None, :], 
+                #        self.freq2.shape[0]/self.freq1.shape[0], axis=0)
+                freq2 = freq2[:mode_vector.shape[0]]
+            mode_vector = mode_vector.reshape(freq2.shape)
 
             if weighted:
-                amp = sp.tensordot(mode_vector, self.map2[self.freq2, :, :] *
-                                self.noise_inv2[self.freq2, :, :], axes=(0,0))
+                amp = sp.tensordot(mode_vector, self.map2[freq2, :, :] *
+                                self.noise_inv2[freq2, :, :], axes=(0,0))
                 amp /= sp.tensordot(mode_vector, mode_vector[:, None, None] *
-                                self.noise_inv2[self.freq2, :, :], axes=(0,0))
+                                self.noise_inv2[freq2, :, :], axes=(0,0))
             else:
                 amp = sp.tensordot(mode_vector,
-                                   self.map2[self.freq2, :, :], axes=(0,0))
+                                   self.map2[freq2, :, :], axes=(0,0))
                 #amp /= sp.dot(mode_vector, mode_vector)
 
             if defer:
                 fitted += mode_vector[:, None, None] * amp[None, :, :]
             else:
                 fitted = mode_vector[:, None, None] * amp[None, :, :]
-                self.map2[self.freq2, :, :] -= fitted
+                self.map2[freq2, :, :] -= fitted
 
             outmap_right[mode_index, :, :] = amp
 

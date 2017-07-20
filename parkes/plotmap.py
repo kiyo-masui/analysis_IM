@@ -41,7 +41,7 @@ class PlotMap(object):
         if imap is None:
             self.imap = algebra.make_vect(algebra.load(mapdict['imap']))
             self.nmap = algebra.make_vect(algebra.load(mapdict['nmap']))
-            print self.imap.max(), self.imap.min()
+            #print self.imap.max(), self.imap.min()
             if not degrade_map:
                 self.imap = self.degrade_resolution(self.imap, degrade_factor)
 
@@ -58,6 +58,7 @@ class PlotMap(object):
 
         print self.name
 
+        self.freq_cut = freq_cut
         self.freq_list = tuple([ind for ind in range(self.imap.shape[0]) 
                                     if  ind not in freq_cut])
         #self.imap = self.imap[freq_list, ...]
@@ -66,6 +67,9 @@ class PlotMap(object):
             self.mode = algebra.make_vect(algebra.load(mapdict['mode']))
         if 'vect' in mapdict.keys():
             self.svdmodpkl = cPickle.load(open(mapdict['vect']))
+        if 'simm' in mapdict.keys():
+            print "\t plus sim"
+            self.imap += 10 * algebra.make_vect(algebra.load(mapdict['simm']))
 
         self.imap_secs = []
         if 'imap_sec' in mapdict.keys():
@@ -94,8 +98,10 @@ class PlotMap(object):
 
         self.re_scale = None
         self.re_zerop = None
+        self.mask = None
         self.plot_size = plot_size
         self.clip_weight = clip_weight
+        self.flux_limit = None
 
     def saturate_weight(self, weight, percentile=50):
         weight_2d = np.mean(weight, axis=0)
@@ -171,31 +177,31 @@ class PlotMap(object):
         plt.ylabel('Dec[deg]')
         plt.savefig('./png/%s_mode_%d.png'%(self.name, mode_number), format='png')
 
-        map = np.ma.array(self.imap[self.freq_list, ...])
-        #map = np.ma.array(self.imap)
-        map[np.isnan(map)] = np.ma.masked
-        map[np.isinf(map)] = np.ma.masked
-        map = np.ma.mean(map, axis=0)
-        map = map.T
+        # map = np.ma.array(self.imap[self.freq_list, ...])
+        # #map = np.ma.array(self.imap)
+        # map[np.isnan(map)] = np.ma.masked
+        # map[np.isinf(map)] = np.ma.masked
+        # map = np.ma.mean(map, axis=0)
+        # map = map.T
 
-        mode = mode + map
+        # mode = mode + map
 
-        max = np.ma.max(mode) * 0.5
-        min = np.ma.min(mode) * 0.5
-        #if np.fabs(min) > np.fabs(max):
-        #    max = np.fabs(min)
-        #else:
-        #    min = -np.fabs(max)
+        # max = np.ma.max(mode) * 0.5
+        # min = np.ma.min(mode) * 0.5
+        # #if np.fabs(min) > np.fabs(max):
+        # #    max = np.fabs(min)
+        # #else:
+        # #    min = -np.fabs(max)
 
-        plt.figure(figsize=self.plot_size)
-        plt.pcolormesh(RA, DEC, mode, vmax=max, vmin=min)
-        plt.colorbar()
-        plt.xlim(RA.min(), RA.max())
-        plt.ylim(DEC.min(), DEC.max())
-        plt.xlabel('RA [deg]')
-        plt.ylabel('Dec[deg]')
-        plt.savefig('./png/%s_mode_%d_plus_weighted_map.png'%(
-                    self.name, mode_number), format='png')
+        # plt.figure(figsize=self.plot_size)
+        # plt.pcolormesh(RA, DEC, mode, vmax=max, vmin=min)
+        # plt.colorbar()
+        # plt.xlim(RA.min(), RA.max())
+        # plt.ylim(DEC.min(), DEC.max())
+        # plt.xlabel('RA [deg]')
+        # plt.ylabel('Dec[deg]')
+        # plt.savefig('./png/%s_mode_%d_plus_weighted_map.png'%(
+        #             self.name, mode_number), format='png')
    
     def make_mov(self):
         print "make mov"
@@ -205,8 +211,8 @@ class PlotMap(object):
         RA, DEC = np.meshgrid(ra, dec)
         freq = freq[list(self.freq_list)]
         map = np.ma.array(self.imap[self.freq_list, ...])
-        max = np.ma.max(map) * 0.1
-        min = np.ma.min(map) * 0.1
+        max = np.ma.max(map) * 0.5
+        min = np.ma.min(map) * 0.5
         if np.fabs(min) > np.fabs(max):
             max = np.fabs(min)
         else:
@@ -328,26 +334,35 @@ class PlotMap(object):
         flux_in_map = hipass_data.flatten().take(flatten_index)
 
         return flux_in_map
-    def degrade_function(self, degrade_factor=None):
+    def degrade_function(self, degrade_factor=None, telescope='Parkes'):
 
         if degrade_factor == None:
             degrade_factor = self.degrade_factor
 
-        freq_data = sp.array([1250, 1275, 1300, 1325, 1350, 1430], dtype=float)
-        beam_data = sp.array([14.4, 14.4, 14.4, 14.4, 14.4, 14.4])/60. 
-        beam_data = beam_data*1420/freq_data
-        freq_data *= 1.0e6
+        if telescope == "Parkes":
+            freq_data = sp.array([1250, 1275, 1300, 1325, 1350, 1430], dtype=float)
+            beam_data = sp.array([14.4, 14.4, 14.4, 14.4, 14.4, 14.4])/60. 
+            beam_data = beam_data*1420/freq_data
+            freq_data *= 1.0e6
+        elif telescope == "GBT":
+            beam_data = sp.array([0.316148488246, 0.306805630985, 0.293729620792,
+                     0.281176247549, 0.270856788455, 0.26745856078,
+                     0.258910010848, 0.249188429031])
+            freq_data = sp.array([695, 725, 755, 785, 815, 845, 875, 905], dtype=float)
+            freq_data *= 1.0e6
         beam_diff = sp.sqrt(max(degrade_factor*beam_data)**2-(beam_data)**2)
         common_resolution = beam.GaussianBeam(beam_diff, freq_data)
 
         return common_resolution
 
-    def degrade_resolution(self, map, degrade_factor=1.1, noise=False):
+    def degrade_resolution(self, map, degrade_factor=1.1, noise=False, telescope='GBT'):
 
-        common_resolution = self.degrade_function(degrade_factor=degrade_factor)
+        common_resolution = self.degrade_function(degrade_factor=degrade_factor, 
+                telescope=telescope)
 
         if noise:
             map = common_resolution.apply(map, mode='constant', cval=1.e30)
+            #map = common_resolution.apply(map)
         else:
             map = common_resolution.apply(map)
 
@@ -373,20 +388,21 @@ class PlotMap(object):
             err = (1./err)
             err = np.sqrt(np.ma.mean(err, axis=0))
 
-        calabrator = cal_map.CalibrateMap(self.imap, self.freq_list, nmap=err, 
+        calibrator = cal_map.CalibrateMap(self.imap, self.freq_list, nmap=err, 
                 weight=self.nmap, degrade_map=True,
                 degrade_function = self.degrade_function())
-        calabrator.cal_by_point_sources(self.nvss_catalog_path, self.hipass_map_path,
-                flux_limit=flux_limit, ra_limit=ra_limit, dec_limit=dec_limit)
-        flux                     = calabrator.flux_in_nvss
-        flux_err                 = calabrator.flux_err_in_nvss
-        flux_in_hipass           = calabrator.flux_in_hipass
-        flux_in_map              = calabrator.flux_in_map
-        spec_in_map              = calabrator.spec_in_map
-        flux_err_in_map          = calabrator.flux_err_in_map
-        flux_in_map_rescaled     = calabrator.flux_in_map_rescaled
-        spec_in_map_rescaled     = calabrator.spec_in_map_rescaled
-        flux_err_in_map_rescaled = calabrator.flux_err_in_map_rescaled
+        calibrator.cal_by_point_sources(self.nvss_catalog_path, self.hipass_map_path,
+                flux_limit=flux_limit, ra_limit=ra_limit, dec_limit=dec_limit, 
+                by_fitting=True)
+        flux                     = calibrator.flux_in_nvss
+        flux_err                 = calibrator.flux_err_in_nvss
+        flux_in_hipass           = calibrator.flux_in_hipass
+        flux_in_map              = calibrator.flux_in_map
+        spec_in_map              = calibrator.spec_in_map
+        flux_err_in_map          = calibrator.flux_err_in_map
+        flux_in_map_rescaled     = calibrator.flux_in_map_rescaled
+        spec_in_map_rescaled     = calibrator.spec_in_map_rescaled
+        flux_err_in_map_rescaled = calibrator.flux_err_in_map_rescaled
 
         if rescale:
             # save the limit for section map rescaling in plotmap
@@ -394,22 +410,33 @@ class PlotMap(object):
             self.ra_limit = ra_limit
             self.dec_limit = dec_limit
 
-            self.re_scale = calabrator.re_scale
-            self.re_zerop = calabrator.re_zerop
+            self.re_scale = calibrator.re_scale
+            self.re_zerop = calibrator.re_zerop
+            self.mask = calibrator.mask
 
         fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=self.plot_size)
         plt.subplots_adjust(left=0.06, right=0.95, bottom=0.15, top=0.95, wspace=0.001)
 
         ax[0].errorbar(np.arange(flux_in_map.shape[0]), flux, flux_err, label='nvss',
                        fmt='ro')
+
+        vmax = np.max(flux)
+        vmin = np.min(flux)
+
         if rescale:
             ax[0].errorbar(np.arange(flux_in_map.shape[0]), flux_in_map_rescaled, 
                            flux_err_in_map_rescaled, label='map', fmt='gs')
+            vmax = np.max([vmax, np.max(flux_in_map_rescaled)])
+            vmin = np.min([vmin, np.min(flux_in_map_rescaled)])
         else:
             ax[0].errorbar(np.arange(flux_in_map.shape[0]), flux_in_map, 
                            flux_err_in_map, label='map', fmt='gs')
+            vmax = np.max([vmax, np.max(flux_in_map)])
+            vmin = np.min([vmin, np.min(flux_in_map)])
         ax[0].scatter(np.arange(flux_in_hipass.shape[0]), flux_in_hipass,
                      label='hipass', s=40, c='b', )
+        vmax = np.max([vmax, np.max(flux_in_hipass)])
+        vmin = np.min([vmin, np.min(flux_in_hipass)])
         if rescale:
             ax[0].text(0.1, 0.8,
                        r'rescaled by [%7.5f] $\times$ flux + [%7.5f]'\
@@ -419,22 +446,36 @@ class PlotMap(object):
                        transform=ax[0].transAxes)
         ax[0].set_xlabel('Source No.')
         ax[0].set_ylabel('Flux [Jy]')
+        ax[0].set_ylim(ymax=vmax+0.1*(vmax-vmin), ymin=vmin-0.1*(vmax-vmin))
         ax[0].legend(frameon=False, scatterpoints=1)
         ax[0].set_xlim(xmin=-0.5)
 
         spec_axis = self.imap.get_axis('freq')
         for i in range(flux_in_map.shape[0]):
             if rescale:
-                ax[1].plot(spec_axis/1.e6, spec_in_map_rescaled[:, i])
+                spec_in_map_rescaled = np.ma.array(spec_in_map_rescaled)
+                spec_in_map_rescaled[self.freq_cut,...] = np.ma.masked
+                #ax[1].plot(spec_axis/1.e6, spec_in_map_rescaled[:, i])
+                ax[1].plot(range(len(spec_axis)), spec_in_map_rescaled[:, i], '.-')
             else:
-                ax[1].plot(spec_axis/1.e6, spec_in_map[:, i])
-        ax[1].set_xlabel('Frequency [MHz]')
-        ax[1].set_xlim(xmin=spec_axis.min()/1.e6, xmax=spec_axis.max()/1.e6)
+                spec_in_map = np.ma.array(spec_in_map)
+                spec_in_map[self.freq_cut,...] = np.ma.masked
+                #ax[1].plot(spec_axis/1.e6, spec_in_map[:, i])
+                ax[1].plot(range(len(spec_axis)), spec_in_map[:, i], '.-')
+        #ax[1].set_xlabel('Frequency [MHz]')
+        #ax[1].set_xlim(xmin=spec_axis.min()/1.e6, xmax=spec_axis.max()/1.e6)
+
+        ax[1].set_xlabel('Frequency Channel')
+        ax[1].set_xlim(xmin=-1, xmax=len(spec_axis))
+
+        ax[1].set_ylim(ymax=vmax+0.1*(vmax-vmin), ymin=vmin-0.1*(vmax-vmin))
 
         if rescale:
             plt.savefig('./png/%s_check_nvss_rescaled.png'%(self.name), format='png')
         else:
             plt.savefig('./png/%s_check_nvss.png'%(self.name), format='png')
+
+        plt.show()
 
     def rescale_by_hipass(self):
 
@@ -467,11 +508,14 @@ class PlotMap(object):
 
         hipass_data_new = cal_map.mapping_coord(self.imap, self.hipass_map_path, 
                 degrade_function = self.degrade_function())
+        hipass_data_new = np.ma.array(hipass_data_new)
+        if self.mask != None:
+            hipass_data_new[self.mask[0], self.mask[1]] = np.ma.masked
 
         if plot:
             plt.figure(figsize=self.plot_size)
-            max = 0.5*np.max(hipass_data_new)
-            min = 0.5*np.min(hipass_data_new)
+            max = np.ma.max(hipass_data_new) * 0.5
+            min = np.ma.min(hipass_data_new) * 0.5
             ra = self.imap.get_axis('ra')
             dec= self.imap.get_axis('dec')
             RA, DEC = np.meshgrid( self.get_edges(ra),  self.get_edges(dec))
@@ -485,16 +529,20 @@ class PlotMap(object):
             dec = nvss['dec'][selected]
             flux= nvss['flux'][selected]
 
-            cmap = plt.get_cmap('jet')
-            norm = plt.normalize(min, max)
-            plt.scatter(ra, dec, s=40, c=cmap(norm(flux)), edgecolor='k' )
+            #cmap = plt.get_cmap('jet')
+            #norm = plt.normalize(min, max)
+            #plt.scatter(ra, dec, s=40, c=cmap(norm(flux)), edgecolor='k' )
+            plt.scatter(ra, dec, s=40, c='none', edgecolor='0.5' )
 
             plt.axes().set_aspect('equal')
             plt.xlim(RA.min(), RA.max())
             plt.ylim(DEC.min(), DEC.max())
             plt.xlabel('RA [deg]')
             plt.ylabel('Dec[deg]')
-            plt.savefig('./png/%s_hipass_mapping.png'%(self.name), format='png')
+            if self.mask != None:
+                plt.savefig('./png/%s_hipass_mapping_masked.png'%(self.name),format='png')
+            else:
+                plt.savefig('./png/%s_hipass_mapping.png'%(self.name),format='png')
 
         return hipass_data_new
 
@@ -564,30 +612,36 @@ class PlotMap(object):
             if i >= len(self.imap_secs) + 1 and self.clip_weight:
                 suffix += '_clip50'
 
+            mask = None
             if self.re_scale != None:
                 if i < len(self.imap_secs) + 1:
-                    calabrator = cal_map.CalibrateMap(map_list[i], self.freq_list, 
+                    calibrator = cal_map.CalibrateMap(map_list[i], self.freq_list, 
                             weight=map_list[i + len(self.imap_secs) + 1], 
                             degrade_map=True, degrade_function = self.degrade_function())
-                    calabrator.cal_by_point_sources(self.nvss_catalog_path, 
+                    calibrator.cal_by_point_sources(self.nvss_catalog_path, 
                             self.hipass_map_path, flux_limit=self.flux_limit, 
                             ra_limit=self.ra_limit, dec_limit=self.dec_limit,
-                            output=False)
-                    re_scale = calabrator.re_scale
-                    re_zerop = calabrator.re_zerop
+                            output=False, by_fitting=True)
+                    re_scale = calibrator.re_scale
+                    re_zerop = calibrator.re_zerop
+                    mask = calibrator.mask
                 else:
                     re_scale = 1.
                     re_zerop = 0.
 
                 map *= re_scale
                 map += re_zerop
+                if mask != None:
+                    map[mask[1], mask[0]] = np.ma.masked
                 suffix += '_rescaled'
                 print ' rescaled x[%5.3f], +[%5.3f]'%(re_scale, re_zerop),
 
             if diff: 
                 if i < len(self.imap_secs) + 1:
-                    hipass = self.mapping_coord()
-                    map -= hipass.T
+                    hipass = self.mapping_coord().T
+                    if mask != None:
+                        hipass[mask[1], mask[0]] = np.ma.masked
+                    map -= hipass
                     suffix += '_diff'
                     print ' diff'
                 else:
@@ -599,19 +653,46 @@ class PlotMap(object):
                 print 
             print
 
-            max = np.max(map) * 0.5
-            min = np.min(map) * 0.5
+            #max = np.max(map) * 0.5
+            #min = np.min(map) * 0.5
+            if i < len(self.imap_secs) + 1:
+                #max = 0.60
+                #min = -0.06
+                #max =  0.0002
+                #min = -0.0002
+                max = np.max(map) * 0.5
+                min = np.min(map) * 0.5
+            else:
+                max = np.max(map) * 0.5
+                min = np.min(map) * 0.5
+                #max = np.max(map) * 0.2
+                #min = np.min(map) * 0.2
+            #print  np.max(map)
+            #print  np.min(map)
 
             map = np.ma.array(map)
             map[map == 0] = np.ma.masked
-            plt.figure(figsize=self.plot_size)
-            plt.pcolormesh(RA, DEC, map, vmax=max, vmin=min)
-            plt.colorbar()
+            if not i < len(self.imap_secs) + 1:
+                map[map < 2.] = np.ma.masked
+            #map[map == -1] = np.ma.masked
+            fig = plt.figure(figsize=self.plot_size)
+            l = 12./float(self.plot_size[0])
+            h = 5./float(self.plot_size[1])
+            ax = fig.add_axes([0.06*l, 0.1*h, 1 - 0.14*l, 1 - 0.1*h])
+            cax = fig.add_axes([1 - 0.07*l, 0.1*h, 0.01*l, 1 - 0.11*h])
+            #ax = fig.add_axes([0.06, 0.1, 0.859, 0.87])
+            #cax = fig.add_axes([0.92, 0.1, 0.02, 0.87])
+            c = ax.pcolormesh(RA, DEC, map, vmax=max, vmin=min)
+            #c = ax.pcolormesh(RA, DEC, map)
+            fig.colorbar(c, cax=cax, ax=ax)
 
             if with_nvss:
                 nvss = cal_map.nvss_cat(self.nvss_catalog_path)
                 nvss['flux'] *= 1.e-3
-                selected = nvss['flux'] > .3
+                if self.flux_limit != None:
+                    selected = nvss['flux'] > self.flux_limit[0]
+                else:
+                    selected = nvss['flux'] > 0.5
                 ra  = nvss['ra'][selected]
                 dec = nvss['dec'][selected]
                 flux= nvss['flux'][selected]
@@ -619,22 +700,24 @@ class PlotMap(object):
                 cmap = plt.get_cmap('jet')
                 norm = plt.normalize(min, max)
                 if diff:
-                    plt.scatter(ra, dec, s=40, c='none', edgecolor='k' )
+                    ax.scatter(ra, dec, s=40, c='none', edgecolor='k' )
                 else:
                     #plt.scatter(ra, dec, s=40, c=cmap(norm(flux)), edgecolor='k' )
-                    plt.scatter(ra, dec, s=40, c='none', edgecolor='0.5' )
+                    ax.scatter(ra, dec, s=40, c='none', edgecolor='0.5' )
 
-            plt.axes().set_aspect('equal')
-            plt.xlim(RA.min(), RA.max())
-            plt.ylim(DEC.min(), DEC.max())
-            plt.ylabel('Dec[deg]')
-            plt.xlabel('RA [deg]')
+            #plt.axes().set_aspect('equal')
+            ax.set_aspect('equal')
+            ax.set_xlim(RA.min(), RA.max())
+            ax.set_ylim(DEC.min(), DEC.max())
+            ax.set_ylabel('Dec[deg]')
+            ax.set_xlabel('RA [deg]')
             if i < len(self.imap_secs) + 1:
                 plt.savefig('./png/%s%s.png'%(self.name, suffix), format='png')
-                plt.savefig('./png/%s%s.eps'%(self.name, suffix), format='eps')
+                #plt.savefig('./png/%s%s.eps'%(self.name, suffix), format='eps')
             else:
                 plt.savefig('./png/%s%s.png'%(self.noise_name, suffix), format='png')
-                plt.savefig('./png/%s%s.eps'%(self.noise_name, suffix), format='eps')
+                #plt.savefig('./png/%s%s.eps'%(self.noise_name, suffix), format='eps')
+            #plt.show()
             plt.close()
             del map
             if with_nvss:

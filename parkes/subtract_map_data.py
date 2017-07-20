@@ -31,7 +31,8 @@ class Subtract(base_single.BaseSingle) :
                    'solve_for_gain' : False,
                    # Empty string to not write an output.
                    'gain_output_end' : '',
-                   'interpolation' : 'nearest'
+                   'interpolation' : 'nearest',
+                   'ra_centre' : 'W',
                    # XXX: What about if I start subtracing off a linear piece.
                    }
 
@@ -80,7 +81,8 @@ class Subtract(base_single.BaseSingle) :
         if (not self.params['solve_for_gain'] or
             self.params['gain_output_end'] is '') :
             sub_map(Data, maps, self.params['solve_for_gain'],
-                    interpolation=self.params['interpolation'])
+                    interpolation=self.params['interpolation'],
+                    ra_centre=self.params['ra_centre'])
         else :
             block_gain = {}
             Data.calc_freq()
@@ -113,7 +115,7 @@ class Subtract(base_single.BaseSingle) :
             cPickle.dump(self.gain_list, f, 0)
 
 def sub_map(Data, Maps, correlate=False, pols=(), beams=(),  make_plots=False,
-            interpolation='nearest') :
+            interpolation='nearest', ra_centre='W') :
     """Subtracts a Map out of Data."""
     
     # Import locally since many machines don't have matplotlib.
@@ -151,7 +153,7 @@ def sub_map(Data, Maps, correlate=False, pols=(), beams=(),  make_plots=False,
                 Map = Maps
             if not Map.axes == ('freq', 'ra', 'dec') :
                 raise ValueError("Expected map axes to be ('freq', 'ra', 'dec').")
-            Data.calc_pointing()
+            Data.calc_pointing(ra_centre=ra_centre)
             Data.calc_freq()
             # Map Parameters.
             centre = (Map.info['freq_centre'], Map.info['ra_centre'],

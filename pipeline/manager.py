@@ -52,7 +52,7 @@ def execute(pipe_file_or_dict, feedback=2) :
             pars = module_params
         if feedback > 1 :
             print 'Excuting analysis module: ' + str(mod)
-        mod(pars, feedback=feedback).execute(params['processes'])
+        mod(pars, feedback=feedback).mpiexecute(params['processes'])
 
     # now remove the run indicator flag
     os.remove(busy_filename)

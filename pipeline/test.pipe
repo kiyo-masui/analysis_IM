@@ -8,6 +8,7 @@
 # python map/map_maker_simple  test.pipe
 #
 # Each of these calls of course only uses the relevant parts of the .pipe file.
+import os
 
 pipe_modules = []
 

@@ -64,7 +64,8 @@ class BaseData(object) :
         and finally a fits format string (like '1E' or '10A', see fits
         documentation).
         """
-
+        
+        field_data = sp.array(field_data)
         if type(axis_names) is str :
             a_names = (axis_names,)
         else :
