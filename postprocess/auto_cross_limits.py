@@ -6,7 +6,7 @@ posteriors down to 1D.
 See the functions 'analyze_2d' and 'main_plot' for the bulk of the 
 computation. Variables 'auto_root' and 'cross_root' point to the 
 directories in which 2D auto and cross power data can be found. Parkes uses
-full 2D power data for the analysis, while GBT only uses the Omega_HI*b_HI
+full 2D cross-power data for the analysis, while GBT only uses the Omega_HI*b_HI
 result to scale the simulation which bounds the intervals from below;
 specify that result in 'CMEAN' and 'CERR'.
 """
