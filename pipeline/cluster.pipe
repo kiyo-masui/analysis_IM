@@ -1,0 +1,65 @@
+#########################################################################
+#                                                                       #
+#      This pipeline is used to produce clustered galaxy mocks.         #
+#                                                                       #
+#                                                                       #
+#########################################################################
+
+pipe_modules = []
+pipe_processes = 1
+
+import os
+import numpy as np
+WORKROOT = './'
+
+name = os.getenv('NAME')
+sim_root = os.getenv('MAP_2DF')
+
+#pks_fields = ['n1800','p1650','p1820','p1990','p2160','p3300']
+pks_fields = ['p1820',]
+
+sim_root_list = []
+for field in pks_fields:
+    sim_root_list.append(sim_root%field)
+
+#cut_list = [0,1,2,3,4,5,6,7,8,9,10,11,12,29,59,60,61,62,63]
+#cut_list = [0,1,2,3,4,5,6,7,8,9,59,60,61,62,63]
+#cut_list = [55,56,57,58,59,60]
+cut_list = [1,2,3,4,5,6,7,8,9,60,61,62,63]
+#cut_list = [0,1,2,3,4,5,6,7,8,9, 26,27,28,29,30,31,32,33,34, 59,60,61,62,63]
+#cut_list = range(0,26) + range(35,64)
+#cut_list = [0,1,2,3,4,5,59,60,61,62,63]
+#
+nfreq = 64
+
+kbin_min = 0.02
+kbin_max = 10.
+#kbin_max = 0.2
+kbin_num = 30
+#kbin_num = 25
+
+#kbin_min = 0.3
+#kbin_max = 1.
+#kbin_num = 15
+
+from mkpower import shot_err
+pipe_modules.append(shot_err.Clusters)
+
+"""  Prepare """
+clstr_processes = 1
+
+clstr_sim_root = sim_root_list
+
+clstr_template_file = '/home/p/pen/ycli/scratch/data/2df/pks_%s_2dfmock_full/mock_map_2df_delta_000.npy'%(pks_fields[0])
+clstr_power_file = '/home/p/pen/nluciw/class/class_public-2.5.0/output/nick01_pk.dat'
+clstr_sim_numb = 20
+
+clstr_kbin_num = kbin_num
+clstr_kbin_min = kbin_min
+clstr_kbin_max = kbin_max
+
+
+clstr_ps_root  = WORKROOT 
+clstr_ps_name  = '%s_clstr_mock'%(name)
+clstr_out_root = '/home/p/pen/nluciw/parkes/simulations/'
+

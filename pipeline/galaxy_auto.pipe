@@ -1,0 +1,115 @@
+#########################################################################
+#                                                                       #
+#      This pipeline is used to calculate the 2df power spectrum        #
+#                                                                       #
+#                                                                       #
+#########################################################################
+
+pipe_modules = []
+pipe_processes = 1
+
+import os
+import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+WORKROOT = './'
+
+hour = int(os.getenv('HOUR'))
+name = os.getenv('NAME')
+mode = int(os.getenv('MODE'))
+pks_root = os.getenv('MAP_PKS')
+IIdf_root = os.getenv('MAP_2DF')
+sim_root = os.getenv('MAP_SIM')
+ssm_root = os.getenv('MAP_SSM')
+trans_root = os.getenv('TRANS_PATH')
+#pks_fields = ['n1800','p1650','p1820','p1990','p2160','p3300']
+pks_fields = [os.getenv('PKS_FIELD'), ]
+opt_fields = [os.getenv('OPT_FIELD'),]
+sim_root_list = []
+ssm_root_list = []
+gbt_root_list = []
+opt_root_list = []
+trans_root_list = []
+for field in pks_fields:
+    sim_root_list.append(sim_root%field)
+    gbt_root_list.append(pks_root%field)
+    #for i in range(100):
+        #trans_root_list.append(trans_root%(i,field))
+    trans_root_list.append(trans_root%field)
+for field in opt_fields:
+    ssm_root_list.append(ssm_root%field + 'IxI_sim_%03d_subreal/')
+    opt_root_list.append(IIdf_root%field)
+#sim_root_list.append(sim_root)
+#cut_list = [0,1,2,3,4,5,6,7,8,9,10,11,12,29,59,60,61,62,63]
+#cut_list = [0,1,2,3,4,5,6,7,8,9,59,60,61,62,63]
+#cut_list = [55,56,57,58,59,60]
+cut_list = [1,2,3,4,5,6,7,8,9,60,61,62,63]
+#cut_list = [0,1,2,3,4,5,6,7,8,9, 26,27,28,29,30,31,32,33,34, 59,60,61,62,63]
+#cut_list = range(0,26) + range(35,64)
+#cut_list = [0,1,2,3,4,5,59,60,61,62,63]
+nfreq = 64
+
+kbin_min = 0.02
+kbin_max = 10.
+#kbin_max = 0.2
+kbin_num = 30
+#kbin_num = 25
+
+#kbin_min = 0.3
+#kbin_max = 1.
+#kbin_num = 15
+
+from mkpower import ps_estimator
+pipe_modules.append(ps_estimator.PowerSpectrumEstimator)
+
+#from mkpower import ps_analysis
+#pipe_modules.append(ps_analysis.GBTxWiggleZPowerSpectrum_Analysis)
+
+"""  Prepare """
+pse_processes = 1
+
+pse_sim_root = sim_root_list
+pse_ssm_root = ssm_root_list
+pse_gbt_root = gbt_root_list
+pse_opt_root = opt_root_list
+pse_trans_root = trans_root_list
+pse_cut_list = cut_list
+
+pse_kbin_num = kbin_num
+pse_kbin_min = kbin_min
+pse_kbin_max = kbin_max
+
+pse_feedback = 1
+pse_ps_root  = WORKROOT 
+pse_ps_type  = '2df'
+#pse_ps_type  = 'auto'
+#pse_ps_type  = 'wigglez'
+pse_ps_name  = '%s_%s_ps_%02dmode'%(name, pse_ps_type, mode)
+pse_ps_mode = mode
+
+pse_sim_fact = 0
+
+pse_degrade_factor = 1.4
+pse_telescope = 'Parkes'
+pse_beam_list = [123, 456, 789, '10to13']
+pse_modes = mode
+pse_svd_path = os.getenv('SVD_PATH')%(182)
+pse_svd_file = ['SVD.hd5',]
+#pse_svd_file = ['SVD_XX.hd5', 'SVD_YY.hd5']
+#pse_freq_list = np.array([ind for ind in range(nfreq) if ind not in cut_list])
+pse_freq_list = np.arange(nfreq)
+
+pse_est_powersim = True
+pse_est_transfer = True
+pse_est_powerspc = True
+pse_est_powershn = True
+pse_est_noiselev = False
+
+"""  parameters for estimation """
+crosps_inputroot = pse_ps_root + pse_ps_name + '/'
+crosps_outputroot = crosps_inputroot
+crosps_sections = ["A", "B", "C", "D"]
+#crosps_truncate = [0.2, 1.0, 0.1, 0.3]
+crosps_truncate = []
+crosps_mode = mode
+

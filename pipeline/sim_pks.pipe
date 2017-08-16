@@ -1,0 +1,37 @@
+1#########################################################################
+#                                                                       #
+#      This pipeline is used to calculate the 2df power spectrum        #
+#                                                                       #
+#########################################################################
+
+pipe_modules = []
+pipe_processes = 1
+
+import os
+import numpy as np
+
+mode = int(os.getenv('MODE'))
+pks_root = os.getenv('MAP_PKS')
+sim_root = os.getenv('MAP_SIM')
+opt_root = os.getenv('MAP_2DF')
+out_root = os.getenv('MAP_OUT')
+
+
+field = os.getenv('PKSFIELD')
+
+#out_root = out_root%field + 'sim_pks_%03d.npy'
+sim_root = sim_root%field + 'sim_degradebeam_%03d.npy'
+#pks_root = pks_root%field + 'combined_clean_weight_%dmodes.npy'%mode
+#opt_root = opt_root%field + 'mock_map_2df_delta_%03d.npy'
+
+from parkes import sim_pks
+pipe_modules.append(sim_pks.Sim_PKS)
+
+"""  Prepare """
+simpks_processes = 1
+
+simpks_sim_root = sim_root
+simpks_gbt_root = pks_root
+simpks_opt_root = opt_root
+
+simpks_out_root  = out_root
