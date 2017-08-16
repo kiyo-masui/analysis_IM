@@ -17,8 +17,8 @@ WORKROOT = './'
 hour = int(os.getenv('HOUR'))
 name = os.getenv('NAME')
 mode = int(os.getenv('MODE'))
-pks_root = os.getenv('MAP_PKS')
-IIdf_root = os.getenv('MAP_2DF')
+pks_root = os.getenv('MAP_GBT')
+chime_root = os.getenv('MAP_CHIME')
 sim_root = os.getenv('MAP_SIM')
 ssm_root = os.getenv('MAP_SSM')
 trans_root = os.getenv('TRANS_PATH')
@@ -28,7 +28,7 @@ opt_fields = [os.getenv('OPT_FIELD'),]
 sim_root_list = []
 ssm_root_list = []
 gbt_root_list = []
-opt_root_list = []
+chime_root_list = []
 trans_root_list = []
 for field in pks_fields:
     sim_root_list.append(sim_root)
@@ -38,7 +38,7 @@ for field in pks_fields:
     trans_root_list.append(trans_root%field)
 for field in opt_fields:
     ssm_root_list.append(ssm_root%field + 'IxI_sim_%03d_subreal/')
-    opt_root_list.append(IIdf_root%field)
+    chime_root_list.append(chime_root)
 #sim_root_list.append(sim_root)
 #cut_list = [0,1,2,3,4,5,6,7,8,9,10,11,12,29,59,60,61,62,63]
 #cut_list = [0,1,2,3,4,5,6,7,8,9,59,60,61,62,63]
@@ -72,7 +72,7 @@ pse_processes = 1
 pse_sim_root = sim_root_list
 pse_ssm_root = ssm_root_list
 pse_gbt_root = gbt_root_list
-pse_opt_root = opt_root_list
+pse_chime_root = chime_root_list
 pse_trans_root = trans_root_list
 pse_cut_list = cut_list
 

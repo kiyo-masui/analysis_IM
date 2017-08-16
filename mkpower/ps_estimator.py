@@ -32,6 +32,7 @@ params_init = {
     'opt_root'  : './',
     'trans_root' : './',
     'transsim_root' : './',
+    'chime_root' : './',
 
     'sim_numb'  : 50,
     'sim_fact'  : 0.,
@@ -927,6 +928,30 @@ class PowerSpectrumEstimator(object):
                 imap_list.append([imapa_temp, imapb_temp])
                 #nmap_list.append([nmapa_temp, nmapb_temp])
                 nmap_list.append([None,None])
+
+        elif map_set == 'ps' and params['ps_type'] == 'gbt':
+            print 'prepare maps for GBT auto-power spectrum'
+            imapa_temp = []
+            imapb_temp = []
+            nmapa_temp = []
+            nmapb_temp = []
+            for j in range(len(params['sim_root'])):
+                    # File names for maps in Victor's scratch
+                    #imapa_temp.append(params['gbt_root'][j] + 'fir_11hr_1-39_newpol_clean_map_I_800.npy')
+                    #imapb_temp.append(params['gbt_root'][j] + 'fir_11hr_1-39_newpol_clean_map_I_800.npy')
+                    #nmapa_temp.append(params['gbt_root'][j] + 'fir_11hr_1-39_newpol_noise_inv_diag_I_800.npy')
+                    #nmapb_temp.append(params['gbt_root'][j] + 'fir_11hr_1-39_newpol_noise_inv_diag_I_800.npy')
+
+                    # File names for maps in my scratch
+                    imapa_temp.append(params['gbt_root'][j])
+                    imapb_temp.append(params['chime_root'][j])
+                    #nmapa_temp.append(params['gbt_root'][j] + 'fir_11hr_1-39_newpol_noise_inv_diag_I_800.npy')
+                    #nmapb_temp.append(params['gbt_root'][j] + 'fir_11hr_1-39_newpol_noise_inv_diag_I_800.npy')
+
+            imap_list.append([imapa_temp, imapb_temp])
+            #nmap_list.append([nmapa_temp, nmapb_temp])
+            nmap_list.append([None, None])
+
         else:
             print 'error: map_set error!'
             exit()
