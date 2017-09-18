@@ -271,14 +271,18 @@ def p_cross_given_auto_int_r(signal_pow, sim_pow, cross_pow, cross_err):
     Function is unnormalized but has the right dependance on `signal_pow`.
     """
     # Scale simulation to measured lower limit from cross-power.
-    #cross_mean = CMEAN * np.sqrt(sim_pow)
-    #cross_err = CERR * np.sqrt(sim_pow)
+    cross_mean = CMEAN * np.sqrt(sim_pow)
+    cross_err = CERR * np.sqrt(sim_pow)
     # See Feb 26, 2013 of Kiyo's notes for derivation.
-    amp = np.sqrt(signal_pow)*np.sqrt(sim_pow)
 #    cross_pow = np.sqrt(cross_pow)
 #    cross_err = (1/2.)*cross_pow**(-1./2.)*(cross_err)
-    p_cross = (stats.norm.cdf((amp - cross_pow)/cross_err)
-                - stats.norm.cdf(-cross_pow/cross_err))
+
+    # If using actual cross power data
+  #  amp = np.sqrt(signal_pow)*np.sqrt(sim_pow)
+    # Else
+    amp = np.sqrt(signal_pow)
+    p_cross = (stats.norm.cdf((amp - cross_mean)/cross_err)
+                - stats.norm.cdf(-cross_mean/cross_err))
 #    np.save('amp', amp)
 #    np.save('signal_pow', signal_pow)
 #    np.save('p_cross', p_cross)
@@ -450,9 +454,22 @@ def analyze_2d(shell=True):
     auto_pow = al.make_vect(al.load_h5(auto_file, 'ps_2d'))
     auto_std = al.make_vect(al.load_h5(auto_file, 'std_2d'))
 
+    #GBT
+#    auto_pow = al.make_vect(al.load(data_file_root + 'tzuching_gbt/power_2d.npy'))
+#    auto_std = al.make_vect(al.load(data_file_root + 'tzuching_gbt/err_2d.npy'))
+
     #Get centres of k bins along each dimension in the 2D pow
     k_p_centre, k_v_centre = pss.get_2d_k_bin_centre(dm_pow)
     k_edges, k_v_edges = pss.get_2d_k_bin_edges(dm_pow)
+
+    #GBT
+#    dm_pow = np.ones_like(auto_pow)
+#    cros_pow = np.ones_like(auto_pow)
+#    cros_std = np.ones_like(auto_pow)
+#    k_p_centre = np.load(data_file_root + 'tzuching_gbt/k_cent.npy')
+#    k_v_centre = np.load(data_file_root + 'tzuching_gbt/k_cent.npy')
+#    k_edges = np.load(data_file_root + 'tzuching_gbt/k_left.npy')
+#    k_edges = np.logspace(np.log10(0.0045), np.log10(4.0), 44)
 
     #Compute the centre of each pixel (ie |k|)
     k_centre = np.sqrt(k_v_centre[:, None]**2 + k_p_centre[None, :]**2)
@@ -494,36 +511,41 @@ def analyze_2d(shell=True):
     # appropriate 'arcs' list
     for ii in range(len(k_edges)-1):
 
-        #mask to select pixels with |k| in each bin 
+        #mask to select pixels with |k| of bin 
         mask = (k_centre < k_edges[ii+1]) & (k_centre > k_edges[ii])
         #order the data from lowest angle to k_perp to highest angle
         order = np.argsort(angle[mask])
 
         #use mask to select pixels in a given arc, and order them
-        dm_at_rad = dm_pow.flatten()[mask][order]
-        dm_pow_arcs.append(dm_at_rad[dm_at_rad!=0])
+        auto_rad = auto_pow.flatten()[mask][order]
+        auto_std_rad = auto_std.flatten()[mask][order][auto_rad!=0]
 
-        angles.append(angle[mask][order][dm_at_rad!=0])
-        k = k_centre[mask][order][dm_at_rad!=0]
+        dm_at_rad = dm_pow.flatten()[mask][order][auto_rad!=0]
+        dm_pow_arcs.append(dm_at_rad)
+
+        angles.append(angle[mask][order][auto_rad!=0])
+        k = k_centre[mask][order][auto_rad!=0]
         k_vals.append(k)
 
-        cros_rad = cros_pow.flatten()[mask][order][dm_at_rad!=0]
-        cros_std_rad = cros_std.flatten()[mask][order][dm_at_rad!=0]
+        cros_rad = cros_pow.flatten()[mask][order][auto_rad!=0]
+
+        cros_std_rad = cros_std.flatten()[mask][order][auto_rad!=0]
         cros_pow_arcs.append(cros_rad)
         cros_std_arcs.append(cros_std_rad)
 
-        auto_rad = auto_pow.flatten()[mask][order][dm_at_rad!=0]
-        auto_std_rad = auto_std.flatten()[mask][order][dm_at_rad!=0]
         auto_sim= th.pk_th_mono(k, T_b**2, b_HI, b_HI)
         auto_sim_arcs.append(auto_sim)
-        auto_pow_arcs.append(auto_rad)
+        auto_pow_arcs.append(auto_rad[auto_rad!=0])
         auto_std_arcs.append(auto_std_rad)
+        if ii==len(k_edges)-4:
+            print auto_std, auto_std_rad
 
-    #Use the plotting routine to make plot. PARKES: take subset of array
-    main_plot(angles[6:], auto_pow_arcs[6:], auto_std_arcs[6:],
-                  auto_sim_arcs[6:], cros_pow_arcs[6:], 
-                  cros_std_arcs[6:], dm_pow_arcs[6:], 
-                  (k_edges[7:30]+k_edges[6:29])/2, shell)
+    #Use the plotting routine to make plot. PARKES: take [6:] subset of 
+    # all arrays except shell.
+    main_plot(angles, auto_pow_arcs, auto_std_arcs,
+                  auto_sim_arcs, cros_pow_arcs, 
+                  cros_std_arcs, dm_pow_arcs, 
+                  k_edges, shell)
 
 def main_plot(angles, auto_pow, auto_err, auto_sim, cross_pow, cross_err,
               dm_pow, k, shell, shellnum=0):
@@ -548,11 +570,14 @@ def main_plot(angles, auto_pow, auto_err, auto_sim, cross_pow, cross_err,
     # name choice carried over from old code.
     lhoods = []
     sks = []
+    kplot = []
     shot_post = 1
 
-    #PARKES has issues with the last few bins, hence cutoff at -5.
+    #PARKES has issues with the last few bins, so use len(angles)-5.
     #Loop over arcs
-    for jj in range(len(angles)-5):
+    arcs  = range(len(angles)-5)
+    for jj in arcs:
+      if angles[jj].size:
         # Allocate memory of the confidence intervals.
         pows = []
         likelihoods = []
@@ -586,10 +611,9 @@ def main_plot(angles, auto_pow, auto_err, auto_sim, cross_pow, cross_err,
 
         #Select the arc over which we compute the aggregate 
         ang = angles[jj]
-
         # Loop over angle and calculate the confidence for each bin. 
         for ii in range(len(ang)):
-
+            print 'Angle ', ang[ii]
             # Data points for this angle within arc
             this_k = ang[ii]
             this_auto_sim = auto_sim[jj][ii]
@@ -605,19 +629,25 @@ def main_plot(angles, auto_pow, auto_err, auto_sim, cross_pow, cross_err,
 
             #Calculate posterior for the angle. pow is the signal over which
             # posterior is computed
-            pow, likelihood = signal_likelihood_k_bin(this_auto_sim, this_cross_sim,
-                                                  this_auto_pow, this_auto_err, 
-                                                  this_cross_pow, this_cross_err,
-                                                  this_dm_sim, signal_pow)
+         #   pow, likelihood = signal_likelihood_k_bin(this_auto_sim, this_cross_sim,
+         #                                         this_auto_pow, this_auto_err, 
+         #                                         this_cross_pow, this_cross_err,
+         #                                         this_dm_sim, signal_pow)
+
+            # If only upper lim from auto
+            likelihood = p_auto_given_signal_int_f(signal_pow, this_auto_pow, this_auto_err)
+            pow = signal_pow
 
             #Posterior for shot noise
-            shot_post *= (p_auto_given_signal_int_f(shot_noi,
-                         this_auto_pow, this_auto_err))[shot_noi>0]
+            hipass_shot = 5.9e-8
+            hipass_err = 0.7e-8
+            shot_post = (stats.norm.pdf(signal_pow,
+                         loc=hipass_shot, scale=hipass_err))
 
             #Somewhat hacky way to avoid numerical issues. Function is normalized,
             # so should be fine.
-            if np.median(shot_post) < 1e-50:
-                shot_post *= 1e50
+          #  if np.median(shot_post) < 1e-50:
+          #      shot_post *= 1e50
 
             #Avoid numerical issues, and append each angle to list
             if np.sum(np.isnan(likelihood)) < 1:
@@ -626,26 +656,36 @@ def main_plot(angles, auto_pow, auto_err, auto_sim, cross_pow, cross_err,
 
         #One temp for each arc
         temp_sk = np.mean(np.array(pows), axis=0)
+        print 'CHECK', temp_sk.shape, np.prod(np.array(likelihoods), axis=0).shape
         temp_l = normalize_pdf(temp_sk, np.prod(np.array(likelihoods), axis=0))
 
         #List of arcs' posteriors
         lhoods.append(temp_l)
         sks.append(temp_sk)
+        kplot.append(k[jj])
 
         #Used to plot posteriors of angles within single arc. Set shell=True
-        if jj==10000:
-            tmptemp = 1
-            for kk in range(len(likelihoods)):
-                #likelihoods[kk] = normalize_pdf(pows[kk], likelihoods[kk])
-#                plt.plot(pows[0], likelihoods[kk]*pows[0], 'k--', lw=2)
-                print 'At', pows[0][550000], 'constit', likelihoods[kk][550000], 'plot', likelihoods[kk][550000]*pows[0][550000]
-                tmptemp *= likelihoods[kk][550000]
-            print 'prod:', tmptemp
-#            plt.plot(pows[0], temp_l*pows[0], 'r--', lw=3)
-            plt.xlim([1e-11, 3e-6])
-            plt.ylim([0, 0.7])
-            k_rad = k[jj]
-            #plt.savefig('likelihoods_k%.2f.eps'%k_rad)
+        print jj
+        if jj==1000:
+            print 'plotted'
+            plt.cla()
+            plt.plot(temp_sk, temp_l, 'r--', lw=3)
+            plt.xlim([1e-12, 5e-2])
+            #plt.ylim([0, 0.7])
+            #llm, ulm = get_conf_interval(temp_sk, temp_l)
+            #plt.axvline(x=llm, ymin=0., ymax=1.0,
+            #    color='r', ls='--', lw=2)
+            #plt.axvline(x=ulm, ymin=0., ymax=1.0,
+            #    color='g', ls='--', lw=2)
+            #cdf = np.zeros(len(temp_sk))
+            #cdf[1:] = integrate.cumtrapz(temp_l, temp_sk)
+            #cdf /= cdf[-1]
+            #plt.plot(temp_sk, cdf, 'b--', lw=3)
+            plt.xscale('log')
+            plt.yscale('log')
+            np.save('temp_l', temp_l)
+            np.save('temp_sk', temp_sk)
+            plt.savefig('likelihood.eps')
 
             #Plot confidence intervals for signal in angles over single arc
             if shell:
@@ -688,14 +728,16 @@ def main_plot(angles, auto_pow, auto_err, auto_sim, cross_pow, cross_err,
         for item in ([ax.xaxis.label, ax.yaxis.label] +
                      ax.get_xticklabels() + ax.get_yticklabels()):
             item.set_fontsize(20)
-        plt.ylim([2e-10, 5e-3]) 
-        plt.xlim([4e-2, 1e1]) 
+        plt.ylim([9e-10, 2e-3]) 
+        plt.xlim([4e-2, 2e0]) 
 
     # Get left edges for k-bins
-    k_left = np.empty_like(k[:len(lhoods)])
-    k_left[0] = k[0] - (k[1] - k[0]) / 2
-    for ii in range(1,len(k[:len(lhoods)])):
-        k_left[ii] = 2*k[ii - 1] - k_left[ii - 1]
+   # k_left = np.empty_like(k[:len(lhoods)])
+   # k_left[0] = k[0] - (k[1] - k[0]) / 2
+   # for ii in range(1,len(k[:len(lhoods)])):
+   #     k_left[ii] = 2*k[ii - 1] - k_left[ii - 1]
+    k_left = kplot
+    print 'k_left', k_left
 
     #Get widths for k-bins
     dk = np.empty_like(k[:len(lhoods)])
@@ -712,24 +754,24 @@ def main_plot(angles, auto_pow, auto_err, auto_sim, cross_pow, cross_err,
                 bottom=imK2*bottom, color=interval_cols[jj], linewidth=0.5)
 
     #Plot any desired lines here.
-    cross_line = plt.plot(k, th.pk_th_mono(k, T_b**2, b_HI, b_HI)*k**(-3)*2*np.pi**2., 'g--', lw=2.)
+#    cross_line = plt.plot(k, th.pk_th_mono(k, T_b**2, b_HI, b_HI)*k**(-3)*2*np.pi**2., 'g--', lw=2.)
 #    cross_line = plt.plot(k[cross_pow > 0], cross_pow[cross_pow > 0] * T_b,
 #                      'r--', lw=2.)
-    #auto_line = plt.plot(k[auto_pow > 0], auto_pow[auto_pow > 0], 'b--', lw=2.)
+    auto_line = plt.plot(k, np.ones_like(k)*5.9e-8, 'b--', lw=2.)
 
     #Tidy up plot
-    #xticks = np.arange(1, 10, 1)
+    #xticks = np.arange(1, 10, 2)
     #xticks = list(0.01 * xticks) + list(0.1 * xticks) + list(xticks)
     #plt.xticks(xticks, xticks)
-   #plt.xlim([0.0, k[-1]+0.03])
     f.subplots_adjust(top=0.7)
     #leg = plt.legend([cross_line[0]], 
     #                 [r'$\Omega_{\rm HI}b_{\rm HI}=0.43 \times 10^{-3}$'],
     #                 'lower right', prop={'size' : 16, 'family' : 'serif'})
 
-    #Save fig of allowed signal in 1D
-    plt.savefig(auto_root + 'allowed_signal.eps', bbox_extra_artists=(xlab, ylab),
-            bbox_inches='tight')
+    #Save fig of allowed signal in 1D 
+    print 'Saving fig  ', data_file_root + 'tzuching_gbt/allowed_signal.eps'
+    plt.savefig('allowed_signal.eps', bbox_inches='tight')
+#bbox_extra_artists=(xlab, ylab)
     plt.cla()
     return
 
