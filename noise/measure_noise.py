@@ -129,7 +129,7 @@ class Measure(object) :
             band_centres = []
             for ii in range(n_bands):
                 if ii in band_inds:
-                    Blocks = Reader.read(params["scans"], ii, params["beams"])
+                    Blocks = Reader.read(params["scans"], ii, params["beams"], force_tuple=True)
                     Blocks[0].calc_freq()
                     n_chan = Blocks[0].dims[-1]
                     band = (int(round(Blocks[0].freq[n_chan//2]/1e6)))

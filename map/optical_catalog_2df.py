@@ -15,6 +15,7 @@ http://astronomy.swin.edu.au/~cblake/tzuching.html
     template_1hr = 'templates/wigglez_1hr_complete.npy'
 """
 import numpy as np
+import scipy as sp
 import shelve
 import random
 import copy
@@ -103,7 +104,8 @@ def convert_to_physical_coordinate(freq, ra, dec, ra_fact):
     d = cosmology.proper_distance(z)
     y = d * ra * np.pi / 180.
     z = d * dec * np.pi / 180.
-    x = np.sqrt(c*c - y*y - z*z)
+    #x = np.sqrt(c*c - y*y - z*z)
+    x = c * np.cos(ra*np.pi/180.)
 
     return x, y, z
 
@@ -125,9 +127,9 @@ def convert_B1950_to_J2000(ra, dec, z, degree_in=False, degree_out=True):
     #ra2000 = ra
     #dec2000 = dec
 
-    print z, 
-    print " | ra: ",ra," --> ",ra2000," [",(ra-ra2000)*180./np.pi,"] | ",
-    print "dec: ",dec," --> ",dec2000," [",(dec-dec2000)*180./np.pi,"]"
+    #print z, 
+    #print " | ra: ",ra," --> ",ra2000," [",(ra-ra2000)*180./np.pi,"] | ",
+    #print "dec: ",dec," --> ",dec2000," [",(dec-dec2000)*180./np.pi,"]"
 
     if degree_out:
         ra2000 = ra2000*180./np.pi
@@ -137,7 +139,8 @@ def convert_B1950_to_J2000(ra, dec, z, degree_in=False, degree_out=True):
 
 def bin_catalog_file(filename, freq_axis, ra_axis, dec_axis, 
                      physical_cube=False, ra_centre=None, dec_centre=None,
-                     skip_header=None, debug=False, mock=False):
+                     skip_header=None, debug=False, mock=False, 
+                     Negative_RA=False):
     """Bin the catalog given in `filename` using the given freq, ra, and dec
     axes.
     """
@@ -156,7 +159,7 @@ def bin_catalog_file(filename, freq_axis, ra_axis, dec_axis,
 
     # TODO: numpy seems to be an old version that does not have the skip_header
     # argument here! skiprows is identical
-    catalog = np.genfromtxt(filename, dtype=ndtype, skiprows=skip_header)
+    catalog = np.genfromtxt(filename, dtype=ndtype, skip_header=skip_header)
 
     convert_B1950_to_J2000_vect = np.vectorize(convert_B1950_to_J2000)
     catalog['RA'], catalog['Dec'], catalog['z'] =\
@@ -167,15 +170,20 @@ def bin_catalog_file(filename, freq_axis, ra_axis, dec_axis,
     catalog['z']   = cc.freq_21cm_MHz * 1.e6 / (1. + catalog['z'])
 
     # change the RA range to -180 ~ 180
-    catalog['RA'][catalog['RA']>180.] -= 360.
+    if np.any(ra_axis < 0) and not Negative_RA:
+        print "Should set Negative_RA = True"
+        exit()
+    if Negative_RA:
+        catalog['RA'][catalog['RA']>180.] -= 360.
 
     if ra_centre != None:
         catalog['RA'] -= ra_centre
     if dec_centre != None:
-        catalog['DEC'] -= dec_centre
+        catalog['Dec'] -= dec_centre
     if physical_cube:
-        catalog['z'], catalog['RA'], catalog['DEC'] = convert_to_physical_coordinate(
-            catalog['z'], catalog['RA'], catalog['DEC'], sp.cos(sp.pi*dec_centre/180.0))
+        catalog['z'], catalog['RA'], catalog['Dec'] = convert_to_physical_coordinate(
+            catalog['z'], catalog['RA'], catalog['Dec'], sp.cos(sp.pi*dec_centre/180.0))
+        print catalog['z'].min(), catalog['z'].max()
 
     if debug:
         print filename + ": " + repr(catalog.dtype.names) + \
@@ -202,6 +210,7 @@ bin2dfparams_init = {
         "physical_cube": False,
         "mock_number": 10,
         "mock_alpha": 1,
+        "negative_RA" : False,
         }
 bin2dfprefix = 'bin2df_'
 
@@ -239,12 +248,24 @@ class Bin2dF(object):
         self.template_map = \
             algebra.make_vect(algebra.load(self.params['template_file']))
 
-        self.ra_centre = self.template_map.info['ra_centre']
-        self.dec_centre = self.template_map.info['dec_centre']
-
         if self.params['physical_cube']:
+
+            self.ra_centre = self.template_map.info['ra_centre']
+            self.dec_centre = self.template_map.info['dec_centre']
+            self.physical_cube = True
+
+            #self.template_map = physical_gridding.physical_grid_largeangle(
+            #    self.template_map, refinement=1, pad=5, order=2, infor_only=True)
+            #self.template_map = physical_gridding.physical_grid(
+            #    self.template_map, refinement=1, pad=5, order=2, info_only=True)
             self.template_map = physical_gridding.physical_grid_largeangle(
-                self.template_map, refinement=1, pad=5, order=2, infor_only=True)
+                self.template_map, refinement=1, pad=5, order=2, info_only=True, 
+                cube_force=1.)
+        else:
+            self.ra_centre = None
+            self.dec_centre = None
+            self.physical_cube = False
+
 
         self.freq_axis = self.template_map.get_axis('freq')
         self.ra_axis = self.template_map.get_axis('ra')
@@ -260,11 +281,11 @@ class Bin2dF(object):
         #np.set_printoptions(threshold=np.nan)
         print "finding the binned data"
         self.realmap()
-        #print "finding the binned mock and selection function"
-        #self.selection()
-        #print "finding the separable form of the selection"
-        #self.separable()
-        #print "finding the optical overdensity"
+        print "finding the binned mock and selection function"
+        self.selection()
+        print "finding the separable form of the selection"
+        self.separable()
+        print "finding the optical overdensity"
         self.delta()
 
     def realmap(self):
@@ -272,7 +293,11 @@ class Bin2dF(object):
         #self.realmap_binning, self.biasmap_binning\
         self.realmap_binning\
             = bin_catalog_file(self.infile_data, self.freq_axis, self.ra_axis,
-                               self.dec_axis, skip_header=1, debug=False)
+                               self.dec_axis, skip_header=1, debug=False,
+                               physical_cube=self.physical_cube, 
+                               ra_centre=self.ra_centre, 
+                               dec_centre=self.dec_centre,
+                               Negative_RA=self.params['negative_RA'])
 
         map_2df = algebra.make_vect(self.realmap_binning,
                                         axis_names=('freq', 'ra', 'dec'))
@@ -304,7 +329,11 @@ class Bin2dF(object):
             mockfile = self.infile_mock%mockindex
             mock_binning = bin_catalog_file(mockfile, self.freq_axis,
                                             self.ra_axis, self.dec_axis,
-                                            skip_header=1, mock=True)
+                                            skip_header=1, mock=True,
+                                            physical_cube=self.physical_cube, 
+                                            ra_centre=self.ra_centre, 
+                                            dec_centre=self.dec_centre, 
+                                            Negative_RA=self.params['negative_RA'])
 
             self.selection_function += mock_binning
 
@@ -319,10 +348,11 @@ class Bin2dF(object):
 
             algebra.save(self.outfile_mock%mockindex, map_2df_mock)
 
+        #print "normalized the selection function"
+        #self.selection_function *= self.params['mock_alpha']
         # adding the real map back to the selection function is a kludge which
         # ensures the selection function is not zero where there is real data
         # (limit of insufficient mocks)
-        #self.selection_function *= self.params['mock_alpha']
         self.selection_function += self.realmap_binning
         self.selection_function /= float(self.params['mock_number'] + 1)
         print np.mean(self.selection_function)
@@ -361,18 +391,21 @@ class Bin2dF(object):
         #if mock:
         #    map_optical *= self.params['mock_alpha']
         map_nbar = algebra.make_vect(algebra.load(optical_selection_file))
+        if not mock:
+            map_nbar *= self.params['mock_alpha']
+            print "normalize selectin fuctino by %f"%self.params['mock_alpha']
 
         old_settings = np.seterr(invalid="ignore", under="ignore")
         map_delta = map_optical / map_nbar - 1.
         np.seterr(**old_settings)
 
         # TODO: also consider setting the nbar to zero outside of galaxies?
-        map_delta[np.isinf(map_delta)] = 0.
-        map_delta[np.isnan(map_delta)] = 0.
+        #map_delta[np.isinf(map_delta)] = 0.
+        #map_delta[np.isnan(map_delta)] = 0.
         # if e.g. nbar is zero, then set the point as if there were no galaxies
         # downstream, nbar=0 should coincide with zero weight anyway
-        #map_delta[np.isinf(map_delta)] = -1.
-        #map_delta[np.isnan(map_delta)] = -1.
+        map_delta[np.isinf(map_delta)] = -1.
+        map_delta[np.isnan(map_delta)] = -1.
 
         return map_delta
 
@@ -384,14 +417,14 @@ class Bin2dF(object):
 
         algebra.save(self.outfile_delta_data, delta_data)
 
-        #for mockindex in range(self.params['mock_number']):
-        #    print "mock delta", mockindex
-        #    mockinfile = self.outfile_mock%mockindex
-        #    mockoutfile = self.outfile_delta_mock%mockindex
+        for mockindex in range(self.params['mock_number']):
+            print "mock delta", mockindex
+            mockinfile = self.outfile_mock%mockindex
+            mockoutfile = self.outfile_delta_mock%mockindex
 
-        #    delta_mock = self.produce_delta_map(mockinfile, selection_file, mock=True)
+            delta_mock = self.produce_delta_map(mockinfile, selection_file, mock=True)
 
-        #    algebra.save(mockoutfile, delta_mock)
+            algebra.save(mockoutfile, delta_mock)
 
 if __name__=="__main__":
     

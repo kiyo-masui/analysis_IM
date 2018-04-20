@@ -66,7 +66,7 @@ class ReFlag(base_single.BaseSingle) :
             print "New flags each block:",
         #Adding beam functionality for Parkes
         beam_inds = params['beams']
-        if len(beam_inds) == 0 or beam_inds is None:
+        if beam_inds is None or len(beam_inds) == 0:
             beam_inds = [0]
         # Loop over scans and IFs
         # And beams

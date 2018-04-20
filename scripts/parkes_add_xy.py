@@ -12,12 +12,13 @@ map_ra = os.getenv('MAP_RA')
 map_dec = os.getenv('MAP_DEC')
 map_size = os.getenv('MAP_SIZE')
 
-thebeams = {'XX' :['123','456','789','111213'], 'YY' : ['123','456','789','1012']}
-finalbeams = ['123','456','789','10to13']
-#thebeams = {'XX' :['123456789111213'], 'YY' : ['1234567891012']}
-#finalbeams= ['_all_']
+#thebeams = {'XX' :['123','456','789','111213'], 'YY' : ['123','456','789','1012']}
+#finalbeams = ['123','456','789','10to13']
+thebeams = {'XX' :['123456789111213'], 'YY' : ['1234567891012']}
+finalbeams= ['_all_']
 
-basemap = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/hitconv_sync27_mbcal/combined/'
+basemap = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/correct_beam_effic/sync27/combined/'
+#basemap= '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/hitconv_medianmean_mbcal/combined/'
 imap = basemap + 'I/'
 
 def add_maps(root_dir, field, modes):
@@ -49,6 +50,7 @@ if __name__ == '__main__':
         yy_map = al.load(basemap + 'parkes_parallel_thread_' + map_ra + map_dec + '_p08_' + map_size + '_beam%(b)s_clean_map_bp_div_' % {"b" : beams[1]} + 'YY' +'_1316.npy')
         mapname = imap + 'parkes_parallel_thread_' + map_ra + map_dec + '_p08_' + map_size + '_beam%(b)s_clean_map_bp_div_' % {"b" : beams[2]} + 'I' +'_1316.npy'
         map_out = 0.5*(xx_map+yy_map)
+        #map_out = xx_map+yy_map
         #Zero out places where xx or yy don't have hits
         bool = np.logical_or(xx_map ==0.0, yy_map==0.0)
         map_out[bool] == 0.0
@@ -59,6 +61,7 @@ if __name__ == '__main__':
         xx_weight[xx_weight<1.e-30] = 1.e-30
         yy_weight[yy_weight<1.e-30] = 1.e-30
         I_weight = 1./(0.25*(1./xx_weight+1./yy_weight))
+        #I_weight = 1./((1./xx_weight+1./yy_weight))
         I_weight[I_weight<1.e-20] = 0
         #For places where xx or yy map is zero (bool), set weight to min of xx and yy weights
         I_weight[bool] = np.minimum(xx_weight, yy_weight)[bool]

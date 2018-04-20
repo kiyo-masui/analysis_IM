@@ -358,7 +358,8 @@ class DataPath(object):
 
         self.clprint("opening file "+ path)
 
-        shelvedict = shelve.open(path, 'r')
+        #shelvedict = shelve.open(path, 'r')
+        shelvedict = shelve.open(path)
         bounding_box = {}
         bounding_box.update(shelvedict)
         shelvedict.close()

@@ -3,6 +3,7 @@ import scipy as sp
 import numpy as np
 from scipy import interpolate
 from scipy.ndimage.filters import convolve
+from scipy.special import jn
 
 from core import algebra
 import kiyopy.custom_exceptions as ce
@@ -389,3 +390,94 @@ class GaussianBeam(Beam):
             `width` was given in degrees on initialization of this class.
         """
         return 2. * taper * self._sigma(frequency)
+
+class AiryBeam(Beam):
+
+    def __init__(self, diam):
+        #diam is the circle's diameter in meters.  One number.
+        #Reference frequency will be 1 MHz.
+        l = 2.998*10**8/(1.*10**6)
+        ka = diam*np.pi/l
+        self.ka = ka
+
+    def beam_function(self, r, freqs, squared_delta=False):
+        #r is an array of angular lags in degrees.
+        #freqs is the array of desired frequencies, in Hz.
+        
+        #Convert lags to radians and take the Sine.
+        #s = np.sin(r*np.pi/180.)
+        s = r
+        if squared_delta == True:
+            #print 'squared'
+            s = s**0.5
+        s = np.sin(s*np.pi/180.)
+        ka = self.ka*(freqs/1000000.)
+        x = ka*s
+        #print x
+        def I(x):
+            I = (2.*jn(1, x)/x)**2
+            return I
+        #I should evaluate to 1 at x=0.
+        I = np.piecewise(x, [x==0, x!=0], [1., I])
+        return I
+
+    def kernel_size(self, frequency, taper=5., overwrite=True, ang=9.):
+        #Returns the minimum kernel convolution size in degrees.
+        #Frequency is in Hz
+        ka = self.ka * (frequency/1000000.)
+        x_5 = 16.4706
+        x_1 = 3.8317
+        theta = 2.
+        if taper == 5.:
+            theta = (180./np.pi)*np.arcsin(x_5/ka)
+        if taper == 1.:
+            theta = (180./np.pi)*np.arcsin(x_1/ka)
+        if overwrite == True:
+            theta = ang*np.ones(frequency.shape)
+        return theta
+
+class AchromaticAiryBeam(Beam):
+
+    def __init__(self, diam):
+        #diam is the circle's diameter in meters.  One number.
+        #Reference frequency will be 1 MHz.
+        l = 2.998*10**8/(1.*10**6)
+        ka = diam*np.pi/l
+        self.ka = ka
+
+    def beam_function(self, r, freqs, squared_delta=False):
+        #r is an array of angular lags in degrees.
+        #freqs is the array of desired frequencies, in Hz.
+        
+        #Convert lags to radians and take the Sine.
+        #s = np.sin(r*np.pi/180.)
+        #Make all frequencies 695 MHz
+        s = r
+        if squared_delta == True:
+            #print 'squared'
+            s = s**0.5
+        s = np.sin(s*np.pi/180.)
+        ka = self.ka*695.
+        x = ka*s
+        #print x
+        def I(x):
+            I = (2.*jn(1, x)/x)**2
+            return I
+        #I should evaluate to 1 at x=0.
+        I = np.piecewise(x, [x==0, x!=0], [1., I])
+        return I
+
+    def kernel_size(self, frequency, taper=5., overwrite=True, ang=9.):
+        #Returns the minimum kernel convolution size in degrees.
+        #Frequency is in Hz
+        ka = self.ka * 695.
+        x_5 = 16.4706
+        x_1 = 3.8317
+        theta = 2.
+        if taper == 5.:
+            theta = (180./np.pi)*np.arcsin(x_5/ka)
+        if taper == 1.:
+            theta = (180./np.pi)*np.arcsin(x_1/ka)
+        if overwrite == True:
+            theta = ang
+        return theta

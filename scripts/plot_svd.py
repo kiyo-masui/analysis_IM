@@ -22,10 +22,12 @@ def make_svd_matrix(pairs, h5_path, mode, file_name, num=0, num_sub_maps = 4, ke
             #ax[key(el[1])][key(el[0])].plot(np.log10(vals[0:6]/vals[0]), 'b-')
         #if mode == 'cov_counts': 
         if mode == 'vect':
+            mult1 = np.sum(vals1[num])/abs(np.sum(vals1[num]))
+            mult2 = np.sum(vals2[num])/abs(np.sum(vals2[num]))
             print vals1[num]
             print vals2[num]
-            ax[key[el[1]]][key[el[0]]].plot(vals1[num], 'b-')
-            ax[key[el[0]]][key[el[1]]].plot(vals2[num], 'b-')
+            ax[key[el[1]]][key[el[0]]].plot(mult1*vals1[num], 'b-')
+            ax[key[el[0]]][key[el[1]]].plot(mult2*vals2[num], 'b-')
             if key[el[0]] != 0:
                 ax[key[el[1]]][key[el[0]]].yaxis.set_ticklabels([])
             ax[key[el[1]]][key[el[0]]].xaxis.set_ticklabels([])
@@ -117,7 +119,8 @@ comb_num = [comb for comb in combinations(x_beams,2)]
 #base_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/cleaned_maps_bp_divide/renorm_hitcov_sync07/'
 base_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/cleaned_maps_bp_divide/renorm_sync07/'
 
-base_dir_bp = '/gss01/scratch2/p/pen/andersoc/second_parkes_pipe/cleaned_maps_to_share/only_good_beams/conv_fixed/'
+#base_dir_bp = '/gss01/scratch2/p/pen/andersoc/second_parkes_pipe/cleaned_maps_to_share/only_good_beams/conv_fixed/'
+base_dir_bp = '/scratch2/p/pen/andersoc/second_parkes_pipe/cleaned_maps_to_share/hitmap_fix/'
 
 output_dir = '/scratch2/p/pen/andersoc/combined_maps/svd_plots/beam_by_beam/XX/'
 
@@ -127,12 +130,14 @@ output_dir = '/scratch2/p/pen/andersoc/combined_maps/svd_plots/beam_by_beam/XX/'
 pol = 'XX'
 
 #ra_list = ['ra10', 'ra20', 'ra30', 'ra40', 'ra50']
-ra_list = ['ra33', 'ran18', 'ra165', 'ra182', 'ra199', 'ra216']
+#ra_list = ['ra33', 'ran18', 'ra165', 'ra182', 'ra199', 'ra216']
+#ra_list = ['ra33', 'ran18', 'ra165', 'ra199']
+ra_list = ['ra33']
 if __name__ == '__main__':
     print comb_num
     divide = False
     for val in ra_list:
-        #make_svd_matrix(pairs=comb_num, h5_path = base_dir_bp + pol + '/' + val + '/', mode='vect', file_name = output_dir + 'evects_0_' + val + '_'  + pol +'_nobpdivide', num=0)
-        make_svd_matrix(pairs=comb_num, h5_path = base_dir + pol + '/' + val + '/', mode='vect', file_name = output_dir + 'evects_0_' + val + '_'  + pol , num=0, num_sub_maps = len(x_beams), key = x_key)
-        make_svd_matrix(pairs=comb_num, h5_path = base_dir + pol + '/' + val + '/', mode='svd_vals', file_name = output_dir + 'bp_div_svd_vals_square_root_' + val + pol, num=0, num_sub_maps = len(x_beams), key = x_key)
+        make_svd_matrix(pairs=comb_num, h5_path = base_dir_bp + pol + '/' + val + '/', mode='vect', file_name = output_dir + 'evects_0_' + val + '_'  + pol +'_nobpdivide', num=0, num_sub_maps = len(x_beams), key=x_key)
+        #make_svd_matrix(pairs=comb_num, h5_path = base_dir + pol + '/' + val + '/', mode='vect', file_name = output_dir + 'evects_0_' + val + '_'  + pol , num=0, num_sub_maps = len(x_beams), key = x_key)
+        #make_svd_matrix(pairs=comb_num, h5_path = base_dir + pol + '/' + val + '/', mode='svd_vals', file_name = output_dir + 'bp_div_svd_vals_square_root_' + val + pol, num=0, num_sub_maps = len(x_beams), key = x_key)
         #make_map_matrix(pairs=comb_num, base_dir = base_dir + val + '/', type = 'cleaned_clean_map', modes = 15, map_op = 'freq_fluc_size', file_name = output_dir + 'noise_weighted_freq_fluc_cross_power_15modes_rem_bp_div_thenclean')

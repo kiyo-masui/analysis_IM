@@ -6,17 +6,18 @@ import core.algebra as al
 import os
 import copy
 
-xx_beams = [[1,2,3],[4,5,6],[7,8,9],[11,12,13]]
-yy_beams = [[1,2,3],[4,5,6],[7,8,9],[10,12]]
+#xx_beams = [[1,2,3],[4,5,6],[7,8,9],[11,12,13]]
+#yy_beams = [[1,2,3],[4,5,6],[7,8,9],[10,12]]
 
-#xx_beams = [[1,2,3,4,5,6,7,8,9,11,12,13]]
-#yy_beams = [[1,2,3,4,5,6,7,8,9,10,12]]
+xx_beams = [[1,2,3,4,5,6,7,8,9,11,12,13]]
+yy_beams = [[1,2,3,4,5,6,7,8,9,10,12]]
 
 map_ra = os.getenv('MAP_RA')
 map_dec = os.getenv('MAP_DEC')
 map_size = os.getenv('MAP_SIZE')
 
-base_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/hitconv_sync27_mbcal/'
+base_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/correct_beam_effic/sync27/'
+#base_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/hitconv_medianmean_mbcal/'
 out_dir = base_dir + 'combined/'
 
 effic = {'1': 1.36,

@@ -21,9 +21,11 @@ from core import algebra, hist
 from kiyopy import parse_ini
 import kiyopy.utils
 import kiyopy.custom_exceptions as ce
-import constants
+from map import constants
 import h5py
 
+#import _cholesky as _c
+#from fortran_chol_ul import chol
 
 params_init = {'input_root' : './',
                'polarizations' : ('I',),
@@ -51,7 +53,7 @@ class CleanMapMaker(object) :
         self.rank = comm.Get_rank()
         self.nproc = comm.Get_size()
 
-    #@profile
+#    @profile
     def execute(self, nprocesses=1) :
         """Worker funciton."""
         params = self.params
@@ -147,7 +149,9 @@ class CleanMapMaker(object) :
                         noise_h5 = h5py.File(noise_fname, 'r')
                         #noise_inv = algebra.load_h5_memmap(noise_h5, 'inv_cov', noise_fname + ".npy" , params["mem_lim"])
                         #noise_inv = algebra.make_mat(noise_inv)
-                        noise_inv = noise_h5['inv_cov']
+                        #noise_inv = noise_h5['inv_cov']
+                        noise_inv = noise_h5.get('inv_cov')
+                        #noise_inv = np.zeros(noise_h5['inv_cov'].shape, dtype=float)
                     else:
                         raise ValueError("Noise file is of unsupported type, neither .npy or .hdf5.")
                     # Two cases for the noise.  If its the same shape as the map
@@ -200,7 +204,13 @@ class CleanMapMaker(object) :
                             if self.feedback > 2:
                                 print ", start mmap read:",
                                 sys.stdout.flush()
-                            noise_inv_freq[...] = noise_inv[ii, ...]
+                            if self.feedback > 2:
+                                print "Process " + str(self.rank) + " about to assign memory for inverse noise covariance."
+                            #noise_inv_freq[...] = np.array(noise_inv[ii, ...])
+                            #noise_inv_freq[...] = np.array(noise_h5['inv_cov'][ii, ...])
+                            noise_inv_freq = noise_inv[ii, :, :, :, :]
+                            if self.feedback > 2:
+                                print "Process " + str(self.rank) + " just assigned memory for inverse noise covariance."
                             if self.feedback > 2:
                                 print "done, start eig:",
                                 sys.stdout.flush()
@@ -256,8 +266,10 @@ class CleanMapMaker(object) :
                             else:
                                 #from scipy.lib import lapack
                                 from fortran_chol_ul import chol
-                                import _cholesky as _c
+                                from map import _cholesky as _c
                                 #noise_inv_freq, info = lapack.clapack.dpotrf(noise_inv_freq)
+                                if self.feedback > 2:
+                                    print 'Process ' + str(self.rank) + ' imported cholesky solver.'
                                 chol.p_cholesky(noise_inv_freq)
                                 #map = sp.linalg.solve(noise_inv_freq, dirty_map_vect[ii])
                                 map = _c.cho_solve(noise_inv_freq, dirty_map_vect[ii])
@@ -357,6 +369,7 @@ class CleanMapMaker(object) :
             #h_fname = params['output_root'] + "history.hist"
             #history.write(h_fname)
 
+#@profile
 def solve(noise_inv_filename, noise_inv, dirty_map, 
                                          return_noise_diag=False, feedback=0):
     """Solve for the clean map.
@@ -616,4 +629,5 @@ if __name__ == "__main__":
     if len(sys.argv) == 2:
         par_file = sys.argv[1]
         nproc = 1
-        CleanMapMaker(par_file).execute(nproc)
+        #CleanMapMaker(par_file).execute(nproc)
+        CleanMapMaker(par_file,3).execute(nproc)

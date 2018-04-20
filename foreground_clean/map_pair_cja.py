@@ -626,6 +626,9 @@ class MapPair(object):
                                         lags=lags, speedup=speedup,
                                         verbose=verbose)
 
+    def deproject_modes(self, mode_h5_path):
+        pass
+
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:

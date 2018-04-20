@@ -8,7 +8,8 @@ import datetime
 import multiprocessing as mp
 
 import numpy as np
-import pyfits
+#import pyfits
+from astropy.io import fits as pyfits
 
 from kiyopy import parse_ini, utils
 import kiyopy.pickle_method

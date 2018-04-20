@@ -12,6 +12,7 @@ import datetime
 #import scipy as sp
 import scipy
 import scipy.optimize
+import scipy.signal
 
 data_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/cal_sdfits/B0043/'
 #data_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/cal_sdfits/1934/'
@@ -79,7 +80,7 @@ def make_hist(ra, dec, beam_bool, pix = 0.08, weight = None, polar = 'False', an
         info = np.histogram2d(x, y, bins = [ra_bins, dec_bins], weights=weight)
     return info 
 
-def plot_hist(info, filename, transpose= True, interpolation = 'none', vmax = 0):
+def plot_hist(info, filename, transpose= True, interpolation = 'none', vmax = 0, format = 'png'):
     plt.clf()
     hist = info[0]
     if transpose:
@@ -89,7 +90,7 @@ def plot_hist(info, filename, transpose= True, interpolation = 'none', vmax = 0)
     else:
         im = plt.imshow(hist, origin='lower', extent = [info[1][0], info[1][-1], info[2][0],info[2][-1]], interpolation = interpolation,vmax=vmax)
     plt.colorbar()
-    plt.savefig(filename)
+    plt.savefig(filename, format=format)
     plt.clf()
 
 def make_utc_times(times, dates):
@@ -149,7 +150,10 @@ def fit_lsq(az, el, temp):
         return model
     max_temp = np.argmax(temp)
     init_pars = [np.min(temp), az[max_temp], el[max_temp], 0.106, np.max(temp) - np.min(temp)]
-    fit_pars, err = scipy.optimize.leastsq(lambda q: model(q) - temp, init_pars, ftol=1e-5, xtol=1e-5)
+    #fit_pars, err = scipy.optimize.leastsq(lambda q: model(q) - temp, init_pars, ftol=1e-5, xtol=1e-5)
+    all = scipy.optimize.leastsq(lambda q: model(q) - temp, init_pars, full_output=1, ftol=1e-5, xtol=1e-5)
+    #print 'Shape of covariance matrix is ' + str(all[1].shape)
+    fit_pars = all[0]
     return fit_pars
 
 def azel_to_xyz(az, el):
@@ -214,6 +218,16 @@ def az_el_beam(az, el, beams):
     ans = np.array([xyz_to_azel(el) for el in xyz])
     return ans
 
+def effic(sigma, f):
+    #Returns beam efficiency at frequency f, for gaussian beam fit sigma.
+    #Assumes sigma is in degrees.
+    #Frequency f should be in MHz
+    sigma *= np.pi/180.
+    # k is the Boltzmann constant in Jansky M^2 per K
+    k = 1380.
+    l = 21.*(1420.4/f)
+    e = (4*np.pi*(sigma**2)*k)*(l**-2)
+
 def angle_av_profile(cent, bins, rmax, ra, dec, vals):
     ra -= cent[0]
     dec -= cent[1]
@@ -234,16 +248,27 @@ if __name__ == '__main__':
     dec = combine_data(hdu_list, 'CRVAL4')
     beams = combine_data(hdu_list, 'BEAM')
     data = combine_data(hdu_list, 'DATA')
+    print 'data shape'
+    print data.shape
     fav_data = np.mean(data, axis = 4)
     xx_dat = fav_data[:,0,0,0]
     i_dat = np.mean(fav_data, axis = (1,2,3))
+    i_dat_f = np.mean(data, axis = (1,2,3))
+    xy_dat_f = np.mean(data, axis = (1,2))
+    #Try some RFI cuts
+    xy_dat_med = np.median(xy_dat_f, axis=-1)
+    dev = np.abs(np.transpose(xy_dat_f) - np.transpose(xy_dat_med))
+    #print str(dev.shape) + ' shape'
+    #cut_bool = np.transpose(np.abs(np.transpose(xy_dat_f) - np.transpose(xy_dat_med))/np.transpose(xy_dat_med))<5.
+    cut_bool = np.transpose((dev/np.median(dev, axis = 0)<2.))
+    print 'Cut_bool shape is ' + str(cut_bool.shape) + ', size is ' + str(cut_bool.size) + ', and number of non cuts is ' + str(np.sum(cut_bool))
 
     #For making daz del maps.
     times = combine_data(hdu_list, 'TIME')
     dates = combine_data(hdu_list, 'DATE-OBS')
     utc_times = make_utc_times(times, dates)
-    print utc_times[-200:] 
-    print type(utc_times)
+    #print utc_times[-200:] 
+    #print type(utc_times)
     utc_times = Time(utc_times, format = 'isot', scale= 'utc')
     #Parkes location
 
@@ -252,7 +277,7 @@ if __name__ == '__main__':
     source_dec = -42.0 - 24.0/60.0
 
     observatory = ac.EarthLocation(lat=-32.9983*u.deg, lon=148.2636*u.deg, height=64*u.m)
-    print utc_times
+    #print utc_times
     frame = ac.AltAz(obstime=utc_times,location=observatory)
     beam1bool = beams == 1
     ra1 = ra[beam1bool]
@@ -261,9 +286,9 @@ if __name__ == '__main__':
     #Getting coordinates of brightest point in beam 1
     radecs = ac.SkyCoord(ra = ra1[np.argmax(i_dat1)]*u.deg, dec = dec1[np.argmax(i_dat1)]*u.deg)
     #radecs = ac.SkyCoord(ra = source_ra*u.deg, dec = source_dec*u.deg)
-    print radecs
+    #print radecs
     altaz_source = radecs.transform_to(frame)
-    print altaz_source
+    #print altaz_source
     alt_source = np.array(altaz_source.alt.deg)
     az_source = np.array(altaz_source.az.deg)
     ra = combine_data(hdu_list, 'AZIMUTH')
@@ -281,21 +306,39 @@ if __name__ == '__main__':
     ra *= np.cos(np.deg2rad(dec))
     az_diff *= np.cos(np.deg2rad(dec))
     dec -= alt_source
-    print 'az range ' + str(np.max(ra)) + ' ' + str(np.min(ra))
-    print 'alt range ' + str(np.max(alt_source)) + ' ' + str(np.min(alt_source))
+    #print 'az range ' + str(np.max(ra)) + ' ' + str(np.min(ra))
+    #print 'alt range ' + str(np.max(alt_source)) + ' ' + str(np.min(alt_source))
 
     #Rotate cos(el)daz and del such that direction to middle beam (1) is Right
     angle = np.array([xy_to_theta(el[0],el[1]) for el in zip(az_diff,el_diff)])
     angle *= -1.0
-    print angle
-    print zip(az_diff,el_diff)
+    #print angle
+    #print zip(az_diff,el_diff)
     adj = rotate_xy(ra,dec,angle)
     ra = adj[:,0]
     dec = adj[:,1]
 
+    from scripts import bandpass_divide as bd
+    factors = np.mean(bd.cal_measured/bd.cal_assumed, axis=1)
+
+    beam_widths = []
+    gains = []
+    beam_dir = '/scratch2/p/pen/andersoc/second_parkes_pipe/beam_data/'
+    fwhms = np.zeros((13,1024))
+    xy_fwhms = np.zeros((13,2,1024))
+    xy_fwhms_rficut = np.zeros((13,2,1024))
+    test = 2
     for beam in range(1,14):
         bool = beams == beam
-
+        med_bp = np.median(xy_dat_f[bool], axis=0)
+        fract_dev = xy_dat_f[bool]/med_bp
+        print 'Test shape 1 is ' + str(xy_dat_f[bool].shape) + 'and test shape 2 is ' + str(xy_dat_med[bool].shape)
+        #dev = np.abs(np.transpose(xy_dat_f[bool]) - np.transpose(xy_dat_med[bool]))
+    
+        #cut_bool = np.transpose((dev/np.median(dev, axis = 0)<3.))
+        median_dev = np.median(fract_dev, axis = 0)
+        cut_bool = np.abs((fract_dev - median_dev)/median_dev)<3.
+        #full_bool = np.transpose(np.logical_and(np.transpose(bool), np.transpose(cut_bool)))
         #Code below is just to line up az, el of all beams, if desired.
         az_off = ra[bool][np.argmax(i_dat[bool])]
         alt_off = dec[bool][np.argmax(i_dat[bool])]
@@ -304,15 +347,91 @@ if __name__ == '__main__':
         #dec[bool] -= alt_off
 
         #Optionally, also subtract off min intensity from each beam
-        print np.min(i_dat[bool])
-        print np.max(i_dat[bool])
+        #print np.min(i_dat[bool])
+        #print np.max(i_dat[bool])
         i_dat[bool] -= np.min(i_dat[bool])
   
         print 'Fit parameters are ' 
         #cent = find_center(ra[bool],dec[bool],i_dat[bool])
         params = fit_lsq(ra[bool], dec[bool], i_dat[bool])
+        print 'Bool shape is ' + str(bool.shape)
+        print 'For beam ' + str(beam) + ' there are ' + str(np.sum(bool)) + ' data points.'
+        #print 'For beam ' + str(beam) + ' there are ' + str(np.sum(full_bool)) + ' data points, with full boolean shape ' + str(full_bool.shape)
+        for freq in range(i_dat_f.shape[1]):
+            params = fit_lsq(ra[bool], dec[bool], i_dat_f[:,freq][bool])
+            sigma = params[3]
+            fwhm = sigma * 2.*scipy.sqrt(2.*scipy.log(2.))
+            fwhms[beam -1, freq] = fwhm
+            #params = fit_lsq(ra[bool], dec[bool], xy_dat_f[:,0,freq][bool])
+            #Try experiment with median filter
+            params = fit_lsq(ra[bool], dec[bool], scipy.signal.medfilt(xy_dat_f[:,0,freq][bool], kernel_size = 5))
+            sigma = params[3]
+            fwhm = sigma * 2.*scipy.sqrt(2.*scipy.log(2.))
+            xy_fwhms[beam -1, 0, freq] = fwhm
+            #params = fit_lsq(ra[bool], dec[bool], xy_dat_f[:,1,freq][bool])
+            #Try experiment with median filter
+            params = fit_lsq(ra[bool], dec[bool], scipy.signal.medfilt(xy_dat_f[:,1,freq][bool], kernel_size = 5))
+            sigma = params[3]
+            fwhm = sigma * 2.*scipy.sqrt(2.*scipy.log(2.))
+            xy_fwhms[beam -1, 1, freq] = fwhm
+            #Try with RFI cut
+            #if np.sum(full_bool[:,1,freq])>10.:
+            if np.sum(cut_bool[:,1,freq])>10.:
+                #params = fit_lsq(ra[full_bool[:,1,freq]], dec[full_bool[:,1,freq]], xy_dat_f[:,1,freq][full_bool[:,1,freq]])
+                #print 'Full ra shape is ' + str(ra.shape)
+                #print 'The ra Shape with beam bool is ' + str(ra[bool].shape)
+                #print 'Cut_bool shape is ' + str(cut_bool.shape)
+                #print 'Frequency and beam selected cut_bool shape is ' + str(cut_bool[:,1,freq].shape)
+                params = fit_lsq(ra[bool][cut_bool[:,1,freq]], dec[bool][cut_bool[:,1,freq]], xy_dat_f[bool][:,1,freq][cut_bool[:,1,freq]])
+                sigma = params[3]
+                fwhm = sigma * 2.*scipy.sqrt(2.*scipy.log(2.))
+                xy_fwhms_rficut[beam -1, 1, freq] = fwhm
+            #if np.sum(full_bool[:,0,freq])>10.:
+            if np.sum(cut_bool[:,0,freq])>10.:
+                #params = fit_lsq(ra[full_bool[:,0,freq]], dec[full_bool[:,0,freq]], xy_dat_f[:,0,freq][full_bool[:,0,freq]])
+                params = fit_lsq(ra[bool][cut_bool[:,0,freq]], dec[bool][cut_bool[:,0,freq]], xy_dat_f[bool][:,0,freq][cut_bool[:,0,freq]])
+                sigma = params[3]
+                fwhm = sigma * 2.*scipy.sqrt(2.*scipy.log(2.))
+                xy_fwhms_rficut[beam -1, 0, freq] = fwhm
+            #print 'Beam ' + str(beam) + ' at freq ' + str(freq) + ' has sigma ' + str(params[3])
+    np.save(beam_dir + 'I_FWHM', fwhms)
+    np.save(beam_dir + 'XY_FWHM_medfilter', xy_fwhms)
+    np.save(beam_dir + 'XY_FWHM_RFIcut', xy_fwhms_rficut)
+
+    #Plot some beam histograms for beam 1 YY pol.
+#test = 1
+#for freq in [0,88,104,105,106,107,108,160,161,162,163,164]:
+#    print beams.shape
+#    print cut_bool.shape
+#    bool = np.transpose(np.logical_and(beams==1, np.transpose(cut_bool)))
+#    print bool.shape
+#    bool = bool[:,1,freq]
+#    print bool.shape
+#    print xy_dat_f[:,1,freq].shape
+#    print bool.shape
+#    yy_tot = make_hist(ra, dec, bool, pix=0.04, weight = scipy.signal.medfilt(xy_dat_f[:,1,freq], kernel_size=5), angle_fix = 75, ra_fix = 'False')
+#    yy_hits = make_hist(ra, dec, bool, pix=0.04, angle_fix = 75, ra_fix = 'False')
+#    yy_beam = [yy_tot[0]/yy_hits[0], yy_tot[1], yy_tot[2]]
+#    print 'Max value is ' + str(np.nanmax(yy_beam[0]))
+    #max = np.unravel_index(np.nanargmax(y_beam[0]), yy_beam[0].shape)
+#    plot_hist(yy_beam, '/scratch2/p/pen/andersoc/second_parkes_pipe/beam_data/' + 'YY_beam1_freq' + str(1315.5 - 32 + freq/16.) + '_medfilt' +  '_hist', interpolation = 'nearest', vmax = np.nanmax(yy_beam[0]))
+'''        print params
+        if beam != 10 and beam != 11 and beam != 13:
+            beam_widths.append(params[3])
         cent = [params[1],params[2]]
+        beam_sig = params[3]
+        amp_cent = params[4]
+        ef = effic(beam_sig, 1315.5)
+        print ef
+        #gain = 1/(effic(beam_sig, 1315.5))
+        if beam != 10 and beam != 11 and beam != 13:
+            gain = 1/(effic(beam_sig, 1315.5))
+            gains.append(gain)
         print params
+        print 'Effic is ' + str(ef)
+        #print 'Gain is ' + str(gain)
+        print 'Source in Jy is ' + str(amp_cent) 
+        print 'Source in Jy, corrected, is ' + str(factors[beam-1]*amp_cent)
         r = 1
         bins = 30
         dr = r/(bins*1.0)
@@ -327,16 +446,25 @@ if __name__ == '__main__':
         xx_hits = make_hist(ra, dec, bool, pix = 0.04, angle_fix = 75, ra_fix = 'False')
         xx_beam = [xx_tot[0]/xx_hits[0], xx_tot[1], xx_tot[2]]
         #xx_beam = xx_tot
-        print str(beam)
-        print xx_beam[0].shape
-        print xx_beam[0]
+        #print str(beam)
+        #print xx_beam[0].shape
+        #print xx_beam[0]
         max = np.unravel_index(np.nanargmax(xx_beam[0]), xx_beam[0].shape)
-        print max
+        #print max
         max_pos = (np.min(xx_tot[1]) + (max[0]/xx_beam[0].shape[0])*(np.max(xx_tot[1])-np.min(xx_tot[1])),np.min(xx_tot[2]) + (max[1]/xx_beam[0].shape[0])*(np.max(xx_tot[2])-np.min(xx_tot[2])))
-        print max_pos
-        print np.nanmax(xx_beam[0])
-        print [xx_beam[1][0],xx_beam[1][-1],xx_beam[2][0],xx_beam[2][-1]]
+        #print max_pos
+        #print np.nanmax(xx_beam[0])
+        #print [xx_beam[1][0],xx_beam[1][-1],xx_beam[2][0],xx_beam[2][-1]]
         #plot_hist(xx_beam, dir_out + 'beam' + str(beam) + '_cos(el)daz_del_nearest_' + 'I' + '_rot', interpolation = 'nearest')
+    beam_widths = np.array(beam_widths)
+    beam_width = np.mean(beam_widths)
+    beam_sd = np.std(beam_widths, ddof = 0)
+    print 'Average beam width is ' + str(beam_width) + ' degrees.  SD of these is ' + str(beam_sd)
+    gains = np.array(gains)
+    beam_width = np.mean(gains)
+    beam_sd = np.std(gains, ddof = 0)
+    print 'Average gain is ' + str(beam_width) + ' K/Jy.  SD of these is ' + str(beam_sd)
+'''
 '''        if beam == 1:
             np.save(dir_out +'data/'+ 'beam' + str(beam) + '_cos(el)daz_del_nearest_' + 'I' + '_rot' + '_hist',xx_beam[0])
             np.save(dir_out +'data/'+ 'beam' + str(beam) + '_cos(el)daz_del_nearest_' + 'I' + '_rot' + '_hitmap',xx_hits[0])
@@ -375,3 +503,4 @@ if __name__ == '__main__':
     plot_hist(xx_beam, dir_out + 'all_except_beam10and13_cos(el)daz_del_nearest_I_stacked', interpolation = 'nearest')
     print combine_data(hdu_list, 'PARANGLE')
 '''
+

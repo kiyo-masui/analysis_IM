@@ -7,25 +7,30 @@ from core import algebra as alg
 import sys
 import os
 
-temp_root = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps/'
+#temp_root = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps/'
+temp_root = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps_bp_divide/noise_reestimated/correct_effic_sync27/'
 #temp_name = 'parkes_parallel_thread_ra33decn30_p08_568by106_beam1_clean_map_XX_1316.npy'
 #temp_name = 'parkes_parallel_thread_ran18decn30_p08_488by106_beam1_clean_map_XX_1316.npy'
 #temp_name = 'parkes_parallel_thread_ra165dec0_p08_440by136_beam1_clean_map_XX_1316.npy'
-temp_name = 'parkes_parallel_thread_ra216dec0_p08_440by136_beam1_clean_map_XX_1316.npy'
+#temp_name = 'parkes_parallel_thread_ra216dec0_p08_440by136_beam1_clean_map_XX_1316.npy'
+#temp_name = 'parkes_parallel_thread_ra165dec0_p08_440by136_beam1,2,3_dirty_map_I_1315.npy'
+#temp_name = 'parkes_parallel_thread_ra156dec0_p08_220by136_beam7,8,9_clean_map_I_1315.npy'
+temp_name = 'parkes_parallel_thread_' + os.getenv('MAP_RA') + 'dec0_p08_220by136_beam' + os.getenv('BEAM') + '_clean_map_I_1315.npy'
 temp = alg.make_vect(alg.load(temp_root + temp_name))
 
-
+#noise1 = 'parkes_parallel_thread_ra156dec0_p08_220by136_beam7,8,9_noise_inv_I_1315.hdf5'
+noise1 = 'parkes_parallel_thread_' + os.getenv('MAP_RA') + 'dec0_p08_220by136_beam' + os.getenv('BEAM') + '_noise_inv_I_1315.hdf5'
 #noise1 = 'parkes_parallel_thread_ran18decn30_p08_488by106_beam' + os.getenv('BEAM') + '_noise_inv_YY_1316.hdf5'
 #noise2 = 'parkes_parallel_thread_ran18decn30_p08_488by106_beam' + os.getenv('BEAM') + '_noise_inv_XX_1316.hdf5'
 
-noise1 = 'parkes_parallel_thread_ra216dec0_p08_440by136_beam' + os.getenv('BEAM') + '_noise_inv_YY_1316.hdf5'
-noise2 = 'parkes_parallel_thread_ra216dec0_p08_440by136_beam' + os.getenv('BEAM') + '_noise_inv_XX_1316.hdf5'
+#noise1 = 'parkes_parallel_thread_ra216dec0_p08_440by136_beam' + os.getenv('BEAM') + '_noise_inv_YY_1316.hdf5'
+#noise2 = 'parkes_parallel_thread_ra216dec0_p08_440by136_beam' + os.getenv('BEAM') + '_noise_inv_XX_1316.hdf5'
 
-file_list = [noise1, noise2]
+#file_list = [noise1, noise2]
 
 #file_list = [noise2]
 
-#file_list = [noise1]
+file_list = [noise1]
 
 #file_list = [
 #  'parkes_parallel_thread_ra33decn30_p08_568by106_beam9_noise_inv_YY_1316.hdf5'
@@ -33,7 +38,8 @@ file_list = [noise1, noise2]
 
 
 for file_name in file_list:
-    file_root = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps/'
+    #file_root = '/scratch2/p/pen/andersoc/second_parkes_pipe/maps/'
+    file_root = temp_root
     print file_name
     file = h5py.File(file_root + file_name, mode='r')
     

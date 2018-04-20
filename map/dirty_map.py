@@ -1371,9 +1371,11 @@ class Noise(object):
             or sp.any(thermal_levels < T_small**2)):
             raise ValueError("Non finite thermal noise.")
         if isinstance(thermal_levels, sp.ndarray):
-            self.diagonal += thermal_levels[:, None]
+            #self.diagonal += thermal_levels[:, None]
+            self.diagonal += thermal_levels[:, None].astype(self.diagonal.dtype)
         else:
-            self.diagonal += thermal_levels
+            #self.diagonal += thermal_levels
+            self.diagonal += thermal_levels.astype(self.diagonal.dtype)
 
     def add_mask(self, mask_inds):
         """Add a mask to the noise.

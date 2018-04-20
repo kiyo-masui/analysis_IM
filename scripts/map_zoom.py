@@ -89,7 +89,7 @@ def map_pdf(map, z_clust, name):
         data = np.flipud(data)
         plt.figure(figsize=(2, 2))
         ax = plt.gca()
-        im = plt.imshow(data, extent = [ra_range[0], ra_range[1], dec_range[0], dec_range[1]])
+        im = plt.imshow(data, extent = [ra_range[0], ra_range[1], dec_range[0], dec_range[1]], interpolation='nearest')
         freq = f_center + (f - map.shape[0]//2)*df
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
